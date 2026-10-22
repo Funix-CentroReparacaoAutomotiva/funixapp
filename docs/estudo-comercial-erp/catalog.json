@@ -1,0 +1,3508 @@
+{
+  "documentId": "2zsjI-nqWr",
+  "verifiedAt": "2026-10-21",
+  "reportedPages": 202,
+  "pages": [
+    {
+      "title": "Tarefas",
+      "pageUri": "pages/section-UOCtg-1SGb",
+      "canvasUri": "canvases/canvas-UOCtg-1SGb",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-UOCtg-1SGb",
+        "attempts": 3,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-TZcV7-Ll57"
+      ]
+    },
+    {
+      "title": "Catálogo de tarefas",
+      "pageUri": "pages/section-VvWu7G2tfy",
+      "canvasUri": "canvases/canvas-VvWu7G2tfy",
+      "parentPageUri": "pages/section-UOCtg-1SGb",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-VvWu7G2tfy",
+        "attempts": 3,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-N6VPZDKRtv"
+      ]
+    },
+    {
+      "title": "LAAV",
+      "pageUri": "pages/section-6wZ8guThou",
+      "canvasUri": "canvases/canvas-P7rBVdY47d",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-6wZ8guThou",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "table-PRTerifBcI",
+        "table-td4IxHR1Vt"
+      ]
+    },
+    {
+      "title": "Plano de negócio",
+      "pageUri": "pages/section-V_RQehKrfo",
+      "canvasUri": "canvases/canvas-V_RQehKrfo",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-V_RQehKrfo",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Curva de aprendizado",
+      "pageUri": "pages/section-JHRYdfmydz",
+      "canvasUri": "canvases/canvas-JHRYdfmydz",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-JHRYdfmydz",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Nossa cultura",
+      "pageUri": "pages/section-R54-bxt_VN",
+      "canvasUri": "canvases/canvas-R54-bxt_VN",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "canvases/canvas-R54-bxt_VN",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Missão, visão e valores",
+      "pageUri": "pages/section-KQ-Sa-KPJB",
+      "canvasUri": "canvases/canvas-KQ-Sa-KPJB",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-KQ-Sa-KPJB",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Net promoter score (NPS)",
+      "pageUri": "pages/section-PM7Wa8U6-R",
+      "canvasUri": "canvases/canvas-PM7Wa8U6-R",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-PM7Wa8U6-R",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Transferência de arquivos",
+      "pageUri": "pages/section-AXpsyEh7QP",
+      "canvasUri": "canvases/canvas-AXpsyEh7QP",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-AXpsyEh7QP",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-3XaO3lwc_v"
+      ]
+    },
+    {
+      "title": "Objetivo",
+      "pageUri": "pages/section-XioeHgUXtI",
+      "canvasUri": "canvases/canvas-XioeHgUXtI",
+      "parentPageUri": "pages/section-6wZ8guThou",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-XioeHgUXtI",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "GENTE",
+      "pageUri": "pages/section-5K6pRJw4qV",
+      "canvasUri": "canvases/canvas-5K6pRJw4qV",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-5K6pRJw4qV",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Cargos e Funções",
+      "pageUri": "pages/section-iqtEydgeDZ",
+      "canvasUri": "canvases/canvas-iqtEydgeDZ",
+      "parentPageUri": "pages/section-5K6pRJw4qV",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-iqtEydgeDZ",
+        "attempts": 3,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-eqlqOVypHH"
+      ]
+    },
+    {
+      "title": "Colaboradores",
+      "pageUri": "pages/section-zHvy9kZihB",
+      "canvasUri": "canvases/canvas-zHvy9kZihB",
+      "parentPageUri": "pages/section-5K6pRJw4qV",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-zHvy9kZihB",
+        "attempts": 3,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-m5-J5OXt_S"
+      ]
+    },
+    {
+      "title": "Artesões",
+      "pageUri": "pages/section-ZMNkVeZBVM",
+      "canvasUri": "canvases/canvas-ZMNkVeZBVM",
+      "parentPageUri": "pages/section-5K6pRJw4qV",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "canvases/canvas-ZMNkVeZBVM",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-rnv7iJllSj"
+      ]
+    },
+    {
+      "title": "Plano de Desenvolvimento",
+      "pageUri": "pages/section-1HjiX6qQE2",
+      "canvasUri": "canvases/canvas-1HjiX6qQE2",
+      "parentPageUri": "pages/section-5K6pRJw4qV",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "canvases/canvas-1HjiX6qQE2",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Claudinei",
+      "pageUri": "pages/section-dynOXzuLdB",
+      "canvasUri": "canvases/canvas-dynOXzuLdB",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "canvases/canvas-dynOXzuLdB",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Douglas",
+      "pageUri": "pages/section-QLQ0qurkp8",
+      "canvasUri": "canvases/canvas-QLQ0qurkp8",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-QLQ0qurkp8",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Gustavo",
+      "pageUri": "pages/section-s68YIiJww_",
+      "canvasUri": "canvases/canvas-s68YIiJww_",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-s68YIiJww_",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "João",
+      "pageUri": "pages/section-k6VKTUqNE2",
+      "canvasUri": "canvases/canvas-k6VKTUqNE2",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-k6VKTUqNE2",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Richard",
+      "pageUri": "pages/section-GMy9fVFZge",
+      "canvasUri": "canvases/canvas-GMy9fVFZge",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-GMy9fVFZge",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Rian",
+      "pageUri": "pages/section-ZTKc1erI8u",
+      "canvasUri": "canvases/canvas-ZTKc1erI8u",
+      "parentPageUri": "pages/section-1HjiX6qQE2",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-ZTKc1erI8u",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Redes de recrutamento",
+      "pageUri": "pages/section-QxMxjngmNx",
+      "canvasUri": "canvases/canvas-QxMxjngmNx",
+      "parentPageUri": "pages/section-5K6pRJw4qV",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-QxMxjngmNx",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "VENDAS",
+      "pageUri": "pages/section-h0vNUbfyRh",
+      "canvasUri": "canvases/canvas-RYR_R_imIW",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-h0vNUbfyRh",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Funil",
+      "pageUri": "pages/section-mqlU0jAHtz",
+      "canvasUri": "canvases/canvas-mqlU0jAHtz",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-mqlU0jAHtz",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-cJ75t2m_-9"
+      ]
+    },
+    {
+      "title": "Pagina_View_Funil_orcamento",
+      "pageUri": "pages/section-byest3N2_p",
+      "canvasUri": "canvases/canvas-byest3N2_p",
+      "parentPageUri": "pages/section-mqlU0jAHtz",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-byest3N2_p",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-fa0C1d9X-j"
+      ]
+    },
+    {
+      "title": "Produção",
+      "pageUri": "pages/section-XTRMwwB2dD",
+      "canvasUri": "canvases/canvas-i4gzwrpyOX",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-XTRMwwB2dD",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-wqS5r8cTUX"
+      ]
+    },
+    {
+      "title": "Acomp.Renegociar",
+      "pageUri": "pages/section-nbBIQR6jsh",
+      "canvasUri": "canvases/canvas-nbBIQR6jsh",
+      "parentPageUri": "pages/section-XTRMwwB2dD",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-nbBIQR6jsh",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-NOvWAOpu55"
+      ]
+    },
+    {
+      "title": "ux_ModalSaidaVeiculo",
+      "pageUri": "pages/section-AuRSJdl1ve",
+      "canvasUri": "canvases/canvas-AuRSJdl1ve",
+      "parentPageUri": "pages/section-XTRMwwB2dD",
+      "isHidden": true,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-AuRSJdl1ve",
+        "attempts": 2,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-PdXi-XLvPB",
+        "grid-v55iz0HvuN"
+      ]
+    },
+    {
+      "title": "Histórico",
+      "pageUri": "pages/section-g-YxQ6aEaE",
+      "canvasUri": "canvases/canvas-g-YxQ6aEaE",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-g-YxQ6aEaE",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-3FgOyPVySM"
+      ]
+    },
+    {
+      "title": "Orçamentos",
+      "pageUri": "pages/section-1ojad4dFa_",
+      "canvasUri": "canvases/canvas-1ojad4dFa_",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": true,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-1ojad4dFa_",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-bG-IcZVRPo"
+      ]
+    },
+    {
+      "title": "Acompanhamento Atendimento",
+      "pageUri": "pages/section-DwaF5RczRP",
+      "canvasUri": "canvases/canvas-DwaF5RczRP",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": true,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-DwaF5RczRP",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-ty6k5wKXVx"
+      ]
+    },
+    {
+      "title": "Cenário",
+      "pageUri": "pages/section-uWS0enVusb",
+      "canvasUri": "canvases/canvas-uWS0enVusb",
+      "parentPageUri": "pages/section-h0vNUbfyRh",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-uWS0enVusb",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Mea1OBargA"
+      ]
+    },
+    {
+      "title": "OFICINA",
+      "pageUri": "pages/section-Io5mvLaiFB",
+      "canvasUri": "canvases/canvas-Io5mvLaiFB",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-Io5mvLaiFB",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Veículos agendados",
+      "pageUri": "pages/section-X6mP_pSAs1",
+      "canvasUri": "canvases/canvas-X7co2DDBn3",
+      "parentPageUri": "pages/section-Io5mvLaiFB",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-X6mP_pSAs1",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-e0xpIB7t1g"
+      ]
+    },
+    {
+      "title": "Patio",
+      "pageUri": "pages/section-OrvGz5WxS1",
+      "canvasUri": "canvases/canvas-1dNjr4GsIh",
+      "parentPageUri": "pages/section-Io5mvLaiFB",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-OrvGz5WxS1",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-BhDnwjUMV5"
+      ]
+    },
+    {
+      "title": "View_Orcamentos_Patio",
+      "pageUri": "pages/section-xi63Z9sQKu",
+      "canvasUri": "canvases/canvas-xi63Z9sQKu",
+      "parentPageUri": "pages/section-OrvGz5WxS1",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-xi63Z9sQKu",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-pkYlqBTTdy"
+      ]
+    },
+    {
+      "title": "Old_Patio (PC)",
+      "pageUri": "pages/section-JYJg-SH_zM",
+      "canvasUri": "canvases/canvas-kSYZhoN3-Q",
+      "parentPageUri": "pages/section-Io5mvLaiFB",
+      "isHidden": true,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-JYJg-SH_zM",
+        "attempts": 1,
+        "tableCount": 5
+      },
+      "tableIds": [
+        "table-0LzpXEgbht",
+        "table-BHbfvfRpf0",
+        "table-aJT4pMobG_",
+        "table-hn_Dc_Kj11",
+        "table-uxKR38INHl"
+      ]
+    },
+    {
+      "title": "Patio (Operacao)",
+      "pageUri": "pages/section-5bD2RUFypV",
+      "canvasUri": "canvases/canvas-jlobqwJhJx",
+      "parentPageUri": "pages/section-Io5mvLaiFB",
+      "isHidden": true,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-5bD2RUFypV",
+        "attempts": 1,
+        "tableCount": 5
+      },
+      "tableIds": [
+        "table--3048pIb7o",
+        "table-3EdjWM59Du",
+        "table-BLjeNccjEA",
+        "table-KBjkSmUv-E",
+        "table-me6ZDjhua7"
+      ]
+    },
+    {
+      "title": "Planejamento",
+      "pageUri": "pages/section-j16V538QnI",
+      "canvasUri": "canvases/canvas-oMIG9nxu0-",
+      "parentPageUri": "pages/section-Io5mvLaiFB",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-j16V538QnI",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-cxMBA72bak"
+      ]
+    },
+    {
+      "title": "Matinal",
+      "pageUri": "pages/section-hGPDfQJYOo",
+      "canvasUri": "canvases/canvas-hGPDfQJYOo",
+      "parentPageUri": "pages/section-j16V538QnI",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-hGPDfQJYOo",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Mensagens",
+      "pageUri": "pages/section-nxLmNEMMOC",
+      "canvasUri": "canvases/canvas-nxLmNEMMOC",
+      "parentPageUri": "pages/section-hGPDfQJYOo",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-nxLmNEMMOC",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-i9MAkcovAB"
+      ]
+    },
+    {
+      "title": "db_LavMensagens",
+      "pageUri": "pages/section-KNx7R5qeSx",
+      "canvasUri": "canvases/canvas-KNx7R5qeSx",
+      "parentPageUri": "pages/section-nxLmNEMMOC",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-KNx7R5qeSx",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-zzy3oezO2m"
+      ]
+    },
+    {
+      "title": "db_Matinal",
+      "pageUri": "pages/section-mJT4ygtJDV",
+      "canvasUri": "canvases/canvas-mJT4ygtJDV",
+      "parentPageUri": "pages/section-hGPDfQJYOo",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-mJT4ygtJDV",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ZzGY9r5TJb"
+      ]
+    },
+    {
+      "title": "Divisão veiculos",
+      "pageUri": "pages/section-jXis_ZXqEH",
+      "canvasUri": "canvases/canvas-r9830BxJeJ",
+      "parentPageUri": "pages/section-j16V538QnI",
+      "isHidden": true,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-jXis_ZXqEH",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-KoCWyCZkgl"
+      ]
+    },
+    {
+      "title": "Estoque",
+      "pageUri": "pages/section-Ov3tSEqKBn",
+      "canvasUri": "canvases/canvas-Ov3tSEqKBn",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-Ov3tSEqKBn",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Insumos",
+      "pageUri": "pages/section-LPxysZc9YL",
+      "canvasUri": "canvases/canvas-LPxysZc9YL",
+      "parentPageUri": "pages/section-Ov3tSEqKBn",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-LPxysZc9YL",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-r1OiT0_pe0"
+      ]
+    },
+    {
+      "title": "add_Insumos",
+      "pageUri": "pages/section-U5Y9aVAvzf",
+      "canvasUri": "canvases/canvas-U5Y9aVAvzf",
+      "parentPageUri": "pages/section-LPxysZc9YL",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-U5Y9aVAvzf",
+        "attempts": 2,
+        "tableCount": 3
+      },
+      "tableIds": [
+        "grid-8nDwZldtW2",
+        "grid-Bha2wDJ4xE",
+        "grid-XECnlJmpE0"
+      ]
+    },
+    {
+      "title": "Tintas",
+      "pageUri": "pages/section-uhx0J3OxlA",
+      "canvasUri": "canvases/canvas-8D7b6KHXz2",
+      "parentPageUri": "pages/section-Ov3tSEqKBn",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-uhx0J3OxlA",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-b_ABy8F7zS"
+      ]
+    },
+    {
+      "title": "add_Tintas",
+      "pageUri": "pages/section-vVBCVTeE7h",
+      "canvasUri": "canvases/canvas-vVBCVTeE7h",
+      "parentPageUri": "pages/section-uhx0J3OxlA",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-vVBCVTeE7h",
+        "attempts": 1,
+        "tableCount": 3
+      },
+      "tableIds": [
+        "grid-2AkYlqrSAy",
+        "grid-B2lexqgYEj",
+        "grid-qHd9J_r-pv"
+      ]
+    },
+    {
+      "title": "Movimentações",
+      "pageUri": "pages/section-zxQqh3g47o",
+      "canvasUri": "canvases/canvas-zxQqh3g47o",
+      "parentPageUri": "pages/section-Ov3tSEqKBn",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-zxQqh3g47o",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-9fGxAwaLj_"
+      ]
+    },
+    {
+      "title": "Estoque (Peças)",
+      "pageUri": "pages/section-MvHvtJn3KN",
+      "canvasUri": "canvases/canvas-MvHvtJn3KN",
+      "parentPageUri": "pages/section-Ov3tSEqKBn",
+      "isHidden": true,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-MvHvtJn3KN",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Compras",
+      "pageUri": "pages/section-17u3XrRL9T",
+      "canvasUri": "canvases/canvas-wkZaNQnPbL",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-17u3XrRL9T",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-A_4x600b0N"
+      ]
+    },
+    {
+      "title": "Insumos",
+      "pageUri": "pages/section-H6G3stsVxl",
+      "canvasUri": "canvases/canvas-H6G3stsVxl",
+      "parentPageUri": "pages/section-17u3XrRL9T",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-H6G3stsVxl",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Serviços",
+      "pageUri": "pages/section-hTRfl5Wap0",
+      "canvasUri": "canvases/canvas-hTRfl5Wap0",
+      "parentPageUri": "pages/section-17u3XrRL9T",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-hTRfl5Wap0",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Administrativo",
+      "pageUri": "pages/section-sqtdeX7HUL",
+      "canvasUri": "canvases/canvas-sqtdeX7HUL",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 7,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-sqtdeX7HUL",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Internas",
+      "pageUri": "pages/section-ZKnWbY_oqU",
+      "canvasUri": "canvases/canvas-ZKnWbY_oqU",
+      "parentPageUri": "pages/section-sqtdeX7HUL",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-ZKnWbY_oqU",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-1O7OtuGdvR"
+      ]
+    },
+    {
+      "title": "cnf_ContasBancarias",
+      "pageUri": "pages/section-VDW--KcDZ7",
+      "canvasUri": "canvases/canvas-VDW--KcDZ7",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 8,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-VDW--KcDZ7",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-PlEyepI4rm"
+      ]
+    },
+    {
+      "title": "FINANCEIRO",
+      "pageUri": "pages/section-SVzg1IyGNB",
+      "canvasUri": "canvases/canvas-SVzg1IyGNB",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 9,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-SVzg1IyGNB",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Pagamento Operação",
+      "pageUri": "pages/section-m0W1bAd3GF",
+      "canvasUri": "canvases/canvas-m0W1bAd3GF",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": true,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-m0W1bAd3GF",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-TqNOGWIKT4"
+      ]
+    },
+    {
+      "title": "Pipeline Financeiro",
+      "pageUri": "pages/section-NSRHflCkzJ",
+      "canvasUri": "canvases/canvas-NSRHflCkzJ",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": true,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-NSRHflCkzJ",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-C1D-EahHRk"
+      ]
+    },
+    {
+      "title": "Serviços receber",
+      "pageUri": "pages/section-u0CorspCw3",
+      "canvasUri": "canvases/canvas-o37WHm8E0G",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-u0CorspCw3",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-UVgVA3N9HZ"
+      ]
+    },
+    {
+      "title": "Contas a pagar",
+      "pageUri": "pages/section-OiUy_GGNGy",
+      "canvasUri": "canvases/canvas-c_J0cxFu7X",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-OiUy_GGNGy",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table--eUDjoqP1h"
+      ]
+    },
+    {
+      "title": "Calendario",
+      "pageUri": "pages/section-jN4MNg4ZAf",
+      "canvasUri": "canvases/canvas-jN4MNg4ZAf",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-jN4MNg4ZAf",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-5X11PqkF3M"
+      ]
+    },
+    {
+      "title": "Caixa",
+      "pageUri": "pages/section-2XzebR96sK",
+      "canvasUri": "canvases/canvas-2XzebR96sK",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-2XzebR96sK",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-jSRrRBUUW2"
+      ]
+    },
+    {
+      "title": "Relatórios",
+      "pageUri": "pages/section-pEZJm_mzG1",
+      "canvasUri": "canvases/canvas-pEZJm_mzG1",
+      "parentPageUri": "pages/section-SVzg1IyGNB",
+      "isHidden": true,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-pEZJm_mzG1",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-SwV28LjPRb"
+      ]
+    },
+    {
+      "title": "Calendario Contas",
+      "pageUri": "pages/section-jOGT_f7vho",
+      "canvasUri": "canvases/canvas-jOGT_f7vho",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-jOGT_f7vho",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-UZX2yhpdpF"
+      ]
+    },
+    {
+      "title": "Fluxo de caixa",
+      "pageUri": "pages/section-egIbD8Fpsj",
+      "canvasUri": "canvases/canvas-egIbD8Fpsj",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-egIbD8Fpsj",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-AsMYRelkoe"
+      ]
+    },
+    {
+      "title": "Por Conta Caixa",
+      "pageUri": "pages/section-4OGBsNUn5X",
+      "canvasUri": "canvases/canvas-4OGBsNUn5X",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-4OGBsNUn5X",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-eXApNm0TNH"
+      ]
+    },
+    {
+      "title": "Por conta caixa",
+      "pageUri": "pages/section-m9vLppwSVM",
+      "canvasUri": "canvases/canvas-tcdfVCZB1f",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-m9vLppwSVM",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-FVWDyLqgOd"
+      ]
+    },
+    {
+      "title": "Faturamento",
+      "pageUri": "pages/section-8Ae3aIQdXP",
+      "canvasUri": "canvases/canvas-mEDxGeQKJu",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-8Ae3aIQdXP",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "OSs",
+      "pageUri": "pages/section-GaJjsYjIbi",
+      "canvasUri": "canvases/canvas-RbDak9kFEZ",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-GaJjsYjIbi",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Por Placa",
+      "pageUri": "pages/section-Cue4fyBgMe",
+      "canvasUri": "canvases/canvas-UJTMcw7h_l",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-Cue4fyBgMe",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Por Cliente",
+      "pageUri": "pages/section-wq4CEGWFE3",
+      "canvasUri": "canvases/canvas-xTBN_JLlSb",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-wq4CEGWFE3",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Por Pagador",
+      "pageUri": "pages/section-jCyMz_xhM8",
+      "canvasUri": "canvases/canvas-BG1daKHVhj",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-jCyMz_xhM8",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Por Status",
+      "pageUri": "pages/section-1N9m0SJM_r",
+      "canvasUri": "canvases/canvas-HrABIrgOYz",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-1N9m0SJM_r",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Ordens de Peças",
+      "pageUri": "pages/section-CsUD41kCCJ",
+      "canvasUri": "canvases/canvas-CsUD41kCCJ",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-CsUD41kCCJ",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "aux_Pecas",
+      "pageUri": "pages/section-kdZW4qmT0o",
+      "canvasUri": "canvases/canvas-zjBNOEgop8",
+      "parentPageUri": "pages/section-CsUD41kCCJ",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-kdZW4qmT0o",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-YoWCcbSZ63"
+      ]
+    },
+    {
+      "title": "db_ServicoParceiro",
+      "pageUri": "pages/section-r2c5nAeY-k",
+      "canvasUri": "canvases/canvas-r2c5nAeY-k",
+      "parentPageUri": "pages/section-8Ae3aIQdXP",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-r2c5nAeY-k",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-5L5_qsOBUf"
+      ]
+    },
+    {
+      "title": "aux_ServicoTerceiro",
+      "pageUri": "pages/section-YVi5KLfMhk",
+      "canvasUri": "canvases/canvas-UpCLtA3-sn",
+      "parentPageUri": "pages/section-r2c5nAeY-k",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-YVi5KLfMhk",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-mjJE5v3H5V"
+      ]
+    },
+    {
+      "title": "Faturas",
+      "pageUri": "pages/section-JYyjoOlcr1",
+      "canvasUri": "canvases/canvas-GuoEo-equG",
+      "parentPageUri": "pages/section-pEZJm_mzG1",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-JYyjoOlcr1",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-54c1DgRuAE"
+      ]
+    },
+    {
+      "title": "DB_Faturas",
+      "pageUri": "pages/section-pxehfNiveP",
+      "canvasUri": "canvases/canvas-pxehfNiveP",
+      "parentPageUri": "pages/section-JYyjoOlcr1",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-pxehfNiveP",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-s_7DnEu_DC"
+      ]
+    },
+    {
+      "title": "aux_Fatura",
+      "pageUri": "pages/section-LOd1As4phh",
+      "canvasUri": "canvases/canvas-LOd1As4phh",
+      "parentPageUri": "pages/section-JYyjoOlcr1",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-LOd1As4phh",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-K-oGFfj1ft",
+        "grid-N1zz07vqrY"
+      ]
+    },
+    {
+      "title": "Abertas",
+      "pageUri": "pages/section-KnDzIUED1_",
+      "canvasUri": "canvases/canvas-i5ohhuFMNI",
+      "parentPageUri": "pages/section-JYyjoOlcr1",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-KnDzIUED1_",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-mAafWojKUE"
+      ]
+    },
+    {
+      "title": "Controladoria",
+      "pageUri": "pages/section-FgU5jH9OIv",
+      "canvasUri": "canvases/canvas-FgU5jH9OIv",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 10,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-FgU5jH9OIv",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Check financeiro",
+      "pageUri": "pages/section-wZvmEeo13C",
+      "canvasUri": "canvases/canvas-wZvmEeo13C",
+      "parentPageUri": "pages/section-FgU5jH9OIv",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-wZvmEeo13C",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Inter",
+      "pageUri": "pages/section-uV7OA-q4JH",
+      "canvasUri": "canvases/canvas-uV7OA-q4JH",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-uV7OA-q4JH",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-dMAbm5aTEi"
+      ]
+    },
+    {
+      "title": "PagBank",
+      "pageUri": "pages/section-cRlPEiYtd0",
+      "canvasUri": "canvases/canvas-cRlPEiYtd0",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-cRlPEiYtd0",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-O-GX-H_GKM"
+      ]
+    },
+    {
+      "title": "InfinityPay",
+      "pageUri": "pages/section-juxnT3KEC0",
+      "canvasUri": "canvases/canvas-juxnT3KEC0",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-juxnT3KEC0",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-DUnUP0RarY"
+      ]
+    },
+    {
+      "title": "InterPag",
+      "pageUri": "pages/section-cMqUVb0ZBY",
+      "canvasUri": "canvases/canvas-cMqUVb0ZBY",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-cMqUVb0ZBY",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Ip2OKnHwnF"
+      ]
+    },
+    {
+      "title": "Dinheiro",
+      "pageUri": "pages/section-KPJs4f0CjV",
+      "canvasUri": "canvases/canvas-KPJs4f0CjV",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-KPJs4f0CjV",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-joeC8D5RFb"
+      ]
+    },
+    {
+      "title": "Ajustes",
+      "pageUri": "pages/section-Tg4BjE0Kbf",
+      "canvasUri": "canvases/canvas-Tg4BjE0Kbf",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-Tg4BjE0Kbf",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ssHTKvY9p9"
+      ]
+    },
+    {
+      "title": "Cartão Corporativo",
+      "pageUri": "pages/section-bsgLnOxxOd",
+      "canvasUri": "canvases/canvas-bsgLnOxxOd",
+      "parentPageUri": "pages/section-wZvmEeo13C",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-bsgLnOxxOd",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-wZi5O1ejWD"
+      ]
+    },
+    {
+      "title": "Poupança",
+      "pageUri": "pages/section-0ndgaJYdmh",
+      "canvasUri": "canvases/canvas-0ndgaJYdmh",
+      "parentPageUri": "pages/section-FgU5jH9OIv",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-0ndgaJYdmh",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-II4pPk_ogd"
+      ]
+    },
+    {
+      "title": "GERENCIA",
+      "pageUri": "pages/section-N4kjXMwgLU",
+      "canvasUri": "canvases/canvas-N4kjXMwgLU",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 11,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-N4kjXMwgLU",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Ordens de Serviço",
+      "pageUri": "pages/section-FUX-XFIcdX",
+      "canvasUri": "canvases/canvas-FUX-XFIcdX",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-FUX-XFIcdX",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Funil gerencial",
+      "pageUri": "pages/section-SS6mMlN1Gw",
+      "canvasUri": "canvases/canvas-GnjjIH5FlF",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-SS6mMlN1Gw",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-A5kC0E1Q52"
+      ]
+    },
+    {
+      "title": "Retrabalho",
+      "pageUri": "pages/section-AQWGKVgPlP",
+      "canvasUri": "canvases/canvas-AQWGKVgPlP",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-AQWGKVgPlP",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-2ud7IHwrI4"
+      ]
+    },
+    {
+      "title": "Custos de oportunidade",
+      "pageUri": "pages/section-8dp6ZDsxyk",
+      "canvasUri": "canvases/canvas-8dp6ZDsxyk",
+      "parentPageUri": "pages/section-AQWGKVgPlP",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-8dp6ZDsxyk",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Descontos",
+      "pageUri": "pages/section-w_O-zbAp7J",
+      "canvasUri": "canvases/canvas-w_O-zbAp7J",
+      "parentPageUri": "pages/section-AQWGKVgPlP",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-w_O-zbAp7J",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-MEJVAHUblF"
+      ]
+    },
+    {
+      "title": "Despesas",
+      "pageUri": "pages/section-LDVAji-sBf",
+      "canvasUri": "canvases/canvas-LDVAji-sBf",
+      "parentPageUri": "pages/section-AQWGKVgPlP",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "pages/section-LDVAji-sBf",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-64bVkD32_C"
+      ]
+    },
+    {
+      "title": "Arquivo",
+      "pageUri": "pages/section-QH79T3jBq8",
+      "canvasUri": "canvases/canvas-QH79T3jBq8",
+      "parentPageUri": "pages/section-AQWGKVgPlP",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-QH79T3jBq8",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-qACpFV6fV9"
+      ]
+    },
+    {
+      "title": "Conciliação bancaria",
+      "pageUri": "pages/section-lJ_0Txl9V-",
+      "canvasUri": "canvases/canvas-lJ_0Txl9V-",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-lJ_0Txl9V-",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-fzpPbq_x9D"
+      ]
+    },
+    {
+      "title": "DRE Comercial",
+      "pageUri": "pages/section-a_-Tgw8fVB",
+      "canvasUri": "canvases/canvas-a_-Tgw8fVB",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-a_-Tgw8fVB",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "table-ZE4Rvf0m5m",
+        "table-_jewIpfK7U"
+      ]
+    },
+    {
+      "title": "Análise financeira",
+      "pageUri": "pages/section-8XdBwS2dcw",
+      "canvasUri": "canvases/canvas-8XdBwS2dcw",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-8XdBwS2dcw",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-R9d9nxM_MV"
+      ]
+    },
+    {
+      "title": "DREs",
+      "pageUri": "pages/section-GAK88bLG0x",
+      "canvasUri": "canvases/canvas-GAK88bLG0x",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-GAK88bLG0x",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-EgXsAn8xHH"
+      ]
+    },
+    {
+      "title": "Meta (Entrada)",
+      "pageUri": "pages/section-cTUf3M5k__",
+      "canvasUri": "canvases/canvas-HQna9C_p3K",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 7,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-cTUf3M5k__",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-BzaQxj5peS"
+      ]
+    },
+    {
+      "title": "Meta (Saida)",
+      "pageUri": "pages/section-xjeD0yekBQ",
+      "canvasUri": "canvases/canvas-xjeD0yekBQ",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 8,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-xjeD0yekBQ",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-ZFaD5TMOd5"
+      ]
+    },
+    {
+      "title": "Contatos importantes",
+      "pageUri": "pages/section-29htzRk3hS",
+      "canvasUri": "canvases/canvas-29htzRk3hS",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 9,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-29htzRk3hS",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "imp_OSmatriz",
+      "pageUri": "pages/section-rbIUM0DkMZ",
+      "canvasUri": "canvases/canvas-rbIUM0DkMZ",
+      "parentPageUri": "pages/section-N4kjXMwgLU",
+      "isHidden": false,
+      "position": 10,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-rbIUM0DkMZ",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-9-DwSKdXUj"
+      ]
+    },
+    {
+      "title": "Tecnologia",
+      "pageUri": "pages/section-rBK1nU2FBY",
+      "canvasUri": "canvases/canvas-rBK1nU2FBY",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 12,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-rBK1nU2FBY",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Marketing",
+      "pageUri": "pages/section-Jo4Sxbq0QX",
+      "canvasUri": "canvases/canvas-Jo4Sxbq0QX",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 13,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-Jo4Sxbq0QX",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Ideias",
+      "pageUri": "pages/section-qYt5uyD3ji",
+      "canvasUri": "canvases/canvas-qYt5uyD3ji",
+      "parentPageUri": "pages/section-Jo4Sxbq0QX",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-qYt5uyD3ji",
+        "attempts": 3,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "GERENCIA",
+      "pageUri": "pages/section-3bDSQBHJIn",
+      "canvasUri": "canvases/canvas-3bDSQBHJIn",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 14,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-3bDSQBHJIn",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Sócio operador",
+      "pageUri": "pages/section-szKh2chTxG",
+      "canvasUri": "canvases/canvas-szKh2chTxG",
+      "parentPageUri": "pages/section-3bDSQBHJIn",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-szKh2chTxG",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Liderança",
+      "pageUri": "pages/section-kwwyakCjFl",
+      "canvasUri": "canvases/canvas-kwwyakCjFl",
+      "parentPageUri": "pages/section-3bDSQBHJIn",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-kwwyakCjFl",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "FUNIX — Brand Playbook",
+      "pageUri": "pages/section-ApYs9xbRV-",
+      "canvasUri": "canvases/canvas-ApYs9xbRV-",
+      "parentPageUri": "pages/section-3bDSQBHJIn",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ApYs9xbRV-",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Registros",
+      "pageUri": "pages/section-84-ElaaHnK",
+      "canvasUri": "canvases/canvas-84-ElaaHnK",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 15,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-84-ElaaHnK",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Atendimentos",
+      "pageUri": "pages/section-vp0qehdvFK",
+      "canvasUri": "canvases/canvas-vp0qehdvFK",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-vp0qehdvFK",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-D8OemHzcBs"
+      ]
+    },
+    {
+      "title": "Clientes",
+      "pageUri": "pages/section-_hjlFaTzQo",
+      "canvasUri": "canvases/canvas-_hjlFaTzQo",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-_hjlFaTzQo",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-3SxgsMjqaN"
+      ]
+    },
+    {
+      "title": "Fornecedores",
+      "pageUri": "pages/section-UGR49ToMt9",
+      "canvasUri": "canvases/canvas-UGR49ToMt9",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-UGR49ToMt9",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-ujPV3BPOKs"
+      ]
+    },
+    {
+      "title": "Orçamento",
+      "pageUri": "pages/section-fe_5PzFOgD",
+      "canvasUri": "canvases/canvas-fe_5PzFOgD",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-fe_5PzFOgD",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-KJ9Q_7yp3p"
+      ]
+    },
+    {
+      "title": "Ordens de Serviço",
+      "pageUri": "pages/section-1_AUmEeHQH",
+      "canvasUri": "canvases/canvas-1_AUmEeHQH",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-1_AUmEeHQH",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Retrabalhos",
+      "pageUri": "pages/section-hFemR_VAbf",
+      "canvasUri": "canvases/canvas-hFemR_VAbf",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-hFemR_VAbf",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-lLsUTO4m3q"
+      ]
+    },
+    {
+      "title": "Serviços",
+      "pageUri": "pages/section-RTrgJLNTlr",
+      "canvasUri": "canvases/canvas-RTrgJLNTlr",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-RTrgJLNTlr",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-hx1fTLGXne"
+      ]
+    },
+    {
+      "title": "Veiculos",
+      "pageUri": "pages/section-7iAAams0Zq",
+      "canvasUri": "canvases/canvas-7iAAams0Zq",
+      "parentPageUri": "pages/section-84-ElaaHnK",
+      "isHidden": false,
+      "position": 7,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-7iAAams0Zq",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-CEG5m_yVY5"
+      ]
+    },
+    {
+      "title": "Configurações",
+      "pageUri": "pages/section-FcmNoVs5HK",
+      "canvasUri": "canvases/canvas-FcmNoVs5HK",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 16,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-FcmNoVs5HK",
+        "attempts": 1,
+        "tableCount": 4
+      },
+      "tableIds": [
+        "table-IVNBAklZN0",
+        "table-alH5iZHXz4",
+        "table-mKzo9jTD54",
+        "table-y6tJIiyNjF"
+      ]
+    },
+    {
+      "title": "Banco de dados",
+      "pageUri": "pages/section-7JimdzsesQ",
+      "canvasUri": "canvases/canvas-7JimdzsesQ",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 17,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-7JimdzsesQ",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "db_CnfMetas",
+      "pageUri": "pages/section-xzkbGkaNiB",
+      "canvasUri": "canvases/canvas-xzkbGkaNiB",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-xzkbGkaNiB",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-1g3KP98jSe",
+        "grid-Wz68EfYi8g"
+      ]
+    },
+    {
+      "title": "DB_Experiencias",
+      "pageUri": "pages/section-EL6xd0ygjd",
+      "canvasUri": "canvases/canvas-EL6xd0ygjd",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-EL6xd0ygjd",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-oejkc9WuBX"
+      ]
+    },
+    {
+      "title": "ALL_Atendimento",
+      "pageUri": "pages/section-Iatwi-Tk5U",
+      "canvasUri": "canvases/canvas-NBQ20sSkRO",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-Iatwi-Tk5U",
+        "attempts": 1,
+        "tableCount": 7
+      },
+      "tableIds": [
+        "grid-6f15FEiPmu",
+        "grid-DXriGyd94a",
+        "grid-N4cjfFoShQ",
+        "grid-aHz1ZDVlfK",
+        "grid-eGvJhrlDTH",
+        "grid-j9Iy2JjVsf",
+        "grid-voKGJyLSB-"
+      ]
+    },
+    {
+      "title": "ux_AtendimentoEncerrar",
+      "pageUri": "pages/section-PzQHC5CYoM",
+      "canvasUri": "canvases/canvas-PzQHC5CYoM",
+      "parentPageUri": "pages/section-Iatwi-Tk5U",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-PzQHC5CYoM",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-sh90QnrTkw"
+      ]
+    },
+    {
+      "title": "ALL_OS",
+      "pageUri": "pages/section-NANwDfn6C0",
+      "canvasUri": "canvases/canvas-NANwDfn6C0",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-NANwDfn6C0",
+        "attempts": 1,
+        "tableCount": 5
+      },
+      "tableIds": [
+        "grid-RT6jXtpzaH",
+        "grid-Umj75GSlHH",
+        "grid-WAiIptU9et",
+        "grid-khi866xSGv",
+        "grid-uNWEddS1ev"
+      ]
+    },
+    {
+      "title": "DB_LavInspecao",
+      "pageUri": "pages/section-wtNhTrd0hv",
+      "canvasUri": "canvases/canvas-wtNhTrd0hv",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 4,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-wtNhTrd0hv",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-R2WBhXvR2c"
+      ]
+    },
+    {
+      "title": "DB_LavOrcRejeitado",
+      "pageUri": "pages/section-cPFUeujwlP",
+      "canvasUri": "canvases/canvas-cPFUeujwlP",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 5,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-cPFUeujwlP",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Ru80zidBW7"
+      ]
+    },
+    {
+      "title": "DB_Veiculos",
+      "pageUri": "pages/section-OB_PVVbc9s",
+      "canvasUri": "canvases/canvas-OB_PVVbc9s",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 6,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-OB_PVVbc9s",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-pDT-_PlSIJ"
+      ]
+    },
+    {
+      "title": "DB_LavQuitacao",
+      "pageUri": "pages/section-Npk1lBYgT-",
+      "canvasUri": "canvases/canvas-Npk1lBYgT-",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 7,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-Npk1lBYgT-",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-4hyeCXOm9g"
+      ]
+    },
+    {
+      "title": "DB_LavClientes",
+      "pageUri": "pages/section-y6k7qeUYis",
+      "canvasUri": "canvases/canvas-y6k7qeUYis",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 8,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-y6k7qeUYis",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-hf-eeot5-J"
+      ]
+    },
+    {
+      "title": "db_TitulosFinanceiros",
+      "pageUri": "pages/section-HzjFF2F9u8",
+      "canvasUri": "canvases/canvas-HzjFF2F9u8",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 9,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-HzjFF2F9u8",
+        "attempts": 2,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-CbOIUtgqrc",
+        "grid-H7UVy9Mgfk"
+      ]
+    },
+    {
+      "title": "DB_LavToDo",
+      "pageUri": "pages/section-3GCI6f0I3o",
+      "canvasUri": "canvases/canvas-3GCI6f0I3o",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 10,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-3GCI6f0I3o",
+        "attempts": 2,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "db_Tarefas",
+      "pageUri": "pages/section-3YRfJpqM0D",
+      "canvasUri": "canvases/canvas-3YRfJpqM0D",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 11,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-3YRfJpqM0D",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-IS4CwXNt0A"
+      ]
+    },
+    {
+      "title": "DB_LavVndInternas",
+      "pageUri": "pages/section-OjjqdNu6BW",
+      "canvasUri": "canvases/canvas-OjjqdNu6BW",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 12,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-OjjqdNu6BW",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-PBf4qdL2xS"
+      ]
+    },
+    {
+      "title": "DB_LavSaidasFinanceiras",
+      "pageUri": "pages/section-skf1Xtj1Qd",
+      "canvasUri": "canvases/canvas-skf1Xtj1Qd",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 13,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-skf1Xtj1Qd",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-GOC6UZAZj-"
+      ]
+    },
+    {
+      "title": "DB_LavConciliacaoBancaria",
+      "pageUri": "pages/section-vO0pN-zX47",
+      "canvasUri": "canvases/canvas-vO0pN-zX47",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 14,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-vO0pN-zX47",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ltqqRyDhsD"
+      ]
+    },
+    {
+      "title": "DB_LavServicosAprovacao",
+      "pageUri": "pages/section-BDyTNjApgL",
+      "canvasUri": "canvases/canvas-BDyTNjApgL",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 15,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-BDyTNjApgL",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-61j0hrbDZw"
+      ]
+    },
+    {
+      "title": "DB_LavConciliacao",
+      "pageUri": "pages/section-ZXDkkVsECk",
+      "canvasUri": "canvases/canvas-ZXDkkVsECk",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 16,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ZXDkkVsECk",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-29iaQqmFQd"
+      ]
+    },
+    {
+      "title": "DB_LavCX",
+      "pageUri": "pages/section--9xNJSJ7Ig",
+      "canvasUri": "canvases/canvas--9xNJSJ7Ig",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 17,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section--9xNJSJ7Ig",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ylnUPjcTBt"
+      ]
+    },
+    {
+      "title": "DB_LavFornecedores",
+      "pageUri": "pages/section-ueAhYjYC4n",
+      "canvasUri": "canvases/canvas-ueAhYjYC4n",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 18,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ueAhYjYC4n",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-sWv50FtpqN"
+      ]
+    },
+    {
+      "title": "cnf_Centros",
+      "pageUri": "pages/section-f-r8oiVTUX",
+      "canvasUri": "canvases/canvas-f-r8oiVTUX",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 19,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-f-r8oiVTUX",
+        "attempts": 1,
+        "tableCount": 4
+      },
+      "tableIds": [
+        "grid-74mf9sB84N",
+        "grid-NNVjV-ntye",
+        "grid-SeYQauy7i2",
+        "grid-Y-FNAotKRQ"
+      ]
+    },
+    {
+      "title": "DB_ConfigServicos",
+      "pageUri": "pages/section--y2VUEr2-T",
+      "canvasUri": "canvases/canvas--y2VUEr2-T",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 20,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section--y2VUEr2-T",
+        "attempts": 1,
+        "tableCount": 22
+      },
+      "tableIds": [
+        "grid-2ANpptuaKz",
+        "grid-7521QzZOVd",
+        "grid-8fpISFOBb-",
+        "grid-Fxfy4nrA3R",
+        "grid-Gt8qlyI5dn",
+        "grid-QHQz_YFuu3",
+        "grid-QPCC_JhRKv",
+        "grid-T_l0vKA1mg",
+        "grid-_MprvxGTiK",
+        "grid-bfhEBGqPTC",
+        "grid-dhmr5kCC1Y",
+        "grid-ew1w2T2N9p",
+        "grid-g-gfi7A7oZ",
+        "grid-jbcn6tXMjk",
+        "grid-ksc0WkVv-w",
+        "grid-lhdFxol6x-",
+        "grid-lvdM6zQqUO",
+        "grid-oP-381jHjC",
+        "grid-p-wZJbfjUD",
+        "grid-tAiT_ivHai",
+        "grid-toMTm0uCpd",
+        "grid-wX8tq-Eu3Q"
+      ]
+    },
+    {
+      "title": "cnf_Energia",
+      "pageUri": "pages/section-F3XQOnikvx",
+      "canvasUri": "canvases/canvas-F3XQOnikvx",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 21,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-F3XQOnikvx",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-M08uQO9NFg"
+      ]
+    },
+    {
+      "title": "db_CnfCategoriasDRE",
+      "pageUri": "pages/section-m02BRqcR6b",
+      "canvasUri": "canvases/canvas-m02BRqcR6b",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 19,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-m02BRqcR6b",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-EvCtHhih66"
+      ]
+    },
+    {
+      "title": "Vagas",
+      "pageUri": "pages/section-tYvF2sVfO5",
+      "canvasUri": "canvases/canvas-tYvF2sVfO5",
+      "parentPageUri": null,
+      "isHidden": false,
+      "position": 20,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-tYvF2sVfO5",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "table-maLDhtTVCm"
+      ]
+    },
+    {
+      "title": "CNF_PartePecasVeiculo",
+      "pageUri": "pages/section-1iJ69YjTD4",
+      "canvasUri": "canvases/canvas-1iJ69YjTD4",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 22,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-1iJ69YjTD4",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-DLBHoIIBdY",
+        "grid-Xw3OVlAXBA"
+      ]
+    },
+    {
+      "title": "CNF_PlanoContas",
+      "pageUri": "pages/section-87hM0gHoVx",
+      "canvasUri": "canvases/canvas-87hM0gHoVx",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 23,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-87hM0gHoVx",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-LhGCgys6rb",
+        "grid-PnUXM02xlO"
+      ]
+    },
+    {
+      "title": "CNF_Categoria",
+      "pageUri": "pages/section-7SEPN--qHm",
+      "canvasUri": "canvases/canvas-7SEPN--qHm",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 24,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-7SEPN--qHm",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-7y670Hxx9G"
+      ]
+    },
+    {
+      "title": "CNF_FormaPagamento",
+      "pageUri": "pages/section-XsZDwA1LyS",
+      "canvasUri": "canvases/canvas-XsZDwA1LyS",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 25,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-XsZDwA1LyS",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-BAYjf2tylI"
+      ]
+    },
+    {
+      "title": "BIB_Tintas",
+      "pageUri": "pages/section-eSfZ4pLsOx",
+      "canvasUri": "canvases/canvas-eSfZ4pLsOx",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 26,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-eSfZ4pLsOx",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-A0i94H1E_u"
+      ]
+    },
+    {
+      "title": "bib_CorCarros",
+      "pageUri": "pages/section-1_D4nA45C0",
+      "canvasUri": "canvases/canvas-1_D4nA45C0",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 27,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-1_D4nA45C0",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-iYVNHp0SeA"
+      ]
+    },
+    {
+      "title": "BIB_Fabricantes",
+      "pageUri": "pages/section-bMlkAJd2U4",
+      "canvasUri": "canvases/canvas-bMlkAJd2U4",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 28,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-bMlkAJd2U4",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-1sJcrmIges"
+      ]
+    },
+    {
+      "title": "BIB_Versoes",
+      "pageUri": "pages/section-Y8j0q-uvpc",
+      "canvasUri": "canvases/canvas-Y8j0q-uvpc",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 29,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-Y8j0q-uvpc",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Z93fn5fODn"
+      ]
+    },
+    {
+      "title": "BIB_Modelos",
+      "pageUri": "pages/section-ZGowyeMtb6",
+      "canvasUri": "canvases/canvas-ZGowyeMtb6",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 30,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ZGowyeMtb6",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-fh-9U9zzIL"
+      ]
+    },
+    {
+      "title": "ux_PainelLiquidacaoTituloReceber",
+      "pageUri": "pages/section-v4krLPCXWH",
+      "canvasUri": "canvases/canvas-v4krLPCXWH",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 31,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-v4krLPCXWH",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-jMNjDNC7mo"
+      ]
+    },
+    {
+      "title": "ux_PainelLiquidacaoTituloPagar",
+      "pageUri": "pages/section-KE-gSlCPIc",
+      "canvasUri": "canvases/canvas-L2062W10ET",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 32,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-KE-gSlCPIc",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-AfywlYej_I"
+      ]
+    },
+    {
+      "title": "db_AuxMovimentacaoEstoque",
+      "pageUri": "pages/section-cJi5sMhb3x",
+      "canvasUri": "canvases/canvas-cJi5sMhb3x",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 33,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-cJi5sMhb3x",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-a3bLDZfQWa"
+      ]
+    },
+    {
+      "title": "ALL_Orcamento",
+      "pageUri": "pages/section-3rbyRgF64v",
+      "canvasUri": "canvases/canvas-3rbyRgF64v",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 34,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-3rbyRgF64v",
+        "attempts": 1,
+        "tableCount": 6
+      },
+      "tableIds": [
+        "grid-DpdMZC56vP",
+        "grid-LgsVNgYj3J",
+        "grid-Qw63i1ww0v",
+        "grid-SRAMUtadEm",
+        "grid-gth5_vLdrI",
+        "grid-xqB705Hupo"
+      ]
+    },
+    {
+      "title": "Variaveis",
+      "pageUri": "pages/section-GJQWGTdMtq",
+      "canvasUri": "canvases/canvas-GJQWGTdMtq",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 35,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-GJQWGTdMtq",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "BK_Orc",
+      "pageUri": "pages/section-G6yDOk8REx",
+      "canvasUri": "canvases/canvas-G6yDOk8REx",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 36,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-G6yDOk8REx",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-j_DkCNfG3p"
+      ]
+    },
+    {
+      "title": "BK_OSs",
+      "pageUri": "pages/section-BuiComfg0N",
+      "canvasUri": "canvases/canvas-Pt0lyuudwB",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 37,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-BuiComfg0N",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-RS7DlGWU6R"
+      ]
+    },
+    {
+      "title": "BK_Servicos",
+      "pageUri": "pages/section-WboP4lspZG",
+      "canvasUri": "canvases/canvas-wfIVTBf3Gx",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 38,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-WboP4lspZG",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ZILBUUtaCW"
+      ]
+    },
+    {
+      "title": "db_lavDRE",
+      "pageUri": "pages/section-x8lADluN7O",
+      "canvasUri": "canvases/canvas-x8lADluN7O",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 39,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-x8lADluN7O",
+        "attempts": 1,
+        "tableCount": 3
+      },
+      "tableIds": [
+        "grid-E-NpN1FPQE",
+        "grid-EHjR2RLET8",
+        "grid-hn-Ax7_Dfp"
+      ]
+    },
+    {
+      "title": "Impressao_est_orc",
+      "pageUri": "pages/section-vXu0YPBVDw",
+      "canvasUri": "canvases/canvas-vXu0YPBVDw",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 40,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-vXu0YPBVDw",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Estimativa Orcamento",
+      "pageUri": "pages/section-xib3kfUDXw",
+      "canvasUri": "canvases/canvas-xib3kfUDXw",
+      "parentPageUri": "pages/section-vXu0YPBVDw",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-xib3kfUDXw",
+        "attempts": 2,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "table-1acH7uH22r",
+        "table-pSnOijEdsO"
+      ]
+    },
+    {
+      "title": "db_LavRetrabalhoPrejuizo",
+      "pageUri": "pages/section-pmRhyjmciN",
+      "canvasUri": "canvases/canvas-pmRhyjmciN",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 41,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-pmRhyjmciN",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-78eeuK49p4",
+        "grid-_UtIwULn6l"
+      ]
+    },
+    {
+      "title": "db_MovimentacaoEstoque",
+      "pageUri": "pages/section-ckIyoFg027",
+      "canvasUri": "canvases/canvas-ckIyoFg027",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 42,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ckIyoFg027",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-if5SpV2krT"
+      ]
+    },
+    {
+      "title": "db_Estoque",
+      "pageUri": "pages/section-PrErvVi4dT",
+      "canvasUri": "canvases/canvas-PrErvVi4dT",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 43,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-PrErvVi4dT",
+        "attempts": 3,
+        "tableCount": 4
+      },
+      "tableIds": [
+        "grid-DAZGct6kU7",
+        "grid-E8hcxLx16D",
+        "grid-ZtjYg-ZP7N",
+        "grid-fmlb9kcznk"
+      ]
+    },
+    {
+      "title": "db_AuxGraficosDash",
+      "pageUri": "pages/section-hvzJ_XrPPO",
+      "canvasUri": "canvases/canvas-hvzJ_XrPPO",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 44,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-hvzJ_XrPPO",
+        "attempts": 2,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-9aif2HCz-N",
+        "grid-uyMCGboB9i"
+      ]
+    },
+    {
+      "title": "Aux_CalendarioFinanceiro",
+      "pageUri": "pages/section-UNEFrINUnM",
+      "canvasUri": "canvases/canvas-UNEFrINUnM",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 45,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-UNEFrINUnM",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-LtLQkWdU6A"
+      ]
+    },
+    {
+      "title": "db_ImpostoRetido",
+      "pageUri": "pages/section-BgdZzuvfY4",
+      "canvasUri": "canvases/canvas-BgdZzuvfY4",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 46,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-BgdZzuvfY4",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-766xa0eNdp"
+      ]
+    },
+    {
+      "title": "DB_Transacoes",
+      "pageUri": "pages/section-ktVy9zngcU",
+      "canvasUri": "canvases/canvas-ktVy9zngcU",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 47,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ktVy9zngcU",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Cc5y5rur-5"
+      ]
+    },
+    {
+      "title": "db_Entidades",
+      "pageUri": "pages/section-giL36nLFrq",
+      "canvasUri": "canvases/canvas-giL36nLFrq",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 48,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-giL36nLFrq",
+        "attempts": 2,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-NzR0utGmlF",
+        "grid-l9d-WgpqtC"
+      ]
+    },
+    {
+      "title": "db_relacaoEntidadeVeiculo",
+      "pageUri": "pages/section-jfqDBrXOzC",
+      "canvasUri": "canvases/canvas-jfqDBrXOzC",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 49,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/canvases/canvas-jfqDBrXOzC",
+        "attempts": 2,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-7xYNejL-Jc"
+      ]
+    },
+    {
+      "title": "cnf_Transacoes",
+      "pageUri": "pages/section-qwYSaVN__t",
+      "canvasUri": "canvases/canvas-qwYSaVN__t",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 50,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-qwYSaVN__t",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-J_0Dko7g3H",
+        "grid-dbQ6cdu-HI"
+      ]
+    },
+    {
+      "title": "engine_Financeira",
+      "pageUri": "pages/section-EBP7X4aDOq",
+      "canvasUri": "canvases/canvas-EBP7X4aDOq",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 51,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-EBP7X4aDOq",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid--O2UZEZMWS"
+      ]
+    },
+    {
+      "title": "db_NotasFiscais",
+      "pageUri": "pages/section-P7dYJAdd21",
+      "canvasUri": "canvases/canvas-P7dYJAdd21",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 52,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-P7dYJAdd21",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-CQ5WeBBiej"
+      ]
+    },
+    {
+      "title": "ux_Agendamento",
+      "pageUri": "pages/section-BT7Sqto-cE",
+      "canvasUri": "canvases/canvas-BT7Sqto-cE",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 53,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-BT7Sqto-cE",
+        "attempts": 1,
+        "tableCount": 5
+      },
+      "tableIds": [
+        "grid-Az-a51aAKp",
+        "grid-_fSkqlESYT",
+        "grid-kNTH-9FQX6",
+        "grid-r32ELTpoa2",
+        "grid-s6aXYKnw2P"
+      ]
+    },
+    {
+      "title": "cnf_Canal",
+      "pageUri": "pages/section-blyNmKBT3u",
+      "canvasUri": "canvases/canvas-blyNmKBT3u",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 54,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-blyNmKBT3u",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-Xt02r94rD0"
+      ]
+    },
+    {
+      "title": "db_Processos",
+      "pageUri": "pages/section-QJZbp_EH6Q",
+      "canvasUri": "canvases/canvas-QJZbp_EH6Q",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 55,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-QJZbp_EH6Q",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-ddGJJK3zs5"
+      ]
+    },
+    {
+      "title": "db_VinculoFiscalFinanceiro",
+      "pageUri": "pages/section-uAqkQLEfjG",
+      "canvasUri": "canvases/canvas-uAqkQLEfjG",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 56,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-uAqkQLEfjG",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-IhWXmTADZQ"
+      ]
+    },
+    {
+      "title": "cnf_OrigemTipo",
+      "pageUri": "pages/section-_0Byq5r2L-",
+      "canvasUri": "canvases/canvas-_0Byq5r2L-",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 57,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-_0Byq5r2L-",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-0dbew-qXme",
+        "grid-MN8xcVNicN"
+      ]
+    },
+    {
+      "title": "ui_OrcamentoModais",
+      "pageUri": "pages/section-3dyj8Op19f",
+      "canvasUri": "canvases/canvas-3dyj8Op19f",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 58,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-3dyj8Op19f",
+        "attempts": 1,
+        "tableCount": 7
+      },
+      "tableIds": [
+        "grid-1vNzzQ_dfi",
+        "grid-Re0LQ7ZIum",
+        "grid-_LtfsCTYa7",
+        "grid-f5B-PexiY9",
+        "grid-hf1oNZnbSa",
+        "grid-vvtYi-p3bV",
+        "grid-wACatZPTl2"
+      ]
+    },
+    {
+      "title": "Getting Started & Examples",
+      "pageUri": "pages/section-ufq60se5yp",
+      "canvasUri": "canvases/canvas-kMjb0nu0q5",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 59,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ufq60se5yp",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Installing and syncing",
+      "pageUri": "pages/section-PBqMiWBXzr",
+      "canvasUri": "canvases/canvas-d7R3vVp7-A",
+      "parentPageUri": "pages/section-ufq60se5yp",
+      "isHidden": false,
+      "position": 0,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-PBqMiWBXzr",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "Manage your sync",
+      "pageUri": "pages/section-ICZ8GOjpW-",
+      "canvasUri": "canvases/canvas-PNWx9fIz3H",
+      "parentPageUri": "pages/section-ufq60se5yp",
+      "isHidden": false,
+      "position": 1,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-ICZ8GOjpW-",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-9PY2NKP23j",
+        "grid-IUQa11wEAE"
+      ]
+    },
+    {
+      "title": "Adding New Rows",
+      "pageUri": "pages/section-wVTRyH6oOx",
+      "canvasUri": "canvases/canvas-yP5HY2g95U",
+      "parentPageUri": "pages/section-ufq60se5yp",
+      "isHidden": false,
+      "position": 2,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-wVTRyH6oOx",
+        "attempts": 1,
+        "tableCount": 3
+      },
+      "tableIds": [
+        "grid-AGG0_1GU0n",
+        "grid-SPR1IO33k9",
+        "grid-SeM3ZsF7lV"
+      ]
+    },
+    {
+      "title": "Updating Rows",
+      "pageUri": "pages/section-GwHA3DrMIN",
+      "canvasUri": "canvases/canvas-D1spo1qs6E",
+      "parentPageUri": "pages/section-ufq60se5yp",
+      "isHidden": false,
+      "position": 3,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-GwHA3DrMIN",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-kw5Z2uNy9C"
+      ]
+    },
+    {
+      "title": "Full Page Sheet Embed",
+      "pageUri": "pages/section-4eOsGspoam",
+      "canvasUri": "canvases/canvas-HU8FqDQbnH",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 60,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-4eOsGspoam",
+        "attempts": 1,
+        "tableCount": 0
+      },
+      "tableIds": []
+    },
+    {
+      "title": "UX_InspecaoTecnica",
+      "pageUri": "pages/section-WzhkYBI0WV",
+      "canvasUri": "canvases/canvas-WzhkYBI0WV",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 61,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-WzhkYBI0WV",
+        "attempts": 1,
+        "tableCount": 2
+      },
+      "tableIds": [
+        "grid-OGoSVaQM4a",
+        "grid-Tg9q47_Xu3"
+      ]
+    },
+    {
+      "title": "bib_NaturezaServico",
+      "pageUri": "pages/section-0WPhUHxUyU",
+      "canvasUri": "canvases/canvas-0WPhUHxUyU",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 62,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-0WPhUHxUyU",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-TiiyyjgRjH"
+      ]
+    },
+    {
+      "title": "UX_LancarPagamento",
+      "pageUri": "pages/section-0tVuNl0OnM",
+      "canvasUri": "canvases/canvas-0tVuNl0OnM",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 63,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-0tVuNl0OnM",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-SeS5InteA-"
+      ]
+    },
+    {
+      "title": "DB_PlanejamentoFinanceiro",
+      "pageUri": "pages/section-yIoCw_VSEB",
+      "canvasUri": "canvases/canvas-yIoCw_VSEB",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": false,
+      "position": 64,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-yIoCw_VSEB",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-lB_AxmqFaL"
+      ]
+    },
+    {
+      "title": "cnf_TarefasPrioridade",
+      "pageUri": "pages/section-7gj6dFI1OK",
+      "canvasUri": "canvases/canvas-7gj6dFI1OK",
+      "parentPageUri": "pages/section-7JimdzsesQ",
+      "isHidden": true,
+      "position": 65,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-7gj6dFI1OK",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-HT6OZHXs7K"
+      ]
+    },
+    {
+      "title": "db_CnfSetorParceiros",
+      "pageUri": "pages/section-MBrcUbxyX3",
+      "canvasUri": "canvases/canvas-MBrcUbxyX3",
+      "parentPageUri": null,
+      "isHidden": true,
+      "position": 18,
+      "tableRead": {
+        "status": "ok",
+        "sourceUri": "superhuman://docs/2zsjI-nqWr/pages/section-MBrcUbxyX3",
+        "attempts": 1,
+        "tableCount": 1
+      },
+      "tableIds": [
+        "grid-_JBBHjZd_P"
+      ]
+    }
+  ],
+  "outlineBatches": [
+    {
+      "offset": 0,
+      "pageCount": 50,
+      "error": false,
+      "pagination": {
+        "pageOffset": 0,
+        "pageLimit": 50,
+        "totalPages": 202,
+        "hasMore": true
+      }
+    },
+    {
+      "offset": 50,
+      "pageCount": 50,
+      "error": false,
+      "pagination": {
+        "pageOffset": 50,
+        "pageLimit": 50,
+        "totalPages": 202,
+        "hasMore": true
+      }
+    },
+    {
+      "offset": 100,
+      "pageCount": 50,
+      "error": false,
+      "pagination": {
+        "pageOffset": 100,
+        "pageLimit": 50,
+        "totalPages": 202,
+        "hasMore": true
+      }
+    },
+    {
+      "offset": 200,
+      "pageCount": 2,
+      "error": false,
+      "pagination": {
+        "pageOffset": 200,
+        "pageLimit": 50,
+        "totalPages": 202,
+        "hasMore": false
+      }
+    },
+    {
+      "offset": 150,
+      "pageCount": 50,
+      "error": false,
+      "pagination": {
+        "pageOffset": 150,
+        "pageLimit": 50,
+        "totalPages": 202,
+        "hasMore": true
+      }
+    }
+  ],
+  "coverage": {
+    "outlinePages": 202,
+    "pagesCaptured": 202,
+    "pagesOk": 202,
+    "pageErrors": 0,
+    "pageTableOccurrences": 236,
+    "uniqueBaseSchemas": 164,
+    "uniqueViewSchemas": 72,
+    "uniqueBaseColumns": 1691,
+    "referencedRealBaseIds": 175,
+    "missingReferencedRealBaseIds": 11,
+    "syntheticSelectListIds": 14,
+    "viewsWithoutBaseResolution": 0
+  },
+  "schemasFile": "schemas.json",
+  "unresolvedReferencesFile": "unresolved-references.json",
+  "unresolvedReferencedBaseIds": [
+    "grid-37H74MPJbw",
+    "grid-3LWgdKRekS",
+    "grid-5qGokqACe8",
+    "grid-CzzihqVX9k",
+    "grid-DqEYcFqj22",
+    "grid-JWh31vOUHZ",
+    "grid-ewMKgS9sYE",
+    "grid-g0dV39pwlH",
+    "grid-jN0aicolhn",
+    "grid-okv7g2PTxH",
+    "grid-wk3iZouYL5"
+  ]
+}

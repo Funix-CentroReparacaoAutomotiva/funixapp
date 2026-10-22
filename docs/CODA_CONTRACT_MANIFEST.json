@@ -1,0 +1,104 @@
+{
+  "documentId": "2zsjI-nqWr",
+  "tables": {
+    "atendimentos": "grid-eGvJhrlDTH",
+    "experiencias": "grid-oejkc9WuBX",
+    "statusComercial": "grid-DXriGyd94a",
+    "faseComercial": "grid-_MprvxGTiK",
+    "faseOperacional": "grid-8fpISFOBb-",
+    "veiculos": "grid-pDT-_PlSIJ",
+    "entidades": "grid-l9d-WgpqtC"
+  },
+  "columns": {
+    "atendimentos": {
+      "businessId": "c-Zorfa5ARUf",
+      "status": "c-xUxJ99lkfc",
+      "name": "c-hV24W_ZrDh",
+      "contact": "c-5Jgezs2B3o",
+      "contactE164": "c-5poWJk5IsH",
+      "vehicle": "c-mUY2z4X3t_",
+      "plate": "c-AOqEMrG5UU",
+      "experiencias": "c-zXhjSpr2Vk",
+      "type": "c-wd3nEW8rPa",
+      "followupDate": "c-6K0uD4Qa0x",
+      "contactOrder": "c-zRMXPeX4uh",
+      "sla": "c-G4ujPhlmcp",
+      "channel": "c-PHvyLm0gyd"
+    },
+    "experiencias": {
+      "businessId": "c-Zorfa5ARUf",
+      "atendimento": "c-xBWpl9SSPA",
+      "customer": "c-UbQW2h1LoE",
+      "customerName": "c-Jqwtua7lLO",
+      "contact": "c-6wvAsDuQxj",
+      "vehicle": "c-W65XoagteP",
+      "vehicleDescription": "c-Pf58Ailfmc",
+      "vehicleAndPlate": "c-nixw6omFKQ",
+      "payer": "c-3H1t7WF-f3",
+      "commercialStage": "c-xUxJ99lkfc",
+      "operationalStage": "c-GOOyT3Nw7q",
+      "enteredAt": "c-bhWYZ1DCmq",
+      "exitedAt": "c-BsZwSsRrht",
+      "plannedArrival": "c-fdLmCxNlvV",
+      "plannedDeparture": "c-m5OiN91SiQ",
+      "blocked": "c-qrZKw9-Nq_",
+      "finished": "c-ra-eGqcGTD",
+      "departed": "c-2-8aXpdO1O",
+      "cancelled": "c-DGuWfww4j4",
+      "rework": "c-6OTq9M0H53"
+    },
+    "statusComercial": {
+      "display": "c-kZDIeu9sMm",
+      "label": "c-snakAdeYAX",
+      "order": "c-oFRnyLOfCl"
+    },
+    "faseComercial": {
+      "display": "c-FPxv0JTdDR",
+      "label": "c-nqrfZ0h9xz",
+      "order": "c-woffbh7ikM",
+      "icon": "c-lB9WYhvUEl"
+    },
+    "faseOperacional": {
+      "display": "c-FPxv0JTdDR",
+      "order": "c-uQ_ImdUtxC",
+      "commercialStage": "c-n_6ZO-TDZt"
+    },
+    "veiculos": {
+      "plate": "c-VCCNF4d6tM"
+    }
+  },
+  "connectorViews": {
+    "funil": {
+      "containerId": "table-cJ75t2m_-9",
+      "viewId": "v-AO7dEEII9r",
+      "baseTableId": "grid-eGvJhrlDTH"
+    },
+    "acompanhamento": {
+      "containerId": "table-wqS5r8cTUX",
+      "viewId": "v-ebOX0melJU",
+      "baseTableId": "grid-oejkc9WuBX"
+    },
+    "historico": {
+      "containerId": "table-3FgOyPVySM",
+      "viewId": "v-ycKPvjMuPa",
+      "baseTableId": "grid-oejkc9WuBX"
+    }
+  },
+  "visibleStageRowIds": {
+    "funil": [
+      "i-WVc9SdOAzf",
+      "i-y-QXpAVKUp",
+      "i-JinLqTCLcw",
+      "i-v6QUAa-L50",
+      "i-9kGcgfN3eV",
+      "i-FtvoC1lZFj"
+    ],
+    "acompanhamento": [
+      "i-QtLL6zMKUy",
+      "i-mVpTb2Twal",
+      "i-_Lp79oOQ9K",
+      "i-NFSuIlx6_u",
+      "i-F_sWptRaQV"
+    ]
+  }
+}

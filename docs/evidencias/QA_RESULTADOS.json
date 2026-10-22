@@ -1,0 +1,731 @@
+{
+  "assertions": [
+    {
+      "name": "desktop: ausência de credencial é explícita",
+      "pass": true
+    },
+    {
+      "name": "desktop: sem dados expostos quando não configurado",
+      "pass": true
+    },
+    {
+      "name": "login inválido não libera dados",
+      "pass": true
+    },
+    {
+      "name": "desktop: quadro usa registros da API de teste",
+      "pass": true
+    },
+    {
+      "name": "desktop: sem drag operacional",
+      "pass": true
+    },
+    {
+      "name": "desktop: sem overflow horizontal do body",
+      "pass": true,
+      "detail": {
+        "viewport": 1440,
+        "body": 1440,
+        "app": {
+          "x": 460,
+          "y": 15,
+          "width": 520,
+          "height": 930,
+          "top": 15,
+          "right": 980,
+          "bottom": 945,
+          "left": 460
+        },
+        "copilot": {
+          "x": 913,
+          "y": 878,
+          "width": 66,
+          "height": 66,
+          "top": 878,
+          "right": 979,
+          "bottom": 944,
+          "left": 913
+        }
+      }
+    },
+    {
+      "name": "desktop: coluna recolhe",
+      "pass": true
+    },
+    {
+      "name": "desktop: header Beta correto",
+      "pass": true
+    },
+    {
+      "name": "desktop: SVG V20 carregado",
+      "pass": true
+    },
+    {
+      "name": "desktop: diagnósticos não simulam conteúdo",
+      "pass": true
+    },
+    {
+      "name": "desktop: retorno mantém busca",
+      "pass": true
+    },
+    {
+      "name": "desktop: retorno mantém coluna recolhida",
+      "pass": true
+    },
+    {
+      "name": "desktop: retorno restaura scroll horizontal",
+      "pass": true,
+      "detail": {
+        "saved": {
+          "left": 129,
+          "top": 25
+        },
+        "returned": {
+          "left": 129,
+          "top": 25
+        }
+      }
+    },
+    {
+      "name": "desktop: retorno restaura scroll vertical",
+      "pass": true,
+      "detail": {
+        "saved": {
+          "left": 129,
+          "top": 25
+        },
+        "returned": {
+          "left": 129,
+          "top": 25
+        }
+      }
+    },
+    {
+      "name": "desktop: segunda entidade tem header próprio",
+      "pass": true
+    },
+    {
+      "name": "desktop: browser back mantém lista e filtro",
+      "pass": true
+    },
+    {
+      "name": "desktop: browser forward abre entidade correta",
+      "pass": true
+    },
+    {
+      "name": "desktop: experiência possui contexto próprio",
+      "pass": true
+    },
+    {
+      "name": "desktop: relação XP→AT respeita ID da API",
+      "pass": true
+    },
+    {
+      "name": "desktop: policy409 explícita e sem histórico falso",
+      "pass": true
+    },
+    {
+      "name": "desktop: Copiloto consulta API",
+      "pass": true
+    },
+    {
+      "name": "desktop: Copiloto abre ID correto",
+      "pass": true
+    },
+    {
+      "name": "desktop: Copiloto vazio não inventa registros",
+      "pass": true
+    },
+    {
+      "name": "desktop: Copiloto apresenta falha real do contrato",
+      "pass": true
+    },
+    {
+      "name": "desktop: busca vazia explícita",
+      "pass": true
+    },
+    {
+      "name": "desktop: erro de consulta explícito",
+      "pass": true
+    },
+    {
+      "name": "desktop: busca progressiva não afirma ausência global",
+      "pass": true
+    },
+    {
+      "name": "desktop: resposta tardia não contamina nova área",
+      "pass": true
+    },
+    {
+      "name": "desktop: detalhe404 sem registro residual",
+      "pass": true
+    },
+    {
+      "name": "desktop: sessão expirada limpa registros",
+      "pass": true
+    },
+    {
+      "name": "mobile: ausência de credencial é explícita",
+      "pass": true
+    },
+    {
+      "name": "mobile: sem dados expostos quando não configurado",
+      "pass": true
+    },
+    {
+      "name": "mobile: quadro usa registros da API de teste",
+      "pass": true
+    },
+    {
+      "name": "mobile: sem drag operacional",
+      "pass": true
+    },
+    {
+      "name": "mobile: sem overflow horizontal do body",
+      "pass": true,
+      "detail": {
+        "viewport": 390,
+        "body": 390,
+        "app": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "top": 0,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "copilot": {
+          "x": 323,
+          "y": 777,
+          "width": 66,
+          "height": 66,
+          "top": 777,
+          "right": 389,
+          "bottom": 843,
+          "left": 323
+        }
+      }
+    },
+    {
+      "name": "mobile: coluna recolhe",
+      "pass": true
+    },
+    {
+      "name": "mobile: header Beta correto",
+      "pass": true
+    },
+    {
+      "name": "mobile: SVG V20 carregado",
+      "pass": true
+    },
+    {
+      "name": "mobile: diagnósticos não simulam conteúdo",
+      "pass": true
+    },
+    {
+      "name": "mobile: retorno mantém busca",
+      "pass": true
+    },
+    {
+      "name": "mobile: retorno mantém coluna recolhida",
+      "pass": true
+    },
+    {
+      "name": "mobile: retorno restaura scroll horizontal",
+      "pass": true,
+      "detail": {
+        "saved": {
+          "left": 150,
+          "top": 25
+        },
+        "returned": {
+          "left": 150,
+          "top": 25
+        }
+      }
+    },
+    {
+      "name": "mobile: retorno restaura scroll vertical",
+      "pass": true,
+      "detail": {
+        "saved": {
+          "left": 150,
+          "top": 25
+        },
+        "returned": {
+          "left": 150,
+          "top": 25
+        }
+      }
+    },
+    {
+      "name": "mobile: segunda entidade tem header próprio",
+      "pass": true
+    },
+    {
+      "name": "mobile: browser back mantém lista e filtro",
+      "pass": true
+    },
+    {
+      "name": "mobile: browser forward abre entidade correta",
+      "pass": true
+    },
+    {
+      "name": "mobile: experiência possui contexto próprio",
+      "pass": true
+    },
+    {
+      "name": "mobile: relação XP→AT respeita ID da API",
+      "pass": true
+    },
+    {
+      "name": "mobile: policy409 explícita e sem histórico falso",
+      "pass": true
+    },
+    {
+      "name": "mobile: Copiloto consulta API",
+      "pass": true
+    },
+    {
+      "name": "mobile: Copiloto abre ID correto",
+      "pass": true
+    },
+    {
+      "name": "mobile: Copiloto vazio não inventa registros",
+      "pass": true
+    },
+    {
+      "name": "mobile: Copiloto apresenta falha real do contrato",
+      "pass": true
+    },
+    {
+      "name": "mobile: busca vazia explícita",
+      "pass": true
+    },
+    {
+      "name": "mobile: erro de consulta explícito",
+      "pass": true
+    },
+    {
+      "name": "mobile: busca progressiva não afirma ausência global",
+      "pass": true
+    },
+    {
+      "name": "mobile: resposta tardia não contamina nova área",
+      "pass": true
+    },
+    {
+      "name": "mobile: detalhe404 sem registro residual",
+      "pass": true
+    },
+    {
+      "name": "mobile: sessão expirada limpa registros",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "POST",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "POST",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-beta",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/experiencias/i-qa-gama",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=historico&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE-AT-002&limit=20"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-beta",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=sem-correspondencia-qa&limit=20"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=QAFALHA&limit=20"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=sem-correspondencia-qa&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=QAFALHA&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=PROGRESSIVA&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=PROGRESSIVA&limit=50&cursor=qa-delayed-next"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/atendimentos/i-qa-inexistente",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "POST",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-beta",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=Alfa&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/experiencias/i-qa-gama",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/atendimentos/i-qa-alfa",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=historico&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=TESTE-AT-002&limit=20"
+    },
+    {
+      "path": "/api/atendimentos/i-qa-beta",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=sem-correspondencia-qa&limit=20"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=QAFALHA&limit=20"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=sem-correspondencia-qa&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=QAFALHA&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=PROGRESSIVA&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=PROGRESSIVA&limit=50&cursor=qa-delayed-next"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=veiculos&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/atendimentos/i-qa-inexistente",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/session",
+      "method": "GET",
+      "query": ""
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    },
+    {
+      "path": "/api/workspace",
+      "method": "GET",
+      "query": "area=funil&scope=acompanhamento&q=&limit=50"
+    }
+  ],
+  "limitations": [
+    "As consultas de sucesso usam API interceptada com dados sintéticos; não verificam o Coda remoto.",
+    "As páginas indisponível-real usam o backend local sem credenciais configuradas.",
+    "O navegador exige modo single-process neste ambiente."
+  ]
+}

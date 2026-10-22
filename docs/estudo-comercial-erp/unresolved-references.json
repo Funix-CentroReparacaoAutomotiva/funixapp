@@ -1,0 +1,989 @@
+{
+  "missing": [
+    "grid-37H74MPJbw",
+    "grid-3LWgdKRekS",
+    "grid-5qGokqACe8",
+    "grid-CzzihqVX9k",
+    "grid-DqEYcFqj22",
+    "grid-JWh31vOUHZ",
+    "grid-ewMKgS9sYE",
+    "grid-g0dV39pwlH",
+    "grid-jN0aicolhn",
+    "grid-okv7g2PTxH",
+    "grid-wk3iZouYL5"
+  ],
+  "occurrences": [
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-5CWy77ueVU",
+      "column": "OSs",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-KKZ1JJIcT2",
+      "column": "Faturar",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-okv7g2PTxH",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-KKZ1JJIcT2",
+      "column": "Faturar",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-4klstkwW31",
+      "column": "Status",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-ZnXsHU2puz",
+      "column": "Placa",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-frzH2-dV6Y",
+      "column": "Nome do Cliente",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-xm0iYTQlry",
+      "column": "Valor contábil OS",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-N1zz07vqrY",
+      "table": "aux_Fatura",
+      "columnId": "c-RnZdtZuGQ9",
+      "column": "GerarDescricaoNF",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-YoWCcbSZ63",
+      "table": "aux_Pecas",
+      "columnId": "c-netw7OIoBF",
+      "column": "Cod. OS",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-YoWCcbSZ63",
+      "table": "aux_Pecas",
+      "columnId": "c-YrnhlT8rYk",
+      "column": "Placa",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-YoWCcbSZ63",
+      "table": "aux_Pecas",
+      "columnId": "c-y7kQoaY0JY",
+      "column": "Especificao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-YoWCcbSZ63",
+      "table": "aux_Pecas",
+      "columnId": "c-x6S6XxeRU-",
+      "column": "db_lavOs",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-YoWCcbSZ63",
+      "table": "aux_Pecas",
+      "columnId": "c-x6S6XxeRU-",
+      "column": "db_lavOs",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-EHjR2RLET8",
+      "table": "aux_WaterfallDRE",
+      "columnId": "c-umHpeu1b5r",
+      "column": "Totais",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-EHjR2RLET8",
+      "table": "aux_WaterfallDRE",
+      "columnId": "c-umHpeu1b5r",
+      "column": "Totais",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-JWh31vOUHZ",
+      "tableId": "grid-iYVNHp0SeA",
+      "table": "bib_CorCarros",
+      "columnId": "c-Msn3LMiLof",
+      "column": "bib_Tintas",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-JWh31vOUHZ",
+      "tableId": "grid-iYVNHp0SeA",
+      "table": "bib_CorCarros",
+      "columnId": "c-Msn3LMiLof",
+      "column": "bib_Tintas",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-j_DkCNfG3p",
+      "table": "bk_orc",
+      "columnId": "c-TNM_wQpg2y",
+      "column": "OS",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-j_DkCNfG3p",
+      "table": "bk_orc",
+      "columnId": "c-TNM_wQpg2y",
+      "column": "OS",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-9aif2HCz-N",
+      "table": "db_AuxGraficoVendasSemanais",
+      "columnId": "c-wVSYe8sE_A",
+      "column": "Venda",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-_UtIwULn6l",
+      "table": "db_AuxRetrabalhoDespesas",
+      "columnId": "c-HLsv-fxnoC",
+      "column": "Lançar",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hf-eeot5-J",
+      "table": "db_Clientes",
+      "columnId": "c-HAO0tJSle8",
+      "column": "OSs",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hf-eeot5-J",
+      "table": "db_Clientes",
+      "columnId": "c-HAO0tJSle8",
+      "column": "OSs",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hf-eeot5-J",
+      "table": "db_Clientes",
+      "columnId": "c-2bJU8dw3do",
+      "column": "Acumulado OSs",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-2YDqH8rSGm",
+      "column": "Montagem",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-2YDqH8rSGm",
+      "column": "Montagem",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-a6eB9ifb9b",
+      "column": "Funilaria",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-a6eB9ifb9b",
+      "column": "Funilaria",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-5AaOmhU4oM",
+      "column": "Pintura",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-5AaOmhU4oM",
+      "column": "Pintura",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-2LAolkY8-H",
+      "column": "Finalizacao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-2LAolkY8-H",
+      "column": "Finalizacao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-yRzsU0FE5k",
+      "column": "Estetica",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-yRzsU0FE5k",
+      "column": "Estetica",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-TRoyAu3AK_",
+      "column": "Funilaria pesada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-TRoyAu3AK_",
+      "column": "Funilaria pesada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-XtAlskyQn8",
+      "column": "Outros servicos",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-XtAlskyQn8",
+      "column": "Outros servicos",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-wEiqjcmB8T",
+      "column": "Pecas",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-wEiqjcmB8T",
+      "column": "Pecas",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-AT4qAEp6NJ",
+      "column": "Terceirizacao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-AT4qAEp6NJ",
+      "column": "Terceirizacao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-AYI5lC2Ibp",
+      "column": "Rec. Financeiras",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-AYI5lC2Ibp",
+      "column": "Rec. Financeiras",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-hn-Ax7_Dfp",
+      "table": "db_DRE",
+      "columnId": "c-hm-sZ2gfm0",
+      "column": "Retrabalho",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-joeC8D5RFb",
+      "table": "db_ExtratoDinheiro",
+      "columnId": "c-B3s5P-bEP9",
+      "column": "ID Entrada",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-joeC8D5RFb",
+      "table": "db_ExtratoDinheiro",
+      "columnId": "c-YN2RdCk-Qk",
+      "column": "_Valor",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-joeC8D5RFb",
+      "table": "db_ExtratoDinheiro",
+      "columnId": "c-2hOm-HzLQ5",
+      "column": "Data Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-R9d9nxM_MV",
+      "table": "db_LavAnaliseFinanceira",
+      "columnId": "c-mQAPyI6JQl",
+      "column": "Aporte",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-R9d9nxM_MV",
+      "table": "db_LavAnaliseFinanceira",
+      "columnId": "c-mQAPyI6JQl",
+      "column": "Aporte",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-ylnUPjcTBt",
+      "table": "db_LavCX",
+      "columnId": "c-25tCqoSLya",
+      "column": "OS Origem",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-ylnUPjcTBt",
+      "table": "db_LavCX",
+      "columnId": "c-HzskIXdP7f",
+      "column": "OS Solucao",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-ylnUPjcTBt",
+      "table": "db_LavCX",
+      "columnId": "c-MgdFyQbSbZ",
+      "column": "Custo de Oportunidade",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-ylnUPjcTBt",
+      "table": "db_LavCX",
+      "columnId": "c-u1Od1h25U-",
+      "column": "Despesa Retrabalho",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-ylnUPjcTBt",
+      "table": "db_LavCX",
+      "columnId": "c-qCh9XNzOvU",
+      "column": "XXX",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-wZi5O1ejWD",
+      "table": "db_LavCartaoCorporativo",
+      "columnId": "c-oKeagrU-Bk",
+      "column": "ID Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-wZi5O1ejWD",
+      "table": "db_LavCartaoCorporativo",
+      "columnId": "c-qpFHUOgoN-",
+      "column": "Forçar",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-ltqqRyDhsD",
+      "table": "db_LavCncBnc",
+      "columnId": "c-6_7gliBZBP",
+      "column": "Saldo sistema",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-29iaQqmFQd",
+      "table": "db_LavConciliacao",
+      "columnId": "c-b9E5bTgjvD",
+      "column": "Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-29iaQqmFQd",
+      "table": "db_LavConciliacao",
+      "columnId": "c-nfwmdY56Tk",
+      "column": "Investido",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-29iaQqmFQd",
+      "table": "db_LavConciliacao",
+      "columnId": "c-nfwmdY56Tk",
+      "column": "Investido",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-ssHTKvY9p9",
+      "table": "db_LavExtratoAjustes",
+      "columnId": "c-UlgVZQC5KP",
+      "column": "ID Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-ssHTKvY9p9",
+      "table": "db_LavExtratoAjustes",
+      "columnId": "c-UlgVZQC5KP",
+      "column": "ID Entrada",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-ssHTKvY9p9",
+      "table": "db_LavExtratoAjustes",
+      "columnId": "c-eUfy84lN20",
+      "column": "Forcar",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-DUnUP0RarY",
+      "table": "db_LavExtratoInfinityPay",
+      "columnId": "c-sbcMuZZN5F",
+      "column": "ID Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-DUnUP0RarY",
+      "table": "db_LavExtratoInfinityPay",
+      "columnId": "c-sbcMuZZN5F",
+      "column": "ID Entrada",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-dMAbm5aTEi",
+      "table": "db_LavExtratoInter",
+      "columnId": "c-ABU9WhBEJC",
+      "column": "ID dos Lancamentos",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-dMAbm5aTEi",
+      "table": "db_LavExtratoInter",
+      "columnId": "c-hC4T9JwK1K",
+      "column": "Forcar",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-Ip2OKnHwnF",
+      "table": "db_LavExtratoInterPag",
+      "columnId": "c-vGd7sFk_oB",
+      "column": "ID Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-Ip2OKnHwnF",
+      "table": "db_LavExtratoInterPag",
+      "columnId": "c-vGd7sFk_oB",
+      "column": "ID Entrada",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-O-GX-H_GKM",
+      "table": "db_LavExtratoPagbank",
+      "columnId": "c-4ve8E5lYwp",
+      "column": "ID Entrada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-O-GX-H_GKM",
+      "table": "db_LavExtratoPagbank",
+      "columnId": "c-4ve8E5lYwp",
+      "column": "ID Entrada",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-Dkqnwq-8HT",
+      "column": "OS",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-ajR7UaySFW",
+      "column": "Cliente Final",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-V1sRo5Rz7G",
+      "column": "Carro",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-jN0aicolhn",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-PSStWQfc9y",
+      "column": "Seguradora",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-NAcI9fMDuJ",
+      "column": "Investimento",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-4hyeCXOm9g",
+      "table": "db_LavQuitacao",
+      "columnId": "c-MukWud-4Or",
+      "column": "Data da entrega",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-GOC6UZAZj-",
+      "table": "db_LavSaidas",
+      "columnId": "c-e1Iw4c76oa",
+      "column": "OS",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-5L5_qsOBUf",
+      "table": "db_ServicoParceiro",
+      "columnId": "c-4LMgd7jUzS",
+      "column": "db_lavOs",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-K_fYeYwJCF",
+      "column": "OSs Abertas",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-K_fYeYwJCF",
+      "column": "OSs Abertas",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-Gyex1YMbJb",
+      "column": "Data chegada",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-wBcxn8U_Oi",
+      "column": "Data programada entrega",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-r5mwBFYGcy",
+      "column": "Mov. Tintas",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-M4oZkHDqW1",
+      "column": "Peças",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-5qGokqACe8",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-M4oZkHDqW1",
+      "column": "Peças",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-pDT-_PlSIJ",
+      "table": "db_Veiculos",
+      "columnId": "c-kXv8bTrXw6",
+      "column": "Total OSs",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-IhWXmTADZQ",
+      "table": "db_VinculoFiscalFinanceiro",
+      "columnId": "c-aZ598DLSPD",
+      "column": "ID Vinculo",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-IhWXmTADZQ",
+      "table": "db_VinculoFiscalFinanceiro",
+      "columnId": "c-tzJUPM3kJ6",
+      "column": "NF",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-IhWXmTADZQ",
+      "table": "db_VinculoFiscalFinanceiro",
+      "columnId": "c-nmF0Sege6j",
+      "column": "Valor",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-uyMCGboB9i",
+      "table": "db_auxGraficoVendasDiarias",
+      "columnId": "c-8XEPsC0hwJ",
+      "column": "Venda",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-CzzihqVX9k",
+      "tableId": "grid-R2WBhXvR2c",
+      "table": "db_lavInspecao",
+      "columnId": "c-wAdsd8dLSr",
+      "column": "Responsavel",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-zzy3oezO2m",
+      "table": "db_lavMensagens",
+      "columnId": "c-CA-cYr8rhU",
+      "column": "Cod. OS",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-zzy3oezO2m",
+      "table": "db_lavMensagens",
+      "columnId": "c-aBb3tFsvMP",
+      "column": "Placa",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-zzy3oezO2m",
+      "table": "db_lavMensagens",
+      "columnId": "c-J8cjzdwTuH",
+      "column": "Especificao",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-DqEYcFqj22",
+      "tableId": "grid-II4pPk_ogd",
+      "table": "db_lavPoupança",
+      "columnId": "c-lWEdlB_zu7",
+      "column": "Resgates",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-ewMKgS9sYE",
+      "tableId": "grid-II4pPk_ogd",
+      "table": "db_lavPoupança",
+      "columnId": "c-lWEdlB_zu7",
+      "column": "Resgates",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-g0dV39pwlH",
+      "tableId": "grid-61j0hrbDZw",
+      "table": "db_lavSrvAprv",
+      "columnId": "c-G_6_LuyakL",
+      "column": "Vistoriador",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-g0dV39pwlH",
+      "tableId": "grid-61j0hrbDZw",
+      "table": "db_lavSrvAprv",
+      "columnId": "c-k65SvnfpCD",
+      "column": "Responsável",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-g0dV39pwlH",
+      "tableId": "grid-61j0hrbDZw",
+      "table": "db_lavSrvAprv",
+      "columnId": "c-oMvZMJIWx5",
+      "column": "Colaboradores",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-9-DwSKdXUj",
+      "table": "imp_OSmatriz",
+      "columnId": "c-ysScuyZdDs",
+      "column": "OSs",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-wk3iZouYL5",
+      "tableId": "grid-9-DwSKdXUj",
+      "table": "imp_OSmatriz",
+      "columnId": "c-aLYdTaW3an",
+      "column": "add OS",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-3LWgdKRekS",
+      "tableId": "grid-_fSkqlESYT",
+      "table": "ux_AgendamentoRetrabalho",
+      "columnId": "c-AxrS9QfHHu",
+      "column": "Concluir",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-K-oGFfj1ft",
+      "table": "ux_GerarFatura",
+      "columnId": "c-KKZ1JJIcT2",
+      "column": "Faturar",
+      "field": "actionFormula",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-jMNjDNC7mo",
+      "table": "ux_PainelLiquidacaoTituloReceber",
+      "columnId": "c-PQrFmx8-ja",
+      "column": "Tomar credito ISS (NFe)",
+      "field": "lookupTarget",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-jMNjDNC7mo",
+      "table": "ux_PainelLiquidacaoTituloReceber",
+      "columnId": "c-aEtM6__DLp",
+      "column": "Valor de crédito de ISS",
+      "field": "formula",
+      "active": true
+    },
+    {
+      "target": "grid-37H74MPJbw",
+      "tableId": "grid-jMNjDNC7mo",
+      "table": "ux_PainelLiquidacaoTituloReceber",
+      "columnId": "c-7frGOK0oDv",
+      "column": "AtrelarINSS",
+      "field": "actionFormula",
+      "active": true
+    }
+  ]
+}

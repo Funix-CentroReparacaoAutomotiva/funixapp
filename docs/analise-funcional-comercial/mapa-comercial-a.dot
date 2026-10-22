@@ -1,0 +1,39 @@
+digraph Comercial {
+  graph [rankdir=TB, bgcolor="#ffffff", pad="0.35", nodesep="0.35", ranksep="0.48", splines=polyline, fontname="DejaVu Sans", fontsize=21, label="FUNIX | Mapa geral do Comercial\nA — Da demanda ao agendamento · v0.1 para revisão", labelloc=t, labeljust=l];
+  node [shape=box, style="rounded,filled", fillcolor="#f0f5fc", color="#a9bbd2", fontcolor="#173451", fontname="DejaVu Sans", fontsize=12, margin="0.20,0.13", penwidth=1.2];
+  edge [color="#60758c", fontcolor="#536b83", fontname="DejaVu Sans", fontsize=10, arrowsize=0.7];
+  IN [shape=ellipse, fillcolor="#e6f4ef", color="#4a927b", label="Demanda de cliente"];
+  subgraph cluster_comercial {
+    label="COMERCIAL — processo atual reconstruído do Coda"; fontname="DejaVu Sans"; fontsize=12; fontcolor="#49647f"; color="#dbe4ee"; style=rounded; margin=20;
+    A01 [label="01 · Iniciar ou retomar\nAtendimento"];
+    A02 [label="02 · Entender demanda\ne reunir informações"];
+    A03 [label="03 · Compor escopo\nDiagnósticos, serviços e itens"];
+    A04 [label="04 · Definir valores\ne condições comerciais"];
+    A05 [label="05 · Gerar orçamento\nou alternativa"];
+    A06 [label="06 · Apresentar\ne negociar"];
+    G [shape=diamond, style=filled, fillcolor="#fff3e4", color="#d1a569", label="Qual\nencaminhamento?", margin="0.10,0.04"];
+    A07 [label="07 · Acompanhar /\nprogramar retomada", fillcolor="#fff8ec", color="#d9bc89"];
+    A08 [label="08 · Encerrar Atendimento\ncom motivo/anotação", fillcolor="#f9eff0", color="#d1a1a6"];
+    A09 [label="09 · Selecionar orçamento(s)\ne preparar agendamento"];
+    A10 [label="10 · Resolver Cliente, Veículo,\nPagador e data de chegada"];
+    A11 [label="11 · Concluir\nagendamento", fillcolor="#dcebe9", color="#6b9d96"];
+    NOTE [shape=note, style=filled, fillcolor="#fffaf1", color="#dac59f", fontsize=10, label="Consentimento comercial:\nação Aprovar ou conclusão do agendamento.\nÉ diferente de autorização técnica.\nA ordem exata deve ser validada."];
+    {rank=same; A07; A09; A08;}
+    {rank=same; A10; NOTE;}
+  }
+  OUT [shape=ellipse, fillcolor="#f9eff0", color="#c79198", label="Atendimento encerrado"];
+  XP [fillcolor="#dcebe9", color="#6b9d96", label="Experiência criada ou vinculada\nAtendimento Agendado\nContinua na parte B"];
+  IN -> A01 -> A02 -> A03 -> A04 -> A05 -> A06 -> G;
+  G -> A03 [label="Revisar escopo", constraint=false];
+  G -> A04 [label="Revisar condições", constraint=false];
+  G -> A07 [label="Aguardar"];
+  A07 -> A06 [label="Retomar conversa", constraint=false];
+  G -> A08 [label="Encerrar"];
+  A08 -> OUT;
+  G -> A09 [label="Avançar ao agendamento"];
+  A09 -> A10 -> A11 -> XP;
+  A09 -> NOTE [style=dashed, arrowhead=none, constraint=false];
+  FOOT [shape=plain, style="", fontsize=10, fontcolor="#617487", label="Macroatividades, não cliques ou status obrigatórios.\nAcompanhamento e encerramento podem ocorrer antes.\nPDF é apresentação; follow-up não implica avanço automático de status.\nBase: inventário Coda de 21/10/2026. Sem execução produtiva.\nVer notas e evidências no documento do mapa."];
+  XP -> FOOT [style=invis];
+  OUT -> FOOT [style=invis];
+}

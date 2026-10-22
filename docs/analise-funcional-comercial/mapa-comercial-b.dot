@@ -1,0 +1,35 @@
+digraph Continuidade {
+  graph [rankdir=TB, bgcolor="#ffffff", pad="0.35", nodesep="0.45", ranksep="0.55", splines=polyline, fontname="DejaVu Sans", fontsize=21, label="FUNIX | Mapa geral do Comercial\nB — Ligações com a operação e retornos · v0.1 para revisão", labelloc=t, labeljust=l];
+  node [shape=box, style="rounded,filled", fillcolor="#f0f5fc", color="#a9bbd2", fontcolor="#173451", fontname="DejaVu Sans", fontsize=12, margin="0.20,0.13", penwidth=1.2];
+  edge [color="#60758c", fontcolor="#536b83", fontname="DejaVu Sans", fontsize=10, arrowsize=0.7];
+  XP [fillcolor="#dcebe9", color="#6b9d96", label="Experiência agendada\nVem da parte A"];
+  subgraph cluster_operacao {
+    label="OPERAÇÃO NO CODA — contexto do Comercial"; fontname="DejaVu Sans"; fontsize=12; fontcolor="#49647f"; color="#dbe4ee"; style=rounded; margin=20;
+    B12 [label="12 · Recepção /\ninspeção técnica"];
+    G [shape=diamond, style=filled, fillcolor="#fff3e4", color="#d1a569", label="Encaminhamento\ntécnico", margin="0.10,0.04"];
+    B13 [label="13 · Autorizar tecnicamente\ne gerar OS", fillcolor="#dcebe9", color="#6b9d96"];
+    B14 [label="14 · Rejeitar proposta\ne retomar composição\nno mesmo Atendimento", fillcolor="#fff8ec", color="#d9bc89"];
+    B15 [label="15 · Registrar rejeição técnica\nContinuidade a validar", style="rounded,filled,dashed", fillcolor="#f9eff0", color="#c79198"];
+    OP [label="Produção, entrega e financeiro\nFora do detalhamento deste mapa", fillcolor="#edf0f3", color="#b1bbc5"];
+    {rank=same; B13; B14; B15;}
+  }
+  subgraph cluster_voltas {
+    label="VOLTA AO COMERCIAL"; fontname="DejaVu Sans"; fontsize=12; fontcolor="#49647f"; color="#dbe4ee"; style=rounded; margin=20;
+    RET [shape=ellipse, fillcolor="#fff3e4", color="#d1a569", label="Retorno / retrabalho\na partir de uma Experiência"];
+    B16 [label="16 · Criar novo Atendimento\nvinculado ao anterior"];
+    COM [label="Retomar comercial\ncom origem e composição inicial"];
+  }
+  REVISAR [label="Voltar ao 03 / 04 / 05 / 06\nRevisar composição, condições\ne negociar nova proposta"];
+  XP -> B12 -> G;
+  G -> B13 [label="Validar orçamento consentido"];
+  B13 -> OP;
+  G -> B14 [label="Propor novo orçamento"];
+  B14 -> REVISAR;
+  G -> B15 [label="Rejeitar sem nova proposta"];
+  RET -> B16 -> COM;
+  OP -> RET [style=invis];
+  FOOT [shape=plain, style="", fontsize=10, fontcolor="#617487", label="Revisão de inspeção e retorno/retrabalho são caminhos diferentes.\nRetorno não reabre automaticamente a OS anterior.\nAs saídas técnicas representam ações distintas, não uma sequência universal comprovada.\nCancelamento, reagendamento e acréscimos após autorização exigem detalhamento próprio.\nBase: inventário Coda de 21/10/2026. Nenhuma ação produtiva executada.\nVer notas e evidências no documento do mapa."];
+  REVISAR -> FOOT [style=invis];
+  COM -> FOOT [style=invis];
+  OP -> FOOT [style=invis];
+}
