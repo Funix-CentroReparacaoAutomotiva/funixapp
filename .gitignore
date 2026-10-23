@@ -36,3 +36,8 @@ dist-ssr
 coverage/
 test-results/
 playwright-report/
+__pycache__/
+*.pyc
+# VPS runtime files must never be versioned.
+runtime.env
+release.env

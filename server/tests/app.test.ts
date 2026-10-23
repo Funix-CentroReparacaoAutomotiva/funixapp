@@ -14,8 +14,8 @@ const repository: ReadRepository = {
   async record() { throw new Error('No record fixture') },
 }
 
-async function start(repo = repository, secret: string | undefined = password, now?: () => number) {
-  const handler = createRequestHandler({ repository: repo, password: secret, origin, now })
+async function start(repo = repository, secret: string | undefined = password, now?: () => number, appOrigin = origin, revision?: string) {
+  const handler = createRequestHandler({ repository: repo, password: secret, origin: appOrigin, now, revision })
   // Exercise HTTP semantics in process: no network permission, sockets, or upstream calls.
   const request = async (path: string, init?: RequestInit): Promise<Response> => {
     const req = Object.assign(Readable.from(init?.body ? [String(init.body)] : []), {
@@ -32,7 +32,7 @@ async function start(repo = repository, secret: string | undefined = password, n
     await handler(req, res)
     return new Response(body, { status, headers })
   }
-  const login = () => request('/api/session', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+  const login = () => request('/api/session', { method: 'POST', headers: { Origin: appOrigin, 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
   const close = async () => {}
   return { request, login, close }
 }
@@ -117,5 +117,18 @@ test('short/unconfigured password leaves access closed', async () => {
   try {
     assert.deepEqual(await (await app.request('/api/session')).json(), { authenticated: false, configured: false })
     assert.equal((await app.login()).status, 503)
+    assert.equal((await app.request('/api/ready')).status, 503)
   } finally { await app.close() }
+})
+
+test('HTTPS production origin keeps secure cookies and reports readiness without exposing credentials', async () => {
+  const revision = 'a'.repeat(40)
+  const app = await start(new CodaReadRepository(), password, undefined, 'https://app.funix.com.br', revision)
+  const ready = await app.request('/api/ready')
+  assert.equal(ready.status, 200)
+  assert.deepEqual(await ready.json(), { status: 'ready', revision, readOnly: true })
+  const login = await app.login()
+  assert.equal(login.status, 200)
+  assert.match(login.headers.get('set-cookie')!, /; Secure$/)
+  assert.equal((await app.request('/api/session', { method: 'DELETE', headers: { Origin: 'http://app.funix.com.br' } })).status, 403)
 })

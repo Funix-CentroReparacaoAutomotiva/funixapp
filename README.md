@@ -70,6 +70,8 @@ A revisão de navegador usou Chromium em desktop 1440×960 e celular 390×844; a
 
 ## Próximo incremento e implantação
 
+A preparação Docker Compose/Traefik/GHCR e o procedimento para a VPS existente estão em [docs/IMPLANTACAO_HOSTINGER.md](docs/IMPLANTACAO_HOSTINGER.md). A atualização remota fica bloqueada enquanto `FUNIX_DEPLOY_ENABLED` não for `true`; nenhuma implantação produtiva foi executada nesta preparação.
+
 Revisar com a direção o mapa comercial e os subprocessos, começando pelo diagnóstico; derivar os contratos e o banco dos comportamentos suficientemente compreendidos. A implementação seguirá esses fluxos, preservando a V20. Provisionar leitura contínua, resolver Histórico e auditar comandos em ambiente seguro continuam sendo dependências para ampliar a integração; alterações de integrações produtivas não fazem parte da publicação inicial do código.
 
 A sessão atual é de desenvolvimento para um operador e fica em memória: reiniciar o backend encerra acessos. Antes de hospedagem externa, aprovar identidade/papéis e HTTPS, persistência/topologia de sessão, monitoramento, retenção de dados, teste seguro de integração e rollback. Não há comando de publicação produtiva neste pacote.

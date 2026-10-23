@@ -1,0 +1,96 @@
+#!/bin/bash
+# Install root-owned at /usr/local/sbin/funix-deploy. Never run from a user-writable checkout.
+set -Eeuo pipefail
+umask 077
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+unset DOCKER_HOST DOCKER_CONTEXT DOCKER_TLS DOCKER_TLS_VERIFY DOCKER_CERT_PATH COMPOSE_FILE COMPOSE_PROJECT_NAME
+
+die() { printf '%s\n' "$1" >&2; exit 1; }
+[[ $(id -u) == 0 ]] || die 'Execute pelo comando sudo restrito.'
+[[ $# -ge 1 ]] || die 'Uso: deploy SHA WEB_DIGEST API_DIGEST | rollback [SHA]'
+
+action=$1
+case "$action" in
+  deploy)
+    [[ $# == 4 && $2 =~ ^[a-f0-9]{40}$ && $3 =~ ^sha256:[a-f0-9]{64}$ && $4 =~ ^sha256:[a-f0-9]{64}$ ]] || die 'Revisão/digests inválidos.'
+    ;;
+  rollback)
+    [[ $# == 1 || ( $# == 2 && $2 =~ ^[a-f0-9]{40}$ ) ]] || die 'Revisão de rollback inválida.'
+    ;;
+  *) die 'Operação não permitida.' ;;
+esac
+
+trusted() {
+  [[ -e $1 && ! -L $1 && $(stat -c %u "$1") == 0 ]] || die 'Arquivo/diretório precisa pertencer ao root, sem symlink.'
+  local mode
+  mode=$(stat -c %a "$1")
+  (( (8#$mode & 022) == 0 )) || die 'Arquivo/diretório gravável por grupo/outros.'
+}
+for path in /opt/funix /opt/funix/compose.yaml /etc/funix /etc/funix/runtime.env /etc/funix/registry; do trusted "$path"; done
+[[ $(stat -c %a /etc/funix/runtime.env) == 600 ]] || die 'runtime.env precisa de permissão 0600.'
+[[ -d /etc/funix/registry ]] || die 'Diretório do registro ausente.'
+
+install -d -o root -g root -m 0700 /var/lib/funix /var/lib/funix/releases
+trusted /var/lib/funix
+trusted /var/lib/funix/releases
+exec 9>/run/lock/funixapp-deploy.lock
+flock -w 300 9 || die 'Outra implantação FUNIX está em andamento.'
+log=/var/lib/funix/deploy.log
+[[ ! -L $log ]] || die 'Log inválido.'
+touch "$log"
+chmod 600 "$log"
+candidate=$(mktemp /var/lib/funix/candidate.XXXXXX)
+trap 'rm -f "$candidate"' EXIT
+
+docker=(docker --host=unix:///var/run/docker.sock --config /etc/funix/registry)
+compose=("${docker[@]}" compose --project-name funixapp --file /opt/funix/compose.yaml)
+"${docker[@]}" network inspect traefik_default >/dev/null 2>&1 || die 'Rede traefik_default ausente; não será criada ou alterada.'
+compose_version=$("${docker[@]}" compose version --short)
+compose_version=${compose_version#v}
+[[ $(printf '%s\n' 2.30.0 "$compose_version" | sort -V | head -n1) == 2.30.0 ]] || die 'Docker Compose >= 2.30 é necessário.'
+
+if [[ $action == deploy ]]; then
+  revision=$2
+  printf 'FUNIX_RELEASE=%s\nFUNIX_WEB_IMAGE=ghcr.io/funix-centroreparacaoautomotiva/funixapp-web@%s\nFUNIX_API_IMAGE=ghcr.io/funix-centroreparacaoautomotiva/funixapp-api@%s\n' "$revision" "$3" "$4" >"$candidate"
+  if [[ -e /var/lib/funix/releases/$revision.env ]]; then
+    trusted "/var/lib/funix/releases/$revision.env"
+    cmp -s "$candidate" "/var/lib/funix/releases/$revision.env" || die 'Essa revisão já tem outros digests registrados. Use novo commit ou rollback.'
+  fi
+else
+  if [[ $# == 2 ]]; then
+    source_file=/var/lib/funix/releases/$2.env
+  else
+    source_file=/var/lib/funix/previous.env
+  fi
+  trusted "$source_file"
+  cp "$source_file" "$candidate"
+  revision=$(sed -n 's/^FUNIX_RELEASE=//p' "$candidate")
+  [[ $revision =~ ^[a-f0-9]{40}$ ]] || die 'Estado de rollback inválido.'
+fi
+
+"${compose[@]}" --env-file "$candidate" config --quiet >>"$log" 2>&1 || die 'Compose inválido. Consulte o log local protegido.'
+if [[ -e /var/lib/funix/current.env ]]; then trusted /var/lib/funix/current.env; fi
+printf '%s %s %s\n' "$(date -u +%FT%TZ)" "$action" "$revision" >>"$log"
+
+# Pull only these two images. Never prune, compose down or operate on other projects.
+"${compose[@]}" --env-file "$candidate" pull --quiet api web >>"$log" 2>&1 || die 'Não foi possível baixar as imagens FUNIX. Versão atual preservada.'
+if ! "${compose[@]}" --env-file "$candidate" up -d --no-build --pull never --wait --wait-timeout 120 api web >>"$log" 2>&1; then
+  if [[ -f /var/lib/funix/current.env ]]; then
+    if "${compose[@]}" --env-file /var/lib/funix/current.env up -d --no-build --pull never --wait --wait-timeout 120 api web >>"$log" 2>&1; then
+      die 'Implantação falhou; versão anterior restaurada. Consulte o log local protegido.'
+    fi
+    die 'Implantação e restauração falharam. Intervenção necessária; estado anterior preservado em current.env.'
+  fi
+  "${compose[@]}" --env-file "$candidate" stop api web >>"$log" 2>&1 || true
+  die 'Primeira implantação falhou; apenas os serviços FUNIX foram parados.'
+fi
+
+# Commit deployment state only after both services are healthy.
+if [[ -f /var/lib/funix/current.env ]] && ! cmp -s "$candidate" /var/lib/funix/current.env; then
+  install -o root -g root -m 0600 /var/lib/funix/current.env /var/lib/funix/previous.env.new
+  mv -f /var/lib/funix/previous.env.new /var/lib/funix/previous.env
+fi
+install -o root -g root -m 0600 "$candidate" "/var/lib/funix/releases/$revision.env"
+install -o root -g root -m 0600 "$candidate" /var/lib/funix/current.env.new
+mv -f /var/lib/funix/current.env.new /var/lib/funix/current.env
+printf 'FUNIX %s concluído: %s\n' "$action" "$revision"

@@ -7,6 +7,7 @@ Servidor padrão `127.0.0.1:8787`, acessado pelo proxy `/api` do Vite. Execute `
 | Rota | Resposta / comportamento |
 | --- | --- |
 | `GET /api/health` | Disponibilidade do processo e presença de configuração Coda; não comprova autorização remota. Sem registros pessoais. |
+| `GET /api/ready` | Readiness sem login: exige autenticação configurada e informa revisão de implantação. Não consulta Coda nem expõe credenciais. |
 | `GET /api/session` | `{ authenticated, configured }`; `configured` indica senha local com pelo menos 12 caracteres. |
 | `POST /api/session` | JSON `{ password }`. Exige `Origin` igual a `FUNIX_APP_ORIGIN`. Cria sessão de oito horas. |
 | `DELETE /api/session` | Revoga a sessão; exige a mesma verificação de origem. |
