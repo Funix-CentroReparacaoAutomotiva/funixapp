@@ -28,7 +28,7 @@ jobs:
       - run: npm run check
       - name: Check deployment scripts and recovery scenarios
         run: |
-          bash -n deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh
+          bash -n deploy/funix-install deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh
           python3 -m unittest discover -s deploy/tests -v
       - name: Build and exercise production images without production services
         run: |
@@ -139,3 +139,4 @@ jobs:
           done
           echo 'Public HTTPS verification failed. Check DNS/TLS/Traefik and use the documented FUNIX rollback if needed.' >&2
           exit 1
+
