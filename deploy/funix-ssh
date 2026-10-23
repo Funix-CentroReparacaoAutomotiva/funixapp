@@ -1,0 +1,16 @@
+#!/bin/bash
+# Forced command for one deploy key. The account must NOT belong to the docker group.
+set -euo pipefail
+command=${SSH_ORIGINAL_COMMAND:-}
+[[ -n $command && $command != *$'\n'* && $command != *$'\r'* ]] || exit 64
+read -r -a args <<<"$command"
+case ${args[0]:-} in
+  deploy)
+    [[ ${#args[@]} == 4 && ${args[1]} =~ ^[a-f0-9]{40}$ && ${args[2]} =~ ^sha256:[a-f0-9]{64}$ && ${args[3]} =~ ^sha256:[a-f0-9]{64}$ ]] || exit 64
+    ;;
+  rollback)
+    [[ ${#args[@]} == 1 || ( ${#args[@]} == 2 && ${args[1]} =~ ^[a-f0-9]{40}$ ) ]] || exit 64
+    ;;
+  *) exit 64 ;;
+esac
+exec /usr/bin/sudo -n /usr/local/sbin/funix-deploy "${args[@]}"

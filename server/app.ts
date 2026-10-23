@@ -7,6 +7,7 @@ export interface AppOptions {
   repository: ReadRepository
   password?: string
   origin?: string
+  revision?: string
   now?: () => number
 }
 
@@ -35,6 +36,10 @@ export function createRequestHandler(options: AppOptions) {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'coda', configured: options.repository.configured }, readOnly: true })
+      if (req.method === 'GET' && url.pathname === '/api/ready') {
+        if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
+        return send(200, { status: 'ready', revision: options.revision ?? null, readOnly: true })
+      }
       const cookie = req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1) ?? ''
       const authenticated = (sessions.get(cookie) ?? 0) > now()
       if (cookie && !authenticated) sessions.delete(cookie)

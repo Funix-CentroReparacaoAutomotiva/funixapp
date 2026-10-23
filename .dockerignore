@@ -1,0 +1,17 @@
+# Allow only build inputs; no credentials, audit exports or Git metadata.
+**
+!package.json
+!package-lock.json
+!tsconfig*.json
+!vite.config.ts
+!index.html
+!src/
+!src/**
+!public/
+!public/**
+!shared/
+!shared/**
+!server/
+!server/*.ts
+!deploy/
+!deploy/nginx.conf

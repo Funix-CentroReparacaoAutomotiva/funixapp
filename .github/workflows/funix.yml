@@ -1,0 +1,141 @@
+name: FUNIX CI and delivery
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy after authorization and VPS setup
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - name: Check deployment scripts and recovery scenarios
+        run: |
+          bash -n deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh
+          python3 -m unittest discover -s deploy/tests -v
+      - name: Build and exercise production images without production services
+        run: |
+          docker build --target api -t funix-api:ci .
+          docker build --target web --build-arg APP_REVISION="$GITHUB_SHA" -t funix-web:ci .
+          bash deploy/test-containers.sh
+      - name: Validate production Compose without printing secrets
+        run: |
+          sudo install -d -m 0700 /etc/funix
+          sudo install -m 0600 deploy/runtime.env.example /etc/funix/runtime.env
+          sudo env FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" docker compose config --quiet
+
+  publish:
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      web_digest: ${{ steps.web.outputs.digest }}
+      api_digest: ${{ steps.api.outputs.digest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: api
+        with:
+          context: .
+          target: api
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/funix-centroreparacaoautomotiva/funixapp-api:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Funix-CentroReparacaoAutomotiva/funixapp
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=funix-api
+          cache-to: type=gha,mode=max,scope=funix-api
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: web
+        with:
+          context: .
+          target: web
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/funix-centroreparacaoautomotiva/funixapp-web:${{ github.sha }}
+          build-args: APP_REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Funix-CentroReparacaoAutomotiva/funixapp
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=funix-web
+          cache-to: type=gha,mode=max,scope=funix-web
+
+  deploy:
+    needs: publish
+    # Disabled until the direction authorizes deployment and this variable is set.
+    if: >-
+      github.ref == 'refs/heads/main' && vars.FUNIX_DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'push' || inputs.deploy == true)
+    environment: production
+    concurrency:
+      group: funix-vps-production
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Update only the preinstalled FUNIX Compose project
+        env:
+          SSH_KEY: ${{ secrets.FUNIX_VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.FUNIX_VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ vars.FUNIX_VPS_HOST }}
+          VPS_PORT: ${{ vars.FUNIX_VPS_PORT || '22' }}
+          RELEASE: ${{ github.sha }}
+          WEB_DIGEST: ${{ needs.publish.outputs.web_digest }}
+          API_DIGEST: ${{ needs.publish.outputs.api_digest }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE" =~ ^[a-f0-9]{40}$ && "$WEB_DIGEST" =~ ^sha256:[a-f0-9]{64}$ && "$API_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" && -n "$VPS_HOST" && "$VPS_PORT" =~ ^[0-9]+$ ]]
+          key="$RUNNER_TEMP/funix-key"
+          hosts="$RUNNER_TEMP/funix-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          umask 077
+          printf '%s\n' "$SSH_KEY" > "$key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$hosts"
+          unset SSH_KEY KNOWN_HOSTS
+          ssh -i "$key" -p "$VPS_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$hosts" -o ConnectTimeout=15 \
+            "funix-deploy@$VPS_HOST" "deploy $RELEASE $WEB_DIGEST $API_DIGEST"
+      - name: Verify public HTTPS, frontend revision and API routing
+        env:
+          RELEASE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if curl --silent --show-error --fail --max-time 10 https://app.funix.com.br/api/ready -o "$RUNNER_TEMP/funix-ready.json" && \
+               curl --silent --show-error --fail --max-time 10 https://app.funix.com.br/release.json -o "$RUNNER_TEMP/funix-web.json" && \
+               node -e 'const fs=require("node:fs"); for(const f of ["funix-ready.json","funix-web.json"]) { const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/"+f)); if(r.revision!==process.env.RELEASE)process.exit(1); }'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Public HTTPS verification failed. Check DNS/TLS/Traefik and use the documented FUNIX rollback if needed.' >&2
+          exit 1

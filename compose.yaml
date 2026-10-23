@@ -1,0 +1,72 @@
+name: funixapp
+
+x-runtime: &runtime
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  api:
+    <<: *runtime
+    image: ${FUNIX_API_IMAGE:?Configure a imagem API por digest}
+    init: true
+    env_file:
+      - path: /etc/funix/runtime.env
+        format: raw
+    environment:
+      NODE_ENV: production
+      FUNIX_API_HOST: 0.0.0.0
+      FUNIX_API_PORT: "8787"
+      FUNIX_APP_ORIGIN: https://app.funix.com.br
+      FUNIX_REVISION: ${FUNIX_RELEASE:?Configure a revisão}
+    tmpfs: [/tmp:rw,noexec,nosuid,size=16m]
+    mem_limit: 384m
+    cpus: 0.75
+    stop_grace_period: 20s
+    networks: [traefik]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_default
+      traefik.http.routers.funixapp-api.rule: Host(`app.funix.com.br`) && (Path(`/api`) || PathPrefix(`/api/`))
+      traefik.http.routers.funixapp-api.priority: "100"
+      traefik.http.routers.funixapp-api.entrypoints: websecure
+      traefik.http.routers.funixapp-api.tls: "true"
+      traefik.http.routers.funixapp-api.tls.certresolver: letsencrypt
+      traefik.http.routers.funixapp-api.service: funixapp-api
+      traefik.http.services.funixapp-api.loadbalancer.server.port: "8787"
+      traefik.http.services.funixapp-api.loadbalancer.healthcheck.path: /api/ready
+      traefik.http.services.funixapp-api.loadbalancer.healthcheck.interval: 15s
+      traefik.http.services.funixapp-api.loadbalancer.healthcheck.timeout: 3s
+  web:
+    <<: *runtime
+    image: ${FUNIX_WEB_IMAGE:?Configure a imagem web por digest}
+    depends_on:
+      api:
+        condition: service_healthy
+    tmpfs: [/tmp:rw,noexec,nosuid,size=32m]
+    mem_limit: 128m
+    cpus: 0.50
+    networks: [traefik]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_default
+      traefik.http.routers.funixapp-web.rule: Host(`app.funix.com.br`)
+      traefik.http.routers.funixapp-web.priority: "10"
+      traefik.http.routers.funixapp-web.entrypoints: websecure
+      traefik.http.routers.funixapp-web.tls: "true"
+      traefik.http.routers.funixapp-web.tls.certresolver: letsencrypt
+      traefik.http.routers.funixapp-web.service: funixapp-web
+      traefik.http.services.funixapp-web.loadbalancer.server.port: "8080"
+      traefik.http.services.funixapp-web.loadbalancer.healthcheck.path: /healthz
+
+networks:
+  traefik:
+    external: true
+    name: traefik_default
