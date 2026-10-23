@@ -17,6 +17,7 @@ Escopo: checkout FUNIX e Docker local de desenvolvimento. Nenhum acesso SSH à V
 | Servidor web | Fallback SPA funciona; `/api/session` e asset inexistente retornam 404; `release.json` está presente |
 | Compose | `docker compose config --quiet` passou usando cópia do Compose com caminho de env_file temporário; nenhum arquivo da VPS ou `/etc/funix` real foi usado |
 | Workflow | Actionlint 1.7.7 passou, além da leitura YAML e inspeção das condições/permissions; actions resolvidas por SHA |
+| GitHub Actions no PR #1 | [Execução 39892824820](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/actions/runs/39892824820): job `validate` passou, incluindo build, 14 testes Node, 7 testes de recuperação, ambas as imagens, smoke e Compose; `publish` e `deploy` foram ignorados por ser PR |
 | Sigilo e escopo | `.dockerignore` usa lista permitida; `.env`/runtime real não versionados; imagens não recebem segredo por build arg; varredura dos arquivos alterados não encontrou chaves privadas/tokens |
 | Diff | `git diff --check` passou; nenhum arquivo da interface foi modificado |
 
@@ -43,6 +44,6 @@ Os testes do script executam uma cópia com caminhos fixos remapeados para um di
 
 ## Não certificado nesta preparação
 
-Execução do Actions nos runners do repositório; push/leitura privada GHCR; autenticação SSH e sudo efetivos; configuração real de Traefik/Cloudflare/certificado; capacidade livre na VPS; conexão REST autenticada do Coda. O roteamento HTTPS da VPS é validado pelo smoke público do workflow somente após autorização. Não foi executado teste local de Traefik ou ACME.
+Push/leitura privada GHCR; autenticação SSH e sudo efetivos; configuração real de Traefik/Cloudflare/certificado; capacidade livre na VPS; conexão REST autenticada do Coda. O roteamento HTTPS da VPS é validado pelo smoke público do workflow somente após autorização. Não foi executado teste local de Traefik ou ACME.
 
 A interface continua com os limites funcionais anteriores. Readiness não significa conectividade Coda ou módulo comercial completo. Sessões em memória e limite de tentativas compartilhado atrás do proxy são limitações explicitadas no guia de implantação.
