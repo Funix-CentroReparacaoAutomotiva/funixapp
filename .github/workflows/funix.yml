@@ -28,7 +28,7 @@ jobs:
       - run: npm run check
       - name: Check deployment scripts and recovery scenarios
         run: |
-          bash -n deploy/funix-install deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh
+          for script in deploy/funix-install deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh; do bash -n "$script"; done
           python3 -m unittest discover -s deploy/tests -v
       - name: Build and exercise production images without production services
         run: |

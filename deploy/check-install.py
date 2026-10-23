@@ -3,9 +3,9 @@ import json
 import sys
 
 
-def validate(containers):
-    for container in containers:
-        labels = container.get('Config', {}).get('Labels') or {}
+def validate(label_sets):
+    for labels in label_sets:
+        labels = labels or {}
         if labels.get('com.docker.compose.project') == 'funixapp':
             raise ValueError('Projeto Compose funixapp já existe, inclusive parado.')
         for key, value in labels.items():
@@ -18,6 +18,6 @@ def validate(containers):
 if __name__ == '__main__':
     try:
         with open(sys.argv[1], encoding='utf-8') as source:
-            validate(json.load(source))
+            validate(json.loads(line) for line in source if line.strip())
     except (ValueError, KeyError, TypeError) as error:
         sys.exit(str(error))

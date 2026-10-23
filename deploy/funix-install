@@ -49,9 +49,9 @@ trap 'rm -rf -- "$stage"' EXIT
 ids=$("${docker[@]}" ps -aq)
 if [[ -n $ids ]]; then
   # Docker IDs are generated hex strings, never caller-supplied arguments.
-  "${docker[@]}" inspect $ids > "$stage/containers.json"
+  "${docker[@]}" inspect --format '{{json .Config.Labels}}' $ids > "$stage/containers.json"
 else
-  printf '[]\n' > "$stage/containers.json"
+  printf '' > "$stage/containers.json"
 fi
 python3 "$src/deploy/check-install.py" "$stage/containers.json"
 read -r -p 'Cole a chave PÚBLICA Ed25519 dedicada ao Actions: ' public_key

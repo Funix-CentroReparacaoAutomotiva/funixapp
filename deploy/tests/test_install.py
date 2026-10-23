@@ -50,7 +50,9 @@ assert not set(args)&{'up','pull','stop','down','prune','restart','rm','run','cr
 if args[-2:]==['version','--short']: print(os.environ.get('VERSION','2.30.3'))
 elif 'network' in args: sys.exit(1 if os.environ.get('NO_NETWORK') else 0)
 elif args[-2:]==['ps','-aq']: print('abc')
-elif 'inspect' in args: print(os.environ.get('CONTAINERS','[]'))
+elif 'inspect' in args:
+ assert args[args.index('--format')+1]=='{{json .Config.Labels}}'
+ for item in json.loads(os.environ.get('CONTAINERS','[]')): print(json.dumps(item['Config']['Labels']))
 elif 'login' in args:
  assert sys.stdin.read()=='synthetic-ghcr-token'
  if os.environ.get('BAD_LOGIN'): sys.exit(1)

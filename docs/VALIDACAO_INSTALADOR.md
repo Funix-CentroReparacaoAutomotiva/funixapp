@@ -6,7 +6,7 @@ habilitação de deploy. O trabalho remoto limita-se à branch e PR desta entreg
 
 | Verificação | Resultado |
 |---|---|
-| `bash -n deploy/funix-install deploy/funix-deploy deploy/funix-ssh` | Passou |
+| `for script in deploy/funix-install deploy/funix-deploy deploy/funix-ssh; do bash -n "$script"; done` | Passou |
 | `python3 -m unittest discover -s deploy/tests -v` | 13 testes passaram: 6 do instalador e 7 de regressão do deploy existente |
 | Compose real 2.40.3 `config --quiet` | Passou com cópia temporária do Compose e runtime sintético; sem daemon, pull ou contêiner |
 | Diff | Sem erros de whitespace; Compose e scripts de deploy/SSH/sudoers existentes preservados |

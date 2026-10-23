@@ -15,7 +15,8 @@ não instala pacotes nem altera Docker, sshd, firewall, DNS ou Traefik.
 Confirmar pelo console existente a rede `traefik_default`, Docker provider,
 entrypoint `websecure` e resolver `letsencrypt`, capacidade livre e DNS/TLS de
 `app.funix.com.br`, conforme [guia existente](IMPLANTACAO_HOSTINGER.md).
-O instalador verifica a existência da rede e conflitos em labels de todos os
+O instalador lê apenas as labels (sem coletar ambientes/segredos de outros projetos),
+verifica a existência da rede e conflitos em labels de todos os
 contêineres, inclusive parados. Não consegue certificar regras em arquivos do
 Traefik, routers de outros providers, DNS ou certificados; esses itens continuam
 sendo conferência administrativa. Não corrigir serviços de terceiros para passar
@@ -151,7 +152,7 @@ continuam ações administrativas ocasionais, sem agente permanente.
 ## Testes reproduzíveis, sem VPS
 
 ```bash
-bash -n deploy/funix-install deploy/funix-deploy deploy/funix-ssh
+for script in deploy/funix-install deploy/funix-deploy deploy/funix-ssh; do bash -n "$script"; done
 python3 -m unittest discover -s deploy/tests -v
 ```
 
