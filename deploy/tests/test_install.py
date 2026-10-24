@@ -43,7 +43,9 @@ root=pathlib.Path(os.environ['TEST_ROOT']); host=pathlib.Path(os.environ['TEST_H
 name=pathlib.Path(sys.argv[0]).name; args=sys.argv[1:]
 with (root/'calls').open('a') as f: f.write(json.dumps([name, *args])+'\\n')
 if name=='getent': sys.exit(0 if os.environ.get('ACCOUNT') else 2)
-if name=='useradd': (host/'home/funix-deploy').mkdir(); sys.exit(0)
+if name=='useradd':
+ if os.environ.get('FAIL_USERADD'): sys.exit(73)
+ (host/'home/funix-deploy').mkdir(); sys.exit(0)
 if name in ['passwd','chown','visudo']: sys.exit(0)
 assert name=='docker'
 assert not set(args)&{'up','pull','stop','down','prune','restart','rm','run','create'}
@@ -91,8 +93,10 @@ else: assert args[-2:]==['config','--quiet']
         for variable, value in [('NO_NETWORK', '1'), ('VERSION', '2.29.0'), ('ACCOUNT', '1'), ('BAD_LOGIN', '1')]:
             with self.subTest(variable=variable):
                 self.env[variable] = value
-                self.assertNotEqual(self.run_install().returncode, 0)
+                result = self.run_install()
+                self.assertNotEqual(result.returncode, 0)
                 self.assert_clean()
+                self.assertNotIn('recuperação manual', result.stderr)
                 del self.env[variable]
 
     def test_conflicting_project_or_routes_including_stopped_containers(self):
@@ -118,6 +122,41 @@ else: assert args[-2:]==['config','--quiet']
             self.inputs = inputs
             self.assertNotEqual(self.run_install().returncode, 0)
             self.assert_clean()
+
+    def test_control_characters_and_multiline_passwords_are_rejected(self):
+        for char in [chr(n) for n in range(32)] + ['\x7f', '\x85', '\u2028', '\u2029']:
+            with self.subTest(control=repr(char)):
+                password = 'synthetic-password' + char + 'suffix'
+                self.inputs = self.key + '\n' + password + '\n' + password + '\nreader\nsynthetic-ghcr-token\n'
+                result = self.run_install()
+                self.assertNotEqual(result.returncode, 0)
+                self.assert_clean()
+                self.assertNotIn('synthetic-password', result.stdout + result.stderr)
+
+    def test_printable_password_characters_remain_literal(self):
+        password = " senha-ç-$#-\"-'=literal "
+        self.inputs = self.key + '\n' + password + '\n' + password + '\nreader\nsynthetic-ghcr-token\n'
+        result = self.run_install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        runtime = (self.host / 'etc/funix/runtime.env').read_text()
+        self.assertEqual(runtime.splitlines()[0], 'FUNIX_OPERATOR_PASSWORD=' + password)
+        self.assertEqual(len(runtime.splitlines()), 4)
+
+    def test_failure_after_writes_warns_and_preserves_partial_files(self):
+        self.env['FAIL_USERADD'] = '1'
+        result = self.run_install()
+        self.assertEqual(result.returncode, 73)
+        self.assertIn('recuperação manual', result.stderr)
+        self.assertIn('FUNIX_DEPLOY_ENABLED=false', result.stderr)
+        for path in ['opt/funix', 'etc/funix', 'var/lib/funix', 'home/funix-deploy', 'usr/local/sbin/funix-deploy', 'usr/local/sbin/funix-ssh', 'etc/sudoers.d/funix-deploy']:
+            self.assertIn(str(self.host / path), result.stderr)
+        self.assertTrue((self.host / 'etc/funix/runtime.env').is_file())
+        self.assertTrue((self.host / 'usr/local/sbin/funix-deploy').is_file())
+        self.assertFalse((self.host / 'home/funix-deploy').exists())
+        self.assertNotIn('synthetic-password', result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.root / 'calls').read_text().splitlines()]
+        login = next(call for call in calls if 'login' in call)
+        self.assertFalse(Path(login[login.index('--config') + 1]).parent.exists())
 
 
 if __name__ == '__main__':

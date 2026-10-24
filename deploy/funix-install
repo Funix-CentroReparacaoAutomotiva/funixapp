@@ -45,7 +45,20 @@ version=${version#v}
 [[ $(printf '%s\n' 2.30.0 "$version" | sort -V | head -n1) == 2.30.0 ]] || die 'Compose >= 2.30 necessário; Docker não será atualizado.'
 "${docker[@]}" network inspect traefik_default >/dev/null 2>&1 || die 'Rede traefik_default ausente; não será criada.'
 stage=$(mktemp -d)
-trap 'rm -rf -- "$stage"' EXIT
+permanent_started=false
+on_exit() {
+  local status=$?
+  if (( status != 0 )) && [[ $permanent_started == true ]]; then
+    printf '%s\n' \
+      'Instalação interrompida após iniciar a gravação permanente. Pode ser necessária recuperação manual.' \
+      'Revise somente os caminhos exclusivos FUNIX: /opt/funix, /etc/funix, /var/lib/funix, /home/funix-deploy,' \
+      '/usr/local/sbin/funix-deploy, /usr/local/sbin/funix-ssh e /etc/sudoers.d/funix-deploy; confira também o usuário/grupo funix-deploy.' \
+      'Nenhum arquivo permanente foi removido automaticamente. Mantenha FUNIX_DEPLOY_ENABLED=false e revise os artefatos antes de tentar novamente.' >&2
+  fi
+  rm -rf -- "$stage"
+  exit "$status"
+}
+trap on_exit EXIT
 ids=$("${docker[@]}" ps -aq)
 if [[ -n $ids ]]; then
   # Docker IDs are generated hex strings, never caller-supplied arguments.
@@ -58,9 +71,28 @@ read -r -p 'Cole a chave PÚBLICA Ed25519 dedicada ao Actions: ' public_key
 [[ $public_key =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+(\ .*)?$ && $public_key != *$'\r'* ]] || die 'Chave pública Ed25519 inválida (sem opções SSH).'
 printf '%s\n' "$public_key" > "$stage/key.pub"
 ssh-keygen -lf "$stage/key.pub" >/dev/null 2>&1 || die 'Chave pública inválida.'
-read -r -s -p 'Senha do operador FUNIX (12–256 caracteres): ' password; printf '\n'
-read -r -s -p 'Confirme a senha: ' confirmation; printf '\n'
-[[ ${#password} -ge 12 && ${#password} -le 256 && $password == "$confirmation" && $password != *$'\r'* ]] || die 'Senha inválida ou confirmação diferente.'
+# Read explicitly: Bash's ordinary read silently discards NUL bytes.
+read_password() {
+  local char
+  REPLY=
+  printf '%s' "$1" >&2
+  while true; do
+    IFS= read -r -s -n 1 -d '' char || die 'Entrada de senha interrompida.'
+    [[ $char != $'\n' ]] || break
+    [[ -n $char && ! $char =~ [[:cntrl:]] ]] || die 'Senha deve ser uma linha sem caracteres de controle.'
+    REPLY+=$char
+    (( ${#REPLY} <= 256 )) || die 'Senha deve ter 12–256 caracteres.'
+  done
+  printf '\n' >&2
+  # Reject Unicode controls and line separators as well, without argv/log exposure.
+  printf '%s' "$REPLY" | python3 -c 'import sys; s=sys.stdin.read(); sys.exit(0 if 12 <= len(s) <= 256 and s.isprintable() else 1)' || die 'Senha deve ter 12–256 caracteres imprimíveis, em uma única linha.'
+}
+read_password 'Senha do operador FUNIX (12–256 caracteres, sem controles): '
+password=$REPLY
+read_password 'Confirme a senha: '
+confirmation=$REPLY
+unset REPLY
+[[ $password == "$confirmation" ]] || die 'Senha inválida ou confirmação diferente.'
 printf 'FUNIX_OPERATOR_PASSWORD=%s\nCODA_API_TOKEN=\nFUNIX_CODA_FUNIL_VIEW_ID=\nFUNIX_CODA_ACOMPANHAMENTO_VIEW_ID=\n' "$password" > "$stage/runtime.env"
 unset password confirmation
 read -r -p 'Login GitHub da conta com leitura dos dois packages GHCR: ' registry_user
@@ -76,6 +108,7 @@ sed "s|/etc/funix/runtime.env|$stage/runtime.env|" "$src/compose.yaml" > "$stage
 FUNIX_RELEASE=preparation FUNIX_API_IMAGE=funix-api:preparation FUNIX_WEB_IMAGE=funix-web:preparation \
   "${docker[@]}" compose --project-name funixapp --file "$stage/compose.yaml" config --quiet
 # All preflight/input checks above precede persistent installation.
+permanent_started=true
 install -d -o root -g root -m 0755 /opt/funix
 install -d -o root -g root -m 0700 /etc/funix /etc/funix/registry /var/lib/funix /var/lib/funix/releases
 install -o root -g root -m 0644 "$src/compose.yaml" /opt/funix/compose.yaml

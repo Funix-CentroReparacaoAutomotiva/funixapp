@@ -38,3 +38,17 @@ Não validam DNS, TLS, capacidade livre, integração Coda ou recuperação de f
 de disco durante a gravação. Não foi construído novo container de infraestrutura.
 O CI existente do PR fará também as validações completas da aplicação e imagens.
 A VPS permanece reservada à execução futura autorizada.
+
+## Revisão final — 24/10/2026
+
+- 16 testes passaram: 9 do instalador e 7 de regressão do deploy. Sintaxe Bash
+  validada novamente; nenhuma mudança em Compose, arquitetura ou workflow.
+- Novos casos recusam todos os controles ASCII (NUL, LF, CR, tab, DEL e demais),
+  NEL e separadores Unicode de linha/parágrafo antes de criar arquivos permanentes.
+  Senhas imprimíveis com acentos, espaços, aspas, `$`, `#` e `=` mantêm valor literal.
+- Falha simulada no useradd, após gravação dos arquivos: mantém o código de erro,
+  informa recuperação manual e os caminhos exclusivos FUNIX, preserva os arquivos
+  parciais e remove somente o estágio temporário. Falha de preflight não recebe
+  aviso incorreto de instalação parcial.
+- A validação de falha de gravação é simulada em sandbox; não certifica falha de
+  disco real. Nenhum acesso à VPS, ativação de deploy ou integração do PR.

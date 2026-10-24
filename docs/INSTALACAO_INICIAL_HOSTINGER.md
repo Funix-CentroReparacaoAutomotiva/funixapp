@@ -29,7 +29,7 @@ no instalador.
 | PAT **fine-grained temporário** para baixar o código privado | Somente repositório `Funix-CentroReparacaoAutomotiva/funixapp`, **Contents: Read-only** (Metadata é automático), expiração curta. Informar no prompt de senha do Git; não usar token na URL, arquivo ou comando. Revogar após baixar. Não cadastrar no Actions nem no Docker. |
 | PAT **classic** de leitura GHCR | Apenas `read:packages`, sem `repo`, `write:packages` ou `delete:packages`. Preferir conta de serviço com acesso de leitura somente aos packages `funixapp-api` e `funixapp-web`. Autorizar SSO se exigido. O instalador solicita em prompt oculto e salva somente `/etc/funix/registry/config.json`, root 0600, diretório 0700. Base64 no Docker não é criptografia; proteger esse arquivo como senha. Fine-grained PAT não substitui o classic para GHCR. |
 | Par Ed25519 exclusivo do deploy | Criar em máquina administrativa segura. Privada apenas no Secret `FUNIX_VPS_SSH_KEY` do Environment `production`; pública no prompt do instalador. Nunca usar a chave root. Chave sem passphrase para o workflow atual, guardada no GitHub Secret. |
-| Senha exclusiva do operador | 12–256 caracteres; duas entradas ocultas no instalador. Fica apenas em `/etc/funix/runtime.env`, root 0600. Uma linha, sem CR/quebra de linha. `$`, `#`, espaços e aspas são literais no modo raw. |
+| Senha exclusiva do operador | 12–256 caracteres; duas entradas ocultas no instalador. Fica apenas em `/etc/funix/runtime.env`, root 0600. Uma única linha, somente caracteres imprimíveis; o instalador rejeita controles (incluindo NUL, CR, tab e DEL) e separadores Unicode de linha. `$`, `#`, espaços e aspas são literais no modo raw. |
 | Chave pública do host SSH verificada | Não é segredo de acesso, mas autentica a VPS. Cadastrar linha completa em `FUNIX_VPS_KNOWN_HOSTS`, após comparar fingerprint com o console Hostinger. Nunca confiar só em `ssh-keyscan`. |
 
 Gerar o par SSH na **máquina administrativa**, fora da VPS (um comando adicional):
@@ -115,7 +115,9 @@ Todas as verificações e entradas ocorrem antes da instalação persistente
 nem senha ao repetir a execução.
 
 Falha de disco/permissão no momento da gravação pode deixar instalação parcial.
-O instalador para e não desfaz automaticamente contas/arquivos: uma repetição
+O instalador informa no terminal que pode ser necessária recuperação manual e lista
+os caminhos exclusivos FUNIX e o usuário/grupo a conferir. Preserva o código de
+erro original e não exibe comandos ou segredos. Não desfaz contas/arquivos: uma repetição
 recusa os destinos existentes. Manter deploy desabilitado, revisar o erro e
 inventariar apenas os caminhos FUNIX acima e a conta recém-criada. O administrador
 deve decidir a recuperação/remoção dos artefatos parciais depois de conferir que
@@ -144,8 +146,10 @@ testes, build, publicação, deploy por digest, saúde, recuperação de falha d
 contêiner e verificação HTTPS/revisão continuam automáticos no pipeline atual.
 Falha de HTTPS externo não provoca rollback automático; consultar o guia.
 
-Mudanças futuras em Compose/scripts privilegiados exigem manutenção administrativa
-revisada; a chave de deploy só troca imagens. Não usar este instalador para
+**Atualizações comuns da aplicação são automáticas após a habilitação futura do
+deploy, a cada push aprovado na `main`. Alterações futuras em `compose.yaml` e
+scripts administrativos podem exigir intervenção manual para revisar e reinstalar
+os arquivos na VPS.** A chave de deploy só troca imagens; não atualiza esses arquivos. Não usar este instalador para
 sobrescrever a instalação. Renovação de PAT GHCR, rotação de senha/chave e Coda
 continuam ações administrativas ocasionais, sem agente permanente.
 
