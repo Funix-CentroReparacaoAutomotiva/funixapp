@@ -1,4 +1,4 @@
-# API — MVP Comercial FUNIX V1.0 / M1.1
+# API — MVP Comercial FUNIX V1.0 / M1.2
 
 API Node 24 existente com sessão de operador e banco SQLite próprio. A inicialização não instancia o adaptador Coda. O contrato antigo foi preservado em `historico/API_CODA_LEGADO.md`, sem validade como API ativa.
 
@@ -16,7 +16,7 @@ API Node 24 existente com sessão de operador e banco SQLite próprio. A inicial
 | `GET /api/atendimentos/:id` | Registro autenticado por UUID técnico; 404 se inexistente/inválido |
 | `PATCH /api/atendimentos/:id` | Atualiza campos permitidos e exige `revision`; 200 com registro persistido |
 | `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação; função operacional fora do MVP; nenhuma consulta Coda |
-| Outros métodos de negócio | 405; não há exclusão, envio, orçamento, agenda ou comando operacional |
+| Outros métodos de negócio | 405; não há exclusão de Atendimento, envio, orçamento, agenda ou comando operacional |
 
 Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInput`, `AtendimentoPatch`, `AtendimentoList` e `ATENDIMENTO_STAGES`. Os tipos antigos permanecem somente para o adaptador legado isolado.
 
@@ -43,3 +43,28 @@ Consultas parametrizadas; busca simples em textos normalizados para ignorar acen
 Erros usam `{error:{code,message,requestId}}`, sem SQL, caminhos de banco, senhas ou stack na resposta. Casos: 400 dados inválidos; 401 autenticação; 403 origem; 404 registro; 409 revisão; 413 tamanho; 415 JSON; 500 erro interno; 503 readiness indisponível. Nunca retornar sucesso vazio como recuperação de falha de armazenamento.
 
 Sessões permanecem em memória e reiniciar API exige novo login. Não há usuários/alçadas/SaaS. O limitador de login herdado usa endereço do peer, com as limitações atrás de proxy já documentadas. O banco persistido é independente da sessão.
+
+
+## M1.2 — catálogos e diagnósticos
+
+Todos os endpoints abaixo exigem sessão. POST, PATCH e DELETE exigem origem exata, JSON e corpo de até 64 KiB. Sem acesso externo. Tipos em `shared/commercial.ts`.
+
+| Endpoint | Contrato |
+|---|---|
+| `GET /api/catalogos` | `{items,hierarchy}`: todos os metadados comerciais locais e árvore V2 original |
+| `GET /api/catalogos/:id` | Item local; IDs V2 devem ser URL-encoded (`v2%3Acapo`) |
+| `POST /api/catalogos` | `{kind,name,status?,code?,serviceId?}`; 201. `kind`: peca/diagnostico/servico/dimensao; status padrão proposta |
+| `PATCH /api/catalogos/:id` | `{revision,name?,status?,active?}`; código, fonte, lado e serviço pai são imutáveis |
+| `GET /api/catalogos/:id/historico` | Revisões com data e metadados registrados; não é versão de orçamento |
+| `GET /api/atendimentos/:id/diagnosticos` | Itens da composição com serviços filhos |
+| `POST /api/atendimentos/:id/diagnosticos` | `{pieceCodes:[codigo]}` ou dois códigos em seleção conjunta; transacional/idempotente por peça física; retorna lista atual |
+| `PATCH /api/atendimentos/:id/diagnosticos/:itemId` | `{revision,diagnosisId?,notes?,enabled?,services?}`; substitui lista de serviços somente se fornecida |
+| `DELETE /api/atendimentos/:id/diagnosticos/:itemId` | `{revision}`; remove item e serviços filhos, sem alterar o Atendimento |
+
+Peças da V2 entram como proposta; `suggestion` preserva as sugestões originais. As 23 folhas sem código continuam apenas na navegação, bloqueadas para gravação. Cadastro manual exige código fornecido pelo operador; nunca geramos código físico. Demais catálogos começam vazios. Códigos físicos têm unicidade e não podem ser alterados pela API; nomes são textos, não chaves. Não se exclui cadastro: inativação preserva referências/histórico e impede novas seleções.
+
+Dimensão pertence a um serviço validado. Cada nova seleção exige tipo correto, ativo e validado. Não se criam relações automáticas entre dano e serviço. Referências anteriores a itens depois inativados são preservadas, identificadas na tela e podem ser editadas/removidas.
+
+Uma linha de serviço recebe `{id?,serviceId,dimensionId?,quantity,enabled?}`. ID omitido cria linha; ID informado precisa já pertencer a este item. `quantity` é **string decimal positiva**, com ponto, até nove dígitos inteiros e seis casas decimais (limite técnico de entrada). Exemplo `"0.250000"` é armazenado e retornado como `"0.25"`. Não é float nem valor monetário. Números JSON, zero, negativos, notação exponencial e precisão além do limite são rejeitados. Dimensão pode ficar pendente (`null`) neste rascunho sem emissão. Máximo 50 linhas de serviço por item e 8000 caracteres de observações.
+
+`enabled:false` mantém o diagnóstico e suas seleções; não pode liberar futuramente serviços filhos para precificação sem o pai ativo. Não existem valores totais, preços, fatores, etapas, emissão ou chamadas Coda nesta API. Falhas retornam os erros sanitizados existentes; 409 preserva dados sem sobrescrever.

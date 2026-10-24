@@ -5,7 +5,7 @@ import { api } from './api'
 import type { RequestFailure, Session } from './api'
 import { AtendimentoForm } from './AtendimentoForm'
 import { Icon, Login, Notice, RecordButton } from './ui'
-import carMap from './assets/car-map.svg'
+import { CommercialPanel } from './CommercialPanel'
 import './App.css'
 
 type Area = 'conversas' | 'funil'
@@ -35,6 +35,7 @@ function App() {
   const [failure, setFailure] = useState(''), [loading, setLoading] = useState(false), [loadingMore, setLoadingMore] = useState(false), [reload, setReload] = useState(0)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [copilotOpen, setCopilotOpen] = useState(false), [editor, setEditor] = useState<Editor | null>(null), [savedMessage, setSavedMessage] = useState('')
+  const [commercialVersion, setCommercialVersion] = useState(0)
   const dirty = useRef(false), saving = useRef(false)
   const viewport = useRef<HTMLDivElement>(null), board = useRef<HTMLDivElement>(null), modal = useRef<HTMLDivElement>(null)
   const positions = useRef(new Map<string, { top: number; left: number }>())
@@ -47,6 +48,7 @@ function App() {
   function canLeaveEditor() {
     if (saving.current) return false
     if (dirty.current && !window.confirm('Há alterações não salvas. Deseja descartá-las?')) return false
+    if (dirty.current) setCommercialVersion(value => value + 1)
     if (editor?.record) setReload(value => value + 1)
     dirty.current = false; setEditor(null); return true
   }
@@ -194,12 +196,12 @@ function App() {
         <header className="detail-header"><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div></header>
         <nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}</nav>
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
-          <div className="at-detail-tools"><span>{stageName}</span><button className="fh-filter" onClick={() => { setSavedMessage(''); setEditor({ record }) }}>Editar Atendimento</button></div>
+          <div className="at-detail-tools"><span>{stageName}</span><button className="fh-filter" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}>Editar Atendimento</button></div>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
           {tab === 'chat' ? <div className="detail-page chat-page"><div className="at-chat-scroll">
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
             <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
-          </div><div className="at-context-ai" aria-label="IA do Atendimento"><span>IA ainda indisponível</span><div><button disabled>Resumir</button><button disabled>Sugerir resposta</button><button disabled>Preencher dados</button></div></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio de mensagens ainda indisponível" disabled rows={1} /><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : tab === 'mapa' ? <div className="detail-page map-page"><p className="map-state">Mapa de referência · seleção de peças ainda indisponível</p><div className="map-shell"><img src={carMap} alt="Mapa visual do veículo da V20. Seleção de peças ainda indisponível." /></div><footer className="detail-footer"><button className="primary-btn" disabled>Criar orçamento</button></footer></div> : <div className="detail-page"><div className="diagnostics-body"><h1>Diagnósticos</h1><Notice title="Composição de diagnóstico ainda indisponível">Os catálogos próprios e o motor de orçamento serão desenvolvidos nas próximas entregas. O Atendimento já pode ser salvo e editado.</Notice><button className="codex-add" disabled>+ Adicionar item</button></div><footer className="detail-footer"><button className="primary-btn" disabled>Criar orçamento</button></footer></div>}
+          </div><div className="at-context-ai" aria-label="IA do Atendimento"><span>IA ainda indisponível</span><div><button disabled>Resumir</button><button disabled>Sugerir resposta</button><button disabled>Preencher dados</button></div></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio de mensagens ainda indisponível" disabled rows={1} /><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${tab}:${commercialVersion}`} atendimentoId={record.id} tab={tab} onDirty={onDirty} onBusy={onBusy} />}
         </>}
       </>}
     </div>

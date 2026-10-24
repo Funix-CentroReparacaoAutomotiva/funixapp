@@ -104,7 +104,7 @@ test('newer schema is refused without resetting data', () => {
   try {
     let db = openDatabase(temp.filename)
     const id = new AtendimentoRepository(db).create({ phone: '1' }).id
-    db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES (?,?)').run(2, 'future')
+    db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES (?,?)').run(999, 'future')
     db.close()
     assert.throws(() => openDatabase(temp.filename), /versão mais recente/)
     db = new DatabaseSync(temp.filename)

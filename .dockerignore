@@ -13,5 +13,7 @@
 !shared/**
 !server/
 !server/*.ts
+!server/data/
+!server/data/**
 !deploy/
 !deploy/nginx.conf

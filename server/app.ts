@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import type { AtendimentoRepository } from './atendimentos.ts'
+import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
 
 export interface AppOptions {
@@ -12,6 +13,7 @@ export interface AppOptions {
 }
 
 export function createRequestHandler(options: AppOptions) {
+  const commercial = new CommercialRepository(options.atendimentos.db)
   const now = options.now ?? Date.now
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
@@ -77,6 +79,33 @@ export function createRequestHandler(options: AppOptions) {
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
       if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
         return fail(req.method === 'GET' ? 410 : 405, 'FEATURE_UNAVAILABLE', 'Esta função operacional não pertence ao MVP Comercial. Nenhum acesso ao Coda foi realizado.')
+      }
+      const catalogCollection = url.pathname === '/api/catalogos'
+      const catalogRecord = /^\/api\/catalogos\/([^/]{1,180})(\/historico)?$/.exec(url.pathname)
+      const diagnoses = /^\/api\/atendimentos\/([^/]{1,100})\/diagnosticos(?:\/([^/]{1,100}))?$/.exec(url.pathname)
+      let catalogId = ''
+      if (catalogRecord) {
+        try { catalogId = decodeURIComponent(catalogRecord[1]!) }
+        catch { return fail(400, 'INVALID_PATH', 'Identificador inválido.') }
+      }
+      if (catalogCollection || catalogRecord || diagnoses) {
+        if (req.method === 'GET') {
+          if (catalogCollection) return send(200, commercial.catalogs())
+          if (catalogRecord) return send(200, catalogRecord[2] ? commercial.historyOf(catalogId) : commercial.item(catalogId))
+          if (diagnoses && !diagnoses[2]) return send(200, commercial.list(diagnoses[1]!))
+          return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        }
+        const permitted = (catalogCollection && req.method === 'POST') || (catalogRecord && !catalogRecord[2] && req.method === 'PATCH') || (diagnoses && (!diagnoses[2] ? req.method === 'POST' : ['PATCH','DELETE'].includes(req.method ?? '')))
+        if (!permitted) return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
+        const body = await readJson(req, 64 * 1024)
+        if (catalogCollection) return send(201, commercial.saveCatalog(body))
+        if (catalogRecord) return send(200, commercial.saveCatalog(body, catalogId))
+        if (diagnoses) {
+          if (!diagnoses[2]) return send(200, commercial.add(diagnoses[1]!, body))
+          return send(200, req.method === 'DELETE' ? commercial.remove(diagnoses[1]!, diagnoses[2]!, body) : commercial.updateDiagnosis(diagnoses[1]!, diagnoses[2]!, body))
+        }
       }
       const collection = url.pathname === '/api/atendimentos'
       const record = /^\/api\/atendimentos\/([^/]{1,100})$/.exec(url.pathname)

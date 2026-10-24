@@ -1,0 +1,47 @@
+M1.2 — arquivos da publicação para revisão
+Base: 3bf660eb5eb0500957a3f99552708d091a73b98b
+Branch: codex/m1-2-catalogos-diagnosticos
+Commit/publicação autorizados somente nesta branch; sem merge ou deploy.
+
+MODIFICADOS
+.dockerignore
+AGENTS.md
+Dockerfile
+README.md
+docs/API.md
+server/app.ts
+server/migrations.ts
+server/tests/app.test.ts
+server/tests/atendimentos.test.ts
+src/App.css
+src/App.tsx
+src/assets/car-map.svg
+
+NOVOS
+docs/M1_2_CATALOGOS_DIAGNOSTICOS.md
+docs/evidencias/m1-2/ARQUIVOS.txt
+docs/evidencias/m1-2/AUDITORIA.md
+docs/evidencias/m1-2/COMANDOS.md
+docs/evidencias/m1-2/CONFERENCIA_PUBLICACAO.txt
+docs/evidencias/m1-2/browser-execucao.txt
+docs/evidencias/m1-2/container-build.txt
+docs/evidencias/m1-2/container-smoke.txt
+docs/evidencias/m1-2/deploy-tests.txt
+docs/evidencias/m1-2/diagnostico-mobile-sintetico.png
+docs/evidencias/m1-2/hierarquia-sintetica.png
+docs/evidencias/m1-2/mapa-sintetico.png
+docs/evidencias/m1-2/npm-run-check.txt
+docs/evidencias/m1-2/regressao-m1-1.txt
+docs/evidencias/m1-2/regressao-m1-1/m1-desktop-funil-sintetico.png
+docs/evidencias/m1-2/regressao-m1-1/m1-mobile-atendimento-sintetico.png
+docs/evidencias/m1-2/regressao-m1-1/m1-mobile-edicao-sintetica.png
+docs/evidencias/m1-2/regressao-m1-1/resultados.json
+docs/evidencias/m1-2/resultados.json
+server/commercial.ts
+server/data/hierarquia-v2.json
+server/hierarchy.ts
+server/tests/commercial.test.ts
+server/tests/fixtures/m1_1_schema.sql
+shared/commercial.ts
+src/CommercialPanel.tsx
+tests/browser/m1_2_catalogos.py

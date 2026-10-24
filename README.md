@@ -1,8 +1,8 @@
-# FUNIX — MVP Comercial, V1.0 / M1.1
+# FUNIX — MVP Comercial, V1.0 / M1.2
 
 Primeiro subincremento M1: criar, salvar, pesquisar, abrir, editar e reabrir **Atendimentos no banco próprio**. React/TypeScript/Vite e API Node existentes foram reaproveitados, com a identidade V20. A origem dos dados agora é SQLite local; o MVP não consulta ou modifica Coda.
 
-A direção autorizou apenas desenvolvimento local e testes. Não houve push, deploy ou alteração de infraestrutura nesta entrega. O M1 completo ainda inclui composição, catálogos, motor, versões e PDF, que não foram implementados neste subincremento.
+O M1.1 foi auditado e aprovado no commit `3bf660eb5eb0500957a3f99552708d091a73b98b`. O M1.2 acrescenta catálogos e estrutura de diagnósticos, preservando os Atendimentos. A direção autorizou desenvolvimento, testes e publicação do M1.2 exclusivamente na branch `codex/m1-2-catalogos-diagnosticos` para auditoria. Não há autorização de merge ou deploy. Motor de preços, versões e PDF permanecem para revisão e incrementos posteriores.
 
 ## Executar localmente
 
@@ -34,7 +34,7 @@ npm run dev -- --port 5173 --strictPort
 
 Abra http://127.0.0.1:5173, entre, use **Novo Atendimento**, informe telefone e confirme. Nome, veículo informado, marca, modelo, placa, motivo e observações são opcionais. Use **Editar Atendimento** para completar os dados e **Salvar alterações** para confirmar. Busca, Quadro/Lista, colapso e retorno contextual usam registros próprios.
 
-A migração cria o banco na primeira execução; não há clientes de demonstração ou fallback remoto. Atendimentos salvos permanecem após fechar/reabrir o navegador ou reiniciar a API. A sessão fica em memória: após reiniciar a API, é necessário entrar novamente. Campos ainda não confirmados no formulário não são banco persistido; a interface avisa sobre alterações não salvas.
+A migração cria o banco na primeira execução e atualiza incrementalmente o M1.1 existente, sem recriar Atendimentos; não há clientes de demonstração ou fallback remoto. Atendimentos salvos permanecem após fechar/reabrir o navegador ou reiniciar a API. A sessão fica em memória: após reiniciar a API, é necessário entrar novamente. Campos ainda não confirmados no formulário não são banco persistido; a interface avisa sobre alterações não salvas.
 
 ## Limite funcional
 
@@ -42,7 +42,8 @@ A migração cria o banco na primeira execução; não há clientes de demonstra
 - Seis fases V1.0 persistidas, com mudanças manuais. Os prazos dos rótulos não movimentam contatos automaticamente.
 - Rejeitados exige recusa explícita e motivo; silêncio do cliente não vira perda.
 - Telefone repetido é permitido. O original é preservado; E.164 só é obtido quando há indicação internacional inequívoca, sem inventar DDI.
-- Chat, IA global/contextual, diagnóstico, mapa selecionável, motor de orçamento e envio ao ERP permanecem indisponíveis.
+- Mapa selecionável V20 e árvore V2, catálogo próprio e composição manual de diagnósticos/serviços/dimensões disponíveis. Abra um Atendimento → Diagnósticos ou Mapa → Catálogos para manter os dados. Valide a identificação das peças antes de selecioná-las.
+- Chat, IA global/contextual, motor de orçamento e envio ao ERP permanecem indisponíveis.
 - Chave técnica UUID não depende de placa/telefone. Nome legível com prefixo de origem definitivo ainda depende da escolha da direção.
 - Adaptador e testes Coda antigos estão isolados, sem uso no processo atual.
 
@@ -51,10 +52,11 @@ A migração cria o banco na primeira execução; não há clientes de demonstra
 ```bash
 npm run check
 python3 -m unittest discover -s deploy/tests -v
-python tests/browser/m1_atendimentos.py
+python3 tests/browser/m1_atendimentos.py
+python3 tests/browser/m1_2_catalogos.py
 ```
 
-O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências e resultados em `docs/M1_ATENDIMENTOS.md`.
+O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências M1.1 em `docs/M1_ATENDIMENTOS.md`; entrega M1.2, comandos e limitações em [docs/M1_2_CATALOGOS_DIAGNOSTICOS.md](docs/M1_2_CATALOGOS_DIAGNOSTICOS.md).
 
 ## Backup e restauração
 
@@ -76,8 +78,9 @@ A preparação anterior de Hostinger/GHCR permanece disponível como histórico 
 
 - `AGENTS.md`: autorização e precedência atuais.
 - `docs/especificacao-v1.0/FONTES.json`: SHA-256 dos originais V1.0, V0.9, V20, árvore V2 e referências institucionais.
-- `docs/M1_ATENDIMENTOS.md`: contrato técnico, execução, testes e pendências deste subincremento.
+- `docs/M1_ATENDIMENTOS.md`: entrega auditada M1.1.
+- `docs/M1_2_CATALOGOS_DIAGNOSTICOS.md`: entrega atual e evidências M1.2.
 - `docs/API.md`: API atual.
 - `docs/historico/`: orientações anteriores preservadas; não prevalecem sobre V1.0.
 
-Ordem oficial: **M1 Atendimento + orçamento → M2 Coda unidirecional → M3 WhatsApp real → M4 IA assistiva**. A entrega termina na revisão deste primeiro subincremento; não avançar automaticamente.
+Ordem oficial: **M1 Atendimento + orçamento → M2 Coda unidirecional → M3 WhatsApp real → M4 IA assistiva**. A entrega termina na revisão deste subincremento M1.2; não avançar automaticamente.

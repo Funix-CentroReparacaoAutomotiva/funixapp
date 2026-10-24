@@ -178,3 +178,46 @@ test('HTTPS production origin keeps secure cookies and reports readiness without
     assert.equal((await app.request('/api/session', { method: 'DELETE', headers: { Origin: 'http://app.funix.com.br' } })).status, 403)
   } finally { app.close() }
 })
+
+
+test('commercial APIs enforce authentication/origin/JSON and operate entirely locally with encoded V2 identifiers', async () => {
+  const app = start()
+  const oldFetch = globalThis.fetch
+  let network = 0
+  globalThis.fetch = async () => { network++; throw new Error('External network forbidden') }
+  try {
+    for (const path of ['/api/catalogos', '/api/catalogos/v2%3Acapo', '/api/atendimentos/synthetic/diagnosticos']) {
+      assert.equal((await app.request(path)).status, 401)
+    }
+    const cookie = await authenticate(app), headers = { Cookie: cookie }
+    const at = app.repository.create({ phone: '123' })
+    const path = `/api/atendimentos/${at.id}/diagnosticos`
+    const catalog = await (await app.request('/api/catalogos', { headers })).json()
+    assert.equal(catalog.items.length, 163)
+    const piece = catalog.items.find((item: { code: string }) => item.code === 'capo')
+    const itemPath = `/api/catalogos/${encodeURIComponent(piece.id)}`
+    assert.equal((await app.request(itemPath, { headers })).status, 200)
+    assert.equal((await app.request('/api/catalogos/%FF', { headers })).status, 400)
+    assert.equal((await app.write(path, 'POST', { pieceCodes: ['capo'] }, cookie)).status, 400)
+    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, status: 'validado' }, cookie, 'https://other.example')).status, 403)
+    assert.equal((await app.request(itemPath, { method: 'PATCH', headers: { ...headers, Origin: origin }, body: '{}' })).status, 415)
+    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, status: 'validado' }, cookie)).status, 200)
+    assert.equal((await (await app.request(itemPath + '/historico', { headers })).json()).length, 2)
+    assert.equal((await app.write(itemPath, 'DELETE', {}, cookie)).status, 405)
+    const add = await app.write(path, 'POST', { pieceCodes: ['capo'] }, cookie)
+    assert.equal(add.status, 200)
+    const item = (await add.json())[0]
+    const createdService = await app.write('/api/catalogos', 'POST', { kind: 'servico', name: 'Serviço sintético', status: 'validado' }, cookie)
+    assert.equal(createdService.status, 201)
+    const service = await createdService.json()
+    const itemUrl = `${path}/${item.id}`
+    assert.equal((await app.write(itemUrl, 'PATCH', { revision: 1, notes: 'Teste', services: [{ serviceId: service.id, quantity: '2' }] }, cookie)).status, 200)
+    assert.equal((await app.write(itemUrl, 'PATCH', { revision: 1, notes: 'Stale' }, cookie)).status, 409)
+    assert.equal((await app.write(itemUrl, 'PATCH', { revision: 2, notes: 'x'.repeat(70000) }, cookie)).status, 413)
+    assert.equal((await app.write(itemUrl, 'DELETE', { revision: 2 }, cookie, 'https://other.example')).status, 403)
+    assert.equal((await (await app.request(path, { headers })).json())[0].services.length, 1)
+    assert.equal((await app.write(itemUrl, 'DELETE', { revision: 2 }, cookie)).status, 200)
+    assert.deepEqual(await (await app.request(path, { headers })).json(), [])
+    assert.equal(network, 0)
+  } finally { globalThis.fetch = oldFetch; app.close() }
+})
