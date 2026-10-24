@@ -1,23 +1,28 @@
-# FUNIX — aplicativo operacional
+# FUNIX — MVP Comercial, V1.0 / M1.1
 
-Primeiro incremento em desenvolvimento: interface fiel à V20 e backend Node somente leitura. React + TypeScript + Vite existentes foram preservados. O Coda continua sendo a fonte de verdade; nenhum sistema produtivo foi alterado.
+Primeiro subincremento M1: criar, salvar, pesquisar, abrir, editar e reabrir **Atendimentos no banco próprio**. React/TypeScript/Vite e API Node existentes foram reaproveitados, com a identidade V20. A origem dos dados agora é SQLite local; o MVP não consulta ou modifica Coda.
 
-A direção confirmou a evolução para um ERP próprio em três blocos: **Comercial → Produção → Financeiro**. A etapa atual é revisar os fluxos comerciais e redesenhar os processos antes de fechar o banco e implementar a persistência própria. O mapa inicial fica em `docs/analise-funcional-comercial/MAPA_GERAL_COMERCIAL.md`. O aplicativo ainda é somente leitura; escopo, decisões e critérios estão em `docs/DECISAO_COMERCIAL_PRIMEIRO.md`.
+A direção autorizou apenas desenvolvimento local e testes. Não houve push, deploy ou alteração de infraestrutura nesta entrega. O M1 completo ainda inclui composição, catálogos, motor, versões e PDF, que não foram implementados neste subincremento.
 
-**Estado real:** base executável de desenvolvimento; consultas da investigação confirmadas via Superhuman Docs; conexão REST contínua do aplicativo ainda não provisionada neste ambiente. Sem credencial, o app informa indisponibilidade e não exibe clientes fictícios. Versionar no GitHub não publica o aplicativo para acesso pelo navegador. Não é uma versão homologada ou liberada para operação.
+## Executar localmente
 
-## Executar
-
-Requisitos: Node **24.19.x**, npm **11.9.x**.
+Requisitos: Node 24 e npm 11, conforme `.nvmrc` e `package.json`.
 
 ```bash
 npm ci
 cp .env.example .env
 ```
 
-Edite `.env` localmente: configure `FUNIX_OPERATOR_PASSWORD` com pelo menos 12 caracteres. Os campos de credencial devem ser preenchidos por meio seguro, fora do chat e do controle de versão. Sem senha configurada, o acesso fica fechado. O frontend não usa variáveis `VITE_` para secrets.
+No arquivo `.env`, configure `FUNIX_OPERATOR_PASSWORD` (12–256 caracteres). A senha é somente do backend; não a envie pelo chat ou Git. Configure os caminhos/origem se necessário:
 
-Em dois terminais, dentro da pasta do projeto:
+```dotenv
+FUNIX_APP_ORIGIN=http://127.0.0.1:5173
+FUNIX_API_PORT=8787
+FUNIX_API_HOST=127.0.0.1
+FUNIX_DATABASE_PATH=.runtime/funix.sqlite
+```
+
+Em dois terminais:
 
 ```bash
 npm run dev:api
@@ -27,51 +32,52 @@ npm run dev:api
 npm run dev -- --port 5173 --strictPort
 ```
 
-Abra `http://127.0.0.1:5173`. O Vite encaminha `/api` para `127.0.0.1:8787`. A origem deve ser idêntica a `FUNIX_APP_ORIGIN`; mudar host/porta exige ajustar essa configuração. O backend usa loopback e respeita o proxy do ambiente com `--use-env-proxy`. Esse setup é local, sem publicação externa.
+Abra http://127.0.0.1:5173, entre, use **Novo Atendimento**, informe telefone e confirme. Nome, veículo informado, marca, modelo, placa, motivo e observações são opcionais. Use **Editar Atendimento** para completar os dados e **Salvar alterações** para confirmar. Busca, Quadro/Lista, colapso e retorno contextual usam registros próprios.
 
-## Conectar leitura real
+A migração cria o banco na primeira execução; não há clientes de demonstração ou fallback remoto. Atendimentos salvos permanecem após fechar/reabrir o navegador ou reiniciar a API. A sessão fica em memória: após reiniciar a API, é necessário entrar novamente. Campos ainda não confirmados no formulário não são banco persistido; a interface avisa sobre alterações não salvas.
 
-1. Provisionar `CODA_API_TOKEN` no cofre/ambiente do backend com o menor privilégio disponível e acesso ao documento `2zsjI-nqWr`.
-2. Autorizar o destino oficial `https://coda.io` pela configuração de rede do ambiente; preservar proxy e TLS. A rede atual não estabelece acesso a esse destino.
-3. Confirmar por leitura os IDs REST das views. O conector observou Funil `table-cJ75t2m_-9` e Acompanhamento `table-wqS5r8cTUX`, mas a equivalência REST precisa de prova. Preencher `FUNIX_CODA_FUNIL_VIEW_ID` e `FUNIX_CODA_ACOMPANHAMENTO_VIEW_ID`. O adaptador valida os metadados antes de usar a consulta.
-4. Entrar e verificar registros reais, buscas, paginação e correspondência de IDs com o ERP. Essa validação ponta a ponta ainda não ocorreu no processo Node.
+## Limite funcional
 
-Não colocar o token no navegador, não copiar chaves do n8n nem executar webhooks produtivos como teste. O conector disponível ao agente não transfere suas credenciais ao código.
-
-## Comportamento deste incremento
-
-- Entrada Conversas / Funil / Veículos; moldura e identidade V20; Quadro/Lista; Kanban horizontal e recolhível.
-- Atendimento e Experiência têm rotas e contexto próprios. O cabeçalho usa o registro aberto. Retorno preserva o estado da área de origem.
-- Listagens consomem DTOs reais da API e carregam páginas. A busca atual é progressiva sobre as páginas consultadas; usar “Carregar mais” quando houver continuação. Contagens não representam total do ERP.
-- Conversas e Chat não usam a lista de leads como se fossem mensagens. Estão indisponíveis até auditar vínculos e a integração de comunicação.
-- Histórico depende da decisão sobre a divergência documentada em `docs/DECISOES_PENDENTES.md`; a API devolve `409 HISTORY_POLICY_PENDING`.
-- Copiloto começa por consulta e navegação explícitas. Não há IA, voz ou execução comercial simuladas.
-- Diagnósticos, envio, agendamento, emissão de PDF/OS, entrada/saída e alterações de fase não estão habilitados. As fórmulas operacionais não recebem gravação.
+- Somente Conversas e Funil; Veículos e Experiências foram retirados do produto ativo.
+- Seis fases V1.0 persistidas, com mudanças manuais. Os prazos dos rótulos não movimentam contatos automaticamente.
+- Rejeitados exige recusa explícita e motivo; silêncio do cliente não vira perda.
+- Telefone repetido é permitido. O original é preservado; E.164 só é obtido quando há indicação internacional inequívoca, sem inventar DDI.
+- Chat, IA global/contextual, diagnóstico, mapa selecionável, motor de orçamento e envio ao ERP permanecem indisponíveis.
+- Chave técnica UUID não depende de placa/telefone. Nome legível com prefixo de origem definitivo ainda depende da escolha da direção.
+- Adaptador e testes Coda antigos estão isolados, sem uso no processo atual.
 
 ## Verificar
 
 ```bash
 npm run check
+python3 -m unittest discover -s deploy/tests -v
+python tests/browser/m1_atendimentos.py
 ```
 
-O comando executa build e tipagem frontend, tipagem backend, testes Node isolados e lint. Os testes usam dados sintéticos e transporte controlado, sem chamar produção. Validam sessão, origem, métodos de escrita recusados, erros de configuração, mapeamento e paginação. Não comprovam autenticação remota, entrega WhatsApp, geração PDF ou homologação operacional.
+O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências e resultados em `docs/M1_ATENDIMENTOS.md`.
 
-A revisão de navegador usou Chromium em desktop 1440×960 e celular 390×844; a evidência e suas limitações ficam em `docs/VALIDACAO.md`. Mocks de QA não estão presentes na execução normal.
+## Backup e restauração
 
-## Documentos
+```bash
+npm run db:backup -- .runtime/backups/funix-revisao.sqlite
+```
 
-- `docs/ARQUITETURA_ATUAL.md`: arquitetura, ambiente, escopo e marcos verificáveis.
-- `docs/MAPA_DADOS_CODA.md`: tabelas, relações, fórmulas, views e riscos auditados.
-- `docs/INTEGRACOES.md`: workflows publicados, contratos e histórico observado.
-- `docs/DECISOES_PENDENTES.md`: conflitos e decisões materiais.
-- `docs/API.md`: contrato do backend e erros.
-- `docs/design/`: referência V20 e inspeção; protótipo não é aplicação integrada.
-- `docs/referencias/`: contexto institucional original, sem promoção automática a políticas vigentes.
+O comando lê a origem definida em `FUNIX_DATABASE_PATH`/`.env`, usa o backup consistente do SQLite e recusa destino existente. Arquivos reais e backups não entram no Git. Guarde cópia em local seguro além do disco de trabalho.
 
-## Próximo incremento e implantação
+Para restaurar: parar a API; preservar uma cópia do arquivo atual; substituir o arquivo definido em `FUNIX_DATABASE_PATH` por um backup compatível; restringir acesso ao proprietário; reiniciar e conferir os registros. Nunca restaurar copiando sobre banco aberto. Não remover arquivos/journals enquanto houver processo usando o banco.
 
-A preparação Docker Compose/Traefik/GHCR e o procedimento para a VPS existente estão em [docs/IMPLANTACAO_HOSTINGER.md](docs/IMPLANTACAO_HOSTINGER.md). A atualização remota fica bloqueada enquanto `FUNIX_DEPLOY_ENABLED` não for `true`; nenhuma implantação produtiva foi executada nesta preparação.
+## Implantação futura
 
-Revisar com a direção o mapa comercial e os subprocessos, começando pelo diagnóstico; derivar os contratos e o banco dos comportamentos suficientemente compreendidos. A implementação seguirá esses fluxos, preservando a V20. Provisionar leitura contínua, resolver Histórico e auditar comandos em ambiente seguro continuam sendo dependências para ampliar a integração; alterações de integrações produtivas não fazem parte da publicação inicial do código.
+O Compose atual não contém volume de banco e não foi modificado nesta tarefa. **Não implantar esta versão com o Compose antigo sem autorizar e configurar armazenamento durável.** Em produção, a API exige `FUNIX_DATABASE_PATH` explícito apontando para armazenamento persistente; isso impede iniciar silenciosamente com banco em memória. A configuração de um caminho não comprova, por si só, que exista volume/backups.
 
-A sessão atual é de desenvolvimento para um operador e fica em memória: reiniciar o backend encerra acessos. Antes de hospedagem externa, aprovar identidade/papéis e HTTPS, persistência/topologia de sessão, monitoramento, retenção de dados, teste seguro de integração e rollback. Não há comando de publicação produtiva neste pacote.
+A preparação anterior de Hostinger/GHCR permanece disponível como histórico técnico em `docs/IMPLANTACAO_HOSTINGER.md`; não constitui autorização para ativar esta versão. Secrets, VPS, DNS, Traefik e workflows produtivos ficaram inalterados.
+
+## Fontes e continuidade
+
+- `AGENTS.md`: autorização e precedência atuais.
+- `docs/especificacao-v1.0/FONTES.json`: SHA-256 dos originais V1.0, V0.9, V20, árvore V2 e referências institucionais.
+- `docs/M1_ATENDIMENTOS.md`: contrato técnico, execução, testes e pendências deste subincremento.
+- `docs/API.md`: API atual.
+- `docs/historico/`: orientações anteriores preservadas; não prevalecem sobre V1.0.
+
+Ordem oficial: **M1 Atendimento + orçamento → M2 Coda unidirecional → M3 WhatsApp real → M4 IA assistiva**. A entrega termina na revisão deste primeiro subincremento; não avançar automaticamente.

@@ -1,10 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
-import type { ReadRepository } from './repository.ts'
+import type { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
 
 export interface AppOptions {
-  repository: ReadRepository
+  atendimentos: AtendimentoRepository
   password?: string
   origin?: string
   revision?: string
@@ -16,7 +16,7 @@ export function createRequestHandler(options: AppOptions) {
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
   const cookieName = 'funix_session'
-  const configured = Boolean(options.password && options.password.length >= 12)
+  const configured = Boolean(options.password && options.password.length >= 12 && options.password.length <= 256)
   const salt = randomBytes(16)
   const expected = scryptSync(configured ? options.password! : randomBytes(32).toString('hex'), salt, 32)
   const sessions = new Map<string, number>()
@@ -35,10 +35,11 @@ export function createRequestHandler(options: AppOptions) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
-      if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'coda', configured: options.repository.configured }, readOnly: true })
+      if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
-        return send(200, { status: 'ready', revision: options.revision ?? null, readOnly: true })
+        try { options.atendimentos.ready() } catch { return fail(503, 'DATABASE_UNAVAILABLE', 'O armazenamento do aplicativo está indisponível.') }
+        return send(200, { status: 'ready', revision: options.revision ?? null, source: 'app', storage: 'sqlite' })
       }
       const cookie = req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1) ?? ''
       const authenticated = (sessions.get(cookie) ?? 0) > now()
@@ -61,16 +62,7 @@ export function createRequestHandler(options: AppOptions) {
         if (attempt.count >= 8) return fail(429, 'LOGIN_RATE_LIMIT', 'Muitas tentativas de acesso. Aguarde 15 minutos.')
         attempt.count += 1
         attempts.set(address, attempt)
-        let bytes = 0
-        const parts: Buffer[] = []
-        for await (const chunk of req) {
-          const buffer = Buffer.from(chunk)
-          bytes += buffer.length
-          if (bytes > 1024) throw new ServiceError(413, 'BODY_TOO_LARGE', 'Solicitação muito grande.')
-          parts.push(buffer)
-        }
-        let body: unknown
-        try { body = JSON.parse(Buffer.concat(parts).toString('utf8')) } catch { return fail(400, 'INVALID_JSON', 'JSON inválido.') }
+        const body = await readJson(req, 1024)
         const password = body && typeof body === 'object' && 'password' in body ? body.password : null
         if (typeof password !== 'string' || password.length > 256 || !timingSafeEqual(scryptSync(password, salt, 32), expected)) return fail(401, 'INVALID_CREDENTIALS', 'Senha incorreta.')
         attempts.delete(address)
@@ -82,28 +74,52 @@ export function createRequestHandler(options: AppOptions) {
         return send(200, { authenticated: true, configured })
       }
 
-      if (req.method !== 'GET') return fail(405, 'READ_ONLY', 'Este incremento permite apenas consultas. Nenhum dado operacional foi alterado.')
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      if (url.pathname === '/api/workspace') {
-        const area = url.searchParams.get('area') ?? 'funil'
-        const scope = url.searchParams.get('scope') ?? 'acompanhamento'
-        const q = url.searchParams.get('q') ?? ''
-        const cursor = url.searchParams.get('cursor')
-        const limitValue = url.searchParams.get('limit') ?? '50'
-        if (!['funil', 'veiculos'].includes(area) || !['acompanhamento', 'historico'].includes(scope) || q.length > 150 || (cursor?.length ?? 0) > 2048 || !/^\d+$/.test(limitValue)) return fail(400, 'INVALID_QUERY', 'Parâmetros de consulta inválidos.')
-        const limit = Number(limitValue)
-        if (limit < 1 || limit > 100) return fail(400, 'INVALID_QUERY', 'O limite deve estar entre 1 e 100.')
-        if (area === 'veiculos' && scope === 'historico') return fail(409, 'HISTORY_POLICY_PENDING', 'O Histórico aguarda validação: a vista atual do ERP inclui experiências sem saída registrada.')
-        return send(200, await options.repository.workspace({ area: area as 'funil' | 'veiculos', scope: scope as 'acompanhamento' | 'historico', q, cursor, limit }))
+      if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
+        return fail(req.method === 'GET' ? 410 : 405, 'FEATURE_UNAVAILABLE', 'Esta função operacional não pertence ao MVP Comercial. Nenhum acesso ao Coda foi realizado.')
       }
-      const record = /^\/api\/(atendimentos|experiencias)\/(i-[\w-]{1,100})$/.exec(url.pathname)
-      if (record) return send(200, await options.repository.record(record[1] === 'atendimentos' ? 'atendimento' : 'experiencia', record[2]!))
+      const collection = url.pathname === '/api/atendimentos'
+      const record = /^\/api\/atendimentos\/([^/]{1,100})$/.exec(url.pathname)
+      if (collection && req.method === 'GET') {
+        const q = url.searchParams.get('q') ?? ''
+        const limit = url.searchParams.get('limit') ?? '50'
+        const offset = url.searchParams.get('offset') ?? '0'
+        if (!/^\d+$/.test(limit) || !/^\d+$/.test(offset)) return fail(400, 'INVALID_QUERY', 'Parâmetros de busca inválidos.')
+        return send(200, options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) }))
+      }
+      if (record && req.method === 'GET') return send(200, options.atendimentos.get(record[1]!))
+      if ((collection && req.method === 'POST') || (record && req.method === 'PATCH')) {
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
+        const body = await readJson(req, 64 * 1024)
+        if (collection) return send(201, options.atendimentos.create(body))
+        return send(200, options.atendimentos.update(record![1]!, body))
+      }
+      if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')
     } catch (error) {
       if (error instanceof ServiceError) return fail(error.status, error.code, error.message)
       return fail(500, 'INTERNAL_ERROR', 'Não foi possível concluir a consulta. Use o identificador da solicitação para suporte.')
     }
   }
+}
+
+async function readJson(req: IncomingMessage, maximum: number): Promise<unknown> {
+  let bytes = 0
+  const parts: Buffer[] = []
+  // Do not destroy the HTTP socket when rejecting an oversized streamed body:
+  // the caller still needs to receive the JSON 413 response.
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    const buffer = Buffer.from(chunk)
+    bytes += buffer.length
+    if (bytes > maximum) {
+      req.resume()
+      throw new ServiceError(413, 'BODY_TOO_LARGE', 'Solicitação muito grande.')
+    }
+    parts.push(buffer)
+  }
+  try { return JSON.parse(Buffer.concat(parts).toString('utf8')) }
+  catch { throw new ServiceError(400, 'INVALID_JSON', 'JSON inválido.') }
 }
 
 export function createApp(options: AppOptions) { return createServer(createRequestHandler(options)) }

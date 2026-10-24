@@ -1,5 +1,7 @@
 # FUNIX — arquitetura do primeiro incremento
 
+> REGISTRO HISTÓRICO DE 21/10/2026. O caminho de execução mudou no primeiro subincremento M1 V1.0: API e interface usam SQLite próprio, sem leitura Coda. Arquitetura e limites atuais em `M1_ATENDIMENTOS.md` e `API.md`. Este documento preserva a evidência anterior, não define o escopo vigente.
+
 Data: 21/10/2026, America/Sao_Paulo. Estado: IMPLEMENTADO em desenvolvimento; não HOMOLOGADO.
 
 ## Escopo e autoridade

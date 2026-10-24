@@ -1,5 +1,7 @@
 # Implantação FUNIX na Hostinger
 
+> ATUALIZAÇÃO M1.1 V1.0: a nova API usa SQLite próprio e exige `FUNIX_DATABASE_PATH` em produção. O Compose anterior abaixo não contém volume de banco e não foi alterado neste subincremento. Não implantar a versão M1.1 por este roteiro sem autorizar e preparar armazenamento persistente/backup. Ver `M1_ATENDIMENTOS.md`. Nenhum deploy foi realizado nesta tarefa.
+
 Estado: preparação para revisão; implantação real não executada. A VPS não foi acessada e DNS, regras efetivas do Traefik e credenciais remotas não foram verificados nesta etapa.
 
 ## Arquitetura

@@ -1,0 +1,180 @@
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:185: trailing whitespace.
++**UX01 — Qual é o destino da aba Veículos na primeira versão?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:186: trailing whitespace.
++Resposta: Outro caminho — descrever nas observações  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:187: trailing whitespace.
++Observação do proprietário: Remover completamente a aba veículos  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:189: trailing whitespace.
++**UX02 — O que ocorre ao abrir uma conversa sem Atendimento vinculado?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:190: trailing whitespace.
++Resposta: Criar automaticamente Atendimento ao receber a primeira mensagem  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:191: trailing whitespace.
++Observação do proprietário: É obrigatório existir um atendimento. Ele nasce desde a primeira interação com o cliente. Pode haver atendimento sem chat. Mas nunca chat sem atendimento.  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:193: trailing whitespace.
++**UX03 — Quais colunas devem aparecer no Kanban comercial?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:194: trailing whitespace.
++Resposta: Definirei minha sequência nas observações  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:195: trailing whitespace.
++Observação do proprietário: Novo lead, aguardando dados, Em negociação (24h), Morno (3 dias), Frio (5 dias), Rejeitados   
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:197: trailing whitespace.
++**UX04 — Depois de transferido ao ERP, o Atendimento permanece no Funil?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:198: trailing whitespace.
++Resposta: Fica pesquisável no histórico comercial local; sai do Kanban ativo  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:200: trailing whitespace.
++**UX05 — Como conciliar o Copiloto global com a barra IA dentro do Chat?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:201: trailing whitespace.
++Resposta: Manter ambos: botão global para consulta/navegação e barra interna para ações no Chat atual  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:205: trailing whitespace.
++**CH01 — Qual número/canal será conectado primeiro?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:206: trailing whitespace.
++Resposta: Número atual de atendimento da FUNIX, após teste técnico seguro  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:208: trailing whitespace.
++**CH02 — Você precisa continuar usando WhatsApp no celular/WhatsApp Web em paralelo?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:209: trailing whitespace.
++Resposta: Sim, o aplicativo novo não pode interromper o WhatsApp atual  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:211: trailing whitespace.
++**CH03 — Qual histórico de mensagens o Chat deve mostrar quando entrar em operação?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:212: trailing whitespace.
++Resposta: Começar com mensagens recebidas a partir da ativação; histórico anterior fica no canal antigo  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:214: trailing whitespace.
++**CH04 — Quais formatos RECEBIDOS devem ser utilizáveis na primeira fase do Chat?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:215: trailing whitespace.
++Resposta: Texto, fotografias, áudios, vídeos e documentos já na primeira fase  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:217: trailing whitespace.
++**CH05 — Quais formatos você quer ENVIAR pelo aplicativo no MVP?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:218: trailing whitespace.
++Resposta: Texto, fotos, vídeos, áudios e documentos desde o início  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:220: trailing whitespace.
++**CH06 — Como relacionar conversas a Atendimentos?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:221: trailing whitespace.
++Resposta: Outra regra  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:222: trailing whitespace.
++Observação do proprietário: Eu não entendi o que quis dizer com mais recente nesta msg: "Vincular automaticamente ao Atendimento mais recente e permitir corrigir". Mas o que deve acontecer é, recebeu um chat, pesquisa se a pessoa já tem um atendimento em aberto. Não tem? Cria um novo atendimento. Já tem? Ok, esta interação pertence a este atendimento em aberto.  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:224: trailing whitespace.
++**CH07 — É importante iniciar uma nova conversa com alguém que ainda não escreveu?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:225: trailing whitespace.
++Resposta: Sim, por telefone, quando o canal permitir; informar claramente qualquer restrição  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:227: trailing whitespace.
++**CH08 — O que deve existir em mensagens rápidas/modelos prontos?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:228: trailing whitespace.
++Resposta: Manter respostas prontas editáveis; tocar preenche a caixa e exige envio humano  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:230: trailing whitespace.
++**CH09 — Que confirmação de mensagem é indispensável para considerar o Chat utilizável?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:231: trailing whitespace.
++Resposta: Enviando, enviada/aceita pelo provedor, falhou; recebida/lida quando o provedor fornecer esses eventos  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:235: trailing whitespace.
++**IA01 — Quais são as três funções de IA mais importantes na primeira entrega assistiva?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:236: trailing whitespace.
++Resposta: Resumir conversas, sugerir respostas e propor preenchimento do Atendimento  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:238: trailing whitespace.
++**IA02 — A quais informações a IA terá acesso em cada interação?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:239: trailing whitespace.
++Resposta: Por padrão, Chat atual + Atendimento selecionado; Copiloto global consulta outros registros somente quando solicitado  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:241: trailing whitespace.
++**IA03 — A IA pode escrever diretamente nos campos do Atendimento?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:242: trailing whitespace.
++Resposta: A IA propõe valores; o operador confirma antes de gravar  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:244: trailing whitespace.
++**IA10 — A IA poderá enviar mensagens ao cliente sem aprovação humana?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:245: trailing whitespace.
++Resposta: Não: a IA apenas escreve sugestões; o operador revisa e clica Enviar  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:247: trailing whitespace.
++**IA04 — Quando a IA deve oferecer sugestões durante o Chat?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:248: trailing whitespace.
++Resposta: Somente quando acionada; exibir pequeno indicador quando houver proposta preparada  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:250: trailing whitespace.
++**IA05 — Você quer transcrição de áudios recebidos?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:251: trailing whitespace.
++Resposta: Sim: transcrever automaticamente áudios recebidos  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:253: trailing whitespace.
++**IA06 — A IA deve analisar fotos do veículo para auxiliar no diagnóstico?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:254: trailing whitespace.
++Resposta: Não no MVP: usar IA apenas textual e áudio  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:256: trailing whitespace.
++**IA07 — Até onde vai a atuação do Copiloto global?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:257: trailing whitespace.
++Resposta: Pesquisar, resumir e navegar; pode sugerir alterações, mas executa só após confirmação  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:259: trailing whitespace.
++**IA08 — O botão Áudio da IA representa qual experiência?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:260: trailing whitespace.
++Resposta: Ditar instruções/perguntas para o Copiloto (voz → texto); resposta em texto  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:262: trailing whitespace.
++**IA09 — A IA deve usar os documentos internos FUNIX como conhecimento para responder?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:263: trailing whitespace.
++Resposta: Sim, como orientação conceitual, separando regras aprovadas de fatos de cada Atendimento  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:267: trailing whitespace.
++**OR01 — O Mapa do veículo deve funcionar como entrada para selecionar peças/diagnósticos?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:268: trailing whitespace.
++Resposta: Sim; clicar no mapa facilita selecionar, e a lista de Diagnósticos permite editar tudo  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:270: trailing whitespace.
++**OR02 — Como adicionar itens que não aparecem no desenho do carro?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:271: trailing whitespace.
++Resposta: Outro caminho  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:272: trailing whitespace.
++Observação do proprietário: Existiriam itens de sub-grupos. Aí ao clicar neles devem abrir os componentes daquele grupo.  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:273: trailing whitespace.
++Seria fundamental eu criar um documento que apresenta toda esta hierarquia.   
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:275: trailing whitespace.
++**OR03 — Como o operador acessará e comparará versões emitidas do orçamento?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:276: trailing whitespace.
++Resposta: Painel/lista de versões no Atendimento; abrir, comparar e escolher a versão para enviar  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:278: trailing whitespace.
++**OR04 — Qual formato de orçamento o cliente precisa receber?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:279: trailing whitespace.
++Resposta: PDF padrão, visualizável e enviável pelo Chat; manter prévia no aplicativo  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:281: trailing whitespace.
++**OR05 — Como reconhecer e registrar que o cliente aprovou uma versão?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:282: trailing whitespace.
++Resposta: Basta marcar Aprovado, sem evidência vinculada  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:284: trailing whitespace.
++**OR06 — De onde virá o catálogo inicial (serviços, dimensões, fatores e etapas)?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:285: trailing whitespace.
++Resposta: Outro caminho  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:286: trailing whitespace.
++Observação do proprietário: Eu irei desenvolver as tabelas iniciais, uma vez que o sistema esta passando por melhorias, não sei se as tabelas do CODA serão adequadas.  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:288: trailing whitespace.
++**OR07 — Como pretende atualizar tabelas de preços e catálogos após a implantação?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:289: trailing whitespace.
++Resposta: Tela simples de manutenção no próprio App, restrita ao operador; registrar data/versão de alterações relevantes  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:291: trailing whitespace.
++**OR08 — A nomenclatura comercial deve reproduzir exatamente o Coda antes do MVP?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:292: trailing whitespace.
++Resposta: Outra regra  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:293: trailing whitespace.
++Observação do proprietário: A nomenclatura deve ter apenas uma diferênça. O id do atendimento deve ter algum modificador no começo para deixar claro q ele foi gerado no app.  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:297: trailing whitespace.
++**ERP01 — Em que momento o botão Enviar ao ERP deve ser usado?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:298: trailing whitespace.
++Resposta: Disponível para a versão emitida selecionada, com confirmação explícita do operador  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:300: trailing whitespace.
++**ERP02 — Se o pacote já foi enviado, como lidar com nova versão ou novo envio?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:301: trailing whitespace.
++Resposta: Permitir envio manual de outra versão, com aviso de envio anterior e identificador próprio  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:303: trailing whitespace.
++**ERP03 — Você precisa trazer Atendimentos antigos do Coda para o novo App?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:304: trailing whitespace.
++Resposta: Outro recorte  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:305: trailing whitespace.
++Observação do proprietário: Não precisa trazer nenhum Atendimento do Coda.   
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:309: trailing whitespace.
++**LAN01 — Qual é o primeiro resultado de negócio que você quer homologar?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:310: trailing whitespace.
++Resposta: Outra prioridade  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:311: trailing whitespace.
++Observação do proprietário: 1 - Criação de atendimento e motor de orçamento  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:312: trailing whitespace.
++2 - Integração com o Coda  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:313: trailing whitespace.
++3 - Receber/responder chat do whatsapp  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:314: trailing whitespace.
++4 - Implementação de IA  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:316: trailing whitespace.
++**LAN02 — Como prefere fazer o primeiro teste com mensagens reais?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:317: trailing whitespace.
++Resposta: Primeiro no número principal, mantendo processo antigo como contingência  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:319: trailing whitespace.
++**LAN03 — Qual fidelidade visual deve ser exigida no primeiro MVP?**  
+docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md:320: trailing whitespace.
++Resposta: Manter estrutura, identidade e navegação V20; ajustar componentes pontualmente para comportamentos reais  
+docs/especificacao-v1.0/originais/FUNIX_V20_Menu_Compacto_Kanban.html:705: trailing whitespace.
++<!-- 

@@ -1,37 +1,35 @@
-# AGENTS.md — Aplicativo FUNIX
+# AGENTS.md — FUNIX, V1.0 / primeiro subincremento M1
 
-Localização neste checkout: guia e prompt em `docs/`, V20 em `docs/design/` e referências em `docs/referencias/`. Os anexos originais foram preservados nesses diretórios. O backend é apenas de leitura; não habilitar comandos sem auditoria e autorização específicas.
+## Autoridade e limite autorizado
 
-## Direção atual do projeto
+A direção/CTO autorizou implementar **somente o primeiro subincremento M1**: criar, salvar, pesquisar, abrir, editar e reabrir Atendimentos no banco próprio. Ao concluir testes e apresentação, parar para revisão. Não fazer push, deploy, mudança de VPS/DNS/Cloudflare, alterações de credenciais, leitura/escrita produtiva Coda ou mutações de integrações sem autorização expressa.
 
-A direção confirmou nesta conversa o objetivo de substituir integralmente o Coda por um ERP próprio, em três blocos: **Comercial → Produção → Financeiro**. O primeiro bloco se chama **Módulo Comercial do ERP FUNIX**. Ver `docs/DECISAO_COMERCIAL_PRIMEIRO.md` para distinguir decisões confirmadas, propostas técnicas e estado implementado. O novo comercial será desenvolvido para persistência própria; a premissa de Coda como fonte inicial continua valendo para os registros legados e a operação ainda não migrada. A aprovação dessa direção não autoriza migração de dados ou mutações produtivas indiscriminadas. O código atual continua sendo uma base de leitura.
+Fontes atuais em `docs/especificacao-v1.0/originais/`: especificação unificada V1.0, respostas explícitas V1.0, V0.9 aprovada e V20. `FONTES.json` registra SHA-256 dos 20 originais recebidos. As respostas mais recentes e a autorização do CTO prevalecem sobre escopos antigos. A V20 determina identidade visual, com adaptações pontuais aprovadas na V1.0. A V0.9 determina regras comerciais futuras; comentários históricos não são regras vigentes. Documentos institucionais dão contexto, sem gerar funcionalidades automaticamente.
 
-A direção solicitou, antes da modelagem física e da migração, **análise funcional e redesenho dos processos comerciais**. Preservar resultados e regras de negócio válidas; reconstruir mecanismos que existam por limitações do Coda. Não transportar tabelas de interface, buscas pela última linha ou cadeias auxiliares como requisitos do novo sistema. Consultar `docs/analise-funcional-comercial/ESPECIFICACAO_FUNCIONAL.md` e o primeiro caso `REDESENHO_DIAGNOSTICO.md`. São estudos em elaboração; não representam processos redesenhados homologados nem autorizam alterações produtivas. Preservar a V20.
+O antigo AGENTS foi preservado em `docs/historico/AGENTS_ANTES_V1_0.md`. Pareceres antigos de arquitetura, transferência por agendamento, sincronização operacional e divisão Comercial/Produção/Financeiro são históricos, não o contrato atual deste MVP.
 
-## Fonte primária de implementação
+## Produto e sequência oficial
 
-Leia `GUIA_MESTRE_CODEX_APP_FUNIX.md` e abra `FUNIX_V20_Menu_Compacto_Kanban.html`. A V20 é o contrato inicial de UX (protótipo, não backend). O Coda FUNIX é o registro inicial das operações reais. Consulte `referencias/00_master_index.md` e as referências 01–10 dessa pasta. Não confunda hipótese/protótipo com capacidade implantada ou política aprovada.
+- **M1:** Atendimento + composição/motor de orçamento, desenvolvido por subincrementos revisados.
+- **M2:** integração unidirecional Coda, primeiro simulada e depois autorizada separadamente.
+- **M3:** Chat real WhatsApp, preservando o canal atual e mostrando somente eventos reais.
+- **M4:** IA assistiva com confirmação humana para alterações/envios.
 
-## Invariantes de produto
+O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não importa Atendimentos legados nem acompanha operação. Sem Veículos, Experiências, agenda, OS, Produção ou Financeiro no MVP. Enviar ao ERP não é agendar. Não desenvolver esses recursos nesta etapa.
 
-- Início = Conversas | Funil | Veículos; Histórico dentro de Veículos.
-- Conversas abre Atendimento; interior do Atendimento preserva Chat | Mapa | Diagnósticos da V18 integrada à V20.
-- Funil = Atendimentos. Acompanhamento/Histórico = Experiências.
-- Atendimento pode existir sem Experiência; ao agendar, regra de negócio 1:1. Não duplicar Experiências.
-- Chat↔Atendimento: relação conceitual N:N, com escopo de mensagens e desambiguação.
-- Cliente/Veículo: cadastros estruturados incrementais, sem forçar criação no primeiro contato.
-- Copiloto global/contextual: começar com busca, filtros e navegação; alterações somente via comandos autorizados.
-- Preservar layout V20; Kanban horizontal/recolhível e Quadro/Lista; seta de retorno contextual no header; sem barras desnecessárias.
+## Contrato deste subincremento
 
-## Regras de engenharia
+- Reaproveitar React/TypeScript/Vite/backend Node; não reconstruir do zero.
+- SQLite próprio via Node 24, migração versionada, dados fora do Git e sem fallback Coda.
+- Telefone obrigatório na criação manual; demais campos comerciais opcionais e textuais. Telefone não é identidade civil nem chave única. Não inferir DDI de número ambíguo.
+- UUID técnico estável independente de telefone/placa. Prefixo legível definitivo ainda requer confirmação; não inventar sequência Coda.
+- Entrada somente Conversas e Funil. Chat e IA global/contextual explicitamente indisponíveis, sem simulações. Preservar identidade V20, Kanban horizontal/recolhível, Quadro/Lista, retorno contextual e cabeçalho coerente.
+- Fases visíveis exatas: Novo lead; Aguardando dados; Em negociação (24h); Morno (3 dias); Frio (5 dias); Rejeitados. Sem avanço automático por tempo. Rejeição exige recusa explícita e motivo; ausência de resposta não vira perda.
+- Sem motor de orçamento, catálogos, snapshots, PDF, WhatsApp ou IA neste subincremento. Acesso aos originais foi confirmado, mas hierarquia V2 é proposta, não catálogo validado.
+- Persistência confirmada pelo backend é distinta de formulário ainda não salvo. Falhas devem preservar o formulário, com status verdadeiro, sem gravação fictícia.
 
-- Auditar Coda (fórmulas, botões, tipos e relações) antes de escrever; nenhuma mutação produtiva sem aprovação/ambiente seguro.
-- `fase_Operacional` é calculada; não gravá-la para simular drag-and-drop. Agendamento `at_Agendar` e fluxo Atendimento→Orçamento→PDF→OS exigem auditoria.
-- Coda permanece source of truth inicialmente; não migrar banco sem decisão. Segredos apenas no backend; autenticação, autorização, LGPD, logs mínimos, idempotência, recuperação e testes.
-- Inventariar integrações verificáveis (Coda/Superhuman Docs, Evolution API, n8n, Redis, jsreport, Imagine.io e outras), sem presumir status.
-- Não deixar o array fictício V20, chat de exemplo ou IA simulada em produção. Se integração não disponível, sinalizar mock claramente e isolar em adaptadores.
-- Entregar incrementos executáveis com evidências de teste, limitações conhecidas e instruções de execução.
+## Engenharia e validação
 
-## Decisões e exceções
+Manter autenticação existente e validação de origem em escritas. SQL parametrizado, limites de entrada, erros sanitizados e dados sintéticos nos testes. Nenhum segredo no frontend/Git/logs. Não usar localStorage como banco comercial. Gravações de Atendimento são locais; ações externas continuam indisponíveis.
 
-Perguntar ao responsável quando houver risco material de dados, dinheiro, segurança, conformidade ou mudança do desenho aprovado. Preferir alterações reversíveis e simples. Preservar histórico e autorizações comerciais/operacionais; IA não aprova escopo, preço, serviço ou entrega sem autorização adequada.
+Executar `npm run check`, testes de persistência com arquivo real/reinício e QA de navegador conforme documentação do subincremento. Distinguir testes executados de requisitos futuros. Banco de produção exigirá armazenamento durável autorizado; não alterar infraestrutura nem implantar esse banco nesta tarefa. Não misturar dados de teste ao banco normal.

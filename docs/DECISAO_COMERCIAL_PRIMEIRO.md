@@ -1,5 +1,7 @@
 # Módulo Comercial do ERP FUNIX — direção e próximo incremento
 
+> HISTÓRICO, SUPERADO NO RECORTE DO MVP V1.0. O CTO autorizou o primeiro subincremento M1 em 24/10/2026. A ordem atual é M1 Atendimento/orçamento → M2 Coda unidirecional → M3 WhatsApp → M4 IA. Não usar as propostas abaixo de PostgreSQL, agendamento ou sincronização como requisitos atuais. Ver `M1_ATENDIMENTOS.md`, `especificacao-v1.0/` e `../AGENTS.md`.
+
 Data: 21/10/2026. Registro da direção confirmada na conversa; não representa implantação, migração ou homologação.
 
 ## Confirmado pela direção

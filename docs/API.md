@@ -1,47 +1,45 @@
-# Contrato do backend — primeiro incremento
+# API — MVP Comercial FUNIX V1.0 / M1.1
 
-**IMPLEMENTADO / TESTADO localmente:** API Node 24 sem dependências de servidor, com autenticação de desenvolvimento e apenas consultas de negócio. **NÃO HOMOLOGADO:** não houve chamada da aplicação à API REST oficial do Coda; o acesso real do conector Superhuman Docs é distinto dessa conexão contínua.
+API Node 24 existente com sessão de operador e banco SQLite próprio. A inicialização não instancia o adaptador Coda. O contrato antigo foi preservado em `historico/API_CODA_LEGADO.md`, sem validade como API ativa.
 
-Servidor padrão `127.0.0.1:8787`, acessado pelo proxy `/api` do Vite. Execute `npm run dev:api` e `npm run dev` em terminais separados. O processo usa `--use-env-proxy` para preservar proxy e confiança TLS do ambiente. Configure `.env` a partir de `.env.example`; valores secretos nunca usam prefixo `VITE_`.
+## Rotas
 
-| Rota | Resposta / comportamento |
-| --- | --- |
-| `GET /api/health` | Disponibilidade do processo e presença de configuração Coda; não comprova autorização remota. Sem registros pessoais. |
-| `GET /api/ready` | Readiness sem login: exige autenticação configurada e informa revisão de implantação. Não consulta Coda nem expõe credenciais. |
-| `GET /api/session` | `{ authenticated, configured }`; `configured` indica senha local com pelo menos 12 caracteres. |
-| `POST /api/session` | JSON `{ password }`. Exige `Origin` igual a `FUNIX_APP_ORIGIN`. Cria sessão de oito horas. |
-| `DELETE /api/session` | Revoga a sessão; exige a mesma verificação de origem. |
-| `GET /api/workspace` | Página de Atendimentos ou Experiências, estágios, cursor seguinte, origem e capacidades. Requer sessão. |
-| `GET /api/atendimentos/:rowId` | `WorkRecord` do Atendimento real pelo ID de linha Coda. Requer sessão. |
-| `GET /api/experiencias/:rowId` | `WorkRecord` da Experiência real pelo ID de linha Coda. Requer sessão. |
-| Outros métodos de negócio | `405 READ_ONLY`; não há comando de agendamento, envio, alteração de status ou fase. |
+| Rota | Resposta |
+|---|---|
+| `GET /api/health` | Processo vivo, origem App/SQLite e capacidades; sem registros ou segredos |
+| `GET /api/ready` | 200 somente com senha configurada e tabela local acessível; revisão da aplicação; sem consulta externa |
+| `GET /api/session` | Estado autenticado/configurado |
+| `POST /api/session` | JSON com senha, origem exata; cookie HttpOnly/SameSite=Strict e Secure quando HTTPS |
+| `DELETE /api/session` | Revoga sessão; exige origem exata |
+| `GET /api/atendimentos?q=&limit=50&offset=0` | Lista autenticada: `{items,total,nextOffset,stages}`; total do banco para a busca |
+| `POST /api/atendimentos` | Criação autenticada e com origem exata; 201 com registro persistido |
+| `GET /api/atendimentos/:id` | Registro autenticado por UUID técnico; 404 se inexistente/inválido |
+| `PATCH /api/atendimentos/:id` | Atualiza campos permitidos e exige `revision`; 200 com registro persistido |
+| `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação; função operacional fora do MVP; nenhuma consulta Coda |
+| Outros métodos de negócio | 405; não há exclusão, envio, orçamento, agenda ou comando operacional |
 
-O contrato TypeScript compartilhado está em `shared/contracts.ts`. Erros têm formato `{ error: { code, message, requestId } }`; o texto bruto de falhas do provedor e suas credenciais não são devolvidos. Respostas usam `Cache-Control: no-store`. Experiência com vínculo de Atendimento ausente, múltiplo ou sem ID verificável retorna `503 CODA_RELATION_CONFLICT`, sem escolher uma origem por aproximação.
+Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInput`, `AtendimentoPatch`, `AtendimentoList` e `ATENDIMENTO_STAGES`. Os tipos antigos permanecem somente para o adaptador legado isolado.
 
-## Consulta paginada
+## Atendimento e validações
 
-Parâmetros: `area=funil|veiculos`, `scope=acompanhamento|historico`, `q` com até 150 caracteres, `limit` entre 1 e 100 (padrão 50), `cursor` opaco retornado pela página anterior. O cursor pertence à mesma área/filtro; ao mudar a consulta, reinicie sem cursor.
+Telefone textual é obrigatório e precisa conter ao menos um dígito, sem exigir DDI/DDD ou ficha completa. Valores opcionais omitidos na criação viram texto vazio; omitidos no PATCH preservam o conteúdo anterior; texto vazio explícito limpa o campo opcional. Números/objetos/null não substituem textos. Telefone repetido é aceito, sem cadastro/vínculo ou escolha automática de outro Atendimento.
 
-**A busca é progressiva:** `q` filtra a página consultada por ID, nome, contato, veículo, placa ou etapa, ignorando acentos e caixa. Uma página vazia com `nextCursor` não estabelece ausência no ERP. Consulte as páginas seguintes; a interface precisa comunicar esse limite. Não há índice de busca paralelo nem varredura integral automática do ERP.
+Campos graváveis: `phone`, `name`, `vehicle`, `brand`, `model`, `plate`, `reason`, `notes`, `stage`, `rejectionReason`, `explicitRefusal`. Campos técnicos retornados: `id`, `phoneNormalized`, `createdAt`, `updatedAt`, `revision`. São calculados no backend, não aceitos livremente do navegador.
 
-O Funil preserva a vista auditada `Viz. Atendimentos (PC)`, com seis status comerciais. O acompanhamento preserva `ViewExperiencia_Comercial`, agrupado por cinco fases comerciais; `detail` mostra a fase operacional derivada. `finished` e `departed` são flags distintas. O Histórico retorna `409 HISTORY_POLICY_PENDING`: a vista atual do ERP não filtra saídas e a mudança depende de decisão.
+Limites em caracteres: phone/plate 100; name/vehicle/model 250; brand 150; reason/notes 8000; rejectionReason 2000. JSON de cadastro/edição limitado a 64 KiB; senha a 1 KiB. Campos desconhecidos são rejeitados.
 
-## Adaptador Coda
+Telefone original é preservado com limpeza das bordas; a versão E.164 só é preenchida para formato internacional inequívoco com `+` e quantidade plausível de dígitos. Um telefone nacional/ambíguo permanece válido sem normalização inventada. Não há consulta a provedor ou Coda.
 
-Todas as chamadas usam `GET` no host fixo `https://coda.io/apis/v1`, documento `2zsjI-nqWr`. O bearer token fica apenas no processo backend. Redirecionamentos são recusados; há timeout de 12 segundos por chamada. Não há retry automático de negócio.
+Fases: `novo-lead`, `aguardando-dados`, `em-negociacao`, `morno`, `frio`, `rejeitados`. Rótulos exatos da V1.0; a criação padrão é Novo lead. Mudanças são manuais. Rejeitados exige `explicitRefusal: true` e motivo preenchido; nenhum job avança fase por tempo.
 
-Os IDs de tabelas e colunas foram auditados em leitura pelo conector em 21/10/2026. O adaptador usa IDs estáveis e verifica que ainda existem; renomeações de apresentação preservam o mapeamento, enquanto remoção de coluna retorna erro de contrato. Metadados de colunas/estágios têm cache em memória de cinco minutos.
+A atualização é SQL condicional pela revisão técnica; se o registro mudou, retorna 409 `VERSION_CONFLICT` sem sobrescrever. Essa revisão não é versão A/B/C de orçamento. Não há geração de orçamento neste incremento.
 
-Os IDs de views fornecidos por `FUNIX_CODA_FUNIL_VIEW_ID` e `FUNIX_CODA_ACOMPANHAMENTO_VIEW_ID` precisam ser confirmados na **API REST**, pois os IDs `table-*`/`v-*` do conector não foram certificados como equivalentes. O adaptador verifica nome, tipo `view` e tabela base quando o metadado a informa. Sem essa configuração, falha explicitamente; não usa a tabela inteira como fallback.
+## Segurança, pesquisa e erros
 
-A listagem solicita `visibleOnly=true` para preservar os filtros da vista. Como esse parâmetro também pode ocultar colunas, ela obtém os IDs visíveis e hidrata cada registro pelo endpoint da tabela base, com até quatro consultas simultâneas. Só devolve os campos mínimos do DTO. Cache em memória de até 500 DTOs por 30 segundos reduz consultas ao abrir cards; não há persistência nem cache de linhas brutas. A marca `fetchedAt` corresponde à consulta da página; os detalhes podem ter até 30 segundos de cache.
+Todas as operações de dados exigem sessão. POST/PATCH também exigem `Origin` idêntico a `FUNIX_APP_ORIGIN` e Content-Type JSON. A UI continua na mesma origem, inclusive por proxy local de desenvolvimento. Sem CORS permissivo.
 
-Essa estratégia evita perder filtros ou omitir campos ocultos, mas custa uma consulta da página mais até N consultas de detalhes. Latência, limites de API, formato de referências ricas e equivalência das views precisam de teste real após configurar credencial e rede. Esses pontos não estão homologados por testes com respostas sintéticas.
+Consultas parametrizadas; busca simples em textos normalizados para ignorar acentos/caixa e em ID. Busca por telefone tolera formatação; pesquisa alfanumérica de placa/ID não é ampliada por dígitos de telefones não relacionados. `limit` 1–100 e `offset` inteiro não negativo; `q` até 150 caracteres.
 
-## Acesso e limites do marco
+Erros usam `{error:{code,message,requestId}}`, sem SQL, caminhos de banco, senhas ou stack na resposta. Casos: 400 dados inválidos; 401 autenticação; 403 origem; 404 registro; 409 revisão; 413 tamanho; 415 JSON; 500 erro interno; 503 readiness indisponível. Nunca retornar sucesso vazio como recuperação de falha de armazenamento.
 
-Cookie `HttpOnly`, `SameSite=Strict`, restrito a `/api`; `Secure` quando a origem configurada é HTTPS. Há bloqueio de oito falhas de login por endereço em 15 minutos, limite de sessões e validação de corpo/origem. O servidor permanece em loopback por padrão e não expõe dados sem senha configurada.
-
-Esse acesso local é uma proteção para desenvolvimento. Login nominal, papéis, revogação administrativa, auditoria de operações e hospedagem segura são requisitos para implantação com equipe; a senha compartilhada não constitui autenticação corporativa.
-
-**TESTADO:** autenticação, expiração/revogação de sessão, origem, limite de tentativas, `401/403/405/409/503`, indisponibilidade sem falso sucesso, sanitização, referências ambíguas, separação finalização/saída, paginação opaca, hidratação de campos ocultos, cache mínimo, IDs estáveis e chamadas somente GET. Os testes HTTP são executados em processo, sem abrir portas ou chamar sistemas produtivos.
+Sessões permanecem em memória e reiniciar API exige novo login. Não há usuários/alçadas/SaaS. O limitador de login herdado usa endereço do peer, com as limitações atrás de proxy já documentadas. O banco persistido é independente da sessão.
