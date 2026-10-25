@@ -90,10 +90,11 @@ jobs:
 
   deploy:
     needs: publish
-    # Disabled until the direction authorizes deployment and this variable is set.
+    # Manual deployment is explicit; automatic push deployment remains opt-in.
     if: >-
-      github.ref == 'refs/heads/main' && vars.FUNIX_DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'push' || inputs.deploy == true)
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
+       (github.event_name == 'push' && vars.FUNIX_DEPLOY_ENABLED == 'true'))
     environment: production
     concurrency:
       group: funix-vps-production
