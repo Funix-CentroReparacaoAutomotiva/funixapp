@@ -65,6 +65,8 @@ sequência manual em paralelo ao instalador.
 
 O administrador precisa reinstalar manualmente `compose.yaml`, `funix-deploy` e `funix-ssh` quando esses arquivos forem alterados futuramente. O Actions atualiza imagens, não substitui arquivos root por conteúdo recebido por SSH. Essa separação mantém o alcance da chave restrito ao projeto aprovado.
 
+Para a correção de tmpfs, seguir [a substituição validada de /opt/funix/compose.yaml](CORRECAO_TMPFS_HOSTINGER.md) **antes do próximo deploy**; atualizar apenas o repositório não substitui o arquivo instalado.
+
 ## Saúde, falhas e rollback
 
 - `/healthz`: Nginx responde; Docker e Traefik o verificam.

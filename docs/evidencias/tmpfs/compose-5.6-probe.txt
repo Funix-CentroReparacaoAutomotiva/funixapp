@@ -1,0 +1,7 @@
+ Container funix-tmpfs-probe-a41dcdaa1103-api-run-c5e6f36b6625 Creating 
+ Container funix-tmpfs-probe-a41dcdaa1103-api-run-c5e6f36b6625 Created 
+{"bytes":16777216,"flags":["rw","nosuid","nodev","noexec","relatime","size=16384k"],"executionBlocked":true}
+ Container funix-tmpfs-probe-a41dcdaa1103-web-run-afbe071d9869 Creating 
+ Container funix-tmpfs-probe-a41dcdaa1103-web-run-afbe071d9869 Created 
+{"bytes":33554432,"flags":["rw","nosuid","nodev","noexec","relatime","size=32768k"],"executionBlocked":true}
+PASS: API/Web Compose mounts preserve exact sizes, rw, noexec and nosuid. No VPS services or networks accessed.
