@@ -80,12 +80,16 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
    else {
     for(const line of services){const unit=exact(line.unit!).mul(value).div(serviceGross).ceilUnit();line.finalUnit=unit.toString();line.total=unit.mul(Q.from(line.quantity)).toString()}
     const last=services.at(-1)!,others=sum(services.slice(0,-1).map(l=>exact(l.total!))),desired=value.sub(others)
+    // A positive adjustment must never reduce any original service unit.
+    // If earlier unit ceilings overshoot the target, keep the last line at
+    // its original unit and report the real residual for explicit acceptance.
+    const minimum=exact(last.unit!),quantity=Q.from(last.quantity)
     if(desired.n>=0n){
-     const grid=desired.div(Q.from(last.quantity)).mul(new Q(20n)),low=grid.floor(),high=grid.ceil()
-     const choices=[low,high].filter(n=>n>=0n).map(n=>new Q(n,20n))
-     choices.sort((a,b)=>a.mul(Q.from(last.quantity)).sub(desired).abs().cmp(b.mul(Q.from(last.quantity)).sub(desired).abs()))
-     last.finalUnit=choices[0]!.toString();last.total=choices[0]!.mul(Q.from(last.quantity)).toString()
-    } else {last.finalUnit='0';last.total='0'}
+     const grid=desired.div(quantity).mul(new Q(20n)),low=grid.floor(),high=grid.ceil()
+     const choices=[minimum,...[low,high].filter(n=>n>=0n).map(n=>new Q(n,20n)).filter(n=>n.cmp(minimum)>=0)]
+     choices.sort((a,b)=>a.mul(quantity).sub(desired).abs().cmp(b.mul(quantity).sub(desired).abs()))
+     last.finalUnit=choices[0]!.toString();last.total=choices[0]!.mul(quantity).toString()
+    } else {last.finalUnit=minimum.toString();last.total=minimum.mul(quantity).toString()}
     residual=value.sub(totalRows(services)!)
     if(residual.abs().cmp(Q.from('0.50'))>0)errors.push('Resíduo superior a R$ 0,50. Revise o valor ou os lançamentos manualmente.')
     else if(residual.n!==0n && !deal.acknowledgeResidual)errors.push('Confirme ciência explícita do resíduo e do total efetivo antes de emitir.')
