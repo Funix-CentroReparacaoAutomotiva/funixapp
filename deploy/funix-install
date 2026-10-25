@@ -117,7 +117,7 @@ install -o root -g root -m 0755 "$src/deploy/funix-ssh" /usr/local/sbin/funix-ss
 install -o root -g root -m 0600 "$stage/runtime.env" /etc/funix/runtime.env
 install -o root -g root -m 0600 "$stage/registry/config.json" /etc/funix/registry/config.json
 mkdir "$stage/empty-home"
-useradd --skel "$stage/empty-home" -G '' -K CREATE_MAIL_SPOOL=no --create-home --user-group --shell /bin/bash funix-deploy
+useradd --skel "$stage/empty-home" -G '' --create-home --user-group --shell /bin/bash funix-deploy
 passwd -l funix-deploy >/dev/null
 chown root:root /home/funix-deploy
 chmod 0755 /home/funix-deploy

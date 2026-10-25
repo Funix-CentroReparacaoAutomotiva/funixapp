@@ -89,6 +89,25 @@ else: assert args[-2:]==['config','--quiet']
         self.assertNotEqual(self.run_install().returncode, 0)
         self.assertEqual((self.host / 'etc/funix/runtime.env').read_bytes(), before)
 
+    def test_useradd_ubuntu_24_compatibility_preserves_restricted_account(self):
+        result = self.run_install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [json.loads(line) for line in (self.root / 'calls').read_text().splitlines()]
+        useradds = [call for call in calls if call[0] == 'useradd']
+        self.assertEqual(len(useradds), 1)
+        args = useradds[0][1:]
+        # Ubuntu 24.04 useradd rejects this login.defs override.
+        self.assertNotIn('CREATE_MAIL_SPOOL', ' '.join(args))
+        self.assertNotIn('-K', args)
+        self.assertEqual(args, [
+            '--skel', args[1], '-G', '', '--create-home', '--user-group',
+            '--shell', '/bin/bash', 'funix-deploy',
+        ])
+        self.assertEqual(Path(args[1]).name, 'empty-home')
+        self.assertIn(['passwd', '-l', 'funix-deploy'], calls)
+        self.assertFalse(any(call[0] == 'usermod' for call in calls))
+        self.assertIn('FUNIX_DEPLOY_ENABLED=false', result.stdout)
+
     def test_missing_network_old_compose_existing_account_and_bad_login(self):
         for variable, value in [('NO_NETWORK', '1'), ('VERSION', '2.29.0'), ('ACCOUNT', '1'), ('BAD_LOGIN', '1')]:
             with self.subTest(variable=variable):
