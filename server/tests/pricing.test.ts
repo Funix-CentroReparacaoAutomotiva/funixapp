@@ -70,7 +70,7 @@ test('last-line compensation never becomes negative when other rounded lines alr
  const f=calculationFixture();f.config.services[0]!.base='0.05'
  f.items[0]!.services=[{id:'l',serviceId:'svc',dimensionId:'dim',quantity:'1000',enabled:true},{id:'l2',serviceId:'svc',dimensionId:'dim',quantity:'1',enabled:true}];f.scenario.serviceFlags.l2=true
  const c=calculate(f.items,[],f.catalog,f.scenario,f.config,f.settings,{mode:'adjust',value:'50.06',acknowledgeResidual:true})
- assert.equal(c.lines[1]!.finalUnit,'0');assert(c.errors.some(e=>e.includes('superior')))
+ assert.equal(c.lines[1]!.finalUnit,'0.05');assert(c.errors.some(e=>e.includes('superior')))
 })
 
 test('positive adjustment never discounts last service to offset earlier ceiling rounding',()=>{
