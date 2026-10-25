@@ -1,8 +1,10 @@
-# FUNIX — MVP Comercial, V1.0 / M1.2
+# FUNIX — MVP Comercial integrado / Issue #7
 
-Primeiro subincremento M1: criar, salvar, pesquisar, abrir, editar e reabrir **Atendimentos no banco próprio**. React/TypeScript/Vite e API Node existentes foram reaproveitados, com a identidade V20. A origem dos dados agora é SQLite local; o MVP não consulta ou modifica Coda.
+Aplicativo interno React/TypeScript/Vite + API Node 24 e SQLite próprio. A branch comercial preserva a M1.2 auditada e implementa a cadeia integrada: Atendimentos, composição mestre, cenários/matriz, configuração comercial, componentes FCT, motor exato V0.9, negociação, N emissões imutáveis e PDF real.
 
-O M1.1 foi auditado e aprovado no commit `3bf660eb5eb0500957a3f99552708d091a73b98b`. O M1.2 acrescenta catálogos e estrutura de diagnósticos, preservando os Atendimentos. A direção autorizou desenvolvimento, testes e publicação do M1.2 exclusivamente na branch `codex/m1-2-catalogos-diagnosticos` para auditoria. Não há autorização de merge ou deploy. Motor de preços, versões e PDF permanecem para revisão e incrementos posteriores.
+Sem Coda, WhatsApp ou IA ativos; sem operação de agenda/OS/produção/financeiro. Não há preços fictícios ou clientes de demonstração carregados na aplicação. Dados e catálogos da direção são mantidos pelo operador; configurações ausentes ficam pendentes e bloqueiam emissão.
+
+A Issue #7 autoriza desenvolvimento/commits/PRs, sem merge ou deploy. [Relatório e operação curta](docs/ISSUE_7_MVP_COMERCIAL.md), [API](docs/API.md), [evidências](docs/evidencias/issue7/COMANDOS.md). O proprietário homologa uma única experiência integrada ao final; esta entrega não afirma aprovação funcional ou prontidão produtiva.
 
 ## Executar localmente
 
@@ -43,7 +45,8 @@ A migração cria o banco na primeira execução e atualiza incrementalmente o M
 - Rejeitados exige recusa explícita e motivo; silêncio do cliente não vira perda.
 - Telefone repetido é permitido. O original é preservado; E.164 só é obtido quando há indicação internacional inequívoca, sem inventar DDI.
 - Mapa selecionável V20 e árvore V2, catálogo próprio e composição manual de diagnósticos/serviços/dimensões disponíveis. Abra um Atendimento → Diagnósticos ou Mapa → Catálogos para manter os dados. Valide a identificação das peças antes de selecioná-las.
-- Chat, IA global/contextual, motor de orçamento e envio ao ERP permanecem indisponíveis.
+- Cenários contêm somente máscaras por IDs; atributos mestre são globais. Serviços repetidos são linhas independentes. Emissão manual gera versões A…Z,AA… sem limite artificial, com snapshot e PDF congelados.
+- Chat, IA global/contextual e envio ao ERP permanecem indisponíveis.
 - Chave técnica UUID não depende de placa/telefone. Nome legível com prefixo de origem definitivo ainda depende da escolha da direção.
 - Adaptador e testes Coda antigos estão isolados, sem uso no processo atual.
 
@@ -54,9 +57,11 @@ npm run check
 python3 -m unittest discover -s deploy/tests -v
 python3 tests/browser/m1_atendimentos.py
 python3 tests/browser/m1_2_catalogos.py
+python3 tests/browser/issue7_scenarios.py
+python3 tests/browser/issue7_integrated.py
 ```
 
-O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências M1.1 em `docs/M1_ATENDIMENTOS.md`; entrega M1.2, comandos e limitações em [docs/M1_2_CATALOGOS_DIAGNOSTICOS.md](docs/M1_2_CATALOGOS_DIAGNOSTICOS.md).
+O teste integrado também requer `pdftotext` para validação independente do PDF, somente no ambiente de QA. A aplicação não depende desse comando. Os testes devem ser executados sequencialmente. O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências M1.1 em `docs/M1_ATENDIMENTOS.md`; entrega M1.2, comandos e limitações em [docs/M1_2_CATALOGOS_DIAGNOSTICOS.md](docs/M1_2_CATALOGOS_DIAGNOSTICOS.md).
 
 ## Backup e restauração
 
@@ -83,4 +88,4 @@ A preparação anterior de Hostinger/GHCR permanece disponível como histórico 
 - `docs/API.md`: API atual.
 - `docs/historico/`: orientações anteriores preservadas; não prevalecem sobre V1.0.
 
-Ordem oficial: **M1 Atendimento + orçamento → M2 Coda unidirecional → M3 WhatsApp real → M4 IA assistiva**. A entrega termina na revisão deste subincremento M1.2; não avançar automaticamente.
+Ordem oficial: **M1 Atendimento + orçamento → M2 Coda unidirecional → M3 WhatsApp real → M4 IA assistiva**. A entrega atual segue a Issue #7 até a homologação integrada; Coda, WhatsApp, IA e implantação permanecem sob autorizações separadas.

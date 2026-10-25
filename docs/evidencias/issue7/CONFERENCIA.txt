@@ -1,0 +1,16 @@
+Conferência final — Issue #7 / MVP Comercial integrado
+Base auditada M1.2: 06e5a46035097b779872765eff8a5f2ababf7509
+Branch: feat/issue-7-mvp-comercial
+PASS: 20 originais com SHA-256 idêntico ao manifesto recebido.
+PASS: 63 arquivos de implementação/teste/documentação/evidência conferidos antes deste registro.
+PASS: escopo sem alterações em deploy, Dockerfile, Compose, workflows, dependências ou fontes originais.
+PASS: sem assinatura SQLite, arquivos de ambiente, bancos, dependências instaladas ou padrões de chave privada/token nas alterações.
+PASS: dados das capturas/PDFs/relatórios desta pasta são apenas sintéticos, criados pelos harnesses locais.
+PASS: npm run check — build/tipos/49 testes/lint sem erros (quatro avisos preexistentes).
+PASS: Chromium — cenários 3 grupos; integrado 7 grupos; regressão M1.1 19 grupos; regressão M1.2 7 grupos.
+PASS: deploy/tests — 7 testes simulados, sem implantação.
+PASS: diff sem erros de whitespace (git diff --check).
+CI do checkpoint 7a098c6a5139a65db7cd999b3ca527d0eddf7665: validação aprovada, incluindo build/exercício das imagens e Compose no runner; publish e deploy skipped.
+Run: https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/actions/runs/40236741163
+Verificar CI do commit final no PR #8; o resultado anterior não substitui a execução final.
+Sem merge, deploy, VPS, Coda, WhatsApp/IA, migração produtiva ou homologação do proprietário.

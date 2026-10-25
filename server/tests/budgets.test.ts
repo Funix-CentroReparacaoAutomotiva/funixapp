@@ -76,3 +76,18 @@ test('two separate Node processes serialize emission sequencing in one SQLite fi
   assert.notEqual(result[0].id,result[1].id)
  }finally{rmSync(directory,{recursive:true,force:true})}
 })
+
+test('real PDF paginates long accented observations without dropping the final document identity',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const f=commercialFixture(db),repo=new BudgetRepository(db)
+  const notes='Observação acentuada e ação. '.repeat(220)+'FIM DA OBSERVAÇÃO'
+  f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:f.item.services.map(l=>({...l,notes}))})
+  const input={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=repo.preview(f.at.id,input)
+  const v=repo.emit(f.at.id,{...input,previewToken:p.token,idempotencyKey:randomUUID()}),pdf=repo.pdf(f.at.id,v.id)
+  const count=/\/Type \/Pages \/Count (\d+)/.exec(pdf.toString('latin1'))
+  assert(count&&Number(count[1])>=2)
+  assert.match(pdf.subarray(-30).toString(),/%%EOF/)
+  assert.equal(v.snapshot.calculation.lines[0]!.notes,notes)
+ }finally{db.close()}
+})

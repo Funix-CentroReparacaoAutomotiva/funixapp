@@ -1,4 +1,4 @@
-# API — MVP Comercial FUNIX V1.0 / M1.2
+# API — MVP Comercial FUNIX V1.0 / Issue #7
 
 API Node 24 existente com sessão de operador e banco SQLite próprio. A inicialização não instancia o adaptador Coda. O contrato antigo foi preservado em `historico/API_CODA_LEGADO.md`, sem validade como API ativa.
 
@@ -16,7 +16,7 @@ API Node 24 existente com sessão de operador e banco SQLite próprio. A inicial
 | `GET /api/atendimentos/:id` | Registro autenticado por UUID técnico; 404 se inexistente/inválido |
 | `PATCH /api/atendimentos/:id` | Atualiza campos permitidos e exige `revision`; 200 com registro persistido |
 | `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação; função operacional fora do MVP; nenhuma consulta Coda |
-| Outros métodos de negócio | 405; não há exclusão de Atendimento, envio, orçamento, agenda ou comando operacional |
+| Outros métodos de negócio | 405; não há exclusão de Atendimento, envio externo, agenda ou comando operacional |
 
 Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInput`, `AtendimentoPatch`, `AtendimentoList` e `ATENDIMENTO_STAGES`. Os tipos antigos permanecem somente para o adaptador legado isolado.
 
@@ -32,7 +32,7 @@ Telefone original é preservado com limpeza das bordas; a versão E.164 só é p
 
 Fases: `novo-lead`, `aguardando-dados`, `em-negociacao`, `morno`, `frio`, `rejeitados`. Rótulos exatos da V1.0; a criação padrão é Novo lead. Mudanças são manuais. Rejeitados exige `explicitRefusal: true` e motivo preenchido; nenhum job avança fase por tempo.
 
-A atualização é SQL condicional pela revisão técnica; se o registro mudou, retorna 409 `VERSION_CONFLICT` sem sobrescrever. Essa revisão não é versão A/B/C de orçamento. Não há geração de orçamento neste incremento.
+A atualização é SQL condicional pela revisão técnica; se o registro mudou, retorna 409 `VERSION_CONFLICT` sem sobrescrever. Essa revisão não é versão A/B/C de orçamento. Emissões de orçamento têm sequência e imutabilidade próprias, descritas abaixo.
 
 ## Segurança, pesquisa e erros
 
@@ -67,4 +67,36 @@ Dimensão pertence a um serviço validado. Cada nova seleção exige tipo corret
 
 Uma linha de serviço recebe `{id?,serviceId,dimensionId?,quantity,enabled?}`. ID omitido cria linha; ID informado precisa já pertencer a este item. `quantity` é **string decimal positiva**, com ponto, até nove dígitos inteiros e seis casas decimais (limite técnico de entrada). Exemplo `"0.250000"` é armazenado e retornado como `"0.25"`. Não é float nem valor monetário. Números JSON, zero, negativos, notação exponencial e precisão além do limite são rejeitados. Dimensão pode ficar pendente (`null`) neste rascunho sem emissão. Máximo 50 linhas de serviço por item e 8000 caracteres de observações.
 
-`enabled:false` mantém o diagnóstico e suas seleções; não pode liberar futuramente serviços filhos para precificação sem o pai ativo. Não existem valores totais, preços, fatores, etapas, emissão ou chamadas Coda nesta API. Falhas retornam os erros sanitizados existentes; 409 preserva dados sem sobrescrever.
+`enabled:false` mantém o diagnóstico e suas seleções; não pode liberar futuramente serviços filhos para precificação sem o pai ativo. A composição isolada não aplica preço manualmente no frontend. Cálculos, configuração e emissão usam as rotas abaixo; não há chamadas Coda. Falhas retornam os erros sanitizados existentes; 409 preserva dados sem sobrescrever.
+
+
+## Issue #7 — cenários, preços, componentes e emissões
+
+Mesma sessão de operador. Escritas exigem Origin exato e JSON; sem execução externa. JSON normal limitado a 64 KiB; manutenção da configuração comercial completa a 1 MiB. Valores financeiros de entrada são strings decimais com ponto, até 12 dígitos inteiros e 6 casas; ausência usa null, nunca zero implícito. Preços/fatores/energias configurados são não negativos; capacidade e quantidades devem ser positivas. Ajustes negativos de energia/fatores ainda exigiriam regra de catálogo explícita antes de ampliar essa validação.
+
+| Endpoint | Contrato |
+|---|---|
+| `GET /api/atendimentos/:at/cenarios?scenarioId=` | Workspace: cenários/máscaras, composição mestre, cenário escolhido, revisão, componentes, parâmetros comuns e cálculos pré-negociação de todos os cenários |
+| `POST /api/atendimentos/:at/cenarios` | `{name,duplicateFrom?,sourceRevision?}`; criação vazia ou cópia somente de flags |
+| `PATCH /api/atendimentos/:at/cenarios/:id` | `{revision,name?,pieceFlags?,serviceFlags?,componentFlags?}`; mapas por ID e booleano, pertencimento verificado |
+| `GET /api/precificacao` | `{revision,updatedAt,config}` inicialmente vazio |
+| `PATCH /api/precificacao` | `{revision,config}` completo; valida chaves, referências, decimais, capacidade e duplicatas de especiais |
+| `GET /api/atendimentos/:at/parametros` | Revisão da composição e `{tableId,colorId,riskId}` comuns a todos cenários |
+| `PATCH /api/atendimentos/:at/parametros` | `{revision,tableId,colorId,riskId}`; IDs configurados ou null |
+| `GET /api/atendimentos/:at/componentes` | Lançamentos monetários mestre, distintos das peças físicas |
+| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,fct,notes,scenarioId?,scenarioRevision?}`; preço/FCT null mantém pendência; zero explícito é valor |
+| `PATCH /api/atendimentos/:at/componentes/:id` | Mesmos campos + revision; identidade/peça de origem preservadas |
+| `DELETE /api/atendimentos/:at/componentes/:id` | `{revision}`; exclusão global e cascata de máscaras |
+| `POST /api/atendimentos/:at/orcamentos/previa` | `{scenarioId,negotiation}`; `{snapshot,token,canEmit}`; sem emissão nem perda de rascunho |
+| `POST /api/atendimentos/:at/orcamentos` | `{scenarioId,negotiation,previewToken,idempotencyKey}`; 201 com versão e snapshot; repetição idêntica retorna a mesma versão |
+| `GET /api/atendimentos/:at/orcamentos` | Metadados das N versões, ordem decrescente; sem transferir PDF/snapshots de todas em cada listagem |
+| `GET /api/atendimentos/:at/orcamentos/:id` | Versão imutável com snapshot |
+| `GET /api/atendimentos/:at/orcamentos/:id/pdf` | Bytes `application/pdf`, attachment com rótulo da versão, protegido pela mesma sessão |
+
+Negociação: `{mode:"none"}` ou `{mode:"discount"|"adjust",value:"decimal",acknowledgeResidual:boolean}`. Desconto é valor monetário sobre serviços; não combina com ajuste. `previewToken` precisa corresponder ao estado corrente; dados alterados causam 409. Pendências da emissão causam 422 `BUDGET_INCOMPLETE`. Chave idempotente tem 16–100 caracteres alfanuméricos/hífen/underscore e não pode ser reutilizada para outro conteúdo.
+
+Diagnósticos aceitam adicionalmente `scenarioId`/`scenarioRevision` em inclusão/edição; GET aceita `?scenarioId=`. Sem cenário explícito, usa o primeiro para compatibilidade. `enabled` é projeção da máscara escolhida, não atributo global. Uma linha aceita `notes` e `diagnosisId` próprios. IDs de linhas existentes não são trocados ao editar atributos; repetir o mesmo serviço gera outra linha, não agregação.
+
+`shared/pricing.ts` define configuração, componentes, cálculo, prévia e snapshot. Totais gerados mantêm precisão exata inclusive além de duas casas; nenhuma soma financeira usa floats. A matriz apresenta antes da negociação. Somente linhas com pai e filho habilitados são elegíveis; referências inativadas em uso bloqueiam emissão até correção, sem apagar dados antigos. Snapshot/PDF não consultam dados vivos na leitura.
+
+Configuração e prévia completas, exemplos e limites: [ISSUE_7_MVP_COMERCIAL.md](ISSUE_7_MVP_COMERCIAL.md). A API não afirma aceite jurídico nem cria OS. A main legada continua distinta desta branch.

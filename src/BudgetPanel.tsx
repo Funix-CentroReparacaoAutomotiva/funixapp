@@ -18,6 +18,7 @@ export function BudgetPanel({at,workspace,catalog,onRefresh,onDirty,onBusy,onAut
  const childBusy=useCallback((v:boolean)=>{setBusy(v);onBusy(v)},[onBusy])
  const setDirty=useCallback((v:boolean)=>{dirty.current=v;onDirty(v)},[onDirty])
  useEffect(()=>()=>onDirty(false),[onDirty])
+ useEffect(()=>{if(view!=='issue')return;setDirty(mode!=='none'||value!==''||ack);return()=>setDirty(false)},[view,mode,value,ack,setDirty])
  const scenario=workspace.scenarios.find(s=>s.id===workspace.selectedId)!,calc=workspace.calculations.find(c=>c.scenarioId===workspace.selectedId)
  const deal:Negotiation=mode==='none'?{mode:'none'}:{mode,value,acknowledgeResidual:ack}
  const fresh=preview && JSON.stringify(preview.snapshot.calculation.negotiation)===JSON.stringify(deal)
@@ -28,7 +29,7 @@ export function BudgetPanel({at,workspace,catalog,onRefresh,onDirty,onBusy,onAut
  const failed=useCallback((cause:unknown)=>{setFailure((cause as Error).message);if((cause as RequestFailure).status===401)auth.current()},[])
  useEffect(()=>{let live=true;Promise.resolve().then(load).catch(cause=>{if(live)failed(cause)});return()=>{live=false}},[load,failed])
  async function operation(fn:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setFailure('');try{await fn()}catch(cause){failed(cause)}finally{setBusy(false);onBusy(false)}}
- function navigate(next:typeof view){if(busy || (dirty.current && !window.confirm('Há alterações não salvas. Deseja descartá-las?')))return;setDirty(false);setView(next);setFailure('')}
+ function navigate(next:typeof view){if(busy || (dirty.current && !window.confirm('Há alterações não salvas. Deseja descartá-las?')))return;setDirty(false);if(next!=='issue'){setMode('none');setValue('');setAck(false);setPreview(null)}setView(next);setFailure('')}
  const afterSave=async()=>{await onRefresh();await load();setDirty(false);setView('home')}
  const byId=(id:string)=>catalog.find(c=>c.id===id)
  const pieceName=(id:string)=>byId(workspace.items.find(p=>p.id===id)?.pieceId??'')?.name??'Peça ausente'
@@ -48,7 +49,7 @@ export function BudgetPanel({at,workspace,catalog,onRefresh,onDirty,onBusy,onAut
  {mode==='adjust'&&<label className="commercial-check"><input type="checkbox" checked={ack} disabled={busy} onChange={e=>setAck(e.target.checked)}/> Estou ciente da diferença residual informada e do total efetivo a emitir.</label>}
  <button className="codex-add" disabled={busy} onClick={()=>operation(async()=>{const p=await api<BudgetPreview>(`/api/atendimentos/${at}/orcamentos/previa`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:scenario.id,negotiation:deal})});setPreview(p);setRequestKey(crypto.randomUUID())})}>Preparar prévia de emissão</button>
  {preview&&<><CalculationView preview={preview}/>{!fresh&&<p className="form-error">Negociação alterada. Prepare outra prévia antes de emitir.</p>}<button className="primary-btn" disabled={busy||!preview.canEmit||!fresh} onClick={()=>operation(async()=>{
-  const v=await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:scenario.id,negotiation:deal,previewToken:preview.token,idempotencyKey:requestKey})});setVersion(v);setView('version');setPreview(null);await load()
+  const v=await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:scenario.id,negotiation:deal,previewToken:preview.token,idempotencyKey:requestKey})});setDirty(false);setVersion(v);setView('version');setMode('none');setValue('');setAck(false);setPreview(null);await load()
  })}>Emitir versão imutável</button></>}
  </>:<>
  <dl className="budget-summary"><div><dt>Serviços antes de negociação</dt><dd>{money(calc?.serviceSubtotal)}</dd></div><div><dt>Componentes</dt><dd>{money(calc?.componentSubtotal)}</dd></div><div><dt>Total do cenário</dt><dd>{money(calc?.total)}</dd></div><div><dt>Energia / dias técnicos</dt><dd>{calc?.energy??'Indisponível'} / {calc?.days??'Indisponível'}</dd></div></dl>
