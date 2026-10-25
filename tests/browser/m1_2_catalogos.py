@@ -194,8 +194,8 @@ async def run():
             assert not h.external, h.external
             assert not h.page_errors, h.page_errors
             assert not any('/api/experiencias' in r['path'] or '/api/workspace' in r['path'] for r in h.api_requests)
-            await expect(page.get_by_role('button', name='Criar orçamento · indisponível', exact=True)).to_be_disabled()
-            h.mark('no external hosts, no Coda/legacy requests, no browser errors; budget creation remains unavailable')
+            await expect(page.get_by_role('button', name='Orçamento e componentes', exact=True)).to_be_enabled()
+            h.mark('no external hosts, no Coda/legacy requests, no browser errors; Issue 7 budget entry is available without external integration')
             await browser.close()
             browser = None
     except Exception as error:

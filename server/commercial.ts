@@ -3,6 +3,7 @@ import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService } from '../shared/commercial.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
+import { selectedScenario, touchComposition } from './scenarios.ts'
 import { hierarchy } from './hierarchy.ts'
 
 type Row = Record<string, SQLOutputValue>
@@ -60,7 +61,7 @@ export class CommercialRepository {
     if (!old && kind !== 'dimensao' && data.serviceId !== undefined) invalid('Somente dimensão pertence a um serviço.')
     const expected = old ? revision(data.revision) : 0
     return this.transaction(() => {
-      if (serviceId) this.usable(serviceId, 'servico')
+      if (serviceId && (!old || (status === 'validado' && active))) this.usable(serviceId, 'servico')
       if (!old && code && this.db.prepare('SELECT id FROM catalog_items WHERE code=?').get(code)) throw new ServiceError(409, 'DUPLICATE_CODE', 'Este código de peça já existe; edite o cadastro existente.')
       const now = new Date().toISOString(), key = old?.id ?? randomUUID()
       if (old) {
@@ -74,40 +75,48 @@ export class CommercialRepository {
     })
   }
   historyOf(id: string) { this.item(id); return this.db.prepare('SELECT revision,changed_at,data FROM catalog_history WHERE item_id=? ORDER BY revision').all(id).map(row => ({ revision: row.revision, changedAt: row.changed_at, data: JSON.parse(String(row.data)) })) }
-  list(atendimentoId: string): DiagnosisItem[] {
+  list(atendimentoId: string, scenarioId?: string): DiagnosisItem[] {
     new AtendimentoRepository(this.db).get(atendimentoId)
-    return this.db.prepare('SELECT * FROM diagnosis_items WHERE atendimento_id=? ORDER BY created_at,id').all(atendimentoId).map(row => this.diagnosis(row))
+    const selected = selectedScenario(this.db, atendimentoId, scenarioId)
+    return this.db.prepare('SELECT * FROM diagnosis_items WHERE atendimento_id=? ORDER BY created_at,id').all(atendimentoId).map(row => this.diagnosis(row, selected))
   }
-  private diagnosis(row: Row): DiagnosisItem {
-    const services = this.db.prepare('SELECT * FROM diagnosis_services WHERE diagnosis_item_id=? ORDER BY rowid').all(row.id!).map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled: s.enabled === 1 }))
-    return { id: String(row.id), atendimentoId: String(row.atendimento_id), pieceId: String(row.piece_id), diagnosisId: row.diagnosis_id === null ? null : String(row.diagnosis_id), notes: String(row.notes), enabled: row.enabled === 1, revision: Number(row.revision), createdAt: String(row.created_at), updatedAt: String(row.updated_at), services }
+  private diagnosis(row: Row, scenarioId: string): DiagnosisItem {
+    const services = this.db.prepare('SELECT * FROM diagnosis_services WHERE diagnosis_item_id=? ORDER BY rowid').all(row.id!).map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled: this.db.prepare('SELECT enabled FROM scenario_service_flags WHERE scenario_id=? AND service_id=?').get(scenarioId,s.id!)?.enabled === 1, notes: String(s.notes), diagnosisId: s.diagnosis_id === null ? null : String(s.diagnosis_id) }))
+    return { id: String(row.id), atendimentoId: String(row.atendimento_id), pieceId: String(row.piece_id), diagnosisId: row.diagnosis_id === null ? null : String(row.diagnosis_id), notes: String(row.notes), enabled: this.db.prepare('SELECT enabled FROM scenario_piece_flags WHERE scenario_id=? AND piece_id=?').get(scenarioId,row.id!)?.enabled === 1, revision: Number(row.revision), createdAt: String(row.created_at), updatedAt: String(row.updated_at), services }
   }
-  private getDiagnosis(atendimentoId: string, id: string) {
+  private getDiagnosis(atendimentoId: string, id: string, scenarioId?: string) {
     const row = this.db.prepare('SELECT * FROM diagnosis_items WHERE id=? AND atendimento_id=?').get(id, atendimentoId)
     if (!row) notFound()
-    return this.diagnosis(row)
+    return this.diagnosis(row, selectedScenario(this.db,atendimentoId,scenarioId))
   }
   add(atendimentoId: string, input: unknown) {
     new AtendimentoRepository(this.db).get(atendimentoId)
-    const data = object(input, ['pieceCodes'])
+    const data = object(input, ['pieceCodes','scenarioId','scenarioRevision'])
     if (!Array.isArray(data.pieceCodes) || !data.pieceCodes.length || data.pieceCodes.length > 2 || data.pieceCodes.some(v => typeof v !== 'string' || v.length > 150)) invalid('Selecione uma peça ou os dois lados.')
     const codes = [...new Set(data.pieceCodes as string[])]
     return this.transaction(() => {
+      const scenarioId = selectedScenario(this.db,atendimentoId,data.scenarioId,data.scenarioRevision)
       for (const code of codes) {
         const row = this.db.prepare("SELECT * FROM catalog_items WHERE code=? AND kind='peca'").get(code)
         if (!row) invalid('Peça sem código cadastrado. Valide o catálogo antes de compor o diagnóstico.')
         const piece = this.usable(String(row.id), 'peca')
         const now = new Date().toISOString()
-        this.db.prepare('INSERT INTO diagnosis_items(id,atendimento_id,piece_id,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(atendimento_id,piece_id) DO NOTHING').run(randomUUID(), atendimentoId, piece.id, now, now)
+        const id = randomUUID()
+        const inserted = this.db.prepare('INSERT INTO diagnosis_items(id,atendimento_id,piece_id,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(atendimento_id,piece_id) DO NOTHING').run(id, atendimentoId, piece.id, now, now)
+        if (inserted.changes) {
+          this.db.prepare('UPDATE scenario_piece_flags SET enabled=1 WHERE scenario_id=? AND piece_id=?').run(scenarioId,id)
+          touchComposition(this.db,atendimentoId)
+        }
       }
-      return this.list(atendimentoId)
+      return this.list(atendimentoId,scenarioId)
     })
   }
   updateDiagnosis(atendimentoId: string, id: string, input: unknown) {
-    const data = object(input, ['revision','diagnosisId','notes','enabled','services'])
+    const data = object(input, ['revision','diagnosisId','notes','enabled','services','scenarioId','scenarioRevision'])
     const expected = revision(data.revision)
     return this.transaction(() => {
-      const old = this.getDiagnosis(atendimentoId, id)
+      const scenarioId = selectedScenario(this.db,atendimentoId,data.scenarioId,data.scenarioRevision)
+      const old = this.getDiagnosis(atendimentoId, id,scenarioId)
       if (old.revision !== expected) conflict()
       const diagnosisId = data.diagnosisId === undefined ? old.diagnosisId : data.diagnosisId === null ? null : text(data.diagnosisId, 100, true)
       const notes = data.notes === undefined ? old.notes : text(data.notes, 8000)
@@ -118,7 +127,7 @@ export class CommercialRepository {
         if (!Array.isArray(data.services) || data.services.length > 50) invalid('Lista de serviços inválida (máximo 50).')
         const ids = new Set<string>()
         services = data.services.map(raw => {
-          const service = object(raw, ['id','serviceId','dimensionId','quantity','enabled'])
+          const service = object(raw, ['id','serviceId','dimensionId','quantity','enabled','notes','diagnosisId'])
           const serviceId = text(service.serviceId, 100, true)
           const dimensionId = service.dimensionId === null || service.dimensionId === undefined ? null : text(service.dimensionId, 100, true)
           const lineId = service.id === undefined ? randomUUID() : text(service.id, 100, true)
@@ -132,14 +141,23 @@ export class CommercialRepository {
           }
           if (typeof service.quantity !== 'string' || !/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(service.quantity) || !/[1-9]/.test(service.quantity)) invalid('Informe uma quantidade positiva em texto decimal, com até 9 dígitos inteiros e 6 casas decimais.')
           const quantity = service.quantity.includes('.') ? service.quantity.replace(/0+$/, '').replace(/\.$/, '') : service.quantity
-          return { id: lineId, serviceId, dimensionId, quantity, enabled: bool(service.enabled ?? true) } satisfies DiagnosisService
+          const notes = service.notes === undefined ? previous?.notes ?? '' : text(service.notes,8000)
+          const diagnosisId = service.diagnosisId === undefined ? previous?.diagnosisId ?? null : service.diagnosisId === null ? null : text(service.diagnosisId,100,true)
+          if (diagnosisId && diagnosisId !== previous?.diagnosisId) this.usable(diagnosisId,'diagnostico')
+          return { id: lineId, serviceId, dimensionId, quantity, notes, diagnosisId, enabled: bool(service.enabled ?? true) } satisfies DiagnosisService
         })
       }
       this.db.prepare('UPDATE diagnosis_items SET diagnosis_id=?,notes=?,enabled=?,revision=revision+1,updated_at=? WHERE id=?').run(diagnosisId, notes, enabled ? 1 : 0, new Date().toISOString(), id)
-      this.db.prepare('DELETE FROM diagnosis_services WHERE diagnosis_item_id=?').run(id)
-      const insert = this.db.prepare('INSERT INTO diagnosis_services VALUES (?,?,?,?,?,?)')
-      for (const service of services) insert.run(service.id, id, service.serviceId, service.dimensionId, service.quantity, service.enabled ? 1 : 0)
-      return this.getDiagnosis(atendimentoId, id)
+      this.db.prepare('UPDATE scenario_piece_flags SET enabled=? WHERE scenario_id=? AND piece_id=?').run(enabled ? 1 : 0,scenarioId,id)
+      const retained = new Set(services.map(service => service.id))
+      for (const previous of old.services) if (!retained.has(previous.id)) this.db.prepare('DELETE FROM diagnosis_services WHERE id=?').run(previous.id)
+      const insert = this.db.prepare(`INSERT INTO diagnosis_services(id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET service_id=excluded.service_id,dimension_id=excluded.dimension_id,quantity=excluded.quantity,notes=excluded.notes,diagnosis_id=excluded.diagnosis_id`)
+      for (const service of services) {
+        insert.run(service.id,id,service.serviceId,service.dimensionId,service.quantity,service.enabled ? 1 : 0,service.notes ?? '',service.diagnosisId ?? null)
+        this.db.prepare('UPDATE scenario_service_flags SET enabled=? WHERE scenario_id=? AND service_id=?').run(service.enabled ? 1 : 0,scenarioId,service.id)
+      }
+      touchComposition(this.db,atendimentoId)
+      return this.getDiagnosis(atendimentoId,id,scenarioId)
     })
   }
   remove(atendimentoId: string, id: string, input: unknown) {
@@ -148,6 +166,7 @@ export class CommercialRepository {
       const old = this.getDiagnosis(atendimentoId, id)
       if (old.revision !== expected) conflict()
       this.db.prepare('DELETE FROM diagnosis_items WHERE id=?').run(id)
+      touchComposition(this.db,atendimentoId)
       return { removed: true }
     })
   }

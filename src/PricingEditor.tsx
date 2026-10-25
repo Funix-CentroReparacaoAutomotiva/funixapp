@@ -1,0 +1,42 @@
+import {useEffect,useState} from 'react'
+import type {CatalogItem} from '../shared/commercial'
+import type {FactorOption,PricingConfiguration,PricingConfig} from '../shared/pricing'
+import {api} from './api'
+import type {RequestFailure} from './api'
+
+export function PricingEditor({initial,catalog,onSaved,onDirty,onBusy,onAuthRequired}:{initial:PricingConfiguration;catalog:CatalogItem[];onSaved:()=>Promise<void>;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onAuthRequired:()=>void}){
+ const [config,setConfig]=useState<PricingConfig>(()=>structuredClone(initial.config)),[busy,setBusy]=useState(false),[error,setError]=useState('')
+ const dirty=JSON.stringify(config)!==JSON.stringify(initial.config)
+ useEffect(()=>{onDirty(dirty)},[dirty,onDirty]);useEffect(()=>()=>onDirty(false),[onDirty])
+ const nullable=(v:string)=>v.trim()===''?null:v
+ const update=(patch:Partial<PricingConfig>)=>setConfig(c=>({...c,...patch}))
+ const decimalField=(label:string,value:string|null,onChange:(v:string|null)=>void)=><label className="at-field">{label}<input aria-label={label} inputMode="decimal" value={value??''} onChange={e=>onChange(nullable(e.target.value))}/></label>
+ const options=(kind:string)=>catalog.filter(i=>i.kind===kind && i.active && i.status==='validado')
+ const modifyService=(i:number,patch:Partial<PricingConfig['services'][number]>)=>update({services:config.services.map((s,k)=>i===k?{...s,...patch}:s)})
+ const modifyDim=(i:number,j:number,patch:Partial<PricingConfig['services'][number]['dimensions'][number]>)=>modifyService(i,{dimensions:config.services[i].dimensions.map((d,k)=>j===k?{...d,...patch}:d)})
+ function factors(key:'tables'|'colors'|'risks',label:string){return <section className="config-section"><h2>{label}</h2>{config[key].map((o,i)=><div className="config-row" key={o.id}><label className="at-field">Nome<input aria-label={`Nome ${label} ${i+1}`} required maxLength={250} value={o.name} onChange={e=>update({[key]:config[key].map((v,j)=>i===j?{...v,name:e.target.value}:v)})}/></label>{decimalField(`Fator ${label} ${i+1}`,o.factor,value=>update({[key]:config[key].map((v,j)=>i===j?{...v,factor:value}:v)}))}<button type="button" className="fh-filter" onClick={()=>{if(window.confirm('Remover configuração dos rascunhos? Emissões anteriores serão preservadas.'))update({[key]:config[key].filter((_,j)=>j!==i)})}}>Remover</button></div>)}<button type="button" className="codex-add" onClick={()=>update({[key]:[...config[key],{id:crypto.randomUUID(),name:'',factor:null} satisfies FactorOption]})}>+ Adicionar {label}</button></section>}
+ return <form aria-label="Configuração comercial" onSubmit={async e=>{
+  e.preventDefault();if(busy)return;setBusy(true);onBusy(true);setError('')
+  try{await api('/api/precificacao',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:initial.revision,config})});onDirty(false);await onSaved()}
+  catch(cause){setError((cause as Error).message);if((cause as RequestFailure).status===401)onAuthRequired()}
+  finally{setBusy(false);onBusy(false)}
+ }}><fieldset disabled={busy}><h2>Configuração comercial própria</h2><p className="at-form-hint">Dados fornecidos pelo operador. Use ponto decimal; vazio significa pendente, zero é um valor explícito. Não há preços nem fatores de demonstração. Alterações afetam rascunhos, nunca emissões.</p>
+ {factors('tables','Tabelas comerciais')}{factors('colors','Cores')}{factors('risks','Riscos')}
+ {decimalField('Capacidade diária global',config.capacity,value=>update({capacity:value}))}
+ <h2>Preços normais, dimensões e etapas</h2>
+ <label className="at-field">Adicionar serviço à configuração<select aria-label="Adicionar serviço à configuração" value="" onChange={e=>{if(e.target.value)update({services:[...config.services,{serviceId:e.target.value,base:null,dimensions:[]}]})}}><option value="">Selecione um serviço validado</option>{options('servico').filter(s=>!config.services.some(p=>p.serviceId===s.id)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+ {config.services.map((service,i)=><section className="config-section" key={service.serviceId}><h2>{catalog.find(c=>c.id===service.serviceId)?.name??service.serviceId}</h2>{decimalField('Preço base não dimensionado',service.base,value=>modifyService(i,{base:value}))}
+ <label className="at-field">Adicionar dimensão ao serviço<select aria-label="Adicionar dimensão ao serviço" value="" onChange={e=>{if(e.target.value)modifyService(i,{dimensions:[...service.dimensions,{dimensionId:e.target.value,fd:null,stages:[]}]})}}><option value="">Selecione dimensão</option>{options('dimensao').filter(d=>d.serviceId===service.serviceId && !service.dimensions.some(x=>x.dimensionId===d.id)).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
+ {service.dimensions.map((dim,j)=><div className="service-line" key={dim.dimensionId}><h3>{catalog.find(c=>c.id===dim.dimensionId)?.name}</h3>{decimalField('FD da dimensão',dim.fd,value=>modifyDim(i,j,{fd:value}))}
+ {dim.stages.map((stage,k)=><div className="technical-stage" key={stage.id}><label className="at-field">Etapa técnica<input required maxLength={250} value={stage.name} onChange={e=>modifyDim(i,j,{stages:dim.stages.map((v,n)=>k===n?{...v,name:e.target.value}:v)})}/></label><label className="at-field">Dimensão técnica<input required maxLength={250} value={stage.dimension} onChange={e=>modifyDim(i,j,{stages:dim.stages.map((v,n)=>k===n?{...v,dimension:e.target.value}:v)})}/></label>
+ {decimalField('Energia base',stage.baseEnergy,value=>modifyDim(i,j,{stages:dim.stages.map((v,n)=>k===n?{...v,baseEnergy:value}:v)}))}{decimalField('Energia dimensional',stage.dimensionEnergy,value=>modifyDim(i,j,{stages:dim.stages.map((v,n)=>k===n?{...v,dimensionEnergy:value}:v)}))}
+ <button type="button" className="fh-filter" onClick={()=>modifyDim(i,j,{stages:dim.stages.filter((_,n)=>n!==k)})}>Remover etapa</button></div>)}
+ <button className="codex-add" type="button" onClick={()=>modifyDim(i,j,{stages:[...dim.stages,{id:crypto.randomUUID(),name:'',dimension:'',baseEnergy:null,dimensionEnergy:null}]})}>+ Etapa técnica</button><button className="fh-filter" type="button" onClick={()=>modifyService(i,{dimensions:service.dimensions.filter((_,n)=>n!==j)})}>Remover dimensão da configuração</button></div>)}
+ <button className="fh-filter" type="button" onClick={()=>{if(window.confirm('Remover preço normal e etapas deste serviço dos rascunhos?'))update({services:config.services.filter((_,n)=>n!==i)})}}>Remover configuração do serviço</button></section>)}
+ <h2>Preços especiais por chave exata</h2>{config.specialPrices.map((special,i)=>{
+ const set=(patch:Partial<typeof special>)=>update({specialPrices:config.specialPrices.map((v,j)=>i===j?{...v,...patch}:v)})
+ return <section className="service-line" key={i}><label className="at-field">Tabela do especial<select required value={special.tableId} onChange={e=>set({tableId:e.target.value})}><option value="">Selecionar</option>{config.tables.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label className="at-field">Serviço especial<select required value={special.serviceId} onChange={e=>set({serviceId:e.target.value,dimensionId:''})}><option value="">Selecionar</option>{options('servico').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="at-field">Dimensão especial<select required value={special.dimensionId} onChange={e=>set({dimensionId:e.target.value})}><option value="">Selecionar</option>{options('dimensao').filter(d=>d.serviceId===special.serviceId).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label>{decimalField('Unitário especial',special.unit,value=>set({unit:value??''}))}<button type="button" className="fh-filter" onClick={()=>update({specialPrices:config.specialPrices.filter((_,j)=>i!==j)})}>Remover especial</button></section>
+ })}<button type="button" className="codex-add" onClick={()=>update({specialPrices:[...config.specialPrices,{tableId:'',serviceId:'',dimensionId:'',unit:''}]})}>+ Preço especial</button>
+ <label className="at-field">Condições e ressalvas comerciais<textarea aria-label="Condições e ressalvas comerciais" rows={4} maxLength={8000} value={config.conditions} onChange={e=>update({conditions:e.target.value})}/></label>
+ {error&&<p className="form-error" role="alert">{error}</p>}<button type="submit" className="primary-btn" disabled={!dirty}>{busy?'Salvando…':'Salvar configuração comercial'}</button></fieldset></form>
+}

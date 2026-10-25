@@ -1,8 +1,8 @@
-# AGENTS.md — FUNIX, V1.0 / M1.2
+# AGENTS.md — FUNIX, Issue #7 / MVP Comercial integrado
 
 ## Autoridade e limite autorizado
 
-A direção/CTO aprovou integralmente o M1.1 (`3bf660eb5eb0500957a3f99552708d091a73b98b`) e autorizou **somente M1.2 em desenvolvimento**: migrações incrementais, catálogos próprios, navegação V2 e estrutura de diagnósticos. Preservar os Atendimentos e os contratos úteis auditados. Ao concluir testes e apresentação, parar para revisão. Não fazer push, deploy, mudança de VPS/DNS/Cloudflare, alterações de credenciais, leitura/escrita produtiva Coda ou mutações de integrações sem autorização expressa.
+Autorização atual: Issue #7, invocada pelo proprietário, para implementar a cadeia integrada do MVP Comercial em branch própria a partir de M1.2 `06e5a46035097b779872765eff8a5f2ababf7509`: cenários/matriz, configuração e motor V0.9, componentes, emissões N e PDF verdadeiro, QA integrado. Uma homologação funcional ao fim, com etapas internas testadas e revisão técnica. Permitidos commits e PRs de desenvolvimento; sem merge, deploy, execução remota, Coda, WhatsApp/IA ou mudanças de infraestrutura/secrets. Esta autorização substitui o limite antigo de parar após M1.2; não interromper trabalho independente para homologar microetapas.
 
 Fontes atuais em `docs/especificacao-v1.0/originais/`: especificação unificada V1.0, respostas explícitas V1.0, V0.9 aprovada e V20. `FONTES.json` registra SHA-256 dos 20 originais recebidos. As respostas mais recentes e a autorização do CTO prevalecem sobre escopos antigos. A V20 determina identidade visual, com adaptações pontuais aprovadas na V1.0. A V0.9 determina regras comerciais futuras; comentários históricos não são regras vigentes. Documentos institucionais dão contexto, sem gerar funcionalidades automaticamente.
 
@@ -25,8 +25,10 @@ O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não 
 - UUID técnico estável independente de telefone/placa. Prefixo legível definitivo ainda requer confirmação; não inventar sequência Coda.
 - Entrada somente Conversas e Funil. Chat e IA global/contextual explicitamente indisponíveis, sem simulações. Preservar identidade V20, Kanban horizontal/recolhível, Quadro/Lista, retorno contextual e cabeçalho coerente.
 - Fases visíveis exatas: Novo lead; Aguardando dados; Em negociação (24h); Morno (3 dias); Frio (5 dias); Rejeitados. Sem avanço automático por tempo. Rejeição exige recusa explícita e motivo; ausência de resposta não vira perda.
-- M1.2: manutenção simples de peças, diagnósticos, serviços e dimensões; versão/data de alterações; V2 continua proposta até validação explícita. Sem inventar códigos definitivos, preços, fatores ou etapas. Sem motor completo, snapshots, PDF, WhatsApp ou IA. Peças sem código ficam pendentes, sem identidade física fabricada.
-- Adicionar migrações sem recriar Atendimentos; provar atualização a partir do SQL original do M1.1, reinício, rollback de falha e ausência de órfãos na composição. Parar para revisão antes de novo subincremento.
+- Preservar M1.2; V2 permanece proposta até validação. Implementar apenas os cálculos V0.9 aprovados com dados configuráveis; nunca inventar preços, fatores ou etapas. Vazios bloqueiam emissão, não rascunho. WhatsApp/IA e Coda continuam indisponíveis.
+- Uma composição mestre por Atendimento; cenários contêm somente máscaras por IDs estáveis. Uma peça física, serviços repetidos permitidos; edição de atributos é global; novos itens habilitados só no cenário ativo. Peça pai desligada preserva flags dos filhos. Matriz usa inclusão efetiva.
+- N cenários e N emissões, sem limite de três. Emissão manual, idempotente, snapshot imutável e PDF real; dinheiro e quantidades exatos, sem floats financeiros.
+- Adicionar migrações sem recriar Atendimentos; provar atualização a partir do SQL original do M1.1, reinício, rollback de falha e ausência de órfãos na composição. Seguir as etapas internas da Issue #7 e submeter a entrega integrada para revisão.
 - Persistência confirmada pelo backend é distinta de formulário ainda não salvo. Falhas devem preservar o formulário, com status verdadeiro, sem gravação fictícia.
 
 ## Engenharia e validação

@@ -36,6 +36,7 @@ function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [copilotOpen, setCopilotOpen] = useState(false), [editor, setEditor] = useState<Editor | null>(null), [savedMessage, setSavedMessage] = useState('')
   const [commercialVersion, setCommercialVersion] = useState(0)
+  const [scenarioContext] = useState(() => new Map<string,string>())
   const dirty = useRef(false), saving = useRef(false)
   const viewport = useRef<HTMLDivElement>(null), board = useRef<HTMLDivElement>(null), modal = useRef<HTMLDivElement>(null)
   const positions = useRef(new Map<string, { top: number; left: number }>())
@@ -201,7 +202,7 @@ function App() {
           {tab === 'chat' ? <div className="detail-page chat-page"><div className="at-chat-scroll">
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
             <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
-          </div><div className="at-context-ai" aria-label="IA do Atendimento"><span>IA ainda indisponível</span><div><button disabled>Resumir</button><button disabled>Sugerir resposta</button><button disabled>Preencher dados</button></div></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio de mensagens ainda indisponível" disabled rows={1} /><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${tab}:${commercialVersion}`} atendimentoId={record.id} tab={tab} onDirty={onDirty} onBusy={onBusy} />}
+          </div><div className="at-context-ai" aria-label="IA do Atendimento"><span>IA ainda indisponível</span><div><button disabled>Resumir</button><button disabled>Sugerir resposta</button><button disabled>Preencher dados</button></div></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio de mensagens ainda indisponível" disabled rows={1} /><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${tab}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} />}
         </>}
       </>}
     </div>

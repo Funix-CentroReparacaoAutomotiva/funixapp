@@ -125,7 +125,7 @@ class Harness:
         async def dialog_handler(dialog):
             self.dialogs.append(dialog.message)
             if self.accept_dialogs:
-                await dialog.accept()
+                await dialog.accept(dialog.default_value if dialog.type == "prompt" else None)
             else:
                 await dialog.dismiss()
         page.on("dialog", dialog_handler)

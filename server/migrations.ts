@@ -87,6 +87,89 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       db.prepare('INSERT INTO catalog_history VALUES (?,?,?,?)').run(id, 1, now, JSON.stringify(data))
     }
   } },
+
+  { version: 3, apply: db => db.exec(`
+    ALTER TABLE diagnosis_services ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+    ALTER TABLE diagnosis_services ADD COLUMN diagnosis_id TEXT REFERENCES catalog_items(id) ON DELETE RESTRICT;
+    CREATE TABLE commercial_state (
+      atendimento_id TEXT PRIMARY KEY REFERENCES atendimentos(id) ON DELETE CASCADE,
+      revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
+      settings_json TEXT NOT NULL DEFAULT '{}'
+    );
+    CREATE TABLE scenarios (
+      id TEXT PRIMARY KEY,
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE CASCADE,
+      name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+      position INTEGER NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
+      created_at TEXT NOT NULL,
+      UNIQUE(atendimento_id,position)
+    );
+    CREATE TABLE scenario_piece_flags (
+      scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+      piece_id TEXT NOT NULL REFERENCES diagnosis_items(id) ON DELETE CASCADE,
+      enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),
+      PRIMARY KEY(scenario_id,piece_id)
+    );
+    CREATE TABLE scenario_service_flags (
+      scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+      service_id TEXT NOT NULL REFERENCES diagnosis_services(id) ON DELETE CASCADE,
+      enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),
+      PRIMARY KEY(scenario_id,service_id)
+    );
+    INSERT INTO commercial_state(atendimento_id) SELECT id FROM atendimentos;
+    INSERT INTO scenarios(id,atendimento_id,name,position,created_at)
+      SELECT 'initial:'||id,id,'Principal',1,created_at FROM atendimentos;
+    INSERT INTO scenario_piece_flags SELECT s.id,p.id,p.enabled FROM scenarios s JOIN diagnosis_items p ON p.atendimento_id=s.atendimento_id;
+    INSERT INTO scenario_service_flags SELECT s.id,l.id,l.enabled FROM scenarios s JOIN diagnosis_items p ON p.atendimento_id=s.atendimento_id JOIN diagnosis_services l ON l.diagnosis_item_id=p.id;
+    CREATE TRIGGER atendimento_commercial_state AFTER INSERT ON atendimentos BEGIN
+      INSERT INTO commercial_state(atendimento_id) VALUES(NEW.id);
+      INSERT INTO scenarios(id,atendimento_id,name,position,created_at) VALUES('initial:'||NEW.id,NEW.id,'Principal',1,NEW.created_at);
+    END;
+    CREATE TRIGGER piece_scenario_flags AFTER INSERT ON diagnosis_items BEGIN
+      INSERT INTO scenario_piece_flags SELECT s.id,NEW.id,0 FROM scenarios s WHERE s.atendimento_id=NEW.atendimento_id;
+    END;
+    CREATE TRIGGER service_scenario_flags AFTER INSERT ON diagnosis_services BEGIN
+      INSERT INTO scenario_service_flags SELECT s.id,NEW.id,0 FROM scenarios s JOIN diagnosis_items p ON p.atendimento_id=s.atendimento_id WHERE p.id=NEW.diagnosis_item_id;
+    END;
+  `) },
+
+
+  {version:4,apply:db=>db.exec(`
+    CREATE TABLE pricing_configuration (
+      id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL, data TEXT NOT NULL
+    );
+    INSERT INTO pricing_configuration(id,updated_at,data) VALUES(1,strftime('%Y-%m-%dT%H:%M:%fZ','now'),'{"tables":[],"colors":[],"risks":[],"capacity":null,"services":[],"specialPrices":[],"conditions":""}');
+    CREATE TABLE component_items (
+      id TEXT PRIMARY KEY, atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE CASCADE,
+      piece_id TEXT NOT NULL REFERENCES diagnosis_items(id) ON DELETE CASCADE,
+      name TEXT NOT NULL, quantity TEXT NOT NULL, manual_price TEXT, fct TEXT, notes TEXT NOT NULL DEFAULT '',
+      revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE INDEX component_at ON component_items(atendimento_id);
+    CREATE TABLE scenario_component_flags (
+      scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+      component_id TEXT NOT NULL REFERENCES component_items(id) ON DELETE CASCADE,
+      enabled INTEGER NOT NULL CHECK(enabled IN(0,1)), PRIMARY KEY(scenario_id,component_id)
+    );
+    CREATE TRIGGER component_scenario_flags AFTER INSERT ON component_items BEGIN
+      INSERT INTO scenario_component_flags SELECT s.id,NEW.id,0 FROM scenarios s WHERE s.atendimento_id=NEW.atendimento_id;
+    END;
+  `)},
+
+
+  {version:5,apply:db=>db.exec(`
+    CREATE TABLE budget_versions (
+      id TEXT PRIMARY KEY, atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,
+      sequence INTEGER NOT NULL CHECK(sequence>0),label TEXT NOT NULL,created_at TEXT NOT NULL,
+      snapshot TEXT NOT NULL,pdf BLOB NOT NULL,idempotency_key TEXT NOT NULL,request_hash TEXT NOT NULL,
+      UNIQUE(atendimento_id,sequence),UNIQUE(atendimento_id,idempotency_key)
+    );
+    CREATE TRIGGER immutable_budget_update BEFORE UPDATE ON budget_versions BEGIN SELECT RAISE(ABORT,'Budget versions are immutable');END;
+    CREATE TRIGGER immutable_budget_delete BEFORE DELETE ON budget_versions BEGIN SELECT RAISE(ABORT,'Budget versions are immutable');END;
+  `)},
+
 ]
 
 export function migrate(db: DatabaseSync) {

@@ -221,3 +221,31 @@ test('commercial APIs enforce authentication/origin/JSON and operate entirely lo
     assert.equal(network, 0)
   } finally { globalThis.fetch = oldFetch; app.close() }
 })
+
+test('pricing, components, scenarios and immutable PDF APIs retain auth/origin protections and have no external transport',async()=>{
+ const app=start()
+ const oldFetch=globalThis.fetch;let calls=0
+ globalThis.fetch=async()=>{calls++;throw new Error('External transport forbidden')}
+ try {
+  for(const path of ['/api/precificacao','/api/atendimentos/test/cenarios','/api/atendimentos/test/orcamentos'])assert.equal((await app.request(path)).status,401)
+  const cookie=await authenticate(app),headers={Cookie:cookie}
+  const {commercialFixture}=await import('./fixtures/commercial.ts')
+  const f=commercialFixture(app.db),path=`/api/atendimentos/${f.at.id}`
+  assert.equal((await app.write('/api/precificacao','PATCH',{revision:2,config:f.config},cookie,'https://invalid.example')).status,403)
+  const workspace=await(await app.request(path+'/cenarios',{headers})).json()
+  assert.equal(workspace.calculations[0].total,'300.15')
+  const input={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
+  const preview=await(await app.write(path+'/orcamentos/previa','POST',input,cookie)).json()
+  assert.equal(preview.canEmit,true)
+  assert.equal((await app.write(path+'/orcamentos','POST',{...input,previewToken:preview.token,idempotencyKey:'synthetic-api-request'},cookie,'https://invalid.example')).status,403)
+  const issued=await app.write(path+'/orcamentos','POST',{...input,previewToken:preview.token,idempotencyKey:'synthetic-api-request'},cookie)
+  assert.equal(issued.status,201)
+  const version=await issued.json(),pdfUrl=path+'/orcamentos/'+version.id+'/pdf'
+  assert.equal((await app.request(pdfUrl)).status,401)
+  const pdf=await app.request(pdfUrl,{headers});assert.equal(pdf.status,200);assert.equal(pdf.headers.get('content-type'),'application/pdf')
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0,8).toString(),'%PDF-1.7')
+  assert.equal((await app.write(path+'/orcamentos/'+version.id,'DELETE',{},cookie)).status,405)
+  assert.equal((await(await app.request(path+'/orcamentos',{headers})).json()).length,1)
+  assert.equal(calls,0)
+ }finally{globalThis.fetch=oldFetch;app.close()}
+})
