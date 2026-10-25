@@ -72,3 +72,21 @@ test('last-line compensation never becomes negative when other rounded lines alr
  const c=calculate(f.items,[],f.catalog,f.scenario,f.config,f.settings,{mode:'adjust',value:'50.06',acknowledgeResidual:true})
  assert.equal(c.lines[1]!.finalUnit,'0');assert(c.errors.some(e=>e.includes('superior')))
 })
+
+test('positive adjustment never discounts last service to offset earlier ceiling rounding',()=>{
+ const f=calculationFixture()
+ f.config.services[0]!.base='1'
+ f.items[0]!.services=[
+  {id:'l',serviceId:'svc',dimensionId:'dim',quantity:'10',enabled:true},
+  {id:'l2',serviceId:'svc',dimensionId:'dim',quantity:'1',enabled:true}
+ ]
+ f.scenario.serviceFlags.l2=true
+ const pending=calculate(f.items,[],f.catalog,f.scenario,f.config,f.settings,{mode:'adjust',value:'11.10',acknowledgeResidual:false})
+ assert(pending.errors.some(e=>e.includes('ciência')))
+ assert(pending.lines.filter(l=>l.included).every(l=>Q.from(l.finalUnit!).cmp(Q.from(l.unit!))>=0))
+ const approved=calculate(f.items,[],f.catalog,f.scenario,f.config,f.settings,{mode:'adjust',value:'11.10',acknowledgeResidual:true})
+ assert.deepEqual(approved.errors,[])
+ assert(approved.lines.filter(l=>l.included).every(l=>Q.from(l.finalUnit!).cmp(Q.from(l.unit!))>=0))
+ assert.equal(approved.total,'11.5')
+ assert.equal(approved.residual,'-0.4')
+})
