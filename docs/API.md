@@ -74,6 +74,8 @@ Uma linha de serviço recebe `{id?,serviceId,dimensionId?,quantity,enabled?}`. I
 
 Mesma sessão de operador. Escritas exigem Origin exato e JSON; sem execução externa. JSON normal limitado a 64 KiB; manutenção da configuração comercial completa a 1 MiB. Valores financeiros de entrada são strings decimais com ponto, até 12 dígitos inteiros e 6 casas; ausência usa null, nunca zero implícito. Preços/fatores/energias configurados são não negativos; capacidade e quantidades devem ser positivas. Ajustes negativos de energia/fatores ainda exigiriam regra de catálogo explícita antes de ampliar essa validação.
 
+Na interface compacta do PR #11, cenários são identificados pela `position` estável (1,2,3…), sem renomear cadastros existentes. O botão `+` envia `duplicateFrom` e `sourceRevision`, selecionando a cópia das flags; a UI não oferece cenário vazio nem renomeação. Esses contratos administrativos continuam compatíveis na API. Prévias e novas emissões usam `Cenário N` como rótulo; letras A,B,C… continuam exclusivas das versões emitidas. Snapshots/PDFs antigos não são regravados. Endpoints de catálogo permanecem autenticados, embora a operação não exponha acesso à manutenção de cadastros; serviços/diagnósticos/dimensões aguardam configuração pela direção, sem seed fictício.
+
 | Endpoint | Contrato |
 |---|---|
 | `GET /api/atendimentos/:at/cenarios?scenarioId=` | Workspace: cenários/máscaras, composição mestre, cenário escolhido, revisão, componentes, parâmetros comuns e cálculos pré-negociação de todos os cenários |

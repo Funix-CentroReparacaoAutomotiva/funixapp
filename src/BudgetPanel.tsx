@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react'
 import type {CatalogItem,CommercialWorkspace} from '../shared/commercial'
+import {scenarioLabel} from '../shared/commercial'
 import type {BudgetPreview,BudgetVersion,ComponentItem,Negotiation,PricingConfiguration,PricingSettings} from '../shared/pricing'
 import {api} from './api'
 import type {RequestFailure} from './api'
@@ -39,8 +40,9 @@ export function BudgetPanel({at,workspace,catalog,onRefresh,onDirty,onBusy,onAut
   if(!r.headers.get('content-type')?.includes('application/pdf'))throw new Error('Documento PDF inválido.')
   const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download=`FUNIX-orcamento-${v.label}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
  })}
- const renderVersion=(v:BudgetVersion)=><section aria-label="Versão emitida"><h2>Orçamento {v.label} · versão {v.sequence}</h2><p className="at-form-hint">Emitido em {new Date(v.createdAt).toLocaleString('pt-BR')}. Documento congelado; não usa o catálogo atual.</p><h3>{v.snapshot.atendimento.name||v.snapshot.atendimento.phone}</h3><CalculationView preview={{snapshot:v.snapshot,token:'',canEmit:true}}/><button className="primary-btn" disabled={busy} onClick={()=>download(v)}>Baixar PDF {v.label}</button></section>
- return <section aria-label="Orçamento e componentes"><div className="commercial-toolbar"><h2>Orçamento · {scenario.name}</h2>{view!=='home'&&<button className="fh-filter" disabled={busy} onClick={()=>navigate('home')}>Voltar ao orçamento</button>}</div>
+ const labelFor=(id:string)=>{const s=workspace.scenarios.find(s=>s.id===id);return s?scenarioLabel(s):'Cenário anterior'}
+ const renderVersion=(v:BudgetVersion)=><section aria-label="Versão emitida"><h2>Orçamento {v.label} · versão {v.sequence}</h2><p className="at-form-hint">Emitido em {new Date(v.createdAt).toLocaleString('pt-BR')}. Documento congelado; não usa o catálogo atual.</p><h3>{v.snapshot.atendimento.name||v.snapshot.atendimento.phone}</h3><CalculationView preview={{snapshot:v.snapshot,token:'',canEmit:true}} scenarioName={labelFor(v.snapshot.scenarioId)}/><button className="primary-btn" disabled={busy} onClick={()=>download(v)}>Baixar PDF {v.label}</button></section>
+ return <section aria-label="Orçamento e componentes"><div className="commercial-toolbar"><h2>Orçamento · {scenarioLabel(scenario)}</h2>{view!=='home'&&<button className="fh-filter" disabled={busy} onClick={()=>navigate('home')}>Voltar ao orçamento</button>}</div>
  {failure&&<p className="form-error" role="alert">{failure}</p>}
  {view==='pricing'&&configuration?<PricingEditor initial={configuration} catalog={catalog} onSaved={afterSave} onDirty={setDirty} onBusy={childBusy} onAuthRequired={onAuthRequired}/>:view==='settings'&&configuration?<SettingsForm settings={workspace.settings} revision={workspace.revision} config={configuration} at={at} onSaved={afterSave} onDirty={setDirty} onBusy={childBusy} onAuthRequired={onAuthRequired}/>:view==='component'?<ComponentForm initial={component} at={at} workspace={workspace} pieceName={pieceName} onSaved={afterSave} onDirty={setDirty} onBusy={childBusy} onAuthRequired={onAuthRequired}/>:view==='version'&&version?renderVersion(version):view==='issue'?<>
  <p className="at-form-hint">Emissão manual do cenário selecionado. A negociação afeta somente serviços; componentes permanecem iguais.</p>
@@ -65,9 +67,9 @@ export function BudgetPanel({at,workspace,catalog,onRefresh,onDirty,onBusy,onAut
  </section>
 }
 
-function CalculationView({preview}:{preview:BudgetPreview}){
+function CalculationView({preview,scenarioName}:{preview:BudgetPreview;scenarioName?:string}){
  const c=preview.snapshot.calculation
- return <section className="budget-preview" aria-label="Prévia de orçamento"><h3>{c.scenarioName}</h3>{c.errors.length>0&&<ul className="form-error">{c.errors.map((e,i)=><li key={i}>{e}</li>)}</ul>}
+ return <section className="budget-preview" aria-label="Prévia de orçamento"><h3>{scenarioName??c.scenarioName}</h3>{c.errors.length>0&&<ul className="form-error">{c.errors.map((e,i)=><li key={i}>{e}</li>)}</ul>}
  {c.lines.map(l=><article className={`diagnosis-card ${l.included?'':'excluded'}`} key={l.id}><strong>{l.pieceName} · {l.name}</strong><p>{l.dimension} {l.diagnosis} {l.notes}</p>{l.included?<p>{l.quantity} × {money(l.finalUnit)} = {money(l.total)}</p>:<p>{l.quantity} · Fora deste cenário: não integra totais ou PDF.</p>}{l.finalUnit!==l.unit&&<small>Unitário de referência: {money(l.unit)}</small>}</article>)}
  <dl className="budget-summary"><div><dt>Serviços originais</dt><dd>{money(c.originalServiceSubtotal)}</dd></div><div><dt>Serviços efetivos</dt><dd>{money(c.serviceSubtotal)}</dd></div><div><dt>Desconto em serviços</dt><dd>{money(c.discount)}</dd></div><div><dt>Componentes</dt><dd>{money(c.componentSubtotal)}</dd></div><div><dt>Total efetivo</dt><dd>{money(c.total)}</dd></div><div><dt>Energia / dias técnicos</dt><dd>{c.energy??'Pendente'} / {c.days??'Pendente'}</dd></div></dl>
  {c.target!==null&&<p>Subtotal de serviços informado: {money(c.target)}. Resíduo (informado − efetivo): {money(c.residual)}.</p>}

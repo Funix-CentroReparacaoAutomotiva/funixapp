@@ -1,5 +1,7 @@
 # Catálogo único — simplificação para avaliação do proprietário
 
+> Este relatório registra a primeira entrega do PR #11. O [complemento de interface aprovado](PR11_INTERFACE.md) remove o acesso operacional à manutenção de catálogos e compacta cabeçalho, cenários e seletor, preservando a regra de catálogo único documentada abaixo.
+
 Base: main `a9b6707ab85c7f63d6fc4d36f7d93d491c8d6dfc`. Branch: `fix/catalogo-unificado`. A solicitação atual do proprietário substitui a exigência anterior de validar manualmente os cadastros. Sem merge, deploy ou acesso a sistemas produtivos.
 
 ## Resultado

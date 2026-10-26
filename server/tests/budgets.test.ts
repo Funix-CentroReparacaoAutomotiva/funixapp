@@ -9,6 +9,28 @@ import {openDatabase,backupDatabase} from '../database.ts'
 import {BudgetRepository,versionLabel} from '../budgets.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 
+test('new budget snapshots use numeric scenario order without renaming legacy data or emitted version letters',()=>{
+ const db=openDatabase(':memory:')
+ try {
+  const f=commercialFixture(db),repo=new BudgetRepository(db)
+  f.scenarios.update(f.at.id,f.scenario.id,{revision:f.scenario.revision,name:'Nome legado A'})
+  const original=f.scenarios.list(f.at.id)[0]!
+  const copy=f.scenarios.create(f.at.id,{name:'Nome interno B',duplicateFrom:original.id,sourceRevision:original.revision})
+  const emitted=[]
+  for(const [index,scenario] of [original,copy].entries()){
+   const input={scenarioId:scenario.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,input)
+   assert.equal(preview.snapshot.scenarioName,`Cenário ${index+1}`)
+   assert.equal(preview.snapshot.calculation.scenarioName,`Cenário ${index+1}`)
+   const version=repo.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
+   assert.equal(version.label,index===0?'A':'B');emitted.push(version)
+  }
+  assert.deepEqual(f.scenarios.list(f.at.id).map(s=>s.name),['Nome legado A','Nome interno B'])
+  const pdf=repo.pdf(f.at.id,emitted[0]!.id)
+  f.scenarios.update(f.at.id,original.id,{revision:original.revision,name:'Outro nome interno'})
+  assert.deepEqual(repo.get(f.at.id,emitted[0]!.id),emitted[0]);assert.deepEqual(repo.pdf(f.at.id,emitted[0]!.id),pdf)
+ }finally{db.close()}
+})
+
 test('N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots survive all live edits and replay',async()=>{
  const directory=mkdtempSync(join(tmpdir(),'funix-versions-')),file=join(directory,'test.sqlite')
  let db=openDatabase(file)

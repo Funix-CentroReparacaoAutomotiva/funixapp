@@ -1,5 +1,5 @@
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
-import { catalogItemUsable } from '../shared/commercial.ts'
+import { catalogItemUsable, scenarioLabel } from '../shared/commercial.ts'
 import type { Calculation, ComponentItem, Negotiation, PricedLine, PricingConfig, PricingSettings } from '../shared/pricing.ts'
 import { Q,ZERO,sum } from './exact.ts'
 import { inputObject,invalid } from './scenarios.ts'
@@ -101,5 +101,5 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  const energy=included.some(l=>l.energy===null)?null:sum(included.map(l=>exact(l.energy!)))
  let days:string|null=null
  if(energy){if(config.capacity===null || Q.from(config.capacity).n===0n)errors.push('Capacidade diária global positiva não configurada.');else days=energy.div(Q.from(config.capacity)).ceil().toString()}
- return {scenarioId:scenario.id,scenarioName:scenario.name,lines,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
+ return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
 }

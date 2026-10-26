@@ -24,17 +24,17 @@ async def run():
    await expect(page.get_by_role('button',name='Editar Atendimento',exact=True)).to_be_visible()
    at_id=re.search('/atendimentos/([^?]+)',page.url).group(1);path='/api/atendimentos/'+at_id
    await page.get_by_role('button',name='Diagnósticos',exact=True).click()
-   await page.get_by_role('button',name='Catálogos',exact=True).click()
+   assert await page.get_by_role('button',name='Catálogos',exact=True).count()==0
    async def catalog(kind,name,service=None):
-    await page.get_by_label('Tipo de catálogo').select_option(kind);await page.get_by_label('Buscar no catálogo').fill('')
-    await page.get_by_role('button',name='+ Novo cadastro',exact=True).click();await page.get_by_label('Nome do catálogo').fill(name)
-    if service:await page.get_by_label('Serviço da dimensão').select_option(label=service)
-    await expect(page.get_by_label('Validado pelo operador')).to_have_count(0)
-    await page.get_by_role('button',name='Salvar catálogo',exact=True).click()
-    await expect(page.get_by_role('form',name='Editar catálogo')).not_to_be_visible()
+    data={'kind':kind,'name':name}
+    if service:
+     entries=(await(await ctx.request.get(ORIGIN+'/api/catalogos')).json())['items']
+     data['serviceId']=next(i['id'] for i in entries if i['kind']=='servico' and i['name']==service)
+    response=await ctx.request.post(ORIGIN+'/api/catalogos',headers={'Origin':ORIGIN},data=data)
+    assert response.status==201,await response.text()
    await catalog('servico','Serviço QA sintético');await catalog('dimensao','Dimensão QA','Serviço QA sintético');await catalog('diagnostico','Dano QA');await catalog('diagnostico','Dano alternativo QA')
-   await page.get_by_role('button',name='Voltar aos itens',exact=True).click()
-   await page.get_by_role('button',name='+ Adicionar peça / item',exact=True).click();await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
+   await page.reload();await expect(page.get_by_role('tab',name='Cenário 1',exact=True)).to_be_visible()
+   await page.get_by_role('button',name='+ Adicionar peça',exact=True).click();await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
    await page.locator('.piece-options button').filter(has=page.get_by_text('Capô',exact=True)).click()
    await expect(page.locator('.diagnosis-card')).to_have_count(1)
    # Repeated physical selection opens the existing item, never another piece.
@@ -51,14 +51,14 @@ async def run():
    await page.locator('[aria-label="Serviço 2"]').get_by_label('Incluir serviço',exact=True).uncheck()
    await page.get_by_role('button',name='Salvar diagnóstico',exact=True).click();await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
    await page.get_by_role('button',name='Voltar à lista',exact=True).click()
-   await page.get_by_role('button',name='Duplicar cenário',exact=True).click()
-   await expect(page.get_by_label('Cenário em edição',exact=True)).to_contain_text('Principal — cópia')
+   await page.get_by_role('button',name='Adicionar variação do cenário ativo',exact=True).click()
+   await expect(page.get_by_role('tab',name='Cenário 2',exact=True)).to_have_attribute('aria-selected','true')
    await page.locator('.diagnosis-open').first.click()
    await page.locator('[aria-label="Serviço 1"]').get_by_label('Incluir serviço',exact=True).uncheck()
    await page.locator('[aria-label="Serviço 2"]').get_by_label('Incluir serviço',exact=True).check()
    await page.get_by_role('button',name='Salvar diagnóstico',exact=True).click();await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
    await page.get_by_role('button',name='Voltar à lista',exact=True).click()
-   h.mark('operator creates real Atendimento/catalogs/piece and repeated service lines via UI; duplicate scenario changes flags only')
+   h.mark('operator creates Atendimento/piece/service lines via UI after explicit catalog API setup; variation copies flags only')
 
    await page.get_by_role('button',name='Orçamento e componentes',exact=True).click()
    await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click();await page.get_by_role('button',name='Preparar prévia de emissão',exact=True).click()
@@ -99,7 +99,7 @@ async def run():
    await page.get_by_label('Preço manual unitário (R$)',exact=True).fill('10.01');await page.get_by_label('FCT individual',exact=True).fill('1.2')
    await page.get_by_role('button',name='Salvar componente',exact=True).click();await expect(page.get_by_role('form',name='Componente monetário')).not_to_be_visible()
    await expect(page.get_by_role('region',name='Orçamento e componentes')).to_contain_text('124,15')
-   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Matriz comparativa',exact=True).click()
+   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Comparação',exact=True).click()
    matrix=page.get_by_role('region',name='Matriz de cenários');await expect(matrix).to_contain_text('25,0125');await expect(matrix).to_contain_text('124,15')
    await page.get_by_label('Só diferenças',exact=True).check()
    await expect(matrix).to_contain_text('Componente zero explícito QA')
@@ -133,16 +133,24 @@ async def run():
    first=await (await ctx.request.get(ORIGIN+path+'/orcamentos/'+versions[0]['id'])).json();assert first['snapshot']['calculation']['total']=='124.1'
    same_pdf=await (await ctx.request.get(ORIGIN+path+'/orcamentos/'+versions[0]['id']+'/pdf')).body();assert same_pdf==pdf_a.read_bytes()
    workspace=await(await ctx.request.get(ORIGIN+path+'/cenarios')).json()
-   selected=next(s for s in workspace['scenarios'] if s['name']=='Principal — cópia')
+   selected=next(s for s in workspace['scenarios'] if s['position']==2)
    # Repeated explicit API emissions are isolated QA iterations to reach the UI 26/27 boundary.
    for sequence in range(2,26):
     data={'scenarioId':selected['id'],'negotiation':{'mode':'none'}}
     pview=await(await ctx.request.post(ORIGIN+path+'/orcamentos/previa',headers={'Origin':ORIGIN},data=data)).json();assert pview['canEmit'],pview
     response=await ctx.request.post(ORIGIN+path+'/orcamentos',headers={'Origin':ORIGIN},data={**data,'previewToken':pview['token'],'idempotencyKey':str(uuid.uuid4())})
-    assert response.status==201,await response.text();assert (await response.json())['sequence']==sequence
+    assert response.status==201,await response.text();issued=await response.json();assert issued['sequence']==sequence
+    if sequence in (2,3):
+     label='B' if sequence==2 else 'C'
+     response_pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+issued['id']+'/pdf');assert response_pdf.status==200
+     pdf_file=ARTIFACTS/f'orcamento-{label}-sintetico.pdf';pdf_file.write_bytes(await response_pdf.body())
+     text_file=ARTIFACTS/f'orcamento-{label}-texto.txt';subprocess.run(['pdftotext','-layout',str(pdf_file),str(text_file)],check=True)
+     assert f'Orçamento {label}' in text_file.read_text() and 'Cenário: Cenário 2' in text_file.read_text()
+     assert issued['snapshot']['calculation']['scenarioName']=='Cenário 2'
+
    # Fresh UI load to show all issued versions. Remaining 26th/27th are manual button flows.
    await page.reload()
-   await expect(page.get_by_label('Cenário em edição',exact=True)).to_be_visible();await page.get_by_label('Cenário em edição',exact=True).select_option(label='Principal — cópia')
+   await expect(page.get_by_role('tab',name='Cenário 1',exact=True)).to_be_visible();await page.get_by_role('tab',name='Cenário 2',exact=True).click()
    await page.get_by_role('button',name='Orçamento e componentes',exact=True).click()
    for label,sequence in [('Z',26),('AA',27)]:
     await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click();await page.get_by_label('Negociação',exact=True).select_option('none')
@@ -166,7 +174,7 @@ async def run():
    restored=await dl.value;await restored.save_as(h.folder/'restored.pdf');assert(h.folder/'restored.pdf').read_bytes()==pdf_a.read_bytes()
    await page.screenshot(path=str(ARTIFACTS/'integrado-versao-mobile.png'))
    assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Matriz comparativa',exact=True).click()
+   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Comparação',exact=True).click()
    await expect(page.get_by_role('region',name='Matriz de cenários')).to_contain_text('50,0125')
    assert await page.get_by_role('region',name='Matriz de cenários').evaluate('(el)=>el.scrollWidth>el.clientWidth')
    await page.screenshot(path=str(ARTIFACTS/'integrado-matriz-mobile.png'))
@@ -174,7 +182,7 @@ async def run():
    assert not h.external and not h.page_errors,(h.external,h.page_errors)
    h.mark('no external provider requests or uncaught browser errors; all successful persistence and PDF responses are real')
    await browser.close();browser=None
- except Exception as e:error=str(e);traceback.print_exc()
+ except Exception as e:error=str(e) or type(e).__name__;traceback.print_exc()
  finally:
   if browser:
    try:await browser.close()

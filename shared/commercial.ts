@@ -33,6 +33,9 @@ export interface Scenario {
   pieceFlags: Record<string, boolean>; serviceFlags: Record<string, boolean>
   componentFlags: Record<string, boolean>
 }
+export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {
+  return `Cenário ${scenario.position}`
+}
 export interface CommercialWorkspace {
   scenarios: Scenario[]; selectedId: string; items: DiagnosisItem[]; revision: number
   components: ComponentItem[]; settings: PricingSettings; configurationRevision: number; calculations: Calculation[]
