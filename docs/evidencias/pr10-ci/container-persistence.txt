@@ -1,0 +1,2 @@
+PASS: same Atendimento and initial scenario after container removal/recreation; UID 1000; database /data/funix.sqlite
+PASS: bind file retained outside both container layers, mode 0600; temporary synthetic data only; no host ports, no external network, no VPS

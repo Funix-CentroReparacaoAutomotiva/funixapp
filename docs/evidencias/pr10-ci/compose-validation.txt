@@ -1,0 +1,4 @@
+Docker Compose 2.40.3
+explicit_false bind={"type": "bind", "source": "/var/lib/funix/app-data", "target": "/data", "bind": {}} original_exit=1 corrected_exit=0
+explicit_true bind={"type": "bind", "source": "/var/lib/funix/app-data", "target": "/data", "bind": {"create_host_path": true}} original_exit=1 corrected_exit=1
+PASS: real Compose quiet/JSON validation; correct bind accepted, automatic host directory creation rejected; no runtime configuration printed.

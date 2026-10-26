@@ -41,7 +41,7 @@ jobs:
           sudo install -m 0600 deploy/runtime.env.example /etc/funix/runtime.env
           sudo env FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" docker compose config --quiet
           sudo env FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" \
-            docker compose config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); a=c["services"]["api"]; v=a["volumes"]; assert a["environment"]["FUNIX_DATABASE_PATH"]=="/data/funix.sqlite"; assert any(x.get("type")=="bind" and x.get("source")=="/var/lib/funix/app-data" and x.get("target")=="/data" and x.get("bind",{}).get("create_host_path")==False for x in v); assert len([s for s in c["services"] if s not in ("api","web")])==0'
+            docker compose config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); a=c["services"]["api"]; v=a["volumes"]; assert a["environment"]["FUNIX_DATABASE_PATH"]=="/data/funix.sqlite"; assert any(x.get("type")=="bind" and x.get("source")=="/var/lib/funix/app-data" and x.get("target")=="/data" and x.get("bind",{}).get("create_host_path",False) is False for x in v); assert len([s for s in c["services"] if s not in ("api","web")])==0'
 
   publish:
     needs: validate
