@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisService, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
+import { catalogItemUsable as usable } from '../shared/commercial'
 import { api } from './api'
 import type { RequestFailure } from './api'
 import { Login } from './ui'
@@ -8,8 +9,7 @@ import {money} from './money'
 import carMap from './assets/car-map.svg?raw'
 
 const kindNames: Record<CatalogKind, string> = { peca: 'Peças', diagnostico: 'Diagnósticos', servico: 'Serviços', dimensao: 'Dimensões' }
-function stateLabel(item?: CatalogItem) { return item ? `${item.status === 'validado' ? 'Validado' : item.suggestion ? 'Sugestão V2' : 'Proposta'}${item.active ? '' : ' · Inativo'}` : 'Sem código · pendente' }
-const usable = (item: CatalogItem) => item.active && item.status === 'validado'
+function stateLabel(item?: CatalogItem) { return !item || (item.kind === 'peca' && !item.code?.trim()) ? 'Sem código · indisponível' : item.active ? 'Ativo' : 'Inativo' }
 const fold = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
 export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext }: {
@@ -77,26 +77,32 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const seen = new Set<string>(), found: HierarchyNode[] = []
     function visit(node: HierarchyNode, parent = '') {
       const key = node.codigo_peca ?? node.id
-      if (node.tipo === 'peca' && !seen.has(key) && fold(`${parent} ${node.nome} ${node.codigo_peca ?? ''}`).includes(fold(query))) {
-        seen.add(key); found.push({ ...node, nome: node.lado ? `${parent} · ${node.nome}` : node.nome })
+      const name = byCode(node.codigo_peca)?.name ?? (node.lado ? `${parent} · ${node.nome}` : node.nome)
+      if (node.tipo === 'peca' && !seen.has(key) && fold(`${parent} ${name} ${node.codigo_peca ?? ''}`).includes(fold(query.trim()))) {
+        seen.add(key); found.push({ ...node, nome: name })
       }
       node.itens?.forEach(child => visit(child, node.nome))
     }
-    roots.forEach(node => visit(node)); return found
+    roots.forEach(node => visit(node))
+    for (const item of catalog?.items ?? []) {
+      const key = item.code ?? item.id
+      if (item.kind === 'peca' && !seen.has(key) && fold(`${item.name} ${item.code ?? ''}`).includes(fold(query.trim()))) {
+        seen.add(key); found.push({ id: item.id, tipo: 'peca', nome: item.name, codigo_peca: item.code ?? undefined })
+      }
+    }
+    return found
   }
   const nodes = query.trim() ? searchNodes() : path.length ? path[path.length - 1].itens ?? [] : roots
   const picker = <section className="piece-picker" aria-label="Selecionar peça">
-    <p className="at-form-hint">Hierarquia V2 proposta. Valide a peça em Catálogos antes de adicioná-la. A seleção não confirma aplicabilidade ao veículo.</p>
+    <p className="at-form-hint">Selecione uma peça ativa e identificada. A busca inclui todo o catálogo. A seleção não confirma aplicabilidade ao veículo.</p>
     <label className="at-field">Buscar peça em todas as vistas<input value={query} onChange={e => setQuery(e.target.value)} maxLength={150} /></label>
     <div className="commercial-toolbar"><button className="fh-filter" disabled={!path.length || busy} onClick={() => { setPath(p => p.slice(0, -1)); setQuery('') }}>← Voltar nível</button><span>{path.map(node => node.nome).join(' / ') || 'Regiões e acesso geral'}</span></div>
     <div className="piece-options">{nodes.map(node => {
       const group = node.tipo === 'grupo' || node.tipo === 'grupo_lados'
       const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca ?? [] : node.codigo_peca ? [node.codigo_peca] : []
       const available = codes.length > 0 && codes.every(code => { const item = byCode(code); return item && usable(item) })
-      return <button key={node.id} disabled={busy || (!group && !available)} onClick={() => showNode(node)} title={!group && !available ? 'Validação ou código pendente no catálogo' : undefined}><strong>{node.nome}{group ? ' ›' : ''}</strong><small>{group ? 'Abrir grupo' : node.tipo === 'acao_ambos' ? `Duas peças · ${available ? 'validadas' : 'validação pendente'}` : `${stateLabel(byCode(node.codigo_peca))}${node.codigo_peca ? ` · ${node.codigo_peca}` : ''}`}</small></button>
+      return <button key={node.id} disabled={busy || (!group && !available)} onClick={() => showNode(node)} title={!group && !available ? 'Peça inativa ou sem código cadastrado' : undefined}><strong>{node.nome}{group ? ' ›' : ''}</strong><small>{group ? 'Abrir grupo' : node.tipo === 'acao_ambos' ? `Duas peças · ${available ? 'disponíveis' : 'indisponíveis'}` : `${stateLabel(byCode(node.codigo_peca))}${node.codigo_peca ? ` · ${node.codigo_peca}` : ''}`}</small></button>
     })}</div>{!nodes.length && <p>Nenhuma peça encontrada.</p>}
-    {/* Operator-created codes do not silently change or resolve the supplied V2. */}
-    {!path.length && <details><summary>Peças próprias fora da árvore V2</summary>{catalog?.items.filter(item => item.kind === 'peca' && item.source === 'operador' && (!query || fold(item.name).includes(fold(query)))).map(item => <button className="codex-add" key={item.id} disabled={busy || !usable(item)} onClick={() => select([item.code!])}>{item.name} · {stateLabel(item)}</button>)}</details>}
   </section>
   const patchDraft = (value: Partial<DiagnosisItem>) => setDraft(previous => previous ? { ...previous, ...value } : null)
   function updateLine(index: number, value: Partial<DiagnosisService>) { if (draft) patchDraft({ services: draft.services.map((line, i) => i === index ? { ...line, ...value } : line) }) }
@@ -176,9 +182,9 @@ function CatalogManager({ catalog, onChanged, onDirty, onBusy, onAuthRequired }:
   const [kind, setKind] = useState<CatalogKind>('peca'), [query, setQuery] = useState('')
   const [old, setOld] = useState<CatalogItem | null>(null), [form, setForm] = useState(false)
   const [name, setName] = useState(''), [code, setCode] = useState(''), [serviceId, setServiceId] = useState('')
-  const [validated, setValidated] = useState(false), [active, setActive] = useState(true)
+  const [active, setActive] = useState(true)
   const [busy, setBusy] = useState(false), [failure, setFailure] = useState(''), [history, setHistory] = useState<{ revision: number; changedAt: string }[]>([])
-  const dirty = form && (name !== (old?.name ?? '') || code !== (old?.code ?? '') || validated !== (old?.status === 'validado') || active !== (old?.active ?? true) || serviceId !== (old?.serviceId ?? ''))
+  const dirty = form && (name !== (old?.name ?? '') || code !== (old?.code ?? '') || active !== (old?.active ?? true) || serviceId !== (old?.serviceId ?? ''))
   useEffect(() => { onDirty(dirty) }, [dirty, onDirty])
   useEffect(() => () => { onDirty(false); onBusy(false) }, [onDirty, onBusy])
   async function refreshCatalogs() {
@@ -189,25 +195,24 @@ function CatalogManager({ catalog, onChanged, onDirty, onBusy, onAuthRequired }:
     finally { setBusy(false); onBusy(false) }
   }
   function edit(item: CatalogItem | null) {
-    setOld(item); setForm(true); setName(item?.name ?? ''); setCode(item?.code ?? ''); setServiceId(item?.serviceId ?? ''); setValidated(item?.status === 'validado'); setActive(item?.active ?? true); setFailure(''); setHistory([])
+    setOld(item); setForm(true); setName(item?.name ?? ''); setCode(item?.code ?? ''); setServiceId(item?.serviceId ?? ''); setActive(item?.active ?? true); setFailure(''); setHistory([])
   }
-  return <section aria-label="Manutenção de catálogos"><p className="at-form-hint">Catálogos próprios. Validar confirma a identificação para uso comercial, sem atestar aplicabilidade ao veículo. Nenhum preço ou fator é criado aqui.</p>
+  return <section aria-label="Manutenção de catálogos"><p className="at-form-hint">Catálogo único. Itens ativos e identificados ficam disponíveis imediatamente. Nenhum preço ou fator é criado aqui.</p>
     {failure && <p className="form-error" role="alert">{failure}</p>}
     {form ? <form aria-label="Editar catálogo" onSubmit={async event => {
       event.preventDefault(); if (busy) return
       setBusy(true); onBusy(true); setFailure('')
       try {
-        await api(old ? `/api/catalogos/${encodeURIComponent(old.id)}` : '/api/catalogos', { method: old ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(old ? { revision: old.revision, name, status: validated ? 'validado' : 'proposta', active } : { kind, name, status: validated ? 'validado' : 'proposta', ...(kind === 'peca' ? { code } : {}), ...(kind === 'dimensao' ? { serviceId } : {}) }) })
+        await api(old ? `/api/catalogos/${encodeURIComponent(old.id)}` : '/api/catalogos', { method: old ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(old ? { revision: old.revision, name, active } : { kind, name, ...(kind === 'peca' ? { code } : {}), ...(kind === 'dimensao' ? { serviceId } : {}) }) })
         onDirty(false); setForm(false); await onChanged()
       } catch (cause) { setFailure((cause as Error).message); if ((cause as RequestFailure).status === 401) onAuthRequired() }
       finally { setBusy(false); onBusy(false) }
     }}><fieldset disabled={busy}>
       <h2>{kindNames[kind]} · {old ? 'Editar' : 'Novo cadastro'}</h2>
       <label className="at-field">Nome do catálogo<input autoFocus required maxLength={250} value={name} onChange={e => setName(e.target.value)} /></label>
-      {kind === 'peca' && <label className="at-field">Código da peça<input required maxLength={150} readOnly={Boolean(old)} value={code} onChange={e => setCode(e.target.value)} /><small>{old ? 'Código preservado como identidade física.' : 'Informe somente um código fornecido/validado pela direção.'}</small></label>}
+      {kind === 'peca' && <label className="at-field">Código da peça<input required maxLength={150} readOnly={Boolean(old)} value={code} onChange={e => setCode(e.target.value)} /><small>{old ? 'Código preservado como identidade física.' : 'Informe o código real que identifica a peça.'}</small></label>}
       {kind === 'dimensao' && <label className="at-field">Serviço da dimensão<select required disabled={Boolean(old)} value={serviceId} onChange={e => setServiceId(e.target.value)}><option value="">Selecionar serviço</option>{catalog.items.filter(item => item.kind === 'servico' && (usable(item) || item.id === serviceId)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      <label className="commercial-check"><input type="checkbox" checked={validated} onChange={e => setValidated(e.target.checked)} /> Validado pelo operador</label>
-      {old && <><label className="commercial-check"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> Ativo para novas seleções</label><p className="at-form-hint">{old.source} · revisão {old.revision} · {new Date(old.updatedAt).toLocaleString('pt-BR')}</p></>}
+      {old && <><label className="commercial-check"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> Ativo para novas seleções</label><p className="at-form-hint">Revisão {old.revision} · {new Date(old.updatedAt).toLocaleString('pt-BR')}</p></>}
       <div className="commercial-toolbar"><button type="button" className="fh-filter" onClick={() => { if (!dirty || window.confirm('Há alterações não salvas. Deseja descartá-las?')) { setForm(false); onDirty(false); void refreshCatalogs() } }}>Cancelar edição</button><button className="primary-btn" type="submit">{busy ? 'Salvando…' : 'Salvar catálogo'}</button></div>
       {old && <button type="button" className="codex-add" onClick={async () => { try { setHistory(await api(`/api/catalogos/${encodeURIComponent(old.id)}/historico`)) } catch (cause) { setFailure((cause as Error).message) } }}>Ver histórico de alterações</button>}
       {history.map(entry => <p className="at-form-hint" key={entry.revision}>Revisão {entry.revision} · {new Date(entry.changedAt).toLocaleString('pt-BR')}</p>)}

@@ -19,6 +19,14 @@ test('approved V0.9 R05: unit 100.01 ceilings to 100.05 before quantity; energy 
  assert.deepEqual(c.errors,[]);assert.equal(c.lines[0]!.unit,'100.05');assert.equal(c.total,'300.15');assert.equal(c.energy,'15');assert.equal(c.days,'4')
  f.config.tables[0]!.factor='2';assert.equal(f.run().energy,'15')
 })
+test('legacy status/origin do not gate pricing; inactive or unidentified effective entries still block',()=>{
+ const f=calculationFixture(),original=f.run()
+ for(const entry of f.catalog){entry.status='proposta';entry.source='hierarquia-v2';entry.suggestion=true}
+ assert.deepEqual(f.run(),original)
+ for(const entry of f.catalog){entry.active=false;assert(f.run().errors.some(e=>e.includes('inativo')));entry.active=true}
+ f.catalog.find(c=>c.kind==='peca')!.code=null
+ assert(f.run().errors.some(e=>e.includes('identificação')))
+})
 test('normal factors multiply exactly once; exact special key bypasses all factors only in its own table',()=>{
  const f=calculationFixture();f.items[0]!.services[0]!.quantity='2';f.config.services[0]!.base='10';f.config.services[0]!.dimensions[0]!.fd='1.5';f.config.tables[0]!.factor='1.2';f.config.colors[0]!.factor='1.1';f.config.risks[0]!.factor='1.3'
  assert.equal(f.run().lines[0]!.unit,'25.75')

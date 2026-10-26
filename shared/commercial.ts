@@ -6,6 +6,10 @@ export interface CatalogItem {
   suggestion: boolean; side: string; serviceId: string | null; active: boolean
   revision: number; createdAt: string; updatedAt: string
 }
+// Legacy status/source metadata does not gate the single commercial catalog.
+export function catalogItemUsable(item: CatalogItem): boolean {
+  return item.active && Boolean(item.name.trim()) && (item.kind !== 'peca' || Boolean(item.code?.trim()))
+}
 export interface HierarchyNode {
   id: string; tipo: 'grupo' | 'grupo_lados' | 'peca' | 'acao_ambos'; nome: string
   codigo_peca?: string; lado?: string; situacao?: string

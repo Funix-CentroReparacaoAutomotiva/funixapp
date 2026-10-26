@@ -25,14 +25,12 @@ async def run():
    at_id=re.search('/atendimentos/([^?]+)',page.url).group(1);path='/api/atendimentos/'+at_id
    await page.get_by_role('button',name='Diagnósticos',exact=True).click()
    await page.get_by_role('button',name='Catálogos',exact=True).click()
-   await page.get_by_label('Buscar no catálogo').fill('capo');await page.locator('.catalog-row').first.click()
-   await page.get_by_label('Validado pelo operador').check();await page.get_by_role('button',name='Salvar catálogo',exact=True).click()
-   await expect(page.get_by_role('form',name='Editar catálogo')).not_to_be_visible()
    async def catalog(kind,name,service=None):
     await page.get_by_label('Tipo de catálogo').select_option(kind);await page.get_by_label('Buscar no catálogo').fill('')
     await page.get_by_role('button',name='+ Novo cadastro',exact=True).click();await page.get_by_label('Nome do catálogo').fill(name)
     if service:await page.get_by_label('Serviço da dimensão').select_option(label=service)
-    await page.get_by_label('Validado pelo operador').check();await page.get_by_role('button',name='Salvar catálogo',exact=True).click()
+    await expect(page.get_by_label('Validado pelo operador')).to_have_count(0)
+    await page.get_by_role('button',name='Salvar catálogo',exact=True).click()
     await expect(page.get_by_role('form',name='Editar catálogo')).not_to_be_visible()
    await catalog('servico','Serviço QA sintético');await catalog('dimensao','Dimensão QA','Serviço QA sintético');await catalog('diagnostico','Dano QA');await catalog('diagnostico','Dano alternativo QA')
    await page.get_by_role('button',name='Voltar aos itens',exact=True).click()

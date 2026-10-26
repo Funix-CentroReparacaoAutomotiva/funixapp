@@ -40,35 +40,28 @@ async def run():
             await page.get_by_role('button', name='Diagnósticos', exact=True).click()
             await page.get_by_role('button', name='+ Adicionar peça / item', exact=True).click()
             await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
-            await expect(page.locator('.piece-options button').first).to_be_disabled()
+            await expect(page.locator('.piece-options button').first).to_be_enabled()
             await page.get_by_label('Buscar peça em todas as vistas').fill('teto solar')
-            await expect(page.locator('.piece-options')).to_contain_text('Sugestão V2')
+            await expect(page.locator('.piece-options button').first).to_be_enabled()
+            await expect(page.locator('.piece-options')).not_to_contain_text('Sugestão V2')
             await page.get_by_label('Buscar peça em todas as vistas').fill('Veículo completo')
             await expect(page.locator('.piece-options')).to_contain_text('Sem código')
             await expect(page.locator('.piece-options button').first).to_be_disabled()
-            h.mark('unvalidated proposals, suggestions and missing-code leaves visible and blocked')
+            h.mark('active coded pieces available immediately; missing-code leaves still blocked, without origin labels')
 
             await page.get_by_role('button', name='Catálogos', exact=True).click()
 
-            async def validate_piece(code):
-                await page.get_by_label('Tipo de catálogo').select_option('peca')
-                await page.get_by_label('Buscar no catálogo').fill(code)
-                await page.locator('.catalog-row').filter(has_text=code).first.click()
-                await page.get_by_label('Validado pelo operador').check()
-                await page.get_by_role('button', name='Salvar catálogo', exact=True).click()
-                await expect(page.get_by_role('form', name='Editar catálogo')).not_to_be_visible()
-
-            for code in ['capo', 'para_lama_dianteiro__motorista', 'para_lama_dianteiro__passageiro']:
-                await validate_piece(code)
             # Explicit operator maintenance, not preloaded demonstration catalogs.
-            async def create_catalog(kind, name, service_name=None):
+            async def create_catalog(kind, name, service_name=None, code=None):
                 await page.get_by_label('Tipo de catálogo').select_option(kind)
                 await page.get_by_label('Buscar no catálogo').fill('')
                 await page.get_by_role('button', name='+ Novo cadastro', exact=True).click()
                 await page.get_by_label('Nome do catálogo').fill(name)
                 if service_name:
                     await page.get_by_label('Serviço da dimensão').select_option(label=service_name)
-                await page.get_by_label('Validado pelo operador').check()
+                if code:
+                    await page.get_by_label('Código da peça').fill(code)
+                await expect(page.get_by_label('Validado pelo operador')).to_have_count(0)
                 await page.get_by_role('button', name='Salvar catálogo', exact=True).click()
                 await expect(page.get_by_role('form', name='Editar catálogo')).not_to_be_visible()
 
@@ -80,7 +73,7 @@ async def run():
             await page.get_by_label('Buscar no catálogo').fill('capo')
             await page.locator('.catalog-row').first.click()
             await page.get_by_role('button', name='Ver histórico de alterações').click()
-            await expect(page.get_by_role('form', name='Editar catálogo')).to_contain_text('Revisão 2')
+            await expect(page.get_by_role('form', name='Editar catálogo')).to_contain_text('Revisão 1')
             await page.get_by_label('Nome do catálogo').fill('Não deve ser salvo')
             h.accept_dialogs = False
             await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
@@ -88,7 +81,7 @@ async def run():
             h.accept_dialogs = True
             await page.get_by_role('button', name='Cancelar edição', exact=True).click()
             await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
-            h.mark('own catalog maintenance and explicit validation, service-bound dimension, revision history and unsaved guard')
+            h.mark('own catalog maintenance without approval, service-bound dimension, revision history and unsaved guard')
 
             await page.get_by_role('button', name='Mapa', exact=True).click()
             await page.locator('[data-region="frente"]').first.click()
@@ -191,6 +184,35 @@ async def run():
             rows = await (await mobile.request.get(ORIGIN + path)).json()
             assert len(rows) == 2 and all(not row['services'] for row in rows)
             h.mark('API restart plus fresh mobile session recovers correct Atendimento, diagnosis and child services; deletion removes children')
+
+            # A new operator piece joins the same picker immediately, without status/origin steps.
+            await page.get_by_role('button', name='Catálogos', exact=True).click()
+            await create_catalog('peca', 'Peça QA unificada', code='qa-unified-piece')
+            await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
+            await page.get_by_role('button', name='+ Adicionar peça / item', exact=True).click()
+            await page.get_by_label('Buscar peça em todas as vistas').fill('qa-unified-piece')
+            await expect(page.locator('.piece-options button')).to_have_count(1)
+            await expect(page.locator('.piece-options button')).to_be_enabled()
+            await page.get_by_label('Buscar peça em todas as vistas').fill('Peça QA unificada')
+            await expect(page.locator('.piece-options button')).to_have_count(1)
+            for label in ['Proposta', 'Sugestão V2', 'Peças próprias fora da árvore V2']:
+                await expect(page.get_by_text(label, exact=True)).to_have_count(0)
+            await page.screenshot(path=str(ARTIFACTS / 'busca-unificada-mobile.png'))
+            await page.locator('.piece-options button').click()
+            await expect(page.locator('.diagnosis-card')).to_have_count(3)
+            await page.get_by_role('button', name='Catálogos', exact=True).click()
+            await page.get_by_label('Buscar no catálogo').fill('qa-unified-piece')
+            await page.locator('.catalog-row').click()
+            await page.get_by_label('Ativo para novas seleções').uncheck()
+            await page.get_by_role('button', name='Salvar catálogo', exact=True).click()
+            await expect(page.get_by_role('form', name='Editar catálogo')).not_to_be_visible()
+            await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
+            await expect(page.locator('.piece-options button')).to_be_disabled()
+            await expect(page.locator('.diagnosis-card')).to_have_count(3)
+            entries = (await (await mobile.request.get(ORIGIN + '/api/catalogos')).json())['items']
+            own = next(item for item in entries if item['code'] == 'qa-unified-piece')
+            assert own['status'] == 'proposta' and not own['active']
+            h.mark('new operator piece is unique in unified name/code search, selectable immediately; inactivation blocks picker and preserves existing reference')
             assert not h.external, h.external
             assert not h.page_errors, h.page_errors
             assert not any('/api/experiencias' in r['path'] or '/api/workspace' in r['path'] for r in h.api_requests)

@@ -1,0 +1,95 @@
+
+> funixapp@0.1.0 check
+> npm run build && npm run check:server && npm run test:server && npm run lint
+
+
+> funixapp@0.1.0 build
+> tsc -b && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 28 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.62 kB │ gzip:  0.39 kB
+dist/assets/index-DucOqJ_R.css   20.09 kB │ gzip:  5.11 kB
+dist/assets/index-C0lXEntP.js   293.75 kB │ gzip: 88.14 kB
+
+✓ built in 141ms
+
+> funixapp@0.1.0 check:server
+> tsc -p server/tsconfig.json
+
+
+> funixapp@0.1.0 test:server
+> node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts
+
+✔ health reflects local SQLite and protected reads/writes require authentication (52.931215ms)
+✔ session is HttpOnly, expires, and deletion revokes it (111.746362ms)
+✔ rejects cross-origin login and locks excessive login failures (299.714992ms)
+✔ creates, searches, edits and reopens local Atendimento without any Coda or network call (74.338497ms)
+✔ writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies (79.668576ms)
+✔ stale editing and rejected stage need explicit review; neither silently changes data (75.40046ms)
+✔ short/unconfigured password leaves access closed and readiness reflects database failures (79.890741ms)
+✔ HTTPS production origin keeps secure cookies and reports readiness without exposing credentials (72.90738ms)
+✔ commercial APIs enforce authentication/origin/JSON and operate entirely locally with encoded V2 identifiers (81.752819ms)
+✔ pricing, components, scenarios and immutable PDF APIs retain auth/origin protections and have no external transport (111.76841ms)
+✔ SQLite preserves optional text and independent duplicate-phone UUIDs after close and reopen (8.022688ms)
+✔ two independent Node processes recover persisted Atendimento from the same file (163.575383ms)
+✔ search and pagination remain database queries and SQL-like text does not select unrelated rows (8.624787ms)
+✔ manual backup restores actual data and refuses overwrite (9.251953ms)
+✔ newer schema is refused without resetting data (7.308191ms)
+✔ N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots survive all live edits and replay (625.744888ms)
+✔ stale previews, missing energy/capacity and wrong-parent requests cannot issue or consume sequence numbers (32.80285ms)
+✔ two separate Node processes serialize emission sequencing in one SQLite file (230.344014ms)
+✔ real PDF paginates long accented observations without dropping the final document identity (37.796316ms)
+✔ maps rich REST and connector refs without selecting an ambiguous relationship (0.561265ms)
+✔ does not hide a missing, ambiguous, or unreadable Atendimento origin (0.296837ms)
+✔ reads fixed API using GET, preserves opaque pagination, projects safe DTO and filters the current page (2.798632ms)
+✔ no credential makes no network request; view configuration is mandatory (0.196456ms)
+✔ upstream failure is sanitized and does not become successful empty data (0.247462ms)
+✔ refuses a configured table that is not the audited view (0.233852ms)
+✔ upgrades actual M1.1 SQL without changing any Atendimento field or table definition; reopen is idempotent (11.400388ms)
+✔ migration failure rolls back all V2 changes and preserves existing data/history; gaps and foreign databases refused (3.086786ms)
+✔ V2 stays byte-identical; 163 coded pieces retain legacy metadata and missing-code nodes have no invented identities (8.584691ms)
+✔ catalog edits preserve revisions/history, immutable codes and legacy metadata without approval gates (7.605256ms)
+✔ Ambos requires two active pieces atomically, ignores legacy status and repeated views deduplicate (7.961072ms)
+✔ diagnosis composition validates references/quantities, preserves draft on errors/conflicts and removes children (10.562176ms)
+✔ active proposals from both origins compose immediately; inactive or unidentified items cannot be newly selected (11.11569ms)
+✔ legacy active pieces without a usable code remain unavailable; no identity is generated (5.605927ms)
+✔ catalog and diagnosis survive file close/reopen including reference metadata and service edits (11.513509ms)
+✔ configuration starts empty, validates exact keys/references/decimals, tracks revisions and rejects stale edits (6.775968ms)
+✔ component monetary identity is independent from physical piece; mask duplication, fractional quantity, explicit zero and delete cascade (10.732413ms)
+✔ approved V0.9 R05: unit 100.01 ceilings to 100.05 before quantity; energy additive and global days ceiling (0.522186ms)
+✔ legacy status/origin do not gate pricing; inactive or unidentified effective entries still block (0.428625ms)
+✔ normal factors multiply exactly once; exact special key bypasses all factors only in its own table (0.393412ms)
+✔ manual components keep explicit zero; missing is pending; FCT is individual and no negotiation touches components (1.875643ms)
+✔ discount and lower target preserve original service prices; modes cannot be combined (0.287102ms)
+✔ positive proportional adjustment stores actual unit prices; residual <=0.50 requires consent, larger blocks (0.616798ms)
+✔ fractional quantities retain subcent totals without hidden rounding; disabled parents produce no price or energy (0.261734ms)
+✔ missing steps and capacity block emission without faking prices or losing valid partial totals (0.203035ms)
+✔ last-line compensation never becomes negative when other rounded lines already exceed target (0.337118ms)
+✔ positive adjustment never discounts last service to offset earlier ceiling rounding (0.376026ms)
+✔ production refuses missing credentials, oversized passwords and a non-HTTPS origin before listening (365.329439ms)
+✔ production requires an explicit file path and refuses an in-memory commercial database (242.160186ms)
+✔ scenario masks clone flags only; duplicate services and master attributes keep stable IDs across edits (10.555398ms)
+✔ parent exclusion preserves child flags; new launches exist in every scenario but enable only active; deletion cascades masks (10.008344ms)
+✔ wrong-parent IDs, stale scenario revisions and malformed flags do not mutate any mask (26.759626ms)
+✔ real M1.2 migration preserves raw records including repeated services, quantity and flags, then survives reopen (11.901088ms)
+✔ failure after additive M1.2 upgrades rolls back every new table/column without resetting old data (8.983799ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3051.640903
+
+> funixapp@0.1.0 lint
+> oxlint
+
+src/App.tsx:94:47: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:101:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:115:49: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:133:35: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

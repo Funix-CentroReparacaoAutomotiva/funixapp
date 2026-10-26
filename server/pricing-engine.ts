@@ -1,4 +1,5 @@
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
+import { catalogItemUsable } from '../shared/commercial.ts'
 import type { Calculation, ComponentItem, Negotiation, PricedLine, PricingConfig, PricingSettings } from '../shared/pricing.ts'
 import { Q,ZERO,sum } from './exact.ts'
 import { inputObject,invalid } from './scenarios.ts'
@@ -16,7 +17,7 @@ function required(value:string|null|undefined,label:string):Q {if(value===null |
 export function calculate(items:DiagnosisItem[],components:ComponentItem[],catalog:CatalogItem[],scenario:Scenario,config:PricingConfig,settings:PricingSettings,deal:Negotiation={mode:'none'}):Calculation {
  const lines:PricedLine[]=[],errors:string[]=[],byId=(id:string|null|undefined)=>catalog.find(c=>c.id===id)
  const table=config.tables.find(t=>t.id===settings.tableId),color=config.colors.find(t=>t.id===settings.colorId),risk=config.risks.find(t=>t.id===settings.riskId)
- const eligible=(id:string|null|undefined,kind:string)=>{const c=byId(id);if(!c || c.kind!==kind || c.status!=='validado' || !c.active)throw new Error(`${kind} não validado/ativo no catálogo.`);return c}
+ const eligible=(id:string|null|undefined,kind:string)=>{const c=byId(id);if(!c || c.kind!==kind || !catalogItemUsable(c))throw new Error(`${kind} inativo ou sem identificação no catálogo.`);return c}
  for(const item of items){
   const piece=byId(item.pieceId),parent=Boolean(scenario.pieceFlags[item.id])
   for(const service of item.services){

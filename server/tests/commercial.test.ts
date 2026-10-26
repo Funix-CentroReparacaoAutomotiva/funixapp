@@ -69,7 +69,7 @@ test('migration failure rolls back all V2 changes and preserves existing data/hi
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test('V2 is byte-identical to supplied original; 163 physical proposals, no automatic validation and no missing-code identities', () => {
+test('V2 stays byte-identical; 163 coded pieces retain legacy metadata and missing-code nodes have no invented identities', () => {
   const { db, repo } = setup()
   try {
     const hash = (url: URL) => createHash('sha256').update(readFileSync(url)).digest('hex')
@@ -92,7 +92,7 @@ test('V2 is byte-identical to supplied original; 163 physical proposals, no auto
   } finally { db.close() }
 })
 
-test('catalog edits have revisions/history, immutable codes, own metadata only and explicit validation', () => {
+test('catalog edits preserve revisions/history, immutable codes and legacy metadata without approval gates', () => {
   const { db, repo } = setup()
   try {
     const original = repo.catalogs().items[0]!
@@ -107,19 +107,20 @@ test('catalog edits have revisions/history, immutable codes, own metadata only a
     for (const value of [{ kind: 'peca', name: 'Sem código' }, { kind: 'servico', name: '' }, { kind: 'servico', name: 'Nome', price: 10 }, { kind: 'etapa', name: 'Não autorizada' }, { kind: 'dimensao', name: 'Dimensão sem serviço' }, { kind: 'servico', name: 'Nome', code: 'inadequado' }]) assert.throws(() => repo.saveCatalog(value), invalid)
     const service = repo.saveCatalog({ kind: 'servico', name: 'Serviço da direção' })
     assert.equal(service.status, 'proposta')
-    assert.throws(() => repo.saveCatalog({ kind: 'dimensao', name: 'Nome', serviceId: service.id }), invalid)
+    const dimension = repo.saveCatalog({ kind: 'dimensao', name: 'Nome', serviceId: service.id })
+    assert.equal(repo.usable(dimension.id, 'dimensao').id, dimension.id)
   } finally { db.close() }
 })
 
-test('Ambos inserts two validated physical pieces atomically and repeated views deduplicate', () => {
-  const { db, repo, atendimento, validate } = setup()
+test('Ambos requires two active pieces atomically, ignores legacy status and repeated views deduplicate', () => {
+  const { db, repo, atendimento } = setup()
   try {
     const codes = ['para_lama_dianteiro__motorista', 'para_lama_dianteiro__passageiro']
-    assert.throws(() => repo.add(atendimento.id, { pieceCodes: codes }), invalid)
-    validate(codes[0]!)
+    const second = repo.catalogs().items.find(item => item.code === codes[1])!
+    repo.saveCatalog({ revision: second.revision, active: false }, second.id)
     assert.throws(() => repo.add(atendimento.id, { pieceCodes: codes }), invalid)
     assert.equal(repo.list(atendimento.id).length, 0)
-    validate(codes[1]!)
+    repo.saveCatalog({ revision: 2, active: true }, second.id)
     const rows = repo.add(atendimento.id, { pieceCodes: codes })
     assert.equal(rows.length, 2)
     assert.equal(repo.add(atendimento.id, { pieceCodes: codes }).length, 2)
@@ -164,20 +165,64 @@ test('diagnosis composition validates references/quantities, preserves draft on 
   } finally { db.close() }
 })
 
+test('active proposals from both origins compose immediately; inactive or unidentified items cannot be newly selected', () => {
+  const { db, repo, atendimento } = setup()
+  try {
+    const existing = repo.catalogs().items.find(item => item.code === 'capo')!
+    const own = repo.saveCatalog({ kind: 'peca', name: 'Peça QA fornecida', code: 'qa-provided-code' })
+    const service = repo.saveCatalog({ kind: 'servico', name: 'Serviço sem aprovação' })
+    const dimension = repo.saveCatalog({ kind: 'dimensao', name: 'Dimensão sem aprovação', serviceId: service.id })
+    const damage = repo.saveCatalog({ kind: 'diagnostico', name: 'Diagnóstico sem aprovação' })
+    assert([existing, own, service, dimension, damage].every(item => item.status === 'proposta'))
+    assert.equal(repo.add(atendimento.id, { pieceCodes: [existing.code, own.code] }).length, 2)
+    const item = repo.list(atendimento.id).find(item => item.pieceId === own.id)!
+    const saved = repo.updateDiagnosis(atendimento.id, item.id, { revision: item.revision, diagnosisId: damage.id, services: [{ serviceId: service.id, dimensionId: dimension.id, quantity: '0.25' }] })
+    assert.equal(saved.services[0]!.quantity, '0.25')
+    for (const entry of [existing, service, dimension, damage]) {
+      repo.saveCatalog({ revision: entry.revision, active: false }, entry.id)
+      assert.throws(() => repo.usable(entry.id, entry.kind), invalid)
+    }
+    const next = new AtendimentoRepository(db).create({ phone: '456' })
+    assert.throws(() => repo.add(next.id, { pieceCodes: [existing.code] }), invalid)
+    const other = repo.add(next.id, { pieceCodes: [own.code] })[0]!
+    assert.throws(() => repo.updateDiagnosis(next.id, other.id, { revision: other.revision, services: [{ serviceId: service.id, dimensionId: dimension.id, quantity: '1' }] }), invalid)
+    const kept = repo.updateDiagnosis(atendimento.id, saved.id, { revision: saved.revision, notes: 'Referências históricas preservadas', services: saved.services })
+    assert.equal(kept.services[0]!.id, saved.services[0]!.id)
+    assert.equal(repo.item(own.id).source, 'operador')
+    assert.equal(repo.item(existing.id).source, 'hierarquia-v2')
+    assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
+  } finally { db.close() }
+})
+
+test('legacy active pieces without a usable code remain unavailable; no identity is generated', () => {
+  const { db, repo } = setup()
+  try {
+    db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES('qa-no-code','peca',NULL,'Sem identificação','proposta','operador','qa','qa')").run()
+    assert.throws(() => repo.usable('qa-no-code', 'peca'), invalid)
+    assert.equal(repo.item('qa-no-code').code, null)
+    db.prepare("UPDATE catalog_items SET code='   ' WHERE id='qa-no-code'").run()
+    assert.throws(() => repo.usable('qa-no-code', 'peca'), invalid)
+  } finally { db.close() }
+})
+
 test('catalog and diagnosis survive file close/reopen including reference metadata and service edits', () => {
   const dir = mkdtempSync(join(tmpdir(), 'funix-commercial-')), file = join(dir, 'commercial.sqlite')
   try {
     let db = openDatabase(file), repo = new CommercialRepository(db)
     const at = new AtendimentoRepository(db).create({ phone: '123' })
     const piece = repo.catalogs().items.find(item => item.code === 'capo')!
-    repo.saveCatalog({ revision: 1, status: 'validado' }, piece.id)
-    const service = repo.saveCatalog({ kind: 'servico', name: 'Serviço sintético', status: 'validado' })
+    const service = repo.saveCatalog({ kind: 'servico', name: 'Serviço sintético' })
     const item = repo.add(at.id, { pieceCodes: ['capo'] })[0]!
     const saved = repo.updateDiagnosis(at.id, item.id, { revision: 1, services: [{ serviceId: service.id, quantity: '0.250000' }] })
+    const rows = db.prepare('SELECT * FROM catalog_items ORDER BY id').all()
+    const schema = db.prepare('SELECT name,sql FROM sqlite_master ORDER BY name').all()
     db.close(); db = openDatabase(file); repo = new CommercialRepository(db)
+    assert.deepEqual(db.prepare('SELECT * FROM catalog_items ORDER BY id').all(), rows)
+    assert.deepEqual(db.prepare('SELECT name,sql FROM sqlite_master ORDER BY name').all(), schema)
     assert.equal(saved.services[0]!.quantity, '0.25')
     assert.deepEqual(repo.list(at.id), [saved])
-    assert.equal(repo.historyOf(piece.id).length, 2)
+    assert.equal(repo.historyOf(piece.id).length, 1)
+    assert.equal(repo.item(piece.id).status, 'proposta')
     const edited = repo.updateDiagnosis(at.id, item.id, { revision: 2, services: [] })
     assert.equal(edited.services.length, 0)
     db.close()

@@ -1,0 +1,37 @@
+{
+  "suite": "Issue 7 MVP Comercial integrado",
+  "data": "Synthetic QA only; no production seed or provider call",
+  "assertions": [
+    {
+      "name": "operator creates real Atendimento/catalogs/piece and repeated service lines via UI; duplicate scenario changes flags only",
+      "pass": true
+    },
+    {
+      "name": "missing setup blocks emission without losing draft; operator configures prices, factors, stages, energy, capacity and common parameters via UI",
+      "pass": true
+    },
+    {
+      "name": "exact fractional totals and manual zero/FCT components persist; matrix uses effective flags even when monetary totals are zero",
+      "pass": true
+    },
+    {
+      "name": "manual UI emission A applies services-only discount; downloaded real PDF independently parsed with pdftotext including accented text and totals",
+      "pass": true
+    },
+    {
+      "name": "26 Z and 27 AA issued through UI; earlier A snapshot and PDF unchanged after live prices/Atendimento edits",
+      "pass": true
+    },
+    {
+      "name": "fresh mobile browser after restart recovers 27 immutable versions, identical A PDF, fractional live totals and horizontal matrix",
+      "pass": true
+    },
+    {
+      "name": "no external provider requests or uncaught browser errors; all successful persistence and PDF responses are real",
+      "pass": true
+    }
+  ],
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}
