@@ -1,0 +1,63 @@
+name: FUNIX homologacao - imagens candidatas
+
+on:
+  push:
+    branches: [homologacao/mvp-comercial]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    # Never promote another branch through manual dispatch.
+    if: github.ref == 'refs/heads/homologacao/mvp-comercial'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - name: Validate isolated Compose without exposing any live credentials
+        run: |
+          sudo install -d -m 0700 /etc/funix
+          printf 'FUNIX_OPERATOR_PASSWORD=ci-testing-password-0000000000\n' | sudo tee /etc/funix/homologacao.env >/dev/null
+          sudo chmod 0600 /etc/funix/homologacao.env
+          FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" \
+            docker compose --file deploy/homologacao.compose.yaml config --quiet
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish API candidate
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          target: api
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/funix-centroreparacaoautomotiva/funixapp-api:hml-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Funix-CentroReparacaoAutomotiva/funixapp
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Publish web candidate
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          target: web
+          platforms: linux/amd64
+          build-args: APP_REVISION=${{ github.sha }}
+          push: true
+          tags: ghcr.io/funix-centroreparacaoautomotiva/funixapp-web:hml-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/Funix-CentroReparacaoAutomotiva/funixapp
+            org.opencontainers.image.revision=${{ github.sha }}
