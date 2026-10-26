@@ -1,0 +1,1 @@
+PASS: API image includes V2, migrates SQLite and reopens synthetic diagnosis with exact fractional quantity; no network or published ports.

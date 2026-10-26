@@ -1,0 +1,106 @@
+import { randomUUID } from 'node:crypto'
+import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
+import { ATENDIMENTO_STAGES } from '../shared/contracts.ts'
+import type { Atendimento, AtendimentoList, AtendimentoStage } from '../shared/contracts.ts'
+import { ServiceError } from './errors.ts'
+
+const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
+const writable = new Set([...Object.keys(textLimits), 'stage', 'explicitRefusal'])
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
+
+export function normalizePhone(phone: string): string | null {
+  const clean = phone.replace(/[\s().-]/g, '')
+  return /^\+[1-9]\d{7,14}$/.test(clean) ? clean : null
+}
+
+function validate(input: unknown, patch: boolean) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Envie os campos do Atendimento em um objeto JSON.')
+  const source = input as Record<string, unknown>
+  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision')) invalid(`Campo não permitido: ${key}.`)
+  if (patch && (!Number.isSafeInteger(source.revision) || Number(source.revision) < 1)) invalid('Informe a revisão do Atendimento que está editando.')
+  const output: Record<string, string | boolean | number> = {}
+  for (const [key, limit] of Object.entries(textLimits)) {
+    if (source[key] === undefined) continue
+    if (typeof source[key] !== 'string' || source[key].length > limit) invalid(`Campo ${key} inválido ou maior que ${limit} caracteres.`)
+    output[key] = source[key].trim()
+  }
+  if (!patch || source.phone !== undefined) {
+    if (typeof output.phone !== 'string' || !output.phone || !/\d/.test(output.phone)) invalid('Informe um telefone de contato.')
+  }
+  if (source.stage !== undefined) {
+    if (!ATENDIMENTO_STAGES.some(stage => stage.id === source.stage)) invalid('Fase comercial inválida.')
+    output.stage = String(source.stage)
+  }
+  if (source.explicitRefusal !== undefined) {
+    if (typeof source.explicitRefusal !== 'boolean') invalid('A confirmação de recusa deve ser verdadeira ou falsa.')
+    output.explicitRefusal = source.explicitRefusal
+  }
+  if (patch && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
+  return { fields: output, revision: Number(source.revision) }
+}
+
+function map(row: Record<string, SQLOutputValue>): Atendimento {
+  return {
+    id: String(row.id), phone: String(row.phone), phoneNormalized: row.phone_normalized === null ? null : String(row.phone_normalized),
+    name: String(row.name), vehicle: String(row.vehicle), brand: String(row.brand), model: String(row.model), plate: String(row.plate),
+    reason: String(row.reason), notes: String(row.notes), stage: String(row.stage) as AtendimentoStage,
+    rejectionReason: String(row.rejection_reason), explicitRefusal: row.explicit_refusal === 1,
+    createdAt: String(row.created_at), updatedAt: String(row.updated_at), revision: Number(row.revision),
+  }
+}
+
+function checkRefusal(record: Atendimento) {
+  if (record.stage === 'rejeitados' && (!record.explicitRefusal || !record.rejectionReason.trim())) invalid('Para marcar Rejeitados, confirme a recusa explícita e registre o motivo.')
+}
+
+export class AtendimentoRepository {
+  readonly db: DatabaseSync
+  constructor(db: DatabaseSync) { this.db = db }
+
+  ready() { this.db.prepare('SELECT 1 FROM atendimentos LIMIT 1').get() }
+
+  list({ q = '', limit = 50, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): AtendimentoList {
+    if (q.length > 150 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) invalid('Parâmetros de busca inválidos.')
+    const escaped = fold(q.trim()).replace(/[\\%_]/g, '\\$&')
+    const search = `%${escaped}%`
+    const digits = /^[+\d\s().-]+$/.test(q) ? q.replace(/[^\d+]/g, '') : ''
+    const where = `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
+    const values = [search, digits, `%${digits}%`]
+    const total = Number(this.db.prepare(`SELECT count(*) AS total FROM atendimentos WHERE ${where}`).get(...values)!.total)
+    const items = this.db.prepare(`SELECT * FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
+    return { items, total, nextOffset: offset + items.length < total ? offset + items.length : null, stages: ATENDIMENTO_STAGES }
+  }
+
+  get(id: string): Atendimento {
+    if (!uuid.test(id)) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
+    const row = this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(id)
+    if (!row) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
+    return map(row)
+  }
+
+  create(input: unknown): Atendimento {
+    const { fields } = validate(input, false)
+    const now = new Date().toISOString()
+    const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
+    record.phoneNormalized = normalizePhone(record.phone)
+    checkRefusal(record)
+    this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
+    return this.get(record.id)
+  }
+
+  update(id: string, input: unknown): Atendimento {
+    const { fields, revision } = validate(input, true)
+    const old = this.get(id)
+    const record: Atendimento = { ...old, ...fields, revision: revision + 1, updatedAt: new Date().toISOString() }
+    record.phoneNormalized = normalizePhone(record.phone)
+    checkRefusal(record)
+    const result = this.db.prepare(`UPDATE atendimentos SET phone=?,phone_normalized=?,name=?,vehicle=?,brand=?,model=?,plate=?,reason=?,notes=?,search_text=?,stage=?,rejection_reason=?,explicit_refusal=?,updated_at=?,revision=revision+1 WHERE id=? AND revision=?`).run(record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, record.updatedAt, id, revision)
+    if (!result.changes) throw new ServiceError(409, 'VERSION_CONFLICT', 'Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
+    return this.get(id)
+  }
+}
+
+function fold(text: string) { return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR') }
+function searchText(record: Atendimento) { return fold([record.id, record.phone, record.name, record.vehicle, record.brand, record.model, record.plate].join('\n')) }

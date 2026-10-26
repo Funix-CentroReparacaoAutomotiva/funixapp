@@ -1,0 +1,102 @@
+[
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/FUNIX_ESPECIFICACAO_UNIFICADA_V1_0_PARA_CONFERENCIA.md",
+    "sha256": "d793de4fad918b2d0521a2bd981202b2b257c2015c3f5745abe805930b125883",
+    "bytes": 36072
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/PROMPT_PARTIDA_CODEX_FUNIX_V1_0.md",
+    "sha256": "b1703d503dd0a0f903b3e361ba28c7b4219156cbd67ff3b521039c5a6f8de159",
+    "bytes": 3126
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/LEIA_PRIMEIRO.md",
+    "sha256": "7694c077255e6038a9d74e857134841d2ee4825df312b51025cdde93cbe63f2f",
+    "bytes": 928
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/FUNIX_respostas_unificacao_V1_0.json",
+    "sha256": "c701230ece11539d9463088dd0ed644371ccafc8f83a73d253712caf83981898",
+    "bytes": 15266
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/FUNIX_V09_INSTRUCOES_PARA_CODEX_APROVADO.md",
+    "sha256": "b9898da56c9f25b3e76413d1b7a2d645539270047d4f63696044a8b86de1b035",
+    "bytes": 8545
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/FUNIX_V20_Menu_Compacto_Kanban.html",
+    "sha256": "fb36595cc8057e5fa694aee0d33f781dc59ba3e99edaa70c285844e40bcd4679",
+    "bytes": 258731
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/hierarquia_pecas_funix_v2.json",
+    "sha256": "20d8ac528f3708bf259d5c0d53959d843b189df4583ec24c2c57d026ce827e30",
+    "bytes": 308238
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/hierarquia_pecas_funix_v2.md",
+    "sha256": "1a80bb46209f82cbfb57d1912e56722b12e2275dc893ab19f12798129cf32653",
+    "bytes": 19852
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/FUNIX_mapa_mestre_V09_APROVADO.json",
+    "sha256": "456fc5cb9c470e6b6c6e6f24b5c27acc8ca1e1440c661fa60694be3cf9a48334",
+    "bytes": 397085
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/00_master_index.md",
+    "sha256": "d291d3de2b56ad8fcb242764ca9e16eff6bf118e92426ea9058f5af791d701e1",
+    "bytes": 16531
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/01_identity.md",
+    "sha256": "619dd832a680649560e0edeac1baa43a68f803d79030b8c989ff25afb62efe3d",
+    "bytes": 10069
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/02_business_model.md",
+    "sha256": "5e92dd5aa7a544717851566e00f17786934b1c2c7f3bfa113664f6b2a7daa269",
+    "bytes": 17757
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/03_customer_psychology.md",
+    "sha256": "9dafdbc3c9d8fbf8c679406a3e6bcc92072a25a5804dbe36ad7768eb54703f20",
+    "bytes": 10216
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/04_sales.md",
+    "sha256": "ba250838de653ebff12af559e0102a83bbbf159fa73a10aafc8c2c41aaa35fc8",
+    "bytes": 17982
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/05_operations.md",
+    "sha256": "9f1af88e7b07637e491eeed4e73eb4f8c84d74d8185f0903d71bbad48e7171df",
+    "bytes": 21426
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/06_legal_and_policy.md",
+    "sha256": "868bc09ebdc64f6945c70f2dd82397083b415b192f26c57a9eddaa8e81f0f45d",
+    "bytes": 13590
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/07_digital.md",
+    "sha256": "70c711d632c8d9432520b9d6771fdeb45804430e1e25ec554812d9c86f9b7837",
+    "bytes": 13333
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/08_brand_assets.md",
+    "sha256": "54f6d755a68d61ffb91af388bbde6178a38cbaae087d7a94a8d3d83db6ae1651",
+    "bytes": 10770
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/09_decision_framework.md",
+    "sha256": "ed3c208267bf98d468ba714378594a48982c60ad0b4257c2d4d746e399d83e62",
+    "bytes": 18844
+  },
+  {
+    "arquivo": "docs/especificacao-v1.0/originais/10_strategy.md",
+    "sha256": "c47acf074fa548dde0f303757e198402b14d9486aaf020c48fa8fbcc54f9bbb3",
+    "bytes": 22329
+  }
+]

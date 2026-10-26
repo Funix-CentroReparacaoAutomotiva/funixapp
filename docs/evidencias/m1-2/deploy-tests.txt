@@ -1,0 +1,12 @@
+test_first_failure_stops_only_funix (test_deploy.DeployTests.test_first_failure_stops_only_funix) ... ok
+test_invalid_commands_and_paths_cannot_reach_docker (test_deploy.DeployTests.test_invalid_commands_and_paths_cannot_reach_docker) ... ok
+test_manual_rollback_restores_pair_and_swaps_previous (test_deploy.DeployTests.test_manual_rollback_restores_pair_and_swaps_previous) ... ok
+test_revision_cannot_be_silently_replaced_by_different_digests (test_deploy.DeployTests.test_revision_cannot_be_silently_replaced_by_different_digests) ... ok
+test_ssh_wrapper_rejects_injection_and_arbitrary_shell (test_deploy.DeployTests.test_ssh_wrapper_rejects_injection_and_arbitrary_shell) ... ok
+test_unhealthy_update_restores_previous_without_advancing_state (test_deploy.DeployTests.test_unhealthy_update_restores_previous_without_advancing_state) ... ok
+test_updates_only_funix_and_persists_digest_release (test_deploy.DeployTests.test_updates_only_funix_and_persists_digest_release) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.970s
+
+OK

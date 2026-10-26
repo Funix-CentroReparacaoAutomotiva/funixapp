@@ -1,5 +1,7 @@
 # Implantação FUNIX na Hostinger
 
+> Histórico da preparação da versão Coda. Para o MVP Comercial do PR #10, seguir [PUBLICACAO_MVP_COMERCIAL.md](PUBLICACAO_MVP_COMERCIAL.md): SQLite persistente em `/data`, sem Coda ativo e deploy exclusivamente manual. As instruções antigas abaixo sobre habilitar deploy por push, ausência de banco/volume e rollback sem migrações não se aplicam ao Comercial. Não reinstalar o bootstrap numa VPS já preparada.
+
 Estado: preparação para revisão; implantação real não executada. A VPS não foi acessada e DNS, regras efetivas do Traefik e credenciais remotas não foram verificados nesta etapa.
 
 ## Arquitetura

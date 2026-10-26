@@ -1,0 +1,92 @@
+
+> funixapp@0.1.0 check
+> npm run build && npm run check:server && npm run test:server && npm run lint
+
+
+> funixapp@0.1.0 build
+> tsc -b && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 27 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.62 kB │ gzip:  0.39 kB
+dist/assets/index-DucOqJ_R.css   20.09 kB │ gzip:  5.11 kB
+dist/assets/index-BXNSUPHg.js   294.27 kB │ gzip: 88.25 kB
+
+✓ built in 174ms
+
+> funixapp@0.1.0 check:server
+> tsc -p server/tsconfig.json
+
+
+> funixapp@0.1.0 test:server
+> node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts
+
+✔ health reflects local SQLite and protected reads/writes require authentication (72.002064ms)
+✔ session is HttpOnly, expires, and deletion revokes it (137.666272ms)
+✔ rejects cross-origin login and locks excessive login failures (500.394524ms)
+✔ creates, searches, edits and reopens local Atendimento without any Coda or network call (111.408022ms)
+✔ writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies (144.007434ms)
+✔ stale editing and rejected stage need explicit review; neither silently changes data (109.780588ms)
+✔ short/unconfigured password leaves access closed and readiness reflects database failures (115.19591ms)
+✔ HTTPS production origin keeps secure cookies and reports readiness without exposing credentials (106.471598ms)
+✔ commercial APIs enforce authentication/origin/JSON and operate entirely locally with encoded V2 identifiers (134.182633ms)
+✔ pricing, components, scenarios and immutable PDF APIs retain auth/origin protections and have no external transport (237.831008ms)
+✔ SQLite preserves optional text and independent duplicate-phone UUIDs after close and reopen (13.823798ms)
+✔ two independent Node processes recover persisted Atendimento from the same file (308.177176ms)
+✔ search and pagination remain database queries and SQL-like text does not select unrelated rows (12.982359ms)
+✔ manual backup restores actual data and refuses overwrite (14.877686ms)
+✔ newer schema is refused without resetting data (7.200269ms)
+✔ N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots survive all live edits and replay (868.630165ms)
+✔ stale previews, missing energy/capacity and wrong-parent requests cannot issue or consume sequence numbers (47.189422ms)
+✔ two separate Node processes serialize emission sequencing in one SQLite file (274.963291ms)
+✔ real PDF paginates long accented observations without dropping the final document identity (45.568829ms)
+✔ maps rich REST and connector refs without selecting an ambiguous relationship (0.710461ms)
+✔ does not hide a missing, ambiguous, or unreadable Atendimento origin (0.189436ms)
+✔ reads fixed API using GET, preserves opaque pagination, projects safe DTO and filters the current page (3.352314ms)
+✔ no credential makes no network request; view configuration is mandatory (0.340253ms)
+✔ upstream failure is sanitized and does not become successful empty data (0.244639ms)
+✔ refuses a configured table that is not the audited view (0.234093ms)
+✔ upgrades actual M1.1 SQL without changing any Atendimento field or table definition; reopen is idempotent (10.418399ms)
+✔ migration failure rolls back all V2 changes and preserves existing data/history; gaps and foreign databases refused (2.05586ms)
+✔ V2 is byte-identical to supplied original; 163 physical proposals, no automatic validation and no missing-code identities (8.74783ms)
+✔ catalog edits have revisions/history, immutable codes, own metadata only and explicit validation (7.14297ms)
+✔ Ambos inserts two validated physical pieces atomically and repeated views deduplicate (8.55548ms)
+✔ diagnosis composition validates references/quantities, preserves draft on errors/conflicts and removes children (12.172218ms)
+✔ catalog and diagnosis survive file close/reopen including reference metadata and service edits (9.189786ms)
+✔ configuration starts empty, validates exact keys/references/decimals, tracks revisions and rejects stale edits (6.269183ms)
+✔ component monetary identity is independent from physical piece; mask duplication, fractional quantity, explicit zero and delete cascade (17.576342ms)
+✔ approved V0.9 R05: unit 100.01 ceilings to 100.05 before quantity; energy additive and global days ceiling (0.880838ms)
+✔ normal factors multiply exactly once; exact special key bypasses all factors only in its own table (0.331961ms)
+✔ manual components keep explicit zero; missing is pending; FCT is individual and no negotiation touches components (1.106319ms)
+✔ discount and lower target preserve original service prices; modes cannot be combined (0.27166ms)
+✔ positive proportional adjustment stores actual unit prices; residual <=0.50 requires consent, larger blocks (0.589709ms)
+✔ fractional quantities retain subcent totals without hidden rounding; disabled parents produce no price or energy (0.342116ms)
+✔ missing steps and capacity block emission without faking prices or losing valid partial totals (0.29209ms)
+✔ last-line compensation never becomes negative when other rounded lines already exceed target (0.336127ms)
+✔ positive adjustment never discounts last service to offset earlier ceiling rounding (0.419022ms)
+✔ production refuses missing credentials, oversized passwords and a non-HTTPS origin before listening (446.536861ms)
+✔ production requires an explicit file path and refuses an in-memory commercial database (299.161457ms)
+✔ scenario masks clone flags only; duplicate services and master attributes keep stable IDs across edits (12.191916ms)
+✔ parent exclusion preserves child flags; new launches exist in every scenario but enable only active; deletion cascades masks (10.736116ms)
+✔ wrong-parent IDs, stale scenario revisions and malformed flags do not mutate any mask (24.948745ms)
+✔ real M1.2 migration preserves raw records including repeated services, quantity and flags, then survives reopen (11.702472ms)
+✔ failure after additive M1.2 upgrades rolls back every new table/column without resetting old data (10.218394ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4339.62055
+
+> funixapp@0.1.0 lint
+> oxlint
+
+src/App.tsx:94:47: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:101:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:115:49: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:133:35: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

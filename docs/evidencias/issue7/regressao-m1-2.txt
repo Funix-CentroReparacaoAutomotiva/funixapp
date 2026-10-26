@@ -1,0 +1,8 @@
+PASS unvalidated proposals, suggestions and missing-code leaves visible and blocked
+PASS own catalog maintenance and explicit validation, service-bound dimension, revision history and unsaved guard
+PASS interactive original SVG, nested V2 selection, Ambos creates two pieces and cross-view selections deduplicate
+PASS diagnosis/service/dimension selection and quantities persist through real API
+PASS 503, real 401/reauthentication and real 409 preserve unsaved form; navigation protects diagnosis draft
+PASS API restart plus fresh mobile session recovers correct Atendimento, diagnosis and child services; deletion removes children
+PASS no external hosts, no Coda/legacy requests, no browser errors; Issue 7 budget entry is available without external integration
+7 M1.2 browser scenario groups passed

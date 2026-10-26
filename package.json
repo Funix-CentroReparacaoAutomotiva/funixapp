@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "dev:api": "node --use-env-proxy --watch --env-file-if-exists=.env server/index.ts",
+    "db:backup": "node --env-file-if-exists=.env server/backup.ts",
     "check:server": "tsc -p server/tsconfig.json",
     "test:server": "node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts",
     "check": "npm run build && npm run check:server && npm run test:server && npm run lint"

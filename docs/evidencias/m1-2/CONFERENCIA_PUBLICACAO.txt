@@ -1,0 +1,13 @@
+Conferência antes da publicação M1.2
+Base: 3bf660eb5eb0500957a3f99552708d091a73b98b
+Branch exclusiva: codex/m1-2-catalogos-diagnosticos
+PASS: 38 arquivos de código/documentação/evidência examinados antes da inclusão deste registro.
+PASS: lista de escopo conferida; sem mudanças em Compose, workflows, VPS ou Coda.
+PASS: nenhuma assinatura de SQLite, arquivo de ambiente real, banco, chave privada ou dependência instalada nas alterações.
+PASS: busca de padrões de credenciais sem ocorrências; valores não impressos.
+PASS: metadados/capturas novos têm origem nos testes sintéticos registrados, não em sistemas produtivos.
+PASS: 20 referências originais preservadas por SHA-256; hierarquia empacotada idêntica.
+Execuções da entrega preservadas: 29 testes Node; 7 grupos M1.2; 19 grupos M1.1; 7 testes simulados de implantação; smoke API local.
+Sem reexecução funcional nesta preparação: somente documentação adicional, sem alteração funcional posterior à entrega.
+Limitação explicitada para auditoria: um diagnóstico estruturado por peça; múltiplos danos independentes não suportados.
+Push autorizado somente desta branch. Sem merge, deploy, VPS, Coda ou M1.3.

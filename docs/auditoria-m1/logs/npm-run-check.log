@@ -1,0 +1,64 @@
+
+> funixapp@0.1.0 check
+> npm run build && npm run check:server && npm run test:server && npm run lint
+
+
+> funixapp@0.1.0 build
+> tsc -b && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 22 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.62 kB │ gzip:  0.39 kB
+dist/assets/car-map-BveI2Zsm.svg    4.53 kB │ gzip:  1.42 kB
+dist/assets/index-CkXFPh-4.css     16.20 kB │ gzip:  4.30 kB
+dist/assets/index-_vEuFdSv.js     244.13 kB │ gzip: 76.15 kB
+
+✓ built in 165ms
+
+> funixapp@0.1.0 check:server
+> tsc -p server/tsconfig.json
+
+
+> funixapp@0.1.0 test:server
+> node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts
+
+✔ health reflects local SQLite and protected reads/writes require authentication (44.072782ms)
+✔ session is HttpOnly, expires, and deletion revokes it (104.328608ms)
+✔ rejects cross-origin login and locks excessive login failures (306.679545ms)
+✔ creates, searches, edits and reopens local Atendimento without any Coda or network call (70.099422ms)
+✔ writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies (68.778461ms)
+✔ stale editing and rejected stage need explicit review; neither silently changes data (67.254104ms)
+✔ short/unconfigured password leaves access closed and readiness reflects database failures (66.631997ms)
+✔ HTTPS production origin keeps secure cookies and reports readiness without exposing credentials (69.018683ms)
+✔ SQLite preserves optional text and independent duplicate-phone UUIDs after close and reopen (2.353387ms)
+✔ two independent Node processes recover persisted Atendimento from the same file (150.832424ms)
+✔ search and pagination remain database queries and SQL-like text does not select unrelated rows (2.237513ms)
+✔ manual backup restores actual data and refuses overwrite (3.862682ms)
+✔ newer schema is refused without resetting data (1.21404ms)
+✔ maps rich REST and connector refs without selecting an ambiguous relationship (0.413423ms)
+✔ does not hide a missing, ambiguous, or unreadable Atendimento origin (0.197157ms)
+✔ reads fixed API using GET, preserves opaque pagination, projects safe DTO and filters the current page (2.941644ms)
+✔ no credential makes no network request; view configuration is mandatory (0.219311ms)
+✔ upstream failure is sanitized and does not become successful empty data (0.2391ms)
+✔ refuses a configured table that is not the audited view (0.232491ms)
+✔ production refuses missing credentials, oversized passwords and a non-HTTPS origin before listening (314.094136ms)
+✔ production requires an explicit file path and refuses an in-memory commercial database (208.408974ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1574.746765
+
+> funixapp@0.1.0 lint
+> oxlint
+
+src/App.tsx:91:47: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:98:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:112:49: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:130:35: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import type { WorkRecord } from '../shared/contracts'
+import { ATENDIMENTO_STAGES } from '../shared/contracts'
+import type { Atendimento } from '../shared/contracts'
 import { api } from './api'
 import type { Session } from './api'
 
@@ -16,12 +17,14 @@ export function Icon({ name }: { name: 'chat' | 'map' | 'diagnostics' | 'send' |
 export function Notice({ title, children, retry, actionLabel = 'Tentar novamente', error = false }: {title: string; children?: ReactNode; retry?: () => void; actionLabel?: string; error?: boolean}) {
   return <div className={`fh-empty notice ${error ? 'notice-error' : ''}`} role={error ? 'alert' : 'status'}><strong>{title}</strong>{children && <p>{children}</p>}{retry && <button className="fh-filter" onClick={retry}>{actionLabel}</button>}</div>
 }
-export function RecordButton({ item, list = false, onOpen }: {item: WorkRecord; list?: boolean; onOpen: (record: WorkRecord) => void}) {
-  const title = item.name || (item.kind === 'atendimento' ? 'Atendimento sem nome informado' : 'Cliente não informado')
+export function RecordButton({ item, list = false, onOpen }: {item: Atendimento; list?: boolean; onOpen: (record: Atendimento) => void}) {
+  const title = item.name || item.phone
+  const stage = ATENDIMENTO_STAGES.find(stage => stage.id === item.stage)?.name
+  const vehicle = item.vehicle || [item.brand, item.model].filter(Boolean).join(' ')
   return <button type="button" className={list ? 'fh-row' : 'fh-card'} onClick={() => onOpen(item)}>
     {list && <span className="fh-avatar" aria-hidden="true">{title.slice(0, 1).toUpperCase()}</span>}
-    <span className={list ? 'fh-rowmain' : 'fh-cardmain'}><strong>{title}</strong><span className="record-description">{[item.vehicle, item.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}{item.detail && <><br />{item.detail}</>}</span><span className="fh-cardfoot"><span>{item.id || item.rowId}</span>{!list && <b>Abrir ↗</b>}</span></span>
-    {list && <span className="fh-pill blue">{item.stage || 'Sem fase informada'}</span>}
+    <span className={list ? 'fh-rowmain' : 'fh-cardmain'}><strong>{title}</strong><span className="record-description">{[vehicle, item.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}{item.name && <><br />{item.phone}</>}{item.reason && <><br />{item.reason}</>}</span><span className="fh-cardfoot"><span title={item.id}>ID {item.id.slice(0, 8)}…</span>{!list && <b>Abrir ↗</b>}</span></span>
+    {list && <span className="fh-pill blue">{stage}</span>}
   </button>
 }
 export function Login({ session, error, refresh, onSession }: {session: Session | null; error: string; refresh: () => void; onSession: (session: Session) => void}) {
@@ -34,5 +37,5 @@ export function Login({ session, error, refresh, onSession }: {session: Session 
   if (error) return <div className="fh-surface"><Notice title="Não foi possível verificar o acesso" error retry={refresh}>{error}</Notice></div>
   if (!session) return <div className="fh-surface"><Notice title="Verificando acesso…" /></div>
   if (!session.configured) return <div className="fh-surface"><Notice title="Acesso em preparação">O acesso ao aplicativo ainda não foi configurado. Os registros da FUNIX permanecem protegidos.</Notice></div>
-  return <form className="fh-surface login" onSubmit={login}><h1>Acessar FUNIX</h1><p>Entre para consultar os registros da oficina.</p><label htmlFor="password">Senha de acesso</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} />{failure && <p role="alert" className="form-error">{failure}</p>}<button type="submit" className="primary-btn" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button></form>
+  return <form className="fh-surface login" onSubmit={login}><h1>Acessar FUNIX</h1><p>Entre para trabalhar nos Atendimentos da oficina.</p><label htmlFor="password">Senha de acesso</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} />{failure && <p role="alert" className="form-error">{failure}</p>}<button type="submit" className="primary-btn" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button></form>
 }

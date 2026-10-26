@@ -1,5 +1,7 @@
 # Evidências da preparação para implantação
 
+> RELATÓRIO HISTÓRICO da preparação Hostinger anterior ao M1.1. Resultados da implementação V1.0 e do armazenamento SQLite estão em `M1_ATENDIMENTOS.md`. O sucesso do antigo PR não certifica implantação ou volume persistente para esta versão nova.
+
 Escopo: checkout FUNIX e Docker local de desenvolvimento. Nenhum acesso SSH à VPS, mudança em DNS, deploy, publicação GHCR, configuração de secrets ou alteração de outros serviços foi executado nesta preparação.
 
 ## Verificações executadas

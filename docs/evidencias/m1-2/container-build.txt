@@ -1,0 +1,47 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.98kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/node:24.19.0-bookworm-slim
+#4 DONE 0.2s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 330B done
+#5 DONE 0.0s
+
+#6 [api 1/6] FROM docker.io/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 19.68kB done
+#7 DONE 0.0s
+
+#8 [api 2/6] WORKDIR /app
+#8 CACHED
+
+#9 [api 3/6] COPY --chown=node:node package.json ./
+#9 CACHED
+
+#10 [api 4/6] COPY --chown=node:node server/*.ts ./server/
+#10 DONE 1.0s
+
+#11 [api 5/6] COPY --chown=node:node server/data ./server/data
+#11 DONE 0.8s
+
+#12 [api 6/6] COPY --chown=node:node shared ./shared
+#12 DONE 0.6s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.3s done
+#13 writing image sha256:15fcc36e4820eaf7bfb1ed4372012e80422d734c6c8ea0959c73642824f8de27 done
+#13 naming to docker.io/library/funix-m1-2-api:local done
+#13 DONE 0.3s

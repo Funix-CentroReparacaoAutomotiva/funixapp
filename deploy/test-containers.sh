@@ -9,12 +9,13 @@ web="funix-ci-web-$suffix"
 cleanup() { docker rm -f "$api" "$web" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 secret=$(openssl rand -hex 24)
-docker run -d --name "$api" --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+docker run -d --name "$api" --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true \
   --tmpfs /tmp:rw,noexec,nosuid,size=16m \
   -e FUNIX_OPERATOR_PASSWORD="$secret" -e FUNIX_APP_ORIGIN=https://app.funix.com.br \
+  -e FUNIX_DATABASE_PATH=/tmp/funix-ci.sqlite \
   -e FUNIX_REVISION="${GITHUB_SHA:-development}" funix-api:ci >/dev/null
 unset secret
-docker run -d --name "$web" --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+docker run -d --name "$web" --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true \
   --tmpfs /tmp:rw,noexec,nosuid,size=32m funix-web:ci >/dev/null
 for container in "$api" "$web"; do
   for attempt in {1..75}; do
@@ -33,14 +34,22 @@ done
 docker exec "$api" node --input-type=module -e '
 import assert from "node:assert/strict";
 const base="http://127.0.0.1:8787";
-assert.equal((await fetch(base+"/api/workspace")).status,401);
+assert.equal((await fetch(base+"/api/atendimentos")).status,401);
 assert.equal((await fetch(base+"/api/session",{method:"POST",headers:{Origin:"https://other.invalid","Content-Type":"application/json"},body:JSON.stringify({password:process.env.FUNIX_OPERATOR_PASSWORD})})).status,403);
 const login=await fetch(base+"/api/session",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json"},body:JSON.stringify({password:process.env.FUNIX_OPERATOR_PASSWORD})});
 assert.equal(login.status,200); assert.match(login.headers.get("set-cookie"),/; Secure/);
 const cookie=login.headers.get("set-cookie").split(";")[0];
-assert.equal((await fetch(base+"/api/workspace",{headers:{Cookie:cookie}})).status,503);
-assert.equal((await fetch(base+"/api/workspace",{method:"POST",headers:{Cookie:cookie}})).status,405);
-console.log("API de produção: autenticação, origem, cookie Secure e leitura restrita conferidos.");'
+const list=await fetch(base+"/api/atendimentos",{headers:{Cookie:cookie}});
+assert.equal(list.status,200); assert.equal((await list.json()).total,0);
+const created=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"+5511999990000"})});
+assert.equal(created.status,201); const record=await created.json();
+assert.equal((await fetch(base+"/api/atendimentos/"+record.id,{headers:{Cookie:cookie}})).status,200);
+assert.equal((await fetch(base+"/api/workspace",{headers:{Cookie:cookie}})).status,410);
+assert.equal((await fetch(base+"/api/experiencias/i-ci",{method:"POST",headers:{Cookie:cookie}})).status,405);
+const oversized=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"1",notes:"x".repeat(70000)})});
+assert.equal(oversized.status,413);
+assert.equal((await oversized.json()).error.code,"BODY_TOO_LARGE");
+console.log("API de produção: sessão HTTPS, SQLite próprio, criação/consulta e ERP indisponível conferidos.");'
 docker exec "$web" sh -ec '
   wget -Y off -q -O /tmp/spa http://127.0.0.1:8080/atendimentos/i-ci
   grep -q "<div id=\"root\"" /tmp/spa

@@ -1,0 +1,665 @@
+# FUNIX — Hierarquia de peças (proposta v2)
+
+**Regras:** máximo de oito opções por nível; peças principais diretamente no primeiro nível; peças que admitem lados sempre abertas em grupo com **Motorista**, **Passageiro** e **Ambos**.
+
+**Importante:** **Ambos** representa a seleção conjunta das peças de motorista e passageiro; não é uma peça adicional.
+
+**Origem:** baseado na hierarquia anterior e na tabela do usuário. Entradas com `(proposta nova)` sugerem detalhamento que precisa de confirmação, não cadastro validado.
+
+
+## Frente
+
+- • Para-choque dianteiro
+- • Alma do para-choque dianteiro
+- • Capô
+- 📁 **Para-lama**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Grades e entradas de ar**
+  - • Grade dianteira
+  - • Grade inferior central / inteiriça *(proposta nova)*
+  - 📁 **Grade inferior**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Grade lateral**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+- 📁 **Iluminação dianteira**
+  - 📁 **Farol**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Alojamento do farol**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Farol de milha**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Moldura do farol de milha**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+- 📁 **Estrutura e vidros dianteiros**
+  - • Para-brisa
+  - • Churrasqueira (base do para-brisa)
+  - • Vidro dianteiro (outro)
+  - • Painel dianteiro
+  - • Travessa do radiador
+  - • Cofre do motor dianteiro
+  - 📁 **Longarina dianteira**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+- 📁 **Complementos dianteiros**
+  - • Defletor inferior dianteiro
+  - • Difusor dianteiro
+  - • Spoiler dianteiro
+  - 📁 **Sensor de estacionamento dianteiro**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Rodas e caixas dianteiras**
+    - 📁 **Roda dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Pinça de freio dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Caixa de roda dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Acabamentos dianteiros**
+    - • Frisos dianteiros
+    - • Moldura dianteira (genérica)
+    - • Acabamentos plásticos dianteiros
+    - • Adesivos dianteiros
+
+## Traseira
+
+- • Para-choque traseiro
+- • Alma do para-choque traseiro
+- • Tampa do porta-malas
+- • Porta de carga traseira
+- 📁 **Complementos do para-choque**
+  - • Defletor inferior traseiro
+  - • Difusor traseiro
+  - • Spoiler traseiro
+  - 📁 **Ponteira do para-choque traseiro**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Sensor de estacionamento traseiro**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - • Grade traseira
+- 📁 **Iluminação e abertura traseira**
+  - 📁 **Lanternas principais**
+    - 📁 **Lanterna traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento da lanterna**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - • Lanterna central
+  - 📁 **Lanterna de ré**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Iluminação de placa**
+    - • Luz de placa
+    - • Lâmpada da luz de placa
+  - • Vidro traseiro
+  - • Aerofólio
+- 📁 **Estrutura e porta-malas**
+  - • Painel traseiro
+  - 📁 **Longarina traseira**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - • Cofre do motor traseiro
+  - 📁 **Porta-malas e piso**
+    - • Interno do porta-malas
+    - • Bojo / caixa do estepe
+    - • Assoalho do porta-malas
+    - • Molduras do porta-malas
+    - • Acabamentos plásticos do porta-malas
+    - • Adesivos do porta-malas
+- 📁 **Rodas e acabamentos traseiros**
+  - 📁 **Roda traseira**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Pinça de freio traseira**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Caixa de roda traseira**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - 📁 **Para-barro traseiro**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - • Frisos traseiros
+  - • Moldura traseira (genérica)
+  - • Acabamentos plásticos traseiros
+  - • Adesivos traseiros
+
+## Lado do motorista
+
+- 📁 **Para-lama**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta dianteira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta traseira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Lateral traseira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta de carga lateral**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Iluminação e extremidades**
+  - 📁 **Frente lateral**
+    - 📁 **Farol**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento do farol**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Farol de milha**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura do farol de milha**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Grade lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Sensor de estacionamento dianteiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Traseira lateral**
+    - 📁 **Lanterna traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento da lanterna**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Lanterna de ré**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Ponteira do para-choque traseiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Abastecimento**
+    - 📁 **Portinhola de combustível**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento da portinhola**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+- 📁 **Componentes das portas**
+  - 📁 **Porta dianteira — componentes**
+    - 📁 **Parte interna da porta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Vidro da porta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Maçaneta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Friso dianteiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Retrovisor**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Porta traseira — componentes**
+    - 📁 **Parte interna da porta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Vidro da porta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Maçaneta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Friso traseiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+- 📁 **Rodas, estrutura e acabamentos**
+  - 📁 **Rodas e caixas de roda**
+    - 📁 **Dianteira**
+      - 📁 **Roda dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Pinça de freio dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Caixa de roda dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Para-barro dianteiro**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+    - 📁 **Traseira**
+      - 📁 **Roda traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Pinça de freio traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Caixa de roda traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Para-barro traseiro**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+    - 📁 **Caixa de roda (sem eixo)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Estrutura lateral**
+    - 📁 **Caixa de ar**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Soleira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna (genérica)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna A — dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna B — central**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna C — traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Painel lateral interno**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Acabamentos e acessórios**
+    - 📁 **Frisos laterais (geral)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura lateral (geral)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Acabamentos plásticos laterais**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Adesivos laterais**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Rack lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Spoiler lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+
+## Lado do passageiro
+
+- 📁 **Para-lama**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta dianteira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta traseira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Lateral traseira**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Porta de carga lateral**
+  - Motorista
+  - Passageiro
+  - **Ambos** *(seleciona os dois)*
+- 📁 **Iluminação e extremidades**
+  - 📁 **Frente lateral**
+    - 📁 **Farol**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento do farol**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Farol de milha**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura do farol de milha**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Grade lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Sensor de estacionamento dianteiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Traseira lateral**
+    - 📁 **Lanterna traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento da lanterna**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Lanterna de ré**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Ponteira do para-choque traseiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Abastecimento**
+    - 📁 **Portinhola de combustível**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Alojamento da portinhola**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+- 📁 **Componentes das portas**
+  - 📁 **Porta dianteira — componentes**
+    - 📁 **Parte interna da porta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Vidro da porta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Maçaneta dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Friso dianteiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Retrovisor**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Porta traseira — componentes**
+    - 📁 **Parte interna da porta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Vidro da porta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Maçaneta traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Friso traseiro**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+- 📁 **Rodas, estrutura e acabamentos**
+  - 📁 **Rodas e caixas de roda**
+    - 📁 **Dianteira**
+      - 📁 **Roda dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Pinça de freio dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Caixa de roda dianteira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Para-barro dianteiro**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+    - 📁 **Traseira**
+      - 📁 **Roda traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Pinça de freio traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Caixa de roda traseira**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+      - 📁 **Para-barro traseiro**
+        - Motorista
+        - Passageiro
+        - **Ambos** *(seleciona os dois)*
+    - 📁 **Caixa de roda (sem eixo)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Estrutura lateral**
+    - 📁 **Caixa de ar**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Soleira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna (genérica)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna A — dianteira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna B — central**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Coluna C — traseira**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Painel lateral interno**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+  - 📁 **Acabamentos e acessórios**
+    - 📁 **Frisos laterais (geral)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Moldura lateral (geral)**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Acabamentos plásticos laterais**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Adesivos laterais**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Rack lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+    - 📁 **Spoiler lateral**
+      - Motorista
+      - Passageiro
+      - **Ambos** *(seleciona os dois)*
+
+## Teto
+
+- • Teto
+- 📁 **Vidros e aberturas**
+  - • Vidro do teto (não especificado)
+  - • Teto solar *(proposta nova)*
+  - • Vidro do teto solar *(proposta nova)*
+  - • Teto panorâmico *(proposta nova)*
+  - • Vidro panorâmico *(proposta nova)*
+- 📁 **Acessórios do teto**
+  - • Antena
+  - 📁 **Rack de teto**
+    - Motorista
+    - Passageiro
+    - **Ambos** *(seleciona os dois)*
+  - • Bagageiro
+- 📁 **Acabamentos do teto**
+  - • Acabamentos plásticos do teto
+  - • Adesivos do teto
+
+## Acesso geral (sem sexta vista do desenho)
+
+- 📁 **Veículo e itens genéricos**
+  - • Veículo completo
+  - • Peça não identificada
+  - • Exterior do veículo
+  - • Interior do veículo
+- 📁 **Interior**
+  - • Banco
+  - • Console central
+  - • Assoalho interno
+  - • Estrutura superior traseira
+  - • Moldura interna
+  - • Acabamentos plásticos internos
+  - • Adesivos internos
+- 📁 **Parte inferior**
+  - • Tanque de combustível
+  - • Protetor inferior
+  - • Peito de aço
+  - • Para-barro (sem posição)
+- 📁 **Outros sem posição**
+  - • Maçanetas (sem posição)
+  - • Ponteira do para-choque (sem posição)
+  - • Roda (sem posição)
+  - • Pinça de freio (sem posição)
+  - • Friso (sem posição)
+  - • Vidro (sem posição)
+  - • Lanterna (sem posição)
+  - • Moldura (sem posição)
+
+## Verificações
+
+- Todos os 78 nomes das peças do catálogo anterior possuem ao menos um destino (associação por nome base).
+- Nenhum nível ultrapassa oito opções.
+- **Ambos** é ação de seleção dupla, não gera item de catálogo autônomo.
+- As peças principais aparecem no primeiro nível da região apropriada, mesmo que sejam grupos para escolha de lado.
+- Um componente selecionado a partir de mais de uma região utiliza o mesmo `codigo_peca` quando se trata da mesma peça e mesma posição.
+- O número de opções expandidas é maior que o número de peças físicas distintas, devido aos lados e às vistas sobrepostas.
+
+| Região | Opções na raiz | Grupos com lado | Componentes individuais disponíveis | Ações Ambos |
+|---|---:|---:|---:|---:|
+| Frente | 8 | 12 | 42 | 12 |
+| Traseira | 8 | 10 | 45 | 10 |
+| Lado do motorista | 8 | 50 | 100 | 50 |
+| Lado do passageiro | 8 | 50 | 100 | 50 |
+| Teto | 4 | 1 | 12 | 1 |
+
+## Orientações ao Codex
+
+1. Renderizar `tipo=grupo` e `tipo=grupo_lados` como navegáveis, e `tipo=peca` como selecionáveis.
+2. Para `tipo=acao_ambos`, selecionar os dois `gera_codigos_peca` associados, verificando duplicatas se já estiverem no orçamento.
+3. Armazenar apenas as peças físicas, com `codigo_peca`, `lado` e identificação de posição; não persistir "Ambos" como uma terceira peça.
+4. Respeitar a estrutura da raiz: componentes que o usuário marcou como prioritários não podem ganhar um grupo superior.
+5. `catalogo_original` preserva a relação com os nomes do banco legado; confirmar mapeamento antes de gravar itens de orçamento e precificar.

@@ -1,0 +1,71 @@
+
+> funixapp@0.1.0 check
+> npm run build && npm run check:server && npm run test:server && npm run lint
+
+
+> funixapp@0.1.0 build
+> tsc -b && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 23 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.62 kB │ gzip:  0.39 kB
+dist/assets/index-akJq2cQV.css   18.23 kB │ gzip:  4.69 kB
+dist/assets/index-CjQVttwz.js   264.50 kB │ gzip: 81.69 kB
+
+✓ built in 129ms
+
+> funixapp@0.1.0 check:server
+> tsc -p server/tsconfig.json
+
+
+> funixapp@0.1.0 test:server
+> node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts
+
+✔ health reflects local SQLite and protected reads/writes require authentication (49.758974ms)
+✔ session is HttpOnly, expires, and deletion revokes it (113.020431ms)
+✔ rejects cross-origin login and locks excessive login failures (298.081167ms)
+✔ creates, searches, edits and reopens local Atendimento without any Coda or network call (74.459794ms)
+✔ writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies (82.852979ms)
+✔ stale editing and rejected stage need explicit review; neither silently changes data (76.105204ms)
+✔ short/unconfigured password leaves access closed and readiness reflects database failures (82.66085ms)
+✔ HTTPS production origin keeps secure cookies and reports readiness without exposing credentials (91.595313ms)
+✔ commercial APIs enforce authentication/origin/JSON and operate entirely locally with encoded V2 identifiers (106.675944ms)
+✔ SQLite preserves optional text and independent duplicate-phone UUIDs after close and reopen (8.182868ms)
+✔ two independent Node processes recover persisted Atendimento from the same file (207.655118ms)
+✔ search and pagination remain database queries and SQL-like text does not select unrelated rows (19.011098ms)
+✔ manual backup restores actual data and refuses overwrite (19.461327ms)
+✔ newer schema is refused without resetting data (6.528035ms)
+✔ maps rich REST and connector refs without selecting an ambiguous relationship (0.438161ms)
+✔ does not hide a missing, ambiguous, or unreadable Atendimento origin (0.323507ms)
+✔ reads fixed API using GET, preserves opaque pagination, projects safe DTO and filters the current page (2.780132ms)
+✔ no credential makes no network request; view configuration is mandatory (0.179571ms)
+✔ upstream failure is sanitized and does not become successful empty data (0.266562ms)
+✔ refuses a configured table that is not the audited view (0.241985ms)
+✔ upgrades actual M1.1 SQL without changing any Atendimento field or table definition; reopen is idempotent (9.946228ms)
+✔ migration failure rolls back all V2 changes and preserves existing data/history; gaps and foreign databases refused (2.061358ms)
+✔ V2 is byte-identical to supplied original; 163 physical proposals, no automatic validation and no missing-code identities (9.781831ms)
+✔ catalog edits have revisions/history, immutable codes, own metadata only and explicit validation (8.378454ms)
+✔ Ambos inserts two validated physical pieces atomically and repeated views deduplicate (8.567921ms)
+✔ diagnosis composition validates references/quantities, preserves draft on errors/conflicts and removes children (9.323159ms)
+✔ catalog and diagnosis survive file close/reopen including reference metadata and service edits (13.281568ms)
+✔ production refuses missing credentials, oversized passwords and a non-HTTPS origin before listening (505.895074ms)
+✔ production requires an explicit file path and refuses an in-memory commercial database (314.865136ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2228.818073
+
+> funixapp@0.1.0 lint
+> oxlint
+
+src/App.tsx:93:47: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:100:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:114:49: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:132:35: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

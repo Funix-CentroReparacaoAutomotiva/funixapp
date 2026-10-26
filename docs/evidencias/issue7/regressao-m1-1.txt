@@ -1,0 +1,20 @@
+PASS desktop: only Conversas and Funil navigation; no Veículos
+PASS real empty SQLite database is usable without Coda credentials
+PASS manual creation requires only a minimum phone; optional data stays empty
+PASS optional fields and manual commercial phase persist; header updates to saved record
+PASS search locates actual stored records by name, plate and phone
+PASS detail back preserves list and search context
+PASS switching records never combines another contact or plate in the header
+PASS Chat and global/context IA stay unavailable without simulated integration
+PASS cancelling unsaved navigation keeps the form until explicit discard
+PASS injected save failure retains input and does not alter persisted data
+PASS real revision conflict preserves stale input and refuses silent overwrite
+PASS Rejeitados requires explicit refusal and reason; no automatic loss
+PASS Kanban preserves six approved labels and collapsible lanes
+PASS delayed response from another Atendimento cannot replace the active header
+PASS same SQLite records survive API stop/restart and a completely new browser session
+PASS mobile: no body horizontal overflow
+PASS mobile: editor scrolling/save is usable and edited data survives reload
+PASS legacy vehicle/experience URLs cannot expose operational views
+PASS no external providers, legacy Coda APIs, IA calls or uncaught page errors
+19 browser scenario assertions passed; report: docs/evidencias/issue7/regressao-m1-1/resultados.json

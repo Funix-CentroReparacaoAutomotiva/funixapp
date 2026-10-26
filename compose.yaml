@@ -26,7 +26,18 @@ services:
       FUNIX_API_PORT: "8787"
       FUNIX_APP_ORIGIN: https://app.funix.com.br
       FUNIX_REVISION: ${FUNIX_RELEASE:?Configure a revisão}
-    tmpfs: [/tmp:rw,noexec,nosuid,size=16m]
+      FUNIX_DATABASE_PATH: /data/funix.sqlite
+    # Docker Linux applies noexec,nosuid by default; Compose has no tmpfs.options.
+    volumes:
+      - type: bind
+        source: /var/lib/funix/app-data
+        target: /data
+        bind:
+          create_host_path: false
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 16777216
     mem_limit: 384m
     cpus: 0.75
     stop_grace_period: 20s
@@ -50,7 +61,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    tmpfs: [/tmp:rw,noexec,nosuid,size=32m]
+    # Docker Linux applies noexec,nosuid by default; Compose has no tmpfs.options.
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 33554432
     mem_limit: 128m
     cpus: 0.50
     networks: [traefik]

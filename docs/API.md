@@ -1,47 +1,102 @@
-# Contrato do backend — primeiro incremento
+# API — MVP Comercial FUNIX V1.0 / Issue #7
 
-**IMPLEMENTADO / TESTADO localmente:** API Node 24 sem dependências de servidor, com autenticação de desenvolvimento e apenas consultas de negócio. **NÃO HOMOLOGADO:** não houve chamada da aplicação à API REST oficial do Coda; o acesso real do conector Superhuman Docs é distinto dessa conexão contínua.
+API Node 24 existente com sessão de operador e banco SQLite próprio. A inicialização não instancia o adaptador Coda. O contrato antigo foi preservado em `historico/API_CODA_LEGADO.md`, sem validade como API ativa.
 
-Servidor padrão `127.0.0.1:8787`, acessado pelo proxy `/api` do Vite. Execute `npm run dev:api` e `npm run dev` em terminais separados. O processo usa `--use-env-proxy` para preservar proxy e confiança TLS do ambiente. Configure `.env` a partir de `.env.example`; valores secretos nunca usam prefixo `VITE_`.
+## Rotas
 
-| Rota | Resposta / comportamento |
-| --- | --- |
-| `GET /api/health` | Disponibilidade do processo e presença de configuração Coda; não comprova autorização remota. Sem registros pessoais. |
-| `GET /api/ready` | Readiness sem login: exige autenticação configurada e informa revisão de implantação. Não consulta Coda nem expõe credenciais. |
-| `GET /api/session` | `{ authenticated, configured }`; `configured` indica senha local com pelo menos 12 caracteres. |
-| `POST /api/session` | JSON `{ password }`. Exige `Origin` igual a `FUNIX_APP_ORIGIN`. Cria sessão de oito horas. |
-| `DELETE /api/session` | Revoga a sessão; exige a mesma verificação de origem. |
-| `GET /api/workspace` | Página de Atendimentos ou Experiências, estágios, cursor seguinte, origem e capacidades. Requer sessão. |
-| `GET /api/atendimentos/:rowId` | `WorkRecord` do Atendimento real pelo ID de linha Coda. Requer sessão. |
-| `GET /api/experiencias/:rowId` | `WorkRecord` da Experiência real pelo ID de linha Coda. Requer sessão. |
-| Outros métodos de negócio | `405 READ_ONLY`; não há comando de agendamento, envio, alteração de status ou fase. |
+| Rota | Resposta |
+|---|---|
+| `GET /api/health` | Processo vivo, origem App/SQLite e capacidades; sem registros ou segredos |
+| `GET /api/ready` | 200 somente com senha configurada e tabela local acessível; revisão da aplicação; sem consulta externa |
+| `GET /api/session` | Estado autenticado/configurado |
+| `POST /api/session` | JSON com senha, origem exata; cookie HttpOnly/SameSite=Strict e Secure quando HTTPS |
+| `DELETE /api/session` | Revoga sessão; exige origem exata |
+| `GET /api/atendimentos?q=&limit=50&offset=0` | Lista autenticada: `{items,total,nextOffset,stages}`; total do banco para a busca |
+| `POST /api/atendimentos` | Criação autenticada e com origem exata; 201 com registro persistido |
+| `GET /api/atendimentos/:id` | Registro autenticado por UUID técnico; 404 se inexistente/inválido |
+| `PATCH /api/atendimentos/:id` | Atualiza campos permitidos e exige `revision`; 200 com registro persistido |
+| `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação; função operacional fora do MVP; nenhuma consulta Coda |
+| Outros métodos de negócio | 405; não há exclusão de Atendimento, envio externo, agenda ou comando operacional |
 
-O contrato TypeScript compartilhado está em `shared/contracts.ts`. Erros têm formato `{ error: { code, message, requestId } }`; o texto bruto de falhas do provedor e suas credenciais não são devolvidos. Respostas usam `Cache-Control: no-store`. Experiência com vínculo de Atendimento ausente, múltiplo ou sem ID verificável retorna `503 CODA_RELATION_CONFLICT`, sem escolher uma origem por aproximação.
+Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInput`, `AtendimentoPatch`, `AtendimentoList` e `ATENDIMENTO_STAGES`. Os tipos antigos permanecem somente para o adaptador legado isolado.
 
-## Consulta paginada
+## Atendimento e validações
 
-Parâmetros: `area=funil|veiculos`, `scope=acompanhamento|historico`, `q` com até 150 caracteres, `limit` entre 1 e 100 (padrão 50), `cursor` opaco retornado pela página anterior. O cursor pertence à mesma área/filtro; ao mudar a consulta, reinicie sem cursor.
+Telefone textual é obrigatório e precisa conter ao menos um dígito, sem exigir DDI/DDD ou ficha completa. Valores opcionais omitidos na criação viram texto vazio; omitidos no PATCH preservam o conteúdo anterior; texto vazio explícito limpa o campo opcional. Números/objetos/null não substituem textos. Telefone repetido é aceito, sem cadastro/vínculo ou escolha automática de outro Atendimento.
 
-**A busca é progressiva:** `q` filtra a página consultada por ID, nome, contato, veículo, placa ou etapa, ignorando acentos e caixa. Uma página vazia com `nextCursor` não estabelece ausência no ERP. Consulte as páginas seguintes; a interface precisa comunicar esse limite. Não há índice de busca paralelo nem varredura integral automática do ERP.
+Campos graváveis: `phone`, `name`, `vehicle`, `brand`, `model`, `plate`, `reason`, `notes`, `stage`, `rejectionReason`, `explicitRefusal`. Campos técnicos retornados: `id`, `phoneNormalized`, `createdAt`, `updatedAt`, `revision`. São calculados no backend, não aceitos livremente do navegador.
 
-O Funil preserva a vista auditada `Viz. Atendimentos (PC)`, com seis status comerciais. O acompanhamento preserva `ViewExperiencia_Comercial`, agrupado por cinco fases comerciais; `detail` mostra a fase operacional derivada. `finished` e `departed` são flags distintas. O Histórico retorna `409 HISTORY_POLICY_PENDING`: a vista atual do ERP não filtra saídas e a mudança depende de decisão.
+Limites em caracteres: phone/plate 100; name/vehicle/model 250; brand 150; reason/notes 8000; rejectionReason 2000. JSON de cadastro/edição limitado a 64 KiB; senha a 1 KiB. Campos desconhecidos são rejeitados.
 
-## Adaptador Coda
+Telefone original é preservado com limpeza das bordas; a versão E.164 só é preenchida para formato internacional inequívoco com `+` e quantidade plausível de dígitos. Um telefone nacional/ambíguo permanece válido sem normalização inventada. Não há consulta a provedor ou Coda.
 
-Todas as chamadas usam `GET` no host fixo `https://coda.io/apis/v1`, documento `2zsjI-nqWr`. O bearer token fica apenas no processo backend. Redirecionamentos são recusados; há timeout de 12 segundos por chamada. Não há retry automático de negócio.
+Fases: `novo-lead`, `aguardando-dados`, `em-negociacao`, `morno`, `frio`, `rejeitados`. Rótulos exatos da V1.0; a criação padrão é Novo lead. Mudanças são manuais. Rejeitados exige `explicitRefusal: true` e motivo preenchido; nenhum job avança fase por tempo.
 
-Os IDs de tabelas e colunas foram auditados em leitura pelo conector em 21/10/2026. O adaptador usa IDs estáveis e verifica que ainda existem; renomeações de apresentação preservam o mapeamento, enquanto remoção de coluna retorna erro de contrato. Metadados de colunas/estágios têm cache em memória de cinco minutos.
+A atualização é SQL condicional pela revisão técnica; se o registro mudou, retorna 409 `VERSION_CONFLICT` sem sobrescrever. Essa revisão não é versão A/B/C de orçamento. Emissões de orçamento têm sequência e imutabilidade próprias, descritas abaixo.
 
-Os IDs de views fornecidos por `FUNIX_CODA_FUNIL_VIEW_ID` e `FUNIX_CODA_ACOMPANHAMENTO_VIEW_ID` precisam ser confirmados na **API REST**, pois os IDs `table-*`/`v-*` do conector não foram certificados como equivalentes. O adaptador verifica nome, tipo `view` e tabela base quando o metadado a informa. Sem essa configuração, falha explicitamente; não usa a tabela inteira como fallback.
+## Segurança, pesquisa e erros
 
-A listagem solicita `visibleOnly=true` para preservar os filtros da vista. Como esse parâmetro também pode ocultar colunas, ela obtém os IDs visíveis e hidrata cada registro pelo endpoint da tabela base, com até quatro consultas simultâneas. Só devolve os campos mínimos do DTO. Cache em memória de até 500 DTOs por 30 segundos reduz consultas ao abrir cards; não há persistência nem cache de linhas brutas. A marca `fetchedAt` corresponde à consulta da página; os detalhes podem ter até 30 segundos de cache.
+Todas as operações de dados exigem sessão. POST/PATCH também exigem `Origin` idêntico a `FUNIX_APP_ORIGIN` e Content-Type JSON. A UI continua na mesma origem, inclusive por proxy local de desenvolvimento. Sem CORS permissivo.
 
-Essa estratégia evita perder filtros ou omitir campos ocultos, mas custa uma consulta da página mais até N consultas de detalhes. Latência, limites de API, formato de referências ricas e equivalência das views precisam de teste real após configurar credencial e rede. Esses pontos não estão homologados por testes com respostas sintéticas.
+Consultas parametrizadas; busca simples em textos normalizados para ignorar acentos/caixa e em ID. Busca por telefone tolera formatação; pesquisa alfanumérica de placa/ID não é ampliada por dígitos de telefones não relacionados. `limit` 1–100 e `offset` inteiro não negativo; `q` até 150 caracteres.
 
-## Acesso e limites do marco
+Erros usam `{error:{code,message,requestId}}`, sem SQL, caminhos de banco, senhas ou stack na resposta. Casos: 400 dados inválidos; 401 autenticação; 403 origem; 404 registro; 409 revisão; 413 tamanho; 415 JSON; 500 erro interno; 503 readiness indisponível. Nunca retornar sucesso vazio como recuperação de falha de armazenamento.
 
-Cookie `HttpOnly`, `SameSite=Strict`, restrito a `/api`; `Secure` quando a origem configurada é HTTPS. Há bloqueio de oito falhas de login por endereço em 15 minutos, limite de sessões e validação de corpo/origem. O servidor permanece em loopback por padrão e não expõe dados sem senha configurada.
+Sessões permanecem em memória e reiniciar API exige novo login. Não há usuários/alçadas/SaaS. O limitador de login herdado usa endereço do peer, com as limitações atrás de proxy já documentadas. O banco persistido é independente da sessão.
 
-Esse acesso local é uma proteção para desenvolvimento. Login nominal, papéis, revogação administrativa, auditoria de operações e hospedagem segura são requisitos para implantação com equipe; a senha compartilhada não constitui autenticação corporativa.
 
-**TESTADO:** autenticação, expiração/revogação de sessão, origem, limite de tentativas, `401/403/405/409/503`, indisponibilidade sem falso sucesso, sanitização, referências ambíguas, separação finalização/saída, paginação opaca, hidratação de campos ocultos, cache mínimo, IDs estáveis e chamadas somente GET. Os testes HTTP são executados em processo, sem abrir portas ou chamar sistemas produtivos.
+## M1.2 — catálogos e diagnósticos
+
+Todos os endpoints abaixo exigem sessão. POST, PATCH e DELETE exigem origem exata, JSON e corpo de até 64 KiB. Sem acesso externo. Tipos em `shared/commercial.ts`.
+
+| Endpoint | Contrato |
+|---|---|
+| `GET /api/catalogos` | `{items,hierarchy}`: todos os metadados comerciais locais e árvore V2 original |
+| `GET /api/catalogos/:id` | Item local; IDs V2 devem ser URL-encoded (`v2%3Acapo`) |
+| `POST /api/catalogos` | `{kind,name,status?,code?,serviceId?}`; 201. `kind`: peca/diagnostico/servico/dimensao; status padrão proposta |
+| `PATCH /api/catalogos/:id` | `{revision,name?,status?,active?}`; código, fonte, lado e serviço pai são imutáveis |
+| `GET /api/catalogos/:id/historico` | Revisões com data e metadados registrados; não é versão de orçamento |
+| `GET /api/atendimentos/:id/diagnosticos` | Itens da composição com serviços filhos |
+| `POST /api/atendimentos/:id/diagnosticos` | `{pieceCodes:[codigo]}` ou dois códigos em seleção conjunta; transacional/idempotente por peça física; retorna lista atual |
+| `PATCH /api/atendimentos/:id/diagnosticos/:itemId` | `{revision,diagnosisId?,notes?,enabled?,services?}`; substitui lista de serviços somente se fornecida |
+| `DELETE /api/atendimentos/:id/diagnosticos/:itemId` | `{revision}`; remove item e serviços filhos, sem alterar o Atendimento |
+
+Peças da V2 entram como proposta; `suggestion` preserva as sugestões originais. As 23 folhas sem código continuam apenas na navegação, bloqueadas para gravação. Cadastro manual exige código fornecido pelo operador; nunca geramos código físico. Demais catálogos começam vazios. Códigos físicos têm unicidade e não podem ser alterados pela API; nomes são textos, não chaves. Não se exclui cadastro: inativação preserva referências/histórico e impede novas seleções.
+
+Dimensão pertence a um serviço validado. Cada nova seleção exige tipo correto, ativo e validado. Não se criam relações automáticas entre dano e serviço. Referências anteriores a itens depois inativados são preservadas, identificadas na tela e podem ser editadas/removidas.
+
+Uma linha de serviço recebe `{id?,serviceId,dimensionId?,quantity,enabled?}`. ID omitido cria linha; ID informado precisa já pertencer a este item. `quantity` é **string decimal positiva**, com ponto, até nove dígitos inteiros e seis casas decimais (limite técnico de entrada). Exemplo `"0.250000"` é armazenado e retornado como `"0.25"`. Não é float nem valor monetário. Números JSON, zero, negativos, notação exponencial e precisão além do limite são rejeitados. Dimensão pode ficar pendente (`null`) neste rascunho sem emissão. Máximo 50 linhas de serviço por item e 8000 caracteres de observações.
+
+`enabled:false` mantém o diagnóstico e suas seleções; não pode liberar futuramente serviços filhos para precificação sem o pai ativo. A composição isolada não aplica preço manualmente no frontend. Cálculos, configuração e emissão usam as rotas abaixo; não há chamadas Coda. Falhas retornam os erros sanitizados existentes; 409 preserva dados sem sobrescrever.
+
+
+## Issue #7 — cenários, preços, componentes e emissões
+
+Mesma sessão de operador. Escritas exigem Origin exato e JSON; sem execução externa. JSON normal limitado a 64 KiB; manutenção da configuração comercial completa a 1 MiB. Valores financeiros de entrada são strings decimais com ponto, até 12 dígitos inteiros e 6 casas; ausência usa null, nunca zero implícito. Preços/fatores/energias configurados são não negativos; capacidade e quantidades devem ser positivas. Ajustes negativos de energia/fatores ainda exigiriam regra de catálogo explícita antes de ampliar essa validação.
+
+| Endpoint | Contrato |
+|---|---|
+| `GET /api/atendimentos/:at/cenarios?scenarioId=` | Workspace: cenários/máscaras, composição mestre, cenário escolhido, revisão, componentes, parâmetros comuns e cálculos pré-negociação de todos os cenários |
+| `POST /api/atendimentos/:at/cenarios` | `{name,duplicateFrom?,sourceRevision?}`; criação vazia ou cópia somente de flags |
+| `PATCH /api/atendimentos/:at/cenarios/:id` | `{revision,name?,pieceFlags?,serviceFlags?,componentFlags?}`; mapas por ID e booleano, pertencimento verificado |
+| `GET /api/precificacao` | `{revision,updatedAt,config}` inicialmente vazio |
+| `PATCH /api/precificacao` | `{revision,config}` completo; valida chaves, referências, decimais, capacidade e duplicatas de especiais |
+| `GET /api/atendimentos/:at/parametros` | Revisão da composição e `{tableId,colorId,riskId}` comuns a todos cenários |
+| `PATCH /api/atendimentos/:at/parametros` | `{revision,tableId,colorId,riskId}`; IDs configurados ou null |
+| `GET /api/atendimentos/:at/componentes` | Lançamentos monetários mestre, distintos das peças físicas |
+| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,fct,notes,scenarioId?,scenarioRevision?}`; preço/FCT null mantém pendência; zero explícito é valor |
+| `PATCH /api/atendimentos/:at/componentes/:id` | Mesmos campos + revision; identidade/peça de origem preservadas |
+| `DELETE /api/atendimentos/:at/componentes/:id` | `{revision}`; exclusão global e cascata de máscaras |
+| `POST /api/atendimentos/:at/orcamentos/previa` | `{scenarioId,negotiation}`; `{snapshot,token,canEmit}`; sem emissão nem perda de rascunho |
+| `POST /api/atendimentos/:at/orcamentos` | `{scenarioId,negotiation,previewToken,idempotencyKey}`; 201 com versão e snapshot; repetição idêntica retorna a mesma versão |
+| `GET /api/atendimentos/:at/orcamentos` | Metadados das N versões, ordem decrescente; sem transferir PDF/snapshots de todas em cada listagem |
+| `GET /api/atendimentos/:at/orcamentos/:id` | Versão imutável com snapshot |
+| `GET /api/atendimentos/:at/orcamentos/:id/pdf` | Bytes `application/pdf`, attachment com rótulo da versão, protegido pela mesma sessão |
+
+Negociação: `{mode:"none"}` ou `{mode:"discount"|"adjust",value:"decimal",acknowledgeResidual:boolean}`. Desconto é valor monetário sobre serviços; não combina com ajuste. `previewToken` precisa corresponder ao estado corrente; dados alterados causam 409. Pendências da emissão causam 422 `BUDGET_INCOMPLETE`. Chave idempotente tem 16–100 caracteres alfanuméricos/hífen/underscore e não pode ser reutilizada para outro conteúdo.
+
+Diagnósticos aceitam adicionalmente `scenarioId`/`scenarioRevision` em inclusão/edição; GET aceita `?scenarioId=`. Sem cenário explícito, usa o primeiro para compatibilidade. `enabled` é projeção da máscara escolhida, não atributo global. Uma linha aceita `notes` e `diagnosisId` próprios. IDs de linhas existentes não são trocados ao editar atributos; repetir o mesmo serviço gera outra linha, não agregação.
+
+`shared/pricing.ts` define configuração, componentes, cálculo, prévia e snapshot. Totais gerados mantêm precisão exata inclusive além de duas casas; nenhuma soma financeira usa floats. A matriz apresenta antes da negociação. Somente linhas com pai e filho habilitados são elegíveis; referências inativadas em uso bloqueiam emissão até correção, sem apagar dados antigos. Snapshot/PDF não consultam dados vivos na leitura.
+
+Configuração e prévia completas, exemplos e limites: [ISSUE_7_MVP_COMERCIAL.md](ISSUE_7_MVP_COMERCIAL.md). A API não afirma aceite jurídico nem cria OS. A main legada continua distinta desta branch.

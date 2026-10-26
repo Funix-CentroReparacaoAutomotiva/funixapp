@@ -1,0 +1,398 @@
+{
+  "project": "FUNIX",
+  "document": "Respostas às decisões para Unificação V1.0",
+  "questionnaireVersion": "2026-10-23",
+  "exportedAt": "2026-10-24T04:01:10.942Z",
+  "basis": {
+    "ux": "FUNIX_V20_Menu_Compacto_Kanban(1).html",
+    "process": "FUNIX_mapa_mestre_V09_APROVADO.json"
+  },
+  "count": {
+    "total": 38,
+    "answered": 38,
+    "essentialTotal": 28,
+    "essentialAnswered": 28
+  },
+  "responses": [
+    {
+      "id": "UX01",
+      "group": "01 · Escopo e navegação",
+      "priority": "essencial",
+      "question": "Qual é o destino da aba Veículos na primeira versão?",
+      "answer": "Outro caminho — descrever nas observações",
+      "optionIndex": 3,
+      "notes": "Remover completamente a aba veículos",
+      "answered": true
+    },
+    {
+      "id": "UX02",
+      "group": "01 · Escopo e navegação",
+      "priority": "essencial",
+      "question": "O que ocorre ao abrir uma conversa sem Atendimento vinculado?",
+      "answer": "Criar automaticamente Atendimento ao receber a primeira mensagem",
+      "optionIndex": 1,
+      "notes": "É obrigatório existir um atendimento. Ele nasce desde a primeira interação com o cliente. Pode haver atendimento sem chat. Mas nunca chat sem atendimento.",
+      "answered": true
+    },
+    {
+      "id": "UX03",
+      "group": "01 · Escopo e navegação",
+      "priority": "essencial",
+      "question": "Quais colunas devem aparecer no Kanban comercial?",
+      "answer": "Definirei minha sequência nas observações",
+      "optionIndex": 3,
+      "notes": "Novo lead, aguardando dados, Em negociação (24h), Morno (3 dias), Frio (5 dias), Rejeitados ",
+      "answered": true
+    },
+    {
+      "id": "UX04",
+      "group": "01 · Escopo e navegação",
+      "priority": "essencial",
+      "question": "Depois de transferido ao ERP, o Atendimento permanece no Funil?",
+      "answer": "Fica pesquisável no histórico comercial local; sai do Kanban ativo",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "UX05",
+      "group": "01 · Escopo e navegação",
+      "priority": "ajuste",
+      "question": "Como conciliar o Copiloto global com a barra IA dentro do Chat?",
+      "answer": "Manter ambos: botão global para consulta/navegação e barra interna para ações no Chat atual",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH01",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Qual número/canal será conectado primeiro?",
+      "answer": "Número atual de atendimento da FUNIX, após teste técnico seguro",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH02",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Você precisa continuar usando WhatsApp no celular/WhatsApp Web em paralelo?",
+      "answer": "Sim, o aplicativo novo não pode interromper o WhatsApp atual",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH03",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Qual histórico de mensagens o Chat deve mostrar quando entrar em operação?",
+      "answer": "Começar com mensagens recebidas a partir da ativação; histórico anterior fica no canal antigo",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH04",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Quais formatos RECEBIDOS devem ser utilizáveis na primeira fase do Chat?",
+      "answer": "Texto, fotografias, áudios, vídeos e documentos já na primeira fase",
+      "optionIndex": 1,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH05",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Quais formatos você quer ENVIAR pelo aplicativo no MVP?",
+      "answer": "Texto, fotos, vídeos, áudios e documentos desde o início",
+      "optionIndex": 2,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH06",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "essencial",
+      "question": "Como relacionar conversas a Atendimentos?",
+      "answer": "Outra regra",
+      "optionIndex": 3,
+      "notes": "Eu não entendi o que quis dizer com mais recente nesta msg: \"Vincular automaticamente ao Atendimento mais recente e permitir corrigir\". Mas o que deve acontecer é, recebeu um chat, pesquisa se a pessoa já tem um atendimento em aberto. Não tem? Cria um novo atendimento. Já tem? Ok, esta interação pertence a este atendimento em aberto.",
+      "answered": true
+    },
+    {
+      "id": "CH07",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "ajuste",
+      "question": "É importante iniciar uma nova conversa com alguém que ainda não escreveu?",
+      "answer": "Sim, por telefone, quando o canal permitir; informar claramente qualquer restrição",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH08",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "ajuste",
+      "question": "O que deve existir em mensagens rápidas/modelos prontos?",
+      "answer": "Manter respostas prontas editáveis; tocar preenche a caixa e exige envio humano",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "CH09",
+      "group": "02 · Conversas e WhatsApp",
+      "priority": "ajuste",
+      "question": "Que confirmação de mensagem é indispensável para considerar o Chat utilizável?",
+      "answer": "Enviando, enviada/aceita pelo provedor, falhou; recebida/lida quando o provedor fornecer esses eventos",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA01",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "Quais são as três funções de IA mais importantes na primeira entrega assistiva?",
+      "answer": "Resumir conversas, sugerir respostas e propor preenchimento do Atendimento",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA02",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "A quais informações a IA terá acesso em cada interação?",
+      "answer": "Por padrão, Chat atual + Atendimento selecionado; Copiloto global consulta outros registros somente quando solicitado",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA03",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "A IA pode escrever diretamente nos campos do Atendimento?",
+      "answer": "A IA propõe valores; o operador confirma antes de gravar",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA10",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "A IA poderá enviar mensagens ao cliente sem aprovação humana?",
+      "answer": "Não: a IA apenas escreve sugestões; o operador revisa e clica Enviar",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA04",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "ajuste",
+      "question": "Quando a IA deve oferecer sugestões durante o Chat?",
+      "answer": "Somente quando acionada; exibir pequeno indicador quando houver proposta preparada",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA05",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "Você quer transcrição de áudios recebidos?",
+      "answer": "Sim: transcrever automaticamente áudios recebidos",
+      "optionIndex": 1,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA06",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "A IA deve analisar fotos do veículo para auxiliar no diagnóstico?",
+      "answer": "Não no MVP: usar IA apenas textual e áudio",
+      "optionIndex": 1,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA07",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "essencial",
+      "question": "Até onde vai a atuação do Copiloto global?",
+      "answer": "Pesquisar, resumir e navegar; pode sugerir alterações, mas executa só após confirmação",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA08",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "ajuste",
+      "question": "O botão Áudio da IA representa qual experiência?",
+      "answer": "Ditar instruções/perguntas para o Copiloto (voz → texto); resposta em texto",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "IA09",
+      "group": "03 · Copiloto e inteligência artificial",
+      "priority": "ajuste",
+      "question": "A IA deve usar os documentos internos FUNIX como conhecimento para responder?",
+      "answer": "Sim, como orientação conceitual, separando regras aprovadas de fatos de cada Atendimento",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR01",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "O Mapa do veículo deve funcionar como entrada para selecionar peças/diagnósticos?",
+      "answer": "Sim; clicar no mapa facilita selecionar, e a lista de Diagnósticos permite editar tudo",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR02",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "Como adicionar itens que não aparecem no desenho do carro?",
+      "answer": "Outro caminho",
+      "optionIndex": 3,
+      "notes": "Existiriam itens de sub-grupos. Aí ao clicar neles devem abrir os componentes daquele grupo.\nSeria fundamental eu criar um documento que apresenta toda esta hierarquia. ",
+      "answered": true
+    },
+    {
+      "id": "OR03",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "Como o operador acessará e comparará versões emitidas do orçamento?",
+      "answer": "Painel/lista de versões no Atendimento; abrir, comparar e escolher a versão para enviar",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR04",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "Qual formato de orçamento o cliente precisa receber?",
+      "answer": "PDF padrão, visualizável e enviável pelo Chat; manter prévia no aplicativo",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR05",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "Como reconhecer e registrar que o cliente aprovou uma versão?",
+      "answer": "Basta marcar Aprovado, sem evidência vinculada",
+      "optionIndex": 1,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR06",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "essencial",
+      "question": "De onde virá o catálogo inicial (serviços, dimensões, fatores e etapas)?",
+      "answer": "Outro caminho",
+      "optionIndex": 3,
+      "notes": "Eu irei desenvolver as tabelas iniciais, uma vez que o sistema esta passando por melhorias, não sei se as tabelas do CODA serão adequadas.",
+      "answered": true
+    },
+    {
+      "id": "OR07",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "ajuste",
+      "question": "Como pretende atualizar tabelas de preços e catálogos após a implantação?",
+      "answer": "Tela simples de manutenção no próprio App, restrita ao operador; registrar data/versão de alterações relevantes",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "OR08",
+      "group": "04 · Diagnósticos, preços e propostas na V20",
+      "priority": "ajuste",
+      "question": "A nomenclatura comercial deve reproduzir exatamente o Coda antes do MVP?",
+      "answer": "Outra regra",
+      "optionIndex": 3,
+      "notes": "A nomenclatura deve ter apenas uma diferênça. O id do atendimento deve ter algum modificador no começo para deixar claro q ele foi gerado no app.",
+      "answered": true
+    },
+    {
+      "id": "ERP01",
+      "group": "05 · Integração e transição com ERP",
+      "priority": "essencial",
+      "question": "Em que momento o botão Enviar ao ERP deve ser usado?",
+      "answer": "Disponível para a versão emitida selecionada, com confirmação explícita do operador",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "ERP02",
+      "group": "05 · Integração e transição com ERP",
+      "priority": "essencial",
+      "question": "Se o pacote já foi enviado, como lidar com nova versão ou novo envio?",
+      "answer": "Permitir envio manual de outra versão, com aviso de envio anterior e identificador próprio",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "ERP03",
+      "group": "05 · Integração e transição com ERP",
+      "priority": "essencial",
+      "question": "Você precisa trazer Atendimentos antigos do Coda para o novo App?",
+      "answer": "Outro recorte",
+      "optionIndex": 3,
+      "notes": "Não precisa trazer nenhum Atendimento do Coda. ",
+      "answered": true
+    },
+    {
+      "id": "LAN01",
+      "group": "06 · Fases e entrada em operação",
+      "priority": "essencial",
+      "question": "Qual é o primeiro resultado de negócio que você quer homologar?",
+      "answer": "Outra prioridade",
+      "optionIndex": 3,
+      "notes": "1 - Criação de atendimento e motor de orçamento\n2 - Integração com o Coda\n3 - Receber/responder chat do whatsapp\n4 - Implementação de IA",
+      "answered": true
+    },
+    {
+      "id": "LAN02",
+      "group": "06 · Fases e entrada em operação",
+      "priority": "essencial",
+      "question": "Como prefere fazer o primeiro teste com mensagens reais?",
+      "answer": "Primeiro no número principal, mantendo processo antigo como contingência",
+      "optionIndex": 1,
+      "notes": "",
+      "answered": true
+    },
+    {
+      "id": "LAN03",
+      "group": "06 · Fases e entrada em operação",
+      "priority": "ajuste",
+      "question": "Qual fidelidade visual deve ser exigida no primeiro MVP?",
+      "answer": "Manter estrutura, identidade e navegação V20; ajustar componentes pontualmente para comportamentos reais",
+      "optionIndex": 0,
+      "notes": "",
+      "answered": true
+    }
+  ]
+}
