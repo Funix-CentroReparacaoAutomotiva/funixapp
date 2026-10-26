@@ -1,0 +1,87 @@
+# FUNIX — homologação isolada. NÃO substitui /opt/funix/compose.yaml.
+name: funixhomologacao
+
+x-runtime: &runtime
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  api:
+    <<: *runtime
+    image: ${FUNIX_API_IMAGE:?Defina a imagem da API de homologacao}
+    init: true
+    env_file:
+      - path: /etc/funix/homologacao.env
+        format: raw
+    environment:
+      NODE_ENV: production
+      FUNIX_API_HOST: 0.0.0.0
+      FUNIX_API_PORT: "8787"
+      FUNIX_DATABASE_PATH: /data/funix.sqlite
+      FUNIX_APP_ORIGIN: https://hml.funix.com.br
+      FUNIX_REVISION: ${FUNIX_RELEASE:?Defina a revisao de homologacao}
+    volumes:
+      - type: bind
+        source: /var/lib/funix/homologacao/data
+        target: /data
+        bind:
+          create_host_path: false
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 16777216
+    mem_limit: 384m
+    cpus: 0.75
+    stop_grace_period: 20s
+    networks: [traefik]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_default
+      traefik.http.routers.funixhml-api.rule: Host(`hml.funix.com.br`) && (Path(`/api`) || PathPrefix(`/api/`))
+      traefik.http.routers.funixhml-api.priority: "100"
+      traefik.http.routers.funixhml-api.entrypoints: websecure
+      traefik.http.routers.funixhml-api.tls: "true"
+      traefik.http.routers.funixhml-api.tls.certresolver: letsencrypt
+      traefik.http.routers.funixhml-api.service: funixhml-api
+      traefik.http.services.funixhml-api.loadbalancer.server.port: "8787"
+      traefik.http.services.funixhml-api.loadbalancer.healthcheck.path: /api/ready
+      traefik.http.services.funixhml-api.loadbalancer.healthcheck.interval: 15s
+      traefik.http.services.funixhml-api.loadbalancer.healthcheck.timeout: 3s
+  web:
+    <<: *runtime
+    image: ${FUNIX_WEB_IMAGE:?Defina a imagem web de homologacao}
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 33554432
+    mem_limit: 128m
+    cpus: 0.5
+    networks: [traefik]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik_default
+      traefik.http.routers.funixhml-web.rule: Host(`hml.funix.com.br`)
+      traefik.http.routers.funixhml-web.priority: "10"
+      traefik.http.routers.funixhml-web.entrypoints: websecure
+      traefik.http.routers.funixhml-web.tls: "true"
+      traefik.http.routers.funixhml-web.tls.certresolver: letsencrypt
+      traefik.http.routers.funixhml-web.service: funixhml-web
+      traefik.http.services.funixhml-web.loadbalancer.server.port: "8080"
+      traefik.http.services.funixhml-web.loadbalancer.healthcheck.path: /healthz
+
+networks:
+  traefik:
+    external: true
+    name: traefik_default
