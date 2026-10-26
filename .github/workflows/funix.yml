@@ -28,7 +28,7 @@ jobs:
       - run: npm run check
       - name: Check deployment scripts and recovery scenarios
         run: |
-          bash -n deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh
+          for script in deploy/funix-install deploy/funix-deploy deploy/funix-ssh deploy/test-containers.sh; do bash -n "$script"; done
           python3 -m unittest discover -s deploy/tests -v
       - name: Build and exercise production images without production services
         run: |
@@ -40,6 +40,8 @@ jobs:
           sudo install -d -m 0700 /etc/funix
           sudo install -m 0600 deploy/runtime.env.example /etc/funix/runtime.env
           sudo env FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" docker compose config --quiet
+          sudo env FUNIX_API_IMAGE=funix-api:ci FUNIX_WEB_IMAGE=funix-web:ci FUNIX_RELEASE="$GITHUB_SHA" \
+            docker compose config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); a=c["services"]["api"]; v=a["volumes"]; assert a["environment"]["FUNIX_DATABASE_PATH"]=="/data/funix.sqlite"; assert any(x.get("type")=="bind" and x.get("source")=="/var/lib/funix/app-data" and x.get("target")=="/data" and x.get("bind",{}).get("create_host_path")==False for x in v); assert len([s for s in c["services"] if s not in ("api","web")])==0'
 
   publish:
     needs: validate
@@ -90,10 +92,11 @@ jobs:
 
   deploy:
     needs: publish
-    # Disabled until the direction authorizes deployment and this variable is set.
+    # First MVP deployment must be manually authorized; a merge only publishes images.
     if: >-
-      github.ref == 'refs/heads/main' && vars.FUNIX_DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'push' || inputs.deploy == true)
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deploy == true
     environment: production
     concurrency:
       group: funix-vps-production
@@ -139,3 +142,4 @@ jobs:
           done
           echo 'Public HTTPS verification failed. Check DNS/TLS/Traefik and use the documented FUNIX rollback if needed.' >&2
           exit 1
+

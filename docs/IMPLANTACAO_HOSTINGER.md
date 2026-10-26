@@ -1,7 +1,5 @@
 # Implantação FUNIX na Hostinger
 
-> ATUALIZAÇÃO M1.1 V1.0: a nova API usa SQLite próprio e exige `FUNIX_DATABASE_PATH` em produção. O Compose anterior abaixo não contém volume de banco e não foi alterado neste subincremento. Não implantar a versão M1.1 por este roteiro sem autorizar e preparar armazenamento persistente/backup. Ver `M1_ATENDIMENTOS.md`. Nenhum deploy foi realizado nesta tarefa.
-
 Estado: preparação para revisão; implantação real não executada. A VPS não foi acessada e DNS, regras efetivas do Traefik e credenciais remotas não foram verificados nesta etapa.
 
 ## Arquitetura
@@ -49,61 +47,18 @@ Nunca adicionar senha FUNIX ou token Coda ao workflow. Eles ficam somente na VPS
 
 O pipeline roda testes/builds em PRs, mas só publica imagens em `main`. Cada imagem recebe tag do commit e o deploy usa o **digest**, não `latest`. O job SSH não recebe Docker socket, token de Coda, senha do app ou comando de shell livre. A atualização é serializada no GitHub e também por flock na VPS.
 
-## Preparação da VPS — manual, somente após autorização
+## Preparação da VPS — instalador inicial
 
-Executar por uma conta administrativa existente, a partir de uma cópia revisada desta versão do repositório. Os comandos abaixo instalam somente arquivos FUNIX e o usuário dedicado. Não iniciam os contêineres.
-
-```bash
-sudo install -d -o root -g root -m 0755 /opt/funix
-sudo install -d -o root -g root -m 0700 /etc/funix /etc/funix/registry /var/lib/funix /var/lib/funix/releases
-sudo install -o root -g root -m 0644 compose.yaml /opt/funix/compose.yaml
-sudo install -o root -g root -m 0755 deploy/funix-deploy /usr/local/sbin/funix-deploy
-sudo install -o root -g root -m 0755 deploy/funix-ssh /usr/local/sbin/funix-ssh
-sudo install -o root -g root -m 0600 deploy/runtime.env.example /etc/funix/runtime.env
-sudoedit /etc/funix/runtime.env
-```
-
-Preencher `FUNIX_OPERATOR_PASSWORD` com senha forte exclusiva de 12 a 256 caracteres. O arquivo é lido em modo **raw**: sem aspas envolvendo os valores, sem `export`, uma variável por linha. `$`, `#` e aspas fazem parte literal do valor; não há interpolação do Compose. A senha não precisa ir para GitHub/chat. Usar editor seguro; não imprimir o arquivo, `docker inspect`, `docker compose config` sem `--quiet`, dumps de ambiente ou logs em modo debug.
-
-Campos Coda são opcionais para disponibilizar a interface e o login. Para leitura real, configurar `CODA_API_TOKEN`, `FUNIX_CODA_FUNIL_VIEW_ID`, `FUNIX_CODA_ACOMPANHAMENTO_VIEW_ID` após validar acesso REST e equivalência dos IDs. Sem eles, consultas de negócio retornam indisponibilidade explícita. A implantação não habilita diagnósticos, envio ou comandos ainda não implementados.
-
-Credencial de leitura GHCR, somente na VPS:
-
-```bash
-sudo docker --config /etc/funix/registry login ghcr.io --username CONTA_DE_LEITURA
-```
-
-Informar o token no prompt, sem colocá-lo na linha de comando. Usar conta de serviço com acesso apenas aos dois packages FUNIX e token com `read:packages`, sem escrita/exclusão. Autorizar SSO se aplicável. O `config.json` é credencial: diretório 0700, arquivo 0600, root. Não copiar o token do Actions para a VPS. Se ainda não houver packages, concluir a publicação com o deploy bloqueado e então conferir o acesso de leitura.
-
-Criar usuário sem acesso ao grupo Docker ou sudo geral:
-
-```bash
-sudo useradd --create-home --shell /bin/bash funix-deploy
-sudo passwd -l funix-deploy
-sudo chown root:root /home/funix-deploy
-sudo chmod 0755 /home/funix-deploy
-sudo install -d -o root -g root -m 0755 /home/funix-deploy/.ssh
-sudo install -o root -g root -m 0440 deploy/funix-deploy.sudoers /etc/sudoers.d/funix-deploy
-sudo visudo -cf /etc/sudoers.d/funix-deploy
-sudoedit /home/funix-deploy/.ssh/authorized_keys
-sudo chown root:root /home/funix-deploy/.ssh/authorized_keys
-sudo chmod 0644 /home/funix-deploy/.ssh/authorized_keys
-```
-
-O arquivo autorizado é público, root-owned e legível pelo usuário para compatibilidade com StrictModes; o usuário não pode alterá-lo. Colocar a chave pública dedicada em **uma linha**, com estas restrições:
-
-```text
-restrict,command="/usr/local/sbin/funix-ssh" ssh-ed25519 CHAVE_PUBLICA_DEDICADA github-funix
-```
-
-Gerar a chave em máquina administrativa segura (`ssh-keygen -t ed25519`), sem reutilizar chave root. A privada vai apenas para o Secret correspondente. O comando forçado aceita exclusivamente `deploy SHA WEB_DIGEST API_DIGEST` ou `rollback [SHA]`, validados antes do sudo e novamente pelo script root. Não aceita SSH interativo, SCP, SFTP, túneis ou comandos Docker. Não adicionar esse usuário a grupos administrativos. Não alterar o sshd global.
-
-Obter/conferir fingerprint do host pelo console da Hostinger. `ssh-keyscan` sozinho não autentica o servidor: conferir o resultado com esse fingerprint antes de cadastrar KNOWN_HOSTS. Porta diferente de 22 exige formato `[host]:porta`.
+Usar o [procedimento de instalação inicial](INSTALACAO_INICIAL_HOSTINGER.md):
+três comandos baixam o código privado e executam o instalador revisado, com
+credenciais por prompts. Ele configura somente os caminhos FUNIX e o usuário
+restrito, sem iniciar contêineres ou habilitar deploy. Não executar a antiga
+sequência manual em paralelo ao instalador.
 
 ## Ativação mínima
 
 1. Revisar e integrar esta alteração em `main`, mantendo `FUNIX_DEPLOY_ENABLED=false`. Isso testa e publica as imagens; **não acessa a VPS**.
-2. Após autorização da direção, conferir os pré-requisitos e instalar os arquivos/credenciais FUNIX acima. Cadastrar variables/secrets do GitHub e confirmar leitura dos packages pela VPS.
+2. Após autorização da direção, conferir os pré-requisitos e executar o instalador inicial documentado. Cadastrar variables/secrets do GitHub e confirmar leitura dos packages pela VPS.
 3. Mudar a Repository Variable `FUNIX_DEPLOY_ENABLED` para `true`. Essa mudança, sozinha, não dispara deploy.
 4. Executar o workflow manualmente na `main` com **deploy=true**, ou fazer o próximo push em `main`. Os seguintes pushes farão teste → imagens GHCR → atualização exclusiva FUNIX.
 5. Conferir `https://app.funix.com.br`, `/api/ready` e `/release.json`. O workflow verifica HTTPS e a mesma revisão na API/web. Entrar no navegador para validar cookie Secure e leitura autorizada; não colar a senha em comandos de CI.
@@ -143,3 +98,4 @@ Logs operacionais da atualização ficam em `/var/lib/funix/deploy.log`, root 06
 ## Validação da preparação
 
 Ver `VALIDACAO_IMPLANTACAO.md` para resultados reais e limites. O CI repete `npm run check`, testes de recuperação/restrição do deploy, construção das duas imagens e smoke tests dentro de contêineres não root, sem produção.
+
