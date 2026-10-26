@@ -8,11 +8,37 @@ import { createHash } from 'node:crypto'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { CommercialRepository } from '../commercial.ts'
+import { ScenarioRepository } from '../scenarios.ts'
 import { hierarchy, hierarchyPieces } from '../hierarchy.ts'
 import { ServiceError } from '../errors.ts'
 
 const invalid = (error: unknown) => error instanceof ServiceError && error.status === 400
 const conflict = (error: unknown) => error instanceof ServiceError && error.status === 409
+
+test('stale inclusion rolls back; fresh manual repetition after lost confirmation preserves identities and all scenario flags',()=>{
+ const db=openDatabase(':memory:')
+ try {
+  const repo=new CommercialRepository(db),scenarios=new ScenarioRepository(db),at=new AtendimentoRepository(db).create({phone:'123'})
+  const first=scenarios.list(at.id)[0]!
+  repo.add(at.id,{pieceCodes:['capo'],scenarioId:first.id,scenarioRevision:first.revision})
+  const current=scenarios.list(at.id)[0]!,copy=scenarios.create(at.id,{name:'Variação QA',duplicateFrom:current.id,sourceRevision:current.revision})
+  repo.add(at.id,{pieceCodes:['para_choque_dianteiro'],scenarioId:current.id,scenarioRevision:current.revision})
+  const before=repo.list(at.id),flags=scenarios.list(at.id)
+  assert.throws(()=>repo.add(at.id,{pieceCodes:['para_choque_traseiro'],scenarioId:copy.id,scenarioRevision:copy.revision}),conflict)
+  assert.deepEqual(repo.list(at.id),before);assert.deepEqual(scenarios.list(at.id),flags)
+  const fresh=scenarios.list(at.id).find(s=>s.id===copy.id)!
+  const confirmed=repo.add(at.id,{pieceCodes:['para_choque_traseiro'],scenarioId:copy.id,scenarioRevision:fresh.revision})
+  const pieceId=repo.catalogs().items.find(p=>p.code==='para_choque_traseiro')!.id,item=confirmed.find(p=>p.pieceId===pieceId)!
+  const after=scenarios.list(at.id),selected=after.find(s=>s.id===copy.id)!
+  assert.equal(selected.pieceFlags[item.id],true);assert.equal(after.find(s=>s.id===first.id)!.pieceFlags[item.id],false)
+  const repeated=repo.add(at.id,{pieceCodes:['para_choque_traseiro'],scenarioId:copy.id,scenarioRevision:selected.revision})
+  assert.deepEqual(repeated,confirmed);assert.deepEqual(scenarios.list(at.id),after)
+  const off=scenarios.update(at.id,copy.id,{revision:selected.revision,pieceFlags:{[item.id]:false}})
+  repo.add(at.id,{pieceCodes:['para_choque_traseiro'],scenarioId:copy.id,scenarioRevision:off.revision})
+  assert.equal(scenarios.list(at.id).find(s=>s.id===copy.id)!.pieceFlags[item.id],false)
+  assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0)
+ }finally{db.close()}
+})
 function setup() {
   const db = openDatabase(':memory:')
   const repo = new CommercialRepository(db)

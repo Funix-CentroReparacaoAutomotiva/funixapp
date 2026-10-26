@@ -1,0 +1,12 @@
+PASS existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved
+PASS second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones
+PASS real POST200 plus catalog/workspace GET transport failure keeps confirmed rows, distinguishes GET phase, releases busy and recovers without resending
+PASS POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy
+PASS lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags
+PASS HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST
+PASS 409 plus explicit refresh preserves local unsaved notes/quantities and backend revision protection; a subsequent deliberate save succeeds
+PASS initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data
+PASS single writer: delayed old GET after a newer POST/GET cannot regress rows or revision; next addition succeeds without conflict
+PASS rapid double click while real POST response is pending issues one POST, saves one row and releases busy after confirmation
+PASS fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates
+11 Issue12 browser groups passed

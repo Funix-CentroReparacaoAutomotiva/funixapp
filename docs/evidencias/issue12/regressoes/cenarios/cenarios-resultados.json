@@ -1,0 +1,19 @@
+{
+  "assertions": [
+    {
+      "name": "duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context",
+      "pass": true
+    },
+    {
+      "name": "editing master attributes in one scenario changes the same line in the other scenario",
+      "pass": true
+    },
+    {
+      "name": "fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20",
+      "pass": true
+    }
+  ],
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}
