@@ -1,0 +1,13 @@
+{
+  "sequential_without_fault": [
+    200,
+    200,
+    200
+  ],
+  "workspace_cache_control": "no-store",
+  "held_revision": 4,
+  "add_while_old_get_pending": 200,
+  "current_database_revision": 5,
+  "next_add_after_old_get_arrives": 200,
+  "writers": "Only one UI/browser wrote in this reproduction; no concurrent user required"
+}

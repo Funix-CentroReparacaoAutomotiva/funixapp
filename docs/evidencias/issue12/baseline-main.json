@@ -1,0 +1,17 @@
+{
+  "sequential_without_fault": [
+    200,
+    200,
+    200
+  ],
+  "workspace_cache_control": "no-store",
+  "after_other_session": [
+    409,
+    409
+  ],
+  "post_before_failed_refresh": 200,
+  "ui_error_after_successful_post": "Não foi possível conectar. Verifique a conexão e tente novamente.",
+  "post_confirmed_in_database_despite_error": true,
+  "next_add_after_failed_refresh": 409,
+  "production_network_root_cause": "Not observed: synthetic controlled GET failure only; no production logs/network trace available"
+}
