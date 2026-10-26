@@ -9,6 +9,7 @@ import {ScenarioRepository,conflict,inputObject,invalid,selectedScenario,transac
 import {calculate,negotiation} from './pricing-engine.ts'
 import {ServiceError} from './errors.ts'
 import {budgetPdf} from './pdf.ts'
+import {scenarioLabel} from '../shared/commercial.ts'
 
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export function versionLabel(sequence:number){let n=sequence,label='';while(n>0){n--;label=String.fromCharCode(65+n%26)+label;n=Math.floor(n/26)}return label}
@@ -22,7 +23,7 @@ export class BudgetRepository {
   const scenario=new ScenarioRepository(this.db).list(at).find(s=>s.id===scenarioId)!,items=commercial.list(at,scenario.id),components=new ComponentRepository(this.db).list(at),catalog=commercial.catalogs().items
   const state=pricing.settings(at),configuration=pricing.get(),calculation=calculate(items,components,catalog,scenario,configuration.config,state.settings,deal)
   const referenced=new Set(items.flatMap(item=>[item.pieceId,item.diagnosisId,...item.services.flatMap(l=>[l.serviceId,l.dimensionId,l.diagnosisId])]).filter((v):v is string=>typeof v==='string'))
-  const snapshot:BudgetSnapshot={schema:1,atendimento,composition:{items,components,catalog:catalog.filter(item=>referenced.has(item.id))},scenarioId:scenario.id,scenarioName:scenario.name,compositionRevision:state.revision,scenarioRevision:scenario.revision,configuration,settings:state.settings,calculation,conditions:configuration.config.conditions}
+  const snapshot:BudgetSnapshot={schema:1,atendimento,composition:{items,components,catalog:catalog.filter(item=>referenced.has(item.id))},scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),compositionRevision:state.revision,scenarioRevision:scenario.revision,configuration,settings:state.settings,calculation,conditions:configuration.config.conditions}
   return {snapshot,token:hash(snapshot),canEmit:calculation.errors.length===0 && calculation.total!==null && calculation.days!==null}
  }
  preview(at:string,input:unknown):BudgetPreview{

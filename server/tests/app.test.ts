@@ -198,16 +198,16 @@ test('commercial APIs enforce authentication/origin/JSON and operate entirely lo
     const itemPath = `/api/catalogos/${encodeURIComponent(piece.id)}`
     assert.equal((await app.request(itemPath, { headers })).status, 200)
     assert.equal((await app.request('/api/catalogos/%FF', { headers })).status, 400)
-    assert.equal((await app.write(path, 'POST', { pieceCodes: ['capo'] }, cookie)).status, 400)
-    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, status: 'validado' }, cookie, 'https://other.example')).status, 403)
+    assert.equal((await app.write(path, 'POST', { pieceCodes: ['capo'] }, cookie)).status, 200)
+    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, name: 'Capô sintético' }, cookie, 'https://other.example')).status, 403)
     assert.equal((await app.request(itemPath, { method: 'PATCH', headers: { ...headers, Origin: origin }, body: '{}' })).status, 415)
-    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, status: 'validado' }, cookie)).status, 200)
+    assert.equal((await app.write(itemPath, 'PATCH', { revision: 1, name: 'Capô sintético' }, cookie)).status, 200)
     assert.equal((await (await app.request(itemPath + '/historico', { headers })).json()).length, 2)
     assert.equal((await app.write(itemPath, 'DELETE', {}, cookie)).status, 405)
     const add = await app.write(path, 'POST', { pieceCodes: ['capo'] }, cookie)
     assert.equal(add.status, 200)
     const item = (await add.json())[0]
-    const createdService = await app.write('/api/catalogos', 'POST', { kind: 'servico', name: 'Serviço sintético', status: 'validado' }, cookie)
+    const createdService = await app.write('/api/catalogos', 'POST', { kind: 'servico', name: 'Serviço sintético' }, cookie)
     assert.equal(createdService.status, 201)
     const service = await createdService.json()
     const itemUrl = `${path}/${item.id}`

@@ -6,6 +6,10 @@ export interface CatalogItem {
   suggestion: boolean; side: string; serviceId: string | null; active: boolean
   revision: number; createdAt: string; updatedAt: string
 }
+// Legacy status/source metadata does not gate the single commercial catalog.
+export function catalogItemUsable(item: CatalogItem): boolean {
+  return item.active && Boolean(item.name.trim()) && (item.kind !== 'peca' || Boolean(item.code?.trim()))
+}
 export interface HierarchyNode {
   id: string; tipo: 'grupo' | 'grupo_lados' | 'peca' | 'acao_ambos'; nome: string
   codigo_peca?: string; lado?: string; situacao?: string
@@ -28,6 +32,9 @@ export interface Scenario {
   id: string; atendimentoId: string; name: string; position: number; revision: number
   pieceFlags: Record<string, boolean>; serviceFlags: Record<string, boolean>
   componentFlags: Record<string, boolean>
+}
+export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {
+  return `Cenário ${scenario.position}`
 }
 export interface CommercialWorkspace {
   scenarios: Scenario[]; selectedId: string; items: DiagnosisItem[]; revision: number

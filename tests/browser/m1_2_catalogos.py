@@ -38,68 +38,42 @@ async def run():
             at_id = re.search(r'/atendimentos/([^?]+)', page.url).group(1)
             path = f'/api/atendimentos/{at_id}/diagnosticos'
             await page.get_by_role('button', name='Diagnósticos', exact=True).click()
-            await page.get_by_role('button', name='+ Adicionar peça / item', exact=True).click()
+            await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
             await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
-            await expect(page.locator('.piece-options button').first).to_be_disabled()
+            await expect(page.locator('.piece-options button').first).to_be_enabled()
             await page.get_by_label('Buscar peça em todas as vistas').fill('teto solar')
-            await expect(page.locator('.piece-options')).to_contain_text('Sugestão V2')
+            await expect(page.locator('.piece-options button').first).to_be_enabled()
+            await expect(page.locator('.piece-options')).not_to_contain_text('Sugestão V2')
             await page.get_by_label('Buscar peça em todas as vistas').fill('Veículo completo')
-            await expect(page.locator('.piece-options')).to_contain_text('Sem código')
             await expect(page.locator('.piece-options button').first).to_be_disabled()
-            h.mark('unvalidated proposals, suggestions and missing-code leaves visible and blocked')
+            h.mark('active coded pieces available immediately; missing-code leaves still blocked, without origin labels')
 
-            await page.get_by_role('button', name='Catálogos', exact=True).click()
-
-            async def validate_piece(code):
-                await page.get_by_label('Tipo de catálogo').select_option('peca')
-                await page.get_by_label('Buscar no catálogo').fill(code)
-                await page.locator('.catalog-row').filter(has_text=code).first.click()
-                await page.get_by_label('Validado pelo operador').check()
-                await page.get_by_role('button', name='Salvar catálogo', exact=True).click()
-                await expect(page.get_by_role('form', name='Editar catálogo')).not_to_be_visible()
-
-            for code in ['capo', 'para_lama_dianteiro__motorista', 'para_lama_dianteiro__passageiro']:
-                await validate_piece(code)
-            # Explicit operator maintenance, not preloaded demonstration catalogs.
-            async def create_catalog(kind, name, service_name=None):
-                await page.get_by_label('Tipo de catálogo').select_option(kind)
-                await page.get_by_label('Buscar no catálogo').fill('')
-                await page.get_by_role('button', name='+ Novo cadastro', exact=True).click()
-                await page.get_by_label('Nome do catálogo').fill(name)
+            await expect(page.get_by_role('button', name='Catálogos', exact=True)).to_have_count(0)
+            async def create_catalog(kind, name, service_name=None, code=None):
+                data = {'kind': kind, 'name': name}
+                if code: data['code'] = code
                 if service_name:
-                    await page.get_by_label('Serviço da dimensão').select_option(label=service_name)
-                await page.get_by_label('Validado pelo operador').check()
-                await page.get_by_role('button', name='Salvar catálogo', exact=True).click()
-                await expect(page.get_by_role('form', name='Editar catálogo')).not_to_be_visible()
-
+                    entries = (await (await context.request.get(ORIGIN + '/api/catalogos')).json())['items']
+                    data['serviceId'] = next(i['id'] for i in entries if i['kind'] == 'servico' and i['name'] == service_name)
+                response = await context.request.post(ORIGIN + '/api/catalogos', headers={'Origin': ORIGIN}, data=data)
+                assert response.status == 201, await response.text()
+                return await response.json()
             await create_catalog('servico', 'Serviço QA sintético')
             await create_catalog('diagnostico', 'Dano QA sintético')
             await create_catalog('dimensao', 'Dimensão QA sintética', 'Serviço QA sintético')
-            # History + cancellation/unsaved guard in catalog manager.
-            await page.get_by_label('Tipo de catálogo').select_option('peca')
-            await page.get_by_label('Buscar no catálogo').fill('capo')
-            await page.locator('.catalog-row').first.click()
-            await page.get_by_role('button', name='Ver histórico de alterações').click()
-            await expect(page.get_by_role('form', name='Editar catálogo')).to_contain_text('Revisão 2')
-            await page.get_by_label('Nome do catálogo').fill('Não deve ser salvo')
-            h.accept_dialogs = False
-            await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
-            await expect(page.get_by_label('Nome do catálogo')).to_have_value('Não deve ser salvo')
-            h.accept_dialogs = True
-            await page.get_by_role('button', name='Cancelar edição', exact=True).click()
-            await page.get_by_role('button', name='Voltar aos itens', exact=True).click()
-            h.mark('own catalog maintenance and explicit validation, service-bound dimension, revision history and unsaved guard')
+            await page.reload()
+            h.mark('authenticated catalog API preserved without an operational maintenance button or approval gate')
 
             await page.get_by_role('button', name='Mapa', exact=True).click()
             await page.locator('[data-region="frente"]').first.click()
             await page.locator('.piece-options button').filter(has=page.get_by_text('Capô', exact=True)).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(1)
-            await page.locator('.piece-options button').filter(has=page.get_by_text('Para-lama ›', exact=True)).click()
+            await page.locator('.piece-options button').filter(has=page.get_by_text('Para-lama', exact=True)).click()
             await page.locator('.piece-options button').filter(has=page.get_by_text('Ambos', exact=True)).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(3)
             # Same codes from another region remain the same physical pieces.
             await page.locator('[data-region="motorista"]').click()
-            await page.locator('.piece-options button').filter(has=page.get_by_text('Para-lama ›', exact=True)).click()
+            await page.locator('.piece-options button').filter(has=page.get_by_text('Para-lama', exact=True)).click()
             await page.locator('.piece-options button').filter(has=page.get_by_text('Ambos', exact=True)).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(3)
             await page.screenshot(path=str(ARTIFACTS / 'hierarquia-sintetica.png'))
@@ -191,6 +165,32 @@ async def run():
             rows = await (await mobile.request.get(ORIGIN + path)).json()
             assert len(rows) == 2 and all(not row['services'] for row in rows)
             h.mark('API restart plus fresh mobile session recovers correct Atendimento, diagnosis and child services; deletion removes children')
+
+            # Direction/API setup is explicit; no new administrative screen.
+            context = mobile
+            own = await create_catalog('peca', 'Peça QA unificada', code='qa-unified-piece')
+            await page.reload()
+            await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
+            await page.get_by_label('Buscar peça em todas as vistas').fill('qa-unified-piece')
+            await expect(page.locator('.piece-options button')).to_have_count(1)
+            await expect(page.locator('.piece-options button')).to_be_enabled()
+            await page.get_by_label('Buscar peça em todas as vistas').fill('Peça QA unificada')
+            await expect(page.locator('.piece-options button')).to_have_count(1)
+            for label in ['Proposta', 'Sugestão V2', 'Peças próprias fora da árvore V2']:
+                await expect(page.get_by_text(label, exact=True)).to_have_count(0)
+            await page.locator('.piece-options button').scroll_into_view_if_needed()
+            await page.screenshot(path=str(ARTIFACTS / 'busca-unificada-mobile.png'))
+            await page.locator('.piece-options button').click()
+            await expect(page.locator('.diagnosis-card')).to_have_count(3)
+            response = await mobile.request.patch(ORIGIN + '/api/catalogos/' + own['id'], headers={'Origin': ORIGIN}, data={'revision': own['revision'], 'active': False})
+            assert response.status == 200
+            await page.reload()
+            await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
+            await page.get_by_label('Buscar peça em todas as vistas').fill('qa-unified-piece')
+            await expect(page.locator('.piece-options button')).to_be_disabled()
+            await expect(page.locator('.diagnosis-card')).to_have_count(3)
+            h.mark('new piece from explicit API setup joins unified name/code search; inactivation blocks new selection and preserves historical reference')
+
             assert not h.external, h.external
             assert not h.page_errors, h.page_errors
             assert not any('/api/experiencias' in r['path'] or '/api/workspace' in r['path'] for r in h.api_requests)
@@ -199,7 +199,7 @@ async def run():
             await browser.close()
             browser = None
     except Exception as error:
-        failed = str(error)
+        failed = str(error) or type(error).__name__
         traceback.print_exc()
     finally:
         if browser:

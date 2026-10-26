@@ -1,0 +1,7 @@
+PASS compact edit action in original header works with keyboard and unsaved guard; redundant tools bar absent
+PASS same CommercialPanel across Diagnostics/Map: six tab switches make zero redundant catalog/workspace GETs
+PASS compact searchable picker has name-only rows and search icon; diagnosis unsaved guard blocks header edit and tab navigation
+PASS nine numbered mini-tabs, overflow arrows, fixed add/compare, keyboard focus and real flag-only variation from selected scenario; no name prompts
+PASS numeric comparison headers, scenario context across all tabs and original Funil return context preserved
+PASS fresh mobile session after API restart recovers nine scenarios and diagnosis with compact header, arrow navigation and internal matrix scrolling
+6 compact UI browser groups passed

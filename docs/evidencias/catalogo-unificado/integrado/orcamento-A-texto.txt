@@ -1,0 +1,35 @@
+FUNIX | Orçamento A
+Versão 1 | 2026-10-26T05:10:22.646Z | Cenário: Principal — cópia
+Atendimento: 435ab0a3-ca90-41ff-82be-478f3d050971
+Contato: QA João — ação, çãé — SINTÉTICO | Telefone: 123456
+Veículo: Não informado | Placa: Não informada
+Escopo comercial da versão emitida:
+Capô | Serviço: Serviço QA sintético
+Dimensão: Dimensão QA | Diagnóstico: Dano alternativo QA
+1 x R$ 100,05 = R$ 100,05
+Observação: Alternativo QA
+Etapa: Etapa sintética QA | Dimensão técnica: Técnica QA | Energia base 2 + dimensional 3
+Capô | Componente: Componente zero explícito QA
+Dimensão: Não aplicável | Diagnóstico: Não informado
+2 x R$ 0,00 = R$ 0,00
+Preço manual: R$ 0,00 | FCT individual: 1.2
+Capô | Componente: Componente pendente QA
+Dimensão: Não aplicável | Diagnóstico: Não informado
+2 x R$ 12,05 = R$ 24,10
+Preço manual: R$ 10,01 | FCT individual: 1.2
+Serviços originais: R$ 100,05
+Serviços efetivos: R$ 100,05
+Desconto em serviços: R$ 0,05
+Componentes: R$ 24,10
+TOTAL EFETIVO: R$ 124,10
+Energia total: 5 | Estimativa: 2 dia(s) técnico(s).
+Dias técnicos representam o escopo; não são data de entrega nem autorização de execução.
+Condições e ressalvas comerciais: SINTÉTICO — somente homologação. Não enviar ao cliente.
+Documento comercial. Não é ordem de serviço. Atendimento operacional permanece no ERP.
+Identificador imutável da versão: ac239353-07be-455c-ab54-90a99bf52f77
+
+
+
+
+FUNIX | Página 1/1 | Orçamento A
+

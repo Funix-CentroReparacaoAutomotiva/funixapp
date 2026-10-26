@@ -44,7 +44,8 @@ A migração cria o banco na primeira execução e atualiza incrementalmente o M
 - Seis fases V1.0 persistidas, com mudanças manuais. Os prazos dos rótulos não movimentam contatos automaticamente.
 - Rejeitados exige recusa explícita e motivo; silêncio do cliente não vira perda.
 - Telefone repetido é permitido. O original é preservado; E.164 só é obtido quando há indicação internacional inequívoca, sem inventar DDI.
-- Mapa selecionável V20 e árvore V2, catálogo próprio e composição manual de diagnósticos/serviços/dimensões disponíveis. Abra um Atendimento → Diagnósticos ou Mapa → Catálogos para manter os dados. Valide a identificação das peças antes de selecioná-las.
+- Mapa selecionável V20 e árvore V2, catálogo único sem aprovação manual; a busca de peças inclui cadastros do operador. Peças sem código permanecem indisponíveis. A manutenção de catálogos não aparece na operação; código administrativo e APIs foram preservados. Diagnósticos, serviços e dimensões começam vazios e precisam dos dados da direção para compor orçamentos completos; não há carga fictícia.
+- Cabeçalho com edição compacta; cenários em miniabas numéricas, variação por cópia das inclusões e comparação. Letras são exclusivas das versões emitidas de orçamento. [Entrega de interface do PR #11](docs/PR11_INTERFACE.md).
 - Cenários contêm somente máscaras por IDs; atributos mestre são globais. Serviços repetidos são linhas independentes. Emissão manual gera versões A…Z,AA… sem limite artificial, com snapshot e PDF congelados.
 - Chat, IA global/contextual e envio ao ERP permanecem indisponíveis.
 - Chave técnica UUID não depende de placa/telefone. Nome legível com prefixo de origem definitivo ainda depende da escolha da direção.

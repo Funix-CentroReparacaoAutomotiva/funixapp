@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService } from '../shared/commercial.ts'
+import { catalogItemUsable } from '../shared/commercial.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
 import { selectedScenario, touchComposition } from './scenarios.ts'
@@ -33,7 +34,7 @@ export class CommercialRepository {
   item(id: string) { const row = this.db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id); if (!row) notFound(); return catalog(row) }
   usable(id: string, kind: CatalogKind) {
     const item = this.item(id)
-    if (item.kind !== kind || !item.active || item.status !== 'validado') invalid('Selecione um item ativo e validado do catálogo correspondente.')
+    if (item.kind !== kind || !catalogItemUsable(item)) invalid('Selecione um item ativo e identificado do catálogo correspondente.')
     if (item.kind === 'dimensao') this.usable(item.serviceId!, 'servico')
     return item
   }
@@ -61,7 +62,7 @@ export class CommercialRepository {
     if (!old && kind !== 'dimensao' && data.serviceId !== undefined) invalid('Somente dimensão pertence a um serviço.')
     const expected = old ? revision(data.revision) : 0
     return this.transaction(() => {
-      if (serviceId && (!old || (status === 'validado' && active))) this.usable(serviceId, 'servico')
+      if (serviceId && (!old || active)) this.usable(serviceId, 'servico')
       if (!old && code && this.db.prepare('SELECT id FROM catalog_items WHERE code=?').get(code)) throw new ServiceError(409, 'DUPLICATE_CODE', 'Este código de peça já existe; edite o cadastro existente.')
       const now = new Date().toISOString(), key = old?.id ?? randomUUID()
       if (old) {
@@ -98,7 +99,7 @@ export class CommercialRepository {
       const scenarioId = selectedScenario(this.db,atendimentoId,data.scenarioId,data.scenarioRevision)
       for (const code of codes) {
         const row = this.db.prepare("SELECT * FROM catalog_items WHERE code=? AND kind='peca'").get(code)
-        if (!row) invalid('Peça sem código cadastrado. Valide o catálogo antes de compor o diagnóstico.')
+        if (!row) invalid('Peça sem código cadastrado. Identifique a peça no catálogo antes de compor o diagnóstico.')
         const piece = this.usable(String(row.id), 'peca')
         const now = new Date().toISOString()
         const id = randomUUID()

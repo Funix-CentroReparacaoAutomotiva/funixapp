@@ -1,0 +1,7 @@
+PASS operator creates real Atendimento/catalogs/piece and repeated service lines via UI; duplicate scenario changes flags only
+PASS missing setup blocks emission without losing draft; operator configures prices, factors, stages, energy, capacity and common parameters via UI
+PASS exact fractional totals and manual zero/FCT components persist; matrix uses effective flags even when monetary totals are zero
+PASS manual UI emission A applies services-only discount; downloaded real PDF independently parsed with pdftotext including accented text and totals
+PASS 26 Z and 27 AA issued through UI; earlier A snapshot and PDF unchanged after live prices/Atendimento edits
+PASS fresh mobile browser after restart recovers 27 immutable versions, identical A PDF, fractional live totals and horizontal matrix
+PASS no external provider requests or uncaught browser errors; all successful persistence and PDF responses are real
