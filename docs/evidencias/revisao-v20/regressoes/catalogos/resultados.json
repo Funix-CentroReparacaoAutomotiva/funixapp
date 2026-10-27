@@ -1,0 +1,42 @@
+{
+  "suite": "M1.2 Catálogos e diagnósticos",
+  "synthetic": true,
+  "fault_injection": "One PATCH 503; 409 is a real competing edit",
+  "assertions": [
+    {
+      "name": "active coded pieces available immediately; missing-code leaves still blocked, without origin labels",
+      "pass": true
+    },
+    {
+      "name": "authenticated catalog API preserved without an operational maintenance button or approval gate",
+      "pass": true
+    },
+    {
+      "name": "interactive original SVG, nested V2 selection, Ambos creates two pieces and cross-view selections deduplicate",
+      "pass": true
+    },
+    {
+      "name": "diagnosis/service/dimension selection and quantities persist through real API",
+      "pass": true
+    },
+    {
+      "name": "503, real 401/reauthentication and real 409 preserve unsaved form; navigation protects diagnosis draft",
+      "pass": true
+    },
+    {
+      "name": "API restart plus fresh mobile session recovers correct Atendimento, diagnosis and child services; deletion removes children",
+      "pass": true
+    },
+    {
+      "name": "new piece from explicit API setup joins unified name/code search; inactivation blocks new selection and preserves historical reference",
+      "pass": true
+    },
+    {
+      "name": "no external hosts, no Coda/legacy requests, no browser errors; Issue 7 budget entry is available without external integration",
+      "pass": true
+    }
+  ],
+  "external_hosts": [],
+  "page_errors": [],
+  "error": null
+}

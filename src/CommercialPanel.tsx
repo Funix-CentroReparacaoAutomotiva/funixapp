@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisService, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
 import { catalogItemUsable as usable, scenarioLabel } from '../shared/commercial'
 import { api } from './api'
 import type { RequestFailure } from './api'
-import { Login } from './ui'
+import { Icon, Login } from './ui'
+import { PieceDialog } from './PieceDialog'
 import {BudgetPanel} from './BudgetPanel'
 import {ScenarioTabs} from './ScenarioTabs'
 import {money} from './money'
@@ -21,10 +22,13 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [scenarios,setScenarios] = useState<Scenario[]>([]), [scenarioId,setScenarioId] = useState(scenarioContext.get(atendimentoId) ?? '')
   const selection = useRef(scenarioId)
   const loadVersion = useRef(0), mutationInFlight = useRef(false)
+  const mapStage = useRef<HTMLDivElement>(null), mapOpener = useRef('.map-search-trigger')
+  const returnMapFocus = useCallback(() => { mapStage.current?.querySelector<HTMLElement>(mapOpener.current)?.focus() }, [])
   const [matrix,setMatrix] = useState(false), [differences,setDifferences] = useState(false)
   const [failure, setFailure] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reload, setReload] = useState(0)
   const [failureDetails, setFailureDetails] = useState<RequestFailure | null>(null), [refreshNeeded, setRefreshNeeded] = useState(false)
-  const [reauth, setReauth] = useState(false), [selecting, setSelecting] = useState(tab === 'mapa')
+  const [reauth, setReauth] = useState(false), [selecting, setSelecting] = useState(false)
+  const [discPage, setDiscPage] = useState(0)
   const [path, setPath] = useState<HierarchyNode[]>([]), [query, setQuery] = useState('')
   const [editing, setEditing] = useState<DiagnosisItem | null>(null), [draft, setDraft] = useState<DiagnosisItem | null>(null)
   const managerDirty = useRef(false)
@@ -33,7 +37,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [displayTab, setDisplayTab] = useState(tab)
   // Reset only the visible editor on tab changes, retaining loaded commercial data.
   if (displayTab !== tab) {
-    setDisplayTab(tab); setEditing(null); setDraft(null); setBudget(false); setMatrix(false); setSelecting(tab === 'mapa')
+    setDisplayTab(tab); setEditing(null); setDraft(null); setBudget(false); setMatrix(false); setSelecting(false)
   }
   const dirty = Boolean(editing && draft && JSON.stringify(editing) !== JSON.stringify(draft))
   useEffect(() => { onDirty(dirty) }, [dirty, onDirty])
@@ -96,7 +100,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       }
       // POST confirmation and subsequent GET synchronization are separate outcomes.
       setItems(result); setMessage('Peça(s) salva(s) no Atendimento. Seleções repetidas não duplicam a peça.')
-      if(existing){const item=result.find(p=>p.id===existing.id)!;setEditing(item);setDraft(structuredClone(item))}
+      if(existing){const item=result.find(p=>p.id===existing.id)!;if(tab==='mapa')setSelecting(false);setEditing(item);setDraft(structuredClone(item))}
       try { await load(); setRefreshNeeded(false) }
       catch(cause) {setRefreshNeeded(true);failed(cause, 'A inclusão foi confirmada, mas a atualização da tela falhou. Use Atualizar dados; a peça não precisa ser enviada novamente.')}
     })
@@ -108,7 +112,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     }, true)
   }
   function showNode(node: HierarchyNode) {
-    if (node.tipo === 'grupo' || node.tipo === 'grupo_lados') { setPath(previous => [...previous, node]); setQuery(''); return }
+    if (node.tipo === 'grupo' || node.tipo === 'grupo_lados') { setPath(previous => [...previous, node]); setQuery(''); setDiscPage(0); return }
     const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca! : node.codigo_peca ? [node.codigo_peca] : []
     if (codes.length) void select(codes)
   }
@@ -133,15 +137,26 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     return found
   }
   const nodes = query.trim() ? searchNodes() : path.length ? path[path.length - 1].itens ?? [] : roots
+  const searchField = <label className="piece-search"><Icon name="search" /><input aria-label="Buscar peça em todas as vistas" placeholder="Buscar peça…" value={query} onChange={e => { setQuery(e.target.value); setDiscPage(0) }} maxLength={150} /></label>
+  function option(node: HierarchyNode, index = 0, count = 1, radial = false) {
+    const group = node.tipo === 'grupo' || node.tipo === 'grupo_lados'
+    const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca ?? [] : node.codigo_peca ? [node.codigo_peca] : []
+    const available = codes.length > 0 && codes.every(code => { const item = byCode(code); return item && usable(item) })
+    const selected = !group && codes.length > 0 && codes.every(code => items.some(item => item.pieceId === byCode(code)?.id && scenarios.find(s => s.id === scenarioId)?.pieceFlags[item.id]))
+    const angle = index * 2 * Math.PI / count - Math.PI / 2
+    const radius = count <= 2 ? 29 : count <= 4 ? 32 : 36
+    return <button key={node.id} className={radial ? 'disc-node' : undefined}
+      style={radial ? {left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%`} : undefined}
+      aria-pressed={!group && available ? selected : undefined}
+      disabled={busy || refreshNeeded || (!group && !available)} onClick={() => showNode(node)}
+      title={!group && !available ? 'Peça inativa ou sem código cadastrado' : undefined}>
+      <span>{node.nome}</span>{group && <span aria-hidden="true">›</span>}
+    </button>
+  }
   const picker = <section className="piece-picker" aria-label="Selecionar peça">
-    <label className="piece-search"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input aria-label="Buscar peça em todas as vistas" placeholder="Buscar peça…" value={query} onChange={e => setQuery(e.target.value)} maxLength={150} /></label>
-    <div className="commercial-toolbar"><button className="fh-filter" disabled={!path.length || busy} onClick={() => { setPath(p => p.slice(0, -1)); setQuery('') }}>← Voltar nível</button><span>{path.map(node => node.nome).join(' / ') || 'Regiões e acesso geral'}</span></div>
-    <div className="piece-options">{nodes.map(node => {
-      const group = node.tipo === 'grupo' || node.tipo === 'grupo_lados'
-      const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca ?? [] : node.codigo_peca ? [node.codigo_peca] : []
-      const available = codes.length > 0 && codes.every(code => { const item = byCode(code); return item && usable(item) })
-      return <button key={node.id} disabled={busy || refreshNeeded || (!group && !available)} onClick={() => showNode(node)} title={!group && !available ? 'Peça inativa ou sem código cadastrado' : undefined}><span>{node.nome}</span>{group && <span aria-hidden="true">›</span>}</button>
-    })}</div>{!nodes.length && <p>Nenhuma peça encontrada.</p>}
+    {searchField}
+    <div className="commercial-toolbar"><button className="fh-filter" disabled={!path.length || busy} onClick={() => { setPath(p => p.slice(0, -1)); setQuery(''); setDiscPage(0) }}>← Voltar nível</button><span>{path.map(node => node.nome).join(' / ') || 'Regiões e acesso geral'}</span></div>
+    <div className="piece-options">{nodes.map(node => option(node))}</div>{!nodes.length && <p>Nenhuma peça encontrada.</p>}
   </section>
   const patchDraft = (value: Partial<DiagnosisItem>) => setDraft(previous => previous ? { ...previous, ...value } : null)
   function updateLine(index: number, value: Partial<DiagnosisService>) { if (draft) patchDraft({ services: draft.services.map((line, i) => i === index ? { ...line, ...value } : line) }) }
@@ -150,6 +165,17 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     await mutate(async()=> { await api(`/api/atendimentos/${atendimentoId}/cenarios/${scenario.id}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:scenario.revision,[field]:{[id]:enabled}})}); await load() })
   }
   const active = scenarios.find(s=>s.id===scenarioId)
+  const mapMarkup = useMemo(() => {
+    const codesIn = (node?: HierarchyNode): string[] => node ? [...(node.codigo_peca ? [node.codigo_peca] : []), ...(node.gera_codigos_peca ?? []), ...(node.itens ?? []).flatMap(codesIn)] : []
+    return carMap.replace(/(<g data-region="([^"]+)"[^>]*>)([\s\S]*?)(<\/g>)/g, (_match, opening: string, region: string, body: string, closing: string) => {
+      const codes = new Set(codesIn(catalog?.hierarchy.regioes[region]))
+      const count = items.filter(item => active?.pieceFlags[item.id] && codes.has(catalog?.items.find(c => c.id === item.pieceId)?.code ?? '')).length
+      const tag = opening.replace(/aria-label="([^"]+)"/, `aria-label="$1: ${count} peça(s) incluída(s)"`).slice(0, -1) + ` data-selected="${count > 0}">`
+      const xy = body.match(/<text x="([\d.]+)" y="([\d.]+)"/)
+      const marker = count && xy ? `<g class="map-region-count" aria-hidden="true"><circle cx="${Number(xy[1]) + 26}" cy="${Number(xy[2]) - 15}" r="10"/><text x="${Number(xy[1]) + 26}" y="${Number(xy[2]) - 15}" text-anchor="middle" dy=".35em">${count}</text></g>` : ''
+      return tag + body + marker + closing
+    })
+  }, [catalog, items, active])
   const differs = (values: boolean[]) => values.some(value=>value!==values[0])
   const matrixValue = (scenarioId:string,lineId:string) => {const line=workspace?.calculations.find(c=>c.scenarioId===scenarioId)?.lines.find(l=>l.id===lineId);return line?.included?money(line.total):'Não incluído'}
   const comparison = <div className="scenario-matrix" role="region" aria-label="Matriz de cenários" tabIndex={0}><table><thead><tr><th>Composição mestre</th>{scenarios.map(s=><th key={s.id}>{scenarioLabel(s)}</th>)}</tr></thead><tbody>{items.map(item=>{
@@ -159,7 +185,25 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     if (differences && !parentDiff && !lines.length && !components.length) return null
     return [<tr className="matrix-parent" key={item.id}><th>{byId(item.pieceId)?.name}</th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir peça ${byId(item.pieceId)?.name}`} checked={Boolean(s.pieceFlags[item.id])} disabled={busy || refreshNeeded} onChange={e=>flag(s,'pieceFlags',item.id,e.target.checked)} /></td>)}</tr>,...lines.map((line,index)=><tr key={line.id}><th>{byId(line.serviceId)?.name} · {byId(line.dimensionId)?.name ?? 'dimensão pendente'} · {line.quantity}<small>Lançamento {index+1} · {[byId(line.diagnosisId ?? item.diagnosisId)?.name,line.notes].filter(Boolean).join(' · ')}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir serviço ${line.id}`} checked={Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id])} disabled={busy || refreshNeeded || !s.pieceFlags[item.id]} onChange={e=>flag(s,'serviceFlags',line.id,e.target.checked)} />{!s.pieceFlags[item.id] && <small>Peça desmarcada</small>}<small>{matrixValue(s.id,line.id)}</small></td>)}</tr>),...components.map(component=><tr key={component.id}><th>{component.name} · {component.quantity}<small>Componente monetário · FCT {component.fct??'pendente'}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir componente ${component.id}`} checked={Boolean(s.pieceFlags[item.id] && s.componentFlags[component.id])} disabled={busy || refreshNeeded || !s.pieceFlags[item.id]} onChange={e=>flag(s,'componentFlags',component.id,e.target.checked)}/><small>{matrixValue(s.id,component.id)}</small></td>)}</tr>)]
   })}</tbody><tfoot>{(['serviceSubtotal','componentSubtotal','total','energy','days'] as const).map((field,i)=><tr key={field}><th>{['Serviços','Componentes','Total antes da negociação','Energia','Dias técnicos'][i]}</th>{scenarios.map(s=>{const c=workspace?.calculations.find(c=>c.scenarioId===s.id),value=c?.[field];return <td key={s.id}>{field==='energy'||field==='days'?value??'Indisponível':money(value)}</td>})}</tr>)}</tfoot></table></div>
-  return <div className="detail-page commercial-page">
+  const calculation = workspace?.calculations.find(c => c.scenarioId === scenarioId)
+  const mapSelecting = tab === 'mapa' && selecting && !draft && !matrix && !budget && !reauth && Boolean(catalog)
+  useEffect(() => {
+    if (mapSelecting) document.querySelector<HTMLElement>('.map-piece-dialog [data-initial-focus]')?.focus()
+  }, [path, discPage, mapSelecting])
+  const feedback = <>
+    {failure && <p className="form-error" role="alert">{failure}</p>}{message && <p className="at-save-success" role="status">{message}</p>}
+      {(refreshNeeded || failure) && <button className="fh-filter" disabled={busy} onClick={refresh}>{busy ? 'Atualizando…' : 'Atualizar dados'}</button>}
+      {failureDetails?.method && <details className="at-form-hint"><summary>Detalhes da falha</summary><p>{failureDetails.method} {failureDetails.endpoint} · {failureDetails.kind === 'network' ? 'Transporte sem resposta HTTP' : failureDetails.kind === 'response' ? 'Resposta não legível' : 'Resposta HTTP'}{failureDetails.status ? ` · HTTP ${failureDetails.status}` : ''}{failureDetails.elapsedMs !== undefined ? ` · ${failureDetails.elapsedMs} ms` : ''}{failureDetails.requestId ? ` · Referência ${failureDetails.requestId}` : ''}</p></details>}
+  </>
+  const visibleNodes = nodes.slice(discPage * 7, discPage * 7 + 7)
+  const discCount = visibleNodes.length + (nodes.length > 7 ? 1 : 0)
+  function openRegion(region: string) {
+    const node = catalog?.hierarchy.regioes[region]
+    if (node) { mapOpener.current = `[data-region="${region}"]`; setPath([node]); setQuery(''); setDiscPage(0); setSelecting(true) }
+  }
+  const openBudget = () => { if (closeEditor()) { setMatrix(false); setSelecting(false); setBudget(v => !v) } }
+  return <div className={`detail-page commercial-page ${tab === 'mapa' && !draft && !matrix && !budget ? 'map-page' : ''}`}>
+
     <div className="diagnostics-body">
       {active && <ScenarioTabs scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix}
         onSelect={async id => { if (id !== scenarioId && closeEditor(false)) await mutate(() => load(undefined,id)) }}
@@ -170,9 +214,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
         }) }}
         onCompare={() => { if(closeEditor()){setBudget(false);setMatrix(v=>!v)} }} />}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
-      {failure && <p className="form-error" role="alert">{failure}</p>}{message && <p className="at-save-success" role="status">{message}</p>}
-      {(refreshNeeded || failure) && <button className="fh-filter" disabled={busy} onClick={refresh}>{busy ? 'Atualizando…' : 'Atualizar dados'}</button>}
-      {failureDetails?.method && <details className="at-form-hint"><summary>Detalhes da falha</summary><p>{failureDetails.method} {failureDetails.endpoint} · {failureDetails.kind === 'network' ? 'Transporte sem resposta HTTP' : failureDetails.kind === 'response' ? 'Resposta não legível' : 'Resposta HTTP'}{failureDetails.status ? ` · HTTP ${failureDetails.status}` : ''}{failureDetails.elapsedMs !== undefined ? ` · ${failureDetails.elapsedMs} ms` : ''}{failureDetails.requestId ? ` · Referência ${failureDetails.requestId}` : ''}</p></details>}
+      {!mapSelecting && feedback}
       {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} workspace={workspace} catalog={catalog.items} onRefresh={()=>load()} onDirty={onManagerDirty} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft ? <form aria-label="Editar item de diagnóstico" onSubmit={event => {
         event.preventDefault()
         void mutate(async () => {
@@ -197,22 +239,45 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
         <p className="at-form-hint">Seleções manuais. Confira valores e emissão em Orçamento e componentes.</p>
         <div className="commercial-toolbar"><button className="fh-filter" type="button" onClick={()=>closeEditor()}>Voltar à lista</button><button className="primary-btn" disabled={!dirty || refreshNeeded} type="submit">{busy ? 'Salvando…' : 'Salvar diagnóstico'}</button></div></fieldset>
       </form> : <>
-        {tab === 'mapa' && <div className="interactive-map" onClick={event => {
-          const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region')
-          if (region) { setPath([catalog.hierarchy.regioes[region]]); setQuery(''); setSelecting(true) }
-        }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const node = (event.target as Element).closest('[data-region]'); if (node) { event.preventDefault(); setPath([catalog.hierarchy.regioes[node.getAttribute('data-region')!]]); setQuery(''); setSelecting(true) } } }} dangerouslySetInnerHTML={{ __html: carMap }} />}
-        <button className="fh-filter add-piece" disabled={busy} aria-expanded={selecting} onClick={() => setSelecting(v => !v)}>{selecting ? 'Fechar seleção' : '+ Adicionar peça'}</button>
-        {selecting && picker}
-        <h2>Itens do Atendimento · {items.length}</h2>
-        {!items.length && <p className="at-form-hint">Nenhum item adicionado. Use o mapa ou a busca de peças.</p>}
-        {items.map(item => <article className={`diagnosis-card ${item.enabled ? '' : 'excluded'}`} key={item.id}>
-          <button className="diagnosis-open" disabled={busy} onClick={() => { setEditing(item); setDraft(structuredClone(item)); setMessage('') }}><strong>{byId(item.pieceId)?.name}</strong><span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span><small>{item.services.length} serviço(s) · {item.enabled ? 'Incluído' : 'Desmarcado'} · {stateLabel(byId(item.pieceId))}</small><span>Editar ›</span></button>
-          <button className="fh-filter" disabled={busy || refreshNeeded} onClick={() => {
-            if (window.confirm('Remover esta peça e todos os seus serviços de TODOS os cenários deste Atendimento?')) void mutate(async () => { await api(`/api/atendimentos/${atendimentoId}/diagnosticos/${item.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: item.revision }) }); setItems(previous => previous.filter(old => old.id !== item.id)); await load(); setMessage('Item e serviços removidos de todos os cenários.') })
-          }}>Remover item</button>
-        </article>)}
+        {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
+          <button className="fh-filter map-search-trigger" disabled={busy || refreshNeeded} onClick={() => { mapOpener.current = '.map-search-trigger'; setPath([]); setQuery(''); setDiscPage(0); setSelecting(true) }}><Icon name="search" /> Buscar peça</button>
+          <div className="interactive-map" onClick={event => {
+            const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region')
+            if (region) openRegion(region)
+          }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region'); if (region) { event.preventDefault(); openRegion(region) } } }} dangerouslySetInnerHTML={{ __html: mapMarkup }} />
+          <span className="map-instruction">Toque em uma região para selecionar peças</span>
+          {mapSelecting && <PieceDialog busy={busy} onClose={() => setSelecting(false)} returnFocus={returnMapFocus}>
+            <header className="map-selector-head"><span>Seleção de peças</span><button className="fh-filter" disabled={busy} aria-label="Fechar seleção" onClick={() => setSelecting(false)}>×</button></header>
+            {feedback}
+            {searchField}
+            {query.trim() ? <div className="piece-options map-search-results">{nodes.map(node => option(node))}{!nodes.length && <p>Nenhuma peça encontrada.</p>}</div> : <div className="disc-wrap">
+              <strong className="disc-name">{path.at(-1)?.nome ?? 'Regiões e acesso geral'}</strong>
+              <div className="disc-ring piece-options">{visibleNodes.map((node, i) => option(node, i, discCount, true))}
+                {nodes.length > 7 && <button className="disc-node disc-more" disabled={busy} style={{left: `${50 + Math.cos((discCount - 1) * 2 * Math.PI / discCount - Math.PI / 2) * 36}%`, top: `${50 + Math.sin((discCount - 1) * 2 * Math.PI / discCount - Math.PI / 2) * 36}%`}} onClick={() => setDiscPage(value => (value + 1) * 7 < nodes.length ? value + 1 : 0)}>{(discPage + 1) * 7 < nodes.length ? 'Ver mais opções' : 'Voltar ao início'}</button>}
+              </div>
+              <button className="disc-center" data-initial-focus disabled={busy} aria-label={path.length > 1 ? 'Voltar ao nível anterior' : 'Fechar seleção central'} onClick={() => { if (path.length > 1) { setPath(p => p.slice(0, -1)); setDiscPage(0) } else setSelecting(false) }}>{path.length > 1 ? '←' : '×'}</button>
+            </div>}
+          </PieceDialog>}
+        </div> : <>
+          <div className="diagnosis-heading"><h1>Diagnósticos</h1><span>{items.length} peça{items.length !== 1 ? 's' : ''}</span></div>
+          {!items.length && <p className="at-form-hint diagnosis-empty">Nenhum item adicionado. Use o mapa ou a busca de peças.</p>}
+          <div className="diagnosis-list">{items.map(item => {
+            const included = Boolean(active?.pieceFlags[item.id])
+            const components = workspace?.components.filter(c => c.pieceId === item.id).length ?? 0
+            return <article className={`diagnosis-card diagnosis-row ${included ? '' : 'excluded'}`} key={item.id}>
+              <input type="checkbox" aria-label={`Incluir peça ${byId(item.pieceId)?.name} neste cenário`} checked={included} disabled={busy || refreshNeeded || !active} onChange={e => active && flag(active, 'pieceFlags', item.id, e.target.checked)} />
+              <button className="diagnosis-open" disabled={busy} onClick={() => { setEditing(item); setDraft(structuredClone(item)); setMessage('') }}><span className="diagnosis-text"><strong>{byId(item.pieceId)?.name}</strong><span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span><small>{item.services.length} serviço(s) · {components} componente(s) · {included ? 'Incluído' : 'Desmarcado'}{(!byId(item.pieceId) || !usable(byId(item.pieceId)!)) ? ' · Indisponível para novas seleções' : ''}</small></span><Icon name="edit" /></button>
+              <button className="diagnosis-remove" aria-label={`Remover item ${byId(item.pieceId)?.name}`} disabled={busy || refreshNeeded} onClick={() => {
+                if (window.confirm('Remover esta peça e todos os seus serviços de TODOS os cenários deste Atendimento?')) void mutate(async () => { await api(`/api/atendimentos/${atendimentoId}/diagnosticos/${item.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: item.revision }) }); setItems(previous => previous.filter(old => old.id !== item.id)); await load(); setMessage('Item e serviços removidos de todos os cenários.') })
+              }}>Remover item</button>
+            </article>
+          })}</div>
+          <button className="codex-add add-piece" disabled={busy} aria-expanded={selecting} onClick={() => setSelecting(v => !v)}>{selecting ? 'Fechar seleção' : '+ Adicionar peça'}</button>
+          {selecting && picker}
+          {workspace && <section className="commercial-reference" aria-label="Resumo comercial do cenário"><dl><div><dt>Serviços</dt><dd>{money(calculation?.serviceSubtotal)}</dd></div><div><dt>Componentes</dt><dd>{money(calculation?.componentSubtotal)}</dd></div><div><dt>Referência</dt><dd>{money(calculation?.total)}</dd></div></dl><button disabled={busy || refreshNeeded} onClick={openBudget}>Condições comerciais e componentes <span aria-hidden="true">›</span></button><small>{calculation?.errors.length ? `${calculation.errors.length} pendência(s) para emissão` : 'Revise as condições antes de emitir o orçamento'}</small></section>}
+        </>}
       </>}
-    </div><footer className="detail-footer"><button className="primary-btn" disabled={busy||refreshNeeded||!workspace} onClick={()=>{if(closeEditor()){setMatrix(false);setBudget(v=>!v)}}}>{budget?'Voltar aos diagnósticos':'Orçamento e componentes'}</button></footer>
+    </div><footer className="detail-footer"><button className="primary-btn" disabled={busy || refreshNeeded || !workspace} onClick={openBudget}>{budget ? 'Voltar aos diagnósticos' : 'Orçamento e componentes'}</button><div className="quote-reference"><span>Referência</span><strong>{money(calculation?.total)}</strong></div></footer>
   </div>
 }
 

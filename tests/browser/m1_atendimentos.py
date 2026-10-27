@@ -233,7 +233,8 @@ async def run():
             await expect(page.get_by_role("textbox", name="Mensagem ao cliente", exact=True)).to_be_disabled()
             context_ai = page.locator('[aria-label="IA do Atendimento"]')
             await expect(context_ai).to_contain_text("IA ainda indisponível")
-            for action in ["Resumir", "Sugerir resposta", "Preencher dados"]:
+            # V20 restores the right rail; the channel and every action remain unavailable.
+            for action in ["Sugestão indisponível", "Chat IA indisponível", "Áudio indisponível", "Fotos indisponível", "Orçamento indisponível", "Olá indisponível", "Mapa indisponível"]:
                 await expect(context_ai.get_by_role("button", name=action, exact=True)).to_be_disabled()
             await page.get_by_role("button", name="Abrir Copiloto FUNIX", exact=True).click()
             await expect(page.get_by_role("region", name="Copiloto FUNIX")).to_contain_text(re.compile("indisponível|não disponível", re.I))

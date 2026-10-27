@@ -4,7 +4,7 @@ import type { Atendimento, AtendimentoList } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure, Session } from './api'
 import { AtendimentoForm } from './AtendimentoForm'
-import { Icon, Login, Notice, RecordButton } from './ui'
+import { ChatRail, Icon, Login, Notice, RecordButton } from './ui'
 import { CommercialPanel } from './CommercialPanel'
 import './App.css'
 
@@ -197,10 +197,10 @@ function App() {
         <nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}</nav>
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {tab === 'chat' ? <div className="detail-page chat-page"><div className="at-chat-scroll">
+          {tab === 'chat' ? <div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
             <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
-          </div><div className="at-context-ai" aria-label="IA do Atendimento"><span>IA ainda indisponível</span><div><button disabled>Resumir</button><button disabled>Sugerir resposta</button><button disabled>Preencher dados</button></div></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio de mensagens ainda indisponível" disabled rows={1} /><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} />}
+          </div><ChatRail /></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="WhatsApp ainda indisponível" disabled rows={1} /><button className="compose-button" disabled title="Anexos ainda indisponíveis" aria-label="Anexar arquivo indisponível"><Icon name="attach" /></button><button className="compose-button" disabled title="Áudio ainda indisponível" aria-label="Gravar áudio indisponível"><Icon name="mic" /></button><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} />}
         </>}
       </>}
     </div>
