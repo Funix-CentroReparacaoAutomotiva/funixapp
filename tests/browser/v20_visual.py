@@ -3,6 +3,8 @@ import asyncio, json, traceback
 from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
 
+from scenario_ui import menu,active_scenario,select_named_scenario,add_scenario,compare
+
 ARTIFACTS = ROOT / 'docs/evidencias/revisao-v20'
 
 
@@ -126,20 +128,20 @@ async def run():
                 await page.get_by_role('button',name='Salvar diagnóstico',exact=True).click()
                 await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
                 await page.get_by_role('button',name='Voltar à lista',exact=True).click()
-                await page.get_by_role('button',name='Adicionar variação do cenário ativo',exact=True).click()
-                await expect(page.get_by_role('tab',name='Cenário 2',exact=True)).to_have_attribute('aria-selected','true')
+                await add_scenario(page)
+                await expect(active_scenario(page,'Cenário 2')).to_be_visible()
                 cb = page.get_by_label('Incluir peça Capô neste cenário',exact=True)
                 await cb.click(); await expect(cb).not_to_be_checked()
                 workspace = await get(path+'/cenarios'); hood = next(i for i in workspace['items'] if i['notes']=='Rascunho QA preservado')
                 assert workspace['scenarios'][0]['pieceFlags'][hood['id']] and not workspace['scenarios'][1]['pieceFlags'][hood['id']]
-                await page.get_by_role('tab',name='Cenário 1',exact=True).click()
+                await select_named_scenario(page,'Cenário 1')
                 await expect(cb).to_be_checked()
                 await page.screenshot(path=str(ARTIFACTS/f'app-{device}-diagnosticos.png'))
                 assert (await page.locator('.diagnosis-row').first.bounding_box())['height'] < 125
-                await page.get_by_role('button',name='Comparação',exact=True).click()
+                await compare(page)
                 await expect(page.get_by_role('region',name='Matriz de cenários')).to_be_visible()
                 await page.screenshot(path=str(ARTIFACTS/f'app-{device}-comparacao.png'))
-                await page.get_by_role('button',name='Comparação',exact=True).click()
+                await compare(page)
                 await page.get_by_role('button',name='Orçamento e componentes',exact=True).click()
                 await expect(page.get_by_role('button',name='Configuração comercial',exact=True)).to_be_visible()
                 await page.screenshot(path=str(ARTIFACTS/f'app-{device}-orcamento.png'))

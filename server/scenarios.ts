@@ -48,7 +48,8 @@ export class ScenarioRepository {
       const source = data.duplicateFrom === undefined ? null : selectedScenario(this.db, at, data.duplicateFrom, data.sourceRevision)
       if (source && !Number.isSafeInteger(data.sourceRevision)) invalid('Informe a revisão do cenário de origem.')
       const id = randomUUID()
-      const position = Number(this.db.prepare('SELECT COALESCE(MAX(position),0)+1 AS position FROM scenarios WHERE atendimento_id=?').get(at)!.position)
+      const position = Number(this.db.prepare('SELECT next_scenario_position AS position FROM commercial_state WHERE atendimento_id=?').get(at)!.position)
+      this.db.prepare('UPDATE commercial_state SET next_scenario_position=next_scenario_position+1 WHERE atendimento_id=?').run(at)
       this.db.prepare('INSERT INTO scenarios(id,atendimento_id,name,position,created_at) VALUES(?,?,?,?,?)').run(id,at,name,position,new Date().toISOString())
       this.db.prepare('INSERT INTO scenario_piece_flags SELECT ?,id,0 FROM diagnosis_items WHERE atendimento_id=?').run(id,at)
       this.db.prepare('INSERT INTO scenario_service_flags SELECT ?,l.id,0 FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id WHERE p.atendimento_id=?').run(id,at)
@@ -59,6 +60,18 @@ export class ScenarioRepository {
       }
       if (source) this.db.prepare('UPDATE scenario_component_flags SET enabled=(SELECT f.enabled FROM scenario_component_flags f WHERE f.scenario_id=? AND f.component_id=scenario_component_flags.component_id) WHERE scenario_id=?').run(source,id)
       return this.list(at).find(s => s.id === id)!
+    })
+  }
+  remove(at: string, id: string, input: unknown) {
+    const data = inputObject(input, ['revision'])
+    if (!Number.isSafeInteger(data.revision)) invalid('Informe a revisão do cenário.')
+    return transaction(this.db, () => {
+      new AtendimentoRepository(this.db).get(at)
+      selectedScenario(this.db, at, id, data.revision)
+      if (this.list(at).length <= 1) throw new ServiceError(409, 'LAST_SCENARIO', 'O último cenário do Atendimento não pode ser excluído.')
+      // Only the three flag tables cascade. Composition and immutable budgets have no scenario FK.
+      this.db.prepare('DELETE FROM scenarios WHERE atendimento_id=? AND id=?').run(at, id)
+      return { deletedId: id, scenarios: this.list(at) }
     })
   }
   update(at: string, id: string, input: unknown) {

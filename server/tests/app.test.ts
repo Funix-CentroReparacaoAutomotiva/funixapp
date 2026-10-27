@@ -249,3 +249,21 @@ test('pricing, components, scenarios and immutable PDF APIs retain auth/origin p
   assert.equal(calls,0)
  }finally{globalThis.fetch=oldFetch;app.close()}
 })
+
+test('scenario DELETE requires auth/origin/revision, protects last scenario and GET safely falls back after deletion',async()=>{
+ const app=start()
+ try{
+  const at=app.repository.create({phone:'123'}),path=`/api/atendimentos/${at.id}/cenarios`,cookie=await authenticate(app)
+  const get=async(url=path)=>{const r=await app.request(url,{headers:{Cookie:cookie}});assert.equal(r.status,200);return r.json()}
+  const original=await get(),one=original.scenarios[0]
+  const created=await app.write(path,'POST',{name:'Cópia',duplicateFrom:one.id,sourceRevision:one.revision},cookie);assert.equal(created.status,201)
+  const two=await created.json(),url=path+'/'+two.id
+  assert.equal((await app.request(url,{method:'DELETE'})).status,401)
+  assert.equal((await app.write(url,'DELETE',{revision:two.revision},cookie,'https://invalid.example')).status,403)
+  assert.equal((await app.write(url,'DELETE',{},cookie)).status,400)
+  assert.equal((await app.write(url,'DELETE',{revision:two.revision+1},cookie)).status,409)
+  assert.equal((await app.write(url,'DELETE',{revision:two.revision},cookie)).status,200)
+  const fallback=await get(path+'?scenarioId='+encodeURIComponent(two.id));assert.equal(fallback.selectedId,one.id);assert.equal(fallback.scenarios.length,1)
+  const last=await app.write(path+'/'+one.id,'DELETE',{revision:one.revision},cookie);assert.equal(last.status,409);assert.equal((await last.json()).error.code,'LAST_SCENARIO')
+ }finally{app.close()}
+})

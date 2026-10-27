@@ -27,13 +27,16 @@ export interface PricedLine {
 }
 export interface Calculation {
  scenarioId: string; scenarioName: string; lines: PricedLine[]; errors: string[]
+ pieceTotals?: {pieceId: string; total: string | null}[]
  originalServiceSubtotal: string | null; serviceSubtotal: string | null; componentSubtotal: string | null
  discount: string; total: string | null; energy: string | null; days: string | null
  negotiation: Negotiation; residual: string; target: string | null
 }
 export type Negotiation = {mode:'none'} | {mode:'discount'|'adjust'; value:string; acknowledgeResidual:boolean}
+// Optional input scope translates a requested whole-budget total into the existing service adjustment.
+export type NegotiationInput = Negotiation | {mode:'adjust'; value:string; acknowledgeResidual:boolean; valueIncludesComponents:true}
 export interface BudgetSnapshot {
- schema: 1; issuedAt?: string; composition: {items:DiagnosisItem[];components:ComponentItem[];catalog:CatalogItem[]}; atendimento: Atendimento; scenarioId: string; scenarioName: string
+ schema: 1; issuedAt?: string; requestedTotal?: string; composition: {items:DiagnosisItem[];components:ComponentItem[];catalog:CatalogItem[]}; atendimento: Atendimento; scenarioId: string; scenarioName: string
  compositionRevision: number; scenarioRevision: number; configuration: PricingConfiguration
  settings: PricingSettings; calculation: Calculation; conditions: string
 }

@@ -1,0 +1,55 @@
+{
+  "base": "a26fb413e9e9ddbea3fd0efb92903160448070f0",
+  "node_tests": 67,
+  "deployment_script_tests": 23,
+  "browser_groups": 75,
+  "suites": [
+    {
+      "report": "regressoes/catalogos/resultados.json",
+      "groups": 8,
+      "pass": true
+    },
+    {
+      "report": "regressoes/cenarios/cenarios-resultados.json",
+      "groups": 3,
+      "pass": true
+    },
+    {
+      "report": "regressoes/interface/resultados.json",
+      "groups": 6,
+      "pass": true
+    },
+    {
+      "report": "regressoes/issue12/resultados.json",
+      "groups": 11,
+      "pass": true
+    },
+    {
+      "report": "regressoes/m1/resultados.json",
+      "groups": 19,
+      "pass": true
+    },
+    {
+      "report": "regressoes/orcamento/integrado-resultados.json",
+      "groups": 7,
+      "pass": true
+    },
+    {
+      "report": "regressoes/v20/resultados.json",
+      "groups": 7,
+      "pass": true
+    },
+    {
+      "report": "resultados.json",
+      "groups": 14,
+      "pass": true
+    }
+  ],
+  "commands": [
+    "npm run check",
+    "python3 -m unittest discover -s deploy/tests -v",
+    "python3 tests/browser/issue15_regressions.py"
+  ],
+  "synthetic": true,
+  "production_accessed": false
+}

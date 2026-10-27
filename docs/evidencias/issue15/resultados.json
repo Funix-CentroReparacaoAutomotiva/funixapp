@@ -1,0 +1,64 @@
+{
+  "synthetic": true,
+  "assertions": [
+    {
+      "name": "desktop: scenario menu works in Chat/Map/Diagnostics; variations clone flags only; comparison opens from Chat; circular map unchanged",
+      "pass": true
+    },
+    {
+      "name": "desktop: compact piece totals use actual included lines; legitimate zero; parent preserves children; delete active scenario preserves master, stable numbering, emitted snapshot and exact PDF bytes",
+      "pass": true
+    },
+    {
+      "name": "desktop: absolute discount and whole-budget targets below/above original use real preview; components intact; negotiation survives tabs and emission entry; impossible target rejected; residual and consent shown; typing emits nothing",
+      "pass": true
+    },
+    {
+      "name": "desktop: concurrent component edit refreshes backend context, invalidates old residual consent and blocks emission until review of the new preview",
+      "pass": true
+    },
+    {
+      "name": "desktop: failed preview recovers without losing input; cancelled scenario switches preserve diagnosis/negotiation drafts; pending piece uses em dash and deletion exists only in editor with all-scenarios confirmation",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost DELETE response after real commit reconciles via GET without repeating deletion or changing master composition",
+      "pass": true
+    },
+    {
+      "name": "desktop: concurrent scenario deletion preserves unsaved local fields and blocks wrong-scenario save; explicit selection recovers; last deletion blocked; restart preserves data/PDF; leaving unsaved negotiation asks exactly once",
+      "pass": true
+    },
+    {
+      "name": "mobile: scenario menu works in Chat/Map/Diagnostics; variations clone flags only; comparison opens from Chat; circular map unchanged",
+      "pass": true
+    },
+    {
+      "name": "mobile: compact piece totals use actual included lines; legitimate zero; parent preserves children; delete active scenario preserves master, stable numbering, emitted snapshot and exact PDF bytes",
+      "pass": true
+    },
+    {
+      "name": "mobile: absolute discount and whole-budget targets below/above original use real preview; components intact; negotiation survives tabs and emission entry; impossible target rejected; residual and consent shown; typing emits nothing",
+      "pass": true
+    },
+    {
+      "name": "mobile: concurrent component edit refreshes backend context, invalidates old residual consent and blocks emission until review of the new preview",
+      "pass": true
+    },
+    {
+      "name": "mobile: failed preview recovers without losing input; cancelled scenario switches preserve diagnosis/negotiation drafts; pending piece uses em dash and deletion exists only in editor with all-scenarios confirmation",
+      "pass": true
+    },
+    {
+      "name": "mobile: lost DELETE response after real commit reconciles via GET without repeating deletion or changing master composition",
+      "pass": true
+    },
+    {
+      "name": "mobile: concurrent scenario deletion preserves unsaved local fields and blocks wrong-scenario save; explicit selection recovers; last deletion blocked; restart preserves data/PDF; leaving unsaved negotiation asks exactly once",
+      "pass": true
+    }
+  ],
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}

@@ -170,6 +170,10 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     CREATE TRIGGER immutable_budget_delete BEFORE DELETE ON budget_versions BEGIN SELECT RAISE(ABORT,'Budget versions are immutable');END;
   `)},
 
+  {version:6,apply:db=>db.exec(`
+    ALTER TABLE commercial_state ADD COLUMN next_scenario_position INTEGER NOT NULL DEFAULT 2 CHECK(next_scenario_position > 1);
+    UPDATE commercial_state SET next_scenario_position=(SELECT COALESCE(MAX(position),1)+1 FROM scenarios WHERE atendimento_id=commercial_state.atendimento_id);
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {

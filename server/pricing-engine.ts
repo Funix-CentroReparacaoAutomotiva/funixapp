@@ -71,7 +71,7 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  const serviceGross=totalRows(services),componentSubtotal=totalRows(parts)
  let discount=ZERO,residual=ZERO,target:Q|null=null
  if(deal.mode!=='none' && serviceGross){
-  const value=Q.from(deal.value)
+  const value=exact(deal.value)
   if(deal.mode==='discount'){
    if(value.cmp(serviceGross)>0)errors.push('Desconto supera o subtotal de serviços.');else discount=value
   }else {
@@ -101,5 +101,6 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  const energy=included.some(l=>l.energy===null)?null:sum(included.map(l=>exact(l.energy!)))
  let days:string|null=null
  if(energy){if(config.capacity===null || Q.from(config.capacity).n===0n)errors.push('Capacidade diária global positiva não configurada.');else days=energy.div(Q.from(config.capacity)).ceil().toString()}
- return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
+ const pieceTotals=items.map(item=>{const rows=included.filter(l=>l.pieceId===item.id);return {pieceId:item.id,total:!scenario.pieceFlags[item.id]?'0':!rows.length?null:totalRows(rows)?.toString()??null}})
+ return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
 }

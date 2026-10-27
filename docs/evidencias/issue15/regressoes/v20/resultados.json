@@ -1,0 +1,36 @@
+{
+  "synthetic": true,
+  "assertions": [
+    {
+      "name": "desktop: shell, correct Atendimento header, V20 right rail order, inactive channel/AI, composer and unobscured actions",
+      "pass": true
+    },
+    {
+      "name": "desktop: regional radial overlay; real persisted selection and marker; paging, nested back, keyboard focus and Escape return",
+      "pass": true
+    },
+    {
+      "name": "desktop: unified search, compact diagnosis rows, preserved draft protection, scenario-only checkbox, comparison, budget/configuration and return context",
+      "pass": true
+    },
+    {
+      "name": "mobile: shell, correct Atendimento header, V20 right rail order, inactive channel/AI, composer and unobscured actions",
+      "pass": true
+    },
+    {
+      "name": "mobile: confirmed inclusion + failed GET remains recoverable inside radial dialog; manual refresh sends no second POST",
+      "pass": true
+    },
+    {
+      "name": "mobile: regional radial overlay; real persisted selection and marker; paging, nested back, keyboard focus and Escape return",
+      "pass": true
+    },
+    {
+      "name": "mobile: unified search, compact diagnosis rows, preserved draft protection, scenario-only checkbox, comparison, budget/configuration and return context",
+      "pass": true
+    }
+  ],
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}

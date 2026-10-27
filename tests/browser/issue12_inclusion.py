@@ -3,6 +3,8 @@ import asyncio, json, re, traceback
 from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
 
+from scenario_ui import menu,active_scenario,select_named_scenario,add_scenario,compare
+
 ARTIFACTS = ROOT / 'docs/evidencias/issue12'
 
 
@@ -42,7 +44,7 @@ async def run():
                 if request.method == 'POST' and request.url.endswith('/diagnosticos'): post_count += 1
             page.on('request', requested)
             await page.goto(ORIGIN + '/atendimentos/' + at['id'] + '?aba=diagnosticos')
-            await expect(page.get_by_role('tab', name='Cenário 1', exact=True)).to_be_visible()
+            await expect(active_scenario(page,'Cenário 1')).to_be_visible()
             await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
             async def button(entry):
                 await page.get_by_label('Buscar peça em todas as vistas').fill(entry['code'])
@@ -218,15 +220,15 @@ async def run():
             a = await browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
             await h.watch(a); page = await a.new_page(); await h.attach(page)
             await page.goto(ORIGIN + '/atendimentos/' + at['id'] + '?aba=mapa'); await h.login(page)
-            await expect(page.get_by_role('tab', name='Cenário 1', exact=True)).to_be_visible()
+            await expect(active_scenario(page,'Cenário 1')).to_be_visible()
             await expect(page.locator('.interactive-map')).to_be_visible()
             await page.get_by_role('button', name='Diagnósticos', exact=True).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(len(expected))
             await page.get_by_role('button', name='Mapa', exact=True).click()
             after = await get(path + '/diagnosticos'); assert after == expected
             assert len({i['pieceId'] for i in after}) == len(after)
-            await page.get_by_role('tab', name='Cenário 2', exact=True).click()
-            await expect(page.get_by_role('tab', name='Cenário 2', exact=True)).to_have_attribute('aria-selected', 'true')
+            await select_named_scenario(page,'Cenário 2')
+            await expect(active_scenario(page,'Cenário 2')).to_be_visible()
             await page.screenshot(path=str(ARTIFACTS / 'recuperado-mobile.png'))
             h.mark('fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates')
             assert not h.external and not h.page_errors, (h.external, h.page_errors)

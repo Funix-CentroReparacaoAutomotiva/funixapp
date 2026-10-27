@@ -37,7 +37,8 @@ function App() {
   const [copilotOpen, setCopilotOpen] = useState(false), [editor, setEditor] = useState<Editor | null>(null), [savedMessage, setSavedMessage] = useState('')
   const [commercialVersion, setCommercialVersion] = useState(0)
   const [scenarioContext] = useState(() => new Map<string,string>())
-  const dirty = useRef(false), saving = useRef(false)
+  const dirty = useRef(false), negotiationDirty = useRef(false), saving = useRef(false)
+  const [scenarioSlot, setScenarioSlot] = useState<HTMLDivElement | null>(null)
   const viewport = useRef<HTMLDivElement>(null), board = useRef<HTMLDivElement>(null), modal = useRef<HTMLDivElement>(null)
   const positions = useRef(new Map<string, { top: number; left: number }>())
   const cache = useRef(new Map<string, AtendimentoList>())
@@ -46,15 +47,16 @@ function App() {
   useLayoutEffect(() => { currentKey.current = key; routeRef.current = route }, [key, route])
   const onDirty = useCallback((value: boolean) => { dirty.current = value }, [])
   const onBusy = useCallback((value: boolean) => { saving.current = value }, [])
-  function canLeaveEditor() {
+  const onNegotiationDirty = useCallback((value: boolean) => { negotiationDirty.current = value }, [])
+  function canLeaveEditor(preserveNegotiation = false) {
     if (saving.current) return false
-    if (dirty.current && !window.confirm('Há alterações não salvas. Deseja descartá-las?')) return false
-    if (dirty.current) setCommercialVersion(value => value + 1)
+    if ((dirty.current || (!preserveNegotiation && negotiationDirty.current)) && !window.confirm('Há alterações não salvas. Deseja descartá-las?')) return false
+    if (dirty.current || (!preserveNegotiation && negotiationDirty.current)) { setCommercialVersion(value => value + 1); negotiationDirty.current = false }
     if (editor?.record) setReload(value => value + 1)
     dirty.current = false; setEditor(null); return true
   }
   function navigate(href: string, replace = false, state?: unknown) {
-    if (!canLeaveEditor()) return
+    if (!canLeaveEditor(isDetail && new URL(href, window.location.origin).pathname === route.path && new URL(href, window.location.origin).searchParams.has('aba'))) return
     if (replace) window.history.replaceState(state ?? window.history.state, '', href)
     else window.history.pushState(state ?? null, '', href)
     setRoute(readRoute()); setSavedMessage('')
@@ -80,13 +82,14 @@ function App() {
   }
   useEffect(() => {
     const onPop = () => {
-      if (saving.current || (dirty.current && !window.confirm('Há alterações não salvas. Deseja descartá-las?'))) {
+      if (saving.current || ((dirty.current || (negotiationDirty.current && window.location.pathname !== routeRef.current.path)) && !window.confirm('Há alterações não salvas. Deseja descartá-las?'))) {
         window.history.pushState(null, '', routeRef.current.path + routeRef.current.search)
         return
       }
+      if(window.location.pathname !== routeRef.current.path)negotiationDirty.current=false
       dirty.current = false; setEditor(null); setRoute(readRoute()); setSavedMessage('')
     }
-    const onUnload = (event: BeforeUnloadEvent) => { if (dirty.current || saving.current) { event.preventDefault(); event.returnValue = '' } }
+    const onUnload = (event: BeforeUnloadEvent) => { if (dirty.current || negotiationDirty.current || saving.current) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('popstate', onPop); window.addEventListener('beforeunload', onUnload)
     return () => { window.removeEventListener('popstate', onPop); window.removeEventListener('beforeunload', onUnload) }
   }, [])
@@ -194,13 +197,13 @@ function App() {
         </>}
       </main> : <>
         <header className="detail-header"><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</header>
-        <nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}</nav>
+        <nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {tab === 'chat' ? <div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
+          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} onDiagnostics={()=>updateParams({aba:'diagnosticos'})} chat={<div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
             <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
-          </div><ChatRail /></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="WhatsApp ainda indisponível" disabled rows={1} /><button className="compose-button" disabled title="Anexos ainda indisponíveis" aria-label="Anexar arquivo indisponível"><Icon name="attach" /></button><button className="compose-button" disabled title="Áudio ainda indisponível" aria-label="Gravar áudio indisponível"><Icon name="mic" /></button><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div> : <CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} />}
+          </div><ChatRail /></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="WhatsApp ainda indisponível" disabled rows={1} /><button className="compose-button" disabled title="Anexos ainda indisponíveis" aria-label="Anexar arquivo indisponível"><Icon name="attach" /></button><button className="compose-button" disabled title="Áudio ainda indisponível" aria-label="Gravar áudio indisponível"><Icon name="mic" /></button><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div>} />}
         </>}
       </>}
     </div>
@@ -214,7 +217,7 @@ function App() {
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
       }
-    }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={canLeaveEditor}>×</button></header>
+    }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={()=>canLeaveEditor()}>×</button></header>
       {!session?.authenticated && <div className="at-reauth"><p>Sua sessão expirou. Entre novamente para continuar; as alterações do formulário foram mantidas.</p>{login}</div>}
       <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} /></div>
     </section></div>}
