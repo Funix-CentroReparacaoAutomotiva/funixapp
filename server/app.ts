@@ -133,17 +133,17 @@ export function createRequestHandler(options: AppOptions) {
       if (scenarioRoute) {
         const at = scenarioRoute[1]!, id = scenarioRoute[2]
         const workspace = (selected?: string) => {
-          const all = scenarios.list(at), selectedId = selectedScenario(options.atendimentos.db,at,selected)
+          const all = scenarios.list(at), selectedId = selectedScenario(options.atendimentos.db,at,all.some(s=>s.id===selected)?selected:undefined)
           const items = commercial.list(at,selectedId), parts = components.list(at), configured = pricing.get(), state = pricing.settings(at), catalog = commercial.catalogs().items
           return { scenarios: all, selectedId, items, revision: state.revision, components: parts, settings: state.settings, configurationRevision: configured.revision,
             calculations: all.map(s=>calculate(items,parts,catalog,s,configured.config,state.settings)) }
         }
         if (req.method === 'GET' && !id) return send(200,workspace(url.searchParams.get('scenarioId') ?? undefined))
-        if ((req.method !== 'POST' || id) && (req.method !== 'PATCH' || !id)) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if ((req.method !== 'POST' || id) && (req.method !== 'PATCH' || !id) && (req.method !== 'DELETE' || !id)) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if (req.headers.origin !== origin) return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie um corpo JSON.')
         const body = await readJson(req,64*1024)
-        return send(req.method === 'POST' ? 201 : 200,req.method === 'POST' ? scenarios.create(at,body) : scenarios.update(at,id!,body))
+        return send(req.method === 'POST' ? 201 : 200,req.method === 'POST' ? scenarios.create(at,body) : req.method === 'DELETE' ? scenarios.remove(at,id!,body) : scenarios.update(at,id!,body))
       }
       const catalogCollection = url.pathname === '/api/catalogos'
       const catalogRecord = /^\/api\/catalogos\/([^/]{1,180})(\/historico)?$/.exec(url.pathname)

@@ -6,6 +6,8 @@ import asyncio,json,re,subprocess,traceback,uuid
 from playwright.async_api import async_playwright,expect
 from m1_atendimentos import Harness,ROOT,ORIGIN
 
+from scenario_ui import menu,active_scenario,select_named_scenario,add_scenario,compare
+
 ARTIFACTS=ROOT/'docs/evidencias/issue7'
 
 async def run():
@@ -33,7 +35,7 @@ async def run():
     response=await ctx.request.post(ORIGIN+'/api/catalogos',headers={'Origin':ORIGIN},data=data)
     assert response.status==201,await response.text()
    await catalog('servico','Serviço QA sintético');await catalog('dimensao','Dimensão QA','Serviço QA sintético');await catalog('diagnostico','Dano QA');await catalog('diagnostico','Dano alternativo QA')
-   await page.reload();await expect(page.get_by_role('tab',name='Cenário 1',exact=True)).to_be_visible()
+   await page.reload();await expect(active_scenario(page,'Cenário 1')).to_be_visible()
    await page.get_by_role('button',name='+ Adicionar peça',exact=True).click();await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
    await page.locator('.piece-options button').filter(has=page.get_by_text('Capô',exact=True)).click()
    await expect(page.locator('.diagnosis-card')).to_have_count(1)
@@ -51,8 +53,8 @@ async def run():
    await page.locator('[aria-label="Serviço 2"]').get_by_label('Incluir serviço',exact=True).uncheck()
    await page.get_by_role('button',name='Salvar diagnóstico',exact=True).click();await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
    await page.get_by_role('button',name='Voltar à lista',exact=True).click()
-   await page.get_by_role('button',name='Adicionar variação do cenário ativo',exact=True).click()
-   await expect(page.get_by_role('tab',name='Cenário 2',exact=True)).to_have_attribute('aria-selected','true')
+   await add_scenario(page)
+   await expect(active_scenario(page,'Cenário 2')).to_be_visible()
    await page.locator('.diagnosis-open').first.click()
    await page.locator('[aria-label="Serviço 1"]').get_by_label('Incluir serviço',exact=True).uncheck()
    await page.locator('[aria-label="Serviço 2"]').get_by_label('Incluir serviço',exact=True).check()
@@ -99,7 +101,7 @@ async def run():
    await page.get_by_label('Preço manual unitário (R$)',exact=True).fill('10.01');await page.get_by_label('FCT individual',exact=True).fill('1.2')
    await page.get_by_role('button',name='Salvar componente',exact=True).click();await expect(page.get_by_role('form',name='Componente monetário')).not_to_be_visible()
    await expect(page.get_by_role('region',name='Orçamento e componentes')).to_contain_text('124,15')
-   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Comparação',exact=True).click()
+   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await compare(page)
    matrix=page.get_by_role('region',name='Matriz de cenários');await expect(matrix).to_contain_text('25,0125');await expect(matrix).to_contain_text('124,15')
    await page.get_by_label('Só diferenças',exact=True).check()
    await expect(matrix).to_contain_text('Componente zero explícito QA')
@@ -107,7 +109,7 @@ async def run():
    h.mark('exact fractional totals and manual zero/FCT components persist; matrix uses effective flags even when monetary totals are zero')
    await page.get_by_role('button',name='Orçamento e componentes',exact=True).click()
    await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click()
-   await page.get_by_label('Negociação',exact=True).select_option('discount');await page.get_by_label('Valor informado (R$)',exact=True).fill('0.05')
+   await page.locator('.negotiation-disclosure summary').click();await page.get_by_label('Modalidade de negociação',exact=True).select_option('discount');await page.get_by_label('Desconto em serviços (R$)',exact=True).fill('0.05')
    await page.get_by_role('button',name='Preparar prévia de emissão',exact=True).click()
    await expect(page.get_by_role('button',name='Emitir versão imutável',exact=True)).to_be_enabled()
    await expect(page.get_by_role('region',name='Prévia de orçamento')).to_contain_text('124,10')
@@ -150,10 +152,10 @@ async def run():
 
    # Fresh UI load to show all issued versions. Remaining 26th/27th are manual button flows.
    await page.reload()
-   await expect(page.get_by_role('tab',name='Cenário 1',exact=True)).to_be_visible();await page.get_by_role('tab',name='Cenário 2',exact=True).click()
+   await expect(active_scenario(page,'Cenário 1')).to_be_visible();await select_named_scenario(page,'Cenário 2')
    await page.get_by_role('button',name='Orçamento e componentes',exact=True).click()
    for label,sequence in [('Z',26),('AA',27)]:
-    await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click();await page.get_by_label('Negociação',exact=True).select_option('none')
+    await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click();await page.locator('.negotiation-disclosure summary').click();await page.get_by_label('Modalidade de negociação',exact=True).select_option('none')
     await page.get_by_role('button',name='Preparar prévia de emissão',exact=True).click();await page.get_by_role('button',name='Emitir versão imutável',exact=True).click()
     await expect(page.get_by_role('heading',name=f'Orçamento {label} · versão {sequence}',exact=True)).to_be_visible()
     if label=='AA':
@@ -174,7 +176,7 @@ async def run():
    restored=await dl.value;await restored.save_as(h.folder/'restored.pdf');assert(h.folder/'restored.pdf').read_bytes()==pdf_a.read_bytes()
    await page.screenshot(path=str(ARTIFACTS/'integrado-versao-mobile.png'))
    assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await page.get_by_role('button',name='Comparação',exact=True).click()
+   await page.get_by_role('button',name='Voltar aos diagnósticos',exact=True).click();await compare(page)
    await expect(page.get_by_role('region',name='Matriz de cenários')).to_contain_text('50,0125')
    assert await page.get_by_role('region',name='Matriz de cenários').evaluate('(el)=>el.scrollWidth>el.clientWidth')
    await page.screenshot(path=str(ARTIFACTS/'integrado-matriz-mobile.png'))

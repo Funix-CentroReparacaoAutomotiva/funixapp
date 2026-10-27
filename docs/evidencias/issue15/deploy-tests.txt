@@ -1,0 +1,28 @@
+test_automatic_host_directory_creation_is_rejected (test_compose_config.ComposeConfigTests.test_automatic_host_directory_creation_is_rejected) ... ok
+test_database_cannot_move_to_tmp_or_memory (test_compose_config.ComposeConfigTests.test_database_cannot_move_to_tmp_or_memory) ... ok
+test_deploy_requires_manual_dispatch_on_main_with_explicit_true (test_compose_config.ComposeConfigTests.test_deploy_requires_manual_dispatch_on_main_with_explicit_true) ... ok
+test_false_omitted_or_explicit_is_accepted_without_printing_config (test_compose_config.ComposeConfigTests.test_false_omitted_or_explicit_is_accepted_without_printing_config) ... ok
+test_unrelated_services_are_rejected (test_compose_config.ComposeConfigTests.test_unrelated_services_are_rejected) ... ok
+test_wrong_or_missing_persistent_bind_is_rejected (test_compose_config.ComposeConfigTests.test_wrong_or_missing_persistent_bind_is_rejected) ... ok
+test_first_failure_stops_only_funix (test_deploy.DeployTests.test_first_failure_stops_only_funix) ... ok
+test_invalid_commands_and_paths_cannot_reach_docker (test_deploy.DeployTests.test_invalid_commands_and_paths_cannot_reach_docker) ... ok
+test_manual_rollback_restores_pair_and_swaps_previous (test_deploy.DeployTests.test_manual_rollback_restores_pair_and_swaps_previous) ... ok
+test_revision_cannot_be_silently_replaced_by_different_digests (test_deploy.DeployTests.test_revision_cannot_be_silently_replaced_by_different_digests) ... ok
+test_ssh_wrapper_rejects_injection_and_arbitrary_shell (test_deploy.DeployTests.test_ssh_wrapper_rejects_injection_and_arbitrary_shell) ... ok
+test_unhealthy_update_restores_previous_without_advancing_state (test_deploy.DeployTests.test_unhealthy_update_restores_previous_without_advancing_state) ... ok
+test_updates_only_funix_and_persists_digest_release (test_deploy.DeployTests.test_updates_only_funix_and_persists_digest_release) ... ok
+test_conflicting_project_or_routes_including_stopped_containers (test_install.InstallTests.test_conflicting_project_or_routes_including_stopped_containers) ... ok
+test_control_characters_and_multiline_passwords_are_rejected (test_install.InstallTests.test_control_characters_and_multiline_passwords_are_rejected) ... ok
+test_failure_after_writes_warns_and_preserves_partial_files (test_install.InstallTests.test_failure_after_writes_warns_and_preserves_partial_files) ... ok
+test_invalid_key_and_password_refused_before_install (test_install.InstallTests.test_invalid_key_and_password_refused_before_install) ... ok
+test_missing_network_old_compose_existing_account_and_bad_login (test_install.InstallTests.test_missing_network_old_compose_existing_account_and_bad_login) ... ok
+test_other_projects_are_preserved (test_install.InstallTests.test_other_projects_are_preserved) ... ok
+test_printable_password_characters_remain_literal (test_install.InstallTests.test_printable_password_characters_remain_literal) ... ok
+test_success_permissions_forced_key_and_no_container_mutation (test_install.InstallTests.test_success_permissions_forced_key_and_no_container_mutation) ... ok
+test_symlink_and_writable_ancestor_refused (test_install.InstallTests.test_symlink_and_writable_ancestor_refused) ... ok
+test_useradd_ubuntu_24_compatibility_preserves_restricted_account (test_install.InstallTests.test_useradd_ubuntu_24_compatibility_preserves_restricted_account) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 17.518s
+
+OK

@@ -5,7 +5,7 @@ import type { Atendimento } from '../shared/contracts'
 import { api } from './api'
 import type { Session } from './api'
 
-export function Icon({ name }: { name: 'chat' | 'map' | 'diagnostics' | 'send' | 'bot' | 'spark' | 'mic' | 'attach' | 'photo' | 'document' | 'text' | 'flow' | 'edit' | 'search' }) {
+export function Icon({ name }: { name: 'chat' | 'map' | 'diagnostics' | 'send' | 'bot' | 'spark' | 'mic' | 'attach' | 'photo' | 'document' | 'text' | 'flow' | 'edit' | 'search' | 'service' | 'component' }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     {name === 'chat' && <><path d="M4 5h16v11H8l-4 4z" /><path d="M8 9h8M8 12h5" /></>}
     {name === 'map' && <path d="M3 8l7-4 6 4 5-3v11l-5 4-6-4-7 4zM10 4v12M16 8v12" />}
@@ -20,6 +20,8 @@ export function Icon({ name }: { name: 'chat' | 'map' | 'diagnostics' | 'send' |
     {name === 'flow' && <><path d="M6 8v6h9M11 14v6h4" /><rect x="3" y="3" width="6" height="5" rx="1" /><rect x="15" y="11" width="6" height="5" rx="1" /><rect x="15" y="19" width="6" height="3" rx="1" /></>}
     {name === 'edit' && <path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" />}
     {name === 'search' && <><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></>}
+    {name === 'service' && <path d="M14 4a5 5 0 0 0-6 6L3 15a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-3-3z" />}
+    {name === 'component' && <path d="m3 7 9-5 9 5v10l-9 5-9-5zM3 7l9 5 9-5M12 12v10M7 4l10 6" />}
     {name === 'bot' && <><rect x="4.5" y="7" width="15" height="12" rx="3" /><path d="M12 4v3M9 4h6M8.5 12h.01M15.5 12h.01M9 16h6M2.5 11v4M21.5 11v4" /></>}
   </svg>
 }

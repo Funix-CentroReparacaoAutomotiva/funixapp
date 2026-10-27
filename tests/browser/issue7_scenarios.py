@@ -3,6 +3,8 @@ import asyncio,json,re,traceback
 from playwright.async_api import async_playwright,expect
 from m1_atendimentos import Harness,ROOT,ORIGIN
 
+from scenario_ui import menu,active_scenario,select_named_scenario,add_scenario,compare
+
 ARTIFACTS=ROOT/'docs/evidencias/issue7'
 
 async def run():
@@ -26,10 +28,10 @@ async def run():
    item=(await write(path+'/diagnosticos',{'pieceCodes':['capo']}))[0]
    item=await write(path+'/diagnosticos/'+item['id'],{'revision':item['revision'],'services':[{'serviceId':service['id'],'quantity':'0.25'},{'serviceId':service['id'],'quantity':'2'}]},'patch')
    await page.goto(ORIGIN+'/atendimentos/'+at['id']+'?aba=diagnosticos')
-   await expect(page.get_by_role('tab',name='Cenário 1',exact=True)).to_be_visible()
-   await page.get_by_role('button',name='Adicionar variação do cenário ativo',exact=True).click()
-   await expect(page.get_by_role('tab',name='Cenário 2',exact=True)).to_have_attribute('aria-selected','true')
-   await page.get_by_role('button',name='Comparação',exact=True).click()
+   await expect(active_scenario(page,'Cenário 1')).to_be_visible()
+   await add_scenario(page)
+   await expect(active_scenario(page,'Cenário 2')).to_be_visible()
+   await compare(page)
    matrix=page.get_by_role('region',name='Matriz de cenários')
    await expect(matrix.locator('tbody tr')).to_have_count(3)
    await matrix.get_by_label('Cenário 2: incluir serviço '+item['services'][0]['id'],exact=True).click()
@@ -43,20 +45,20 @@ async def run():
    await expect(matrix.locator('tbody tr')).to_have_count(2)
    await page.screenshot(path=str(artifacts/'cenarios-desktop.png'))
    h.mark('duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context')
-   await page.get_by_role('button',name='Comparação',exact=True).click()
+   await compare(page)
    await page.locator('.diagnosis-open').first.click()
    await page.get_by_label('Observações do diagnóstico',exact=True).fill('Edição global QA')
    await page.get_by_role('button',name='Salvar diagnóstico',exact=True).click()
    await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
    await page.get_by_role('button',name='Voltar à lista',exact=True).click()
-   await page.get_by_role('tab',name='Cenário 1',exact=True).click()
+   await select_named_scenario(page,'Cenário 1')
    await page.locator('.diagnosis-open').first.click()
    await expect(page.get_by_label('Observações do diagnóstico',exact=True)).to_have_value('Edição global QA')
    h.mark('editing master attributes in one scenario changes the same line in the other scenario')
    await h.restart_api();await ctx.close()
    ctx=await browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True);await h.watch(ctx)
    page=await ctx.new_page();await h.attach(page);await page.goto(ORIGIN+'/atendimentos/'+at['id']+'?aba=diagnosticos');await h.login(page)
-   await page.get_by_role('button',name='Comparação',exact=True).click()
+   await compare(page)
    matrix=page.get_by_role('region',name='Matriz de cenários')
    await expect(matrix.locator('tbody tr')).to_have_count(3)
    assert await matrix.evaluate('(el)=>el.scrollWidth>el.clientWidth')
