@@ -147,7 +147,7 @@ async def run():
             h.mark('HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST')
 
             # A refresh updates workspace only, never overwrites a local unsaved form.
-            await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('Capô')).click()
+            await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await page.get_by_label('Observações do diagnóstico', exact=True).fill('QA rascunho a preservar')
             s = (await get(path + '/cenarios'))['scenarios'][0]
             await write(b, path + '/diagnosticos', {'pieceCodes': [pool[10]['code']], 'scenarioId': s['id'], 'scenarioRevision': s['revision']})
@@ -183,7 +183,7 @@ async def run():
                     old = await route.fetch(); captured.set()
                     await release.wait(); await route.fulfill(response=old)
                 else: await route.continue_()
-            await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('Capô')).click()
+            await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await page.route('**/cenarios*', hold_old_workspace)
             await page.get_by_role('button', name='Voltar à lista', exact=True).click()
             await asyncio.wait_for(captured.wait(), 10)
@@ -219,7 +219,10 @@ async def run():
             await h.watch(a); page = await a.new_page(); await h.attach(page)
             await page.goto(ORIGIN + '/atendimentos/' + at['id'] + '?aba=mapa'); await h.login(page)
             await expect(page.get_by_role('tab', name='Cenário 1', exact=True)).to_be_visible()
+            await expect(page.locator('.interactive-map')).to_be_visible()
+            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(len(expected))
+            await page.get_by_role('button', name='Mapa', exact=True).click()
             after = await get(path + '/diagnosticos'); assert after == expected
             assert len({i['pieceId'] for i in after}) == len(after)
             await page.get_by_role('tab', name='Cenário 2', exact=True).click()

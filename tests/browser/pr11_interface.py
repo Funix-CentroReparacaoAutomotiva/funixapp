@@ -167,6 +167,7 @@ async def run():
             await page.locator('[data-region="frente"]').first.click()
             await expect(page.get_by_role('button', name='Fechar seleção', exact=True)).to_be_visible()
             await page.screenshot(path=str(ARTIFACTS / 'mobile-compacto.png'))
+            await page.get_by_role('button', name='Fechar seleção', exact=True).click()
             await page.get_by_role('button', name='Comparação', exact=True).click()
             await expect(page.get_by_role('region', name='Matriz de cenários')).to_be_visible()
             await page.screenshot(path=str(ARTIFACTS / 'mobile-comparacao.png'))

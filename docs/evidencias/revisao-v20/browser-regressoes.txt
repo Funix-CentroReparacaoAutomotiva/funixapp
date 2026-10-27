@@ -1,0 +1,73 @@
+SUITE v20_visual
+PASS desktop: shell, correct Atendimento header, V20 right rail order, inactive channel/AI, composer and unobscured actions
+PASS desktop: regional radial overlay; real persisted selection and marker; paging, nested back, keyboard focus and Escape return
+PASS desktop: unified search, compact diagnosis rows, preserved draft protection, scenario-only checkbox, comparison, budget/configuration and return context
+PASS mobile: shell, correct Atendimento header, V20 right rail order, inactive channel/AI, composer and unobscured actions
+PASS mobile: confirmed inclusion + failed GET remains recoverable inside radial dialog; manual refresh sends no second POST
+PASS mobile: regional radial overlay; real persisted selection and marker; paging, nested back, keyboard focus and Escape return
+PASS mobile: unified search, compact diagnosis rows, preserved draft protection, scenario-only checkbox, comparison, budget/configuration and return context
+7 V20 visual browser groups passed
+SUITE m1_atendimentos
+PASS desktop: only Conversas and Funil navigation; no Veículos
+PASS real empty SQLite database is usable without Coda credentials
+PASS manual creation requires only a minimum phone; optional data stays empty
+PASS optional fields and manual commercial phase persist; header updates to saved record
+PASS search locates actual stored records by name, plate and phone
+PASS detail back preserves list and search context
+PASS switching records never combines another contact or plate in the header
+PASS Chat and global/context IA stay unavailable without simulated integration
+PASS cancelling unsaved navigation keeps the form until explicit discard
+PASS injected save failure retains input and does not alter persisted data
+PASS real revision conflict preserves stale input and refuses silent overwrite
+PASS Rejeitados requires explicit refusal and reason; no automatic loss
+PASS Kanban preserves six approved labels and collapsible lanes
+PASS delayed response from another Atendimento cannot replace the active header
+PASS same SQLite records survive API stop/restart and a completely new browser session
+PASS mobile: no body horizontal overflow
+PASS mobile: editor scrolling/save is usable and edited data survives reload
+PASS legacy vehicle/experience URLs cannot expose operational views
+PASS no external providers, legacy Coda APIs, IA calls or uncaught page errors
+19 browser scenario assertions passed; report: docs/evidencias/revisao-v20/regressoes/m1/resultados.json
+SUITE m1_2_catalogos
+PASS active coded pieces available immediately; missing-code leaves still blocked, without origin labels
+PASS authenticated catalog API preserved without an operational maintenance button or approval gate
+PASS interactive original SVG, nested V2 selection, Ambos creates two pieces and cross-view selections deduplicate
+PASS diagnosis/service/dimension selection and quantities persist through real API
+PASS 503, real 401/reauthentication and real 409 preserve unsaved form; navigation protects diagnosis draft
+PASS API restart plus fresh mobile session recovers correct Atendimento, diagnosis and child services; deletion removes children
+PASS new piece from explicit API setup joins unified name/code search; inactivation blocks new selection and preserves historical reference
+PASS no external hosts, no Coda/legacy requests, no browser errors; Issue 7 budget entry is available without external integration
+8 M1.2 browser scenario groups passed
+SUITE issue7_scenarios
+PASS duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context
+PASS editing master attributes in one scenario changes the same line in the other scenario
+PASS fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20
+SUITE issue7_integrated
+PASS operator creates Atendimento/piece/service lines via UI after explicit catalog API setup; variation copies flags only
+PASS missing setup blocks emission without losing draft; operator configures prices, factors, stages, energy, capacity and common parameters via UI
+PASS exact fractional totals and manual zero/FCT components persist; matrix uses effective flags even when monetary totals are zero
+PASS manual UI emission A applies services-only discount; downloaded real PDF independently parsed with pdftotext including accented text and totals
+PASS 26 Z and 27 AA issued through UI; earlier A snapshot and PDF unchanged after live prices/Atendimento edits
+PASS fresh mobile browser after restart recovers 27 immutable versions, identical A PDF, fractional live totals and horizontal matrix
+PASS no external provider requests or uncaught browser errors; all successful persistence and PDF responses are real
+SUITE pr11_interface
+PASS compact edit action in original header works with keyboard and unsaved guard; redundant tools bar absent
+PASS same CommercialPanel across Diagnostics/Map: six tab switches make zero redundant catalog/workspace GETs
+PASS compact searchable picker has name-only rows and search icon; diagnosis unsaved guard blocks header edit and tab navigation
+PASS nine numbered mini-tabs, overflow arrows, fixed add/compare, keyboard focus and real flag-only variation from selected scenario; no name prompts
+PASS numeric comparison headers, scenario context across all tabs and original Funil return context preserved
+PASS fresh mobile session after API restart recovers nine scenarios and diagnosis with compact header, arrow navigation and internal matrix scrolling
+6 compact UI browser groups passed
+SUITE issue12_inclusion
+PASS existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved
+PASS second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones
+PASS real POST200 plus catalog/workspace GET transport failure keeps confirmed rows, distinguishes GET phase, releases busy and recovers without resending
+PASS POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy
+PASS lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags
+PASS HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST
+PASS 409 plus explicit refresh preserves local unsaved notes/quantities and backend revision protection; a subsequent deliberate save succeeds
+PASS initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data
+PASS single writer: delayed old GET after a newer POST/GET cannot regress rows or revision; next addition succeeds without conflict
+PASS rapid double click while real POST response is pending issues one POST, saves one row and releases busy after confirmation
+PASS fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates
+11 Issue12 browser groups passed

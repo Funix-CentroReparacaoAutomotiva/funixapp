@@ -1,0 +1,61 @@
+{
+  "suite": "PR11 interface compacta",
+  "synthetic": true,
+  "assertions": [
+    {
+      "name": "compact edit action in original header works with keyboard and unsaved guard; redundant tools bar absent",
+      "pass": true
+    },
+    {
+      "name": "same CommercialPanel across Diagnostics/Map: six tab switches make zero redundant catalog/workspace GETs",
+      "pass": true,
+      "first_commercial_view_ms": 77.79,
+      "first_requests": [
+        {
+          "path": "/api/catalogos",
+          "method": "GET"
+        },
+        {
+          "path": "/api/atendimentos/96062b07-0020-44f0-b139-4fd19bc132b3/cenarios",
+          "method": "GET"
+        }
+      ],
+      "six_tab_changes_ms": 451.63,
+      "redundant_commercial_requests_for_six_tab_changes": 0
+    },
+    {
+      "name": "compact searchable picker has name-only rows and search icon; diagnosis unsaved guard blocks header edit and tab navigation",
+      "pass": true
+    },
+    {
+      "name": "nine numbered mini-tabs, overflow arrows, fixed add/compare, keyboard focus and real flag-only variation from selected scenario; no name prompts",
+      "pass": true
+    },
+    {
+      "name": "numeric comparison headers, scenario context across all tabs and original Funil return context preserved",
+      "pass": true
+    },
+    {
+      "name": "fresh mobile session after API restart recovers nine scenarios and diagnosis with compact header, arrow navigation and internal matrix scrolling",
+      "pass": true
+    }
+  ],
+  "metrics_local": {
+    "first_commercial_view_ms": 77.79,
+    "first_requests": [
+      {
+        "path": "/api/catalogos",
+        "method": "GET"
+      },
+      {
+        "path": "/api/atendimentos/96062b07-0020-44f0-b139-4fd19bc132b3/cenarios",
+        "method": "GET"
+      }
+    ],
+    "six_tab_changes_ms": 451.63,
+    "redundant_commercial_requests_for_six_tab_changes": 0
+  },
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}

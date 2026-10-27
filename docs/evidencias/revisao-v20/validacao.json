@@ -1,0 +1,47 @@
+{
+  "node_tests": 59,
+  "browser_groups": 61,
+  "suites": [
+    {
+      "report": "regressoes/catalogos/resultados.json",
+      "groups": 8,
+      "pass": true
+    },
+    {
+      "report": "regressoes/cenarios/cenarios-resultados.json",
+      "groups": 3,
+      "pass": true
+    },
+    {
+      "report": "regressoes/interface/resultados.json",
+      "groups": 6,
+      "pass": true
+    },
+    {
+      "report": "regressoes/issue12/resultados.json",
+      "groups": 11,
+      "pass": true
+    },
+    {
+      "report": "regressoes/m1/resultados.json",
+      "groups": 19,
+      "pass": true
+    },
+    {
+      "report": "regressoes/orcamento/integrado-resultados.json",
+      "groups": 7,
+      "pass": true
+    },
+    {
+      "report": "resultados.json",
+      "groups": 7,
+      "pass": true
+    }
+  ],
+  "commands": [
+    "npm run check",
+    "python3 tests/browser/v20_regressions.py"
+  ],
+  "production_accessed": false,
+  "synthetic": true
+}
