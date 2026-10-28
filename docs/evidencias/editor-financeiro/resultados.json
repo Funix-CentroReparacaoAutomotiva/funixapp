@@ -1,0 +1,76 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+      "pass": true
+    },
+    {
+      "name": "desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+      "pass": true
+    },
+    {
+      "name": "desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; legacy component FCT and notes retained",
+      "pass": true
+    },
+    {
+      "name": "desktop: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width",
+      "pass": true
+    },
+    {
+      "name": "desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history/config reachable; immutable PDF",
+      "pass": true
+    },
+    {
+      "name": "desktop: global piece deletion remains accessible in existing context menu and preserves historical emission",
+      "pass": true
+    },
+    {
+      "name": "desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+      "pass": true
+    },
+    {
+      "name": "mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+      "pass": true
+    },
+    {
+      "name": "mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+      "pass": true
+    },
+    {
+      "name": "mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+      "pass": true
+    },
+    {
+      "name": "mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; legacy component FCT and notes retained",
+      "pass": true
+    },
+    {
+      "name": "mobile: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width",
+      "pass": true
+    },
+    {
+      "name": "mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history/config reachable; immutable PDF",
+      "pass": true
+    },
+    {
+      "name": "mobile: global piece deletion remains accessible in existing context menu and preserves historical emission",
+      "pass": true
+    },
+    {
+      "name": "mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+      "pass": true
+    },
+    {
+      "name": "no browser runtime errors or external requests; desktop/mobile no horizontal overflow",
+      "pass": true
+    }
+  ],
+  "pageErrors": [],
+  "external": [],
+  "failure": null
+}

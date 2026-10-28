@@ -55,9 +55,9 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
    if(!enabled)continue
    try {
     eligible(item.pieceId,'peca')
-    const price=required(component.manualPrice,'Preço manual do componente'),fct=required(component.fct,'FCT individual')
-    line.factors={manualPrice:price.toString(),FCT:fct.toString()}
-    const unit=price.mul(fct).ceilUnit();line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(component.quantity)).toString()
+    const price=required(component.manualPrice,'Preço manual do componente'),mr=required(config.resaleMultipliers?.find(m=>m.id===settings.mrId)?.factor,'MR do Atendimento')
+    line.factors={manualPrice:price.toString(),MR:mr.toString()}
+    const unit=price.mul(mr).ceilUnit();line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(component.quantity)).toString()
    }catch(cause){errors.push(`${line.name}: ${(cause as Error).message}`)}
   }
   if(parent && !lines.some(l=>l.pieceId===item.id && l.included))errors.push(`${piece?.name ?? 'Peça'}: nenhum serviço ou componente incluído.`)
@@ -101,6 +101,7 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  const energy=included.some(l=>l.energy===null)?null:sum(included.map(l=>exact(l.energy!)))
  let days:string|null=null
  if(energy){if(config.capacity===null || Q.from(config.capacity).n===0n)errors.push('Capacidade diária global positiva não configurada.');else days=energy.div(Q.from(config.capacity)).ceil().toString()}
+ const serviceNet=serviceSubtotal?.sub(discount)??null,adjustment=serviceNet&&serviceGross?serviceNet.sub(serviceGross):null
  const pieceTotals=items.map(item=>{const rows=included.filter(l=>l.pieceId===item.id);return {pieceId:item.id,total:!scenario.pieceFlags[item.id]?'0':!rows.length?null:totalRows(rows)?.toString()??null}})
- return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
+ return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,serviceNet:serviceNet?.toString()??null,adjustment:adjustment?.toString()??null,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
 }

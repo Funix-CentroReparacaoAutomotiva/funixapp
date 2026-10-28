@@ -110,7 +110,7 @@ test('discount and whole-budget targets reduce or increase only services, never 
 test('whole-budget translation preserves generated fractional digits beyond six and retains component quantity',()=>{
  const db=openDatabase(':memory:')
  try{
-  const f=commercialFixture(db),repo=new BudgetRepository(db);component(f,db,{quantity:'0.000001',manualPrice:'0.05',fct:'1'})
+  const f=commercialFixture(db),repo=new BudgetRepository(db);f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'1'}]}});component(f,db,{quantity:'0.000001',manualPrice:'0.05',fct:'1'})
   const preview=repo.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:totalDeal('300')})
   assert.equal(preview.snapshot.calculation.componentSubtotal,'0.00000005')
   assert.equal(preview.snapshot.calculation.target,'299.99999995')

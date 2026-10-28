@@ -1,0 +1,101 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FUNIX — Editor de diagnóstico aprovado</title><style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#17191e;background:#fff}
+*{box-sizing:border-box}body{margin:0;padding:12px}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}svg.icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.caption{max-width:560px;margin:12px auto;color:#68727e;font-size:12px;line-height:1.5}.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+
+.editor{width:100%;max-width:560px;margin:0 auto;background:#fdfdfd;border:1px solid #e0e2e5;border-radius:16px;overflow:hidden;box-shadow:none}
+.editor .head{background:#142C60;color:#fff;padding:11px 12px 12px}
+.editor .piece-row{height:37px;display:flex;align-items:center;gap:13px;margin-bottom:10px}
+.editor .piece-row .piece-name{flex:1;font-size:15px;font-weight:700;color:#fff;letter-spacing:.04px}
+.editor .plain-action{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:4px;color:#d9e4f4;min-width:32px;min-height:32px}
+.editor .plain-action .icon{height:16px;width:16px}
+.editor .piece-toggle{border:0;background:transparent;padding:4px;display:flex;align-items:center;color:#62e5cc}
+.editor .piece-toggle .icon{width:20px;height:14px;stroke-width:2}
+.editor .piece-toggle[aria-pressed="false"]{color:#8196ad}
+.editor .top-select{display:block;position:relative}
+.editor select{appearance:none;-webkit-appearance:none;width:100%;height:33px;border-radius:999px;border:1px solid #d7d7d7;background:#fdfdfd;color:#242629;padding:0 35px 0 14px;outline-offset:2px;font-size:13px}
+.editor .top-select select{background:#142C60;color:#fff;border-color:#355184;height:37px}
+.editor .chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#8d9399;pointer-events:none;display:flex}
+.editor .top-select .chev{color:#b8c8e5}
+.editor .chev .icon{width:16px;height:16px;stroke-width:1.7}
+.editor .piece-note{width:100%;min-height:58px;background:#1e3a71;border:1px solid #4c6592;border-radius:9px;padding:10px;color:#fff;resize:vertical;margin-top:8px;font-size:13px}
+.editor .content{padding:12px 12px 14px}
+.editor .section-bar{display:flex;align-items:center;justify-content:space-between;min-height:34px;margin:0 0 11px}
+.editor .section-bar .title{font-size:14px;font-weight:600;color:#202126}.editor .section-bar .count{font-size:11px;font-weight:400;color:#81858a;margin-left:6px}
+.editor .add{width:64px;height:33px;border:1px solid #d8d8d8;background:transparent;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:7px;color:#292b2e}
+.editor .add .icon{height:13px;width:13px}
+.editor .service,.editor .component{border-bottom:1px solid #ececee;padding:0 0 11px;margin-bottom:11px}
+.editor .field-line{display:grid;grid-template-columns: 1.5fr 1fr;gap:8px;margin-bottom:10px}
+.editor .select-box{min-width:0;position:relative}.editor .select-box .icon{height:16px;width:16px}
+.editor .detail-line{display:grid;grid-template-columns:50px 72px 1fr 27px;gap:7px;align-items:end;min-height:47px}
+.editor .toggle{border:0;border-radius:999px;width:48px;height:33px;background:#f8f8f8;display:flex;align-items:center;justify-content:center;color:#00a64a;align-self:end}
+.editor .toggle[aria-pressed="false"]{color:#9ca3af}.editor .toggle .icon{width:19px;height:15px;stroke-width:2.2}
+.editor .qty label,.editor .price-input label{display:block;font-size:11px;color:#6e6e72;margin-bottom:4px}
+.editor input{height:33px;width:100%;border-radius:999px;border:1px solid #d7d7d7;background:#fff;padding:0 15px;font-size:13px;color:#252525;min-width:0}
+.editor .qty input{padding:0 14px}
+.editor .calculated{text-align:right;align-self:end;padding-bottom:3px;min-width:0}
+.editor .calculated small{display:block;color:#919197;font-size:9px;margin-bottom:4px}
+.editor .calculated strong{font-size:12px;font-weight:600;white-space:nowrap;color:#252525}
+.editor .trash{width:27px;height:33px;display:flex;align-items:center;justify-content:center;background:transparent;border:0;color:#64666a;padding:0;align-self:end}
+.editor .trash .icon{width:16px;height:16px}
+.editor .component-title{margin-top:15px}
+.editor .component .name{display:block;width:100%;margin-bottom:10px}
+.editor .component .detail-line{grid-template-columns:50px 72px 1fr 27px}
+.editor .price-input{min-width:0}
+.editor .bottom-label{font-size:11px;color:#777;display:flex;gap:8px;align-items:center;margin-top:12px}
+.editor .bottom-label .icon{width:14px;height:14px}
+.editor .empty{font-size:12px;color:#81858a;margin:8px 0 16px}.editor .unsaved{font-size:11px;color:#8b6238;margin-top:6px}
+@media(max-width:360px){.editor .content{padding:10px 9px}.editor .detail-line,.editor .component .detail-line{grid-template-columns:40px 67px 1fr 23px;gap:5px}.editor .toggle{width:40px}.editor .field-line{gap:6px}.editor select{padding-left:10px;padding-right:23px}}
+</style></head><body><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3.5 17.5a2.1 2.1 0 0 0 3 3l4.8-4.8a5 5 0 0 0 6.4-6.4l-3 3-3-3 3-3Z"/></symbol>
+<symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 2 8 4.5v11L12 22 4 17.5v-11L12 2Z"/><path d="m4 6.5 8 4.5 8-4.5M12 11v11"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M19 14V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9Z"/><path d="M15 19v-5h5"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M20 16.5a4.5 4.5 0 0 0-4.2-4.5A6 6 0 0 0 4 14.2 3.5 3.5 0 0 0 6.5 20H19a3.5 3.5 0 0 0 1-3.5Z"/></symbol>
+<symbol id="i-switch-on" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="16" cy="12" r="3"/></symbol>
+<symbol id="i-switch-off" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="8" cy="12" r="3"/></symbol>
+</svg><main class="editor" aria-label="Editor de diagnóstico — referência visual FUNIX">
+<header class="head">
+<div class="piece-row"><button class="piece-toggle" id="pieceEnabled" aria-label="Incluir ou desmarcar peça" aria-pressed="true"><svg class="icon"><use href="#i-switch-on"/></svg></button><div class="piece-name">retrovisor motorista</div><button class="plain-action" id="noteToggle" aria-label="Observação da peça" aria-expanded="false"><svg class="icon"><use href="#i-note"/></svg></button></div>
+<label class="top-select"><span class="sr-only">Diagnóstico da peça</span><select id="diagnosis"><option value="">Selecionar diagnóstico…</option><option selected>Quebrado</option><option>Amassado</option><option>Riscado</option></select><span class="chev"><svg class="icon"><use href="#i-chevron"/></svg></span></label>
+<textarea id="pieceNote" class="piece-note" hidden placeholder="Observação do diagnóstico…" aria-label="Observação da peça"></textarea>
+</header>
+<div class="content">
+<div class="section-bar"><div class="title">Serviços <span class="count" id="serviceCount">2</span></div><button class="add" id="addService" aria-label="Adicionar serviço" title="Adicionar serviço"><svg class="icon"><use href="#i-plus"/></svg><svg class="icon"><use href="#i-wrench"/></svg></button></div>
+<div id="serviceList"></div>
+<div class="section-bar component-title"><div class="title">Componentes <span class="count" id="componentCount">1</span></div><button class="add" id="addComponent" aria-label="Adicionar componente" title="Adicionar componente"><svg class="icon"><use href="#i-plus"/></svg><svg class="icon"><use href="#i-cube"/></svg></button></div>
+<div id="componentList"></div>
+<div class="bottom-label"><svg class="icon"><use href="#i-cloud"/></svg>Salvamento automático</div>
+</div></main><div class="caption">Referência visual e de interação. Os valores iniciais são ilustrativos. Este arquivo não grava informações no aplicativo nem calcula preços reais.</div><script>
+(()=>{
+const root=document.querySelector('.editor');if(!root)return;
+const $=s=>root.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon=name=>`<svg class="icon"><use href="#i-${name}"/></svg>`;
+let next=4;
+const services=[{id:1,type:'Pintura',dim:'Média',qty:'1',on:true,price:'R$ 889,00'},{id:2,type:'Reparação',dim:'Pequena',qty:'1',on:true,price:'R$ 620,00'}];
+const components=[{id:3,name:'Capa do retrovisor',qty:'1',manual:'180,00',on:true}];
+const fieldSelect=(field,value,choices,placeholder)=>`<div class="select-box"><select aria-label="${field}" data-field="${field}"><option value="">${placeholder}</option>${choices.map(s=>`<option value="${esc(s)}" ${s===value?'selected':''}>${esc(s)}</option>`).join('')}</select><span class="chev">${icon('chevron')}</span></div>`;
+function serviceHTML(s){return `<section class="service" data-id="${s.id}"><div class="field-line">${fieldSelect('type',s.type,['Pintura','Reparação','Substituição'],'Selecionar serviço…')}${fieldSelect('dim',s.dim,['Pequena','Média','Grande'],'Selecionar dimensão…')}</div><div class="detail-line"><button class="toggle" aria-label="Alternar inclusão do serviço" aria-pressed="${s.on}" data-action="toggle">${icon(s.on?'switch-on':'switch-off')}</button><div class="qty"><label>Qtd.</label><input aria-label="Quantidade do serviço" data-field="qty" value="${esc(s.qty)}" inputmode="decimal"></div><div class="calculated"><small>Valor calculado</small><strong>${esc(s.price)}</strong></div><button class="trash" data-action="delete" aria-label="Excluir serviço">${icon('trash')}</button></div></section>`}
+function componentHTML(c){return `<section class="component" data-id="${c.id}"><input class="name" aria-label="Descrição do componente" data-field="name" value="${esc(c.name)}" placeholder="Descrição do componente"><div class="detail-line"><button class="toggle" aria-label="Alternar inclusão do componente" aria-pressed="${c.on}" data-action="toggle">${icon(c.on?'switch-on':'switch-off')}</button><div class="qty"><label>Qtd.</label><input aria-label="Quantidade do componente" data-field="qty" value="${esc(c.qty)}" inputmode="decimal"></div><div class="price-input"><label>Preço unitário (R$)</label><input aria-label="Preço unitário do componente" data-field="manual" value="${esc(c.manual)}" inputmode="decimal"></div><button class="trash" data-action="delete" aria-label="Excluir componente">${icon('trash')}</button></div></section>`}
+function render(){ $('#serviceCount').textContent=services.length;$('#componentCount').textContent=components.length;$('#serviceList').innerHTML=services.map(serviceHTML).join('')||'<div class="empty">Nenhum serviço adicionado.</div>';$('#componentList').innerHTML=components.map(componentHTML).join('')||'<div class="empty">Nenhum componente adicionado.</div>' }
+$('#pieceEnabled').addEventListener('click',e=>{const btn=e.currentTarget;const on=btn.getAttribute('aria-pressed')==='true';btn.setAttribute('aria-pressed',String(!on));btn.innerHTML=icon(on?'switch-off':'switch-on')});
+$('#noteToggle').addEventListener('click',()=>{const item=$('#pieceNote');item.hidden=!item.hidden;$('#noteToggle').setAttribute('aria-expanded',String(!item.hidden));$('#noteToggle').style.color=item.value.trim()?'#62e5cc':'#d9e4f4'});
+$('#pieceNote').addEventListener('input',e=>{$('#noteToggle').style.color=e.target.value.trim()?'#62e5cc':'#d9e4f4'});
+$('#addService').addEventListener('click',()=>{services.push({id:next++,type:'',dim:'',qty:'1',on:true,price:'—'});render()});
+$('#addComponent').addEventListener('click',()=>{components.push({id:next++,name:'',qty:'1',manual:'',on:true});render()});
+for(const [sel,items] of [['#serviceList',services],['#componentList',components]]){
+ $(sel).addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const box=b.closest('[data-id]'),id=Number(box.dataset.id),item=items.find(s=>s.id===id);if(!item)return;
+ if(b.dataset.action==='toggle'){item.on=!item.on;b.setAttribute('aria-pressed',String(item.on));b.innerHTML=icon(item.on?'switch-on':'switch-off')}
+ if(b.dataset.action==='delete'&&confirm('Excluir este lançamento? No aplicativo real, uma exclusão pode afetar outros cenários.')){items.splice(items.indexOf(item),1);render()}
+ });
+ $(sel).addEventListener('input',e=>{const input=e.target.closest('[data-field]'),box=e.target.closest('[data-id]');if(!input||!box)return;const item=items.find(s=>s.id===Number(box.dataset.id));if(!item)return;item[input.dataset.field]=input.value;if(items===services){item.price='—';box.querySelector('.calculated strong').textContent='—'}});
+ $(sel).addEventListener('change',e=>{const input=e.target.closest('[data-field]'),box=e.target.closest('[data-id]');if(!input||!box)return;const item=items.find(s=>s.id===Number(box.dataset.id));if(!item)return;item[input.dataset.field]=input.value;if(items===services){item.price='—';box.querySelector('.calculated strong').textContent='—'}});
+}
+render();
+})();
+</script></body></html>

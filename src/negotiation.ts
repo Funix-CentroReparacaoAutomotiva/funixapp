@@ -1,10 +1,11 @@
-import type {BudgetPreview,NegotiationInput} from '../shared/pricing'
-import type {CommercialWorkspace} from '../shared/commercial'
+import type {BudgetPreview,NegotiationInput} from '../shared/pricing.ts'
+import type {CommercialWorkspace} from '../shared/commercial.ts'
 export interface NegotiationDraft {mode:'none'|'discount'|'adjust';value:string;acknowledgeResidual:boolean}
 export const emptyNegotiation=():NegotiationDraft=>({mode:'none',value:'',acknowledgeResidual:false})
 export function negotiationInput(draft:NegotiationDraft):NegotiationInput{
  if(draft.mode==='none')return {mode:'none'}
  const value=draft.value.trim().replace(',','.')
+ if(/^0+(?:\.0+)?$/.test(value))return {mode:'none'}
  if(!/^\d{1,12}(?:\.\d{1,6})?$/.test(value))throw new Error('Informe um valor em reais, com vírgula ou ponto decimal e até seis casas.')
  return {mode:draft.mode,value,acknowledgeResidual:draft.acknowledgeResidual,...(draft.mode==='adjust'?{valueIncludesComponents:true as const}:{})}
 }

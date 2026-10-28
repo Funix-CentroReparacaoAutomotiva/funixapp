@@ -1,0 +1,37 @@
+FUNIX | Orçamento A
+Versão 1 | 2026-10-28T05:48:15.909Z | Cenário: Cenário 1
+Atendimento: 3f772d95-28fd-44fd-bdaf-ed504075a186
+Contato: QA Editor desktop — SINTÉTICO | Telefone: 123456
+Veículo: Não informado | Placa: Não informada
+Escopo comercial da versão emitida:
+retrovisor · motorista | Serviço: Pintura
+Dimensão: Média | Diagnóstico: Quebrado
+1 x R$ 1.880,00 = R$ 1.880,00
+Observação: Nota histórica QA
+Etapa: Etapa QA | Dimensão técnica: Técnica | Energia base 2 + dimensional 3
+retrovisor · motorista | Serviço: Reparação
+Dimensão: Pequena | Diagnóstico: Quebrado
+1 x R$ 620,00 = R$ 620,00
+Observação: Nota histórica QA
+Etapa: Etapa QA | Dimensão técnica: Técnica | Energia base 2 + dimensional 3
+retrovisor · motorista | Componente: Capa do retrovisor
+Dimensão: Não aplicável | Diagnóstico: Não informado
+1 x R$ 450,00 = R$ 450,00
+Observação: Legado QA
+Preço manual: R$ 375,00 | FCT individual: undefined
+Serviços originais: R$ 2.500,00
+Serviços efetivos: R$ 2.500,00
+Desconto em serviços: R$ 250,00
+Componentes: R$ 450,00
+TOTAL EFETIVO: R$ 2.700,00
+Energia total: 10 | Estimativa: 3 dia(s) técnico(s).
+Dias técnicos representam o escopo; não são data de entrega nem autorização de execução.
+Condições e ressalvas comerciais: SINTÉTICO — teste local. Não executar serviço.
+Documento comercial. Não é ordem de serviço. Atendimento operacional permanece no ERP.
+Identificador imutável da versão: 377a38b8-1a8b-45c5-bf40-a4590a3deb62
+
+
+
+
+FUNIX | Página 1/1 | Orçamento A
+

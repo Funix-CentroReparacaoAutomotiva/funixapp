@@ -1,10 +1,12 @@
 # FUNIX — MVP Comercial integrado / Issue #7
 
-Aplicativo interno React/TypeScript/Vite + API Node 24 e SQLite próprio. A branch comercial preserva a M1.2 auditada e implementa a cadeia integrada: Atendimentos, composição mestre, cenários/matriz, configuração comercial, componentes FCT, motor exato V0.9, negociação, N emissões imutáveis e PDF real.
+Aplicativo interno React/TypeScript/Vite + API Node 24 e SQLite próprio. A branch comercial preserva a M1.2 auditada e implementa a cadeia integrada: Atendimentos, composição mestre, cenários/matriz, configuração comercial, componentes com MR global por Atendimento, motor exato V0.9, negociação, N emissões imutáveis e PDF real.
 
 Sem Coda, WhatsApp ou IA ativos; sem operação de agenda/OS/produção/financeiro. Não há preços fictícios ou clientes de demonstração carregados na aplicação. Dados e catálogos da direção são mantidos pelo operador; configurações ausentes ficam pendentes e bloqueiam emissão.
 
 A Issue #7 autoriza desenvolvimento/commits/PRs, sem merge ou deploy. [Relatório e operação curta](docs/ISSUE_7_MVP_COMERCIAL.md), [API](docs/API.md), [evidências](docs/evidencias/issue7/COMANDOS.md). O proprietário homologa uma única experiência integrada ao final; esta entrega não afirma aprovação funcional ou prontidão produtiva.
+
+A atualização atual está descrita em [Editor e painel financeiro aprovados](docs/EDITOR_FINANCEIRO_APROVADO.md): autosave, componentes dentro do diagnóstico, MR único e emissão direta com conferência. O menu superior de cenários dá acesso a histórico/PDF e configuração comercial.
 
 ## Executar localmente
 
@@ -56,13 +58,12 @@ A migração cria o banco na primeira execução e atualiza incrementalmente o M
 ```bash
 npm run check
 python3 -m unittest discover -s deploy/tests -v
-python3 tests/browser/m1_atendimentos.py
-python3 tests/browser/m1_2_catalogos.py
-python3 tests/browser/issue7_scenarios.py
-python3 tests/browser/issue7_integrated.py
+python3 tests/browser/editor_financeiro_regressions.py
 ```
 
-O teste integrado também requer `pdftotext` para validação independente do PDF, somente no ambiente de QA. A aplicação não depende desse comando. Os testes devem ser executados sequencialmente. O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências M1.1 em `docs/M1_ATENDIMENTOS.md`; entrega M1.2, comandos e limitações em [docs/M1_2_CATALOGOS_DIAGNOSTICOS.md](docs/M1_2_CATALOGOS_DIAGNOSTICOS.md).
+Os scripts históricos `m1_2_catalogos.py`, `pr11_interface.py`, `issue7_integrated.py` e `issue15_diagnosticos.py` ainda descrevem os formulários/rodapés substituídos e não são o roteiro de QA da UI atual. O runner acima cobre o editor/painel atual e as regressões de Atendimento, cenários e inclusão; as regras comerciais continuam cobertas pela suíte Node/SQLite.
+
+O teste integrado histórico também requer `pdftotext` para validação independente do PDF, somente no ambiente de QA. A aplicação não depende desse comando. Os testes devem ser executados sequencialmente. O teste de navegador usa Playwright/Chromium, processos próprios em loopback e banco temporário com dados sintéticos; falha se as portas de teste já estiverem ocupadas. Não depende de credenciais de produção. Evidências M1.1 em `docs/M1_ATENDIMENTOS.md`; entrega M1.2, comandos e limitações em [docs/M1_2_CATALOGOS_DIAGNOSTICOS.md](docs/M1_2_CATALOGOS_DIAGNOSTICOS.md).
 
 ## Backup e restauração
 

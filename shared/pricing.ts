@@ -7,12 +7,12 @@ export interface ServicePricing {
  dimensions: {dimensionId: string; fd: string | null; stages: TechnicalStage[]}[]
 }
 export interface PricingConfig {
- tables: FactorOption[]; colors: FactorOption[]; risks: FactorOption[]
+ tables: FactorOption[]; colors: FactorOption[]; risks: FactorOption[]; resaleMultipliers?: FactorOption[]
  capacity: string | null; services: ServicePricing[]
  specialPrices: {tableId: string; serviceId: string; dimensionId: string; unit: string}[]
  conditions: string
 }
-export interface PricingSettings {tableId: string | null; colorId: string | null; riskId: string | null}
+export interface PricingSettings {tableId: string | null; colorId: string | null; riskId: string | null; mrId?: string | null}
 export interface PricingConfiguration {revision: number; updatedAt: string; config: PricingConfig}
 export interface ComponentItem {
  id: string; atendimentoId: string; pieceId: string; name: string; quantity: string
@@ -27,6 +27,7 @@ export interface PricedLine {
 }
 export interface Calculation {
  scenarioId: string; scenarioName: string; lines: PricedLine[]; errors: string[]
+ serviceNet?:string|null; adjustment?:string|null
  pieceTotals?: {pieceId: string; total: string | null}[]
  originalServiceSubtotal: string | null; serviceSubtotal: string | null; componentSubtotal: string | null
  discount: string; total: string | null; energy: string | null; days: string | null

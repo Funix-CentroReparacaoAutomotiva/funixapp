@@ -27,7 +27,7 @@ export class PricingConfigurationRepository {
   const data=inputObject(input,['revision','config'])
   if(!Number.isSafeInteger(data.revision))invalid('Informe a revisão da configuração.')
   return transaction(this.db,()=>{
-   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions'])
+   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions','resaleMultipliers'])
    const options=(field:string)=>{
     const result=array(c[field]).map(raw=>{const o=inputObject(raw,['id','name','factor']);return {id:string(o.id,100),name:string(o.name),factor:optionalDecimal(o.factor)}})
     unique(result.map(o=>o.id));return result
@@ -56,7 +56,8 @@ export class PricingConfigurationRepository {
     return {tableId,serviceId,dimensionId,unit:decimal(p.unit)}
    });unique(specialPrices.map(p=>JSON.stringify([p.tableId,p.serviceId,p.dimensionId])))
    if(typeof c.conditions!=='string' || c.conditions.length>8000)invalid('Condições comerciais inválidas.')
-   const config:PricingConfig={tables,colors,risks,services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
+   const resaleMultipliers=c.resaleMultipliers===undefined ? this.get().config.resaleMultipliers : options('resaleMultipliers')
+   const config:PricingConfig={tables,colors,risks,...(resaleMultipliers===undefined?{}:{resaleMultipliers}),services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
    const result=this.db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?').run(JSON.stringify(config),new Date().toISOString(),Number(data.revision))
    if(!result.changes)conflict()
    return this.get()
@@ -68,12 +69,13 @@ export class PricingConfigurationRepository {
   return {revision:Number(row.revision),settings:{tableId:null,colorId:null,riskId:null,...JSON.parse(String(row.settings_json))}}
  }
  saveSettings(at:string,input:unknown){
-  const data=inputObject(input,['revision','tableId','colorId','riskId'])
+  const data=inputObject(input,['revision','tableId','colorId','riskId','mrId'])
   if(!Number.isSafeInteger(data.revision))invalid('Informe a revisão da composição.')
   return transaction(this.db,()=>{
    if(this.settings(at).revision!==data.revision)conflict()
-   const config=this.get().config,settings:PricingSettings={tableId:null,colorId:null,riskId:null}
-   for(const [key,list] of [['tableId',config.tables],['colorId',config.colors],['riskId',config.risks]] as const){
+   const config=this.get().config,settings:PricingSettings={...this.settings(at).settings}
+   for(const [key,list] of [['tableId',config.tables],['colorId',config.colors],['riskId',config.risks],['mrId',config.resaleMultipliers??[]]] as const){
+    if(data[key]===undefined)continue
     const value=data[key]
     if(value!==null && (typeof value!=='string' || !list.some(o=>o.id===value)))invalid('Parâmetro comercial inexistente.')
     settings[key]=value as string|null

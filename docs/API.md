@@ -83,10 +83,10 @@ Na interface compacta do PR #11, cenários são identificados pela `position` es
 | `PATCH /api/atendimentos/:at/cenarios/:id` | `{revision,name?,pieceFlags?,serviceFlags?,componentFlags?}`; mapas por ID e booleano, pertencimento verificado |
 | `GET /api/precificacao` | `{revision,updatedAt,config}` inicialmente vazio |
 | `PATCH /api/precificacao` | `{revision,config}` completo; valida chaves, referências, decimais, capacidade e duplicatas de especiais |
-| `GET /api/atendimentos/:at/parametros` | Revisão da composição e `{tableId,colorId,riskId}` comuns a todos cenários |
-| `PATCH /api/atendimentos/:at/parametros` | `{revision,tableId,colorId,riskId}`; IDs configurados ou null |
+| `GET /api/atendimentos/:at/parametros` | Revisão da composição e `{tableId,colorId,riskId,mrId?}` comuns a todos cenários |
+| `PATCH /api/atendimentos/:at/parametros` | `{revision,tableId?,colorId?,riskId?,mrId?}`; IDs configurados ou null; omissão preserva o campo anterior |
 | `GET /api/atendimentos/:at/componentes` | Lançamentos monetários mestre, distintos das peças físicas |
-| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,fct,notes,scenarioId?,scenarioRevision?}`; preço/FCT null mantém pendência; zero explícito é valor |
+| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,fct?,notes,scenarioId?,scenarioRevision?,clientId?}`; preço null mantém pendência; zero explícito é valor. FCT é legado; cálculo novo usa MR global. `clientId` UUID opcional torna a criação idempotente no reenvio do mesmo conteúdo |
 | `PATCH /api/atendimentos/:at/componentes/:id` | Mesmos campos + revision; identidade/peça de origem preservadas |
 | `DELETE /api/atendimentos/:at/componentes/:id` | `{revision}`; exclusão global e cascata de máscaras |
 | `POST /api/atendimentos/:at/orcamentos/previa` | `{scenarioId,negotiation}`; `{snapshot,token,canEmit}`; sem emissão nem perda de rascunho |
@@ -101,4 +101,12 @@ Diagnósticos aceitam adicionalmente `scenarioId`/`scenarioRevision` em inclusã
 
 `shared/pricing.ts` define configuração, componentes, cálculo, prévia e snapshot. Totais gerados mantêm precisão exata inclusive além de duas casas; nenhuma soma financeira usa floats. A matriz apresenta antes da negociação. Somente linhas com pai e filho habilitados são elegíveis; referências inativadas em uso bloqueiam emissão até correção, sem apagar dados antigos. Snapshot/PDF não consultam dados vivos na leitura.
 
-Configuração e prévia completas, exemplos e limites: [ISSUE_7_MVP_COMERCIAL.md](ISSUE_7_MVP_COMERCIAL.md). A API não afirma aceite jurídico nem cria OS. A main legada continua distinta desta branch.
+Configuração e prévia completas, exemplos e limites: [ISSUE_7_MVP_COMERCIAL.md](ISSUE_7_MVP_COMERCIAL.md). A API não afirma aceite jurídico nem cria OS. O contrato atual do editor/painel está em [EDITOR_FINANCEIRO_APROVADO.md](EDITOR_FINANCEIRO_APROVADO.md).
+
+### Atualização editor/painel — MR único
+
+`PricingConfig.resaleMultipliers?: {id,name,factor:string|null}[]` é mantido pelo operador, com as mesmas validações dos fatores existentes. Omitir a propriedade em PATCH legado preserva a lista; enviar `[]` a remove explicitamente. `PricingSettings.mrId?:string|null` pertence ao Atendimento e vale para todos os cenários. Não há seed nem fallback por FCT.
+
+Componentes usam `teto_R$0,05(manualPrice × MR) × quantity`; ausência de MR/preço gera pendência. `fct` e notas existentes são preservados; PATCH sem `fct` mantém seu valor anterior. Repetir uma criação com o mesmo `clientId`/conteúdo retorna o componente existente sem alterar revisão; conteúdo diferente causa conflito. PATCH segue exigindo a revisão, sem reenvio automático do transporte.
+
+`Calculation.serviceNet?:string|null` e `adjustment?:string|null` são decomposições exatas do backend: serviços líquidos e ajuste efetivo assinado em relação ao subtotal original. Opcionais para compatibilidade de leitura dos snapshots schema 1 anteriores. A UI possui somente Desconto/Negociação; entrada zero vira `{mode:'none'}`. Negociação não nula usa o contrato já existente `valueIncludesComponents:true`. Conferir é somente leitura; Emitir obtém a prévia internamente e mantém `previewToken`, confirmação expressa, ciência residual e `idempotencyKey`. Nenhuma alteração na validação financeira de `server/budgets.ts` nem na geração de PDF.

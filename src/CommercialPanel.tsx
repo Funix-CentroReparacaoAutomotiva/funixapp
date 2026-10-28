@@ -1,18 +1,18 @@
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisService, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
+import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
 import { catalogItemUsable as usable, scenarioLabel } from '../shared/commercial'
 import { api } from './api'
 import type { RequestFailure } from './api'
 import { Icon, Login } from './ui'
 import { PieceDialog } from './PieceDialog'
+import {DiagnosisEditor} from './DiagnosisEditor'
+import {FinancialPanel} from './FinancialPanel'
 import {BudgetPanel} from './BudgetPanel'
 import {ScenarioMenu} from './ScenarioMenu'
-import {NegotiationEditor} from './NegotiationEditor'
-import {emptyNegotiationState,negotiationInput,negotiationSignature} from './negotiation'
+import {emptyNegotiationState,negotiationSignature} from './negotiation'
 import type {NegotiationState} from './negotiation'
-import type {BudgetPreview} from '../shared/pricing'
 import {money} from './money'
 import carMap from './assets/car-map.svg?raw'
 
@@ -35,23 +35,30 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const mapStage = useRef<HTMLDivElement>(null), mapOpener = useRef('.map-search-trigger')
   const returnMapFocus = useCallback(() => { mapStage.current?.querySelector<HTMLElement>(mapOpener.current)?.focus() }, [])
   const [matrix,setMatrix] = useState(false), [differences,setDifferences] = useState(false)
-  const [failure, setFailure] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reload, setReload] = useState(0)
+  const [failure, setFailure] = useState(''), [message, setMessage] = useState(''), [localBusy, setBusy] = useState(false), [reload, setReload] = useState(0)
   const [failureDetails, setFailureDetails] = useState<RequestFailure | null>(null), [refreshNeeded, setRefreshNeeded] = useState(false)
   const [reauth, setReauth] = useState(false), [selecting, setSelecting] = useState(false)
   const [discPage, setDiscPage] = useState(0)
   const [path, setPath] = useState<HierarchyNode[]>([]), [query, setQuery] = useState('')
   const [editing, setEditing] = useState<DiagnosisItem | null>(null), [draft, setDraft] = useState<DiagnosisItem | null>(null)
-  const managerDirty = useRef(false)
-  const onManagerDirty = useCallback((value: boolean) => { managerDirty.current = value; onDirty(value) }, [onDirty])
-  const onManagerBusy = useCallback((value: boolean) => { setBusy(value); onBusy(value) }, [onBusy])
+  const [editorDirty,setEditorDirty]=useState(false),[financeDirty,setFinanceDirty]=useState(false)
+  const [editorBusy,setEditorBusy]=useState(false),[financeBusy,setFinanceBusy]=useState(false)
+  const busy=localBusy||editorBusy||financeBusy
+  const onManagerDirty=useCallback((v:boolean)=>setEditorDirty(v),[])
+  const onFinanceDirty=useCallback((v:boolean)=>setFinanceDirty(v),[])
+  const onManagerBusy=useCallback((v:boolean)=>setEditorBusy(v),[])
+  const onFinanceBusy=useCallback((v:boolean)=>setFinanceBusy(v),[])
+  const managerDirty=editorDirty||financeDirty
+  useEffect(()=>{onBusy(busy)},[busy,onBusy])
+  const [archiveRequested,setArchiveRequested]=useState(false)
   const [comparisonRequested,setComparisonRequested] = useState(false)
   const [displayTab, setDisplayTab] = useState(tab)
   // Reset only the visible editor on tab changes, retaining loaded commercial data.
   if (displayTab !== tab) {
-    setDisplayTab(tab); setEditing(null); setDraft(null); setBudget(false); setMatrix(comparisonRequested); setComparisonRequested(false); setSelecting(false)
+    setDisplayTab(tab); setEditing(null); setDraft(null); setBudget(archiveRequested); setArchiveRequested(false); setMatrix(comparisonRequested); setComparisonRequested(false); setSelecting(false)
   }
   const dirty = Boolean(editing && draft && JSON.stringify(editing) !== JSON.stringify(draft))
-  useEffect(() => { onDirty(dirty) }, [dirty, onDirty])
+  useEffect(() => { onDirty(dirty||editorDirty||financeDirty) }, [dirty,editorDirty,financeDirty,onDirty])
   useEffect(() => () => { onDirty(false); onBusy(false) }, [onDirty, onBusy])
   const load = useCallback(async (signal?: AbortSignal, preferred = selection.current) => {
     const version = ++loadVersion.current
@@ -82,12 +89,12 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   async function mutate(operation: () => Promise<void>, keepMessage = false) {
     if (busy || mutationInFlight.current) return false
     mutationInFlight.current = true
-    setBusy(true); onBusy(true); setFailure(''); setFailureDetails(null); if(!keepMessage)setMessage('')
+    setBusy(true); setFailure(''); setFailureDetails(null); if(!keepMessage)setMessage('')
     try { await operation(); return true } catch (cause) { failed(cause); return false }
-    finally { mutationInFlight.current = false; setBusy(false); onBusy(false) }
+    finally { mutationInFlight.current = false; setBusy(false) }
   }
   function discardContext() {setEditing(null);setDraft(null);setBudget(false);setMatrix(false);setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);onDirty(false)}
-  function canChangeScenario() {return !busy && (!(dirty || managerDirty.current || negotiationDirty) || window.confirm('Há alterações não salvas de diagnóstico, configuração ou negociação. Deseja descartá-las para trocar de cenário?'))}
+  function canChangeScenario() {return !busy && (!(dirty || managerDirty || negotiationDirty) || window.confirm('Há alterações não salvas de diagnóstico, configuração ou negociação. Deseja descartá-las para trocar de cenário?'))}
   async function chooseScenario(id:string) {
     if(id===scenarioId && !scenarioGone)return true
     if(!canChangeScenario())return false
@@ -104,7 +111,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   }
   async function deleteScenario(s:Scenario) {
     const current=s.id===scenarioId
-    if(!window.confirm(`Excluir ${scenarioLabel(s)}? Somente suas inclusões serão removidas; peças, serviços e orçamentos emitidos serão preservados.${current&&(dirty||managerDirty.current||negotiationDirty)?' Os campos locais não salvos serão descartados.':''}`))return false
+    if(!window.confirm(`Excluir ${scenarioLabel(s)}? Somente suas inclusões serão removidas; peças, serviços e orçamentos emitidos serão preservados.${current&&(dirty||managerDirty||negotiationDirty)?' Os campos locais não salvos serão descartados.':''}`))return false
     return mutate(async()=>{
       let result:{scenarios:Scenario[]}
       try{result=await api(`/api/atendimentos/${atendimentoId}/cenarios/${s.id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:s.revision})})}
@@ -116,25 +123,10 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     })
   }
   const previewFresh=Boolean(workspace && dealState.preview && dealState.signature===negotiationSignature(workspace,dealState.draft) && !scenarioGone && !refreshNeeded)
-  const previewDeal=dealState.preview?.snapshot.calculation.negotiation
-  const previewReviewable=Boolean(workspace && dealState.preview && dealState.signature===negotiationSignature(workspace,{...dealState.draft,acknowledgeResidual:previewDeal?.mode==='none'?false:previewDeal?.acknowledgeResidual??false}) && !scenarioGone && !refreshNeeded)
-  async function previewNegotiation() {
-    if(!workspace || scenarioGone || refreshNeeded)return
-    await mutate(async()=>{
-      const negotiation=negotiationInput(dealState.draft)
-      setDealState(old=>({...old,signature:''}))
-      const preview=await api<BudgetPreview>(`/api/atendimentos/${atendimentoId}/orcamentos/previa`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId,negotiation})})
-      const snapshot=preview.snapshot
-      const signature=negotiationSignature({...workspace,revision:snapshot.compositionRevision,configurationRevision:snapshot.configuration.revision,scenarios:workspace.scenarios.map(s=>s.id===scenarioId?{...s,revision:snapshot.scenarioRevision}:s)},dealState.draft)
-      const changedContext=snapshot.compositionRevision!==workspace.revision || snapshot.configuration.revision!==workspace.configurationRevision || snapshot.scenarioRevision!==workspace.scenarios.find(s=>s.id===scenarioId)?.revision
-      setDealState(old=>({...old,preview,signature,requestKey:crypto.randomUUID(),draft:changedContext?{...old.draft,acknowledgeResidual:false}:old.draft}))
-      if(changedContext)await load()
-    })
-  }
   const byId = (id: string | null) => catalog?.items.find(item => item.id === id)
   const byCode = (code?: string) => catalog?.items.find(item => item.code === code)
   function closeEditor(refresh = true) {
-    if (busy || ((dirty || managerDirty.current) && !window.confirm('Há alterações não salvas. Deseja descartá-las?'))) return false
+    if (busy || ((dirty || managerDirty) && !window.confirm('Há alterações não salvas. Deseja descartá-las?'))) return false
     if (editing && refresh) setReload(value => value + 1)
     setEditing(null); setDraft(null); onDirty(false); return true
   }
@@ -170,7 +162,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   async function refresh() {
     await mutate(async()=>{
       await load(); setRefreshNeeded(false)
-      setMessage(dirty || managerDirty.current ? 'Dados atualizados. Os campos em edição foram preservados; confira antes de salvar.' : 'Dados atualizados. Confira os itens antes de adicionar novamente.')
+      setMessage(dirty || managerDirty ? 'Dados atualizados. Os campos em edição foram preservados; confira antes de salvar.' : 'Dados atualizados. Confira os itens antes de adicionar novamente.')
     }, true)
   }
   function showNode(node: HierarchyNode) {
@@ -220,9 +212,6 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     <div className="commercial-toolbar"><button className="fh-filter" disabled={!path.length || busy} onClick={() => { setPath(p => p.slice(0, -1)); setQuery(''); setDiscPage(0) }}>← Voltar nível</button><span>{path.map(node => node.nome).join(' / ') || 'Regiões e acesso geral'}</span></div>
     <div className="piece-options">{nodes.map(node => option(node))}</div>{!nodes.length && <p>Nenhuma peça encontrada.</p>}
   </section>
-  const patchDraft = (value: Partial<DiagnosisItem>) => setDraft(previous => previous ? { ...previous, ...value } : null)
-  function updateLine(index: number, value: Partial<DiagnosisService>) { if (draft) patchDraft({ services: draft.services.map((line, i) => i === index ? { ...line, ...value } : line) }) }
-  const options = (kind: CatalogKind, current?: string | null) => catalog?.items.filter(item => item.kind === kind && (usable(item) || item.id === current)) ?? []
   async function flag(scenario: Scenario, field: 'pieceFlags' | 'serviceFlags' | 'componentFlags', id: string, enabled: boolean) {
     await mutate(async()=> { await api(`/api/atendimentos/${atendimentoId}/cenarios/${scenario.id}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:scenario.revision,[field]:{[id]:enabled}})}); await load() })
   }
@@ -245,11 +234,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const lines = item.services.filter(line=>!differences || differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id]))))
     const components = (workspace?.components ?? []).filter(c=>c.pieceId===item.id).filter(c=>!differences || differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id] && s.componentFlags[c.id]))))
     if (differences && !parentDiff && !lines.length && !components.length) return null
-    return [<tr className="matrix-parent" key={item.id}><th>{byId(item.pieceId)?.name}</th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir peça ${byId(item.pieceId)?.name}`} checked={Boolean(s.pieceFlags[item.id])} disabled={busy || refreshNeeded || scenarioGone} onChange={e=>flag(s,'pieceFlags',item.id,e.target.checked)} /></td>)}</tr>,...lines.map((line,index)=><tr key={line.id}><th>{byId(line.serviceId)?.name} · {byId(line.dimensionId)?.name ?? 'dimensão pendente'} · {line.quantity}<small>Lançamento {index+1} · {[byId(line.diagnosisId ?? item.diagnosisId)?.name,line.notes].filter(Boolean).join(' · ')}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir serviço ${line.id}`} checked={Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'serviceFlags',line.id,e.target.checked)} />{!s.pieceFlags[item.id] && <small>Peça desmarcada</small>}<small>{matrixValue(s.id,line.id)}</small></td>)}</tr>),...components.map(component=><tr key={component.id}><th>{component.name} · {component.quantity}<small>Componente monetário · FCT {component.fct??'pendente'}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir componente ${component.id}`} checked={Boolean(s.pieceFlags[item.id] && s.componentFlags[component.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'componentFlags',component.id,e.target.checked)}/><small>{matrixValue(s.id,component.id)}</small></td>)}</tr>)]
+    return [<tr className="matrix-parent" key={item.id}><th>{byId(item.pieceId)?.name}</th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir peça ${byId(item.pieceId)?.name}`} checked={Boolean(s.pieceFlags[item.id])} disabled={busy || refreshNeeded || scenarioGone} onChange={e=>flag(s,'pieceFlags',item.id,e.target.checked)} /></td>)}</tr>,...lines.map((line,index)=><tr key={line.id}><th>{byId(line.serviceId)?.name} · {byId(line.dimensionId)?.name ?? 'dimensão pendente'} · {line.quantity}<small>Lançamento {index+1} · {[byId(line.diagnosisId ?? item.diagnosisId)?.name,line.notes].filter(Boolean).join(' · ')}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir serviço ${line.id}`} checked={Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'serviceFlags',line.id,e.target.checked)} />{!s.pieceFlags[item.id] && <small>Peça desmarcada</small>}<small>{matrixValue(s.id,line.id)}</small></td>)}</tr>),...components.map(component=><tr key={component.id}><th>{component.name} · {component.quantity}<small>Componente monetário · MR global</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir componente ${component.id}`} checked={Boolean(s.pieceFlags[item.id] && s.componentFlags[component.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'componentFlags',component.id,e.target.checked)}/><small>{matrixValue(s.id,component.id)}</small></td>)}</tr>)]
   })}</tbody><tfoot>{(['serviceSubtotal','componentSubtotal','total','energy','days'] as const).map((field,i)=><tr key={field}><th>{['Serviços','Componentes','Total antes da negociação','Energia','Dias técnicos'][i]}</th>{scenarios.map(s=>{const c=workspace?.calculations.find(c=>c.scenarioId===s.id),value=c?.[field];return <td key={s.id}>{field==='energy'||field==='days'?value??'Indisponível':money(value)}</td>})}</tr>)}</tfoot></table></div>
   const calculation = workspace?.calculations.find(c => c.scenarioId === scenarioId)
-  const referenceReady=Boolean(calculation && calculation.total!==null && calculation.lines.some(l=>l.included) && !calculation.pieceTotals?.some(p=>active?.pieceFlags[p.pieceId] && p.total===null))
-  const displayTotal=dealState.draft.mode==='none'?(referenceReady?calculation!.total:null):previewFresh?dealState.preview!.snapshot.calculation.total:null
   const mapSelecting = tab === 'mapa' && selecting && !draft && !matrix && !budget && !reauth && Boolean(catalog)
   useEffect(() => {
     if (mapSelecting) document.querySelector<HTMLElement>('.map-piece-dialog [data-initial-focus]')?.focus()
@@ -265,42 +252,20 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const node = catalog?.hierarchy.regioes[region]
     if (node) { mapOpener.current = `[data-region="${region}"]`; setPath([node]); setQuery(''); setDiscPage(0); setSelecting(true) }
   }
-  const openBudget = () => { if (closeEditor()) { setMatrix(false); setSelecting(false); setBudget(v => !v);if(budget)onDiagnostics() } }
-  const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onCompare={()=>{if(!closeEditor())return false;setBudget(false);if(tab!=='diagnosticos'){setComparisonRequested(true);onDiagnostics()}else setMatrix(v=>!v);return true}}/>
+  function deleteEditingPiece(){
+    const current=workspace?.items.find(p=>p.id===draft?.id)
+    if(!current||busy||refreshNeeded||scenarioGone)return
+    if(!window.confirm('Excluir esta peça e todos os serviços/componentes de TODOS os cenários deste Atendimento? Os campos locais desta peça não salvos serão descartados. Orçamentos emitidos serão preservados.'))return
+    void mutate(async()=>{await api(`/api/atendimentos/${atendimentoId}/diagnosticos/${current.id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision})});setEditing(null);setDraft(null);await load();setMessage('Peça excluída de todos os cenários. Orçamentos emitidos preservados.')})
+  }
+  const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onDeletePiece={draft?deleteEditingPiece:undefined} onArchive={()=>{if(closeEditor()){setArchiveRequested(tab!=='diagnosticos');setBudget(true);setMatrix(false);onDiagnostics()}}} onCompare={()=>{if(!closeEditor())return false;setBudget(false);if(tab!=='diagnosticos'){setComparisonRequested(true);onDiagnostics()}else setMatrix(v=>!v);return true}}/>
   return <>{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${tab === 'mapa' && !draft && !matrix && !budget ? 'map-page' : ''}`}>
 
     <div className="diagnostics-body">
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
       {!mapSelecting && feedback}
-      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} workspace={workspace} catalog={catalog.items} onRefresh={()=>load()} onDirty={onManagerDirty} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} dealState={dealState} onDealState={setDealState} onPreview={previewNegotiation} previewFresh={previewFresh} previewReviewable={previewReviewable} externalBusy={busy || refreshNeeded || scenarioGone} onBack={()=>{if(closeEditor()){setBudget(false);setMatrix(false);onDiagnostics()}}}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft ? <form aria-label="Editar item de diagnóstico" onSubmit={event => {
-        event.preventDefault()
-        if(busy || refreshNeeded || scenarioGone)return
-        void mutate(async () => {
-          const updated = await api<DiagnosisItem>(`/api/atendimentos/${atendimentoId}/diagnosticos/${draft.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: draft.revision, scenarioId, scenarioRevision: scenarios.find(s=>s.id===scenarioId)?.revision, diagnosisId: draft.diagnosisId, notes: draft.notes, enabled: draft.enabled, services: draft.services.map(line => ({ ...line, ...(line.id.startsWith('new:') ? { id: undefined } : {}) })) }) })
-          setItems(previous => previous.map(item => item.id === updated.id ? updated : item)); setDraft(updated); setEditing(updated); await load(); onDirty(false); setMessage('Diagnóstico salvo no Atendimento.')
-        })
-      }}>
-        <h2>{byId(draft.pieceId)?.name}</h2>
-        <fieldset disabled={busy}><label className="commercial-check"><input type="checkbox" checked={draft.enabled} onChange={e => patchDraft({ enabled: e.target.checked })} /> Incluir item</label>
-        <label className="at-field">Diagnóstico<select aria-label="Diagnóstico" value={draft.diagnosisId ?? ''} onChange={e => patchDraft({ diagnosisId: e.target.value || null })}><option value="">Ainda não definido</option>{options('diagnostico', draft.diagnosisId).map(item => <option key={item.id} value={item.id}>{item.name}{!usable(item) ? ' (indisponível para novas seleções)' : ''}</option>)}</select></label>
-        <label className="at-field">Observações do diagnóstico<textarea aria-label="Observações do diagnóstico" value={draft.notes} rows={3} maxLength={8000} onChange={e => patchDraft({ notes: e.target.value })} /></label>
-        <p className="at-form-hint">Editar atributos altera TODOS os cenários; incluir/desmarcar altera somente o cenário selecionado.</p><h2>Serviços</h2>{draft.services.map((line, i) => <section className="service-line" key={line.id} aria-label={`Serviço ${i + 1}`}>
-          <label className="at-field">Serviço<select aria-label="Serviço" required value={line.serviceId} onChange={e => updateLine(i, { serviceId: e.target.value, dimensionId: null })}><option value="">Selecionar serviço</option>{options('servico', line.serviceId).map(item => <option key={item.id} value={item.id}>{item.name}{!usable(item) ? ' (indisponível)' : ''}</option>)}</select></label>
-          <label className="at-field">Dimensão<select aria-label="Dimensão" value={line.dimensionId ?? ''} onChange={e => updateLine(i, { dimensionId: e.target.value || null })}><option value="">Ainda não definida</option>{options('dimensao', line.dimensionId).filter(item => item.serviceId === line.serviceId).map(item => <option key={item.id} value={item.id}>{item.name}{!usable(item) ? ' (indisponível)' : ''}</option>)}</select></label>
-          <label className="at-field">Quantidade<input type="number" min="0.000001" max="999999999.999999" step="any" required value={line.quantity} onChange={e => updateLine(i, { quantity: e.target.value })} /></label>
-          <label className="at-field">Diagnóstico do lançamento<select aria-label="Diagnóstico do lançamento" value={line.diagnosisId ?? ''} onChange={e=>updateLine(i,{diagnosisId:e.target.value || null})}><option value="">Usar diagnóstico da peça</option>{options('diagnostico',line.diagnosisId).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="at-field">Observação do lançamento<textarea aria-label="Observação do lançamento" rows={2} maxLength={8000} value={line.notes ?? ''} onChange={e=>updateLine(i,{notes:e.target.value})} /></label>
-          <label className="commercial-check"><input type="checkbox" checked={line.enabled} onChange={e => updateLine(i, { enabled: e.target.checked })} /> Incluir serviço</label>
-          <button type="button" className="fh-filter" onClick={() => { if (window.confirm('Excluir este lançamento de TODOS os cenários?')) patchDraft({ services: draft.services.filter((_, index) => i !== index) }) }}>Remover serviço {i + 1}</button>
-        </section>)}
-        <button className="codex-add" type="button" disabled={draft.services.length >= 50} onClick={() => patchDraft({ services: [...draft.services, { id: `new:${crypto.randomUUID()}`, serviceId: '', dimensionId: null, quantity: '1', enabled: true }] })}>+ Adicionar serviço</button>
-        <p className="at-form-hint">Seleções manuais. Confira valores e emissão em Orçamento e componentes.</p>
-        <button type="button" className="diagnosis-delete-action" disabled={busy || refreshNeeded || scenarioGone} onClick={()=>{
-          if(window.confirm('Excluir esta peça e todos os serviços/componentes de TODOS os cenários deste Atendimento? Os campos locais desta peça não salvos serão descartados. Orçamentos emitidos serão preservados.'))void mutate(async()=>{await api(`/api/atendimentos/${atendimentoId}/diagnosticos/${draft.id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:draft.revision})});setEditing(null);setDraft(null);onDirty(false);await load();setMessage('Peça excluída de todos os cenários. Orçamentos emitidos preservados.')})
-        }}>Excluir peça de todos os cenários</button>
-        <div className="commercial-toolbar"><button className="fh-filter" type="button" onClick={()=>closeEditor()}>Voltar à lista</button><button className="primary-btn" disabled={!dirty || refreshNeeded || scenarioGone} type="submit">{busy ? 'Salvando…' : 'Salvar diagnóstico'}</button></div></fieldset>
-      </form> : <>
+      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} catalog={catalog.items} onRefresh={()=>load()} onDirty={onManagerDirty} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} onBack={()=>{if(closeEditor()){setBudget(false);setMatrix(false);onDiagnostics()}}}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><button className="editor-back" aria-label="Voltar aos Diagnósticos" disabled={busy} onClick={()=>closeEditor()}>← Voltar aos Diagnósticos</button><DiagnosisEditor key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)}/></> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
           <button className="fh-filter map-search-trigger" disabled={busy || refreshNeeded || scenarioGone} onClick={() => { mapOpener.current = '.map-search-trigger'; setPath([]); setQuery(''); setDiscPage(0); setSelecting(true) }}><Icon name="search" /> Buscar peça</button>
           <div className="interactive-map" onClick={event => {
@@ -333,10 +298,10 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
           })}</div>
           <button className="codex-add add-piece" disabled={busy} aria-expanded={selecting} onClick={() => setSelecting(v => !v)}>{selecting ? 'Fechar seleção' : '+ Adicionar peça'}</button>
           {selecting && picker}
-          {workspace && <section className="commercial-reference" aria-label="Resumo comercial do cenário"><dl className="commercial-subtotals"><div><dt>Serviços</dt><dd>{money(calculation?.serviceSubtotal)}</dd></div><div><dt>Componentes</dt><dd>{money(calculation?.componentSubtotal)}</dd></div></dl><NegotiationEditor state={dealState} onChange={draft=>setDealState(old=>({...old,draft}))} onPreview={previewNegotiation} busy={busy || refreshNeeded || scenarioGone} fresh={previewFresh} reviewable={previewReviewable}/><div className="commercial-final"><span>{dealState.draft.mode==='none'?'Total de referência':'Total final'}</span><strong>{displayTotal===null?'Pendente':money(displayTotal)}</strong></div>{calculation?.errors.length?<small>{calculation.errors.length} pendência(s) de emissão · revise no orçamento</small>:null}</section>}
+
         </>}
       </>}
-    </div><footer className="detail-footer"><button className="primary-btn" disabled={busy || refreshNeeded || scenarioGone || !workspace} onClick={openBudget}>{budget ? 'Voltar aos diagnósticos' : 'Orçamento e componentes'}</button><div className="quote-reference"><span>{dealState.draft.mode==='none'?'Referência':'Total final'}</span><strong>{displayTotal===null?'Pendente':money(displayTotal)}</strong></div></footer>
+    </div>{workspace && !budget && <FinancialPanel at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||refreshNeeded||scenarioGone}/>}
   </div>}</>
 }
 

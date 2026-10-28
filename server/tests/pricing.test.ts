@@ -9,8 +9,8 @@ export function calculationFixture(){
  const catalog=[['piece','peca','Peça'],['svc','servico','Serviço'],['dim','dimensao','Dimensão']].map(([id,kind,name])=>({id,kind,name,serviceId:kind==='dimensao'?'svc':null,code:kind==='peca'?'provided-code':null,status:'validado',active:true,source:'operador',suggestion:false,side:'',revision:1,createdAt:'test',updatedAt:'test'})) as CatalogItem[]
  const items:DiagnosisItem[]=[{id:'p',atendimentoId:'at',pieceId:'piece',diagnosisId:null,notes:'',enabled:true,revision:1,createdAt:'test',updatedAt:'test',services:[{id:'l',serviceId:'svc',dimensionId:'dim',quantity:'3',enabled:true}]}]
  const scenario:Scenario={id:'a',atendimentoId:'at',name:'A',position:1,revision:1,pieceFlags:{p:true},serviceFlags:{l:true},componentFlags:{}}
- const config:PricingConfig={tables:[{id:'table',name:'Tabela sintética',factor:'1'}],colors:[{id:'color',name:'Cor sintética',factor:'1'}],risks:[{id:'risk',name:'Risco sintético',factor:'1'}],capacity:'4',conditions:'Condições sintéticas',services:[{serviceId:'svc',base:'100.01',dimensions:[{dimensionId:'dim',fd:'1',stages:[{id:'step',name:'Etapa sintética',dimension:'Técnica',baseEnergy:'2',dimensionEnergy:'3'}]}]}],specialPrices:[]}
- const settings={tableId:'table',colorId:'color',riskId:'risk'},components:ComponentItem[]=[]
+ const config:PricingConfig={resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'1.2'}],tables:[{id:'table',name:'Tabela sintética',factor:'1'}],colors:[{id:'color',name:'Cor sintética',factor:'1'}],risks:[{id:'risk',name:'Risco sintético',factor:'1'}],capacity:'4',conditions:'Condições sintéticas',services:[{serviceId:'svc',base:'100.01',dimensions:[{dimensionId:'dim',fd:'1',stages:[{id:'step',name:'Etapa sintética',dimension:'Técnica',baseEnergy:'2',dimensionEnergy:'3'}]}]}],specialPrices:[]}
+ const settings={mrId:'mr',tableId:'table',colorId:'color',riskId:'risk'},components:ComponentItem[]=[]
  return {catalog,items,scenario,config,settings,components,run:()=>calculate(items,components,catalog,scenario,config,settings)}
 }
 
@@ -36,7 +36,7 @@ test('normal factors multiply exactly once; exact special key bypasses all facto
  const c=f.run();assert.deepEqual(c.errors,[]);assert.equal(c.lines[0]!.unit,'50.05');assert.equal(c.total,'100.1');assert.equal(c.energy,'10')
  f.config.specialPrices.push({...f.config.specialPrices[0]!});assert(f.run().errors.some(e=>e.includes('duplicado')))
 })
-test('manual components keep explicit zero; missing is pending; FCT is individual and no negotiation touches components',()=>{
+test('manual components keep explicit zero; missing is pending; MR is global; legacy FCT is ignored and no negotiation touches components',()=>{
  const f=calculationFixture();f.components.push({id:'c',atendimentoId:'at',pieceId:'p',name:'Componente sintético',quantity:'2',manualPrice:'0',fct:'1.2',notes:'',revision:1});f.scenario.componentFlags.c=true
  assert.equal(f.run().componentSubtotal,'0')
  f.components[0]!.manualPrice=null;assert.equal(f.run().total,null);assert(f.run().errors.some(e=>e.includes('Preço manual')))
