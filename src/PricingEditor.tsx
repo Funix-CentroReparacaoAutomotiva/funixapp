@@ -6,8 +6,8 @@ import {api} from './api'
 import type {RequestFailure} from './api'
 
 export function PricingEditor({initial,catalog,onSaved,onDirty,onBusy,onAuthRequired}:{initial:PricingConfiguration;catalog:CatalogItem[];onSaved:()=>Promise<void>;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onAuthRequired:()=>void}){
- const [config,setConfig]=useState<PricingConfig>(()=>structuredClone(initial.config)),[busy,setBusy]=useState(false),[error,setError]=useState('')
- const dirty=JSON.stringify(config)!==JSON.stringify(initial.config)
+ const [config,setConfig]=useState<PricingConfig>(()=>({...structuredClone(initial.config),resaleMultipliers:structuredClone(initial.config.resaleMultipliers??[])})),[busy,setBusy]=useState(false),[error,setError]=useState('')
+ const dirty=JSON.stringify(config)!==JSON.stringify({...initial.config,resaleMultipliers:initial.config.resaleMultipliers??[]})
  useEffect(()=>{onDirty(dirty)},[dirty,onDirty]);useEffect(()=>()=>onDirty(false),[onDirty])
  const nullable=(v:string)=>v.trim()===''?null:v
  const update=(patch:Partial<PricingConfig>)=>setConfig(c=>({...c,...patch}))
@@ -15,14 +15,14 @@ export function PricingEditor({initial,catalog,onSaved,onDirty,onBusy,onAuthRequ
  const options=(kind:string)=>catalog.filter(i=>i.kind===kind && catalogItemUsable(i))
  const modifyService=(i:number,patch:Partial<PricingConfig['services'][number]>)=>update({services:config.services.map((s,k)=>i===k?{...s,...patch}:s)})
  const modifyDim=(i:number,j:number,patch:Partial<PricingConfig['services'][number]['dimensions'][number]>)=>modifyService(i,{dimensions:config.services[i].dimensions.map((d,k)=>j===k?{...d,...patch}:d)})
- function factors(key:'tables'|'colors'|'risks',label:string){return <section className="config-section"><h2>{label}</h2>{config[key].map((o,i)=><div className="config-row" key={o.id}><label className="at-field">Nome<input aria-label={`Nome ${label} ${i+1}`} required maxLength={250} value={o.name} onChange={e=>update({[key]:config[key].map((v,j)=>i===j?{...v,name:e.target.value}:v)})}/></label>{decimalField(`Fator ${label} ${i+1}`,o.factor,value=>update({[key]:config[key].map((v,j)=>i===j?{...v,factor:value}:v)}))}<button type="button" className="fh-filter" onClick={()=>{if(window.confirm('Remover configuração dos rascunhos? Emissões anteriores serão preservadas.'))update({[key]:config[key].filter((_,j)=>j!==i)})}}>Remover</button></div>)}<button type="button" className="codex-add" onClick={()=>update({[key]:[...config[key],{id:crypto.randomUUID(),name:'',factor:null} satisfies FactorOption]})}>+ Adicionar {label}</button></section>}
+ function factors(key:'tables'|'colors'|'risks'|'resaleMultipliers',label:string){return <section className="config-section"><h2>{label}</h2>{(config[key]??[]).map((o,i)=><div className="config-row" key={o.id}><label className="at-field">Nome<input aria-label={`Nome ${label} ${i+1}`} required maxLength={250} value={o.name} onChange={e=>update({[key]:(config[key]??[]).map((v,j)=>i===j?{...v,name:e.target.value}:v)})}/></label>{decimalField(`Fator ${label} ${i+1}`,o.factor,value=>update({[key]:(config[key]??[]).map((v,j)=>i===j?{...v,factor:value}:v)}))}<button type="button" className="fh-filter" onClick={()=>{if(window.confirm('Remover configuração dos rascunhos? Emissões anteriores serão preservadas.'))update({[key]:(config[key]??[]).filter((_,j)=>j!==i)})}}>Remover</button></div>)}<button type="button" className="codex-add" onClick={()=>update({[key]:[...(config[key]??[]),{id:crypto.randomUUID(),name:'',factor:null} satisfies FactorOption]})}>+ Adicionar {label}</button></section>}
  return <form aria-label="Configuração comercial" onSubmit={async e=>{
   e.preventDefault();if(busy)return;setBusy(true);onBusy(true);setError('')
   try{await api('/api/precificacao',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:initial.revision,config})});onDirty(false);await onSaved()}
   catch(cause){setError((cause as Error).message);if((cause as RequestFailure).status===401)onAuthRequired()}
   finally{setBusy(false);onBusy(false)}
  }}><fieldset disabled={busy}><h2>Configuração comercial própria</h2><p className="at-form-hint">Dados fornecidos pelo operador. Use ponto decimal; vazio significa pendente, zero é um valor explícito. Não há preços nem fatores de demonstração. Alterações afetam rascunhos, nunca emissões.</p>
- {factors('tables','Tabelas comerciais')}{factors('colors','Cores')}{factors('risks','Riscos')}
+ {factors('tables','Tabelas comerciais')}{factors('colors','Cores')}{factors('risks','Riscos')}{factors('resaleMultipliers','MR')}
  {decimalField('Capacidade diária global',config.capacity,value=>update({capacity:value}))}
  <h2>Preços normais, dimensões e etapas</h2>
  <label className="at-field">Adicionar serviço à configuração<select aria-label="Adicionar serviço à configuração" value="" onChange={e=>{if(e.target.value)update({services:[...config.services,{serviceId:e.target.value,base:null,dimensions:[]}]})}}><option value="">Selecione um serviço ativo</option>{options('servico').filter(s=>!config.services.some(p=>p.serviceId===s.id)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>

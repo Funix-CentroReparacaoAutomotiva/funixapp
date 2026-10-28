@@ -67,7 +67,7 @@ test('upgrades actual M1.1 SQL without changing any Atendimento field or table d
       db = openDatabase(file)
       assert.deepEqual(db.prepare('SELECT * FROM atendimentos ORDER BY id').all(), rows)
       assert.deepEqual(db.prepare("SELECT sql FROM sqlite_master WHERE name='atendimentos'").get(), schema)
-      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6])
+      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7])
       assert.equal(new CommercialRepository(db).catalogs().items.length, 163)
       db.close()
     }

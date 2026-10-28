@@ -1,0 +1,34 @@
+FUNIX | Orçamento A
+Versão 1 | 2026-10-28T12:46:10.932Z | Cenário: Cenário 1
+Atendimento: da1c08c2-3321-420d-ac5f-e45a8bb8f273
+Contato: QA Auditoria mobile — SINTÉTICO | Telefone: 123456
+Veículo: Não informado | Placa: Não informada
+Escopo comercial da versão emitida:
+Peça QA mobile | Serviço: Serviço QA mobile
+Dimensão: Média QA | Diagnóstico: Não informado
+0.75 x R$ 889,00 = R$ 666,75
+Etapa: Etapa QA | Dimensão técnica: Técnica QA | Energia base 2 + dimensional 3
+Peça QA mobile | Serviço: Serviço QA mobile
+Dimensão: Média QA | Diagnóstico: Não informado
+2 x R$ 889,00 = R$ 1.778,00
+Etapa: Etapa QA | Dimensão técnica: Técnica QA | Energia base 2 + dimensional 3
+Peça QA mobile | Componente: Componente QA
+Dimensão: Não aplicável | Diagnóstico: Não informado
+1 x R$ 450,00 = R$ 450,00
+Preço manual: R$ 375,00 | MR do Atendimento: 1.2
+Serviços originais: R$ 2.444,75
+Serviços efetivos: R$ 2.444,75
+Desconto em serviços: R$ 0,00
+Componentes: R$ 450,00
+TOTAL EFETIVO: R$ 2.894,75
+Energia total: 13.75 | Estimativa: 4 dia(s) técnico(s).
+Dias técnicos representam o escopo; não são data de entrega nem autorização de execução.
+Condições e ressalvas comerciais: SINTÉTICO — auditoria local, não executar serviço.
+Documento comercial. Não é ordem de serviço. Atendimento operacional permanece no ERP.
+Identificador imutável da versão: 5c769e5f-5ebe-49fd-a6cc-36c57d5f5818
+
+
+
+
+FUNIX | Página 1/1 | Orçamento A
+

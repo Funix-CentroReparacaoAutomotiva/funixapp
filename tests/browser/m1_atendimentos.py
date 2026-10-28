@@ -171,9 +171,9 @@ async def run():
             await h.attach(page)
             await page.goto(ORIGIN + "/funil")
             await h.login(page)
-            await expect(page.get_by_role("navigation", name="Áreas da FUNIX").get_by_role("button")).to_have_count(2)
+            await expect(page.get_by_role("navigation", name="Áreas da FUNIX").get_by_role("button")).to_have_count(3)
             assert await page.get_by_role("button", name="Veículos", exact=True).count() == 0
-            h.mark("desktop: only Conversas and Funil navigation; no Veículos")
+            h.mark("desktop: Conversas, Funil and global Configurações navigation; no Veículos")
             initial = await context.request.get(ORIGIN + "/api/atendimentos")
             assert initial.status == 200 and (await initial.json())["total"] == 0
             h.mark("real empty SQLite database is usable without Coda credentials")

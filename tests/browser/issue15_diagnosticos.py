@@ -31,8 +31,8 @@ async def run():
     items=await write(path+'/diagnosticos',{'pieceCodes':['capo',own['code']]})
     hood=next(i for i in items if i['pieceId']!=own['id']);mirror=next(i for i in items if i['pieceId']==own['id'])
     hood=await write(path+'/diagnosticos/'+hood['id'],{'revision':hood['revision'],'diagnosisId':diag['id'],'services':[{'serviceId':svc['id'],'dimensionId':dim['id'],'quantity':'3'}]},'patch')
-    priced_part=await write(path+'/componentes',{'pieceId':hood['id'],'name':'Componente QA','quantity':'0.25','manualPrice':'40','fct':'2','notes':''})
-    zero=await write(path+'/componentes',{'pieceId':mirror['id'],'name':'Zero explícito QA','quantity':'1','manualPrice':'0','fct':'1','notes':''})
+    priced_part=await write(path+'/componentes',{'pieceId':hood['id'],'name':'Componente QA','quantity':'0.25','manualPrice':'40','notes':''})
+    zero=await write(path+'/componentes',{'pieceId':mirror['id'],'name':'Zero explícito QA','quantity':'1','manualPrice':'0','notes':''})
     config=await get('/api/precificacao')
     qa={'tables':[{'id':'qa-table','name':'Tabela QA','factor':'1'}],'colors':[{'id':'qa-color','name':'Cor QA','factor':'1'}],'risks':[{'id':'qa-risk','name':'Risco QA','factor':'1'}],'capacity':'4','conditions':'Dados sintéticos de teste.','services':[{'serviceId':svc['id'],'base':'100.01','dimensions':[{'dimensionId':dim['id'],'fd':'1','stages':[{'id':'qa-step','name':'Etapa QA','dimension':'QA','baseEnergy':'2','dimensionEnergy':'3'}]}]}],'specialPrices':[]}
     await write('/api/precificacao',{'revision':config['revision'],'config':qa},'patch')
@@ -129,7 +129,7 @@ async def run():
     h.mark(device+': absolute discount and whole-budget targets below/above original use real preview; components intact; negotiation survives tabs and emission entry; impossible target rejected; residual and consent shown; typing emits nothing')
 
     # A changed component invalidates consent even if the requested total text is unchanged.
-    await write(path+'/componentes/'+priced_part['id'],{'revision':priced_part['revision'],'pieceId':hood['id'],'name':priced_part['name'],'quantity':'0.25','manualPrice':'46','fct':'2','notes':''},'patch')
+    await write(path+'/componentes/'+priced_part['id'],{'revision':priced_part['revision'],'pieceId':hood['id'],'name':priced_part['name'],'quantity':'0.25','manualPrice':'46','notes':''},'patch')
     await page.get_by_role('button',name='Atualizar prévia',exact=True).click()
     await expect(ack).not_to_be_checked();await expect(page.locator('.commercial-final strong')).to_have_text('Pendente')
     await page.get_by_role('button',name='Orçamento e componentes',exact=True).click();await page.get_by_role('button',name='Preparar emissão do cenário',exact=True).click()

@@ -1,0 +1,56 @@
+SUITE editor_financeiro
+PASS desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; legacy component FCT and notes retained
+PASS desktop: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width
+PASS desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history/config reachable; immutable PDF
+PASS desktop: global piece deletion remains accessible in existing context menu and preserves historical emission
+PASS desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; legacy component FCT and notes retained
+PASS mobile: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width
+PASS mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history/config reachable; immutable PDF
+PASS mobile: global piece deletion remains accessible in existing context menu and preserves historical emission
+PASS mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS no browser runtime errors or external requests; desktop/mobile no horizontal overflow
+SUITE m1_atendimentos
+PASS desktop: only Conversas and Funil navigation; no Veículos
+PASS real empty SQLite database is usable without Coda credentials
+PASS manual creation requires only a minimum phone; optional data stays empty
+PASS optional fields and manual commercial phase persist; header updates to saved record
+PASS search locates actual stored records by name, plate and phone
+PASS detail back preserves list and search context
+PASS switching records never combines another contact or plate in the header
+PASS Chat and global/context IA stay unavailable without simulated integration
+PASS cancelling unsaved navigation keeps the form until explicit discard
+PASS injected save failure retains input and does not alter persisted data
+PASS real revision conflict preserves stale input and refuses silent overwrite
+PASS Rejeitados requires explicit refusal and reason; no automatic loss
+PASS Kanban preserves six approved labels and collapsible lanes
+PASS delayed response from another Atendimento cannot replace the active header
+PASS same SQLite records survive API stop/restart and a completely new browser session
+PASS mobile: no body horizontal overflow
+PASS mobile: editor scrolling/save is usable and edited data survives reload
+PASS legacy vehicle/experience URLs cannot expose operational views
+PASS no external providers, legacy Coda APIs, IA calls or uncaught page errors
+19 browser scenario assertions passed; report: docs/evidencias/editor-financeiro/regressoes/atendimentos/resultados.json
+SUITE issue7_scenarios
+PASS duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context
+PASS editing master attributes in one scenario changes the same line in the other scenario
+PASS fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20
+SUITE issue12_inclusion
+PASS existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved
+PASS second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones
+PASS real POST200 plus catalog/workspace GET transport failure keeps confirmed rows, distinguishes GET phase, releases busy and recovers without resending
+PASS POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy
+PASS lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags
+PASS HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST
+PASS autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit
+PASS initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data
+PASS single writer: delayed old GET after a newer POST/GET cannot regress rows or revision; next addition succeeds without conflict
+PASS rapid double click while real POST response is pending issues one POST, saves one row and releases busy after confirmation
+PASS fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates
+11 Issue12 browser groups passed

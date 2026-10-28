@@ -86,7 +86,9 @@ async def run():
                 await expect(page.get_by_role('alert')).to_contain_text('A inclusão foi confirmada')
                 await expect(page.get_by_role('status')).to_contain_text('salva')
                 await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
-                await expect(page.get_by_role('button', name='Orçamento e componentes', exact=True)).to_be_disabled()
+                await page.locator('.approved-finance .summary').click()
+                await expect(page.get_by_role('button', name='Emitir orçamento', exact=True)).to_be_disabled()
+                await page.locator('.approved-finance .summary').click()
                 await expect(await button(pool[index])).to_be_disabled()
                 await page.get_by_text('Detalhes da falha', exact=True).click()
                 details = await page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True)).inner_text()
@@ -129,9 +131,9 @@ async def run():
             assert post_count == n + 1
             await page.unroute('**/diagnosticos', lose_response); await recover()
             assert await choose(pool[8], ready=False) == 200
-            await expect(page.get_by_role('form', name='Editar item de diagnóstico')).to_be_visible()
+            await expect(page.get_by_role('region', name='Editor de diagnóstico', exact=True)).to_be_visible()
             assert [i['id'] for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[8]['id']] == [saved['id']]
-            await page.get_by_role('button', name='Voltar à lista', exact=True).click()
+            await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()
             h.mark('lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags')
 
             async def truncated_response(route):
@@ -148,22 +150,23 @@ async def run():
             assert len([i for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[9]['id']]) == 1
             h.mark('HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST')
 
-            # A refresh updates workspace only, never overwrites a local unsaved form.
+            # Autosave conflict keeps local input; an explicit saved-version recovery precedes new editing.
             await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
-            await page.get_by_label('Observações do diagnóstico', exact=True).fill('QA rascunho a preservar')
-            s = (await get(path + '/cenarios'))['scenarios'][0]
-            await write(b, path + '/diagnosticos', {'pieceCodes': [pool[10]['code']], 'scenarioId': s['id'], 'scenarioRevision': s['revision']})
-            await page.get_by_role('button', name='Salvar diagnóstico', exact=True).click()
-            await expect(page.get_by_role('alert')).to_contain_text('outra edição')
-            await expect(page.get_by_label('Observações do diagnóstico', exact=True)).to_have_value('QA rascunho a preservar')
-            await recover()
-            await expect(page.get_by_label('Observações do diagnóstico', exact=True)).to_have_value('QA rascunho a preservar')
-            await page.get_by_role('button', name='Salvar diagnóstico', exact=True).click()
-            await expect(page.get_by_role('status')).to_contain_text('Diagnóstico salvo')
+            await page.get_by_role('button',name='Observação da peça',exact=True).click()
+            current=next(i for i in await get(path+'/diagnosticos') if i['id']==item['id'])
+            await write(b,path+'/diagnosticos/'+item['id'],{'revision':current['revision'],'services':current['services'],'notes':'Outro operador QA'},'patch')
+            field=page.get_by_role('textbox',name='Observação da peça',exact=True)
+            await field.fill('QA rascunho a preservar')
+            await expect(page.get_by_role('alert')).to_contain_text('dados salvos mudaram')
+            await expect(field).to_have_value('QA rascunho a preservar')
+            await page.get_by_role('button',name='Carregar versão salva',exact=True).click()
+            await expect(field).to_have_value('Outro operador QA')
+            await field.fill('QA rascunho a preservar')
+            await expect(page.locator('.approved-editor').get_by_role('status')).to_contain_text('Salvo')
             kept = next(i for i in await get(path + '/diagnosticos') if i['id'] == item['id'])
             assert kept['notes'] == 'QA rascunho a preservar' and kept['services'][0]['quantity'] == '0.25'
-            await page.get_by_role('button', name='Voltar à lista', exact=True).click()
-            h.mark('409 plus explicit refresh preserves local unsaved notes/quantities and backend revision protection; a subsequent deliberate save succeeds')
+            await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()
+            h.mark('autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit')
 
             # Initial GET outage: no mutation, useful retry and precise HTTP phase.
             async def unavailable(route):
@@ -187,7 +190,7 @@ async def run():
                 else: await route.continue_()
             await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await page.route('**/cenarios*', hold_old_workspace)
-            await page.get_by_role('button', name='Voltar à lista', exact=True).click()
+            await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()
             await asyncio.wait_for(captured.wait(), 10)
             await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
             assert await choose(pool[15]) == 200
