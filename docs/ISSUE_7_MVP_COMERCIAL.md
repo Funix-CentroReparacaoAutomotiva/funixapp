@@ -1,3 +1,5 @@
+> Registro histórico da entrega da Issue #7. As rotas administrativas e o modelo de componentes atuais seguem as decisões posteriores em [PR17_AJUSTES_AUDITORIA.md](PR17_AJUSTES_AUDITORIA.md); a precificação de serviços e demais garantias continuam aplicáveis.
+
 # Issue #7 — MVP Comercial integrado para homologação
 
 Implementação em `feat/issue-7-mvp-comercial`, partindo exatamente da M1.2 auditada `06e5a46035097b779872765eff8a5f2ababf7509`. [Issue #7](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/7) é a autorização atual; substitui o limite antigo de homologação após cada subincremento. [PR #8](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/8) tem base na branch comercial, preservando a main antiga.
@@ -52,7 +54,7 @@ A interface permite salvar preços/fatores/energias pendentes como ausência, se
 
 - Normal: base × FD × FV × FC × FR; teto do **unitário** ao próximo R$0,05; depois quantidade.
 - Especial: somente chave exata tabela+serviço+dimensão, substituindo base/fatores. Ainda recebe teto unitário e quantidade.
-- Componente: preço manual presente, inclusive zero, × FCT individual; teto unitário; quantidade. Nunca recebe negociação de serviços.
+- Componente: preço manual presente, inclusive zero, × MR único do Atendimento; teto unitário; quantidade. Nunca recebe negociação de serviços.
 - Energia: soma de Ebase+Edimensão das etapas, com quantidade e inclusão efetiva; sem fatores comerciais. Dias técnicos = teto(energia/capacidade global positiva).
 - Negociação exclusiva: nenhuma, desconto monetário D em serviços ou ajuste do subtotal A. A<S vira desconto preservando unitários originais. A>S distribui proporcionalmente e registra unitários finais em múltiplos R$0,05; tenta compensação no último serviço sem valor negativo.
 - Resíduo |A−efetivo| até R$0,50 exige ciência explícita se não zero; superior bloqueia emissão com revisão manual. O total emitido é sempre soma das linhas efetivas − desconto + componentes.

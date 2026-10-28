@@ -29,7 +29,7 @@ async def run():
     piece=await write('/api/catalogos',{'kind':'peca','name':'retrovisor · motorista','code':'qa-mirror-'+device})
     item=(await write(path+'/diagnosticos',{'pieceCodes':[piece['code']]}))[0]
     item=await write(path+'/diagnosticos/'+item['id'],{'revision':item['revision'],'diagnosisId':diag['id'],'services':[{'serviceId':s['id'],'dimensionId':d['id'],'quantity':'1','notes':'Nota histórica QA','diagnosisId':diag['id']} for s,d in zip(entries,dimensions)]},'patch')
-    part=await write(path+'/componentes',{'pieceId':item['id'],'name':'Capa do retrovisor','quantity':'1','manualPrice':'180','fct':'9','notes':'Legado QA'})
+    part=await write(path+'/componentes',{'pieceId':item['id'],'name':'Capa do retrovisor','quantity':'1','manualPrice':'180','notes':'Legado QA'})
     c=await get('/api/precificacao')
     config={'tables':[{'id':'table','name':'A','factor':'1'}],'colors':[{'id':'color','name':'FC QA','factor':'1'}],'risks':[{'id':'risk','name':'FR QA','factor':'1'}],'resaleMultipliers':[{'id':'mr','name':'MR QA','factor':'1.2'},{'id':'mr2','name':'MR2 QA','factor':'2'}],'capacity':'4','conditions':'SINTÉTICO — teste local. Não executar serviço.','specialPrices':[],'services':[{'serviceId':s['id'],'base':base,'dimensions':[{'dimensionId':d['id'],'fd':'1','stages':[{'id':'step','name':'Etapa QA','dimension':'Técnica','baseEnergy':'2','dimensionEnergy':'3'}]}]} for s,d,base in zip(entries,dimensions,['889','620'])]}
     await write('/api/precificacao',{'revision':c['revision'],'config':config},'patch')
@@ -136,11 +136,11 @@ async def run():
     await row.get_by_label('Descrição do componente').fill('Zero QA');await row.get_by_label('Preço unitário do componente').fill('0');await expect(editor.get_by_role('alert')).to_be_visible()
     await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo')
     await page.unroute('**'+path+'/componentes',lost_component);assert len((await get(path+'/cenarios'))['components'])==2
-    assert all(c['fct']=='9' for c in (await get(path+'/cenarios'))['components'] if c['id']==part['id'])
+    assert all('fct' not in c for c in (await get(path+'/cenarios'))['components'])
     await row.get_by_label('Preço unitário do componente').fill('');await expect(editor.get_by_role('status')).to_contain_text('Salvo');assert (await get(path+'/cenarios'))['components'][-1]['manualPrice'] is None
     await row.get_by_label('Preço unitário do componente').fill('0');await expect(editor.get_by_role('status')).to_contain_text('Salvo')
     await row.get_by_role('button',name='Excluir componente',exact=True).click();await expect(editor.locator('.component')).to_have_count(1)
-    h.mark(device+': incomplete component remains local; zero accepted, lost POST response retries idempotently; legacy component FCT and notes retained')
+    h.mark(device+': incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier')
     await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
     finance=page.get_by_role('region',name='Painel financeiro',exact=True)
     await finance.locator('.summary').click();await expect(finance.get_by_label('MR',exact=True)).to_have_value('mr')
@@ -201,15 +201,14 @@ async def run():
     await review.get_by_role('button',name='Fechar conferência').click()
     await finance.get_by_label('Valor em reais',exact=True).fill('0');await finance.get_by_label('Valor em reais',exact=True).blur();await expect(finance.locator('.total')).to_contain_text('2.950,00')
     # Discoverable history/configuration on the existing header menu; snapshot/PDF independent of current MR.
-    await (await menu(page)).get_by_role('menuitem',name='Histórico e configuração comercial',exact=True).click()
+    await (await menu(page)).get_by_role('menuitem',name='Histórico de orçamentos',exact=True).click()
     await expect(page.get_by_role('heading',name='Histórico de orçamentos',exact=True)).to_be_visible()
-    await page.get_by_role('button',name='Configuração comercial',exact=True).click();await expect(page.get_by_role('form',name='Configuração comercial',exact=True)).to_be_visible()
-    await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
+    assert await page.get_by_role('button',name='Configuração comercial',exact=True).count()==0
     await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
     await finance.locator('.summary').click();await finance.get_by_label('MR',exact=True).select_option('mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00')
     assert await get(path+'/orcamentos/'+v['id'])==v
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==pdf_hash
-    h.mark(device+': global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history/config reachable; immutable PDF')
+    h.mark(device+': global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF')
     assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'),device
     await page.locator('.diagnosis-open').first.click()
     await (await menu(page)).get_by_role('menuitem',name='Excluir peça de todos os cenários',exact=True).click()

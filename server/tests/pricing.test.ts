@@ -36,8 +36,8 @@ test('normal factors multiply exactly once; exact special key bypasses all facto
  const c=f.run();assert.deepEqual(c.errors,[]);assert.equal(c.lines[0]!.unit,'50.05');assert.equal(c.total,'100.1');assert.equal(c.energy,'10')
  f.config.specialPrices.push({...f.config.specialPrices[0]!});assert(f.run().errors.some(e=>e.includes('duplicado')))
 })
-test('manual components keep explicit zero; missing is pending; MR is global; legacy FCT is ignored and no negotiation touches components',()=>{
- const f=calculationFixture();f.components.push({id:'c',atendimentoId:'at',pieceId:'p',name:'Componente sintético',quantity:'2',manualPrice:'0',fct:'1.2',notes:'',revision:1});f.scenario.componentFlags.c=true
+test('manual components keep explicit zero; missing is pending; MR is global and no negotiation touches components',()=>{
+ const f=calculationFixture();f.components.push({id:'c',atendimentoId:'at',pieceId:'p',name:'Componente sintético',quantity:'2',manualPrice:'0',notes:'',revision:1});f.scenario.componentFlags.c=true
  assert.equal(f.run().componentSubtotal,'0')
  f.components[0]!.manualPrice=null;assert.equal(f.run().total,null);assert(f.run().errors.some(e=>e.includes('Preço manual')))
  f.components[0]!.manualPrice='10.01';assert.equal(f.run().componentSubtotal,'24.1')

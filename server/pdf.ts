@@ -41,7 +41,7 @@ export function budgetPdf(version:BudgetVersion):Buffer {
    `${line.quantity} x ${money(line.finalUnit)} = ${money(line.total)}`)
   if(line.finalUnit!==line.unit)paragraphs.push(`Unitário de referência: ${money(line.unit)} | Unitário efetivo: ${money(line.finalUnit)}`)
   if(line.notes)paragraphs.push(`Observação: ${line.notes}`)
-  if(line.kind==='component')paragraphs.push(`Preço manual: ${money(line.factors.manualPrice)} | FCT individual: ${line.factors.FCT}`)
+  if(line.kind==='component')paragraphs.push(`Preço manual: ${money(line.factors.manualPrice)} | MR do Atendimento: ${line.factors.MR}`)
   for(const stage of line.stages)paragraphs.push(`Etapa: ${stage.name} | Dimensão técnica: ${stage.dimension} | Energia base ${stage.baseEnergy} + dimensional ${stage.dimensionEnergy}`)
  }
  paragraphs.push(`Serviços originais: ${money(c.originalServiceSubtotal)}`,`Serviços efetivos: ${money(c.serviceSubtotal)}`,`Desconto em serviços: ${money(c.discount)}`,`Componentes: ${money(c.componentSubtotal)}`,`TOTAL EFETIVO: ${money(c.total)}`)

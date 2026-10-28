@@ -8,6 +8,7 @@ import type { RequestFailure } from './api'
 import { Icon, Login } from './ui'
 import { PieceDialog } from './PieceDialog'
 import {DiagnosisEditor} from './DiagnosisEditor'
+import type {CalculationState} from './calculation-state'
 import {FinancialPanel} from './FinancialPanel'
 import {BudgetPanel} from './BudgetPanel'
 import {ScenarioMenu} from './ScenarioMenu'
@@ -41,6 +42,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [discPage, setDiscPage] = useState(0)
   const [path, setPath] = useState<HierarchyNode[]>([]), [query, setQuery] = useState('')
   const [editing, setEditing] = useState<DiagnosisItem | null>(null), [draft, setDraft] = useState<DiagnosisItem | null>(null)
+  const [calculationState,setCalculationState]=useState<CalculationState>('current'),[parameterState,setParameterState]=useState<CalculationState>('current')
   const [editorDirty,setEditorDirty]=useState(false),[financeDirty,setFinanceDirty]=useState(false)
   const [editorBusy,setEditorBusy]=useState(false),[financeBusy,setFinanceBusy]=useState(false)
   const busy=localBusy||editorBusy||financeBusy
@@ -265,7 +267,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
       {!mapSelecting && feedback}
-      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} catalog={catalog.items} onRefresh={()=>load()} onDirty={onManagerDirty} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} onBack={()=>{if(closeEditor()){setBudget(false);setMatrix(false);onDiagnostics()}}}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><button className="editor-back" aria-label="Voltar aos Diagnósticos" disabled={busy} onClick={()=>closeEditor()}>← Voltar aos Diagnósticos</button><DiagnosisEditor key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)}/></> : <>
+      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} onBack={()=>{if(closeEditor()){setBudget(false);setMatrix(false);onDiagnostics()}}}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><button className="editor-back" aria-label="Voltar aos Diagnósticos" disabled={busy} onClick={()=>closeEditor()}>← Voltar aos Diagnósticos</button><DiagnosisEditor key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/></> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
           <button className="fh-filter map-search-trigger" disabled={busy || refreshNeeded || scenarioGone} onClick={() => { mapOpener.current = '.map-search-trigger'; setPath([]); setQuery(''); setDiscPage(0); setSelecting(true) }}><Icon name="search" /> Buscar peça</button>
           <div className="interactive-map" onClick={event => {
@@ -301,7 +303,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
 
         </>}
       </>}
-    </div>{workspace && !budget && <FinancialPanel at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||refreshNeeded||scenarioGone}/>}
+    </div>{workspace && !budget && <FinancialPanel parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||calculationState==='error'?'error':localBusy||editorBusy?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||refreshNeeded||scenarioGone}/>}
   </div>}</>
 }
 
@@ -339,14 +341,14 @@ export function CatalogManager({ catalog, onChanged, onDirty, onBusy, onAuthRequ
     }}><fieldset disabled={busy}>
       <h2>{kindNames[kind]} · {old ? 'Editar' : 'Novo cadastro'}</h2>
       <label className="at-field">Nome do catálogo<input autoFocus required maxLength={250} value={name} onChange={e => setName(e.target.value)} /></label>
-      {kind === 'peca' && <label className="at-field">Código da peça<input required maxLength={150} readOnly={Boolean(old)} value={code} onChange={e => setCode(e.target.value)} /><small>{old ? 'Código preservado como identidade física.' : 'Informe o código real que identifica a peça.'}</small></label>}
-      {kind === 'dimensao' && <label className="at-field">Serviço da dimensão<select required disabled={Boolean(old)} value={serviceId} onChange={e => setServiceId(e.target.value)}><option value="">Selecionar serviço</option>{catalog.items.filter(item => item.kind === 'servico' && (usable(item) || item.id === serviceId)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      {kind === 'peca' && <label className="at-field">Código da peça<input aria-label="Código da peça" required maxLength={150} readOnly={Boolean(old)} value={code} onChange={e => setCode(e.target.value)} /><small>{old ? 'Código preservado como identidade física.' : 'Informe o código real que identifica a peça.'}</small></label>}
+      {kind === 'dimensao' && <label className="at-field">Serviço da dimensão<select aria-label="Serviço da dimensão" required disabled={Boolean(old)} value={serviceId} onChange={e => setServiceId(e.target.value)}><option value="">Selecionar serviço</option>{catalog.items.filter(item => item.kind === 'servico' && (usable(item) || item.id === serviceId)).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
       {old && <><label className="commercial-check"><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> Ativo para novas seleções</label><p className="at-form-hint">Revisão {old.revision} · {new Date(old.updatedAt).toLocaleString('pt-BR')}</p></>}
       <div className="commercial-toolbar"><button type="button" className="fh-filter" onClick={() => { if (!dirty || window.confirm('Há alterações não salvas. Deseja descartá-las?')) { setForm(false); onDirty(false); void refreshCatalogs() } }}>Cancelar edição</button><button className="primary-btn" type="submit">{busy ? 'Salvando…' : 'Salvar catálogo'}</button></div>
       {old && <button type="button" className="codex-add" onClick={async () => { try { setHistory(await api(`/api/catalogos/${encodeURIComponent(old.id)}/historico`)) } catch (cause) { setFailure((cause as Error).message) } }}>Ver histórico de alterações</button>}
       {history.map(entry => <p className="at-form-hint" key={entry.revision}>Revisão {entry.revision} · {new Date(entry.changedAt).toLocaleString('pt-BR')}</p>)}
     </fieldset></form> : <>
-      <label className="at-field">Tipo de catálogo<select value={kind} onChange={e => setKind(e.target.value as CatalogKind)}>{Object.entries(kindNames).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+      <label className="at-field">Tipo de catálogo<select aria-label="Tipo de catálogo" value={kind} onChange={e => setKind(e.target.value as CatalogKind)}>{Object.entries(kindNames).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
       <label className="at-field">Buscar no catálogo<input value={query} onChange={e => setQuery(e.target.value)} maxLength={150} /></label>
       <div className="commercial-toolbar"><button className="fh-filter" disabled={busy} onClick={() => edit(null)}>+ Novo cadastro</button><button className="fh-filter" disabled={busy} onClick={refreshCatalogs}>Atualizar catálogos</button></div>
       {catalog.items.filter(item => item.kind === kind && fold(`${item.name} ${item.code ?? ''}`).includes(fold(query))).map(item => <button className="catalog-row" key={item.id} disabled={busy} onClick={() => edit(item)}><strong>{item.name}</strong><small>{stateLabel(item)} · {item.code ?? kindNames[item.kind]}</small></button>)}

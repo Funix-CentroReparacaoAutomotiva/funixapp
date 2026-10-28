@@ -16,7 +16,7 @@ export interface PricingSettings {tableId: string | null; colorId: string | null
 export interface PricingConfiguration {revision: number; updatedAt: string; config: PricingConfig}
 export interface ComponentItem {
  id: string; atendimentoId: string; pieceId: string; name: string; quantity: string
- manualPrice: string | null; fct: string | null; notes: string; revision: number
+ manualPrice: string | null; notes: string; revision: number
 }
 export interface PricedLine {
  id: string; pieceId: string; kind: 'service' | 'component'; name: string; pieceName: string

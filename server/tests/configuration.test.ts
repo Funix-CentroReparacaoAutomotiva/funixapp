@@ -30,8 +30,9 @@ test('component monetary identity is independent from physical piece; mask dupli
   const at=new AtendimentoRepository(db).create({phone:'123'}),c=new CommercialRepository(db),s=new ScenarioRepository(db),parts=new ComponentRepository(db)
   const piece=c.catalogs().items.find(p=>p.code==='capo')!;c.saveCatalog({revision:1,status:'validado'},piece.id)
   const p=c.add(at.id,{pieceCodes:['capo']})[0]!,a=s.list(at.id)[0]!,b=s.create(at.id,{name:'B',duplicateFrom:a.id,sourceRevision:a.revision})
-  const input={pieceId:p.id,name:'Peça monetária',quantity:'0.25',manualPrice:'0',fct:'1.2',notes:'',scenarioId:b.id}
+  const input={pieceId:p.id,name:'Peça monetária',quantity:'0.25',manualPrice:'0',notes:'',scenarioId:b.id}
   const part=parts.save(at.id,input)
+  assert.throws(()=>parts.save(at.id,{...input,fct:'1.2'}));assert.equal(parts.list(at.id).length,1)
   assert.notEqual(part.id,p.id);assert.equal(part.manualPrice,'0');assert.equal(part.quantity,'0.25')
   assert.equal(s.list(at.id).find(x=>x.id===a.id)!.componentFlags[part.id],false)
   const bs=s.list(at.id).find(x=>x.id===b.id)!,copy=s.create(at.id,{name:'C',duplicateFrom:b.id,sourceRevision:bs.revision})

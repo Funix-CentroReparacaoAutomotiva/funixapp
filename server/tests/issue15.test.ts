@@ -16,9 +16,9 @@ import {Q} from '../exact.ts'
 import type {ComponentItem} from '../../shared/pricing.ts'
 
 function component(f:ReturnType<typeof commercialFixture>,db:DatabaseSync,values:Record<string,unknown>={}){
- return new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'40',fct:'2',notes:'Sintético',...values})
+ return new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'40',notes:'Sintético',...values})
 }
-function fields(p:ComponentItem){return {revision:p.revision,pieceId:p.pieceId,name:p.name,quantity:p.quantity,manualPrice:p.manualPrice,fct:p.fct,notes:p.notes}}
+function fields(p:ComponentItem){return {revision:p.revision,pieceId:p.pieceId,name:p.name,quantity:p.quantity,manualPrice:p.manualPrice,notes:p.notes}}
 const totalDeal=(value:string,acknowledgeResidual=false)=>({mode:'adjust',value,acknowledgeResidual,valueIncludesComponents:true})
 
 test('V5 additive upgrade and scenario deletion preserve composition, snapshot/PDF, flags, fractional quantities and never reuse scenario numbers',()=>{
@@ -110,7 +110,7 @@ test('discount and whole-budget targets reduce or increase only services, never 
 test('whole-budget translation preserves generated fractional digits beyond six and retains component quantity',()=>{
  const db=openDatabase(':memory:')
  try{
-  const f=commercialFixture(db),repo=new BudgetRepository(db);f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'1'}]}});component(f,db,{quantity:'0.000001',manualPrice:'0.05',fct:'1'})
+  const f=commercialFixture(db),repo=new BudgetRepository(db);f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'1'}]}});component(f,db,{quantity:'0.000001',manualPrice:'0.05'})
   const preview=repo.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:totalDeal('300')})
   assert.equal(preview.snapshot.calculation.componentSubtotal,'0.00000005')
   assert.equal(preview.snapshot.calculation.target,'299.99999995')

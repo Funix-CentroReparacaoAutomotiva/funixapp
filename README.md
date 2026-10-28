@@ -6,7 +6,7 @@ Sem Coda, WhatsApp ou IA ativos; sem operação de agenda/OS/produção/financei
 
 A Issue #7 autoriza desenvolvimento/commits/PRs, sem merge ou deploy. [Relatório e operação curta](docs/ISSUE_7_MVP_COMERCIAL.md), [API](docs/API.md), [evidências](docs/evidencias/issue7/COMANDOS.md). O proprietário homologa uma única experiência integrada ao final; esta entrega não afirma aprovação funcional ou prontidão produtiva.
 
-A atualização atual está descrita em [Editor e painel financeiro aprovados](docs/EDITOR_FINANCEIRO_APROVADO.md): autosave, componentes dentro do diagnóstico, MR único e emissão direta com conferência. O menu superior de cenários dá acesso a histórico/PDF e configuração comercial.
+A atualização atual está descrita em [Editor e painel financeiro aprovados](docs/EDITOR_FINANCEIRO_APROVADO.md): autosave, componentes dentro do diagnóstico, MR único e emissão direta com conferência. O menu superior de cenários dá acesso ao histórico/PDF do Atendimento. Catálogos e Precificação ficam na área global **Configurações** (`/configuracoes`), ao lado de Conversas e Funil. [Ajustes pós-auditoria](docs/PR17_AJUSTES_AUDITORIA.md) e [migração V7](docs/MIGRACAO_V7_MR.md).
 
 ## Executar localmente
 
@@ -42,11 +42,11 @@ A migração cria o banco na primeira execução e atualiza incrementalmente o M
 
 ## Limite funcional
 
-- Somente Conversas e Funil; Veículos e Experiências foram retirados do produto ativo.
+- Conversas e Funil, com Configurações globais para administração; Veículos e Experiências foram retirados do produto ativo.
 - Seis fases V1.0 persistidas, com mudanças manuais. Os prazos dos rótulos não movimentam contatos automaticamente.
 - Rejeitados exige recusa explícita e motivo; silêncio do cliente não vira perda.
 - Telefone repetido é permitido. O original é preservado; E.164 só é obtido quando há indicação internacional inequívoca, sem inventar DDI.
-- Mapa selecionável V20 e árvore V2, catálogo único sem aprovação manual; a busca de peças inclui cadastros do operador. Peças sem código permanecem indisponíveis. A manutenção de catálogos não aparece na operação; código administrativo e APIs foram preservados. Diagnósticos, serviços e dimensões começam vazios e precisam dos dados da direção para compor orçamentos completos; não há carga fictícia.
+- Mapa selecionável V20 e árvore V2, catálogo único sem aprovação manual; a busca de peças inclui cadastros do operador. Peças sem código permanecem indisponíveis. A manutenção de catálogos fica em Configurações → Catálogos. Diagnósticos, serviços e dimensões começam vazios e precisam dos dados da direção para compor orçamentos completos; não há carga fictícia.
 - Cabeçalho com edição compacta; cenários em miniabas numéricas, variação por cópia das inclusões e comparação. Letras são exclusivas das versões emitidas de orçamento. [Entrega de interface do PR #11](docs/PR11_INTERFACE.md).
 - Cenários contêm somente máscaras por IDs; atributos mestre são globais. Serviços repetidos são linhas independentes. Emissão manual gera versões A…Z,AA… sem limite artificial, com snapshot e PDF congelados.
 - Chat, IA global/contextual e envio ao ERP permanecem indisponíveis.
@@ -58,7 +58,7 @@ A migração cria o banco na primeira execução e atualiza incrementalmente o M
 ```bash
 npm run check
 python3 -m unittest discover -s deploy/tests -v
-python3 tests/browser/editor_financeiro_regressions.py
+python3 tests/browser/pr17_auditoria_regressions.py
 ```
 
 Os scripts históricos `m1_2_catalogos.py`, `pr11_interface.py`, `issue7_integrated.py` e `issue15_diagnosticos.py` ainda descrevem os formulários/rodapés substituídos e não são o roteiro de QA da UI atual. O runner acima cobre o editor/painel atual e as regressões de Atendimento, cenários e inclusão; as regras comerciais continuam cobertas pela suíte Node/SQLite.

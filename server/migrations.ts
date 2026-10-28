@@ -174,6 +174,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     ALTER TABLE commercial_state ADD COLUMN next_scenario_position INTEGER NOT NULL DEFAULT 2 CHECK(next_scenario_position > 1);
     UPDATE commercial_state SET next_scenario_position=(SELECT COALESCE(MAX(position),1)+1 FROM scenarios WHERE atendimento_id=commercial_state.atendimento_id);
   `)},
+  // V4–V6 SQL remains immutable upgrade history, not the active component contract.
+  // Remove only the retired column; no Atendimento, catalog, flag or PDF is reset.
+  {version:7,apply:db=>db.exec('ALTER TABLE component_items DROP COLUMN fct;')},
 ]
 
 export function migrate(db: DatabaseSync) {

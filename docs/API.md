@@ -86,7 +86,7 @@ Na interface compacta do PR #11, cenários são identificados pela `position` es
 | `GET /api/atendimentos/:at/parametros` | Revisão da composição e `{tableId,colorId,riskId,mrId?}` comuns a todos cenários |
 | `PATCH /api/atendimentos/:at/parametros` | `{revision,tableId?,colorId?,riskId?,mrId?}`; IDs configurados ou null; omissão preserva o campo anterior |
 | `GET /api/atendimentos/:at/componentes` | Lançamentos monetários mestre, distintos das peças físicas |
-| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,fct?,notes,scenarioId?,scenarioRevision?,clientId?}`; preço null mantém pendência; zero explícito é valor. FCT é legado; cálculo novo usa MR global. `clientId` UUID opcional torna a criação idempotente no reenvio do mesmo conteúdo |
+| `POST /api/atendimentos/:at/componentes` | `{pieceId,name,quantity,manualPrice,notes,scenarioId?,scenarioRevision?,clientId?}`; preço null mantém pendência; zero explícito é valor. O único multiplicador é MR global; campos obsoletos são rejeitados. `clientId` UUID opcional torna a criação idempotente no reenvio do mesmo conteúdo |
 | `PATCH /api/atendimentos/:at/componentes/:id` | Mesmos campos + revision; identidade/peça de origem preservadas |
 | `DELETE /api/atendimentos/:at/componentes/:id` | `{revision}`; exclusão global e cascata de máscaras |
 | `POST /api/atendimentos/:at/orcamentos/previa` | `{scenarioId,negotiation}`; `{snapshot,token,canEmit}`; sem emissão nem perda de rascunho |
@@ -107,6 +107,14 @@ Configuração e prévia completas, exemplos e limites: [ISSUE_7_MVP_COMERCIAL.m
 
 `PricingConfig.resaleMultipliers?: {id,name,factor:string|null}[]` é mantido pelo operador, com as mesmas validações dos fatores existentes. Omitir a propriedade em PATCH legado preserva a lista; enviar `[]` a remove explicitamente. `PricingSettings.mrId?:string|null` pertence ao Atendimento e vale para todos os cenários. Não há seed nem fallback por FCT.
 
-Componentes usam `teto_R$0,05(manualPrice × MR) × quantity`; ausência de MR/preço gera pendência. `fct` e notas existentes são preservados; PATCH sem `fct` mantém seu valor anterior. Repetir uma criação com o mesmo `clientId`/conteúdo retorna o componente existente sem alterar revisão; conteúdo diferente causa conflito. PATCH segue exigindo a revisão, sem reenvio automático do transporte.
+Componentes usam `teto_R$0,05(manualPrice × MR) × quantity`; ausência de MR/preço gera pendência. A migração V7 remove o multiplicador individual; o contrato de componentes contém somente preço manual e os demais atributos atuais, sem esse campo. Notas continuam persistidas. Repetir uma criação com o mesmo `clientId`/conteúdo retorna o componente existente sem alterar revisão; conteúdo diferente causa conflito. PATCH segue exigindo a revisão, sem reenvio automático do transporte.
 
 `Calculation.serviceNet?:string|null` e `adjustment?:string|null` são decomposições exatas do backend: serviços líquidos e ajuste efetivo assinado em relação ao subtotal original. Opcionais para compatibilidade de leitura dos snapshots schema 1 anteriores. A UI possui somente Desconto/Negociação; entrada zero vira `{mode:'none'}`. Negociação não nula usa o contrato já existente `valueIncludesComponents:true`. Conferir é somente leitura; Emitir obtém a prévia internamente e mantém `previewToken`, confirmação expressa, ciência residual e `idempotencyKey`. Nenhuma alteração na validação financeira de `server/budgets.ts` nem na geração de PDF.
+
+### Configurações globais e estado de cálculo (auditoria PR17)
+
+A rota web autenticada `/configuracoes` expõe **Catálogos** e **Precificação**, reutilizando os endpoints de catálogo/histórico e `/api/precificacao` existentes. Não depende de Atendimento nem introduz permissões/cadastros SaaS. A seleção dos fatores do Atendimento continua em `/api/atendimentos/:at/parametros`, no painel financeiro. O menu do Atendimento contém apenas seu histórico de orçamentos e ações contextuais.
+
+O editor compara os campos atuais aos campos confirmados no workspace; essa comparação não calcula preço. Uma linha alterada mostra `Calculando…` até a leitura recalculada do backend. Em falha, `Valor não atualizado` substitui o preço dessa linha. Totais afetados também deixam de aparecer como definitivos; conferência/emissão ficam indisponíveis até confirmação/recuperação. Campos e linhas não afetados continuam editáveis.
+
+Procedimento de banco V6 → V7, sem reset nem execução produtiva nesta entrega: [MIGRACAO_V7_MR.md](MIGRACAO_V7_MR.md).

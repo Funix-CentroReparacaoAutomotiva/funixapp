@@ -7,7 +7,7 @@ import type {RequestFailure} from './api'
 
 export function PricingEditor({initial,catalog,onSaved,onDirty,onBusy,onAuthRequired}:{initial:PricingConfiguration;catalog:CatalogItem[];onSaved:()=>Promise<void>;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onAuthRequired:()=>void}){
  const [config,setConfig]=useState<PricingConfig>(()=>({...structuredClone(initial.config),resaleMultipliers:structuredClone(initial.config.resaleMultipliers??[])})),[busy,setBusy]=useState(false),[error,setError]=useState('')
- const dirty=JSON.stringify(config)!==JSON.stringify(initial.config)
+ const dirty=JSON.stringify(config)!==JSON.stringify({...initial.config,resaleMultipliers:initial.config.resaleMultipliers??[]})
  useEffect(()=>{onDirty(dirty)},[dirty,onDirty]);useEffect(()=>()=>onDirty(false),[onDirty])
  const nullable=(v:string)=>v.trim()===''?null:v
  const update=(patch:Partial<PricingConfig>)=>setConfig(c=>({...c,...patch}))

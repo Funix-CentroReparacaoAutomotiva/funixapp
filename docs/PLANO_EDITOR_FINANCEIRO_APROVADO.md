@@ -1,3 +1,5 @@
+> Registro histórico do plano anterior à auditoria. A decisão posterior remove o FCT e centraliza a administração em Configurações; o relatório vigente está em [PR17_AJUSTES_AUDITORIA.md](PR17_AJUSTES_AUDITORIA.md).
+
 # Auditoria e plano mínimo — editor e painel financeiro
 
 Base verificada: main `ef7633f310e0b8b8f498df4445012e408e8df3e7`, PR #16 integrado. Branch local `feat/editor-autosave-mr`. A auditoria inicial não executou migrações. Plano registrado antes da implementação. A entrega desenvolvida e as evidências estão em [EDITOR_FINANCEIRO_APROVADO.md](EDITOR_FINANCEIRO_APROVADO.md).
