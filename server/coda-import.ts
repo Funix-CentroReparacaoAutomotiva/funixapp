@@ -10,6 +10,9 @@ import type {CodaExport,SourceRow} from './coda-import-source.ts'
 
 export const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex')
 const formulaHash=(v:string)=>createHash('sha256').update(v).digest('hex')
+// Direction approval, not inferred from Coda flags or fator_curadoria. IDs survive renames.
+const approvedNoColorServices=new Set(['i-qCp1gLfJn4','i-AlsNigbGqx','i-dMshyG5NMo']) // Interna, Lavagem, Inspeção técnica
+const approvedMR={id:'funix:mr:padrao',name:'Padrão',factor:'1.2'}
 interface Entry {id:string;kind:CatalogKind;name:string;serviceId:string|null}
 interface Finding {source:string;reason:string}
 export interface ImportPlan {
@@ -121,7 +124,9 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   const serviceRules=rows(TABLES.rules).filter(r=>ref(r,'c-8CxdK7Oln0',TABLES.services)===s)
   const colorFlags=serviceRules.map(r=>cell(r,'c-jIfhQ2URf5'))
   const uniqueColors=new Set(colorFlags)
-  const colorFactorEnabled=uniqueColors.size===1 && typeof colorFlags[0]==='boolean'?colorFlags[0]:null
+  const approvedNoColor=approvedNoColorServices.has(s.rowId)
+  const colorFactorEnabled=approvedNoColor?false:uniqueColors.size===1 && typeof colorFlags[0]==='boolean'?colorFlags[0]:null
+  if(approvedNoColor)report.imported.push({source:id(TABLES.services,s),reason:'Decisão da direção, PR #21 comentário 6500884942: FC desabilitado neste serviço; FR normal preservado.'})
   if(colorFactorEnabled===null)pending(id(TABLES.services,s),'FC por serviço pendente: regras específicas ausentes, inválidas ou divergentes entre tabelas. Nenhuma tabela escolhida arbitrariamente.')
   const discountable=cell(s,'c-r5HLQrISpN')===true
   const rawBillable=cell(s,'c-mJimiTomMd'),billable=typeof rawBillable==='boolean'?rawBillable:null
@@ -170,7 +175,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   else if(dimensions.get(d.rowId)?.service!==s)pending(id(TABLES.relations,r),'Serviço da relação não corresponde ao pai da dimensão; associação não inferida por nome.')
  }
  for(const r of rows(TABLES.diagnosisServices))pending(id(TABLES.diagnosisServices,r),'Sugestão automática diagnóstico/intensidade → serviço não faz parte do contrato V7; seleção manual preservada.')
- pending(TABLES.app,'fator_curadoria não comprovado como MR; nenhum multiplicador de revenda importado.')
+ warning(TABLES.app,'fator_curadoria não é convertido em MR. MR Padrão 1.2 vem da decisão explícita da direção, PR #21 comentário 6500884942.')
  warning(TABLES.rules,'Quantidades abaixo de 1 têm resultado diferente no Coda (Fator Quantidade Produto / Qnt.). A V7 preserva a regra aprovada de quantidade linear, inclusive fracionária; equivalência de preço declarada somente para quantidade >= 1.')
  const capRows=rows(TABLES.capacity),capacity=capRows.length===1?number(capRows[0]!,'c-hnqUeXrBqw'):null
  if(capacity===null || Q.from(capacity).n===0n)pending(TABLES.capacity,'Capacidade global positiva não comprovada.')
@@ -183,6 +188,13 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   }
  }
  merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);merge(config.services,services,v=>v.serviceId)
+ const mrOptions=config.resaleMultipliers??=[]
+ const mrName=(value:string)=>value.trim().normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
+ const localMR=mrOptions.filter(m=>m.id===approvedMR.id || mrName(m.name)===mrName(approvedMR.name))
+ if(!localMR.length){mrOptions.push({...approvedMR});report.inserts++}
+ else if(localMR.length===1 && mrName(localMR[0]!.name)===mrName(approvedMR.name) && exact(localMR[0]!.factor)===approvedMR.factor)report.unchanged++
+ else conflict(approvedMR.id,'MR Padrão local divergente ou duplicado; configuração preservada, sem substituir valor/identidade nem selecionar Atendimento.')
+ report.imported.push({source:'direction:pr21:6500884942',reason:'Opção MR Padrão 1.2 autorizada pela direção; cadastro apenas, sem seleção automática em Atendimentos.'})
  if(capacity!==null && Q.from(capacity).n>0n){if(config.capacity===null){config.capacity=capacity;report.inserts++}else if(config.capacity!==capacity)conflict(TABLES.capacity,'Capacidade local diferente; não sobrescrever.');else report.unchanged++}
  // Only explicitly tabled, dimension-specific source rules may become exact exceptions.
  const specials:PricingConfig['specialPrices']=[]
@@ -195,7 +207,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   specials.push({tableId:id(TABLES.tables,t),serviceId:id(TABLES.services,s),dimensionId:id(TABLES.dimensions,d),unit})
  }
  merge(config.specialPrices,specials,v=>JSON.stringify([v.tableId,v.serviceId,v.dimensionId]))
- // Existing prices, resaleMultipliers and conditions are never replaced.
+ // Existing prices, MR options/selections and conditions are never replaced.
  for(const item of catalog){
   const existing=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(item.id)
   if(existing){if(existing.kind!==item.kind || existing.name!==item.name || existing.service_id!==item.serviceId || existing.active!==1)conflict(item.id,'Cadastro importado já editado/inativado ou incompatível; preservado.');else report.unchanged++}

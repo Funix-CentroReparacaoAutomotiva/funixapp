@@ -1,6 +1,6 @@
-# Matriz Issue #20 por serviço e tabela
+# Matriz Issue #20 — finalização FC/MR
 
-Casos em quantidade 1, FC C0 e FR R0 reais, sem negociação/componentes. Cada célula indica **calculáveis / dimensões testadas**. Todas as combinações e motivos individuais estão em [matriz.json](matriz.json). Sem preços brutos.
+Quantidade 1, FC C0/FR R0 reais, quatro tabelas, sem negociação/componentes. MR Padrão 1.2 é cadastrado, mas não selecionado automaticamente; sua aplicação é validada separadamente no QA. Cada célula indica calculáveis / dimensões testadas.
 
 | Serviço | Padrão | Parceria | Nosso time | Retrabalho | Pendências |
 |---|---:|---:|---:|---:|---|
@@ -12,9 +12,9 @@ Casos em quantidade 1, FC C0 e FR R0 reais, sem negociação/componentes. Cada c
 | Elétrica | 3/3 | 3/3 | 3/3 | 3/3 | — |
 | Encantamento | 0/1 | 0/1 | 0/1 | 0/1 | FD não configurado. |
 | Funilaria | 5/5 | 5/5 | 5/5 | 5/5 | — |
-| Inspeção técnica | 0/1 | 0/1 | 0/1 | 0/1 | Habilitação de FC do serviço pendente. |
-| Interna | 0/3 | 0/3 | 0/3 | 0/3 | Habilitação de FC do serviço pendente. |
-| Lavagem | 0/4 | 0/4 | 0/4 | 0/4 | Habilitação de FC do serviço pendente. |
+| Inspeção técnica | 0/1 | 0/1 | 0/1 | 0/1 | Preço base não configurado. |
+| Interna | 0/3 | 0/3 | 0/3 | 0/3 | Etapas técnicas de serviço/dimensão não configuradas. |
+| Lavagem | 4/4 | 4/4 | 4/4 | 4/4 | — |
 | Limpeza técnica | 3/3 | 3/3 | 3/3 | 3/3 | — |
 | Montagem | 4/4 | 4/4 | 4/4 | 4/4 | — |
 | Oxi-sanitização | 0/1 | 0/1 | 0/1 | 0/1 | Etapas técnicas de serviço/dimensão não configuradas. |
@@ -32,6 +32,10 @@ Casos em quantidade 1, FC C0 e FR R0 reais, sem negociação/componentes. Cada c
 | Vidraçaria | 0/1 | 0/1 | 0/1 | 0/1 | Etapas técnicas de serviço/dimensão não configuradas. |
 | Vitrificação | 4/5 | 4/5 | 4/5 | 4/5 | Etapas técnicas de serviço/dimensão não configuradas. |
 
-Mecânica: cadastro preservado, sem dimensão vinculada na fonte; não entra nas 300 combinações.
+**Total: 204/300 calculáveis; 96 bloqueadas.** Antes desta finalização: 188/300; os 188 casos completos mantêm total/energia/prazo, sem regressões. Os 16 adicionais são quatro dimensões de Lavagem nas quatro tabelas.
 
-Total: **188 calculáveis / 300 combinações**, 112 bloqueadas. Sem MR autorizado, esta matriz não atesta orçamento contendo revenda de componentes.
+Interna e Inspeção técnica têm FC false, mas ainda permanecem bloqueadas por outras pendências. Mecânica não tem dimensão vinculada e não entra nas 300 combinações.
+
+Os 204 casos incluem 51 em Retrabalho com FV=0: calculável não significa receita positiva. Esta matriz não homologa todas as FC/FR, quantidades, negociações ou orçamentos com componentes.
+
+[Matriz completa](matriz.json) · [Dry-run](finalizacao/dry-run-resumo.json) · [Comparação](finalizacao/comparacao.json)

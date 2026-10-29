@@ -99,7 +99,7 @@ test('Issue20 importer maps service flags separately, FR always-on decision and 
   p=planImport(db,source);assert.equal(p.config.services[0]!.colorFactorEnabled,null);assert(p.report.pending.some(e=>e.reason.includes('FC por serviço pendente')))
   for(const [key,factor] of [['partner','0.8'],['team','0.6'],['rework','0']])pushRow(source,TABLES.tables,row('i-'+key,{'c-CeD0PIBx4t':'Tabela QA '+key,'c-QMXNRk1uDX':factor,'c-o2aKUZyPE7':true}))
   p=planImport(db,source);assert.deepEqual(p.config.tables.map(t=>t.factor),['1','0.8','0.6','0'])
-  assert.deepEqual(p.config.resaleMultipliers??[],[])
+  assert.deepEqual(p.config.resaleMultipliers,[{id:'funix:mr:padrao',name:'Padrão',factor:'1.2'}])
   // A tabled sentinel cannot become an invented special for every dimension.
   set(source,TABLES.rules,'c-4i-UJzr0Ry',{name:'tabelado'});assert.deepEqual(planImport(db,source).config.specialPrices,[])
   const specialSource=codaFixture();set(specialSource,TABLES.rules,'c-4i-UJzr0Ry',{name:'tabelado'});set(specialSource,TABLES.rules,'c-trJtxn7Rnm',ref(TABLES.dimensions,'i-synthetic-dimension'))

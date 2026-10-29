@@ -130,3 +130,7 @@ A exceção exata continua ignorando base/FD/FV/FC/FR e exigindo energia técnic
 `adjust`/Negociação conserva o contrato já vigente sobre o subtotal de todos os serviços (inclusive conciliação para baixo e aumento proporcional com resíduo); `valueIncludesComponents:true` continua traduzindo o total geral sem negociar componentes. A confirmação da direção sobre elegibilidade restringiu especificamente o modo Desconto. Não se modificou esse segundo contrato por inferência.
 
 Nenhum snapshot/PDF emitido é recalculado ou regravado. Detalhes, matriz e limitações da carga: [Issue #20](ISSUE20_REGRAS_COMERCIAIS.md).
+
+## Finalização Issue #20 — decisões de FC/MR
+
+O importador offline aplica a decisão da direção do comentário PR #21 `6500884942`: FC desabilitado para os IDs de Interna, Lavagem e Inspeção técnica; opção MR `Padrão`, fator decimal canônico `1.2` (= `1.20`). Não infere MR de `fator_curadoria`. O cadastro da opção não seleciona `mrId`: continua sendo PATCH explícito de parâmetros por Atendimento. MR local equivalente é reutilizado pelo próprio ID; divergências/duplicidades são reportadas sem sobrescrita. FR, Desconto, Negociação, especial exato e a API de orçamento permanecem nos contratos acima. Nenhuma execução na inicialização ou migração nova.

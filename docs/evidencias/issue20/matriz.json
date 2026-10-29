@@ -7,7 +7,7 @@
     "riskId": "coda:2zsjI-nqWr:grid-lvdM6zQqUO:i-2WcNxM0LGL",
     "risk": "R0"
   },
-  "resaleMultipliersConfigured": 0,
+  "resaleMultipliersConfigured": 1,
   "pendingServices": [
     {
       "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-RoaRcVLUCo",
@@ -965,7 +965,7 @@
           "dimension": "Completa",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Preço base não configurado."
           ]
         }
       ]
@@ -983,7 +983,7 @@
           "dimension": "Completa",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Preço base não configurado."
           ]
         }
       ]
@@ -1001,7 +1001,7 @@
           "dimension": "Completa",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Preço base não configurado."
           ]
         }
       ]
@@ -1019,7 +1019,7 @@
           "dimension": "Completa",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Preço base não configurado."
           ]
         }
       ]
@@ -1037,7 +1037,7 @@
           "dimension": "G",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1045,7 +1045,7 @@
           "dimension": "M",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1053,7 +1053,7 @@
           "dimension": "P",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         }
       ]
@@ -1071,7 +1071,7 @@
           "dimension": "G",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1079,7 +1079,7 @@
           "dimension": "M",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1087,7 +1087,7 @@
           "dimension": "P",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         }
       ]
@@ -1105,7 +1105,7 @@
           "dimension": "G",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1113,7 +1113,7 @@
           "dimension": "M",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1121,7 +1121,7 @@
           "dimension": "P",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         }
       ]
@@ -1139,7 +1139,7 @@
           "dimension": "G",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1147,7 +1147,7 @@
           "dimension": "M",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         },
         {
@@ -1155,7 +1155,7 @@
           "dimension": "P",
           "canEmitServiceOnly": false,
           "reasons": [
-            "Habilitação de FC do serviço pendente."
+            "Etapas técnicas de serviço/dimensão não configuradas."
           ]
         }
       ]
@@ -1165,40 +1165,32 @@
       "service": "Lavagem",
       "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
       "table": "Padrão",
-      "calculable": 0,
-      "blocked": 4,
+      "calculable": 4,
+      "blocked": 0,
       "cases": [
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
           "dimension": "G",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
           "dimension": "GG",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
           "dimension": "M",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
           "dimension": "P",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         }
       ]
     },
@@ -1207,40 +1199,32 @@
       "service": "Lavagem",
       "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
       "table": "Parceria",
-      "calculable": 0,
-      "blocked": 4,
+      "calculable": 4,
+      "blocked": 0,
       "cases": [
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
           "dimension": "G",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
           "dimension": "GG",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
           "dimension": "M",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
           "dimension": "P",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         }
       ]
     },
@@ -1249,40 +1233,32 @@
       "service": "Lavagem",
       "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
       "table": "Nosso time",
-      "calculable": 0,
-      "blocked": 4,
+      "calculable": 4,
+      "blocked": 0,
       "cases": [
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
           "dimension": "G",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
           "dimension": "GG",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
           "dimension": "M",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
           "dimension": "P",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         }
       ]
     },
@@ -1291,40 +1267,32 @@
       "service": "Lavagem",
       "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
       "table": "Retrabalho",
-      "calculable": 0,
-      "blocked": 4,
+      "calculable": 4,
+      "blocked": 0,
       "cases": [
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
           "dimension": "G",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
           "dimension": "GG",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
           "dimension": "M",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         },
         {
           "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
           "dimension": "P",
-          "canEmitServiceOnly": false,
-          "reasons": [
-            "Habilitação de FC do serviço pendente."
-          ]
+          "canEmitServiceOnly": true,
+          "reasons": []
         }
       ]
     },
