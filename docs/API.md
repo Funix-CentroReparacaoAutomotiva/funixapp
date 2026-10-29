@@ -47,6 +47,14 @@ Sessões permanecem em memória e reiniciar API exige novo login. Não há usuá
 
 ## M1.2 — catálogos e diagnósticos
 
+### Confirmação de autosave (Issue #22)
+
+`PATCH /api/atendimentos/:id/diagnosticos/:diagnosticoId` e `POST/PATCH /api/atendimentos/:id/componentes[/:componenteId]` aceitam o header opcional `X-Funix-Include-Revision: 1`. Com ele, a resposta de sucesso é `{item,scenarioRevision}` (`CommercialSave<T>`); sem ele, o item e os status HTTP anteriores são preservados. A revisão retornada é a revisão efetiva do cenário, lida dentro da mesma transação da gravação, inclusive na recuperação idempotente de componente. Não é uma revisão estimada pelo navegador. Os corpos continuam exigindo as revisões existentes; conflitos permanecem 409 atômicos.
+
+O editor usa essa confirmação para encadear gravações sem GET intermediário. Flags isoladas usam o PATCH existente de cenário, que já retorna sua revisão. O GET final do workspace continua atualizando cálculos e comparação de todos os cenários. Após falha de transporte, resposta ilegível/inválida ou conflito, o editor preserva o rascunho e exige tentativa explícita, com leitura de reconciliação antes de qualquer nova escrita. Um POST confirmado no banco não é repetido cegamente.
+
+O catálogo é reutilizado somente durante a instância aberta do painel comercial. `Atualizar dados`, remontagem do painel e recarga da página voltam a consultá-lo; a API continua validando itens ativos em toda escrita. Não há cache persistente nem alteração dos endpoints de manutenção.
+
 Todos os endpoints abaixo exigem sessão. POST, PATCH e DELETE exigem origem exata, JSON e corpo de até 64 KiB. Sem acesso externo. Tipos em `shared/commercial.ts`.
 
 | Endpoint | Contrato |

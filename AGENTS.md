@@ -44,6 +44,8 @@ O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não 
 
 ## Engenharia e validação
 
+Issue #22: otimizar apenas gargalos medidos de autosave, recargas e consultas, na base `d829b948f6a0198d805aca47e3760304a9223f62` (PRs #19/#21 integrados). Preservar revisões otimistas, recuperação de gravações incertas, fórmulas, snapshots/PDFs e UI/UX do mapa. Medir antes/depois com bancos sintéticos isolados; não corrigir independência preço–energia, importar Coda, acessar VPS, alterar o banco existente, workflows ou infraestrutura. Entrega em PR para auditoria, sem merge/deploy. Relatório: `docs/ISSUE22_DESEMPENHO.md`.
+
 Manter autenticação existente e validação de origem em escritas. SQL parametrizado, limites de entrada, erros sanitizados e dados sintéticos nos testes. Nenhum segredo no frontend/Git/logs. Não usar localStorage como banco comercial. Gravações de Atendimento são locais; ações externas continuam indisponíveis.
 
 Executar `npm run check`, testes de persistência com arquivo real/reinício e QA de navegador conforme documentação do subincremento. Distinguir testes executados de requisitos futuros. Banco de produção exigirá armazenamento durável autorizado; não alterar infraestrutura nem implantar esse banco nesta tarefa. Não misturar dados de teste ao banco normal.

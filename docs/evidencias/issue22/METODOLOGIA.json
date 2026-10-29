@@ -1,0 +1,33 @@
+{
+  "base": "d829b948f6a0198d805aca47e3760304a9223f62",
+  "synthetic_only": true,
+  "node": "v24.19.0",
+  "browser_viewports": {
+    "desktop": [
+      1440,
+      960
+    ],
+    "mobile_emulated": [
+      390,
+      844
+    ]
+  },
+  "browser_operations_per_version": 180,
+  "fixture_regenerated_ids_and_timestamps": true,
+  "baseline_tracked_code_clean": true,
+  "benchmark_file_sha256": {
+    "scripts/measure-commercial.mjs": "cfd0a11b1f08061fe946313409b8ffd64ca01f6a9d422152dcdbd662c9419237",
+    "server/tests/fixtures/performance.ts": "ba30df6f7401fa56dd202dffe6fd9ae2118f33ff37363331146f610fa4ddde34",
+    "tests/browser/issue22_performance.py": "7a6ce93f102914ae94868c81dfd4240fe650d97b59d54a3e7e5942227ea78221"
+  },
+  "tests": {
+    "npm_run_check": {
+      "pass": true,
+      "node_tests": 103,
+      "existing_lint_warnings": 4
+    },
+    "targeted_browser_groups": 14,
+    "existing_browser_groups": 58
+  },
+  "no_vps_coda_existing_database_or_deploy": true
+}

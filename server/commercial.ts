@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
-import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService } from '../shared/commercial.ts'
+import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService, CommercialSave } from '../shared/commercial.ts'
 import { catalogItemUsable } from '../shared/commercial.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
@@ -76,19 +76,25 @@ export class CommercialRepository {
     })
   }
   historyOf(id: string) { this.item(id); return this.db.prepare('SELECT revision,changed_at,data FROM catalog_history WHERE item_id=? ORDER BY revision').all(id).map(row => ({ revision: row.revision, changedAt: row.changed_at, data: JSON.parse(String(row.data)) })) }
-  list(atendimentoId: string, scenarioId?: string): DiagnosisItem[] {
+  list(atendimentoId: string, scenarioId?: string) {
     new AtendimentoRepository(this.db).get(atendimentoId)
-    const selected = selectedScenario(this.db, atendimentoId, scenarioId)
-    return this.db.prepare('SELECT * FROM diagnosis_items WHERE atendimento_id=? ORDER BY created_at,id').all(atendimentoId).map(row => this.diagnosis(row, selected))
+    const selected = selectedScenario(this.db,atendimentoId,scenarioId)
+    const rows = this.db.prepare(`SELECT p.*,f.enabled AS scenario_enabled FROM diagnosis_items p LEFT JOIN scenario_piece_flags f ON f.piece_id=p.id AND f.scenario_id=? WHERE p.atendimento_id=? ORDER BY p.created_at,p.id`).all(selected,atendimentoId)
+    const services = this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? WHERE p.atendimento_id=? ORDER BY l.rowid`).all(selected,atendimentoId)
+    const grouped = new Map<string,Row[]>()
+    for(const line of services){const key=String(line.diagnosis_item_id),list=grouped.get(key)??[];list.push(line);grouped.set(key,list)}
+    return rows.map(row=>this.diagnosis(row,grouped.get(String(row.id))??[]))
   }
-  private diagnosis(row: Row, scenarioId: string): DiagnosisItem {
-    const services = this.db.prepare('SELECT * FROM diagnosis_services WHERE diagnosis_item_id=? ORDER BY rowid').all(row.id!).map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled: this.db.prepare('SELECT enabled FROM scenario_service_flags WHERE scenario_id=? AND service_id=?').get(scenarioId,s.id!)?.enabled === 1, notes: String(s.notes), diagnosisId: s.diagnosis_id === null ? null : String(s.diagnosis_id) }))
-    return { id: String(row.id), atendimentoId: String(row.atendimento_id), pieceId: String(row.piece_id), diagnosisId: row.diagnosis_id === null ? null : String(row.diagnosis_id), notes: String(row.notes), enabled: this.db.prepare('SELECT enabled FROM scenario_piece_flags WHERE scenario_id=? AND piece_id=?').get(scenarioId,row.id!)?.enabled === 1, revision: Number(row.revision), createdAt: String(row.created_at), updatedAt: String(row.updated_at), services }
+  private diagnosis(row: Row, lines: Row[]): DiagnosisItem {
+    const services = lines.map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled:s.scenario_enabled===1, notes:String(s.notes), diagnosisId:s.diagnosis_id===null?null:String(s.diagnosis_id) }))
+    return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),notes:String(row.notes),enabled:row.scenario_enabled===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
   }
   private getDiagnosis(atendimentoId: string, id: string, scenarioId?: string) {
-    const row = this.db.prepare('SELECT * FROM diagnosis_items WHERE id=? AND atendimento_id=?').get(id, atendimentoId)
-    if (!row) notFound()
-    return this.diagnosis(row, selectedScenario(this.db,atendimentoId,scenarioId))
+    const selected=selectedScenario(this.db,atendimentoId,scenarioId)
+    const row=this.db.prepare(`SELECT p.*,f.enabled AS scenario_enabled FROM diagnosis_items p LEFT JOIN scenario_piece_flags f ON f.piece_id=p.id AND f.scenario_id=? WHERE p.id=? AND p.atendimento_id=?`).get(selected,id,atendimentoId)
+    if(!row)notFound()
+    const lines=this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled FROM diagnosis_services l LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? WHERE l.diagnosis_item_id=? ORDER BY l.rowid`).all(selected,id)
+    return this.diagnosis(row,lines)
   }
   add(atendimentoId: string, input: unknown) {
     new AtendimentoRepository(this.db).get(atendimentoId)
@@ -112,7 +118,9 @@ export class CommercialRepository {
       return this.list(atendimentoId,scenarioId)
     })
   }
-  updateDiagnosis(atendimentoId: string, id: string, input: unknown) {
+  updateDiagnosis(atendimentoId:string,id:string,input:unknown):DiagnosisItem
+  updateDiagnosis(atendimentoId:string,id:string,input:unknown,withRevision:true):CommercialSave<DiagnosisItem>
+  updateDiagnosis(atendimentoId:string,id:string,input:unknown,withRevision=false):DiagnosisItem|CommercialSave<DiagnosisItem> {
     const data = object(input, ['revision','diagnosisId','notes','enabled','services','scenarioId','scenarioRevision'])
     const expected = revision(data.revision)
     return this.transaction(() => {
@@ -158,7 +166,8 @@ export class CommercialRepository {
         this.db.prepare('UPDATE scenario_service_flags SET enabled=? WHERE scenario_id=? AND service_id=?').run(service.enabled ? 1 : 0,scenarioId,service.id)
       }
       touchComposition(this.db,atendimentoId)
-      return this.getDiagnosis(atendimentoId,id,scenarioId)
+      const item=this.getDiagnosis(atendimentoId,id,scenarioId)
+      return withRevision?{item,scenarioRevision:Number(this.db.prepare('SELECT revision FROM scenarios WHERE id=?').get(scenarioId)!.revision)}:item
     })
   }
   remove(atendimentoId: string, id: string, input: unknown) {

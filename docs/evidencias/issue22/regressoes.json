@@ -1,0 +1,62 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+      "pass": true
+    },
+    {
+      "name": "desktop: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+      "pass": true
+    },
+    {
+      "name": "desktop: unreadable committed component POST is recovered without a duplicate or blind replay",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+      "pass": true
+    },
+    {
+      "name": "desktop: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+      "pass": true
+    },
+    {
+      "name": "desktop: content and mask conflicts block replay, preserve drafts and support explicit loading",
+      "pass": true
+    },
+    {
+      "name": "desktop: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+      "pass": true
+    },
+    {
+      "name": "mobile: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+      "pass": true
+    },
+    {
+      "name": "mobile: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+      "pass": true
+    },
+    {
+      "name": "mobile: unreadable committed component POST is recovered without a duplicate or blind replay",
+      "pass": true
+    },
+    {
+      "name": "mobile: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+      "pass": true
+    },
+    {
+      "name": "mobile: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+      "pass": true
+    },
+    {
+      "name": "mobile: content and mask conflicts block replay, preserve drafts and support explicit loading",
+      "pass": true
+    },
+    {
+      "name": "mobile: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+      "pass": true
+    }
+  ],
+  "error": null
+}
