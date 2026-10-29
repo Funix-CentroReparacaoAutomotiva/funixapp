@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite'
-import type { PricingConfig, PricingConfiguration, PricingSettings } from '../shared/pricing.ts'
+import type { PricingConfig, PricingConfiguration, PricingSettings, ServicePricing } from '../shared/pricing.ts'
 import { CommercialRepository } from './commercial.ts'
 import { Q } from './exact.ts'
 import { conflict, inputObject, invalid, touchComposition, transaction } from './scenarios.ts'
@@ -33,8 +33,18 @@ export class PricingConfigurationRepository {
     unique(result.map(o=>o.id));return result
    }
    const tables=options('tables'),colors=options('colors'),risks=options('risks'), repo=new CommercialRepository(this.db)
+   const previousServices=this.get().config.services
    const services=array(c.services).map(raw=>{
-    const s=inputObject(raw,['serviceId','base','dimensions']),serviceId=string(s.serviceId,100)
+    const s=inputObject(raw,['serviceId','base','dimensions','colorFactorEnabled','discountable','billable']),serviceId=string(s.serviceId,100)
+    const previous=previousServices.find(v=>v.serviceId===serviceId)
+    const flags:Pick<ServicePricing,'colorFactorEnabled'|'discountable'|'billable'>={}
+    for(const key of ['colorFactorEnabled','discountable','billable'] as const){
+     const value=s[key]===undefined?previous?.[key]:s[key]
+     if(value===undefined)continue
+     if(typeof value!=='boolean' && !(key!=='discountable' && value===null))invalid('Flag comercial deve ser booleana; apenas FC/faturável podem ficar pendentes.')
+     if(key==='discountable')flags.discountable=value as boolean
+     else flags[key]=value as boolean|null
+    }
     if(repo.item(serviceId).kind!=='servico')invalid('Referência não é serviço.')
     const dimensions=array(s.dimensions).map(raw=>{
      const d=inputObject(raw,['dimensionId','fd','stages']),dimensionId=string(d.dimensionId,100),item=repo.item(dimensionId)
@@ -45,7 +55,7 @@ export class PricingConfigurationRepository {
      });unique(stages.map(t=>t.id))
      return {dimensionId,fd:optionalDecimal(d.fd),stages}
     });unique(dimensions.map(d=>d.dimensionId))
-    return {serviceId,base:optionalDecimal(s.base),dimensions}
+    return {serviceId,...flags,base:optionalDecimal(s.base),dimensions}
    });unique(services.map(s=>s.serviceId))
    const specialPrices=array(c.specialPrices).map(raw=>{
     const p=inputObject(raw,['tableId','serviceId','dimensionId','unit'])

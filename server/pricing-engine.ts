@@ -35,9 +35,11 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
     if(special.length>1)throw new Error('Preço especial duplicado para a chave exata.')
     let unit:Q
     const pricing=config.services.find(p=>p.serviceId===service.serviceId),dim=pricing?.dimensions.find(d=>d.dimensionId===service.dimensionId)
+    line.discountable=pricing?.discountable===true
     if(special.length){unit=Q.from(special[0]!.unit).ceilUnit();line.path='special';line.factors={specialUnit:special[0]!.unit}}
     else {
-     const base=required(pricing?.base,'Preço base'),fd=required(dim?.fd,'FD'),fv=required(table.factor,'FV'),fc=required(color?.factor,'FC'),fr=required(risk?.factor,'FR')
+     if(pricing?.colorFactorEnabled===null)throw new Error('Habilitação de FC do serviço pendente.')
+     const base=required(pricing?.base,'Preço base'),fd=required(dim?.fd,'FD'),fv=required(table.factor,'FV'),fc=pricing?.colorFactorEnabled===false?Q.from('1'):required(color?.factor,'FC'),fr=required(risk?.factor,'FR')
      unit=base.mul(fd).mul(fv).mul(fc).mul(fr).ceilUnit();line.path='normal';line.factors={base:base.toString(),FD:fd.toString(),FV:fv.toString(),FC:fc.toString(),FR:fr.toString()}
     }
     line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(service.quantity)).toString()
@@ -69,11 +71,12 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  const totalRows=(rows:PricedLine[])=>rows.some(l=>l.total===null)?null:sum(rows.map(l=>exact(l.total!)))
  // The input parser is intentionally bounded; generated exact values use `exact` above.
  const serviceGross=totalRows(services),componentSubtotal=totalRows(parts)
+ const discountEligibleSubtotal=totalRows(services.filter(l=>l.discountable===true))
  let discount=ZERO,residual=ZERO,target:Q|null=null
  if(deal.mode!=='none' && serviceGross){
   const value=exact(deal.value)
   if(deal.mode==='discount'){
-   if(value.cmp(serviceGross)>0)errors.push('Desconto supera o subtotal de serviços.');else discount=value
+   if(discountEligibleSubtotal===null || value.cmp(discountEligibleSubtotal)>0)errors.push('Desconto supera o subtotal dos serviços descontáveis.');else discount=value
   }else {
    target=value
    if(value.cmp(serviceGross)<=0)discount=serviceGross.sub(value)
@@ -103,5 +106,5 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  if(energy){if(config.capacity===null || Q.from(config.capacity).n===0n)errors.push('Capacidade diária global positiva não configurada.');else days=energy.div(Q.from(config.capacity)).ceil().toString()}
  const serviceNet=serviceSubtotal?.sub(discount)??null,adjustment=serviceNet&&serviceGross?serviceNet.sub(serviceGross):null
  const pieceTotals=items.map(item=>{const rows=included.filter(l=>l.pieceId===item.id);return {pieceId:item.id,total:!scenario.pieceFlags[item.id]?'0':!rows.length?null:totalRows(rows)?.toString()??null}})
- return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,serviceNet:serviceNet?.toString()??null,adjustment:adjustment?.toString()??null,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
+ return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,discountEligibleSubtotal:discountEligibleSubtotal?.toString()??null,serviceNet:serviceNet?.toString()??null,adjustment:adjustment?.toString()??null,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
 }

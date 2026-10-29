@@ -5,6 +5,7 @@ import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
+import {commercialFixture} from './fixtures/commercial.ts'
 
 const origin = 'http://localhost:5173'
 const password = 'test-only-password-123'
@@ -38,6 +39,27 @@ async function authenticate(app: ReturnType<typeof start>) {
   assert.equal(login.status, 200)
   return login.headers.get('set-cookie')!.split(';')[0]!
 }
+
+test('Issue20 authenticated configuration flags drive preview and discount emission guards through the actual HTTP handler',async()=>{
+ const app=start()
+ try{
+  const f=commercialFixture(app.db),cookie=await authenticate(app),path='/api/atendimentos/'+f.at.id
+  const config=structuredClone(f.config);config.services[0]!.colorFactorEnabled=false;config.services[0]!.discountable=false;config.colors=[]
+  const saved=await app.write('/api/precificacao','PATCH',{revision:f.pricing.get().revision,config},cookie)
+  assert.equal(saved.status,200);assert.equal((await saved.json()).config.services[0].discountable,false)
+  const request={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
+  const normal=await app.write(path+'/orcamentos/previa','POST',request,cookie),p=await normal.json()
+  assert.equal(normal.status,200);assert.equal(p.canEmit,true);assert.equal(p.snapshot.calculation.total,'300.15')
+  const deal={...request,negotiation:{mode:'discount',value:'1',acknowledgeResidual:false}}
+  const blocked=await app.write(path+'/orcamentos/previa','POST',deal,cookie),preview=await blocked.json()
+  assert.equal(preview.canEmit,false);assert.equal(preview.snapshot.calculation.discountEligibleSubtotal,'0')
+  const emit=await app.write(path+'/orcamentos','POST',{...deal,previewToken:preview.token,idempotencyKey:'issue20-blocked-discount'},cookie)
+  assert.equal(emit.status,422)
+  assert.equal((await app.write('/api/precificacao','PATCH',{revision:f.pricing.get().revision,config},cookie,'https://invalid.example')).status,403)
+  const invalid=structuredClone(config);Object.assign(invalid.services[0]!,{discountable:'true'})
+  assert.equal((await app.write('/api/precificacao','PATCH',{revision:f.pricing.get().revision,config:invalid},cookie)).status,400)
+ }finally{app.close()}
+})
 
 test('health reflects local SQLite and protected reads/writes require authentication', async () => {
   const app = start()

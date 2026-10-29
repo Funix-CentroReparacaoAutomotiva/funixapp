@@ -104,11 +104,10 @@ test('failure during final write rolls back all catalogs/history/config; local e
  }finally{db.close()}
 })
 
-test('sentinels, broken refs, negative energy, conditional FC/FR, percent rules, duplicate keys and unknown MR never become arbitrary prices',()=>{
+test('sentinels, broken refs, negative energy, percent rules, duplicate keys and unknown MR never become arbitrary prices',()=>{
  const db=openDatabase(':memory:')
  try{
   for(const [name,change,expected] of [
-   ['conditional FC',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.rules,'c-jIfhQ2URf5',false),'base'],
    ['percentage',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.rules,'c-4i-UJzr0Ry',{name:'percentual'}),'base'],
    ['duplicate rule',(s:ReturnType<typeof codaFixture>)=>pushRow(s,TABLES.rules,{...structuredClone(table(s,TABLES.rules).rows[0]!),rowId:'i-other-rule'}),'base'],
    ['scale',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.relations,'c-rTdEY2ynPh',0.5),'fd'],
@@ -132,12 +131,12 @@ test('sentinels, broken refs, negative energy, conditional FC/FR, percent rules,
  }finally{db.close()}
 })
 
-test('table inheritance is left pending; source IDs remain stable across renames, reordered rows and repeated names in different services',()=>{
+test('Issue20 imports actual FV instead of Coda inheritance; source IDs remain stable across renames',()=>{
  const db=openDatabase(':memory:')
  try{
   const s=codaFixture()
   pushRow(s,TABLES.tables,row('i-synthetic-derived',{'c-CeD0PIBx4t':'Tabela derivada sintética','c-tZ94U6MuW-':{name:'Interno'},'c-o2aKUZyPE7':true,'c-QMXNRk1uDX':0.6,'c-DMeUkMin9e':ref(TABLES.tables,'i-synthetic-table')}))
-  const p=planImport(db,s);assert.equal(p.config.tables.at(-1)!.factor,null)
+  const p=planImport(db,s);assert.equal(p.config.tables.at(-1)!.factor,'0.6')
   set(s,TABLES.services,'c-TvFH_jzZ3k','Novo nome sintético');assert.equal(planImport(db,s).catalog[0]!.id,p.catalog[0]!.id)
   assert.throws(()=>{db.exec('DELETE FROM schema_migrations WHERE version=7');planImport(db,s)},/exatamente V7/)
  }finally{db.close()}

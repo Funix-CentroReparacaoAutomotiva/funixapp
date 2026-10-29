@@ -1,5 +1,9 @@
 # AGENTS.md — FUNIX, Issue #7 / MVP Comercial integrado
 
+## Decisão vigente Issue #20 — 29/10/2026
+
+FC habilitado por serviço, FR sempre no normal e exceção exata tabela+serviço+dimensão ignora todos os fatores. Modo Desconto somente sobre serviços com `discountable === true`; componentes e serviços não descontáveis mantêm preços integrais. Negociação/ajuste segue o contrato anterior, sem rateio novo. MR continua único por Atendimento. Flags no JSON de configuração V7, sem nova tabela/migração: FC ausente preserva comportamento global legado; FC null é pendência explícita; desconto ausente nunca concede permissão. Faturável é atributo informativo distinto. A fonte atual confirma FV 1/0.8/0.6/0 para as quatro tabelas, pela decisão simplificada da direção; não transportar herança/percentuais Coda. FC divergente entre regras requer revisão, energia negativa/incompleta continua bloqueada. Desenvolvimento em PR dependente do #19, sem merge, deploy ou alterações produtivas. Relatório: `docs/ISSUE20_REGRAS_COMERCIAIS.md`.
+
 ## Decisões atuais pós-auditoria do PR #17
 
 A direção autorizou área global **Configurações**, rota `/configuracoes`, ao lado de Conversas/Funil; reutilizar CatalogManager/PricingEditor. Histórico permanece no Atendimento, sem acesso duplicado à configuração global. Isso substitui a proibição anterior de tela Configurações. Exibir `Calculando…` em linhas/totais pendentes e indicação de valor não atualizado em falha, sem calcular dinheiro no frontend.

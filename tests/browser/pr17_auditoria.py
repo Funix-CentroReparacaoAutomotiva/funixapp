@@ -61,6 +61,8 @@ async def device_case(browser,device,viewport):
   await factor('Tabelas comerciais','A','1');await factor('Cores','FC QA','1');await factor('Riscos','FR QA','1');await factor('MR','MR QA','1.2');await factor('MR','MR2 QA','2',2)
   await pricing.get_by_label('Capacidade diária global',exact=True).fill('4')
   await pricing.get_by_label('Adicionar serviço à configuração',exact=True).select_option(label='Serviço QA '+device)
+  await pricing.get_by_label('Aplicar FC neste serviço',exact=True).select_option('true')
+  await pricing.get_by_label('Serviço descontável',exact=True).check()
   await pricing.get_by_label('Preço base não dimensionado',exact=True).fill('889')
   await pricing.get_by_label('Adicionar dimensão ao serviço',exact=True).select_option(label='Média QA')
   await pricing.get_by_label('FD da dimensão',exact=True).fill('1')

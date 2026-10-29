@@ -1,0 +1,3124 @@
+{
+  "sourceDigest": "5814c7b58882dccbd0a31f0ba132eb7daa7bc2f7a139127bf0435bbcb1c3c4c1",
+  "scope": "Serviços, quantidade 1, sem componentes/negociação. Não equivale a orçamento com revenda ou a homologação produtiva.",
+  "parameters": {
+    "colorId": "coda:2zsjI-nqWr:grid-ksc0WkVv-w:i-tKOUYVIc8J",
+    "color": "C0",
+    "riskId": "coda:2zsjI-nqWr:grid-lvdM6zQqUO:i-2WcNxM0LGL",
+    "risk": "R0"
+  },
+  "resaleMultipliersConfigured": 0,
+  "pendingServices": [
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-RoaRcVLUCo",
+      "service": "Mecânica",
+      "reason": "Sem dimensão vinculada na fonte."
+    }
+  ],
+  "matrix": [
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HA-xtX0Y6Q",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YgrVifMWSi",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-b6P7SGWvDY",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sRhO4-Pv_g",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Tir2Xoa-Tw",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HA-xtX0Y6Q",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YgrVifMWSi",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-b6P7SGWvDY",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sRhO4-Pv_g",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Tir2Xoa-Tw",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HA-xtX0Y6Q",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YgrVifMWSi",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-b6P7SGWvDY",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sRhO4-Pv_g",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Tir2Xoa-Tw",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HA-xtX0Y6Q",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YgrVifMWSi",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-b6P7SGWvDY",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sRhO4-Pv_g",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Tir2Xoa-Tw",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SW0n7TLbtf",
+      "service": "Degradê",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-RQlr0QK5rR",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gXduy16b-V",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-k8ZulOn21b",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SW0n7TLbtf",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SW0n7TLbtf",
+      "service": "Degradê",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-RQlr0QK5rR",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gXduy16b-V",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-k8ZulOn21b",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SW0n7TLbtf",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SW0n7TLbtf",
+      "service": "Degradê",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-RQlr0QK5rR",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gXduy16b-V",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-k8ZulOn21b",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SW0n7TLbtf",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SW0n7TLbtf",
+      "service": "Degradê",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-RQlr0QK5rR",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gXduy16b-V",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-k8ZulOn21b",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SW0n7TLbtf",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-lMM5GA_1uz",
+      "service": "Descontaminação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-u-Ylcpe7hG",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-lMM5GA_1uz",
+      "service": "Descontaminação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-u-Ylcpe7hG",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-lMM5GA_1uz",
+      "service": "Descontaminação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-u-Ylcpe7hG",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-lMM5GA_1uz",
+      "service": "Descontaminação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-u-Ylcpe7hG",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-GsuErCDZgL",
+      "service": "Diagnóstico Técnico",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZcyTZA1F5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-GsuErCDZgL",
+      "service": "Diagnóstico Técnico",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZcyTZA1F5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-GsuErCDZgL",
+      "service": "Diagnóstico Técnico",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZcyTZA1F5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-GsuErCDZgL",
+      "service": "Diagnóstico Técnico",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 1,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZcyTZA1F5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NzZMurcx8O",
+      "service": "Ducha",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XASmSBs9Dj",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-yEfFAhVNqC",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZOPVOvMo0t",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tKkbL2k-Yr",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NzZMurcx8O",
+      "service": "Ducha",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XASmSBs9Dj",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-yEfFAhVNqC",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZOPVOvMo0t",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tKkbL2k-Yr",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NzZMurcx8O",
+      "service": "Ducha",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XASmSBs9Dj",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-yEfFAhVNqC",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZOPVOvMo0t",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tKkbL2k-Yr",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NzZMurcx8O",
+      "service": "Ducha",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XASmSBs9Dj",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-yEfFAhVNqC",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-ZOPVOvMo0t",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tKkbL2k-Yr",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6FW6UIOr8H",
+      "service": "Elétrica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sU9Flq1OMQ",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JabLrQBqld",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qXrjZRNxc6",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6FW6UIOr8H",
+      "service": "Elétrica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sU9Flq1OMQ",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JabLrQBqld",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qXrjZRNxc6",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6FW6UIOr8H",
+      "service": "Elétrica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sU9Flq1OMQ",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JabLrQBqld",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qXrjZRNxc6",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6FW6UIOr8H",
+      "service": "Elétrica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-sU9Flq1OMQ",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JabLrQBqld",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qXrjZRNxc6",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-JPNGbPVOdw",
+      "service": "Encantamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JyitgjtAZw",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "FD não configurado."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-JPNGbPVOdw",
+      "service": "Encantamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JyitgjtAZw",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "FD não configurado."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-JPNGbPVOdw",
+      "service": "Encantamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JyitgjtAZw",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "FD não configurado."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-JPNGbPVOdw",
+      "service": "Encantamento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JyitgjtAZw",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "FD não configurado."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-q8IL0mnuIJ",
+      "service": "Funilaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9ddLZAFR1u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Nvtxrqzvgk",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HzExocKbZn",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-q8IL0mnuIJ",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-rAIoLSuDH-",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-q8IL0mnuIJ",
+      "service": "Funilaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9ddLZAFR1u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Nvtxrqzvgk",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HzExocKbZn",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-q8IL0mnuIJ",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-rAIoLSuDH-",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-q8IL0mnuIJ",
+      "service": "Funilaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9ddLZAFR1u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Nvtxrqzvgk",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HzExocKbZn",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-q8IL0mnuIJ",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-rAIoLSuDH-",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-q8IL0mnuIJ",
+      "service": "Funilaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 5,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9ddLZAFR1u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Nvtxrqzvgk",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HzExocKbZn",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-q8IL0mnuIJ",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-rAIoLSuDH-",
+          "dimension": "PP",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-dMshyG5NMo",
+      "service": "Inspeção técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-o8xyzRvAX1",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-dMshyG5NMo",
+      "service": "Inspeção técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-o8xyzRvAX1",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-dMshyG5NMo",
+      "service": "Inspeção técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-o8xyzRvAX1",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-dMshyG5NMo",
+      "service": "Inspeção técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-o8xyzRvAX1",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qCp1gLfJn4",
+      "service": "Interna",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 3,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tEyloWAR4J",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eNiyvuYRwu",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YI8ZMHJZqi",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qCp1gLfJn4",
+      "service": "Interna",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 3,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tEyloWAR4J",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eNiyvuYRwu",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YI8ZMHJZqi",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qCp1gLfJn4",
+      "service": "Interna",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 3,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tEyloWAR4J",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eNiyvuYRwu",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YI8ZMHJZqi",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qCp1gLfJn4",
+      "service": "Interna",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 3,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tEyloWAR4J",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eNiyvuYRwu",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-YI8ZMHJZqi",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-AlsNigbGqx",
+      "service": "Lavagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-AlsNigbGqx",
+      "service": "Lavagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-AlsNigbGqx",
+      "service": "Lavagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-AlsNigbGqx",
+      "service": "Lavagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-jrLF6uJLfg",
+          "dimension": "G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-eWB2wNz8dW",
+          "dimension": "GG",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-07mjG2Tryl",
+          "dimension": "M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-tBp0v55oW7",
+          "dimension": "P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Habilitação de FC do serviço pendente."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CGNms9jzj3",
+      "service": "Limpeza técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nP4qf2ddKD",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PMuqbZRzij",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-GESVk9dG9Q",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CGNms9jzj3",
+      "service": "Limpeza técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nP4qf2ddKD",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PMuqbZRzij",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-GESVk9dG9Q",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CGNms9jzj3",
+      "service": "Limpeza técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nP4qf2ddKD",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PMuqbZRzij",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-GESVk9dG9Q",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CGNms9jzj3",
+      "service": "Limpeza técnica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nP4qf2ddKD",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PMuqbZRzij",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-GESVk9dG9Q",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "service": "Montagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-KJmrRf6yDy",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vG6AqHxqTg",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PlG9A_vqDj",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WsniHJwAZj",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "service": "Montagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-KJmrRf6yDy",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vG6AqHxqTg",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PlG9A_vqDj",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WsniHJwAZj",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "service": "Montagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-KJmrRf6yDy",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vG6AqHxqTg",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PlG9A_vqDj",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WsniHJwAZj",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "service": "Montagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-KJmrRf6yDy",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vG6AqHxqTg",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PlG9A_vqDj",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WsniHJwAZj",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-mdMBxgFQJC",
+      "service": "Oxi-sanitização",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WU7C8RQUDt",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-mdMBxgFQJC",
+      "service": "Oxi-sanitização",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WU7C8RQUDt",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-mdMBxgFQJC",
+      "service": "Oxi-sanitização",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WU7C8RQUDt",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-mdMBxgFQJC",
+      "service": "Oxi-sanitização",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WU7C8RQUDt",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CRzSKxZBUr",
+      "service": "Paintless Dent Removal (PDR)",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HP7EMCA7oK",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qlUtlq8Ksq",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-5ywOs0lxqi",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Ea47X3Vv5b",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CRzSKxZBUr",
+      "service": "Paintless Dent Removal (PDR)",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HP7EMCA7oK",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qlUtlq8Ksq",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-5ywOs0lxqi",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Ea47X3Vv5b",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CRzSKxZBUr",
+      "service": "Paintless Dent Removal (PDR)",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HP7EMCA7oK",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qlUtlq8Ksq",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-5ywOs0lxqi",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Ea47X3Vv5b",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-CRzSKxZBUr",
+      "service": "Paintless Dent Removal (PDR)",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 4,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-HP7EMCA7oK",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qlUtlq8Ksq",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-5ywOs0lxqi",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Ea47X3Vv5b",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+      "service": "Pintura",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 4,
+      "blocked": 2,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6Nx-kpDlH8",
+          "dimension": "Acessórios",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wM6LbsSEQq",
+          "dimension": "Bumper Coating",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-y-JV7xLfQ4",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-QTcDxHSkUG",
+          "dimension": "Parcial",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-mueVj3I5TK",
+          "dimension": "Peça Grande",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6qb1FQ1krk",
+          "dimension": "Pincelada",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+      "service": "Pintura",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 4,
+      "blocked": 2,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6Nx-kpDlH8",
+          "dimension": "Acessórios",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wM6LbsSEQq",
+          "dimension": "Bumper Coating",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-y-JV7xLfQ4",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-QTcDxHSkUG",
+          "dimension": "Parcial",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-mueVj3I5TK",
+          "dimension": "Peça Grande",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6qb1FQ1krk",
+          "dimension": "Pincelada",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+      "service": "Pintura",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 4,
+      "blocked": 2,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6Nx-kpDlH8",
+          "dimension": "Acessórios",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wM6LbsSEQq",
+          "dimension": "Bumper Coating",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-y-JV7xLfQ4",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-QTcDxHSkUG",
+          "dimension": "Parcial",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-mueVj3I5TK",
+          "dimension": "Peça Grande",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6qb1FQ1krk",
+          "dimension": "Pincelada",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+      "service": "Pintura",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 4,
+      "blocked": 2,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6Nx-kpDlH8",
+          "dimension": "Acessórios",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wM6LbsSEQq",
+          "dimension": "Bumper Coating",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-y-JV7xLfQ4",
+          "dimension": "Completa",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-QTcDxHSkUG",
+          "dimension": "Parcial",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-mueVj3I5TK",
+          "dimension": "Peça Grande",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-6qb1FQ1krk",
+          "dimension": "Pincelada",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-ZBJbRcSeSQ",
+      "service": "Pintura Roda",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 3,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gabCdzv_HF",
+          "dimension": "Acima 19\"",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-omN2NC0lvg",
+          "dimension": "Até 15”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-_Kc5b13AZb",
+          "dimension": "Até 17”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-inIp85hd8Q",
+          "dimension": "Até 19\"",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-ZBJbRcSeSQ",
+      "service": "Pintura Roda",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 3,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gabCdzv_HF",
+          "dimension": "Acima 19\"",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-omN2NC0lvg",
+          "dimension": "Até 15”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-_Kc5b13AZb",
+          "dimension": "Até 17”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-inIp85hd8Q",
+          "dimension": "Até 19\"",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-ZBJbRcSeSQ",
+      "service": "Pintura Roda",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 3,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gabCdzv_HF",
+          "dimension": "Acima 19\"",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-omN2NC0lvg",
+          "dimension": "Até 15”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-_Kc5b13AZb",
+          "dimension": "Até 17”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-inIp85hd8Q",
+          "dimension": "Até 19\"",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-ZBJbRcSeSQ",
+      "service": "Pintura Roda",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 3,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-gabCdzv_HF",
+          "dimension": "Acima 19\"",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-omN2NC0lvg",
+          "dimension": "Até 15”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-_Kc5b13AZb",
+          "dimension": "Até 17”",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-inIp85hd8Q",
+          "dimension": "Até 19\"",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qErkcLJo2u",
+      "service": "Plotagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-buv7gLOK7u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Oie3Z4Ckg8",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SVJRI4o_s3",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qErkcLJo2u",
+      "service": "Plotagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-buv7gLOK7u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Oie3Z4Ckg8",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SVJRI4o_s3",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qErkcLJo2u",
+      "service": "Plotagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-buv7gLOK7u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Oie3Z4Ckg8",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SVJRI4o_s3",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-qErkcLJo2u",
+      "service": "Plotagem",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-buv7gLOK7u",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-Oie3Z4Ckg8",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SVJRI4o_s3",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NG0WMuMSy1",
+      "service": "Polimento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-UAnZJZjwDy",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nRbaODE2ck",
+          "dimension": "Veículo G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-c5xaRttDXs",
+          "dimension": "Veículo M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wIYOZiTuOu",
+          "dimension": "Veículo P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NG0WMuMSy1",
+      "service": "Polimento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-UAnZJZjwDy",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nRbaODE2ck",
+          "dimension": "Veículo G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-c5xaRttDXs",
+          "dimension": "Veículo M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wIYOZiTuOu",
+          "dimension": "Veículo P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NG0WMuMSy1",
+      "service": "Polimento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-UAnZJZjwDy",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nRbaODE2ck",
+          "dimension": "Veículo G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-c5xaRttDXs",
+          "dimension": "Veículo M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wIYOZiTuOu",
+          "dimension": "Veículo P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-NG0WMuMSy1",
+      "service": "Polimento",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 4,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-UAnZJZjwDy",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-nRbaODE2ck",
+          "dimension": "Veículo G",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-c5xaRttDXs",
+          "dimension": "Veículo M",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-wIYOZiTuOu",
+          "dimension": "Veículo P",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-odnULcJj8z",
+      "service": "Proteção e cuidado",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qFawyezClA",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-odnULcJj8z",
+      "service": "Proteção e cuidado",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qFawyezClA",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-odnULcJj8z",
+      "service": "Proteção e cuidado",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qFawyezClA",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-odnULcJj8z",
+      "service": "Proteção e cuidado",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qFawyezClA",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SZ64QNvn0M",
+      "service": "Reforço estrutural",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JRY5jhqe1w",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-S9noeVAYTx",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JETTUarOhB",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SZ64QNvn0M",
+      "service": "Reforço estrutural",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JRY5jhqe1w",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-S9noeVAYTx",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JETTUarOhB",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SZ64QNvn0M",
+      "service": "Reforço estrutural",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JRY5jhqe1w",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-S9noeVAYTx",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JETTUarOhB",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SZ64QNvn0M",
+      "service": "Reforço estrutural",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 3,
+      "blocked": 0,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JRY5jhqe1w",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-S9noeVAYTx",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-JETTUarOhB",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-5zkNjBv-Zg",
+      "service": "Reparo",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-BAL0neY9dh",
+          "dimension": "(HH)",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-5zkNjBv-Zg",
+      "service": "Reparo",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-BAL0neY9dh",
+          "dimension": "(HH)",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-5zkNjBv-Zg",
+      "service": "Reparo",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-BAL0neY9dh",
+          "dimension": "(HH)",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-5zkNjBv-Zg",
+      "service": "Reparo",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-BAL0neY9dh",
+          "dimension": "(HH)",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MMsEFTPdow",
+      "service": "Restauração óptica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-psjAH4rJ5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MMsEFTPdow",
+      "service": "Restauração óptica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-psjAH4rJ5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MMsEFTPdow",
+      "service": "Restauração óptica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-psjAH4rJ5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MMsEFTPdow",
+      "service": "Restauração óptica",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-psjAH4rJ5N",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-VQqzDP1-v2",
+      "service": "Revitalização de couro",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WLedwbySUP",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-VQqzDP1-v2",
+      "service": "Revitalização de couro",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WLedwbySUP",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-VQqzDP1-v2",
+      "service": "Revitalização de couro",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WLedwbySUP",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-VQqzDP1-v2",
+      "service": "Revitalização de couro",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-WLedwbySUP",
+          "dimension": "Completa",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-kNfje5jSDQ",
+      "service": "Tapeçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9YEXLaHwuH",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-kNfje5jSDQ",
+      "service": "Tapeçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9YEXLaHwuH",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-kNfje5jSDQ",
+      "service": "Tapeçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9YEXLaHwuH",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-kNfje5jSDQ",
+      "service": "Tapeçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-9YEXLaHwuH",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6v-u7Wk73b",
+      "service": "Vidraçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XAWXTYWQIa",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6v-u7Wk73b",
+      "service": "Vidraçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XAWXTYWQIa",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6v-u7Wk73b",
+      "service": "Vidraçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XAWXTYWQIa",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6v-u7Wk73b",
+      "service": "Vidraçaria",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 0,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-XAWXTYWQIa",
+          "dimension": "-",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MC_Z0KK6Hn",
+      "service": "Vitrificação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-jqA2lk0Wh9",
+      "table": "Padrão",
+      "calculable": 4,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SS1xdKI1qG",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vQoeD4Gr94",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-d-UXZSEDtm",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-oWTtxTIaoe",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-8o9Z1Z6jtk",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MC_Z0KK6Hn",
+      "service": "Vitrificação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-QiPuI1a9la",
+      "table": "Parceria",
+      "calculable": 4,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SS1xdKI1qG",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vQoeD4Gr94",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-d-UXZSEDtm",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-oWTtxTIaoe",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-8o9Z1Z6jtk",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MC_Z0KK6Hn",
+      "service": "Vitrificação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-yE7TB_XVHf",
+      "table": "Nosso time",
+      "calculable": 4,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SS1xdKI1qG",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vQoeD4Gr94",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-d-UXZSEDtm",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-oWTtxTIaoe",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-8o9Z1Z6jtk",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    },
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-MC_Z0KK6Hn",
+      "service": "Vitrificação",
+      "tableId": "coda:2zsjI-nqWr:grid-dhmr5kCC1Y:i-SPK97xWS6A",
+      "table": "Retrabalho",
+      "calculable": 4,
+      "blocked": 1,
+      "cases": [
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-SS1xdKI1qG",
+          "dimension": "G",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vQoeD4Gr94",
+          "dimension": "GG",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-d-UXZSEDtm",
+          "dimension": "M",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-oWTtxTIaoe",
+          "dimension": "P",
+          "canEmitServiceOnly": true,
+          "reasons": []
+        },
+        {
+          "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-8o9Z1Z6jtk",
+          "dimension": "Peça",
+          "canEmitServiceOnly": false,
+          "reasons": [
+            "Etapas técnicas de serviço/dimensão não configuradas."
+          ]
+        }
+      ]
+    }
+  ]
+}

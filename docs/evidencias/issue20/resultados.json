@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+      "pass": true
+    },
+    {
+      "name": "desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+      "pass": true
+    },
+    {
+      "name": "desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+      "pass": true
+    },
+    {
+      "name": "mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+      "pass": true
+    },
+    {
+      "name": "mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+      "pass": true
+    },
+    {
+      "name": "mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+      "pass": true
+    }
+  ],
+  "error": null
+}
