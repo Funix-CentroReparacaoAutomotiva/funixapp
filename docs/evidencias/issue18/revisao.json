@@ -1,0 +1,95 @@
+{
+  "sourceDigest": "e3b76df494c2cd6c805106591a831db727b146250d373ae275ef86e18205f544",
+  "readOnlyCoda": true,
+  "operationalRowsRead": 0,
+  "configTables": 15,
+  "configRows": 479,
+  "normalizationCLI": "passed",
+  "dryRunCLI": {
+    "conflicts": 0,
+    "catalogs": 119,
+    "plannedInserts": 159
+  },
+  "matrix": {
+    "cases": 60,
+    "calculable": 8,
+    "blocked": 52,
+    "groups": [
+      {
+        "service": "Funilaria",
+        "table": "Padrão",
+        "calculable": 0,
+        "blocked": 5
+      },
+      {
+        "service": "Funilaria",
+        "table": "Parceria",
+        "calculable": 0,
+        "blocked": 5
+      },
+      {
+        "service": "Funilaria",
+        "table": "Nosso time",
+        "calculable": 0,
+        "blocked": 5
+      },
+      {
+        "service": "Funilaria",
+        "table": "Retrabalho",
+        "calculable": 0,
+        "blocked": 5
+      },
+      {
+        "service": "Pintura",
+        "table": "Padrão",
+        "calculable": 4,
+        "blocked": 2
+      },
+      {
+        "service": "Pintura",
+        "table": "Parceria",
+        "calculable": 0,
+        "blocked": 6
+      },
+      {
+        "service": "Pintura",
+        "table": "Nosso time",
+        "calculable": 0,
+        "blocked": 6
+      },
+      {
+        "service": "Pintura",
+        "table": "Retrabalho",
+        "calculable": 0,
+        "blocked": 6
+      },
+      {
+        "service": "Montagem",
+        "table": "Padrão",
+        "calculable": 4,
+        "blocked": 0
+      },
+      {
+        "service": "Montagem",
+        "table": "Parceria",
+        "calculable": 0,
+        "blocked": 4
+      },
+      {
+        "service": "Montagem",
+        "table": "Nosso time",
+        "calculable": 0,
+        "blocked": 4
+      },
+      {
+        "service": "Montagem",
+        "table": "Retrabalho",
+        "calculable": 0,
+        "blocked": 4
+      }
+    ]
+  },
+  "restLiveValidated": false,
+  "rawDataVersioned": false,
+  "productionChanges": false
+}

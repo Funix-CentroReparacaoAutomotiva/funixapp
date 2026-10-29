@@ -1,0 +1,63 @@
+{
+  "npm_run_check": {
+    "passed": true,
+    "node_tests": 84,
+    "failures": 0,
+    "build": true,
+    "typecheck": true,
+    "lint_warnings_preexisting": 4
+  },
+  "deployment_script_unit_tests": {
+    "passed": true,
+    "tests": 23
+  },
+  "browser": {
+    "pass": true,
+    "results": [
+      {
+        "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; MR stays empty",
+        "pass": true
+      },
+      {
+        "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR not fabricated",
+        "pass": true
+      },
+      {
+        "name": "desktop: existing MR selector works with an explicitly configured synthetic QA multiplier; no source inference",
+        "pass": true
+      },
+      {
+        "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; MR stays empty",
+        "pass": true
+      },
+      {
+        "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR not fabricated",
+        "pass": true
+      },
+      {
+        "name": "mobile: existing MR selector works with an explicitly configured synthetic QA multiplier; no source inference",
+        "pass": true
+      }
+    ],
+    "error": null
+  },
+  "real_source_isolated_v7": {
+    "catalogs": {
+      "services": 28,
+      "dimensions": 75,
+      "diagnoses": 16
+    },
+    "priced_dimensions": 44,
+    "complete_energy_dimensions": 51,
+    "price_and_energy_dimensions": 28,
+    "repeat_inserts": 0,
+    "live_readonly_coda_comparisons": {
+      "cases": 3,
+      "price_matches": 3,
+      "energy_matches": 3,
+      "domain": "quantity 1, root table, scale 1, unconditional FC/FR"
+    },
+    "raw_data_versioned": false
+  },
+  "production_changes": false
+}

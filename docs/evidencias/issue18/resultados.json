@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; MR stays empty",
+      "pass": true
+    },
+    {
+      "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR not fabricated",
+      "pass": true
+    },
+    {
+      "name": "desktop: existing MR selector works with an explicitly configured synthetic QA multiplier; no source inference",
+      "pass": true
+    },
+    {
+      "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; MR stays empty",
+      "pass": true
+    },
+    {
+      "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR not fabricated",
+      "pass": true
+    },
+    {
+      "name": "mobile: existing MR selector works with an explicitly configured synthetic QA multiplier; no source inference",
+      "pass": true
+    }
+  ],
+  "error": null
+}
