@@ -1,0 +1,101 @@
+{
+  "nodeTests": 95,
+  "nodeFailures": 0,
+  "buildAndTypecheck": true,
+  "lintWarningsPreexisting": 4,
+  "browserGroups": 6,
+  "browser": {
+    "pass": true,
+    "results": [
+      {
+        "name": "desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+        "pass": true
+      },
+      {
+        "name": "desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+        "pass": true
+      },
+      {
+        "name": "desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+        "pass": true
+      },
+      {
+        "name": "mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+        "pass": true
+      },
+      {
+        "name": "mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+        "pass": true
+      },
+      {
+        "name": "mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+        "pass": true
+      }
+    ],
+    "error": null
+  },
+  "comparisonSamePrivateSource": {
+    "cases": 300,
+    "before": 28,
+    "after": 188,
+    "previouslyCompleteUnchanged": 28,
+    "newlyComplete": 160,
+    "regressed": 0,
+    "previouslyCompleteValueChanges": 0
+  },
+  "realSourceV7Preservation": {
+    "passed": true,
+    "preservedPieces": 163,
+    "preservedAtendimento": true,
+    "preservedCompositionAndScenarios": true,
+    "preservedSettings": true,
+    "preservedSnapshotAndPdf": true,
+    "restart": true,
+    "idempotent": true,
+    "schema": 7,
+    "foreignKeys": "ok",
+    "integrity": "ok"
+  },
+  "sourceRawInGit": false,
+  "productionChanges": false,
+  "energySource": {
+    "completeDimensions": 51,
+    "pendingDimensions": 24,
+    "pendingCategories": {
+      "missingEnergyReference": 9,
+      "missingTechnicalDimension": 5,
+      "noRelations": 6,
+      "negativeEnergy": 2,
+      "missingDimensionAndNegativeEnergy": 1,
+      "missingDimensionAndStage": 1
+    }
+  },
+  "browserRegressions": [
+    {
+      "suite": "auditoria",
+      "pass": true,
+      "groups": 8
+    },
+    {
+      "suite": "editor",
+      "pass": true,
+      "groups": 17
+    },
+    {
+      "suite": "atendimentos",
+      "pass": true,
+      "groups": 19
+    },
+    {
+      "suite": "cenarios",
+      "pass": true,
+      "groups": 3
+    },
+    {
+      "suite": "inclusao",
+      "pass": true,
+      "groups": 11
+    }
+  ],
+  "browserRegressionGroups": 58
+}

@@ -4,6 +4,8 @@ export interface FactorOption { id: string; name: string; factor: string | null 
 export interface TechnicalStage { id: string; name: string; dimension: string; baseEnergy: string | null; dimensionEnergy: string | null }
 export interface ServicePricing {
  serviceId: string; base: string | null
+ // Missing FC keeps legacy V7 behavior (on); null is an explicit unresolved decision.
+ colorFactorEnabled?: boolean | null; discountable?: boolean; billable?: boolean | null
  dimensions: {dimensionId: string; fd: string | null; stages: TechnicalStage[]}[]
 }
 export interface PricingConfig {
@@ -23,11 +25,13 @@ export interface PricedLine {
  dimension: string; diagnosis: string; notes: string; quantity: string; included: boolean
  unit: string | null; finalUnit: string | null; total: string | null
  path: 'normal' | 'special' | 'manual' | null
+ discountable?: boolean
  factors: Record<string,string>; stages: TechnicalStage[]; energy: string | null
 }
 export interface Calculation {
  scenarioId: string; scenarioName: string; lines: PricedLine[]; errors: string[]
  serviceNet?:string|null; adjustment?:string|null
+ discountEligibleSubtotal?: string | null
  pieceTotals?: {pieceId: string; total: string | null}[]
  originalServiceSubtotal: string | null; serviceSubtotal: string | null; componentSubtotal: string | null
  discount: string; total: string | null; energy: string | null; days: string | null

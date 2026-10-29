@@ -1,0 +1,92 @@
+{
+  "baseline": "36381387c1b85268d5c43485428de08b8847cfc2",
+  "cases": 300,
+  "beforeCalculable": 188,
+  "afterCalculable": 204,
+  "previouslyCompleteUnchanged": 188,
+  "regressions": 0,
+  "changedPreviouslyValid": 0,
+  "additionalCalculable": 16,
+  "newCases": [
+    {
+      "service": "Lavagem",
+      "dimension": "P",
+      "table": "Padrão"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "P",
+      "table": "Parceria"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "P",
+      "table": "Nosso time"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "P",
+      "table": "Retrabalho"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "M",
+      "table": "Padrão"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "M",
+      "table": "Parceria"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "M",
+      "table": "Nosso time"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "M",
+      "table": "Retrabalho"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "G",
+      "table": "Padrão"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "G",
+      "table": "Parceria"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "G",
+      "table": "Nosso time"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "G",
+      "table": "Retrabalho"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "GG",
+      "table": "Padrão"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "GG",
+      "table": "Parceria"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "GG",
+      "table": "Nosso time"
+    },
+    {
+      "service": "Lavagem",
+      "dimension": "GG",
+      "table": "Retrabalho"
+    }
+  ]
+}

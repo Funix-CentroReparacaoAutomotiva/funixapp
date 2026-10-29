@@ -118,3 +118,19 @@ A rota web autenticada `/configuracoes` expõe **Catálogos** e **Precificação
 O editor compara os campos atuais aos campos confirmados no workspace; essa comparação não calcula preço. Uma linha alterada mostra `Calculando…` até a leitura recalculada do backend. Em falha, `Valor não atualizado` substitui o preço dessa linha. Totais afetados também deixam de aparecer como definitivos; conferência/emissão ficam indisponíveis até confirmação/recuperação. Campos e linhas não afetados continuam editáveis.
 
 Procedimento de banco V6 → V7, sem reset nem execução produtiva nesta entrega: [MIGRACAO_V7_MR.md](MIGRACAO_V7_MR.md).
+
+### Issue #20 — flags comerciais por serviço (V7, sem migração SQL)
+
+`PricingConfig.services[]` admite `colorFactorEnabled?: boolean|null`, `discountable?: boolean` e `billable?: boolean|null`. Persistem no JSON da configuração global existente, com o mesmo PATCH autenticado, origem, revisão e limites. Não são campos de diagnóstico/componente nem novas flags de cenário. `billable` é informativo: não zera preço nem exclui linha e não concede desconto.
+
+Normal: `teto_R$0,05(base × FD × FV × (FC se habilitado, senão 1) × FR) × quantidade`. FC falso dispensa seleção/configuração de cor; true exige FC válido; null bloqueia o normal como pendência. FC omitido em configuração legada preserva a aplicação global anterior; desconto omitido equivale a **sem permissão**, inclusive para serviço sem configuração. Omitir uma flag em PATCH legado preserva o valor já gravado desse serviço; não substitui false/null por default. O editor cria novas configurações com FC pendente e desconto desabilitado. Booleanos textuais são rejeitados, e desconto não aceita null.
+
+A exceção exata continua ignorando base/FD/FV/FC/FR e exigindo energia técnica válida. A flag de desconto continua valendo para o serviço com especial. `PricedLine.discountable?` e `Calculation.discountEligibleSubtotal?` registram a elegibilidade efetiva e seu subtotal original, opcionais para leitura dos snapshots anteriores. Modo `discount` rejeita valor maior que o subtotal elegível, sem valores negativos ou redução de linhas protegidas/componentes. Preços das linhas permanecem originais e o desconto continua sendo uma linha global, limitada ao subconjunto elegível; não foi inventado rateio por linha.
+
+`adjust`/Negociação conserva o contrato já vigente sobre o subtotal de todos os serviços (inclusive conciliação para baixo e aumento proporcional com resíduo); `valueIncludesComponents:true` continua traduzindo o total geral sem negociar componentes. A confirmação da direção sobre elegibilidade restringiu especificamente o modo Desconto. Não se modificou esse segundo contrato por inferência.
+
+Nenhum snapshot/PDF emitido é recalculado ou regravado. Detalhes, matriz e limitações da carga: [Issue #20](ISSUE20_REGRAS_COMERCIAIS.md).
+
+## Finalização Issue #20 — decisões de FC/MR
+
+O importador offline aplica a decisão da direção do comentário PR #21 `6500884942`: FC desabilitado para os IDs de Interna, Lavagem e Inspeção técnica; opção MR `Padrão`, fator decimal canônico `1.2` (= `1.20`). Não infere MR de `fator_curadoria`. O cadastro da opção não seleciona `mrId`: continua sendo PATCH explícito de parâmetros por Atendimento. MR local equivalente é reutilizado pelo próprio ID; divergências/duplicidades são reportadas sem sobrescrita. FR, Desconto, Negociação, especial exato e a API de orçamento permanecem nos contratos acima. Nenhuma execução na inicialização ou migração nova.

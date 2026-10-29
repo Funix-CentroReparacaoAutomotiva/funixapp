@@ -1,0 +1,52 @@
+{
+  "dryRunReadOnly": true,
+  "schema": 7,
+  "sourceDigest": "5814c7b58882dccbd0a31f0ba132eb7daa7bc2f7a139127bf0435bbcb1c3c4c1",
+  "sourceTables": 15,
+  "sourceRows": 479,
+  "conflicts": 0,
+  "catalog": {
+    "services": 28,
+    "dimensions": 75,
+    "diagnoses": 16
+  },
+  "fc": {
+    "enabled": 12,
+    "disabled": 16,
+    "pending": 0
+  },
+  "approvedFC": [
+    {
+      "name": "Interna",
+      "colorFactorEnabled": false
+    },
+    {
+      "name": "Lavagem",
+      "colorFactorEnabled": false
+    },
+    {
+      "name": "Inspeção técnica",
+      "colorFactorEnabled": false
+    }
+  ],
+  "mr": [
+    {
+      "id": "funix:mr:padrao",
+      "name": "Padrão",
+      "factor": "1.2"
+    }
+  ],
+  "autoSelectMR": false,
+  "matrix": {
+    "cases": 300,
+    "calculable": 204,
+    "blocked": 96
+  },
+  "pendingServices": [
+    {
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-RoaRcVLUCo",
+      "service": "Mecânica",
+      "reason": "Sem dimensão vinculada na fonte."
+    }
+  ]
+}

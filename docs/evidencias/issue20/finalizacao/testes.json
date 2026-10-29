@@ -1,0 +1,204 @@
+{
+  "nodeTests": 99,
+  "nodeFailures": 0,
+  "buildAndTypecheck": true,
+  "lintWarningsPreexisting": 4,
+  "browserGroups": 6,
+  "browser": {
+    "pass": true,
+    "results": [
+      {
+        "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+        "pass": true
+      },
+      {
+        "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+        "pass": true
+      },
+      {
+        "name": "desktop: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+        "pass": true
+      },
+      {
+        "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+        "pass": true
+      },
+      {
+        "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+        "pass": true
+      },
+      {
+        "name": "mobile: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+        "pass": true
+      }
+    ],
+    "error": null
+  },
+  "dryRun": {
+    "dryRunReadOnly": true,
+    "schema": 7,
+    "sourceDigest": "5814c7b58882dccbd0a31f0ba132eb7daa7bc2f7a139127bf0435bbcb1c3c4c1",
+    "sourceTables": 15,
+    "sourceRows": 479,
+    "conflicts": 0,
+    "catalog": {
+      "services": 28,
+      "dimensions": 75,
+      "diagnoses": 16
+    },
+    "fc": {
+      "enabled": 12,
+      "disabled": 16,
+      "pending": 0
+    },
+    "approvedFC": [
+      {
+        "name": "Interna",
+        "colorFactorEnabled": false
+      },
+      {
+        "name": "Lavagem",
+        "colorFactorEnabled": false
+      },
+      {
+        "name": "Inspeção técnica",
+        "colorFactorEnabled": false
+      }
+    ],
+    "mr": [
+      {
+        "id": "funix:mr:padrao",
+        "name": "Padrão",
+        "factor": "1.2"
+      }
+    ],
+    "autoSelectMR": false,
+    "matrix": {
+      "cases": 300,
+      "calculable": 204,
+      "blocked": 96
+    },
+    "pendingServices": [
+      {
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-RoaRcVLUCo",
+        "service": "Mecânica",
+        "reason": "Sem dimensão vinculada na fonte."
+      }
+    ]
+  },
+  "comparison": {
+    "baseline": "36381387c1b85268d5c43485428de08b8847cfc2",
+    "cases": 300,
+    "beforeCalculable": 188,
+    "afterCalculable": 204,
+    "previouslyCompleteUnchanged": 188,
+    "regressions": 0,
+    "changedPreviouslyValid": 0,
+    "additionalCalculable": 16,
+    "newCases": [
+      {
+        "service": "Lavagem",
+        "dimension": "P",
+        "table": "Padrão"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "P",
+        "table": "Parceria"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "P",
+        "table": "Nosso time"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "P",
+        "table": "Retrabalho"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "M",
+        "table": "Padrão"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "M",
+        "table": "Parceria"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "M",
+        "table": "Nosso time"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "M",
+        "table": "Retrabalho"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "G",
+        "table": "Padrão"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "G",
+        "table": "Parceria"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "G",
+        "table": "Nosso time"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "G",
+        "table": "Retrabalho"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "GG",
+        "table": "Padrão"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "GG",
+        "table": "Parceria"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "GG",
+        "table": "Nosso time"
+      },
+      {
+        "service": "Lavagem",
+        "dimension": "GG",
+        "table": "Retrabalho"
+      }
+    ]
+  },
+  "isolatedV7": {
+    "passed": true,
+    "preservedPieces": 163,
+    "preservedAtendimento": true,
+    "preservedCompositionAndScenarios": true,
+    "preservedSettings": true,
+    "preservedSnapshotAndPdf": true,
+    "restart": true,
+    "idempotent": true,
+    "schema": 7,
+    "foreignKeys": "ok",
+    "integrity": "ok"
+  },
+  "commands": [
+    "npm run check",
+    "python /tmp/funix21-browser.py (runner versionado documentado em COMANDOS.md)",
+    "node server/import-coda.ts --source .runtime/issue20/export.json --database .runtime/issue21-final/dry-run-v7.sqlite",
+    "node scripts/check-coda-import-cases.ts .runtime/issue20/export.json .runtime/issue21-final/matrix-all.json --all-services",
+    "node scripts/check-issue20-preservation.ts .runtime/issue20/export.json .runtime/issue21-final/qa-new.sqlite"
+  ],
+  "noProductionAccess": true,
+  "noExistingApplicationDatabaseChanged": true,
+  "performanceAutosaveAndEnergyIndependenceChanges": false
+}

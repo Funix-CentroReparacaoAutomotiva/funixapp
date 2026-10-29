@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+      "pass": true
+    },
+    {
+      "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+      "pass": true
+    },
+    {
+      "name": "desktop: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+      "pass": true
+    },
+    {
+      "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+      "pass": true
+    },
+    {
+      "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+      "pass": true
+    },
+    {
+      "name": "mobile: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+      "pass": true
+    }
+  ],
+  "error": null
+}

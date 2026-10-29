@@ -38,7 +38,7 @@ test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, c
   assert.equal(f.commercial.catalogs().items.filter(i=>i.kind==='peca' && i.active).length,163)
   for(const preserved of initial.filter(t=>!['catalog_items','catalog_history','pricing_configuration'].includes(String(t.table))))assert.deepEqual(snapshot(db).find(t=>t.table===preserved.table),preserved)
   assert.deepEqual(budgets.get(f.at.id,version.id),version);assert.deepEqual(budgets.pdf(f.at.id,version.id),pdf)
-  const now=f.pricing.get().config;assert.deepEqual(now.resaleMultipliers,config.resaleMultipliers);assert.equal(now.conditions,config.conditions);assert.deepEqual(now.specialPrices,config.specialPrices)
+  const now=f.pricing.get().config;assert.deepEqual(now.resaleMultipliers?.slice(0,config.resaleMultipliers?.length),config.resaleMultipliers);assert.equal(now.resaleMultipliers?.at(-1)?.id,'funix:mr:padrao');assert.equal(now.conditions,config.conditions);assert.deepEqual(now.specialPrices,config.specialPrices)
   assert.deepEqual(now.services[0],config.services[0])
   const after=snapshot(db),repeat=planImport(db,src);assert.equal(repeat.report.inserts,0)
   applyImport(db,src,repeat.planHash);assert.deepEqual(snapshot(db),after)
@@ -104,11 +104,10 @@ test('failure during final write rolls back all catalogs/history/config; local e
  }finally{db.close()}
 })
 
-test('sentinels, broken refs, negative energy, conditional FC/FR, percent rules, duplicate keys and unknown MR never become arbitrary prices',()=>{
+test('sentinels, broken refs, negative energy, percent rules and duplicate keys never become arbitrary prices; MR comes only from direction',()=>{
  const db=openDatabase(':memory:')
  try{
   for(const [name,change,expected] of [
-   ['conditional FC',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.rules,'c-jIfhQ2URf5',false),'base'],
    ['percentage',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.rules,'c-4i-UJzr0Ry',{name:'percentual'}),'base'],
    ['duplicate rule',(s:ReturnType<typeof codaFixture>)=>pushRow(s,TABLES.rules,{...structuredClone(table(s,TABLES.rules).rows[0]!),rowId:'i-other-rule'}),'base'],
    ['scale',(s:ReturnType<typeof codaFixture>)=>set(s,TABLES.relations,'c-rTdEY2ynPh',0.5),'fd'],
@@ -122,7 +121,7 @@ test('sentinels, broken refs, negative energy, conditional FC/FR, percent rules,
    if(expected==='base')assert.equal(service.base,null,name)
    if(expected==='fd')assert.equal(dimension.fd,null,name)
    if(expected==='energy')assert.deepEqual(dimension.stages,[],name)
-   assert.equal(p.config.resaleMultipliers?.length??0,0);assert.deepEqual(p.config.specialPrices,[])
+   assert.deepEqual(p.config.resaleMultipliers,[{id:'funix:mr:padrao',name:'Padrão',factor:'1.2'}]);assert.deepEqual(p.config.specialPrices,[])
    assert(p.report.pending.length)
   }
   const source=codaFixture();set(source,TABLES.dimensions,'c-TvFH_jzZ3k',ref(TABLES.services,'i-missing'))
@@ -132,12 +131,12 @@ test('sentinels, broken refs, negative energy, conditional FC/FR, percent rules,
  }finally{db.close()}
 })
 
-test('table inheritance is left pending; source IDs remain stable across renames, reordered rows and repeated names in different services',()=>{
+test('Issue20 imports actual FV instead of Coda inheritance; source IDs remain stable across renames',()=>{
  const db=openDatabase(':memory:')
  try{
   const s=codaFixture()
   pushRow(s,TABLES.tables,row('i-synthetic-derived',{'c-CeD0PIBx4t':'Tabela derivada sintética','c-tZ94U6MuW-':{name:'Interno'},'c-o2aKUZyPE7':true,'c-QMXNRk1uDX':0.6,'c-DMeUkMin9e':ref(TABLES.tables,'i-synthetic-table')}))
-  const p=planImport(db,s);assert.equal(p.config.tables.at(-1)!.factor,null)
+  const p=planImport(db,s);assert.equal(p.config.tables.at(-1)!.factor,'0.6')
   set(s,TABLES.services,'c-TvFH_jzZ3k','Novo nome sintético');assert.equal(planImport(db,s).catalog[0]!.id,p.catalog[0]!.id)
   assert.throws(()=>{db.exec('DELETE FROM schema_migrations WHERE version=7');planImport(db,s)},/exatamente V7/)
  }finally{db.close()}

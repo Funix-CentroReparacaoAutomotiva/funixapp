@@ -23,9 +23,10 @@ async def device_case(browser,device,viewport):
   await expect(page.get_by_label('FD da dimensão',exact=True)).to_have_value('1')
   await expect(page.get_by_label('Energia base',exact=True)).to_have_value('2')
   await expect(page.get_by_label('Energia dimensional',exact=True)).to_have_value('3')
-  await expect(page.get_by_label('Fator MR 1',exact=True)).to_have_count(0)
+  await expect(page.get_by_label('Nome MR 1',exact=True)).to_have_value('Padrão')
+  await expect(page.get_by_label('Fator MR 1',exact=True)).to_have_value('1.2')
   await page.screenshot(path=str(ARTIFACTS/f'{device}-precificacao.png'))
-  h.mark(device+': imported catalogs and service/dimension/energy editable via existing settings; MR stays empty')
+  h.mark(device+': imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present')
   async def get(path):
    r=await ctx.request.get(ORIGIN+path);assert r.ok,await r.text();return await r.json()
   async def write(path,data,method='post'):
@@ -51,23 +52,40 @@ async def device_case(browser,device,viewport):
     await asyncio.sleep(.1)
    else:raise AssertionError('Parameter was not persisted')
   await expect(editor.locator('.calculated strong')).to_have_text('R$ 100,05')
-  assert await finance.get_by_label('MR',exact=True).locator('option').count()==1
+  assert await finance.get_by_label('MR',exact=True).locator('option').count()==2
+  await expect(finance.get_by_label('MR',exact=True)).to_have_value('')
+  assert not (await get(path+'/parametros'))['settings'].get('mrId')
   w=await get(path+'/cenarios');assert w['calculations'][0]['energy']=='5';assert w['calculations'][0]['days']=='2';assert w['calculations'][0]['errors']==[]
   await page.screenshot(path=str(ARTIFACTS/f'{device}-diagnostico.png'))
   await page.reload();await page.locator('.diagnosis-open').first.click()
   await expect(page.get_by_label('Serviço',exact=True)).to_have_value(w['items'][0]['services'][0]['serviceId'])
-  h.mark(device+': real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR not fabricated')
-  # Test normal operator maintenance for MR separately. This synthetic value is NOT imported from Coda.
-  cfg=await get('/api/precificacao');cfg['config']['resaleMultipliers']=[{'id':'synthetic-only-mr','name':'MR QA sintético','factor':'1.2'}]
-  await write('/api/precificacao',{'revision':cfg['revision'],'config':cfg['config']},'patch')
+  h.mark(device+': real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected')
+  # The approved direction option is imported, never inferred from Coda's curator factor.
+  cfg=await get('/api/precificacao');mr=next(m for m in cfg['config']['resaleMultipliers'] if m['name']=='Padrão')
+  assert mr['factor']=='1.2'
+  finance=page.get_by_role('region',name='Painel financeiro',exact=True)
+  editor=page.get_by_role('region',name='Editor de diagnóstico',exact=True)
+  await editor.get_by_role('button',name='Adicionar componente',exact=True).click()
+  await editor.get_by_label('Descrição do componente',exact=True).fill('Componente QA sintético')
+  await editor.get_by_label('Preço unitário do componente',exact=True).fill('100')
+  await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+  current=await get(path+'/cenarios');request={'scenarioId':current['selectedId'],'negotiation':{'mode':'none'}}
+  pending=await write(path+'/orcamentos/previa',request);assert pending['canEmit'] is False
+  assert any('MR do Atendimento' in e for e in pending['snapshot']['calculation']['errors'])
+  if not await finance.get_by_label('MR',exact=True).is_visible():await finance.locator('.summary').click()
+  await finance.get_by_label('MR',exact=True).select_option(mr['id'])
+  for _ in range(50):
+   if (await get(path+'/parametros'))['settings'].get('mrId')==mr['id']:break
+   await asyncio.sleep(.1)
+  else:raise AssertionError('Approved MR selection not saved')
+  preview=await write(path+'/orcamentos/previa',request)
+  assert preview['canEmit'] is True and preview['snapshot']['calculation']['componentSubtotal']=='120'
+  assert preview['snapshot']['calculation']['serviceSubtotal']=='100.05' and preview['snapshot']['calculation']['total']=='220.05'
+  await page.screenshot(path=str(ARTIFACTS/f'{device}-mr-aprovado.png'))
   await page.reload();finance=page.get_by_role('region',name='Painel financeiro',exact=True)
   if not await finance.get_by_label('MR',exact=True).is_visible():await finance.locator('.summary').click()
-  await finance.get_by_label('MR',exact=True).select_option('synthetic-only-mr')
-  for _ in range(50):
-   if (await get(path+'/parametros'))['settings'].get('mrId')=='synthetic-only-mr':break
-   await asyncio.sleep(.1)
-  else:raise AssertionError('Synthetic MR selection not saved')
-  h.mark(device+': existing MR selector works with an explicitly configured synthetic QA multiplier; no source inference')
+  await expect(finance.get_by_label('MR',exact=True)).to_have_value(mr['id'])
+  h.mark(device+': imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged')
   assert h.external==[] and h.page_errors==[],(h.external,h.page_errors)
   return h.results
  except Exception:

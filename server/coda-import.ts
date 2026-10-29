@@ -10,6 +10,9 @@ import type {CodaExport,SourceRow} from './coda-import-source.ts'
 
 export const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex')
 const formulaHash=(v:string)=>createHash('sha256').update(v).digest('hex')
+// Direction approval, not inferred from Coda flags or fator_curadoria. IDs survive renames.
+const approvedNoColorServices=new Set(['i-qCp1gLfJn4','i-AlsNigbGqx','i-dMshyG5NMo']) // Interna, Lavagem, Inspeção técnica
+const approvedMR={id:'funix:mr:padrao',name:'Padrão',factor:'1.2'}
 interface Entry {id:string;kind:CatalogKind;name:string;serviceId:string|null}
 interface Finding {source:string;reason:string}
 export interface ImportPlan {
@@ -65,7 +68,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  for(const r of rows(TABLES.services)){
   const name=label(cell(r,'c-TvFH_jzZ3k'));add(TABLES.services,r,'servico',name)
   if(/mec[aâ]nica|el[eé]trica|eletr[oô]nica|vidra|refrigera/i.test(name))warning(id(TABLES.services,r),'Possível serviço terceirizado/fora da execução interna: mantido ativo, sem exclusão automática.')
-  if(cell(r,'c-mJimiTomMd')!==true || cell(r,'c-r5HLQrISpN')!==true)warning(id(TABLES.services,r),'Faturável/descontável por serviço não possui campo equivalente na V7; não altera a negociação global aprovada.')
+  if(typeof cell(r,'c-mJimiTomMd')!=='boolean' || typeof cell(r,'c-r5HLQrISpN')!=='boolean')pending(id(TABLES.services,r),'Faturável/descontável ausente: desconto não será permitido por omissão.')
  }
  for(const r of rows(TABLES.diagnoses))add(TABLES.diagnoses,r,'diagnostico',label(cell(r,'c-QduKALgMf1')))
  const dimensions=new Map<string,{row:SourceRow;service:SourceRow;name:string;fd:string|null}>()
@@ -96,35 +99,47 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  const commercialTables=rows(TABLES.tables).flatMap(r=>{
   const name=label(cell(r,'c-CeD0PIBx4t'))
   if(!name){pending(id(TABLES.tables,r),'Tabela sem nome.');return []}
-  const usable=priceVerified && r===baseline
-  if(!usable)pending(id(TABLES.tables,r),'FV pendente: herança, percentual, correção/vigência ou base não inequívoca não equivalem ao FV global V7.')
+  // Issue #20 explicitly adopts the simple global FV model, not Coda inheritance.
+  const factor=cell(r,'c-o2aKUZyPE7')===true?number(r,'c-QMXNRk1uDX'):null
+  if(factor===null)pending(id(TABLES.tables,r),'FV ausente/inválido ou tabela não ativa na fonte atual.')
   report.mapping.push({source:`${TABLES.tables}/${r.rowId}`,target:id(TABLES.tables,r)})
-  return [{id:id(TABLES.tables,r),name,factor:usable?'1':null}]
+  return [{id:id(TABLES.tables,r),name,factor}]
  })
  const ruleGroups=new Map<string,SourceRow[]>()
  for(const r of rows(TABLES.rules)){
   const t=ref(r,'c-VdW_35TQkv',TABLES.tables),s=ref(r,'c-8CxdK7Oln0',TABLES.services),d=ref(r,'c-trJtxn7Rnm',TABLES.dimensions)
   const type=label(cell(r,'c-4i-UJzr0Ry'))
+  if(t && !cell(r,'c-8CxdK7Oln0') && type==='percentual'){warning(id(TABLES.rules,r),'Fallback percentual global Coda ignorado: Issue #20 usa FV explícito da tabela.');continue}
   if(!t || !s || !d){pending(id(TABLES.rules,r),'Referência ausente/quebrada ou fallback global por serviço: sem conversão automática.');continue}
   const key=JSON.stringify([t.rowId,s.rowId,d.rowId]);const group=ruleGroups.get(key)??[];group.push(r);ruleGroups.set(key,group)
-  if(type!=='calculado')pending(id(TABLES.rules,r),`Regra ${type||'sem tipo'}: não é preço especial V7; permanece pendente.`)
-  else if(t!==baseline)pending(id(TABLES.rules,r),'Base por tabela/serviço não representável pela base global do serviço V7.')
-  else if(cell(r,'c-jIfhQ2URf5')!==true || cell(r,'c--xF4R7C4Rv')!==true)pending(id(TABLES.rules,r),'FC/FR condicionais por regra não equivalem a multiplicadores globais V7; base bloqueada.')
+  if(type==='percentual')warning(id(TABLES.rules,r),'Percentual/herança Coda não transportado: Issue #20 define FV global da tabela.')
+  else if(!['calculado','tabelado'].includes(type))pending(id(TABLES.rules,r),'Regra sem tipo reconhecido; não convertida em preço.')
+  else if(t!==baseline && type==='calculado')warning(id(TABLES.rules,r),'Base alternativa Coda ignorada: uma única base por serviço, conforme Issue #20.')
+  if(cell(r,'c--xF4R7C4Rv')===false)warning(id(TABLES.rules,r),'Flag FR Coda não transportada: FR sempre incide no normal pela Issue #20.')
  }
  for(const group of ruleGroups.values())if(group.length>1)pending(group.map(r=>id(TABLES.rules,r)).join(', '),'Chave de regra duplicada: nenhuma precedência First() presumida.')
  const services:ServicePricing[]=[]
  for(const s of rows(TABLES.services)){
   if(!catalog.some(c=>c.id===id(TABLES.services,s)))continue
+  const serviceRules=rows(TABLES.rules).filter(r=>ref(r,'c-8CxdK7Oln0',TABLES.services)===s)
+  const colorFlags=serviceRules.map(r=>cell(r,'c-jIfhQ2URf5'))
+  const uniqueColors=new Set(colorFlags)
+  const approvedNoColor=approvedNoColorServices.has(s.rowId)
+  const colorFactorEnabled=approvedNoColor?false:uniqueColors.size===1 && typeof colorFlags[0]==='boolean'?colorFlags[0]:null
+  if(approvedNoColor)report.imported.push({source:id(TABLES.services,s),reason:'Decisão da direção, PR #21 comentário 6500884942: FC desabilitado neste serviço; FR normal preservado.'})
+  if(colorFactorEnabled===null)pending(id(TABLES.services,s),'FC por serviço pendente: regras específicas ausentes, inválidas ou divergentes entre tabelas. Nenhuma tabela escolhida arbitrariamente.')
+  const discountable=cell(s,'c-r5HLQrISpN')===true
+  const rawBillable=cell(s,'c-mJimiTomMd'),billable=typeof rawBillable==='boolean'?rawBillable:null
   const dims=[...dimensions.values()].filter(d=>d.service===s)
   const candidates=dims.map(d=>{
    let group=baseline?ruleGroups.get(JSON.stringify([baseline.rowId,s.rowId,d.row.rowId])):undefined
    if(!group && baseline){const fallbacks=[...sentinels].flatMap(key=>ruleGroups.get(JSON.stringify([baseline.rowId,s.rowId,key]))??[]);if(fallbacks.length)group=fallbacks}
    const rule=group?.length===1?group[0]:undefined
-   const value=priceVerified && rule && label(cell(rule,'c-4i-UJzr0Ry'))==='calculado' && cell(rule,'c-jIfhQ2URf5')===true && cell(rule,'c--xF4R7C4Rv')===true?number(rule,'c-sGROPfan5w'):null
+   const value=priceVerified && rule && label(cell(rule,'c-4i-UJzr0Ry'))==='calculado'?number(rule,'c-sGROPfan5w'):null
    return {d,rule,value}
   })
   const values=new Set(candidates.map(c=>c.value).filter(v=>v!==null)),base=values.size===1?[...values][0]!:null
-  if(base===null)pending(id(TABLES.services,s),'Preço base ausente, condicional ou divergente por dimensão: sem preço calculável.')
+  if(base===null)pending(id(TABLES.services,s),'Preço base raiz ausente ou divergente por dimensão: sem conversão em preço especial.')
   const pricedDimensions=candidates.map(({d,rule,value})=>{
    let fd=value!==null && base!==null?d.fd:null
    if(fd===null)pending(id(TABLES.dimensions,d.row),'FD/preço sem correspondência comprovada: cálculo permanece bloqueado.')
@@ -138,20 +153,29 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,dimensionEnergy=de?number(de,'c-3-8rupyDNx'):null
     const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):''
     const actual=number(r,'c-Ii7Vzlr1ni')
-    if(!st || !sd || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){validEnergy=false;pending(id(TABLES.relations,r),'Energia/referência ausente, negativa ou soma divergente; não substituída por zero.');continue}
+    if(!st || !sd || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){
+     validEnergy=false
+     const negative=[be,de].some(e=>e && String(scalar(cell(e,'c-3-8rupyDNx'))).startsWith('-'))
+     const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
+     pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
+    }
     stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy})
    }
    const total=number(d.row,'c-wZoGYfi40i')
    if(total===null || !validEnergy || sum(stages.map(st=>Q.from(st.baseEnergy!).add(Q.from(st.dimensionEnergy!)))).cmp(Q.from(total??'0'))!==0){validEnergy=false;pending(id(TABLES.dimensions,d.row),'Conjunto de etapas incompleto/incompatível com a energia total Coda; nenhuma etapa parcial liberada.')}
-   if(rule && fd!==null && base!==null){report.imported.push({source:id(TABLES.rules,rule),reason:`Base/FD equivalentes para ${id(TABLES.dimensions,d.row)}; FV=1, FC/FR globais, escala=1, quantidade >= 1.`});report.mapping.push({source:`${TABLES.rules}/${rule.rowId}`,target:`services/${id(TABLES.services,s)}/${id(TABLES.dimensions,d.row)}`})}
+   if(rule && fd!==null && base!==null){report.imported.push({source:id(TABLES.rules,rule),reason:`Base/FD da fonte para ${id(TABLES.dimensions,d.row)}; cálculo segue FC por serviço e FV/FR da Issue #20, não regras históricas por tabela.`});report.mapping.push({source:`${TABLES.rules}/${rule.rowId}`,target:`services/${id(TABLES.services,s)}/${id(TABLES.dimensions,d.row)}`})}
    return {dimensionId:id(TABLES.dimensions,d.row),fd,stages:validEnergy?stages:[]}
   })
-  services.push({serviceId:id(TABLES.services,s),base,dimensions:pricedDimensions})
+  services.push({serviceId:id(TABLES.services,s),colorFactorEnabled,discountable,billable,base,dimensions:pricedDimensions})
  }
  // Report invalid links even when they do not belong to any otherwise usable dimension.
- for(const r of rows(TABLES.relations))if(!ref(r,'c-7sr002IvYn',TABLES.services) || !ref(r,'c-EBO2IBlQEH',TABLES.dimensions) || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || !ref(r,'c-B9QLxROotP',TABLES.stageDimensions))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
+ for(const r of rows(TABLES.relations)){
+  const s=ref(r,'c-7sr002IvYn',TABLES.services),d=ref(r,'c-EBO2IBlQEH',TABLES.dimensions)
+  if(!s || !d || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || !ref(r,'c-B9QLxROotP',TABLES.stageDimensions))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
+  else if(dimensions.get(d.rowId)?.service!==s)pending(id(TABLES.relations,r),'Serviço da relação não corresponde ao pai da dimensão; associação não inferida por nome.')
+ }
  for(const r of rows(TABLES.diagnosisServices))pending(id(TABLES.diagnosisServices,r),'Sugestão automática diagnóstico/intensidade → serviço não faz parte do contrato V7; seleção manual preservada.')
- pending(TABLES.app,'fator_curadoria não comprovado como MR; nenhum multiplicador de revenda importado.')
+ warning(TABLES.app,'fator_curadoria não é convertido em MR. MR Padrão 1.2 vem da decisão explícita da direção, PR #21 comentário 6500884942.')
  warning(TABLES.rules,'Quantidades abaixo de 1 têm resultado diferente no Coda (Fator Quantidade Produto / Qnt.). A V7 preserva a regra aprovada de quantidade linear, inclusive fracionária; equivalência de preço declarada somente para quantidade >= 1.')
  const capRows=rows(TABLES.capacity),capacity=capRows.length===1?number(capRows[0]!,'c-hnqUeXrBqw'):null
  if(capacity===null || Q.from(capacity).n===0n)pending(TABLES.capacity,'Capacidade global positiva não comprovada.')
@@ -164,8 +188,26 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   }
  }
  merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);merge(config.services,services,v=>v.serviceId)
+ const mrOptions=config.resaleMultipliers??=[]
+ const mrName=(value:string)=>value.trim().normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
+ const localMR=mrOptions.filter(m=>m.id===approvedMR.id || mrName(m.name)===mrName(approvedMR.name))
+ if(!localMR.length){mrOptions.push({...approvedMR});report.inserts++}
+ else if(localMR.length===1 && mrName(localMR[0]!.name)===mrName(approvedMR.name) && exact(localMR[0]!.factor)===approvedMR.factor)report.unchanged++
+ else conflict(approvedMR.id,'MR Padrão local divergente ou duplicado; configuração preservada, sem substituir valor/identidade nem selecionar Atendimento.')
+ report.imported.push({source:'direction:pr21:6500884942',reason:'Opção MR Padrão 1.2 autorizada pela direção; cadastro apenas, sem seleção automática em Atendimentos.'})
  if(capacity!==null && Q.from(capacity).n>0n){if(config.capacity===null){config.capacity=capacity;report.inserts++}else if(config.capacity!==capacity)conflict(TABLES.capacity,'Capacidade local diferente; não sobrescrever.');else report.unchanged++}
- // Neither specialPrices, resaleMultipliers nor conditions are inferred or replaced.
+ // Only explicitly tabled, dimension-specific source rules may become exact exceptions.
+ const specials:PricingConfig['specialPrices']=[]
+ for(const group of ruleGroups.values()){
+  if(group.length!==1)continue
+  const r=group[0]!
+  if(label(cell(r,'c-4i-UJzr0Ry'))!=='tabelado')continue
+  const t=ref(r,'c-VdW_35TQkv',TABLES.tables)!,s=ref(r,'c-8CxdK7Oln0',TABLES.services)!,d=ref(r,'c-trJtxn7Rnm',TABLES.dimensions)!,unit=number(r,'c-sGROPfan5w')
+  if(!priceVerified || sentinels.has(d.rowId) || dimensions.get(d.rowId)?.service!==s || unit===null){pending(id(TABLES.rules,r),'Preço tabelado sem chave exata/valor válido; nenhuma expansão da sentinela.');continue}
+  specials.push({tableId:id(TABLES.tables,t),serviceId:id(TABLES.services,s),dimensionId:id(TABLES.dimensions,d),unit})
+ }
+ merge(config.specialPrices,specials,v=>JSON.stringify([v.tableId,v.serviceId,v.dimensionId]))
+ // Existing prices, MR options/selections and conditions are never replaced.
  for(const item of catalog){
   const existing=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(item.id)
   if(existing){if(existing.kind!==item.kind || existing.name!==item.name || existing.service_id!==item.serviceId || existing.active!==1)conflict(item.id,'Cadastro importado já editado/inativado ou incompatível; preservado.');else report.unchanged++}
