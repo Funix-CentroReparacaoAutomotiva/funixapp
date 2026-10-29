@@ -83,6 +83,8 @@ A preparação anterior de Hostinger/GHCR permanece disponível como histórico 
 
 ## Fontes e continuidade
 
+Importação pontual de cadastros comerciais Coda para V7: [procedimento, resultados e pendências da Issue #18](docs/ISSUE18_IMPORTACAO_CODA.md). Ferramenta offline com dry-run, sem token em produção, sem execução automática e sem alterar o motor. Esta documentação não autoriza carga produtiva.
+
 - `AGENTS.md`: autorização e precedência atuais.
 - `docs/especificacao-v1.0/FONTES.json`: SHA-256 dos originais V1.0, V0.9, V20, árvore V2 e referências institucionais.
 - `docs/M1_ATENDIMENTOS.md`: entrega auditada M1.1.
