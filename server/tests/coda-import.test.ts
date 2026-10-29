@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,readFileSync,writeFileSync,rmSync,openSync,closeSync} from 'node:fs'
+import {mkdtempSync,readFileSync,writeFileSync,rmSync,openSync,closeSync,statSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {spawnSync} from 'node:child_process'
@@ -14,6 +14,7 @@ import {CommercialRepository} from '../commercial.ts'
 import {ScenarioRepository} from '../scenarios.ts'
 import {PricingConfigurationRepository} from '../pricing-config.ts'
 import {BudgetRepository} from '../budgets.ts'
+import {normalizeConnectorCapture} from '../coda-connector-export.ts'
 
 function snapshot(db:DatabaseSync){return db.prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name").all().map(r=>({table:r.name,rows:db.prepare(`SELECT * FROM "${r.name}" ORDER BY rowid`).all()}))}
 const imported=(table:string,id:string)=>sourceId(table,'i-synthetic-'+id)
@@ -147,6 +148,73 @@ test('source decimals are not rounded by JSON Number before V7 precision validat
  assert.equal(parsed.rowCount,1);assert.equal(parsed['c-price'],'999999999999.123456');assert.equal(parsed.scalar,'0.123456789');assert.equal(parsed.value,'0.100000')
  const source=codaFixture(),db=openDatabase(':memory:')
  try{set(source,TABLES.rules,'c-sGROPfan5w',parsed.scalar);assert.equal(planImport(db,source).config.services[0]!.base,null)}finally{db.close()}
+})
+
+test('negative base energy compensated by positive dimension never becomes a valid stage, even with matching relation and total',()=>{
+ const db=openDatabase(':memory:'),source=codaFixture()
+ try{
+  const f=commercialFixture(db)
+  // -1 + 6 = 5: both exported formula totals look coherent. The operands still violate V7.
+  set(source,TABLES.energy,'c-3-8rupyDNx',-1,0)
+  set(source,TABLES.energy,'c-3-8rupyDNx',6,1)
+  set(source,TABLES.relations,'c-Ii7Vzlr1ni',5)
+  set(source,TABLES.dimensions,'c-wZoGYfi40i',5)
+  const plan=planImport(db,source)
+  const service=plan.config.services.find(s=>s.serviceId===imported(TABLES.services,'service'))!
+  assert.equal(service.base,'100.01')
+  assert.equal(service.dimensions[0]!.fd,'1')
+  assert.deepEqual(service.dimensions[0]!.stages,[])
+  assert(plan.report.pending.some(p=>p.source===imported(TABLES.relations,'relation') && p.reason.includes('negativa')))
+  applyImport(db,source,plan.planHash)
+  const repo=new CommercialRepository(db),pricing=new PricingConfigurationRepository(db)
+  repo.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:[{serviceId:imported(TABLES.services,'service'),dimensionId:imported(TABLES.dimensions,'dimension'),quantity:'1'}]})
+  pricing.saveSettings(f.at.id,{revision:pricing.settings(f.at.id).revision,tableId:imported(TABLES.tables,'table'),colorId:imported(TABLES.colors,'color'),riskId:imported(TABLES.risks,'risk')})
+  const budget=new BudgetRepository(db),scenario=new ScenarioRepository(db).list(f.at.id)[0]!
+  const request={scenarioId:scenario.id,negotiation:{mode:'none'}},preview=budget.preview(f.at.id,request)
+  assert.equal(preview.canEmit,false);assert.equal(preview.snapshot.calculation.energy,null)
+  assert(preview.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')))
+  assert.throws(()=>budget.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-negative-energy'}),/Etapas técnicas/)
+  assert.equal(budget.list(f.at.id).length,0)
+ }finally{db.close()}
+})
+
+function connectorCapture(){
+ const source=codaFixture()
+ // Actual observed envelope: CallToolResult.content[].text -> JSON toolName/result.
+ const envelope=(result:unknown)=>({content:[{type:'text',text:JSON.stringify({toolName:'read',result})}],structuredContent:null,isError:false})
+ const schema=(id:string,columns:unknown[],rowCount:number)=>envelope({tableUri:'pages/synthetic/tables/'+id,columns,rowCount})
+ const captures=source.tables.map(t=>({id:t.id,before:schema(t.id,t.schema.columns,t.totalRows),after:schema(t.id,t.schema.columns,t.totalRows),pages:t.rows.map((r,offset)=>({offset,response:envelope({rows:[r],hasMore:offset<t.rows.length-1,totalRows:t.totalRows})}))}))
+ const pricing=schema('grid-aHz1ZDVlfK',source.pricingFormulaSchema.columns,500)
+ return {format:'funix-coda-connector-capture-v1',documentId:source.documentId,exportedAt:source.exportedAt,tables:captures,pricingFormulaSchema:{before:pricing,after:pricing}}
+}
+
+test('real connector envelope normalizes paginated captures without changing references/formulas; malformed/incomplete captures are rejected',()=>{
+ const capture=connectorCapture(),source=normalizeConnectorCapture(capture),db=openDatabase(':memory:')
+ try{
+  const p=planImport(db,source);assert.equal(p.report.conflicts.length,0);assert.equal(p.config.services[0]!.base,'100.01');assert.equal(p.config.services[0]!.dimensions[0]!.stages.length,1)
+  assert.deepEqual(source.pricingFormulaSchema.columns,codaFixture().pricingFormulaSchema.columns)
+  const dimension=table(source,TABLES.dimensions).rows[0]!
+  assert.deepEqual(dimension.values,parseCodaJson(JSON.stringify(codaFixture().tables.find(t=>t.id===TABLES.dimensions)!.rows[0]!.values)))
+  const missing=connectorCapture();missing.tables.find(t=>t.id===TABLES.dimensions)!.pages.pop();assert.throws(()=>normalizeConnectorCapture(missing),/Paginação|ausentes/)
+  const duplicate=connectorCapture();duplicate.tables.push(duplicate.tables[0]!);assert.throws(()=>normalizeConnectorCapture(duplicate),/exatamente/)
+  const wrong=connectorCapture();wrong.tables[0]!.before.content[0]!.text=JSON.stringify({result:{tableUri:'tables/grid-unexpected',rowCount:1,columns:[]}});assert.throws(()=>normalizeConnectorCapture(wrong),/origem/)
+  const changed=connectorCapture();changed.tables[0]!.after.content[0]!.text=JSON.stringify({result:{tableUri:'pages/synthetic/tables/'+TABLES.services,rowCount:2,columns:[]}});assert.throws(()=>normalizeConnectorCapture(changed),/mudou/)
+  const error=connectorCapture();error.tables[0]!.before.isError=true;assert.throws(()=>normalizeConnectorCapture(error),/erro do conector/)
+ }finally{db.close()}
+})
+
+test('connector-capture CLI produces an exclusive 0600 offline bundle accepted by the unchanged importer',()=>{
+ const folder=mkdtempSync(join(tmpdir(),'funix19-connector-')),input=join(folder,'capture.json'),output=join(folder,'export.json'),log=join(folder,'run.log')
+ writeFileSync(input,JSON.stringify(connectorCapture()),{mode:0o600})
+ const fd=openSync(log,'w'),db=openDatabase(':memory:')
+ try{
+  const run=()=>spawnSync(process.execPath,['scripts/export-coda-commercial.ts','--connector-capture',input,output],{stdio:['ignore',fd,fd]})
+  assert.equal(run().status,0,readFileSync(log,'utf8'))
+  const before=readFileSync(output,'utf8'),p=planImport(db,parseCodaJson(before))
+  assert.equal(p.report.conflicts.length,0);assert.equal(p.config.services[0]!.base,'100.01')
+  assert.equal(statSync(output).mode&0o777,0o600)
+  assert.equal(run().status,1);assert.equal(readFileSync(output,'utf8'),before)
+ }finally{db.close();closeSync(fd);rmSync(folder,{recursive:true,force:true})}
 })
 
 test('GET-only exporter paginates allowlisted config tables and produces a private offline bundle; no production token is needed by importer',()=>{

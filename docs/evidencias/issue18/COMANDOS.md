@@ -1,5 +1,7 @@
 # QA da Issue #18
 
+Complemento da revisão: [resultado da nova coleta real e matriz](revisao.json), [procedimento reproduzível e respostas aos três pontos](../../PR19_REVISAO.md). `npm run check` foi reexecutado após as correções: **87 testes Node aprovados**. Os resultados de 84 testes abaixo registram a entrega inicial; as screenshots continuam sendo evidência da UI inalterada.
+
 Ambiente local de desenvolvimento, Node 24; nenhum comando remoto/VPS. Bancos descartáveis fora do Git. Screenshots contêm somente valores e nomes sintéticos explicitamente identificados.
 
 ```bash

@@ -1,6 +1,14 @@
 // Run on an authorized workstation only. GET-only allowlist; never fetches customer rows.
-import {writeFileSync} from 'node:fs'
+import {writeFileSync,readFileSync} from 'node:fs'
 import {DOCUMENT,TABLES,parseCodaJson} from '../server/coda-import-source.ts'
+import {normalizeConnectorCapture} from '../server/coda-connector-export.ts'
+
+if(process.argv[2]==='--connector-capture'){
+ if(process.argv.length!==5)throw new Error('Uso: node scripts/export-coda-commercial.ts --connector-capture CAPTURA_PRIVADA.json SAIDA_NOVA.json')
+ const bundle=normalizeConnectorCapture(parseCodaJson(readFileSync(process.argv[3]!,'utf8')))
+ writeFileSync(process.argv[4]!,JSON.stringify(bundle,null,2),{flag:'wx',mode:0o600})
+ console.log('Captura real do conector normalizada; fórmulas e referências preservadas.')
+}else{
 
 const output=process.argv[2],token=process.env.CODA_API_TOKEN
 if(!output || process.argv.length!==3 || !token)throw new Error('Use CODA_API_TOKEN no ambiente e node --use-env-proxy scripts/export-coda-commercial.ts /caminho/privado/export.json')
@@ -38,3 +46,4 @@ for(const id of Object.values(TABLES)){
 const pricingFormulaSchema={columns:await schema('grid-aHz1ZDVlfK')}
 writeFileSync(output,JSON.stringify({format:'funix-coda-commercial-v1',documentId:DOCUMENT,exportedAt:new Date().toISOString(),tables,pricingFormulaSchema},null,2),{flag:'wx',mode:0o600})
 console.log('Exportação comercial concluída. Arquivo privado; não adicionar ao Git.')
+}

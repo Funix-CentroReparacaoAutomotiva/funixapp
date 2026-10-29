@@ -2,6 +2,8 @@
 
 Implementação em `feat/issue18-importacao-coda`, baseada na main `4371b4841266ac5ca22c6c89523a26a79ca98d1c`. Nenhuma alteração no Coda, VPS, banco produtivo, motor de cálculo, UI, migrações, workflows ou instalação. Sem sincronização permanente, novos endpoints ou token Coda no aplicativo/produção. Entrega para auditoria, sem merge/deploy.
 
+**Complemento após revisão:** [PR19_REVISAO.md](PR19_REVISAO.md) registra o caminho de exportação pelo conector efetivamente executado, o dry-run real sem conflitos, a matriz de 60 casos e a regressão de energia compensada. Esse é o procedimento comprovado para obter a fonte; o coletor REST abaixo continua experimental, testado apenas com transporte simulado.
+
 ## Fontes e resultado real em ambiente isolado
 
 Leitura autenticada, somente dos cadastros do documento `2zsjI-nqWr`, pelo conector Coda/Superhuman Docs. Foram lidos esquemas/fórmulas de `db_Atendimentos_Servicos`, **nenhuma linha de clientes ou Atendimentos do ERP**. A exportação privada ficou fora do repositório. Os IDs de tabelas/colunas e fingerprints das fórmulas estão em `server/coda-import-source.ts`; a fixture de fórmulas contém apenas definições técnicas, sem linhas comerciais ou preços reais.
