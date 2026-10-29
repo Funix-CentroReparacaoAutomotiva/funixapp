@@ -31,6 +31,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null), [items, setItems] = useState<DiagnosisItem[]>([])
   const [workspace,setWorkspace] = useState<CommercialWorkspace|null>(null), [budget,setBudget] = useState(false)
   const [scenarios,setScenarios] = useState<Scenario[]>([]), [scenarioId,setScenarioId] = useState(scenarioContext.get(atendimentoId) ?? '')
+  const catalogCache=useRef<CatalogResponse|null>(null)
   const selection = useRef(scenarioId)
   const loadVersion = useRef(0), mutationInFlight = useRef(false)
   const mapStage = useRef<HTMLDivElement>(null), mapOpener = useRef('.map-search-trigger')
@@ -62,11 +63,11 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const dirty = Boolean(editing && draft && JSON.stringify(editing) !== JSON.stringify(draft))
   useEffect(() => { onDirty(dirty||editorDirty||financeDirty) }, [dirty,editorDirty,financeDirty,onDirty])
   useEffect(() => () => { onDirty(false); onBusy(false) }, [onDirty, onBusy])
-  const load = useCallback(async (signal?: AbortSignal, preferred = selection.current) => {
+  const load = useCallback(async (signal?: AbortSignal, preferred = selection.current, refreshCatalog = false) => {
     const version = ++loadVersion.current
     const suffix = preferred ? '?scenarioId='+encodeURIComponent(preferred) : ''
     try {
-      const [c, workspace] = await Promise.all([api<CatalogResponse>('/api/catalogos', { signal }), api<CommercialWorkspace>(`/api/atendimentos/${atendimentoId}/cenarios${suffix}`, { signal })])
+      const [c, workspace] = await Promise.all([refreshCatalog || !catalogCache.current ? api<CatalogResponse>('/api/catalogos', { signal }) : Promise.resolve(catalogCache.current), api<CommercialWorkspace>(`/api/atendimentos/${atendimentoId}/cenarios${suffix}`, { signal })])
       if (signal?.aborted || version !== loadVersion.current) return
       if(preferred && preferred!==workspace.selectedId)setScenarioGone(true)
       setDealState(old=>{
@@ -74,7 +75,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
         if(snapshot && (snapshot.compositionRevision!==workspace.revision || snapshot.configuration.revision!==workspace.configurationRevision || snapshot.scenarioId!==workspace.selectedId || snapshot.scenarioRevision!==workspace.scenarios.find(s=>s.id===workspace.selectedId)?.revision))return {...old,draft:{...old.draft,acknowledgeResidual:false},signature:''}
         return old
       })
-      setCatalog(c); setWorkspace(workspace); setItems(workspace.items); setScenarios(workspace.scenarios); setScenarioId(workspace.selectedId)
+      catalogCache.current=c; setCatalog(c); setWorkspace(workspace); setItems(workspace.items); setScenarios(workspace.scenarios); setScenarioId(workspace.selectedId)
       selection.current = workspace.selectedId; scenarioContext.set(atendimentoId,workspace.selectedId)
     } catch(cause) {if(!signal?.aborted && version === loadVersion.current)throw cause}
   }, [atendimentoId,scenarioContext])
@@ -163,7 +164,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   }
   async function refresh() {
     await mutate(async()=>{
-      await load(); setRefreshNeeded(false)
+      await load(undefined,selection.current,true); setRefreshNeeded(false)
       setMessage(dirty || managerDirty ? 'Dados atualizados. Os campos em edição foram preservados; confira antes de salvar.' : 'Dados atualizados. Confira os itens antes de adicionar novamente.')
     }, true)
   }

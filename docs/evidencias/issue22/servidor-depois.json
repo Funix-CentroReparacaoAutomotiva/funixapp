@@ -1,0 +1,75 @@
+{
+  "node": "v24.19.0",
+  "storage": "temporary file, SQLite synchronous FULL",
+  "results": [
+    {
+      "name": "small",
+      "pieces": 1,
+      "services": 2,
+      "scenarios": 1,
+      "components": 3,
+      "samples": 50,
+      "pure_calculation": {
+        "p50_ms": 0.086,
+        "p95_ms": 0.21
+      },
+      "full_workspace": {
+        "p50_ms": 0.964,
+        "p95_ms": 1.483
+      },
+      "flag_patch": {
+        "p50_ms": 0.366,
+        "p95_ms": 0.778
+      },
+      "workspace_bytes": 4736,
+      "prepare_calls": 14,
+      "select_executions": 14
+    },
+    {
+      "name": "medium",
+      "pieces": 20,
+      "services": 3,
+      "scenarios": 3,
+      "components": 20,
+      "samples": 50,
+      "pure_calculation": {
+        "p50_ms": 0.76,
+        "p95_ms": 1.109
+      },
+      "full_workspace": {
+        "p50_ms": 4.905,
+        "p95_ms": 7.083
+      },
+      "flag_patch": {
+        "p50_ms": 0.801,
+        "p95_ms": 1.136
+      },
+      "workspace_bytes": 165815,
+      "prepare_calls": 14,
+      "select_executions": 14
+    },
+    {
+      "name": "stress",
+      "pieces": 80,
+      "services": 4,
+      "scenarios": 10,
+      "components": 80,
+      "samples": 50,
+      "pure_calculation": {
+        "p50_ms": 3.579,
+        "p95_ms": 4.291
+      },
+      "full_workspace": {
+        "p50_ms": 56.649,
+        "p95_ms": 62.55
+      },
+      "flag_patch": {
+        "p50_ms": 5.799,
+        "p95_ms": 6.514
+      },
+      "workspace_bytes": 2467751,
+      "prepare_calls": 14,
+      "select_executions": 14
+    }
+  ]
+}

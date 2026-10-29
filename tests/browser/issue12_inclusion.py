@@ -78,30 +78,44 @@ async def run():
             assert not w['scenarios'][1]['pieceFlags'][next(i['id'] for i in w['items'] if i['pieceId'] == pool[4]['id'])]
             h.mark('second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones')
 
-            for index, route_pattern, expected_route in [(5, '**/api/catalogos', '/api/catalogos'), (6, '**/cenarios*', '/api/atendimentos/:id/cenarios')]:
-                async def abort_get(route): await route.abort('failed')
-                await page.route(route_pattern, abort_get)
-                n = post_count
-                assert await choose(pool[index], ready=False) == 200
-                await expect(page.get_by_role('alert')).to_contain_text('A inclusão foi confirmada')
-                await expect(page.get_by_role('status')).to_contain_text('salva')
-                await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
-                await page.locator('.approved-finance .summary').click()
-                await expect(page.get_by_role('button', name='Emitir orçamento', exact=True)).to_be_disabled()
-                await page.locator('.approved-finance .summary').click()
-                await expect(await button(pool[index])).to_be_disabled()
-                await page.get_by_text('Detalhes da falha', exact=True).click()
-                details = await page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True)).inner_text()
-                assert 'GET ' + expected_route in details and at['id'] not in details
-                if index == 6: await page.screenshot(path=str(ARTIFACTS / 'confirmado-com-falha-get.png'))
-                assert any(i['pieceId'] == pool[index]['id'] for i in await get(path + '/diagnosticos'))
-                # A failed manual refresh remains recoverable and keeps confirmation.
-                await page.get_by_role('button', name='Atualizar dados', exact=True).click()
-                await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
-                await expect(page.get_by_role('status')).to_contain_text('salva')
-                assert post_count == n + 1
-                await page.unroute(route_pattern, abort_get); await recover()
-            h.mark('real POST200 plus catalog/workspace GET transport failure keeps confirmed rows, distinguishes GET phase, releases busy and recovers without resending')
+            # Issue22: ordinary mutations no longer depend on a catalog GET.
+            catalog_gets = 0
+            async def abort_catalog(route):
+                nonlocal catalog_gets
+                catalog_gets += 1
+                await route.abort('failed')
+            await page.route('**/api/catalogos', abort_catalog)
+            assert await choose(pool[5]) == 200
+            assert catalog_gets == 0
+            await expect(page.get_by_role('alert')).to_have_count(0)
+
+            # The required workspace GET can still fail after a real successful POST.
+            async def abort_get(route): await route.abort('failed')
+            await page.route('**/cenarios*', abort_get)
+            n = post_count
+            assert await choose(pool[6], ready=False) == 200
+            await expect(page.get_by_role('alert')).to_contain_text('A inclusão foi confirmada')
+            await expect(page.get_by_role('status')).to_contain_text('salva')
+            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
+            await page.locator('.approved-finance .summary').click()
+            await expect(page.get_by_role('button', name='Emitir orçamento', exact=True)).to_be_disabled()
+            await page.locator('.approved-finance .summary').click()
+            await expect(await button(pool[6])).to_be_disabled()
+            await page.get_by_text('Detalhes da falha', exact=True).click()
+            details = await page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True)).inner_text()
+            assert 'GET /api/atendimentos/:id/cenarios' in details and at['id'] not in details
+            await page.screenshot(path=str(ARTIFACTS / 'confirmado-com-falha-get.png'))
+            assert any(i['pieceId'] == pool[6]['id'] for i in await get(path + '/diagnosticos'))
+            # Explicit refresh revalidates catalogs; its own failure must remain recoverable.
+            await page.unroute('**/cenarios*', abort_get)
+            await page.get_by_role('button', name='Atualizar dados', exact=True).click()
+            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
+            await expect(page.get_by_role('status')).to_contain_text('salva')
+            await expect(page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True))).to_contain_text('GET /api/catalogos')
+            assert catalog_gets > 0
+            assert post_count == n + 1
+            await page.unroute('**/api/catalogos', abort_catalog); await recover()
+            h.mark('ordinary mutations skip catalog GET; failed post-commit workspace and explicit catalog refresh preserve confirmed rows and recover without resending')
 
             # Before-delivery POST failure: no database write, no automatic retry.
             async def abort_post(route):
@@ -157,7 +171,7 @@ async def run():
             await write(b,path+'/diagnosticos/'+item['id'],{'revision':current['revision'],'services':current['services'],'notes':'Outro operador QA'},'patch')
             field=page.get_by_role('textbox',name='Observação da peça',exact=True)
             await field.fill('QA rascunho a preservar')
-            await expect(page.get_by_role('alert')).to_contain_text('dados salvos mudaram')
+            await expect(page.get_by_role('alert')).to_contain_text('campos foram preservados')
             await expect(field).to_have_value('QA rascunho a preservar')
             await page.get_by_role('button',name='Carregar versão salva',exact=True).click()
             await expect(field).to_have_value('Outro operador QA')

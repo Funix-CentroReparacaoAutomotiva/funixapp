@@ -289,3 +289,35 @@ test('scenario DELETE requires auth/origin/revision, protects last scenario and 
   const last=await app.write(path+'/'+one.id,'DELETE',{revision:one.revision},cookie);assert.equal(last.status,409);assert.equal((await last.json()).error.code,'LAST_SCENARIO')
  }finally{app.close()}
 })
+
+test('Issue22 opt-in save acknowledgements report actual scenario revision, default replies unchanged and stale writes atomic',async()=>{
+ const app=start()
+ try{
+  const f=commercialFixture(app.db),cookie=await authenticate(app),base='/api/atendimentos/'+f.at.id
+  const context=async(path:string,method:string,body:unknown)=>app.request(path,{method,headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json','X-Funix-Include-Revision':'1'},body:JSON.stringify(body)})
+  const before=(await (await app.request(base+'/cenarios',{headers:{Cookie:cookie}})).json()).scenarios[0]
+  const saved=await context(base+'/diagnosticos/'+f.item.id,'PATCH',{revision:f.item.revision,scenarioId:before.id,scenarioRevision:before.revision,notes:'Issue22 QA'})
+  assert.equal(saved.status,200);const reply=await saved.json();assert.equal(reply.item.notes,'Issue22 QA');assert.equal(reply.scenarioRevision,before.revision+1)
+  const stale=await context(base+'/diagnosticos/'+f.item.id,'PATCH',{revision:reply.item.revision,scenarioId:before.id,scenarioRevision:before.revision,notes:'must not overwrite'})
+  assert.equal(stale.status,409);assert.equal(f.commercial.list(f.at.id)[0]!.notes,'Issue22 QA')
+  const part=await context(base+'/componentes','POST',{pieceId:f.item.id,scenarioId:before.id,scenarioRevision:reply.scenarioRevision,name:'QA',quantity:'0.25',manualPrice:'10',notes:''})
+  assert.equal(part.status,201);const p=await part.json();assert.equal(p.item.quantity,'0.25');assert.equal(p.scenarioRevision,reply.scenarioRevision+1)
+  const ordinary=await app.write(base+'/componentes/'+p.item.id,'PATCH',{revision:p.item.revision,scenarioId:before.id,name:'QA normal',pieceId:f.item.id,quantity:'0.25',manualPrice:'10',notes:''},cookie)
+  const plain=await ordinary.json();assert.equal(plain.name,'QA normal');assert.equal(plain.item,undefined)
+  const workspace=await (await app.request(base+'/cenarios',{headers:{Cookie:cookie}})).json();assert.equal(workspace.scenarios[0].revision,p.scenarioRevision+1)
+ }finally{app.close()}
+})
+
+test('Issue22 acknowledgement revision is captured inside the write transaction, before a subsequent writer',async()=>{
+ const app=start(),exec=app.db.exec.bind(app.db)
+ try{
+  const f=commercialFixture(app.db),cookie=await authenticate(app),base='/api/atendimentos/'+f.at.id,s=f.scenarios.list(f.at.id)[0]!
+  let armed=true
+  app.db.exec=(sql)=>{const result=exec(sql);if(armed&&sql==='COMMIT'){armed=false;app.db.prepare('UPDATE scenarios SET revision=revision+1 WHERE id=?').run(s.id)}return result}
+  const response=await app.request(base+'/diagnosticos/'+f.item.id,{method:'PATCH',headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json','X-Funix-Include-Revision':'1'},body:JSON.stringify({revision:f.item.revision,scenarioId:s.id,scenarioRevision:s.revision,notes:'QA atomic acknowledgement'})})
+  assert.equal(response.status,200);const saved=await response.json()
+  assert.equal(saved.scenarioRevision,s.revision+1);assert.equal(f.scenarios.list(f.at.id)[0]!.revision,s.revision+2)
+  const stale=await app.write(base+'/cenarios/'+s.id,'PATCH',{revision:saved.scenarioRevision,pieceFlags:{[f.item.id]:false}},cookie)
+  assert.equal(stale.status,409)
+ }finally{app.db.exec=exec;app.close()}
+})

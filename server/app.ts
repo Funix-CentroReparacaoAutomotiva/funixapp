@@ -127,7 +127,7 @@ export function createRequestHandler(options: AppOptions) {
         const body = await readJson(req,globalPricing ? 1024*1024 : 64*1024)
         if (globalPricing) return send(200,pricing.save(body))
         if (kind === 'parametros') return send(200,pricing.saveSettings(at!,body))
-        return send(req.method === 'POST' ? 201 : 200,req.method === 'DELETE' ? components.remove(at!,id!,body) : components.save(at!,body,id))
+        return send(req.method === 'POST' ? 201 : 200,req.method === 'DELETE' ? components.remove(at!,id!,body) : req.headers['x-funix-include-revision']==='1'?components.save(at!,body,id,true):components.save(at!,body,id))
       }
       const scenarioRoute = /^\/api\/atendimentos\/([^/]{1,100})\/cenarios(?:\/([^/]{1,100}))?$/.exec(url.pathname)
       if (scenarioRoute) {
@@ -169,7 +169,7 @@ export function createRequestHandler(options: AppOptions) {
         if (catalogRecord) return send(200, commercial.saveCatalog(body, catalogId))
         if (diagnoses) {
           if (!diagnoses[2]) return send(200, commercial.add(diagnoses[1]!, body))
-          return send(200, req.method === 'DELETE' ? commercial.remove(diagnoses[1]!, diagnoses[2]!, body) : commercial.updateDiagnosis(diagnoses[1]!, diagnoses[2]!, body))
+          return send(200, req.method === 'DELETE' ? commercial.remove(diagnoses[1]!, diagnoses[2]!, body) : req.headers['x-funix-include-revision']==='1'?commercial.updateDiagnosis(diagnoses[1]!,diagnoses[2]!,body,true):commercial.updateDiagnosis(diagnoses[1]!,diagnoses[2]!,body))
         }
       }
       const collection = url.pathname === '/api/atendimentos'

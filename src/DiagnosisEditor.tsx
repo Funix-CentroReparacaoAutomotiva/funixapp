@@ -1,9 +1,9 @@
 import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState} from 'react'
-import type {DiagnosisItem,CatalogItem,CommercialWorkspace} from '../shared/commercial'
+import type {DiagnosisItem,CatalogItem,CommercialWorkspace,CommercialSave,Scenario} from '../shared/commercial'
 import {catalogItemUsable} from '../shared/commercial'
 import type {ComponentItem} from '../shared/pricing'
 import {api} from './api'
-import {diagnosisPending,servicePending} from './calculation-state'
+import {diagnosisPending,servicePending,pieceSignature,pieceDataSignature,partSignature,partDataSignature} from './calculation-state'
 import type {CalculationState} from './calculation-state'
 import {money} from './money'
 import {ApprovedIcon as I} from './ApprovedIcon'
@@ -12,11 +12,7 @@ type Part=ComponentItem&{local?:boolean;enabled:boolean}
 const decimal=(s:string)=>s.trim().replace(',','.')
 const positive=(s:string)=>/^\d{1,9}(?:\.\d{1,6})?$/.test(decimal(s))&&/[1-9]/.test(s)
 const validPrice=(s:string|null)=>s===null||/^\d{1,12}(?:\.\d{1,6})?$/.test(decimal(s))
-const signature=(v:unknown)=>JSON.stringify(v)
-const canonical=(s:string)=>decimal(s).replace(/^0+(?=\d)/,'').replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'')
 const display=(s:string)=>{const [whole,fraction='']=s.replace(',','.').split('.');return whole+','+fraction.padEnd(2,'0')}
-const partSignature=(p:Part)=>signature({...p,local:undefined,quantity:canonical(p.quantity),manualPrice:p.manualPrice===null?null:canonical(p.manualPrice)})
-const pieceSignature=(p:DiagnosisItem)=>signature({...p,services:p.services.map(l=>({...l,quantity:canonical(l.quantity)}))})
 function SelectControl({label,value,items,onChange,top=false}:{label:string;value:string;items:CatalogItem[];onChange:(v:string)=>void;top?:boolean}){return <label className={top?'top-select':'select-box'}><span className="sr-only">{label}</span><select aria-label={label} value={value} onChange={e=>onChange(e.target.value)}><option value="">Selecionar…</option>{items.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><span className="chev"><I name="chevron"/></span></label>}
 function ToggleControl({label,on,onChange,top=false}:{label:string;on:boolean;onChange:()=>void;top?:boolean}){return <button type="button" className={top?'piece-toggle':'toggle'} aria-label={label} aria-pressed={on} onClick={onChange}><I name={on?'toggle':'off'}/></button>}
 export function DiagnosisEditor({initial,workspace,catalog,onDirty,onBusy,onSync,onAuthRequired,onCalculationState,parameterState}:{initial:DiagnosisItem;workspace:CommercialWorkspace;catalog:CatalogItem[];onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onSync:()=>Promise<void>;onAuthRequired:()=>void;onCalculationState:(state:CalculationState)=>void;parameterState:CalculationState}){
@@ -25,54 +21,98 @@ export function DiagnosisEditor({initial,workspace,catalog,onDirty,onBusy,onSync
  const [serviceKeys,setServiceKeys]=useState<Record<string,string>>({})
  const [note,setNote]=useState(false),[generation,tick]=useState(0),[error,setError]=useState(''),[status,setStatus]=useState('Salvo')
  const live=useRef({piece,parts,generation});useLayoutEffect(()=>{live.current={piece,parts,generation}},[piece,parts,generation])
- const confirmed=useRef({piece:pieceSignature(initial),parts:new Map(parts.map(p=>[p.id,partSignature(p)]))}),running=useRef(false),mounted=useRef(true)
+ const confirmed=useRef({piece:structuredClone(initial),parts:new Map(parts.map(p=>[p.id,structuredClone(p)]))}),scenarioRevision=useRef(workspace.scenarios.find(s=>s.id===scenario)!.revision),needsReconcile=useRef(false),running=useRef(false),mounted=useRef(true)
+ const uncertainPiece=useRef<DiagnosisItem|null>(null),uncertainParts=useRef(new Map<string,Part>())
  const dirty=useRef(false),delay=useRef(450)
+ useLayoutEffect(()=>{
+  if(running.current||dirty.current||needsReconcile.current)return
+  const current=workspace.items.find(p=>p.id===initial.id),s=workspace.scenarios.find(s=>s.id===scenario)
+  const savedParts=workspace.components.filter(p=>p.pieceId===initial.id).map(p=>({...p,enabled:Boolean(s?.componentFlags[p.id])}))
+  if(current&&s&&pieceSignature(current)===pieceSignature(confirmed.current.piece)&&savedParts.length===confirmed.current.parts.size&&savedParts.every(p=>{const known=confirmed.current.parts.get(p.id);return known&&partSignature(p)===partSignature(known)}))scenarioRevision.current=s.revision
+  else needsReconcile.current=true
+ },[workspace,initial.id,scenario])
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;onDirty(false)}},[onDirty])
  const change=(action:()=>void)=>{action();dirty.current=true;onDirty(true);setStatus('Rascunho');tick(g=>g+1)}
  const focusNew=(selector:string)=>requestAnimationFrame(()=>document.querySelector<HTMLElement>(selector)?.focus())
  const patch=(value:Partial<DiagnosisItem>)=>change(()=>setPiece(p=>({...p,...value})))
+ // Only acknowledgements update the baseline. In-flight typing keeps its own values.
+ function acceptPiece(saved:DiagnosisItem,sent:DiagnosisItem,acknowledged=sent){
+  const added=saved.services.filter(l=>!acknowledged.services.some(old=>old.id===l.id))
+  const ids=new Map(acknowledged.services.filter(l=>l.id.startsWith('new:')&&l.serviceId&&positive(l.quantity)).map((l,i)=>[l.id,added[i]?.id]))
+  setServiceKeys(current=>{const next={...current};for(const [local,id]of ids)if(id)next[id]=current[local]??local;return next})
+  setPiece(current=>({...current,revision:saved.revision,updatedAt:saved.updatedAt,services:current.services.map(l=>({...l,id:ids.get(l.id)??l.id}))}))
+  sent.revision=saved.revision;sent.updatedAt=saved.updatedAt;sent.services=sent.services.map(l=>({...l,id:ids.get(l.id)??l.id}))
+  confirmed.current.piece=structuredClone(saved)
+ }
+ function acceptPart(saved:ComponentItem,sent:Part,enabled:boolean){
+  sent.revision=saved.revision;sent.local=undefined
+  confirmed.current.parts.set(saved.id,{...saved,enabled})
+  setParts(current=>current.map(p=>p.id===saved.id?{...p,revision:saved.revision,local:undefined}:p))
+ }
+ function savedItem<T>(reply:CommercialSave<T>){
+  if(!reply?.item||!Number.isSafeInteger(reply.scenarioRevision)||reply.scenarioRevision<1)throw new Error('Confirmação de gravação inválida. Campos preservados; confira a versão salva antes de retomar.')
+  scenarioRevision.current=reply.scenarioRevision;return reply.item
+ }
+ async function flags(value:Partial<Pick<Scenario,'pieceFlags'|'serviceFlags'|'componentFlags'>>){
+  const saved=await api<Scenario>(base+'/cenarios/'+scenario,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:scenarioRevision.current,...value})})
+  if(saved.id!==scenario||!Number.isSafeInteger(saved.revision)||saved.revision<1)throw new Error('Confirmação de inclusões inválida. Campos preservados; confira a versão salva.')
+  scenarioRevision.current=saved.revision
+ }
  async function save(){
   if(running.current)return
   running.current=true;onBusy(true);setStatus('Salvando…')
   const sent=structuredClone(live.current);let incomplete=false
   try{
+   // After an uncertain response/conflict, inspect once before any retry. Never blind replay.
+   if(needsReconcile.current){
+    const w=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario)),s=w.scenarios.find(s=>s.id===scenario)
+    if(w.selectedId!==scenario||!s)throw new Error('Cenário excluído. Campos locais preservados; reabra explicitamente após revisar.')
+    const current=w.items.find(p=>p.id===initial.id)
+    if(!current)throw new Error('A peça foi removida. Seus campos locais foram preservados.')
+    const desired={...sent.piece,services:sent.piece.services.filter(l=>l.serviceId&&positive(l.quantity))}
+    if(pieceSignature(current)!==pieceSignature(confirmed.current.piece)&&pieceSignature(current,false)!==pieceSignature(desired,false)&&(!uncertainPiece.current||pieceSignature(current,false)!==pieceSignature(uncertainPiece.current,false)))throw new Error('Os dados ou inclusões salvos mudaram. Campos locais preservados; confira a versão salva antes de retomar.')
+    acceptPiece(current,sent.piece,uncertainPiece.current??sent.piece);uncertainPiece.current=null
+    for(const p of sent.parts){
+     const actual=w.components.find(c=>c.id===p.id),known=confirmed.current.parts.get(p.id)
+     if(!actual){if(known)throw new Error('Componente removido na versão salva. Campos locais preservados.');continue}
+     const stored={...actual,enabled:Boolean(s.componentFlags[p.id])}
+     if((!known||partSignature(stored)!==partSignature(known))&&partSignature(stored)!==partSignature(p)&&(!uncertainParts.current.has(p.id)||partSignature(stored)!==partSignature(uncertainParts.current.get(p.id)!)))throw new Error('Componente ou inclusão alterados na versão salva. Campos locais preservados; confira antes de retomar.')
+     acceptPart(actual,p,stored.enabled);uncertainParts.current.delete(p.id)
+    }
+    scenarioRevision.current=s.revision;needsReconcile.current=false
+   }
    const services=sent.piece.services.filter(l=>{
     const valid=Boolean(l.serviceId)&&positive(l.quantity);if(!valid)incomplete=true
     if(!valid&&!l.id.startsWith('new:'))throw new Error('Complete o serviço e a quantidade antes de salvar.')
     return valid
    })
-   if(pieceSignature({...sent.piece,services})!==confirmed.current.piece){
-    const w=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario))
-    if(w.selectedId!==scenario)throw new Error('Cenário excluído. Seus campos foram preservados; reabra explicitamente após revisar.')
-    const current=w.items.find(p=>p.id===initial.id)
-    if(!current)throw new Error('A peça foi removida. Seus campos locais foram preservados.')
-    const flags=(p:DiagnosisItem)=>signature({enabled:p.enabled,services:p.services.map(l=>({id:l.id,enabled:l.enabled}))})
-    if(current.revision===sent.piece.revision&&flags(current)!==flags(JSON.parse(confirmed.current.piece)))throw new Error('As inclusões do cenário mudaram. Campos locais preservados; confira a versão salva antes de retomar.')
-    const comparable=(p:DiagnosisItem)=>signature({diagnosisId:p.diagnosisId,notes:p.notes,enabled:p.enabled,services:p.services.map(l=>({serviceId:l.serviceId,dimensionId:l.dimensionId,quantity:canonical(l.quantity),enabled:l.enabled,diagnosisId:l.diagnosisId??null,notes:l.notes??''}))})
-    if(current.revision!==sent.piece.revision&&comparable(current)!==comparable({...sent.piece,services}))throw new Error('Os dados salvos mudaram. Confira a versão salva antes de retomar; seus campos locais foram preservados.')
-    const saved=current.revision!==sent.piece.revision?current:await api<DiagnosisItem>(base+'/diagnosticos/'+initial.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:sent.piece.revision,scenarioId:scenario,scenarioRevision:w.scenarios.find(s=>s.id===scenario)!.revision,diagnosisId:sent.piece.diagnosisId,notes:sent.piece.notes,enabled:sent.piece.enabled,services:services.map(l=>({...l,id:l.id.startsWith('new:')?undefined:l.id,quantity:decimal(l.quantity)}))})})
-    const added=saved.services.filter(l=>!sent.piece.services.some(old=>old.id===l.id));const ids=new Map(services.filter(l=>l.id.startsWith('new:')).map((l,i)=>[l.id,added[i]?.id]))
-    setServiceKeys(current=>{const next={...current};for(const [local,id] of ids)if(id)next[id]=current[local]??local;return next})
-    setPiece(current=>({...current,revision:saved.revision,services:current.services.map(l=>({...l,id:ids.get(l.id)??l.id}))}))
-    confirmed.current.piece=pieceSignature(saved)
+   const desired={...sent.piece,services}
+   if(pieceSignature(desired)!==pieceSignature(confirmed.current.piece)){
+    uncertainPiece.current=structuredClone(desired)
+    if(pieceDataSignature(desired)!==pieceDataSignature(confirmed.current.piece)){
+     const reply=await api<CommercialSave<DiagnosisItem>>(base+'/diagnosticos/'+initial.id,{method:'PATCH',headers:{'Content-Type':'application/json','X-Funix-Include-Revision':'1'},body:JSON.stringify({revision:sent.piece.revision,scenarioId:scenario,scenarioRevision:scenarioRevision.current,diagnosisId:sent.piece.diagnosisId,notes:sent.piece.notes,enabled:sent.piece.enabled,services:services.map(l=>({...l,id:l.id.startsWith('new:')?undefined:l.id,quantity:decimal(l.quantity)}))})})
+     acceptPiece(savedItem(reply),sent.piece,uncertainPiece.current)
+    }else{
+     const known=confirmed.current.piece,serviceFlags=Object.fromEntries(services.filter(l=>known.services.find(k=>k.id===l.id)?.enabled!==l.enabled).map(l=>[l.id,l.enabled]))
+     await flags({...(desired.enabled!==known.enabled?{pieceFlags:{[initial.id]:desired.enabled}}:{}),...(Object.keys(serviceFlags).length?{serviceFlags}:{})})
+     confirmed.current.piece=structuredClone(desired)
+    }
    }
+   uncertainPiece.current=null
    for(const p of sent.parts){
     if(!p.name.trim()||!positive(p.quantity)||!validPrice(p.manualPrice)){incomplete=true;continue}
-    if(partSignature(p)===confirmed.current.parts.get(p.id))continue
-    const before=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario)),current=before.components.find(c=>c.id===p.id)
-    const known=confirmed.current.parts.get(p.id),enabled=Boolean(before.scenarios.find(s=>s.id===scenario)?.componentFlags[p.id])
-    if(known&&enabled!==JSON.parse(known).enabled&&enabled!==p.enabled)throw new Error('A inclusão do componente mudou no cenário. Campos locais preservados; confira a versão salva.')
-    if(!p.local&&current&&current.revision!==p.revision&&(current.name!==p.name.trim()||current.quantity!==canonical(p.quantity)||current.manualPrice!==(p.manualPrice===null?null:canonical(p.manualPrice))||current.notes!==p.notes))throw new Error('Componente alterado na versão salva. Campos locais preservados; confira antes de retomar.')
-    const saved=!p.local&&current&&current.revision!==p.revision?current:await api<ComponentItem>(base+'/componentes'+(p.local?'':'/'+p.id),{method:p.local?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(p.local?{clientId:p.id}:{}),revision:p.revision,pieceId:initial.id,name:p.name,quantity:decimal(p.quantity),manualPrice:p.manualPrice===null?null:decimal(p.manualPrice),notes:p.notes,scenarioId:scenario})})
-    const w=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario)),s=w.scenarios.find(s=>s.id===scenario)
-    if(!s)throw new Error('Cenário excluído. Campos preservados.')
-    if(Boolean(s.componentFlags[p.id])!==p.enabled)await api(base+'/cenarios/'+scenario,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:s.revision,componentFlags:{[saved.id]:p.enabled}})})
-    const final={...saved,enabled:p.enabled}
-    confirmed.current.parts.set(p.id,partSignature(final));setParts(current=>current.map(v=>v.id===p.id?{...v,revision:saved.revision,local:undefined}:v))
+    let known=confirmed.current.parts.get(p.id)
+    if(known&&partSignature(p)===partSignature(known))continue
+    if(p.local||!known||partDataSignature(p)!==partDataSignature(known)){
+     uncertainParts.current.set(p.id,structuredClone({...p,enabled:known?.enabled??true}))
+     const reply=await api<CommercialSave<ComponentItem>>(base+'/componentes'+(p.local?'':'/'+p.id),{method:p.local?'POST':'PATCH',headers:{'Content-Type':'application/json','X-Funix-Include-Revision':'1'},body:JSON.stringify({...(p.local?{clientId:p.id}:{}),revision:p.revision,pieceId:initial.id,name:p.name,quantity:decimal(p.quantity),manualPrice:p.manualPrice===null?null:decimal(p.manualPrice),notes:p.notes,scenarioId:scenario,scenarioRevision:scenarioRevision.current})})
+     acceptPart(savedItem(reply),p,known?.enabled??true);known=confirmed.current.parts.get(p.id);uncertainParts.current.delete(p.id)
+    }
+    if(known!.enabled!==p.enabled){uncertainParts.current.set(p.id,{...known!,enabled:p.enabled});await flags({componentFlags:{[p.id]:p.enabled}});confirmed.current.parts.set(p.id,{...known!,enabled:p.enabled});uncertainParts.current.delete(p.id)}
    }
    await onSync()
    if(live.current.generation===sent.generation){dirty.current=incomplete;onDirty(incomplete);setStatus(incomplete?'Rascunho incompleto':'Salvo')}
-  }catch(cause){if((cause as {status?:number}).status===401)onAuthRequired();setError((cause as Error).message);setStatus('Erro — campos preservados');dirty.current=true;onDirty(true)}
+  }catch(cause){needsReconcile.current=true;if((cause as {status?:number}).status===401)onAuthRequired();setError((cause as Error).message);setStatus('Erro — campos preservados');dirty.current=true;onDirty(true)}
   finally{running.current=false;onBusy(false);if(mounted.current&&live.current.generation!==sent.generation)tick(g=>g+1)}
  }
  const saveLatest=useEffectEvent(()=>{void save()})
@@ -101,5 +141,5 @@ export function DiagnosisEditor({initial,workspace,catalog,onDirty,onBusy,onSync
  {piece.services.map((l,i)=><section className="service" key={serviceKeys[l.id]??l.id} aria-label={`Serviço ${i+1}`}><div className="field-line"><SelectControl label="Serviço" value={l.serviceId} items={options('servico',l.serviceId)} onChange={v=>patch({services:piece.services.map(c=>c.id===l.id?{...c,serviceId:v,dimensionId:null}:c)})}/><SelectControl label="Dimensão" value={l.dimensionId??''} items={options('dimensao',l.dimensionId).filter(c=>c.serviceId===l.serviceId)} onChange={v=>patch({services:piece.services.map(c=>c.id===l.id?{...c,dimensionId:v||null}:c)})}/></div><div className="detail-line"><ToggleControl label="Incluir serviço" on={l.enabled} onChange={()=>patch({services:piece.services.map(c=>c.id===l.id?{...c,enabled:!c.enabled}:c)})}/><label className="qty">Qtd.<input aria-label="Quantidade do serviço" inputMode="decimal" value={l.quantity} onChange={e=>patch({services:piece.services.map(c=>c.id===l.id?{...c,quantity:e.target.value}:c)})}/></label><div className="calculated"><small>Valor calculado</small><strong aria-live="polite" data-state={servicePending(piece,l,savedPiece)?error?'error':'pending':parameterState}>{servicePending(piece,l,savedPiece)||parameterState!=='current'?error||parameterState==='error'?'Valor não atualizado':'Calculando…':calc?.lines.find(c=>c.id===l.id)?.total==null?'—':money(calc.lines.find(c=>c.id===l.id)!.total)}</strong></div><button className="trash" aria-label="Excluir serviço" onClick={()=>{if(l.id.startsWith('new:')||window.confirm('Excluir este serviço de TODOS os cenários?'))patch({services:piece.services.filter(c=>c.id!==l.id)})}}><I name="trash"/></button></div></section>)}
  <div className="section-bar component-title"><div className="title">Componentes <span className="count">{parts.length}</span></div><button className="add" aria-label="Adicionar componente" onClick={()=>{change(()=>setParts(v=>[...v,{id:crypto.randomUUID(),atendimentoId:initial.atendimentoId,pieceId:initial.id,name:'',quantity:'1',manualPrice:null,notes:'',revision:1,enabled:true,local:true}]));focusNew('.approved-editor .component:last-of-type .name')}}><I name="plus"/><I name="cube"/></button></div>
  {parts.map(p=><section className="component" key={p.id}><input className="name" maxLength={250} aria-label="Descrição do componente" value={p.name} onChange={e=>change(()=>setParts(v=>v.map(c=>c.id===p.id?{...c,name:e.target.value}:c)))}/><div className="detail-line"><ToggleControl label="Incluir componente" on={p.enabled} onChange={()=>change(()=>setParts(v=>v.map(c=>c.id===p.id?{...c,enabled:!c.enabled}:c)))}/><label className="qty">Qtd.<input aria-label="Quantidade do componente" inputMode="decimal" value={p.quantity} onChange={e=>change(()=>setParts(v=>v.map(c=>c.id===p.id?{...c,quantity:e.target.value}:c)))}/></label><label className="price-input">Preço unitário (R$)<input aria-label="Preço unitário do componente" inputMode="decimal" value={p.manualPrice??''} onChange={e=>change(()=>setParts(v=>v.map(c=>c.id===p.id?{...c,manualPrice:e.target.value===''?null:e.target.value}:c)))}/></label><button className="trash" aria-label="Excluir componente" onClick={()=>removePart(p)}><I name="trash"/></button></div></section>)}
- <div className="bottom-label" role="status"><I name="cloud"/>Salvamento automático · {status}</div>{error&&<div role="alert"><p>{error}</p><button onClick={()=>{setError('');tick(g=>g+1)}}>Tentar novamente</button><button onClick={async()=>{if(!window.confirm('Descartar os campos locais e carregar a versão salva?'))return;onBusy(true);try{const w=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario)),saved=w.items.find(p=>p.id===initial.id);if(!saved)throw new Error('Peça removida. Campos locais mantidos.');const parts=w.components.filter(c=>c.pieceId===initial.id).map(c=>({...c,enabled:Boolean(w.scenarios.find(s=>s.id===scenario)?.componentFlags[c.id])}));setPiece(saved);setParts(parts);confirmed.current={piece:pieceSignature(saved),parts:new Map(parts.map(c=>[c.id,partSignature(c)]))};dirty.current=false;onDirty(false);setStatus('Salvo');setError('');await onSync()}catch(e){setError((e as Error).message)}finally{onBusy(false)}}}>Carregar versão salva</button></div>}</div></section>
+ <div className="bottom-label" role="status"><I name="cloud"/>Salvamento automático · {status}</div>{error&&<div role="alert"><p>{error}</p><button onClick={()=>{setError('');tick(g=>g+1)}}>Tentar novamente</button><button onClick={async()=>{if(!window.confirm('Descartar os campos locais e carregar a versão salva?'))return;onBusy(true);try{const w=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(scenario)),saved=w.items.find(p=>p.id===initial.id);if(!saved)throw new Error('Peça removida. Campos locais mantidos.');const parts=w.components.filter(c=>c.pieceId===initial.id).map(c=>({...c,enabled:Boolean(w.scenarios.find(s=>s.id===scenario)?.componentFlags[c.id])}));setPiece(saved);setParts(parts);confirmed.current={piece:structuredClone(saved),parts:new Map(parts.map(c=>[c.id,structuredClone(c)]))};scenarioRevision.current=w.scenarios.find(s=>s.id===scenario)!.revision;needsReconcile.current=false;uncertainPiece.current=null;uncertainParts.current.clear();dirty.current=false;onDirty(false);setStatus('Salvo');setError('');await onSync()}catch(e){setError((e as Error).message)}finally{onBusy(false)}}}>Carregar versão salva</button></div>}</div></section>
 }

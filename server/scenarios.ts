@@ -34,11 +34,17 @@ export class ScenarioRepository {
   constructor(db: DatabaseSync) { this.db = db }
   list(at: string): Scenario[] {
     new AtendimentoRepository(this.db).get(at)
-    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row => {
-      const flags = (table: string, column: string) => Object.fromEntries(this.db.prepare(`SELECT ${column} AS id,enabled FROM ${table} WHERE scenario_id=?`).all(row.id!).map(f => [String(f.id), f.enabled === 1]))
-      return { id: String(row.id), atendimentoId: at, name: String(row.name), position: Number(row.position), revision: Number(row.revision), pieceFlags: flags('scenario_piece_flags','piece_id'), serviceFlags: flags('scenario_service_flags','service_id'), componentFlags: flags('scenario_component_flags','component_id') }
-    })
+    const flags = (table:string,column:string) => {
+      const grouped=new Map<string,Record<string,boolean>>()
+      for(const row of this.db.prepare(`SELECT f.scenario_id,f.${column} AS id,f.enabled FROM ${table} f JOIN scenarios s ON s.id=f.scenario_id WHERE s.atendimento_id=?`).all(at)){
+        const key=String(row.scenario_id),values=grouped.get(key)??{};values[String(row.id)]=row.enabled===1;grouped.set(key,values)
+      }
+      return grouped
+    }
+    const pieces=flags('scenario_piece_flags','piece_id'),services=flags('scenario_service_flags','service_id'),components=flags('scenario_component_flags','component_id')
+    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row=>({id:String(row.id),atendimentoId:at,name:String(row.name),position:Number(row.position),revision:Number(row.revision),pieceFlags:pieces.get(String(row.id))??{},serviceFlags:services.get(String(row.id))??{},componentFlags:components.get(String(row.id))??{}}))
   }
+
   create(at: string, input: unknown) {
     new AtendimentoRepository(this.db).get(at)
     const data = inputObject(input, ['name','duplicateFrom','sourceRevision'])

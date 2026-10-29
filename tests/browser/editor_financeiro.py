@@ -105,10 +105,11 @@ async def run():
     await expect(editor.get_by_role('alert')).to_be_visible();await expect(editor.get_by_role('textbox',name='Observação da peça',exact=True)).to_have_value('Resposta perdida QA')
     await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo');await page.unroute(fail_path,lost)
     assert len((await get(path+'/cenarios'))['items'][0]['services'])==2
-    # Explicit conflict does not overwrite either version; saved reload requires user confirmation.
+    # Issue22 uses the atomic PATCH revision guard (409), rather than a preflight GET.
+    # Remote values/local draft assertions below remain the acceptance criteria.
     saved=(await get(path+'/cenarios'))['items'][0]
     await write(path+'/diagnosticos/'+item['id'],{'revision':saved['revision'],'notes':'Servidor QA','services':saved['services']},'patch')
-    await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Local preservado QA');await expect(editor.get_by_role('alert')).to_contain_text('dados salvos mudaram')
+    await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Local preservado QA');await expect(editor.get_by_role('alert')).to_contain_text('campos foram preservados')
     assert (await get(path+'/cenarios'))['items'][0]['notes']=='Servidor QA'
     await expect(editor.get_by_role('textbox',name='Observação da peça',exact=True)).to_have_value('Local preservado QA')
     await editor.get_by_role('button',name='Carregar versão salva',exact=True).click();await expect(editor.get_by_role('textbox',name='Observação da peça',exact=True)).to_have_value('Servidor QA')
@@ -117,7 +118,7 @@ async def run():
     w=await get(path+'/cenarios');scenario=w['scenarios'][0]
     await write(path+'/cenarios/'+scenario['id'],{'revision':scenario['revision'],'serviceFlags':{first_ids[0]:False}},'patch')
     await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Preservar flags externas QA')
-    await expect(editor.get_by_role('alert')).to_contain_text('inclusões do cenário mudaram')
+    await expect(editor.get_by_role('alert')).to_contain_text('campos foram preservados')
     assert not (await get(path+'/cenarios'))['scenarios'][0]['serviceFlags'][first_ids[0]]
     await editor.get_by_role('button',name='Carregar versão salva',exact=True).click()
     await editor.locator('.service').first.get_by_role('button',name='Incluir serviço',exact=True).click()

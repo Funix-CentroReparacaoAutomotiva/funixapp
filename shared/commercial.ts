@@ -40,3 +40,5 @@ export interface CommercialWorkspace {
   scenarios: Scenario[]; selectedId: string; items: DiagnosisItem[]; revision: number
   components: ComponentItem[]; settings: PricingSettings; configurationRevision: number; calculations: Calculation[]
 }
+// Opt-in mutation acknowledgement: actual scenario revision after a confirmed write.
+export interface CommercialSave<T> { item:T; scenarioRevision:number }
