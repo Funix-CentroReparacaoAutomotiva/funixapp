@@ -73,10 +73,20 @@
 
 
 .approved-editor svg.icon,.approved-finance svg.icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}.approved-editor .qty,.approved-editor .price-input{font-size:11px;color:#6e6e72}.approved-editor .qty input,.approved-editor .price-input input{display:block;margin-top:4px}.approved-editor button{font:inherit}.approved-editor .piece-name{line-height:1.2}
-.approved-finance{flex:none;margin:0;max-width:none;border-radius:12px 12px 0 0}.approved-finance .body{max-height:min(65dvh,480px);overflow:auto}.approved-finance .metric span{font-weight:400}.approved-finance .metric.final span{font-weight:800}.approved-finance .finance-review{position:absolute;inset:10px;z-index:85;overflow:auto;background:#fff;color:#18325a;border-radius:12px;padding:16px;box-shadow:0 0 0 20px #0a1e3b55}.finance-review button{display:block;margin:12px 0;border:1px solid #c3d0e3;border-radius:6px;padding:9px;background:#edf3fb;color:#14305b}.finance-review label{display:flex;gap:8px;align-items:center}.finance-review input[type=checkbox]{width:18px;height:18px}.editor-back{border:0;background:transparent;color:#365675;font-size:11px;padding:0 0 10px}.commercial-page:has(.approved-finance)~.copilot-fixed{display:none}.app-shell:has(.approved-finance)>.copilot-fixed{display:none}.approved-editor .content{font-size:13px;color:#17191e}.approved-editor button,.approved-editor input,.approved-editor select,.approved-editor textarea{font-family:inherit}.approved-finance .summary:focus-visible{outline-offset:-3px}
+.approved-finance{flex:none;margin:0;max-width:none;border-radius:12px 12px 0 0}.approved-finance .body{max-height:min(65dvh,480px);overflow:auto}.approved-finance .metric span{font-weight:400}.approved-finance .metric.final span{font-weight:800}.approved-finance .finance-review{position:absolute;inset:10px;z-index:85;overflow:auto;background:#fff;color:#18325a;border-radius:12px;padding:16px;box-shadow:0 0 0 20px #0a1e3b55}.finance-review button{display:block;margin:12px 0;border:1px solid #c3d0e3;border-radius:6px;padding:9px;background:#edf3fb;color:#14305b}.finance-review label{display:flex;gap:8px;align-items:center}.finance-review input[type=checkbox]{width:18px;height:18px}.editor-back{border:0;background:transparent;color:#365675;font-size:11px;padding:0 0 10px}.approved-editor .content{font-size:13px;color:#17191e}.approved-editor button,.approved-editor input,.approved-editor select,.approved-editor textarea{font-family:inherit}.approved-finance .summary:focus-visible{outline-offset:-3px}
 
 .approved-finance dialog.finance-review{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 32px);border:1px solid #cad8ef;box-shadow:0 10px 45px #0a1e3b55;font-size:13px}
 .approved-finance dialog.finance-review::backdrop{background:#0a1e3b88}
 .approved-finance .finance-review .diagnosis-card{padding:9px;margin:8px 0}.approved-finance .finance-review .budget-summary{font-size:12px}.approved-finance .finance-review input[type=checkbox]{flex:none}
 
 .approved-editor{line-height:normal}
+
+/* Etapa B: editor is the internal page; retain its approved controls and palette. */
+.internal-page:has(.approved-editor) .diagnostics-body{padding:0}
+.internal-page .approved-editor{max-width:none;min-height:100%;border:0;border-radius:0;margin:0}
+.internal-page .internal-delete-piece{margin:12px;font-size:11px}
+.internal-page .scenario-matrix{border:0;border-radius:0}
+.approved-finance .body{max-height:min(65dvh,480px,calc(100dvh - 260px))}
+
+.internal-page .approved-editor .piece-name{display:none}
+.internal-page .approved-editor .piece-row .plain-action{margin-left:auto}

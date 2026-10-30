@@ -1,17 +1,26 @@
-import {useCallback,useEffect,useState} from 'react'
+import {useCallback,useEffect,useEffectEvent,useLayoutEffect,useState} from 'react'
 import type {BudgetPreview,BudgetVersion} from '../shared/pricing'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
 type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string}
-export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,onBack}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;onBack:()=>void}){
+export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onOpenVersion,onTitle}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
+ const requireAuth=useEffectEvent(onAuthRequired)
+ const selected=version?.id===versionId?version:null
  const busy=ownBusy||externalBusy
+ useLayoutEffect(()=>{onTitle(versionId?selected?'Orçamento '+selected.label:'Orçamento emitido':'Orçamentos emitidos')},[versionId,selected,onTitle])
+ useEffect(()=>{
+  if(!versionId)return
+  const controller=new AbortController()
+  api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos/${encodeURIComponent(versionId)}`,{signal:controller.signal}).then(v=>{if(!controller.signal.aborted){setError('');setVersion(v)}}).catch(e=>{if(!controller.signal.aborted){setError(e.message);if(e.status===401)requireAuth()}})
+  return()=>controller.abort()
+ },[at,versionId])
  const load=useCallback(async()=>{setVersions(await api<VersionMeta[]>(`/api/atendimentos/${at}/orcamentos`))},[at])
  useEffect(()=>{let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load])
  async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
- return <section aria-label="Histórico de orçamentos"><div className="commercial-toolbar"><h2>{version?'Versão emitida':'Histórico de orçamentos'}</h2><button className="fh-filter" disabled={busy} onClick={version?()=>setVersion(null):onBack}>{version?'Voltar ao histórico':'Voltar aos Diagnósticos'}</button></div>{error&&<p role="alert" className="form-error">{error}</p>}
- {version?<><p>Documento imutável, emitido em {new Date(version.createdAt).toLocaleString('pt-BR')}. Não utiliza o catálogo atual.</p><CalculationView preview={{snapshot:version.snapshot,token:'',canEmit:true}}/><button className="primary-btn" disabled={busy} onClick={()=>operation(async()=>{const r=await fetch(`/api/atendimentos/${at}/orcamentos/${version.id}/pdf`,{credentials:'same-origin'});if(!r.ok||!r.headers.get('content-type')?.includes('application/pdf'))throw new Error('Não foi possível baixar o PDF.');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download=`FUNIX-${version.label}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)})}>Baixar PDF {version.label}</button></>:<>{versions.map(v=><button className="catalog-row" key={v.id} disabled={busy} onClick={()=>operation(async()=>{setVersion(await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos/${v.id}`))})}>Orçamento {v.label} · {new Date(v.createdAt).toLocaleString('pt-BR')} · {money(v.total)}</button>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
+ return <section aria-label="Orçamentos emitidos">{error&&<p role="alert" className="form-error">{error}</p>}
+ {selected?<><p>Documento imutável, emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. Não utiliza o catálogo atual.</p><CalculationView preview={{snapshot:selected.snapshot,token:'',canEmit:true}}/><button className="primary-btn" disabled={busy} onClick={()=>operation(async()=>{const r=await fetch(`/api/atendimentos/${at}/orcamentos/${selected.id}/pdf`,{credentials:'same-origin'});if(!r.ok||!r.headers.get('content-type')?.includes('application/pdf'))throw new Error('Não foi possível baixar o PDF.');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download=`FUNIX-${selected.label}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)})}>Baixar PDF {selected.label}</button></>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando versão emitida…'}</p>:<>{versions.map(v=><button className="catalog-row" key={v.id} disabled={busy} onClick={()=>onOpenVersion(v.id)}>Orçamento {v.label} · {new Date(v.createdAt).toLocaleString('pt-BR')} · {money(v.total)}</button>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
  </section>
 }
 

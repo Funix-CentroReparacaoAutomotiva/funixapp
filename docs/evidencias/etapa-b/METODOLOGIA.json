@@ -1,0 +1,20 @@
+{
+  "base": "24354733ef2b5e2c39fc036f23746529311a5282",
+  "branch": "ui/etapa-b-navegacao",
+  "synthetic_only": true,
+  "database": "Temporary file SQLite, no existing application database",
+  "desktop": [
+    1440,
+    960
+  ],
+  "mobile_emulated": [
+    390,
+    844
+  ],
+  "mobile_touch": "DOM touch events plus Chromium Input.dispatchTouchEvent; no physical iOS/Android device",
+  "targeted_browser_groups": 21,
+  "node_tests": 105,
+  "existing_browser_groups": 84,
+  "backend_business_schema_workflow_changes": false,
+  "merge_deploy_coda_vps": false
+}

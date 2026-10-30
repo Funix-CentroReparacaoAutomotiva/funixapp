@@ -44,6 +44,8 @@ O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não 
 
 ## Engenharia e validação
 
+Etapa B autorizada pela direção: navegação do Atendimento por telas completas, cabeçalhos/retorno nativo, apresentação compacta de cenários, swipe principal e Copiloto visível nas três abas. Base `24354733ef2b5e2c39fc036f23746529311a5282`. Reaproveitar History API/componentes, preservar autosave/guards/cenários/preços/PDF. Sem etapas C/D, importação Coda real, alterações produtivas, merge/deploy ou infraestrutura. Relatório: `docs/ETAPA_B_NAVEGACAO.md`; QA somente em bancos sintéticos isolados.
+
 Issue #22: otimizar apenas gargalos medidos de autosave, recargas e consultas, na base `d829b948f6a0198d805aca47e3760304a9223f62` (PRs #19/#21 integrados). Preservar revisões otimistas, recuperação de gravações incertas, fórmulas, snapshots/PDFs e UI/UX do mapa. Medir antes/depois com bancos sintéticos isolados; não corrigir independência preço–energia, importar Coda, acessar VPS, alterar o banco existente, workflows ou infraestrutura. Entrega em PR para auditoria, sem merge/deploy. Relatório: `docs/ISSUE22_DESEMPENHO.md`.
 
 Manter autenticação existente e validação de origem em escritas. SQL parametrizado, limites de entrada, erros sanitizados e dados sintéticos nos testes. Nenhum segredo no frontend/Git/logs. Não usar localStorage como banco comercial. Gravações de Atendimento são locais; ações externas continuam indisponíveis.

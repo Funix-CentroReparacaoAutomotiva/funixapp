@@ -1,0 +1,398 @@
+{
+  "synthetic": true,
+  "total_groups": 84,
+  "results": [
+    {
+      "suite": "pr17_auditoria",
+      "pass": true,
+      "groups": 8,
+      "assertions": [
+        {
+          "name": "desktop: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+          "pass": true
+        },
+        {
+          "name": "desktop: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+          "pass": true
+        },
+        {
+          "name": "desktop: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+          "pass": true
+        },
+        {
+          "name": "desktop: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+          "pass": true
+        },
+        {
+          "name": "mobile: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+          "pass": true
+        },
+        {
+          "name": "mobile: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+          "pass": true
+        },
+        {
+          "name": "mobile: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+          "pass": true
+        },
+        {
+          "name": "mobile: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "editor_financeiro",
+      "pass": true,
+      "groups": 17,
+      "assertions": [
+        {
+          "name": "desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+          "pass": true
+        },
+        {
+          "name": "desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier",
+          "pass": true
+        },
+        {
+          "name": "desktop: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width",
+          "pass": true
+        },
+        {
+          "name": "desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF",
+          "pass": true
+        },
+        {
+          "name": "desktop: global piece deletion remains accessible in the piece screen and preserves historical emission",
+          "pass": true
+        },
+        {
+          "name": "desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+          "pass": true
+        },
+        {
+          "name": "mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier",
+          "pass": true
+        },
+        {
+          "name": "mobile: computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width",
+          "pass": true
+        },
+        {
+          "name": "mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF",
+          "pass": true
+        },
+        {
+          "name": "mobile: global piece deletion remains accessible in the piece screen and preserves historical emission",
+          "pass": true
+        },
+        {
+          "name": "mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+          "pass": true
+        },
+        {
+          "name": "no browser runtime errors or external requests; desktop/mobile no horizontal overflow",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "m1_atendimentos",
+      "pass": true,
+      "groups": 19,
+      "assertions": [
+        {
+          "name": "desktop: Conversas, Funil and global Configurações navigation; no Veículos",
+          "pass": true
+        },
+        {
+          "name": "real empty SQLite database is usable without Coda credentials",
+          "pass": true
+        },
+        {
+          "name": "manual creation requires only a minimum phone; optional data stays empty",
+          "pass": true
+        },
+        {
+          "name": "optional fields and manual commercial phase persist; header updates to saved record",
+          "pass": true
+        },
+        {
+          "name": "search locates actual stored records by name, plate and phone",
+          "pass": true
+        },
+        {
+          "name": "detail back preserves list and search context",
+          "pass": true
+        },
+        {
+          "name": "switching records never combines another contact or plate in the header",
+          "pass": true
+        },
+        {
+          "name": "Chat and global/context IA stay unavailable without simulated integration",
+          "pass": true
+        },
+        {
+          "name": "cancelling unsaved navigation keeps the form until explicit discard",
+          "pass": true
+        },
+        {
+          "name": "injected save failure retains input and does not alter persisted data",
+          "pass": true
+        },
+        {
+          "name": "real revision conflict preserves stale input and refuses silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "Rejeitados requires explicit refusal and reason; no automatic loss",
+          "pass": true
+        },
+        {
+          "name": "Kanban preserves six approved labels and collapsible lanes",
+          "pass": true
+        },
+        {
+          "name": "delayed response from another Atendimento cannot replace the active header",
+          "pass": true
+        },
+        {
+          "name": "same SQLite records survive API stop/restart and a completely new browser session",
+          "pass": true
+        },
+        {
+          "name": "mobile: no body horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile: editor scrolling/save is usable and edited data survives reload",
+          "pass": true
+        },
+        {
+          "name": "legacy vehicle/experience URLs cannot expose operational views",
+          "pass": true
+        },
+        {
+          "name": "no external providers, legacy Coda APIs, IA calls or uncaught page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue7_scenarios",
+      "pass": true,
+      "groups": 3,
+      "assertions": [
+        {
+          "name": "duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context",
+          "pass": true
+        },
+        {
+          "name": "editing master attributes in one scenario changes the same line in the other scenario",
+          "pass": true
+        },
+        {
+          "name": "fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue12_inclusion",
+      "pass": true,
+      "groups": 11,
+      "assertions": [
+        {
+          "name": "existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved",
+          "pass": true
+        },
+        {
+          "name": "second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones",
+          "pass": true
+        },
+        {
+          "name": "ordinary mutations skip catalog GET; failed post-commit workspace and explicit catalog refresh preserve confirmed rows and recover without resending",
+          "pass": true
+        },
+        {
+          "name": "POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy",
+          "pass": true
+        },
+        {
+          "name": "lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags",
+          "pass": true
+        },
+        {
+          "name": "HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST",
+          "pass": true
+        },
+        {
+          "name": "autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit",
+          "pass": true
+        },
+        {
+          "name": "initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data",
+          "pass": true
+        },
+        {
+          "name": "full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces",
+          "pass": true
+        },
+        {
+          "name": "rapid double click while real POST response is pending issues one POST, saves one row and releases busy after confirmation",
+          "pass": true
+        },
+        {
+          "name": "fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue22_regressions",
+      "pass": true,
+      "groups": 14,
+      "assertions": [
+        {
+          "name": "desktop: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+          "pass": true
+        },
+        {
+          "name": "desktop: unreadable committed component POST is recovered without a duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+          "pass": true
+        },
+        {
+          "name": "desktop: content and mask conflicts block replay, preserve drafts and support explicit loading",
+          "pass": true
+        },
+        {
+          "name": "desktop: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+          "pass": true
+        },
+        {
+          "name": "mobile: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+          "pass": true
+        },
+        {
+          "name": "mobile: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+          "pass": true
+        },
+        {
+          "name": "mobile: unreadable committed component POST is recovered without a duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "mobile: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+          "pass": true
+        },
+        {
+          "name": "mobile: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+          "pass": true
+        },
+        {
+          "name": "mobile: content and mask conflicts block replay, preserve drafts and support explicit loading",
+          "pass": true
+        },
+        {
+          "name": "mobile: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue18_import",
+      "pass": true,
+      "groups": 6,
+      "assertions": [
+        {
+          "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+          "pass": true
+        },
+        {
+          "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+          "pass": true
+        },
+        {
+          "name": "desktop: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+          "pass": true
+        },
+        {
+          "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected",
+          "pass": true
+        },
+        {
+          "name": "mobile: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue20_pricing",
+      "pass": true,
+      "groups": 6,
+      "assertions": [
+        {
+          "name": "desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+          "pass": true
+        },
+        {
+          "name": "desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+          "pass": true
+        },
+        {
+          "name": "desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+          "pass": true
+        },
+        {
+          "name": "mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+          "pass": true
+        },
+        {
+          "name": "mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

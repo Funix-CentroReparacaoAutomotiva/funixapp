@@ -40,9 +40,9 @@ async def run():
     await expect(editor.locator('.service').first.locator('.calculated')).to_contain_text('889,00')
     await editor.screenshot(path=str(ARTIFACTS/f'{device}-editor-recorte.png'))
     await page.screenshot(path=str(ARTIFACTS/f'{device}-editor.png'))
-    # Original supplied HTML at identical component width, not a rebuilt approximation.
+    # Original HTML at identical content width; Etapa B removes only its external frame.
     ref=await ctx.new_page();width=round((await editor.bounding_box())['width'])
-    await ref.set_viewport_size(viewport);await ref.set_content((ROOT/'docs/referencias/editor-financeiro/01_EDITOR_DIAGNOSTICO_APROVADO.html').read_text());await ref.add_style_tag(content=f'body{{padding:0}}.editor{{width:{width}px;margin:0}}')
+    await ref.set_viewport_size(viewport);await ref.set_content((ROOT/'docs/referencias/editor-financeiro/01_EDITOR_DIAGNOSTICO_APROVADO.html').read_text());await ref.add_style_tag(content=f'body{{padding:0}}.editor{{width:{width}px;margin:0;border:0;border-radius:0;max-width:none}}')
     await ref.locator('.editor').screenshot(path=str(ARTIFACTS/f'{device}-editor-referencia.png'))
     for selector,properties in [('.head',['backgroundColor','padding']),('.piece-name',['fontSize','fontWeight']),('.top-select select',['height','backgroundColor','borderRadius']),('.field-line',['gridTemplateColumns','gap']),('.add',['height','width','borderRadius']),('.calculated strong',['fontSize','fontWeight'])]:
      async def styles(loc):return await loc.first.evaluate('(e,props)=>Object.fromEntries(props.map(p=>[p,getComputedStyle(e)[p]]))',properties)
@@ -202,21 +202,21 @@ async def run():
     await review.get_by_role('button',name='Fechar conferência').click()
     await finance.get_by_label('Valor em reais',exact=True).fill('0');await finance.get_by_label('Valor em reais',exact=True).blur();await expect(finance.locator('.total')).to_contain_text('2.950,00')
     # Discoverable history/configuration on the existing header menu; snapshot/PDF independent of current MR.
-    await (await menu(page)).get_by_role('menuitem',name='Histórico de orçamentos',exact=True).click()
-    await expect(page.get_by_role('heading',name='Histórico de orçamentos',exact=True)).to_be_visible()
+    await (await menu(page)).get_by_role('menuitem',name='Orçamentos emitidos',exact=True).click()
+    await expect(page.get_by_role('heading',name='Orçamentos emitidos',exact=True)).to_be_visible()
     assert await page.get_by_role('button',name='Configuração comercial',exact=True).count()==0
-    await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
+    await page.locator('.detail-header .back-detail').click()
     await finance.locator('.summary').click();await finance.get_by_label('MR',exact=True).select_option('mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00')
     assert await get(path+'/orcamentos/'+v['id'])==v
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==pdf_hash
     h.mark(device+': global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF')
     assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'),device
     await page.locator('.diagnosis-open').first.click()
-    await (await menu(page)).get_by_role('menuitem',name='Excluir peça de todos os cenários',exact=True).click()
+    await page.get_by_role('button',name='Excluir peça de todos os cenários',exact=True).click()
     await expect(page.locator('.approved-editor')).to_have_count(0)
     assert not (await get(path+'/cenarios'))['items'] and not (await get(path+'/cenarios'))['components']
     assert (await get(path+'/orcamentos/'+v['id']))==v
-    h.mark(device+': global piece deletion remains accessible in existing context menu and preserves historical emission')
+    h.mark(device+': global piece deletion remains accessible in the piece screen and preserves historical emission')
     before=await get(path+'/cenarios');await h.restart_api()
     await write('/api/session',{'password':h.password});after=await get(path+'/cenarios');assert before==after
     assert (await get(path+'/orcamentos/'+v['id']))==v
