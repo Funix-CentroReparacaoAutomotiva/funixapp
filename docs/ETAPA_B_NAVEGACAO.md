@@ -29,7 +29,7 @@ O painel comercial fica montado nas transições limpas, preservando contexto do
 
 Enquanto grava, uma saída é bloqueada. Com rascunho/erro, a confirmação existente continua necessária. Cancelar um pop restaura a entrada do histórico com `history.go`, preservando também o caminho de avançar; não cria uma nova entrada a cada cancelamento. Confirmar descarte recarrega o estado confirmado sem gravar o texto descartado. Antes de sair do documento, o beforeunload existente permanece.
 
-A navegação para editor após seleção já gravada e o retorno após exclusão ocorrem quando a mutação termina; não atravessam o guard de gravação. O retorno limpo não adiciona GET de workspace. A mesma revisão/autosave/reconciliação da Issue #22 segue sendo usada, sem alterações em `DiagnosisEditor.tsx` ou no contrato API.
+A navegação para editor após seleção já gravada e o retorno após exclusão ocorrem quando a mutação termina; não atravessam o guard de gravação. O retorno limpo não adiciona GET de workspace. Trocar de aba fecha o seletor de peças, preservando o comportamento anterior e evitando abertura involuntária de modal no Mapa. A mesma revisão/autosave/reconciliação da Issue #22 segue sendo usada, sem alterações em `DiagnosisEditor.tsx` ou no contrato API.
 
 ## Validação executada
 

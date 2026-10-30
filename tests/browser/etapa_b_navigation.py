@@ -82,6 +82,8 @@ async def device_case(browser,device,viewport):
    await page.get_by_role('button',name='Abrir Copiloto FUNIX',exact=True).click();await expect(page.get_by_role('region',name='Copiloto FUNIX',exact=True)).to_contain_text('IA ainda indisponível');await shot('copiloto-'+label.lower())
    await page.get_by_role('button',name='Recolher Copiloto',exact=True).click();await expect(page.get_by_role('region',name='Copiloto FUNIX',exact=True)).to_have_count(0)
    if label=='Mapa':await shot('mapa')
+  await main('Diagnósticos');await page.get_by_role('button',name='+ Adicionar peça',exact=True).click();await expect(page.get_by_label('Buscar peça em todas as vistas')).to_be_visible()
+  await main('Mapa');await expect(page.get_by_role('dialog',name='Selecionar peça no mapa')).to_have_count(0)
   h.mark(device+': main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance')
 
   await main('Chat');before=len([r for r in requests if r[1].endswith(base)])

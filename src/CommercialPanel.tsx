@@ -46,6 +46,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [failure, setFailure] = useState(''), [message, setMessage] = useState(''), [localBusy, setBusy] = useState(false)
   const [failureDetails, setFailureDetails] = useState<RequestFailure | null>(null), [refreshNeeded, setRefreshNeeded] = useState(false)
   const [reauth, setReauth] = useState(false), [selecting, setSelecting] = useState(false)
+  const [displayTab,setDisplayTab]=useState(tab)
+  if(displayTab!==tab){setDisplayTab(tab);setSelecting(false)}
   const [discPage, setDiscPage] = useState(0)
   const [path, setPath] = useState<HierarchyNode[]>([]), [query, setQuery] = useState('')
   const draft=screen==='peca'?workspace?.items.find(item=>item.id===pieceId):undefined
