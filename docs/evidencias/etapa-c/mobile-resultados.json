@@ -1,0 +1,43 @@
+{
+  "device": "mobile",
+  "results": [
+    {
+      "name": "mobile: four rapid pieces, reversals and interleaving stay interactive; last intentions match file SQLite, two serial PATCHes, other scenarios/services unchanged",
+      "pass": true
+    },
+    {
+      "name": "mobile: accessible switches support keyboard and do not emit repetitive green confirmations",
+      "pass": true
+    },
+    {
+      "name": "mobile: http blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records",
+      "pass": true
+    },
+    {
+      "name": "mobile: lost-patch blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records",
+      "pass": true
+    },
+    {
+      "name": "mobile: functional classification and unified search use original identities; lost committed POST recovered with one master row",
+      "pass": true
+    },
+    {
+      "name": "mobile: front/rear keep real radial pairs with Ambos centered above Motorista/Passageiro; selection creates only existing codes",
+      "pass": true
+    },
+    {
+      "name": "mobile: contextual sides remove opposite/Ambos/redundant choice; Map and functional selection retain same master IDs without duplicates",
+      "pass": true
+    },
+    {
+      "name": "mobile: group states none/partial/all reflect unique selectable codes and pending intentions",
+      "pass": true
+    },
+    {
+      "name": "mobile: file SQLite survives API restart/reload with stable records, no duplicates or external calls; issued snapshot unchanged",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}
