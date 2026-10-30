@@ -1,0 +1,147 @@
+
+> funixapp@0.1.0 check
+> npm run build && npm run check:server && npm run test:server && npm run lint
+
+
+> funixapp@0.1.0 build
+> tsc -b && vite build
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 38 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.62 kB │ gzip:  0.39 kB
+dist/assets/index-CZO0kFd7.css   46.52 kB │ gzip: 10.30 kB
+dist/assets/index-BijkjSt4.js   328.65 kB │ gzip: 99.75 kB
+
+✓ built in 141ms
+
+> funixapp@0.1.0 check:server
+> tsc -p server/tsconfig.json
+
+
+> funixapp@0.1.0 test:server
+> node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts
+
+✔ Issue20 authenticated configuration flags drive preview and discount emission guards through the actual HTTP handler (106.355155ms)
+✔ health reflects local SQLite and protected reads/writes require authentication (41.628396ms)
+✔ session is HttpOnly, expires, and deletion revokes it (106.964036ms)
+✔ rejects cross-origin login and locks excessive login failures (296.152516ms)
+✔ creates, searches, edits and reopens local Atendimento without any Coda or network call (74.507399ms)
+✔ writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies (74.601118ms)
+✔ stale editing and rejected stage need explicit review; neither silently changes data (73.328212ms)
+✔ short/unconfigured password leaves access closed and readiness reflects database failures (80.037131ms)
+✔ HTTPS production origin keeps secure cookies and reports readiness without exposing credentials (73.659723ms)
+✔ commercial APIs enforce authentication/origin/JSON and operate entirely locally with encoded V2 identifiers (79.460948ms)
+✔ pricing, components, scenarios and immutable PDF APIs retain auth/origin protections and have no external transport (104.636517ms)
+✔ scenario DELETE requires auth/origin/revision, protects last scenario and GET safely falls back after deletion (77.312786ms)
+✔ Issue22 opt-in save acknowledgements report actual scenario revision, default replies unchanged and stale writes atomic (82.131104ms)
+✔ Issue22 acknowledgement revision is captured inside the write transaction, before a subsequent writer (78.359644ms)
+✔ SQLite preserves optional text and independent duplicate-phone UUIDs after close and reopen (8.885646ms)
+✔ two independent Node processes recover persisted Atendimento from the same file (166.139736ms)
+✔ search and pagination remain database queries and SQL-like text does not select unrelated rows (11.291482ms)
+✔ manual backup restores actual data and refuses overwrite (11.329537ms)
+✔ newer schema is refused without resetting data (9.310256ms)
+✔ new budget snapshots use numeric scenario order without renaming legacy data or emitted version letters (61.547527ms)
+✔ N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots survive all live edits and replay (617.087891ms)
+✔ stale previews, missing energy/capacity and wrong-parent requests cannot issue or consume sequence numbers (35.491669ms)
+✔ two separate Node processes serialize emission sequencing in one SQLite file (210.251327ms)
+✔ real PDF paginates long accented observations without dropping the final document identity (36.130235ms)
+✔ approved V0.9 R05: unit 100.01 ceilings to 100.05 before quantity; energy additive and global days ceiling (0.658035ms)
+✔ legacy status/origin do not gate pricing; inactive or unidentified effective entries still block (0.37072ms)
+✔ normal factors multiply exactly once; exact special key bypasses all factors only in its own table (0.374906ms)
+✔ manual components keep explicit zero; missing is pending; MR is global and no negotiation touches components (0.597606ms)
+✔ discount and lower target preserve original service prices; modes cannot be combined (0.350519ms)
+✔ positive proportional adjustment stores actual unit prices; residual <=0.50 requires consent, larger blocks (0.540952ms)
+✔ fractional quantities retain subcent totals without hidden rounding; disabled parents produce no price or energy (1.341317ms)
+✔ missing steps and capacity block emission without faking prices or losing valid partial totals (0.244051ms)
+✔ last-line compensation never becomes negative when other rounded lines already exceed target (0.219034ms)
+✔ positive adjustment never discounts last service to offset earlier ceiling rounding (0.500312ms)
+✔ input comparison invalidates only affected service, handles fractions/flags and restores confirmed status without calculating money (0.572048ms)
+✔ components, new/incomplete or removed lines invalidate financial totals without per-component factor or frontend sums (0.193967ms)
+✔ client transport failures identify GET/POST and redacted routes, disable cache and never retry a mutation (0.498319ms)
+✔ client keeps HTTP conflict distinct from connection failures and captures existing request reference (0.490066ms)
+✔ client distinguishes unreadable HTTP200 response from a POST without HTTP response, without inferring write success (0.285452ms)
+✔ intentional fetch/body cancellation remains AbortError rather than a connection warning (0.740297ms)
+✔ dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, configuration and immutable budget/PDF; repeat/restart is idempotent (94.232738ms)
+✔ imported service/dimension/diagnosis feed existing composition, exact pricing, energy, preview, emission and PDF contracts (48.509679ms)
+✔ CLI defaults to dry-run and requires explicit existing V7 destination and exact plan hash (528.582118ms)
+✔ failure during final write rolls back all catalogs/history/config; local edits and same-name operator records are not overwritten or duplicated (74.401403ms)
+✔ sentinels, broken refs, negative energy, percent rules and duplicate keys never become arbitrary prices; MR comes only from direction (79.355724ms)
+✔ Issue20 imports actual FV instead of Coda inheritance; source IDs remain stable across renames (25.821201ms)
+✔ source decimals are not rounded by JSON Number before V7 precision validation (15.709106ms)
+✔ negative base energy compensated by positive dimension never becomes a valid stage, even with matching relation and total (31.224206ms)
+✔ real connector envelope normalizes paginated captures without changing references/formulas; malformed/incomplete captures are rejected (20.354481ms)
+✔ connector-capture CLI produces an exclusive 0600 offline bundle accepted by the unchanged importer (157.154106ms)
+✔ GET-only exporter paginates allowlisted config tables and produces a private offline bundle; no production token is needed by importer (124.578658ms)
+✔ maps rich REST and connector refs without selecting an ambiguous relationship (0.58707ms)
+✔ does not hide a missing, ambiguous, or unreadable Atendimento origin (0.246485ms)
+✔ reads fixed API using GET, preserves opaque pagination, projects safe DTO and filters the current page (3.239901ms)
+✔ no credential makes no network request; view configuration is mandatory (0.206325ms)
+✔ upstream failure is sanitized and does not become successful empty data (0.329298ms)
+✔ refuses a configured table that is not the audited view (0.356127ms)
+✔ stale inclusion rolls back; fresh manual repetition after lost confirmation preserves identities and all scenario flags (12.072688ms)
+✔ upgrades actual M1.1 SQL without changing any Atendimento field or table definition; reopen is idempotent (9.870305ms)
+✔ migration failure rolls back all V2 changes and preserves existing data/history; gaps and foreign databases refused (1.927146ms)
+✔ V2 stays byte-identical; 163 coded pieces retain legacy metadata and missing-code nodes have no invented identities (10.914281ms)
+✔ catalog edits preserve revisions/history, immutable codes and legacy metadata without approval gates (8.178128ms)
+✔ Ambos requires two active pieces atomically, ignores legacy status and repeated views deduplicate (11.050575ms)
+✔ diagnosis composition validates references/quantities, preserves draft on errors/conflicts and removes children (14.779789ms)
+✔ active proposals from both origins compose immediately; inactive or unidentified items cannot be newly selected (12.740879ms)
+✔ legacy active pieces without a usable code remain unavailable; no identity is generated (8.153251ms)
+✔ catalog and diagnosis survive file close/reopen including reference metadata and service edits (12.238284ms)
+✔ configuration starts empty, validates exact keys/references/decimals, tracks revisions and rejects stale edits (8.192118ms)
+✔ component monetary identity is independent from physical piece; mask duplication, fractional quantity, explicit zero and delete cascade (10.341233ms)
+✔ Etapa B internal routes preserve the main tab and return one level from budget versions (0.223131ms)
+✔ Etapa B swipe follows the three main tabs, ignores vertical, short and long gestures, and stops at bounds (0.117554ms)
+✔ V5 additive upgrade and scenario deletion preserve composition, snapshot/PDF, flags, fractional quantities and never reuse scenario numbers (44.247403ms)
+✔ scenario delete rejects last, stale revision, wrong Atendimento, unknown fields and duplicate delete without mutating survivors (11.711083ms)
+✔ piece totals are exact backend outputs, honor parent/child flags, keep real zero and expose unknown/empty included pieces as pending (18.082874ms)
+✔ discount and whole-budget targets reduce or increase only services, never alter components, and do not emit while previewing (13.874298ms)
+✔ whole-budget translation preserves generated fractional digits beyond six and retains component quantity (31.251887ms)
+✔ residual and consent use effective preview total; excessive residual and missing component price block issuance (14.190046ms)
+✔ whole-budget preview rejects stale components at emission; legacy adjust still targets service subtotal (14.227381ms)
+✔ direction disables FC only for the three stable source IDs; source flags, FR, and other services are not changed (120.087959ms)
+✔ approved MR is added once without selecting existing or new Atendimentos; selection prices all components only (52.758805ms)
+✔ equivalent local Padrão MR is reused by its own ID; unrelated options and selections survive (73.17138ms)
+✔ divergent/duplicate local Padrão MR and local FC edits are reported without overwrite or partial application (129.799639ms)
+✔ Issue20 FC is conditional, missing legacy FC stays on, unknown is pending; FR always required for normal even with FV zero (0.465169ms)
+✔ Issue20 discounts affect only explicitly eligible services; all lines keep prices and components stay untouched (0.780787ms)
+✔ Issue20 four FV factors and exact exception keep cents ceiling, quantities, energy, and eligibility independent (0.537757ms)
+✔ Issue20 reuses additive multi-stage energy, dimension isolation, quantity, capacity and special-price independence; MR never affects services (0.597956ms)
+✔ Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH omissions/restart and do not change frozen snapshots/PDF (35.651536ms)
+✔ Issue20 importer maps service flags separately, FR always-on decision and actual FV; conflicting FC is explicit, not chosen from a table (56.874563ms)
+✔ Issue20 technical import preserves all relation IDs and prevents stages leaking between service dimensions (36.735121ms)
+✔ V6 to V7 removes only the obsolete column, preserving inputs, catalogs, configuration, flags and restart integrity (37.020674ms)
+✔ V7 failure rolls back schema/history and never resets data; clean installation has no individual multiplier (20.379067ms)
+✔ MR options and global selection are explicit, revision protected and preserved by legacy parameter/configuration writes (9.591422ms)
+✔ global MR ceilings units before fractional quantity, never changes services, rows or previous emissions (33.663981ms)
+✔ component creation is idempotent after lost response; stale edits cannot duplicate or overwrite newer data (11.319633ms)
+✔ UI zero maps both visible negotiation choices to none; general target retains existing API contract (0.333664ms)
+✔ batched reads equal original SQL for every scenario and calculated result, with constant SELECT count and Atendimento isolation (562.470542ms)
+✔ autosave signatures ignore metadata/default-property order while retaining persistent edits and scenario flags (12.378262ms)
+✔ server/tests/pricing.test.ts (0.174579ms)
+✔ production refuses missing credentials, oversized passwords and a non-HTTPS origin before listening (348.397423ms)
+✔ production requires an explicit file path and refuses an in-memory commercial database (225.143503ms)
+✔ scenario masks clone flags only; duplicate services and master attributes keep stable IDs across edits (15.447979ms)
+✔ parent exclusion preserves child flags; new launches exist in every scenario but enable only active; deletion cascades masks (11.878681ms)
+✔ wrong-parent IDs, stale scenario revisions and malformed flags do not mutate any mask (18.940926ms)
+✔ real M1.2 migration preserves raw records including repeated services, quantity and flags, then survives reopen (12.547232ms)
+✔ failure after additive M1.2 upgrades rolls back every new table/column without resetting old data (10.91955ms)
+ℹ tests 105
+ℹ suites 0
+ℹ pass 105
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5987.659057
+
+> funixapp@0.1.0 lint
+> oxlint
+
+src/App.tsx:127:47: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:134:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:148:49: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+src/App.tsx:166:35: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

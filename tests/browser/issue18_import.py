@@ -57,7 +57,7 @@ async def device_case(browser,device,viewport):
   assert not (await get(path+'/parametros'))['settings'].get('mrId')
   w=await get(path+'/cenarios');assert w['calculations'][0]['energy']=='5';assert w['calculations'][0]['days']=='2';assert w['calculations'][0]['errors']==[]
   await page.screenshot(path=str(ARTIFACTS/f'{device}-diagnostico.png'))
-  await page.reload();await page.locator('.diagnosis-open').first.click()
+  await page.reload();await expect(page.get_by_role('region',name='Editor de diagnóstico',exact=True)).to_be_visible()
   await expect(page.get_by_label('Serviço',exact=True)).to_have_value(w['items'][0]['services'][0]['serviceId'])
   h.mark(device+': real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected')
   # The approved direction option is imported, never inferred from Coda's curator factor.

@@ -178,3 +178,11 @@
 
 .settings-page{padding:0 0 20px;background:transparent}.settings-page>h1{font-size:16px;color:#102a46;margin:6px 0 14px}.settings-tabs{margin-bottom:15px}.settings-page .catalog-row{width:100%}.settings-page form{min-width:0}.settings-page .commercial-toolbar{flex-wrap:wrap}
 @media(max-width:420px){.fh-work>.fh-tabs button{padding-inline:8px;gap:5px}.settings-page .service-line{grid-template-columns:1fr}}
+
+/* Etapa B: contextual pages reuse the existing shell and native history. */
+.detail-header h1{flex:1;min-width:0;margin:0;font-size:15px;line-height:1.25;font-weight:700;color:#fff;outline-offset:3px}
+.scenario-dropdown .scenario-matrix-icon{width:21px;height:21px;vertical-align:middle}
+.scenario-dropdown>button[aria-label="+ Nova variação"]{font-size:23px;line-height:1}
+.app-shell>.copilot-fixed{bottom:var(--copilot-bottom,0px)}
+.app-shell>.copilot-panel{bottom:calc(var(--copilot-bottom,0px) + 82px);max-height:min(490px,calc(100% - var(--copilot-bottom,0px) - 105px))}
+.internal-page .diagnostics-body{overscroll-behavior:contain}

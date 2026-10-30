@@ -7,6 +7,8 @@ import { AtendimentoForm } from './AtendimentoForm'
 import { ChatRail, Icon, Login, Notice, RecordButton } from './ui'
 import { SettingsPage } from './SettingsPage'
 import { CommercialPanel } from './CommercialPanel'
+import {detailScreen,parentDetail,swipeTab} from './detail-navigation'
+import type {DetailScreen} from './detail-navigation'
 import './App.css'
 
 type Area = 'conversas' | 'funil' | 'configuracoes'
@@ -19,15 +21,22 @@ function vehicleLabel(record: Atendimento) { return record.vehicle || [record.br
 function dateLabel(value: string) { return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(value)) }
 
 function App() {
-  const [route, setRoute] = useState(readRoute)
-  const routeRef = useRef(route)
+  const [route, setRoute] = useState(() => {
+    window.history.replaceState({...window.history.state,funixIndex:window.history.state?.funixIndex??0},'',window.location.href)
+    return readRoute()
+  })
+  const routeRef = useRef(route), historyState = useRef(window.history.state), restoringHistory = useRef(false)
   const params = new URLSearchParams(route.search)
   const area: Area = route.path === '/configuracoes' ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : 'funil'
   const mode = params.get('modo') === 'lista' ? 'lista' : 'quadro', query = params.get('q') || ''
   const isDetail = /^\/atendimentos\/[^/]+$/.test(route.path), detailId = isDetail ? route.path.split('/')[2] : ''
   const removedRoute = route.path.startsWith('/veiculos') || route.path.startsWith('/experiencias')
   const tab = ['chat', 'mapa', 'diagnosticos'].includes(params.get('aba') || '') ? params.get('aba')! : 'chat'
+  const screen = isDetail ? detailScreen(route.search) : null
+  const [contextTitle,setContextTitle]=useState<{key:string;title:string}|null>(null)
   const key = query, routeKey = route.path + route.search
+  const onContextTitle=useCallback((title:string)=>setContextTitle({key:routeKey,title}),[routeKey])
+  const touch=useRef<{x:number;y:number;time:number}|null>(null)
   const [session, setSession] = useState<Session | null>(null), [sessionError, setSessionError] = useState(''), [sessionVersion, setSessionVersion] = useState(0)
   const [storedList, setList] = useState<AtendimentoList | null>(null), [listKey, setListKey] = useState('')
   const [storedRecord, setRecord] = useState<Atendimento | null>(null)
@@ -41,11 +50,11 @@ function App() {
   const dirty = useRef(false), negotiationDirty = useRef(false), saving = useRef(false)
   const [scenarioSlot, setScenarioSlot] = useState<HTMLDivElement | null>(null)
   const viewport = useRef<HTMLDivElement>(null), board = useRef<HTMLDivElement>(null), modal = useRef<HTMLDivElement>(null)
-  const positions = useRef(new Map<string, { top: number; left: number }>())
+  const [positions] = useState(() => new Map<string, { top: number; left: number }>())
   const cache = useRef(new Map<string, AtendimentoList>())
   const pageRequest = useRef<AbortController | null>(null)
   const currentKey = useRef(key)
-  useLayoutEffect(() => { currentKey.current = key; routeRef.current = route }, [key, route])
+  useLayoutEffect(() => { currentKey.current = key; routeRef.current = route; historyState.current=window.history.state }, [key, route])
   const onDirty = useCallback((value: boolean) => { dirty.current = value }, [])
   const onBusy = useCallback((value: boolean) => { saving.current = value }, [])
   const onNegotiationDirty = useCallback((value: boolean) => { negotiationDirty.current = value }, [])
@@ -57,10 +66,12 @@ function App() {
     dirty.current = false; setEditor(null); return true
   }
   function navigate(href: string, replace = false, state?: unknown) {
-    if (!canLeaveEditor(isDetail && new URL(href, window.location.origin).pathname === route.path && new URL(href, window.location.origin).searchParams.has('aba'))) return
-    if (replace) window.history.replaceState(state ?? window.history.state, '', href)
-    else window.history.pushState(state ?? null, '', href)
-    setRoute(readRoute()); setSavedMessage('')
+    if (!canLeaveEditor(isDetail && new URL(href, window.location.origin).pathname === route.path)) return false
+    const index=historyState.current?.funixIndex??0
+    const nextState={...(state??window.history.state),funixIndex:replace?index:index+1}
+    if (replace) window.history.replaceState(nextState, '', href)
+    else window.history.pushState(nextState, '', href)
+    historyState.current=nextState;setRoute(readRoute()); setSavedMessage('');return true
   }
   function updateParams(values: Record<string, string>) {
     const next = new URLSearchParams(route.search)
@@ -72,9 +83,21 @@ function App() {
     navigate(`/atendimentos/${encodeURIComponent(item.id)}?aba=chat`, false, { returnTo })
     setCopilotOpen(false)
   }
+  function openView(next:DetailScreen,id?:string) {
+    const values=new URLSearchParams(route.search)
+    values.set('tela',next);values.delete('peca');values.delete('versao')
+    if(next==='peca'&&id)values.set('peca',id)
+    if(next==='orcamentos'&&id)values.set('versao',id)
+    return navigate(route.path+'?'+values,false,{...window.history.state,detailParent:routeKey})
+  }
   function goBack() {
+    if(screen){
+      if(window.history.state?.detailParent && historyState.current?.funixIndex>0)window.history.back()
+      else {const search=parentDetail(route.search);navigate(route.path+(search?'?'+search:''),true)}
+      return
+    }
     if (!canLeaveEditor()) return
-    if (window.history.state?.returnTo) window.history.back()
+    if (window.history.state?.returnTo && historyState.current?.funixIndex>0) window.history.back()
     else navigate('/funil', true)
   }
   function expireSession() {
@@ -83,12 +106,18 @@ function App() {
   }
   useEffect(() => {
     const onPop = () => {
-      if (saving.current || ((dirty.current || (negotiationDirty.current && window.location.pathname !== routeRef.current.path)) && !window.confirm('Há alterações não salvas. Deseja descartá-las?'))) {
-        window.history.pushState(null, '', routeRef.current.path + routeRef.current.search)
+      if(restoringHistory.current){restoringHistory.current=false;return}
+      const changedRecord=window.location.pathname!==routeRef.current.path
+      const unsaved=dirty.current||(negotiationDirty.current&&changedRecord)
+      if (saving.current || (unsaved&&!window.confirm('Há alterações não salvas. Deseja descartá-las?'))) {
+        const delta=(historyState.current?.funixIndex??0)-(window.history.state?.funixIndex??0)
+        if(delta){restoringHistory.current=true;window.history.go(delta)}
+        else window.history.pushState(historyState.current,'',routeRef.current.path+routeRef.current.search)
         return
       }
-      if(window.location.pathname !== routeRef.current.path)negotiationDirty.current=false
-      dirty.current = false; setEditor(null); setRoute(readRoute()); setSavedMessage('')
+      if(unsaved)setCommercialVersion(value=>value+1)
+      if(changedRecord)negotiationDirty.current=false
+      dirty.current=false;setEditor(null);historyState.current=window.history.state;setRoute(readRoute());setSavedMessage('')
     }
     const onUnload = (event: BeforeUnloadEvent) => { if (dirty.current || negotiationDirty.current || saving.current) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('popstate', onPop); window.addEventListener('beforeunload', onUnload)
@@ -129,14 +158,48 @@ function App() {
   }, [session?.authenticated, isDetail, detailId, reload])
   useLayoutEffect(() => {
     if (isDetail || loading) return
-    const position = positions.current.get(routeKey)
+    const position = positions.get(routeKey)
     if (viewport.current) viewport.current.scrollTop = position?.top || 0
     if (board.current) board.current.scrollLeft = position?.left || 0
-  }, [isDetail, loading, routeKey, list])
+  }, [isDetail, loading, routeKey, list, positions])
   useEffect(() => {
     pageRequest.current?.abort(); setLoadingMore(false)
     return () => pageRequest.current?.abort()
   }, [key, isDetail, session?.authenticated])
+  useLayoutEffect(()=>{
+    if(screen)document.querySelector<HTMLElement>('.detail-header h1')?.focus({preventScroll:true})
+  },[screen,routeKey])
+  useEffect(()=>{
+    const root=viewport.current,shell=root?.parentElement
+    if(!root||!shell)return
+    let frame=0,observed:Element|null=null
+    const measure=()=>{
+      const surface=root.querySelector('.approved-finance,.compose')
+      if(surface!==observed){if(observed)resize.unobserve(observed);observed=surface;if(surface)resize.observe(surface)}
+      const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top+8):0
+      shell.style.setProperty('--copilot-bottom',offset+'px')
+    }
+    const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)}
+    const resize=new ResizeObserver(schedule);resize.observe(root)
+    const mutations=new MutationObserver(schedule);mutations.observe(root,{childList:true,subtree:true})
+    measure();return()=>{resize.disconnect();mutations.disconnect();cancelAnimationFrame(frame)}
+  },[isDetail,tab,screen])
+  function touchStart(event:React.TouchEvent<HTMLDivElement>){
+    touch.current=null
+    if(!isDetail||screen||editor||event.touches.length!==1||document.querySelector('dialog[open]')||copilotOpen)return
+    const target=event.target as Element
+    if(target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix'))return
+    for(let node:Element|null=target;node&&node!==event.currentTarget;node=node.parentElement){
+      if(node.scrollWidth>node.clientWidth+1&&/auto|scroll/.test(getComputedStyle(node).overflowX))return
+    }
+    const t=event.touches[0];touch.current={x:t.clientX,y:t.clientY,time:event.timeStamp}
+  }
+  function touchEnd(event:React.TouchEvent<HTMLDivElement>){
+    const start=touch.current;touch.current=null
+    if(!start||screen||editor||event.changedTouches.length!==1)return
+    const t=event.changedTouches[0],next=swipeTab(tab,t.clientX-start.x,t.clientY-start.y,event.timeStamp-start.time)
+    if(next)updateParams({aba:next})
+  }
   async function loadMore() {
     if (list?.nextOffset == null || loadingMore) return
     pageRequest.current?.abort()
@@ -163,15 +226,15 @@ function App() {
     const creating = !editor?.record
     dirty.current = false; setEditor(null); cache.current.clear(); setList(null); setRecord(savedRecord)
     if (creating) {
-      window.history.pushState({ returnTo: area === 'funil' && !isDetail ? routeKey : '/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
+      window.history.pushState({ funixIndex:(historyState.current?.funixIndex??0)+1,returnTo: area === 'funil' && !isDetail ? routeKey : '/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
       setRoute(readRoute())
     }
     setReload(value => value + 1); setSavedMessage('Atendimento salvo no aplicativo.')
   }
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
   return <div className="app-shell">
-    <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport} inert={Boolean(editor)} onScroll={event => {
-      if (!isDetail) positions.current.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
+    <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport} inert={Boolean(editor)} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}} onScroll={event => {
+      if (!isDetail) positions.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
     }}>
       {!isDetail ? <main className="fh-work">
         <nav className="fh-tabs" aria-label="Áreas da FUNIX">{(Object.keys(labels) as Area[]).map(item => <button key={item} className={area === item && !removedRoute ? 'selected' : ''} onClick={() => navigate('/' + item)} aria-current={area === item && !removedRoute ? 'page' : undefined}><span aria-hidden="true">{symbols[item]}</span> {labels[item]}</button>)}</nav>
@@ -184,7 +247,7 @@ function App() {
             {loading && <div className="fh-surface"><Notice title="Carregando Atendimentos…" /></div>}{failure && <div className="fh-surface"><Notice title="Não foi possível carregar" error retry={() => setReload(value => value + 1)}>{failure}</Notice></div>}
             {!loading && list && <><div className="query-meta"><span>{list.items.length} de {list.total} Atendimento{list.total !== 1 ? 's' : ''}</span><button onClick={() => setReload(value => value + 1)}>Atualizar</button></div>
               {!list.items.length && <div className="fh-surface"><Notice title={query ? 'Nenhum Atendimento encontrado' : 'Nenhum Atendimento cadastrado'}>{query ? 'Tente outro nome, telefone, placa ou identificador.' : 'Use Novo Atendimento para registrar o primeiro contato.'}</Notice></div>}
-              {mode === 'lista' ? <div className="fh-surface fh-board-list">{list.items.map(item => <RecordButton key={item.id} item={item} list onOpen={openRecord} />)}</div> : <div className="fh-kboard" ref={board} onScroll={event => positions.current.set(routeKey, { top: viewport.current?.scrollTop || 0, left: event.currentTarget.scrollLeft })} aria-label="Funil de Atendimentos">
+              {mode === 'lista' ? <div className="fh-surface fh-board-list">{list.items.map(item => <RecordButton key={item.id} item={item} list onOpen={openRecord} />)}</div> : <div className="fh-kboard" ref={board} onScroll={event => positions.set(routeKey, { top: viewport.current?.scrollTop || 0, left: event.currentTarget.scrollLeft })} aria-label="Funil de Atendimentos">
                 {ATENDIMENTO_STAGES.map(stage => {
                   const closed = collapsed.has(stage.id), items = list.items.filter(item => item.stage === stage.id)
                   return <section key={stage.id} className={`fh-lane ${closed ? 'collapsed' : ''}`} aria-label={stage.name}><button className="fh-lanehead" aria-expanded={!closed} title={`${closed ? 'Expandir' : 'Recolher'} ${stage.name}`} onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(stage.id)) next.delete(stage.id); else next.add(stage.id); return next })}><span className="fh-toggle" aria-hidden="true">{closed ? '▸' : '▾'}</span><span className="fh-lane-title">{stage.name}</span><em aria-label={`${items.length} registros carregados`}>{items.length}</em></button>{!closed && <div className="fh-lane-items">{items.map(item => <RecordButton key={item.id} item={item} onOpen={openRecord} />)}</div>}</section>
@@ -197,19 +260,19 @@ function App() {
           <button className="session-exit" onClick={logout}>Sair</button>
         </>}
       </main> : <>
-        <header className="detail-header"><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</header>
-        <nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>
+        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}>←</button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':'Orçamentos emitidos')}</h1></>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
+        {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} onDiagnostics={()=>updateParams({aba:'diagnosticos'})} chat={<div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
+          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
             <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
           </div><ChatRail /></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="WhatsApp ainda indisponível" disabled rows={1} /><button className="compose-button" disabled title="Anexos ainda indisponíveis" aria-label="Anexar arquivo indisponível"><Icon name="attach" /></button><button className="compose-button" disabled title="Áudio ainda indisponível" aria-label="Gravar áudio indisponível"><Icon name="mic" /></button><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div>} />}
         </>}
       </>}
     </div>
-    {copilotOpen && !editor && <section className="copilot-panel" aria-label="Copiloto FUNIX"><header><div><strong>Copiloto FUNIX</strong><small>Inteligência artificial</small></div><button aria-label="Recolher Copiloto" onClick={() => setCopilotOpen(false)}>⌄</button></header><div className="copilot-feed"><Notice title="IA ainda indisponível">{record ? `Contexto: ${record.name || record.phone}. ` : ''}Nenhuma sugestão ou ação automática está habilitada.</Notice></div><div className="copilot-status">Integração assistiva pendente</div></section>}
-    <button className="copilot-fixed" aria-label="Abrir Copiloto FUNIX" title="Copiloto" aria-expanded={copilotOpen} disabled={Boolean(editor)} onClick={() => setCopilotOpen(value => !value)}><Icon name="bot" /></button>
+    {copilotOpen && !editor && !screen && <section className="copilot-panel" aria-label="Copiloto FUNIX"><header><div><strong>Copiloto FUNIX</strong><small>Inteligência artificial</small></div><button aria-label="Recolher Copiloto" onClick={() => setCopilotOpen(false)}>⌄</button></header><div className="copilot-feed"><Notice title="IA ainda indisponível">{record ? `Contexto: ${record.name || record.phone}. ` : ''}Nenhuma sugestão ou ação automática está habilitada.</Notice></div><div className="copilot-status">Integração assistiva pendente</div></section>}
+    {!screen&&<button className="copilot-fixed" aria-label="Abrir Copiloto FUNIX" title="Copiloto" aria-expanded={copilotOpen} disabled={Boolean(editor)} onClick={() => setCopilotOpen(value => !value)}><Icon name="bot" /></button>}
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {

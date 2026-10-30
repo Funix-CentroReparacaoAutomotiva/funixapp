@@ -47,6 +47,9 @@ async def run():
             await expect(active_scenario(page,'Cenário 1')).to_be_visible()
             await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
             async def button(entry):
+                # Etapa B closes the selector when opening a complete piece screen.
+                if not await page.get_by_label('Buscar peça em todas as vistas').count():
+                    await page.get_by_role('button',name='+ Adicionar peça',exact=True).click()
                 await page.get_by_label('Buscar peça em todas as vistas').fill(entry['code'])
                 return page.locator('.piece-options button').filter(has=page.get_by_text(entry['name'], exact=True)).first
             async def choose(entry, ready=True):
@@ -193,7 +196,8 @@ async def run():
             await page.screenshot(path=str(ARTIFACTS / 'recuperado-desktop.png'))
             h.mark('initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data')
 
-            # A GET snapshot from before a write must not replace a newer revision.
+            # Etapa B removes the redundant GET on returning from a complete piece screen.
+            # Still exercise a stale workspace snapshot against a real second writer.
             captured = asyncio.Event(); release = asyncio.Event(); delayed = False
             async def hold_old_workspace(route):
                 nonlocal delayed
@@ -205,15 +209,23 @@ async def run():
             await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await page.route('**/cenarios*', hold_old_workspace)
             await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()
-            await asyncio.wait_for(captured.wait(), 10)
+            await expect(page.locator('.diagnosis-list')).to_be_visible()
+            await page.wait_for_timeout(150); assert not captured.is_set()
             await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
-            assert await choose(pool[15]) == 200
-            count = len(await get(path + '/diagnosticos'))
-            release.set(); await page.wait_for_timeout(150)
-            await expect(page.locator('.diagnosis-card')).to_have_count(count)
-            assert await choose(pool[16]) == 200
+            assert await choose(pool[15], ready=False) == 200
+            await asyncio.wait_for(captured.wait(), 10)
+            fresh = await get(path + '/cenarios'); scene = fresh['scenarios'][0]
+            await write(b, path + '/diagnosticos', {'pieceCodes':[pool[16]['code']], 'scenarioId':scene['id'], 'scenarioRevision':scene['revision']})
+            release.set(); await expect(await button(pool[16])).to_be_enabled()
+            assert await choose(pool[16], ready=False) == 409
+            await expect(page.get_by_role('alert')).to_contain_text('foram atualizados')
+            assert await choose(pool[16], ready=False) == 200
+            await expect(page.get_by_role('region',name='Editor de diagnóstico',exact=True)).to_be_visible()
+            rows = await get(path + '/diagnosticos')
+            assert len([i for i in rows if i['pieceId']==pool[16]['id']]) == 1
+            await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
             await page.unroute('**/cenarios*', hold_old_workspace)
-            h.mark('single writer: delayed old GET after a newer POST/GET cannot regress rows or revision; next addition succeeds without conflict')
+            h.mark('full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces')
 
             entered = asyncio.Event(); release_post = asyncio.Event()
             async def hold_post(route):

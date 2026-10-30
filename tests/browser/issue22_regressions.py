@@ -141,7 +141,7 @@ async def device_case(browser,device,viewport):
   await page.screenshot(path=str(ARTIFACTS/f'{device}-autosave.png'))
   frozen=await get(base+'/orcamentos/'+ids['budget']);assert frozen['snapshot']==ids['snapshot']
   pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['budget']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==ids['pdfHash']
-  await page.reload();await page.locator('.diagnosis-open').first.click();editor=page.get_by_role('region',name='Editor de diagnóstico',exact=True)
+  await page.reload();editor=page.get_by_role('region',name='Editor de diagnóstico',exact=True);await expect(editor).to_be_visible()
   assert (await get(base+'/cenarios'))['items'][0]['notes']=='Após parâmetros QA';assert h.external==[] and h.page_errors==[]
   h.mark(device+': parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct')
   return h.results

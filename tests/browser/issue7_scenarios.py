@@ -46,6 +46,7 @@ async def run():
    await page.screenshot(path=str(artifacts/'cenarios-desktop.png'))
    h.mark('duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context')
    await compare(page)
+   await page.get_by_role('button',name='Diagnósticos',exact=True).click()
    await page.locator('.diagnosis-open').first.click()
    await page.get_by_role('button',name='Observação da peça',exact=True).click()
    await page.get_by_role('textbox',name='Observação da peça',exact=True).fill('Edição global QA')
