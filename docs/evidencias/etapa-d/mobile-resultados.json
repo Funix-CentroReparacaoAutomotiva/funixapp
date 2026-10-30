@@ -1,0 +1,40 @@
+{
+  "device": "mobile",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "mobile: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label",
+      "pass": true
+    },
+    {
+      "name": "mobile: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET",
+      "pass": true
+    },
+    {
+      "name": "mobile: pending MR confirmation invalidates every component and finance; old totals are never presented as current",
+      "pass": true
+    },
+    {
+      "name": "mobile: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted",
+      "pass": true
+    },
+    {
+      "name": "mobile: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values",
+      "pass": true
+    },
+    {
+      "name": "mobile: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes",
+      "pass": true
+    },
+    {
+      "name": "mobile: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows",
+      "pass": true
+    },
+    {
+      "name": "mobile: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

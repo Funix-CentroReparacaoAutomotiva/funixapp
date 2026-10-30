@@ -51,7 +51,7 @@ async def run():
 
     first_ids=[s['id'] for s in item['services']]
     await editor.get_by_role('button',name='Observação da peça',exact=True).click();await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Texto autosave QA '+device)
-    await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await expect(editor).to_have_attribute('data-save-state','confirmed')
     saved=(await get(path+'/cenarios'))['items'][0]
     assert saved['notes']=='Texto autosave QA '+device and [s['id'] for s in saved['services']]==first_ids
     assert all(s['notes']=='Nota histórica QA' and s['diagnosisId']==diag['id'] for s in saved['services'])
@@ -59,10 +59,10 @@ async def run():
     await editor.get_by_role('button',name='Adicionar serviço',exact=True).click();await asyncio.sleep(.7)
     assert len((await get(path+'/cenarios'))['items'][0]['services'])==2
     third=editor.locator('.service').nth(2);await third.get_by_label('Serviço',exact=True).select_option(entries[0]['id']);await third.get_by_label('Dimensão',exact=True).select_option(dimensions[0]['id']);await third.get_by_label('Quantidade do serviço').fill('0.25')
-    await expect(editor.get_by_role('status')).to_contain_text('Salvo');saved=(await get(path+'/cenarios'))['items'][0]
+    await expect(editor).to_have_attribute('data-save-state','confirmed');saved=(await get(path+'/cenarios'))['items'][0]
     await expect(third.get_by_label('Quantidade do serviço')).to_be_focused()
     assert len(saved['services'])==3 and [s['id'] for s in saved['services'][:2]]==first_ids and saved['services'][2]['quantity']=='0.25'
-    await third.get_by_role('button',name='Excluir serviço',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await third.get_by_role('button',name='Excluir serviço',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed')
     assert len((await get(path+'/cenarios'))['items'][0]['services'])==2
     h.mark(device+': real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved')
     # A genuine failed save keeps the input; a successful save during further typing cannot overwrite it.
@@ -76,7 +76,7 @@ async def run():
     await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Falha temporária QA')
     await expect(editor.get_by_role('alert')).to_contain_text('Falha sintética temporária')
     await expect(editor.get_by_role('textbox',name='Observação da peça',exact=True)).to_have_value('Falha temporária QA')
-    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo');await page.unroute(fail_path,unavailable)
+    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed');await page.unroute(fail_path,unavailable)
     async def delayed(route):
      if route.request.method=='PATCH':await asyncio.sleep(.3)
      await route.continue_()
@@ -84,14 +84,14 @@ async def run():
     async with page.expect_request(lambda r:r.method=='PATCH' and r.url.endswith('/diagnosticos/'+item['id'])):
      await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Digitação em andamento QA')
     await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Última digitação preservada QA')
-    await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await expect(editor).to_have_attribute('data-save-state','confirmed')
     assert (await get(path+'/cenarios'))['items'][0]['notes']=='Última digitação preservada QA'
     await page.unroute(fail_path,delayed)
     h.mark(device+': 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite')
     await ctx.request.delete(ORIGIN+'/api/session',headers={'Origin':ORIGIN})
     await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Sessão recuperada QA')
     await expect(editor.get_by_role('alert')).to_be_visible();await h.login(page)
-    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed')
     assert (await get(path+'/cenarios'))['items'][0]['notes']=='Sessão recuperada QA'
     # Server committed PATCH but response was lost. Reconcile revision/content, no duplicate service.
     fail_path='**'+path+'/diagnosticos/'+item['id'];once=True
@@ -103,7 +103,7 @@ async def run():
     await page.route(fail_path,lost)
     await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Resposta perdida QA')
     await expect(editor.get_by_role('alert')).to_be_visible();await expect(editor.get_by_role('textbox',name='Observação da peça',exact=True)).to_have_value('Resposta perdida QA')
-    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo');await page.unroute(fail_path,lost)
+    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed');await page.unroute(fail_path,lost)
     assert len((await get(path+'/cenarios'))['items'][0]['services'])==2
     # Issue22 uses the atomic PATCH revision guard (409), rather than a preflight GET.
     # Remote values/local draft assertions below remain the acceptance criteria.
@@ -122,7 +122,7 @@ async def run():
     assert not (await get(path+'/cenarios'))['scenarios'][0]['serviceFlags'][first_ids[0]]
     await editor.get_by_role('button',name='Carregar versão salva',exact=True).click()
     await editor.locator('.service').first.get_by_role('button',name='Incluir serviço',exact=True).click()
-    await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await expect(editor).to_have_attribute('data-save-state','confirmed')
 
     # New component is local until complete; creation retry retains client identity.
     await editor.get_by_role('button',name='Adicionar componente',exact=True).click();row=editor.locator('.component').last
@@ -135,11 +135,11 @@ async def run():
      else:await route.continue_()
     await page.route('**'+path+'/componentes',lost_component)
     await row.get_by_label('Descrição do componente').fill('Zero QA');await row.get_by_label('Preço unitário do componente').fill('0');await expect(editor.get_by_role('alert')).to_be_visible()
-    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed')
     await page.unroute('**'+path+'/componentes',lost_component);assert len((await get(path+'/cenarios'))['components'])==2
     assert all('fct' not in c for c in (await get(path+'/cenarios'))['components'])
-    await row.get_by_label('Preço unitário do componente').fill('');await expect(editor.get_by_role('status')).to_contain_text('Salvo');assert (await get(path+'/cenarios'))['components'][-1]['manualPrice'] is None
-    await row.get_by_label('Preço unitário do componente').fill('0');await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+    await row.get_by_label('Preço unitário do componente').fill('');await expect(editor).to_have_attribute('data-save-state','confirmed');assert (await get(path+'/cenarios'))['components'][-1]['manualPrice'] is None
+    await row.get_by_label('Preço unitário do componente').fill('0');await expect(editor).to_have_attribute('data-save-state','confirmed')
     await row.get_by_role('button',name='Excluir componente',exact=True).click();await expect(editor.locator('.component')).to_have_count(1)
     h.mark(device+': incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier')
     await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()

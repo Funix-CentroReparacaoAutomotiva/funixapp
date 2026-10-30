@@ -164,7 +164,7 @@ async def run():
             await page.get_by_role('button',name='Carregar versão salva',exact=True).click()
             await expect(field).to_have_value('Outro operador QA')
             await field.fill('QA rascunho a preservar')
-            await expect(page.locator('.approved-editor').get_by_role('status')).to_contain_text('Salvo')
+            await expect(page.locator('.approved-editor')).to_have_attribute('data-save-state','confirmed')
             kept = next(i for i in await get(path + '/diagnosticos') if i['id'] == item['id'])
             assert kept['notes'] == 'QA rascunho a preservar' and kept['services'][0]['quantity'] == '0.25'
             await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()

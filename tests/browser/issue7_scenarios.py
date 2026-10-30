@@ -50,7 +50,7 @@ async def run():
    await page.locator('.diagnosis-open').first.click()
    await page.get_by_role('button',name='Observação da peça',exact=True).click()
    await page.get_by_role('textbox',name='Observação da peça',exact=True).fill('Edição global QA')
-   await expect(page.locator('.approved-editor').get_by_role('status')).to_contain_text('Salvo')
+   await expect(page.locator('.approved-editor')).to_have_attribute('data-save-state','confirmed')
    await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
    await select_named_scenario(page,'Cenário 1')
    await page.locator('.diagnosis-open').first.click()
