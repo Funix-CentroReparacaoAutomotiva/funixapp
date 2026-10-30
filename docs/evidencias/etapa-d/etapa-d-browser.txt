@@ -1,0 +1,16 @@
+PASS desktop: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS desktop: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS desktop: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS desktop: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS desktop: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS desktop: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS desktop: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS desktop: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors
+PASS mobile: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS mobile: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS mobile: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS mobile: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS mobile: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS mobile: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS mobile: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS mobile: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors

@@ -20,7 +20,7 @@ async def device_case(browser,device,viewport):
   async def back():await page.locator('.detail-header .back-detail').click()
   async def shot(name):await page.screenshot(path=str(ARTIFACTS/(device+'-'+unicodedata.normalize('NFD',name).encode('ascii','ignore').decode()+'.png')))
   async def main(tab):await page.get_by_role('navigation',name='Visões do Atendimento').get_by_role('button',name=tab,exact=True).click()
-  async def saved():await expect(page.get_by_role('region',name='Editor de diagnóstico').get_by_role('status')).to_contain_text('Salvo')
+  async def saved():await expect(page.get_by_role('region',name='Editor de diagnóstico')).to_have_attribute('data-save-state','confirmed')
   await page.goto(ORIGIN+'/funil');await h.login(page)
   await page.locator('.fh-card').first.click()
   await expect(page.get_by_role('navigation',name='Visões do Atendimento')).to_be_visible();await shot('chat')

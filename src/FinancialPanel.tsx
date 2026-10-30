@@ -12,7 +12,7 @@ import {ApprovedIcon as I} from './ApprovedIcon'
 import {CalculationView} from './BudgetPanel'
 import './approved.css'
 
-export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,onDirty,externalBusy,calculationState,parameterState,onParameterState}:{at:string;workspace:CommercialWorkspace;state:NegotiationState;onState:Dispatch<SetStateAction<NegotiationState>>;fresh:boolean;onSync:()=>Promise<void>;onBusy:(b:boolean)=>void;onDirty:(b:boolean)=>void;externalBusy:boolean;calculationState:CalculationState;parameterState:CalculationState;onParameterState:(v:CalculationState)=>void}){
+export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,onDirty,externalBusy,calculationState,parameterState,onParameterState,onConfiguration}:{at:string;workspace:CommercialWorkspace;state:NegotiationState;onState:Dispatch<SetStateAction<NegotiationState>>;fresh:boolean;onSync:()=>Promise<void>;onBusy:(b:boolean)=>void;onDirty:(b:boolean)=>void;externalBusy:boolean;calculationState:CalculationState;parameterState:CalculationState;onParameterState:(v:CalculationState)=>void;onConfiguration:(c:PricingConfiguration)=>void}){
  const [open,setOpen]=useState(false),[neg,setNeg]=useState(false),[focus,setFocus]=useState(false),[moneyText,setMoneyText]=useState('')
  const [config,setConfig]=useState<PricingConfiguration|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[reauth,setReauth]=useState(false)
  const [review,setReview]=useState<{preview:BudgetPreview;key:string;emit:boolean;deal:ReturnType<typeof negotiationInput>}|null>(null)
@@ -21,7 +21,7 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
  const intent=negotiationSignature(workspace,state.draft),latest=useRef(intent);useLayoutEffect(()=>{latest.current=intent},[intent])
  const accepted=acceptedIntent===intent,hasReview=Boolean(review)
  const locked=busy||externalBusy||calculationState!=='current'||parameterState==='pending'
- useEffect(()=>{let live=true;api<PricingConfiguration>('/api/precificacao').then(c=>{if(live)setConfig(c)}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[workspace.configurationRevision])
+ useEffect(()=>{let live=true;api<PricingConfiguration>('/api/precificacao').then(c=>{if(live){setConfig(c);onConfiguration(c)}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[workspace.configurationRevision,onConfiguration])
  useEffect(()=>{onDirty(Boolean(review?.emit&&!version));return()=>onDirty(false)},[review,version,onDirty])
  useEffect(()=>{if(hasReview){opener.current=document.activeElement as HTMLElement;dialog.current?.showModal()}else opener.current?.focus()},[hasReview])
  async function operation(action:()=>Promise<void>,lock=true){

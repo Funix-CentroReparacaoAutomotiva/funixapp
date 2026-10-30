@@ -8,6 +8,7 @@ import type { RequestFailure } from './api'
 import { Icon, Login } from './ui'
 import { PieceDialog } from './PieceDialog'
 import {DiagnosisEditor} from './DiagnosisEditor'
+import type {PricingConfiguration} from '../shared/pricing'
 import type {CalculationState} from './calculation-state'
 import {FinancialPanel} from './FinancialPanel'
 import {BudgetPanel} from './BudgetPanel'
@@ -34,6 +35,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const negotiationDirty = dealState.draft.mode!=='none' || dealState.draft.value!=='' || dealState.draft.acknowledgeResidual
   useEffect(()=>{onNegotiationDirty(negotiationDirty);return()=>onNegotiationDirty(false)},[negotiationDirty,onNegotiationDirty])
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null), [items, setItems] = useState<DiagnosisItem[]>([])
+  const [pricingConfiguration,setPricingConfiguration]=useState<PricingConfiguration|null>(null)
   const [workspace,setWorkspace] = useState<CommercialWorkspace|null>(null)
   const budget=screen==='orcamentos',matrix=screen==='comparacao'
   const body=useRef<HTMLDivElement>(null)
@@ -293,7 +295,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
       {!mapSelecting && feedback}
-      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/><button className="internal-delete-piece fh-filter" disabled={busy||refreshNeeded||scenarioGone} onClick={deleteEditingPiece}>Excluir peça de todos os cenários</button></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
+      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/><button className="internal-delete-piece fh-filter" disabled={busy||refreshNeeded||scenarioGone} onClick={deleteEditingPiece}>Excluir peça de todos os cenários</button></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
 
           <div className="interactive-map" onClick={event => {
@@ -328,7 +330,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
 
         </>}
       </>}
-    </div>{workspace && !budget && !matrix && <FinancialPanel parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}
+    </div>{workspace && !budget && !matrix && <FinancialPanel onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}
   </div>}</>
 }
 

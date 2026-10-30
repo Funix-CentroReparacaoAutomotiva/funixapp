@@ -39,7 +39,7 @@ async def device_case(browser,device,viewport):
   await editor.get_by_role('button',name='Adicionar serviço',exact=True).click()
   await editor.get_by_label('Serviço',exact=True).select_option(label='Serviço sintético de QA')
   await editor.get_by_label('Dimensão',exact=True).select_option(label='Dimensão sintética QA')
-  await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+  await expect(editor).to_have_attribute('data-save-state','confirmed')
   finance=page.get_by_role('region',name='Painel financeiro',exact=True)
   if not await finance.get_by_label('Tabela',exact=True).is_visible():await finance.locator('.summary').click()
   for label,name in [('Tabela','Tabela QA sintética'),('FC','1,00'),('FR','1,00')]:
@@ -68,7 +68,7 @@ async def device_case(browser,device,viewport):
   await editor.get_by_role('button',name='Adicionar componente',exact=True).click()
   await editor.get_by_label('Descrição do componente',exact=True).fill('Componente QA sintético')
   await editor.get_by_label('Preço unitário do componente',exact=True).fill('100')
-  await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+  await expect(editor).to_have_attribute('data-save-state','confirmed')
   current=await get(path+'/cenarios');request={'scenarioId':current['selectedId'],'negotiation':{'mode':'none'}}
   pending=await write(path+'/orcamentos/previa',request);assert pending['canEmit'] is False
   assert any('MR do Atendimento' in e for e in pending['snapshot']['calculation']['errors'])

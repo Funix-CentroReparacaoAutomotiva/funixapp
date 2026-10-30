@@ -23,7 +23,7 @@ async def run(output):
       ctx=await browser.new_context(viewport=viewport,is_mobile=device=='mobile',has_touch=device=='mobile');page=await ctx.new_page()
       try:
        await page.goto(ORIGIN);await h.login(page);await page.goto(ORIGIN+'/atendimentos/'+at+'?aba=diagnosticos');await page.locator('.diagnosis-open').first.click()
-       editor=page.get_by_role('region',name='Editor de diagnóstico',exact=True);await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+       editor=page.get_by_role('region',name='Editor de diagnóstico',exact=True);await expect(editor).to_have_attribute('data-save-state','confirmed')
        for latency in [0,150]:
         async def delayed(route):
          response=await route.fetch();await asyncio.sleep(latency/1000);await route.fulfill(response=response)
@@ -42,14 +42,14 @@ async def run(output):
           page.on('request',capture);page.on('response',on_response);start=time.perf_counter()
           await editor.evaluate("""(root,eventName)=>{
            window.__saveLatency=new Promise(resolve=>{
-            let started=null,changed=false;const status=root.querySelector('[role=status]');
+            let started=null,changed=false;
             const begin=()=>{started=performance.now();root.removeEventListener(eventName,begin,true)};
             root.addEventListener(eventName,begin,true);
             const observer=new MutationObserver(()=>{
              if(started===null)return;
-             const saved=status.textContent.includes('· Salvo');if(!saved)changed=true;
+             const saved=root.dataset.saveState==='confirmed';if(!saved)changed=true;
              if(changed&&saved){observer.disconnect();resolve(performance.now()-started)}
-            });observer.observe(status,{subtree:true,childList:true,characterData:true});
+            });observer.observe(root,{attributes:true,attributeFilter:['data-save-state']});
            });
           }""",'input' if operation=='three-component-edit' else 'click')
           if operation=='three-component-edit':
@@ -58,7 +58,7 @@ async def run(output):
            button=editor.get_by_role('button',name='Incluir serviço' if operation=='service-toggle' else 'Incluir componente',exact=True).first
            old=await button.get_attribute('aria-pressed');await button.click();await expect(button).to_have_attribute('aria-pressed','false' if old=='true' else 'true')
           elapsed=await asyncio.wait_for(page.evaluate('window.__saveLatency'),30)
-          await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+          await expect(editor).to_have_attribute('data-save-state','confirmed')
           page.remove_listener('request',capture);page.remove_listener('response',on_response);await asyncio.gather(*tasks)
           samples.append(round(elapsed,1));counts.append(len(requests));sizes.append(sum(responses));chains.append(requests);await page.wait_for_timeout(70)
          result={'dataset':dataset,'device':device,'response_delay_ms':latency,'operation':operation,'samples_ms':samples,'p50_ms':round(statistics.median(samples),1),'p95_ms':sorted(samples)[-1],'requests_per_sample':counts,'response_bytes_per_sample':sizes,'last_request_chain':chains[-1]}
@@ -67,5 +67,5 @@ async def run(output):
       finally:await ctx.close()
     finally:h.cleanup()
   finally:await browser.close()
- with open(output,'x')as f:json.dump({'samples':5,'method':'DOM event to confirmed Salvo via MutationObserver (no polling in timing); production frontend build, local API/SQLite; artificial delay per response, no bandwidth or CPU throttling','results':results},f,indent=2)
+ with open(output,'x')as f:json.dump({'samples':5,'method':'DOM event to confirmed editor data-save-state via MutationObserver (no polling in timing); production frontend build, local API/SQLite; artificial delay per response, no bandwidth or CPU throttling','results':results},f,indent=2)
 if __name__=='__main__':asyncio.run(run(sys.argv[1]))

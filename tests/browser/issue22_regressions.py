@@ -19,7 +19,7 @@ async def device_case(browser,device,viewport):
    r=await ctx.request.get(ORIGIN+path);assert r.ok,await r.text();return await r.json()
   async def write(path,data,method='patch'):
    r=await getattr(ctx.request,method)(ORIGIN+path,headers={'Origin':ORIGIN},data=data);assert r.ok,await r.text();return await r.json()
-  async def saved():await expect(editor.get_by_role('status')).to_contain_text('Salvo')
+  async def saved():await expect(editor).to_have_attribute('data-save-state','confirmed')
   async def reload_saved():
    await editor.get_by_role('button',name='Carregar versão salva',exact=True).click();await saved();await page.wait_for_timeout(600)
   requests=[]

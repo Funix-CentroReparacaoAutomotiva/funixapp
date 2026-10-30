@@ -1,0 +1,76 @@
+{
+  "base": "5df84fd02ad5ce837285b5cec9e41abda0cc0b29",
+  "synthetic": true,
+  "node": {
+    "tests": 133,
+    "pass": 133,
+    "fail": 0
+  },
+  "deployment_scripts": {
+    "tests": 23,
+    "pass": 23
+  },
+  "browser": {
+    "etapa_d": 16,
+    "regressions": 123,
+    "total": 139,
+    "suites": [
+      {
+        "suite": "etapa_b_navigation",
+        "groups": 21,
+        "pass": true
+      },
+      {
+        "suite": "etapa_c_selection",
+        "groups": 18,
+        "pass": true
+      },
+      {
+        "suite": "pr17_auditoria",
+        "groups": 8,
+        "pass": true
+      },
+      {
+        "suite": "editor_financeiro",
+        "groups": 17,
+        "pass": true
+      },
+      {
+        "suite": "m1_atendimentos",
+        "groups": 19,
+        "pass": true
+      },
+      {
+        "suite": "issue7_scenarios",
+        "groups": 3,
+        "pass": true
+      },
+      {
+        "suite": "issue12_inclusion",
+        "groups": 11,
+        "pass": true
+      },
+      {
+        "suite": "issue22_regressions",
+        "groups": 14,
+        "pass": true
+      },
+      {
+        "suite": "issue18_import",
+        "groups": 6,
+        "pass": true
+      },
+      {
+        "suite": "issue20_pricing",
+        "groups": 6,
+        "pass": true
+      }
+    ]
+  },
+  "screenshots": 15,
+  "lint": "0 errors; 4 pre-existing App.tsx set-state-in-effect warnings",
+  "scope": "Temporary synthetic local SQLite only; no Coda/VPS/existing SQLite/deploy",
+  "pricingConfigurationRequests": "One existing GET shared by finance/editor, asserted in desktop/mobile",
+  "databaseCheck": "Independent Python SQLite read confirms name, quantity and manual price after delayed in-flight edits",
+  "immutability": "Existing emitted snapshot JSON and SHA-256 of original PDF unchanged after edits/MR/scenario/deletion"
+}
