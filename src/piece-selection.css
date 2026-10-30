@@ -1,0 +1,24 @@
+/* One blue family; states are derived from valid catalog codes and pending intentions. */
+.piece-options button[data-selection-state=none]{background:#edf3fb;color:#173e71;border-color:#cbd9e9}
+.piece-options button[data-selection-state=partial]{background:#adc7e8;color:#102f60;border-color:#6c91c3}
+.piece-options button[data-selection-state=all]{background:#142c60;color:#fff;border-color:#142c60;box-shadow:none}
+.piece-options button[data-pending=true]{outline:1px dashed #416ba1;outline-offset:2px}
+.piece-options button[data-selection-state=all][data-pending=true]{outline-color:#142c60}
+.selection-indicator{display:inline-flex;flex:none;width:12px;height:12px;border:1.5px solid currentColor;border-radius:50%;position:relative;pointer-events:none}
+[data-selection-state=partial]>.selection-indicator:after{content:'';height:2px;width:6px;position:absolute;left:1.5px;top:3.5px;background:currentColor}
+[data-selection-state=all]>.selection-indicator{background:currentColor}
+.piece-picker .piece-options>button{flex-direction:row;align-items:center;text-align:left;gap:9px}
+.piece-picker .piece-options>button>span:nth-last-child(2){flex:1}
+.piece-selection-status{font-size:11px;line-height:1.4;color:#365675;padding:4px 0;min-height:0}
+.piece-selection-status:empty{display:none}
+.piece-inclusion-toggle{border:0;border-radius:999px;width:36px;min-height:33px;display:flex;align-items:center;justify-content:center;flex:none;padding:5px;background:#edf3fb;color:#142c60}
+.piece-inclusion-toggle[aria-checked=false]{color:#75849b;background:#f5f7fa}
+.piece-inclusion-toggle .icon{width:22px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.piece-inclusion-toggle[data-pending=true]{outline:1px dashed #416ba1;outline-offset:2px}
+.piece-inclusion-toggle:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+.map-region-state circle{fill:none;stroke:#142c60;stroke-width:1.5}
+.map-region-state path{fill:none;stroke:#142c60;stroke-width:1.8}
+.interactive-map [data-selection-state=all] .map-region-state circle{fill:white;stroke:white}
+.interactive-map [data-selection-state=all] .map-region-count circle{fill:white}
+.interactive-map [data-selection-state=all] .map-region-count text{fill:#142c60}
+.map-page .map-stage{padding-top:4px}

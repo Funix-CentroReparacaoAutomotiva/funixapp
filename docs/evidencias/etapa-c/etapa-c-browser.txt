@@ -1,0 +1,18 @@
+PASS desktop: four rapid pieces, reversals and interleaving stay interactive; last intentions match file SQLite, two serial PATCHes, other scenarios/services unchanged
+PASS desktop: accessible switches support keyboard and do not emit repetitive green confirmations
+PASS desktop: http blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records
+PASS desktop: lost-patch blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records
+PASS desktop: functional classification and unified search use original identities; lost committed POST recovered with one master row
+PASS desktop: front/rear keep real radial pairs with Ambos centered above Motorista/Passageiro; selection creates only existing codes
+PASS desktop: contextual sides remove opposite/Ambos/redundant choice; Map and functional selection retain same master IDs without duplicates
+PASS desktop: group states none/partial/all reflect unique selectable codes and pending intentions
+PASS desktop: file SQLite survives API restart/reload with stable records, no duplicates or external calls; issued snapshot unchanged
+PASS mobile: four rapid pieces, reversals and interleaving stay interactive; last intentions match file SQLite, two serial PATCHes, other scenarios/services unchanged
+PASS mobile: accessible switches support keyboard and do not emit repetitive green confirmations
+PASS mobile: http blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records
+PASS mobile: lost-patch blocks uncertain writes; explicit recovery reconciles actual persisted state without losing intention or duplicate records
+PASS mobile: functional classification and unified search use original identities; lost committed POST recovered with one master row
+PASS mobile: front/rear keep real radial pairs with Ambos centered above Motorista/Passageiro; selection creates only existing codes
+PASS mobile: contextual sides remove opposite/Ambos/redundant choice; Map and functional selection retain same master IDs without duplicates
+PASS mobile: group states none/partial/all reflect unique selectable codes and pending intentions
+PASS mobile: file SQLite survives API restart/reload with stable records, no duplicates or external calls; issued snapshot unchanged

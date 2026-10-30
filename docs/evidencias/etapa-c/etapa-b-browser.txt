@@ -1,0 +1,21 @@
+PASS desktop: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS desktop: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS desktop: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS desktop: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash
+PASS desktop: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS desktop: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS desktop: explicit discard remount retains the prior diagnosis list scroll position
+PASS desktop: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS desktop: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS desktop: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable
+PASS mobile: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS mobile: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS mobile: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS mobile: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash
+PASS mobile: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS mobile: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS mobile: Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional
+PASS mobile: explicit discard remount retains the prior diagnosis list scroll position
+PASS mobile: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS mobile: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS mobile: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable

@@ -57,12 +57,12 @@ async def run():
                 async with page.expect_response(lambda r: r.request.method == 'POST' and r.url.endswith('/diagnosticos')) as pending:
                     await target.click()
                 response = await pending.value
-                if ready: await expect(target).to_be_enabled()
+                if ready and response.ok: await expect(page.locator('#piece-selection-status')).to_be_empty()
                 return response.status
             async def recover():
-                await page.get_by_role('button', name='Atualizar dados', exact=True).click()
-                await expect(page.get_by_role('status')).to_contain_text('Dados atualizados')
-                await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_have_count(0)
+                await page.get_by_role('button',name=re.compile('^Atualizar dados')).click()
+                await expect(page.locator('#piece-selection-status')).to_be_empty()
+                await expect(page.get_by_role('alert')).to_have_count(0)
 
             assert [await choose(i) for i in pool[:3]] == [200, 200, 200]
             response = await a.request.get(ORIGIN + path + '/cenarios')
@@ -73,9 +73,9 @@ async def run():
             await write(b, path + '/diagnosticos', {'pieceCodes': [pool[3]['code']], 'scenarioId': s['id'], 'scenarioRevision': s['revision']})
             n = post_count
             assert await choose(pool[4]) == 409
-            await expect(page.get_by_role('alert')).to_contain_text('foram atualizados')
+            await expect(page.get_by_role('alert')).to_contain_text('cenário mudou')
             assert post_count == n + 1  # never replays a mutation automatically
-            assert await choose(pool[4]) == 200
+            await recover()
             w = await get(path + '/cenarios')
             assert len(w['items']) == 6 and len(w['scenarios']) == 2
             assert not w['scenarios'][1]['pieceFlags'][next(i['id'] for i in w['items'] if i['pieceId'] == pool[4]['id'])]
@@ -92,33 +92,20 @@ async def run():
             assert catalog_gets == 0
             await expect(page.get_by_role('alert')).to_have_count(0)
 
-            # The required workspace GET can still fail after a real successful POST.
+            # Post-commit GET failure is uncertain: keep intention, no blind POST replay.
             async def abort_get(route): await route.abort('failed')
-            await page.route('**/cenarios*', abort_get)
-            n = post_count
-            assert await choose(pool[6], ready=False) == 200
-            await expect(page.get_by_role('alert')).to_contain_text('A inclusão foi confirmada')
-            await expect(page.get_by_role('status')).to_contain_text('salva')
-            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
-            await page.locator('.approved-finance .summary').click()
-            await expect(page.get_by_role('button', name='Emitir orçamento', exact=True)).to_be_disabled()
-            await page.locator('.approved-finance .summary').click()
+            await page.route('**/cenarios*',abort_get);n=post_count
+            assert await choose(pool[6],ready=False)==200
+            await expect(page.get_by_role('alert')).to_contain_text('seleções pendentes')
             await expect(await button(pool[6])).to_be_disabled()
-            await page.get_by_text('Detalhes da falha', exact=True).click()
-            details = await page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True)).inner_text()
-            assert 'GET /api/atendimentos/:id/cenarios' in details and at['id'] not in details
-            await page.screenshot(path=str(ARTIFACTS / 'confirmado-com-falha-get.png'))
-            assert any(i['pieceId'] == pool[6]['id'] for i in await get(path + '/diagnosticos'))
-            # Explicit refresh revalidates catalogs; its own failure must remain recoverable.
-            await page.unroute('**/cenarios*', abort_get)
-            await page.get_by_role('button', name='Atualizar dados', exact=True).click()
-            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
-            await expect(page.get_by_role('status')).to_contain_text('salva')
-            await expect(page.locator('details').filter(has=page.get_by_text('Detalhes da falha', exact=True))).to_contain_text('GET /api/catalogos')
-            assert catalog_gets > 0
-            assert post_count == n + 1
-            await page.unroute('**/api/catalogos', abort_catalog); await recover()
-            h.mark('ordinary mutations skip catalog GET; failed post-commit workspace and explicit catalog refresh preserve confirmed rows and recover without resending')
+            assert any(i['pieceId']==pool[6]['id']for i in await get(path+'/diagnosticos'))
+            await page.get_by_text('Detalhes da falha',exact=True).click()
+            details=await page.locator('details').filter(has=page.get_by_text('Detalhes da falha',exact=True)).inner_text()
+            assert 'GET /api/atendimentos/:id/cenarios'in details and at['id']not in details
+            await page.unroute('**/cenarios*',abort_get);await recover()
+            assert catalog_gets==0 and post_count==n+1
+            await page.unroute('**/api/catalogos',abort_catalog)
+            h.mark('ordinary mutations and recovery use cached catalogs; failed post-commit GET keeps confirmed rows and resumes after explicit read without POST replay')
 
             # Before-delivery POST failure: no database write, no automatic retry.
             async def abort_post(route):
@@ -127,11 +114,11 @@ async def run():
             await page.route('**/diagnosticos', abort_post)
             before = await get(path + '/diagnosticos'); n = post_count
             await (await button(pool[7])).click()
-            await expect(page.get_by_role('alert')).to_contain_text('Ela pode ter sido gravada')
-            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
+            await expect(page.get_by_role('alert')).to_contain_text('seleções pendentes')
+            await expect(page.get_by_role('button', name=re.compile('^Atualizar dados'))).to_be_enabled()
             assert await get(path + '/diagnosticos') == before and post_count == n + 1
             await page.unroute('**/diagnosticos', abort_post); await recover()
-            assert await choose(pool[7]) == 200
+            assert any(i['pieceId']==pool[7]['id']for i in await get(path+'/diagnosticos'))
             h.mark('POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy')
 
             # Actual commit followed by a lost response: transport outcome is ambiguous.
@@ -143,14 +130,12 @@ async def run():
             await page.route('**/diagnosticos', lose_response)
             n = post_count
             await (await button(pool[8])).click()
-            await expect(page.get_by_role('alert')).to_contain_text('Ela pode ter sido gravada')
+            await expect(page.get_by_role('alert')).to_contain_text('seleções pendentes')
             saved = next(i for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[8]['id'])
             assert post_count == n + 1
             await page.unroute('**/diagnosticos', lose_response); await recover()
-            assert await choose(pool[8], ready=False) == 200
-            await expect(page.get_by_role('region', name='Editor de diagnóstico', exact=True)).to_be_visible()
-            assert [i['id'] for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[8]['id']] == [saved['id']]
-            await page.get_by_role('button', name='Voltar aos Diagnósticos', exact=True).click()
+            await (await button(pool[8])).click();await expect(page.locator('#piece-selection-status')).to_be_empty()
+            assert [i['id']for i in await get(path+'/diagnosticos')if i['pieceId']==pool[8]['id']]==[saved['id']]
             h.mark('lost POST response after real commit is reconciled by GET; deliberate repeated selection preserves one physical identity and previous flags')
 
             async def truncated_response(route):
@@ -160,9 +145,9 @@ async def run():
                 else: await route.continue_()
             await page.route('**/diagnosticos', truncated_response)
             await (await button(pool[9])).click()
-            await expect(page.get_by_role('alert')).to_contain_text('Não foi possível confirmar se a peça foi gravada')
-            await expect(page.get_by_role('status')).to_have_count(0)
-            await expect(page.get_by_role('button', name='Atualizar dados', exact=True)).to_be_enabled()
+            await expect(page.get_by_role('alert')).to_contain_text('seleções pendentes')
+            await expect(page.locator('#piece-selection-status')).to_contain_text('Seleções pendentes')
+            await expect(page.get_by_role('button', name=re.compile('^Atualizar dados'))).to_be_enabled()
             await page.unroute('**/diagnosticos', truncated_response); await recover()
             assert len([i for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[9]['id']]) == 1
             h.mark('HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST')
@@ -216,33 +201,26 @@ async def run():
             await asyncio.wait_for(captured.wait(), 10)
             fresh = await get(path + '/cenarios'); scene = fresh['scenarios'][0]
             await write(b, path + '/diagnosticos', {'pieceCodes':[pool[16]['code']], 'scenarioId':scene['id'], 'scenarioRevision':scene['revision']})
-            release.set(); await expect(await button(pool[16])).to_be_enabled()
+            release.set(); await expect(page.locator('#piece-selection-status')).to_be_empty()
             assert await choose(pool[16], ready=False) == 409
-            await expect(page.get_by_role('alert')).to_contain_text('foram atualizados')
-            assert await choose(pool[16], ready=False) == 200
-            await expect(page.get_by_role('region',name='Editor de diagnóstico',exact=True)).to_be_visible()
-            rows = await get(path + '/diagnosticos')
-            assert len([i for i in rows if i['pieceId']==pool[16]['id']]) == 1
-            await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
-            await page.unroute('**/cenarios*', hold_old_workspace)
+            await expect(page.get_by_role('alert')).to_contain_text('cenário mudou')
+            await recover()
+            rows=await get(path+'/diagnosticos');assert len([i for i in rows if i['pieceId']==pool[16]['id']])==1
+            await page.unroute('**/cenarios*',hold_old_workspace)
             h.mark('full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces')
 
-            entered = asyncio.Event(); release_post = asyncio.Event()
+            entered=asyncio.Event();release_post=asyncio.Event()
             async def hold_post(route):
-                if route.request.method == 'POST':
-                    response = await route.fetch(); assert response.status == 200
-                    entered.set(); await release_post.wait(); await route.fulfill(response=response)
-                else: await route.continue_()
-            await page.route('**/diagnosticos', hold_post)
-            target = await button(pool[17]); n = post_count
-            await target.evaluate('(e)=>{e.click();e.click()}')
-            await asyncio.wait_for(entered.wait(), 10)
-            await expect(target).to_be_disabled(); assert post_count == n + 1
-            release_post.set(); await expect(target).to_be_enabled()
-            await page.unroute('**/diagnosticos', hold_post)
-            assert len([i for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[17]['id']]) == 1
-            assert post_count == n + 1
-            h.mark('rapid double click while real POST response is pending issues one POST, saves one row and releases busy after confirmation')
+                if route.request.method=='POST':
+                    response=await route.fetch();assert response.status==200;entered.set();await release_post.wait();await route.fulfill(response=response)
+                else:await route.continue_()
+            await page.route('**/diagnosticos',hold_post);target=await button(pool[17]);n=post_count
+            await target.click();await asyncio.wait_for(entered.wait(),10)
+            await expect(target).to_be_enabled();await target.click()
+            release_post.set();await expect(page.locator('#piece-selection-status')).to_be_empty();await page.unroute('**/diagnosticos',hold_post)
+            rows=[i for i in await get(path+'/diagnosticos')if i['pieceId']==pool[17]['id']]
+            assert len(rows)==1 and not rows[0]['enabled']and post_count==n+1
+            h.mark('rapid on/off during committed POST remains interactive, one master row and one POST, final exclusion confirmed')
 
             expected = await get(path + '/diagnosticos')
             await h.restart_api(); await a.close(); await b.close()

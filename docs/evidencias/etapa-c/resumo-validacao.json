@@ -1,0 +1,62 @@
+{
+  "synthetic": true,
+  "base": "24440f75d9837d0a2928de815af525c6f472996e",
+  "node": {
+    "tests": 120,
+    "pass": 120,
+    "fail": 0
+  },
+  "deployment_scripts": {
+    "tests": 23,
+    "pass": 23
+  },
+  "browser": {
+    "etapa_c": 18,
+    "etapa_b": 21,
+    "commercial": 84,
+    "commercial_suites": [
+      {
+        "suite": "pr17_auditoria",
+        "groups": 8,
+        "pass": true
+      },
+      {
+        "suite": "editor_financeiro",
+        "groups": 17,
+        "pass": true
+      },
+      {
+        "suite": "m1_atendimentos",
+        "groups": 19,
+        "pass": true
+      },
+      {
+        "suite": "issue7_scenarios",
+        "groups": 3,
+        "pass": true
+      },
+      {
+        "suite": "issue12_inclusion",
+        "groups": 11,
+        "pass": true
+      },
+      {
+        "suite": "issue22_regressions",
+        "groups": 14,
+        "pass": true
+      },
+      {
+        "suite": "issue18_import",
+        "groups": 6,
+        "pass": true
+      },
+      {
+        "suite": "issue20_pricing",
+        "groups": 6,
+        "pass": true
+      }
+    ]
+  },
+  "scope": "Local synthetic temporary SQLite only; no VPS/Coda/existing application database/deploy",
+  "lint": "Four pre-existing react(set-state-in-effect) warnings in src/App.tsx; zero errors"
+}
