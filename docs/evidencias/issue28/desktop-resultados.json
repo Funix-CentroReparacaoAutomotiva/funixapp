@@ -1,0 +1,32 @@
+{
+  "device": "desktop",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: 163/163 real rendered canonical paths match audited matrix plus D01/D02; all 23 Ambos actions save exact pairs through real API with no duplicates",
+      "pass": true
+    },
+    {
+      "name": "desktop: seven distinct SVG hit areas, no state circles/search/redundant title; roots have no pagination; thirteen lateral targets >=44px remain accessible without overlap or hidden categories",
+      "pass": true
+    },
+    {
+      "name": "desktop: provisional column keeps original catalog code/ID/name; unspecified wheel housing remains separate and outside Ambos",
+      "pass": true
+    },
+    {
+      "name": "desktop: delayed consecutive selections remain interactive and do not move dialog; deselection still changes active mask only, preserves shared piece/children and other scenario, confirmed by independent SQLite read",
+      "pass": true
+    },
+    {
+      "name": "desktop: real HTTP failure still exposes recovery; existing queue resumes; catalog metadata, IDs, issued snapshot/PDF and external-call boundary unchanged",
+      "pass": true
+    },
+    {
+      "name": "desktop: keyboard activation, dialog focus containment, Escape and return to the SVG region remain functional",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

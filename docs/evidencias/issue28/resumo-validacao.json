@@ -1,0 +1,43 @@
+{
+  "base": "b0fdba268bc9250a04267e3d313c3eca26c625c5",
+  "referencePR27": "97abe59f7693d29d4a91b2d2df147d495ab7bc0e",
+  "syntheticOnly": true,
+  "node": {
+    "passed": 139,
+    "failed": 0
+  },
+  "deployScripts": {
+    "passed": 23,
+    "failed": 0
+  },
+  "browser": {
+    "mapGroups": 18,
+    "regressionGroups": 139,
+    "totalGroups": 157,
+    "viewports": [
+      [
+        1440,
+        1000
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        320,
+        568
+      ]
+    ],
+    "pathsPerViewport": 163,
+    "bothActionsPerViewport": 23
+  },
+  "screenshots": 24,
+  "lint": "Four pre-existing warnings in unchanged src/App.tsx; no new warnings",
+  "notPerformed": [
+    "merge",
+    "deploy",
+    "VPS access",
+    "Coda access",
+    "existing database changes"
+  ]
+}
