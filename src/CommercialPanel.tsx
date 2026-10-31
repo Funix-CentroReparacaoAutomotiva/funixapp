@@ -14,7 +14,9 @@ import {FinancialPanel} from './FinancialPanel'
 import {BudgetPanel} from './BudgetPanel'
 import type {DetailScreen} from './detail-navigation'
 import {ScenarioMenu} from './ScenarioMenu'
-import {emptyNegotiationState,negotiationSignature} from './negotiation'
+import {emptyNegotiationState,negotiationSignature,negotiationIsDirty} from './negotiation'
+import type {RemovalReview} from '../shared/piece-removal'
+import {RemovalConfirmation} from './RemovalConfirmation'
 import type {NegotiationState} from './negotiation'
 import {money} from './money'
 import {usePieceSelection} from './usePieceSelection'
@@ -32,7 +34,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
 }) {
   const [dealState,setDealState] = useState<NegotiationState>(emptyNegotiationState)
   const [scenarioGone,setScenarioGone] = useState(false)
-  const negotiationDirty = dealState.draft.mode!=='none' || dealState.draft.value!=='' || dealState.draft.acknowledgeResidual
+  const negotiationDirty = negotiationIsDirty(dealState.draft)
   useEffect(()=>{onNegotiationDirty(negotiationDirty);return()=>onNegotiationDirty(false)},[negotiationDirty,onNegotiationDirty])
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null), [items, setItems] = useState<DiagnosisItem[]>([])
   const [pricingConfiguration,setPricingConfiguration]=useState<PricingConfiguration|null>(null)
@@ -64,6 +66,11 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [editorBusy,setEditorBusy]=useState(false),[financeBusy,setFinanceBusy]=useState(false)
   const baseBusy=localBusy||editorBusy||financeBusy
   const [pendingBack,setPendingBack]=useState(false)
+  const [removal,setRemoval]=useState<RemovalReview|null>(null)
+  const removalAnswer=useRef<((answer:boolean)=>void)|null>(null)
+  useEffect(()=>()=>{removalAnswer.current?.(false)},[])
+  function confirmRemoval(review:RemovalReview){return new Promise<boolean>(resolve=>{removalAnswer.current?.(false);removalAnswer.current=resolve;setRemoval(review)})}
+  function answerRemoval(answer:boolean){const resolve=removalAnswer.current;removalAnswer.current=null;setRemoval(null);resolve?.(answer)}
   const onManagerDirty=useCallback((v:boolean)=>setEditorDirty(v),[])
   const onFinanceDirty=useCallback((v:boolean)=>setFinanceDirty(v),[])
   const onManagerBusy=useCallback((v:boolean)=>setEditorBusy(v),[])
@@ -82,7 +89,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const {queue:selectionQueue,state:selectionState}=usePieceSelection(atendimentoId,{
     read:async id=>{const version=++loadVersion.current,w=await api<CommercialWorkspace>(`/api/atendimentos/${atendimentoId}/cenarios?scenarioId=${encodeURIComponent(id)}`);if(version!==loadVersion.current)throw new Error('Atualização substituída. Confira os dados antes de retomar.');return w},
     add:(codes,id,revision)=>api<DiagnosisItem[]>(`/api/atendimentos/${atendimentoId}/diagnosticos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pieceCodes:codes,scenarioId:id,scenarioRevision:revision})}),
-    flags:(flags,id,revision)=>api<Scenario>(`/api/atendimentos/${atendimentoId}/cenarios/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision,pieceFlags:flags})}),
+    remove:request=>api<{removedIds:string[]}>(`/api/atendimentos/${atendimentoId}/diagnosticos`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)}),
+    confirmRemoval,
     confirmed:w=>acceptWorkspace(w),failed:error=>{setRefreshNeeded(true);failed(error,'As seleções pendentes foram preservadas. '+(error as Error).message)}
   })
   const selectionSaving=selectionState.phase==='saving',selectionBlocked=selectionState.phase==='blocked'
@@ -158,11 +166,11 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const byCode = (code?: string) => catalog?.items.find(item => item.code === code)
   const validPieces=useMemo(()=>selectablePieces(catalog?.items??[]),[catalog])
   const pieceIdentities=useMemo(()=>new Map((catalog?.items??[]).filter(c=>c.kind==='peca'&&c.code).map(c=>[c.code!,c.id])),[catalog])
-  const selectedCode=useCallback((code:string)=>selectionState.intents.get(code)??Boolean(workspace?.items.some(p=>p.pieceId===pieceIdentities.get(code)&&workspace.scenarios.find(s=>s.id===scenarioId)?.pieceFlags[p.id])),[selectionState.intents,workspace,scenarioId,pieceIdentities])
+  const selectedCode=useCallback((code:string)=>selectionState.intents.get(code)??Boolean(workspace?.items.some(p=>p.pieceId===pieceIdentities.get(code))),[selectionState.intents,workspace,pieceIdentities])
   function select(codes:string[],enabled?:boolean){
     if(!workspace||pieceLocked||mutationInFlight.current||!codes.length)return
     setMessage('')
-    selectionQueue.enqueue(codes,enabled??!codes.every(code=>selectionQueue.desired(code,selectedCode(code))),workspace,new Map([...validPieces].map(([code,item])=>[code,item.id])))
+    void selectionQueue.enqueue(codes,enabled??!codes.every(code=>selectionQueue.desired(code,selectedCode(code))),workspace,pieceIdentities)
   }
   async function discardSelections(){
     if(!window.confirm('Descartar apenas as seleções locais pendentes e consultar a composição salva? Gravações já realizadas não serão apagadas.'))return
@@ -171,7 +179,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   }
   async function refresh() {
     if(selectionBlocked){
-      if(!window.confirm('Consultar o estado salvo e retomar minhas seleções pendentes neste cenário? Em conflito, minhas inclusões serão reaplicadas após a conferência das revisões.'))return
+      if(!window.confirm('Consultar o estado salvo e retomar minhas seleções pendentes neste cenário? Remoções com conteúdo ou participação alterados exigem nova confirmação.'))return
       const ok=await selectionQueue.recover()
       if(ok){setRefreshNeeded(false);setFailure('');setFailureDetails(null)}
       return
@@ -217,7 +225,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca ?? [] : node.codigo_peca ? [node.codigo_peca] : []
     const stats=groupSelection(node,validPieces,selectedCode)
     const available=codes.length>0&&codes.every(code=>validPieces.has(code))
-    const selected=!group&&available&&codes.every(selectedCode)
+    const selected=!group&&codes.length>0&&codes.every(selectedCode)
     const pending=nodeCodes(node,validPieces).some(code=>selectionState.intents.has(code))
     const sideLayout=radial&&path.at(-1)?.tipo==='grupo_lados'
     const position=sideLayout?(node.tipo==='acao_ambos'?{left:'50%',top:'22%'}:node.lado==='motorista'?{left:'25%',top:'70%'}:node.lado==='passageiro'?{left:'75%',top:'70%'}:null):null
@@ -225,9 +233,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const radius = count <= 2 ? 29 : count <= 4 ? 32 : 36
     return <button key={node.id} className={radial ? 'disc-node' : undefined}
       style={radial ? position??{left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%`} : undefined}
-      aria-label={node.nome} data-selection-state={group?stats.state:selected?'all':'none'} data-pending={pending} aria-pressed={!group && available ? selected : undefined}
-      disabled={pieceLocked || (group?stats.total===0:!available)} onClick={() => showNode(node)}
-      title={group?`${stats.count} de ${stats.total} peças selecionadas${pending?' — salvando':''}`:!available?'Peça inativa ou sem código cadastrado':pending?'Seleção pendente de confirmação':selected?'Selecionada':'Não selecionada'}>
+      aria-label={node.nome} data-selection-state={group?stats.state:selected?'all':'none'} data-pending={pending} aria-pressed={!group && codes.length ? selected : undefined}
+      disabled={pieceLocked || (group?stats.total===0:!available&&!codes.every(selectedCode))} onClick={() => showNode(node)}
+      title={group?`${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}`:!available?'Peça inativa ou sem código cadastrado':pending?'Seleção pendente de confirmação':selected?'Selecionada':'Não selecionada'}>
       {group&&<span className="selection-indicator" aria-hidden="true"/>}<span>{node.nome}</span>{group && <span aria-hidden="true">›</span>}
     </button>
   }
@@ -245,7 +253,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       const root=geographicRoots.find(r=>r.id===catalog?.hierarchy.regioes[region]?.id)
       const stats=root?groupSelection(root,validPieces,selectedCode):{count:0,total:0,state:'none'}
       const pending=root?nodeCodes(root,validPieces).some(code=>selectionState.intents.has(code)):false
-      const tag=opening.replace(/aria-label="([^"]+)"/,`aria-label="$1: ${stats.count} de ${stats.total} peças selecionadas${pending?' — salvando':''}"`).slice(0,-1)+` data-selected="${stats.count>0}" data-selection-state="${stats.state}">`
+      const tag=opening.replace(/aria-label="([^"]+)"/,`aria-label="$1: ${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}"`).slice(0,-1)+` data-selected="${stats.count>0}" data-selection-state="${stats.state}">`
       const xy=body.match(/<text x="([\d.]+)" y="([\d.]+)"/)
       const state=xy?`<g class="map-region-state" aria-hidden="true" pointer-events="none"><circle cx="${Number(xy[1])-28}" cy="${Number(xy[2])-4}" r="5"/>${stats.state==='partial'?`<path d="M${Number(xy[1])-31} ${Number(xy[2])-4}h6"/>`:''}</g>`:''
       const count=stats.count&&xy?`<g class="map-region-count" aria-hidden="true" pointer-events="none"><circle cx="${Number(xy[1])+26}" cy="${Number(xy[2])-15}" r="10"/><text x="${Number(xy[1])+26}" y="${Number(xy[2])-15}" text-anchor="middle" dy=".35em">${stats.count}</text></g>`:''
@@ -259,18 +267,18 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const lines = item.services.filter(line=>!differences || differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id]))))
     const components = (workspace?.components ?? []).filter(c=>c.pieceId===item.id).filter(c=>!differences || differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id] && s.componentFlags[c.id]))))
     if (differences && !parentDiff && !lines.length && !components.length) return null
-    return [<tr className="matrix-parent" key={item.id}><th>{byId(item.pieceId)?.name}</th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir peça ${byId(item.pieceId)?.name}`} checked={Boolean(s.pieceFlags[item.id])} disabled={busy || refreshNeeded || scenarioGone} onChange={e=>flag(s,'pieceFlags',item.id,e.target.checked)} /></td>)}</tr>,...lines.map((line,index)=><tr key={line.id}><th>{byId(line.serviceId)?.name} · {byId(line.dimensionId)?.name ?? 'dimensão pendente'} · {line.quantity}<small>Lançamento {index+1} · {[byId(line.diagnosisId ?? item.diagnosisId)?.name,line.notes].filter(Boolean).join(' · ')}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir serviço ${line.id}`} checked={Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'serviceFlags',line.id,e.target.checked)} />{!s.pieceFlags[item.id] && <small>Peça desmarcada</small>}<small>{matrixValue(s.id,line.id)}</small></td>)}</tr>),...components.map(component=><tr key={component.id}><th>{component.name} · {component.quantity}<small>Componente monetário · MR global</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: incluir componente ${component.id}`} checked={Boolean(s.pieceFlags[item.id] && s.componentFlags[component.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'componentFlags',component.id,e.target.checked)}/><small>{matrixValue(s.id,component.id)}</small></td>)}</tr>)]
+    return [<tr className="matrix-parent" key={item.id}><th>{byId(item.pieceId)?.name}</th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: habilitar peça ${byId(item.pieceId)?.name}`} checked={Boolean(s.pieceFlags[item.id])} disabled={busy || refreshNeeded || scenarioGone} onChange={e=>flag(s,'pieceFlags',item.id,e.target.checked)} /></td>)}</tr>,...lines.map((line,index)=><tr key={line.id}><th>{byId(line.serviceId)?.name} · {byId(line.dimensionId)?.name ?? 'dimensão pendente'} · {line.quantity}<small>Lançamento {index+1} · {[byId(line.diagnosisId ?? item.diagnosisId)?.name,line.notes].filter(Boolean).join(' · ')}</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: habilitar serviço ${line.id}`} checked={Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'serviceFlags',line.id,e.target.checked)} />{!s.pieceFlags[item.id] && <small>Peça desmarcada</small>}<small>{matrixValue(s.id,line.id)}</small></td>)}</tr>),...components.map(component=><tr key={component.id}><th>{component.name} · {component.quantity}<small>Componente monetário · MR global</small></th>{scenarios.map(s=><td key={s.id}><input type="checkbox" aria-label={`${scenarioLabel(s)}: habilitar componente ${component.id}`} checked={Boolean(s.pieceFlags[item.id] && s.componentFlags[component.id])} disabled={busy || refreshNeeded || scenarioGone || !s.pieceFlags[item.id]} onChange={e=>flag(s,'componentFlags',component.id,e.target.checked)}/><small>{matrixValue(s.id,component.id)}</small></td>)}</tr>)]
   })}</tbody><tfoot>{(['serviceSubtotal','componentSubtotal','total','energy','days'] as const).map((field,i)=><tr key={field}><th>{['Serviços','Componentes','Total antes da negociação','Energia','Dias técnicos'][i]}</th>{scenarios.map(s=>{const c=workspace?.calculations.find(c=>c.scenarioId===s.id),value=c?.[field];return <td key={s.id}>{field==='energy'||field==='days'?value??'Indisponível':money(value)}</td>})}</tr>)}</tfoot></table></div>
   const calculation = workspace?.calculations.find(c => c.scenarioId === scenarioId)
   const mapSelecting = tab === 'mapa' && selecting && !draft && !matrix && !budget && !reauth && Boolean(catalog)
   useEffect(() => {
     if (mapSelecting) document.querySelector<HTMLElement>('.map-piece-dialog [data-initial-focus]')?.focus()
   }, [path, discPage, mapSelecting])
-  const selectionFeedback=<div className="piece-selection-status" role="status" id="piece-selection-status" aria-live="polite">{selectionSaving?'Salvando seleções…':selectionBlocked?'Seleções pendentes: confira o erro e escolha como recuperar.':''}</div>
+  const selectionFeedback=<div className={'piece-selection-status'+(selectionBlocked?'':' selection-announcement')} role="status" id="piece-selection-status" aria-live="polite">{selectionSaving?'Salvando seleções…':selectionBlocked?'Seleções pendentes: confira o erro e escolha como recuperar.':''}</div>
   const feedback = <>
     {selectionFeedback}
 
-    {failure && <p className="form-error" role="alert">{failure}</p>}{message && <p className="at-save-success" role="status">{message}</p>}
+    {failure && <p className="form-error" role="alert">{failure}</p>}{message && <p className="at-save-success selection-announcement" role="status">{message}</p>}
       {(refreshNeeded || failure) && <button className="fh-filter" disabled={busy} onClick={refresh}>{busy ? 'Atualizando…' : selectionBlocked?'Atualizar dados e retomar seleções':'Atualizar dados'}</button>}
       {selectionBlocked&&<button className="fh-filter" disabled={busy} onClick={discardSelections}>Descartar seleções pendentes e atualizar</button>}
       {failureDetails?.method && <details className="at-form-hint"><summary>Detalhes da falha</summary><p>{failureDetails.method} {failureDetails.endpoint} · {failureDetails.kind === 'network' ? 'Transporte sem resposta HTTP' : failureDetails.kind === 'response' ? 'Resposta não legível' : 'Resposta HTTP'}{failureDetails.status ? ` · HTTP ${failureDetails.status}` : ''}{failureDetails.elapsedMs !== undefined ? ` · ${failureDetails.elapsedMs} ms` : ''}{failureDetails.requestId ? ` · Referência ${failureDetails.requestId}` : ''}</p></details>}
@@ -282,20 +290,14 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     const node=geographicRoots.find(r=>r.id===original?.id)
     if (node) { mapOpener.current = `[data-region="${region}"]`; setRegionKey(region);setPath([node]); setQuery(''); setDiscPage(0); setSelecting(true) }
   }
-  function deleteEditingPiece(){
-    const current=workspace?.items.find(p=>p.id===draft?.id)
-    if(!current||busy||refreshNeeded||scenarioGone)return
-    if(!window.confirm('Excluir esta peça e todos os serviços/componentes de TODOS os cenários deste Atendimento? Os campos locais desta peça não salvos serão descartados. Orçamentos emitidos serão preservados.'))return
-    void mutate(async()=>{await api(`/api/atendimentos/${atendimentoId}/diagnosticos/${current.id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision})});await load();onDirty(false);setEditorDirty(false);setPendingBack(true);setMessage('Peça excluída de todos os cenários. Orçamentos emitidos preservados.')})
-  }
   const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onArchive={()=>onView('orcamentos')} onCompare={()=>onView('comparacao')}/>
-  return <>{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
+  return <>{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
 
     <div className="diagnostics-body" ref={body} onScroll={e=>{if(loaded)scrollPositions.set(viewKey,{top:e.currentTarget.scrollTop,left:0})}}>
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
       {!mapSelecting && feedback}
-      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/><button className="internal-delete-piece fh-filter" disabled={busy||refreshNeeded||scenarioGone} onClick={deleteEditingPiece}>Excluir peça de todos os cenários</button></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
+      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
 
           <div className="interactive-map" onClick={event => {
@@ -321,8 +323,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const included = byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):Boolean(active?.pieceFlags[item.id])
             const components = workspace?.components.filter(c => c.pieceId === item.id).length ?? 0
             return <article className={`diagnosis-card diagnosis-row ${included ? '' : 'excluded'}`} key={item.id}>
-              <button type="button" role="switch" className="piece-inclusion-toggle" aria-label={`Incluir peça ${byId(item.pieceId)?.name} neste cenário`} aria-checked={byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included} aria-describedby="piece-selection-status" data-pending={selectionState.intents.has(byId(item.pieceId)?.code??'')} disabled={pieceLocked||!active||!byId(item.pieceId)||!usable(byId(item.pieceId)!)} onClick={()=>{const code=byId(item.pieceId)?.code;if(code)select([code])}}><ApprovedIcon name={(byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included)?'toggle':'off'}/></button>
-              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Incluído':'Desmarcado'} no cenário ativo</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
+              <button type="button" role="switch" className="piece-inclusion-toggle" aria-label={`Selecionar peça ${byId(item.pieceId)?.name} na composição compartilhada`} aria-checked={byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included} aria-describedby="piece-selection-status" data-pending={selectionState.intents.has(byId(item.pieceId)?.code??'')} disabled={pieceLocked||!active||!byId(item.pieceId)||(!included&&!usable(byId(item.pieceId)!))} onClick={()=>{const code=byId(item.pieceId)?.code;if(code)select([code])}}><ApprovedIcon name={(byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included)?'toggle':'off'}/></button>
+              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Presente':'Removida'} na composição compartilhada</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
             </article>
           })}</div>
           <button className="codex-add add-piece" disabled={baseBusy} aria-expanded={selecting} onClick={() => {if(!selecting){setPath([]);setQuery('');setDiscPage(0)}setSelecting(v=>!v)}}>{selecting ? 'Fechar seleção' : '+ Adicionar peça'}</button>

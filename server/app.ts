@@ -160,7 +160,7 @@ export function createRequestHandler(options: AppOptions) {
           if (diagnoses && !diagnoses[2]) return send(200, commercial.list(diagnoses[1]!,url.searchParams.get('scenarioId') ?? undefined))
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
-        const permitted = (catalogCollection && req.method === 'POST') || (catalogRecord && !catalogRecord[2] && req.method === 'PATCH') || (diagnoses && (!diagnoses[2] ? req.method === 'POST' : ['PATCH','DELETE'].includes(req.method ?? '')))
+        const permitted = (catalogCollection && req.method === 'POST') || (catalogRecord && !catalogRecord[2] && req.method === 'PATCH') || (diagnoses && (!diagnoses[2] ? ['POST','DELETE'].includes(req.method??'') : ['PATCH','DELETE'].includes(req.method ?? '')))
         if (!permitted) return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
@@ -168,7 +168,7 @@ export function createRequestHandler(options: AppOptions) {
         if (catalogCollection) return send(201, commercial.saveCatalog(body))
         if (catalogRecord) return send(200, commercial.saveCatalog(body, catalogId))
         if (diagnoses) {
-          if (!diagnoses[2]) return send(200, commercial.add(diagnoses[1]!, body))
+          if (!diagnoses[2]) return send(200,req.method==='DELETE'?commercial.removeMany(diagnoses[1]!,body):commercial.add(diagnoses[1]!, body))
           return send(200, req.method === 'DELETE' ? commercial.remove(diagnoses[1]!, diagnoses[2]!, body) : req.headers['x-funix-include-revision']==='1'?commercial.updateDiagnosis(diagnoses[1]!,diagnoses[2]!,body,true):commercial.updateDiagnosis(diagnoses[1]!,diagnoses[2]!,body))
         }
       }

@@ -38,7 +38,7 @@ async def device_case(browser,device,viewport):
   pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['version']+'/pdf');assert pdf.ok;pdf_hash=hashlib.sha256(await pdf.body()).hexdigest()
   # Two rows, exact DOM/order and geometry. The MR is output, not an editable selector.
   first=row().locator('.component-first-line');second=row().locator('.component-values')
-  boxes=[await n.bounding_box()for n in [first.get_by_role('button',name='Incluir componente'),first.get_by_label('Descrição do componente'),first.get_by_role('button',name='Excluir componente')]]
+  boxes=[await n.bounding_box()for n in [first.get_by_role('button',name='Habilitar componente neste cenário'),first.get_by_label('Descrição do componente'),first.get_by_role('button',name='Excluir componente')]]
   assert boxes[0]['x']<boxes[1]['x']<boxes[2]['x']and max(b['y']for b in boxes)-min(b['y']for b in boxes)<5
   assert await second.locator(':scope > *').evaluate_all('(es)=>es.map(e=>e.innerText.split("\\n")[0])')==['Qtd.','Preço unitário (R$)','MR','Total']
   positions=[await second.locator(':scope > *').nth(i).bounding_box()for i in range(4)];assert max(p['y']for p in positions)-min(p['y']for p in positions)<3
@@ -104,10 +104,10 @@ async def device_case(browser,device,viewport):
    assert count==1;await official()
   h.mark(device+': HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes')
   # Inclusion is scenario-specific; deletion is global and requires confirmation.
-  await row().get_by_role('button',name='Incluir componente').click();await saved();await expect(row().get_by_label('Total do componente')).to_have_text('Fora do orçamento');await shot('fora-do-orcamento')
+  await row().get_by_role('button',name='Habilitar componente neste cenário').click();await saved();await expect(row().get_by_label('Total do componente')).to_have_text('Fora do orçamento');await shot('fora-do-orcamento')
   w=await ws();assert w['scenarios'][0]['componentFlags'][ids['parts'][0]]==False and len(w['components'])==3
   await select_named_scenario(page,'Cenário 2');await page.locator('.diagnosis-open').first.click();await saved();await expect(row().get_by_label('Total do componente')).to_have_text('Fora do orçamento')
-  await row().get_by_role('button',name='Incluir componente').click();await saved();w=await official(1);assert not w['scenarios'][0]['componentFlags'][ids['parts'][0]]and w['scenarios'][1]['componentFlags'][ids['parts'][0]]
+  await row().get_by_role('button',name='Habilitar componente neste cenário').click();await saved();w=await official(1);assert not w['scenarios'][0]['componentFlags'][ids['parts'][0]]and w['scenarios'][1]['componentFlags'][ids['parts'][0]]
   h.accept_dialogs=False;await row(1).get_by_role('button',name='Excluir componente').click();assert len((await ws())['components'])==3
   h.accept_dialogs=True;deleted=ids['parts'][1];await row(1).get_by_role('button',name='Excluir componente').click();await expect(editor.locator('.component')).to_have_count(2)
   w=await ws();assert len(w['components'])==2 and all(deleted not in s['componentFlags']for s in w['scenarios'])and any('TODOS os cenários'in d for d in h.dialogs)

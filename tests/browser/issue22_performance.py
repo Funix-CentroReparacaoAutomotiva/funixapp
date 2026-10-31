@@ -55,7 +55,7 @@ async def run(output):
           if operation=='three-component-edit':
            for i in range(3):await editor.get_by_label('Descrição do componente',exact=True).nth(i).fill(f'QA {device} {latency} {n} componente {i}')
           else:
-           button=editor.get_by_role('button',name='Incluir serviço' if operation=='service-toggle' else 'Incluir componente',exact=True).first
+           button=editor.get_by_role('button',name='Habilitar serviço neste cenário' if operation=='service-toggle' else 'Habilitar componente neste cenário',exact=True).first
            old=await button.get_attribute('aria-pressed');await button.click();await expect(button).to_have_attribute('aria-pressed','false' if old=='true' else 'true')
           elapsed=await asyncio.wait_for(page.evaluate('window.__saveLatency'),30)
           await expect(editor).to_have_attribute('data-save-state','confirmed')

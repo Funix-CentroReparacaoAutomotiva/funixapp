@@ -42,3 +42,10 @@ export interface CommercialWorkspace {
 }
 // Opt-in mutation acknowledgement: actual scenario revision after a confirmed write.
 export interface CommercialSave<T> { item:T; scenarioRevision:number }
+
+// Guard the entire shared composition, including scenario-only changes.
+export interface PieceRemoval {
+  pieces:{id:string;revision:number}[]
+  compositionRevision:number
+  scenarios:{id:string;revision:number}[]
+}

@@ -171,13 +171,25 @@ export class CommercialRepository {
     })
   }
   remove(atendimentoId: string, id: string, input: unknown) {
-    const data = object(input, ['revision']), expected = revision(data.revision)
+    const data = object(input, ['revision','compositionRevision','scenarios'])
+    return this.removeMany(atendimentoId,{pieces:[{id,revision:data.revision}],compositionRevision:data.compositionRevision,scenarios:data.scenarios})
+  }
+  removeMany(atendimentoId:string,input:unknown){
+    const data=object(input,['pieces','compositionRevision','scenarios'])
+    const expected=revision(data.compositionRevision)
+    if(!Array.isArray(data.pieces)||!data.pieces.length||data.pieces.length>2||!Array.isArray(data.scenarios)||!data.scenarios.length)invalid('Informe peças e revisões dos cenários para remover da composição.')
+    const pieces=data.pieces.map(raw=>{const p=object(raw,['id','revision']);return{id:text(p.id,100,true),revision:revision(p.revision)}})
+    const scenarios=data.scenarios.map(raw=>{const s=object(raw,['id','revision']);return{id:text(s.id,100,true),revision:revision(s.revision)}})
+    if(new Set(pieces.map(p=>p.id)).size!==pieces.length||new Set(scenarios.map(s=>s.id)).size!==scenarios.length)invalid('Identidades duplicadas na remoção.')
     return this.transaction(() => {
-      const old = this.getDiagnosis(atendimentoId, id)
-      if (old.revision !== expected) conflict()
-      this.db.prepare('DELETE FROM diagnosis_items WHERE id=?').run(id)
+      new AtendimentoRepository(this.db).get(atendimentoId)
+      const state=this.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimentoId)
+      const current=this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=?').all(atendimentoId)
+      if(state?.revision!==expected||current.length!==scenarios.length||current.some(s=>!scenarios.some(v=>v.id===s.id&&v.revision===s.revision)))conflict()
+      for(const p of pieces){const old=this.getDiagnosis(atendimentoId,p.id);if(old.revision!==p.revision)conflict()}
+      for(const p of pieces)this.db.prepare('DELETE FROM diagnosis_items WHERE id=?').run(p.id)
       touchComposition(this.db,atendimentoId)
-      return { removed: true }
+      return { removed: true,removedIds:pieces.map(p=>p.id) }
     })
   }
 }

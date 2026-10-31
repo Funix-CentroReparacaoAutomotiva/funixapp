@@ -1,0 +1,36 @@
+{
+  "device": "mobile320",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "mobile320: editor changes scenario flags only; disabled master stays globally selected; confirmed back has no discard dialog; redundant global trash absent",
+      "pass": true
+    },
+    {
+      "name": "mobile320: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags",
+      "pass": true
+    },
+    {
+      "name": "mobile320: four consecutive global removals serialize without blocking other toggles; remaining IDs/services/fractional components preserved; routine status outside layout",
+      "pass": true
+    },
+    {
+      "name": "mobile320: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content",
+      "pass": true
+    },
+    {
+      "name": "mobile320: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent",
+      "pass": true
+    },
+    {
+      "name": "mobile320: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors",
+      "pass": true
+    },
+    {
+      "name": "mobile320: existing circular map is unchanged; disabled master still selected globally; real Ambos adds/removes exactly two codes with no duplicates and preserves issued history",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

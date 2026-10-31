@@ -174,7 +174,7 @@ test('diagnosis composition validates references/quantities, preserves draft on 
     assert.equal(updated.enabled, false)
     assert.equal(updated.revision, 2)
     assert.throws(() => repo.updateDiagnosis(atendimento.id, row.id, { revision: 1, notes: 'Stale' }), conflict)
-    assert.throws(() => repo.remove(atendimento.id, row.id, { revision: 1 }), conflict)
+    assert.throws(() => repo.remove(atendimento.id, row.id, { revision: 1,compositionRevision:Number(db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimento.id)!.revision),scenarios:new ScenarioRepository(db).list(atendimento.id).map(s=>({id:s.id,revision:s.revision})) }), conflict)
     assert.deepEqual(repo.list(atendimento.id)[0], updated)
     const second = new AtendimentoRepository(db).create({ phone: '456' })
     assert.throws(() => repo.updateDiagnosis(second.id, row.id, { revision: 2, notes: 'Wrong parent' }), error => error instanceof ServiceError && error.status === 404)
@@ -184,7 +184,7 @@ test('diagnosis composition validates references/quantities, preserves draft on 
     // Deactivation is reversible; historical links do not vanish and remain removable.
     const revised = repo.updateDiagnosis(atendimento.id, row.id, { revision: 2, notes: 'Mantém vínculos anteriores', services: updated.services })
     assert.equal(revised.services[0]!.id, updated.services[0]!.id)
-    repo.remove(atendimento.id, row.id, { revision: revised.revision })
+    repo.remove(atendimento.id, row.id, { revision: revised.revision,compositionRevision:Number(db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimento.id)!.revision),scenarios:new ScenarioRepository(db).list(atendimento.id).map(s=>({id:s.id,revision:s.revision})) })
     assert.equal(repo.list(atendimento.id).length, 0)
     assert.equal(db.prepare('SELECT count(*) AS n FROM diagnosis_services').get()!.n, 0)
     assert.equal(new AtendimentoRepository(db).get(atendimento.id).phone, '123')

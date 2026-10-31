@@ -1,0 +1,7 @@
+.removal-confirmation{width:min(360px,calc(100vw - 28px));padding:16px;border:1px solid #cbd9e9;border-radius:12px;background:#fff;color:#142c60;font:inherit;box-shadow:0 12px 36px #102e4b29}
+.removal-confirmation::backdrop{background:#0a1e3b52}
+.removal-confirmation p{font-size:14px;line-height:1.5;margin:0 0 14px}
+.removal-confirmation>div{display:flex;justify-content:flex-end;gap:8px}
+.removal-confirmation button{min-height:44px;padding:8px 14px;border:1px solid #cbd9e9;border-radius:8px;background:#fff;color:#142c60;font:inherit;font-size:13px}
+.removal-confirmation button:last-child{background:#142c60;color:#fff}
+.selection-announcement{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}

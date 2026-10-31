@@ -25,10 +25,10 @@ async def device_case(browser,device,viewport):
   requests=[]
   def record(r):
    if '/api/' in r.url:requests.append((r.method,r.url.split('?')[0]))
-  await saved();page.on('request',record);before=await get(base+'/cenarios');await editor.get_by_role('button',name='Incluir serviço',exact=True).first.click();await saved()
+  await saved();page.on('request',record);before=await get(base+'/cenarios');await editor.get_by_role('button',name='Habilitar serviço neste cenário',exact=True).first.click();await saved()
   assert len(requests)==2 and not any('/catalogos' in p or '/diagnosticos/' in p for _,p in requests),requests
   after=await get(base+'/cenarios');assert before['items'][0]['revision']==after['items'][0]['revision']
-  requests.clear();part_before=after['components'][0]['revision'];await editor.get_by_role('button',name='Incluir componente',exact=True).first.click();await saved()
+  requests.clear();part_before=after['components'][0]['revision'];await editor.get_by_role('button',name='Habilitar componente neste cenário',exact=True).first.click();await saved()
   assert len(requests)==2 and not any('/catalogos' in p or '/componentes/' in p or '/diagnosticos/' in p for _,p in requests),requests
   assert (await get(base+'/cenarios'))['components'][0]['revision']==part_before;page.remove_listener('request',record)
   h.mark(device+': mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions')
@@ -44,7 +44,7 @@ async def device_case(browser,device,viewport):
      await route.fulfill(status=200,content_type='application/json',body=json.dumps({'id':body['id']}));return
    await route.continue_()
   await page.route('**'+base+'/cenarios/*',malformed_flag)
-  await editor.get_by_role('button',name='Incluir componente',exact=True).first.click();await expect(editor.get_by_role('alert')).to_be_visible()
+  await editor.get_by_role('button',name='Habilitar componente neste cenário',exact=True).first.click();await expect(editor.get_by_role('alert')).to_be_visible()
   await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await saved();assert flag_count==1
   await page.unroute('**'+base+'/cenarios/*',malformed_flag)
   h.mark(device+': malformed JSON acknowledgement preserves inclusion intent and reconciles without replay')
@@ -89,7 +89,7 @@ async def device_case(browser,device,viewport):
   await expect(editor.locator('.service').nth(3).get_by_label('Serviço',exact=True)).to_have_value('')
   blank=editor.locator('.service').nth(3);await blank.get_by_label('Serviço',exact=True).select_option(ids['service']);await blank.get_by_label('Dimensão',exact=True).select_option(ids['dimension']);await saved()
   w=await get(base+'/cenarios');assert len(w['items'][0]['services'])==5;assert len({s['id']for s in w['items'][0]['services']})==5
-  requests.clear();page.on('request',record);await editor.get_by_role('button',name='Incluir componente',exact=True).first.click();await saved();page.remove_listener('request',record)
+  requests.clear();page.on('request',record);await editor.get_by_role('button',name='Habilitar componente neste cenário',exact=True).first.click();await saved();page.remove_listener('request',record)
   assert len(requests)==2 and not any('/diagnosticos/' in path for _,path in requests),'completing an earlier blank row must not trigger later re-saves'
   h.mark(device+': lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct')
 
@@ -125,7 +125,7 @@ async def device_case(browser,device,viewport):
   # Scenario masks can change without touching diagnosis revision.
   w=await get(base+'/cenarios');s=w['scenarios'][0];services=w['items'][0]['services']
   await write(base+'/cenarios/'+s['id'],{'revision':s['revision'],'serviceFlags':{services[1]['id']:False}})
-  await editor.get_by_role('button',name='Incluir serviço',exact=True).first.click();await expect(editor.get_by_role('alert')).to_be_visible()
+  await editor.get_by_role('button',name='Habilitar serviço neste cenário',exact=True).first.click();await expect(editor.get_by_role('alert')).to_be_visible()
   await editor.get_by_role('button',name='Tentar novamente',exact=True).click();await expect(editor.get_by_role('alert')).to_contain_text('preservados')
   assert (await get(base+'/cenarios'))['scenarios'][0]['serviceFlags'][services[1]['id']] is False
   await reload_saved();h.mark(device+': content and mask conflicts block replay, preserve drafts and support explicit loading')

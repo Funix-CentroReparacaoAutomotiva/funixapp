@@ -67,7 +67,8 @@ Todos os endpoints abaixo exigem sessão. POST, PATCH e DELETE exigem origem exa
 | `GET /api/atendimentos/:id/diagnosticos` | Itens da composição com serviços filhos |
 | `POST /api/atendimentos/:id/diagnosticos` | `{pieceCodes:[codigo]}` ou dois códigos em seleção conjunta; transacional/idempotente por peça física; retorna lista atual |
 | `PATCH /api/atendimentos/:id/diagnosticos/:itemId` | `{revision,diagnosisId?,notes?,enabled?,services?}`; substitui lista de serviços somente se fornecida |
-| `DELETE /api/atendimentos/:id/diagnosticos/:itemId` | `{revision}`; remove item e serviços filhos, sem alterar o Atendimento |
+| `DELETE /api/atendimentos/:id/diagnosticos/:itemId` | `{revision,compositionRevision,scenarios}`; remove globalmente item/filhos com guard transacional; ver Etapa 2 abaixo |
+| `DELETE /api/atendimentos/:id/diagnosticos` | `{pieces,compositionRevision,scenarios}`; até dois itens em transação única, inclusive Ambos |
 
 Catálogo único: `status`, `source` e `suggestion` são metadados legados preservados por compatibilidade, sem bloquear seleção ou cálculo. Novos cadastros não exigem status nem aprovação. As 23 folhas sem código continuam apenas na navegação, bloqueadas para gravação. Cadastro manual exige código fornecido pelo operador; nunca geramos código físico. Demais catálogos começam vazios. Códigos físicos têm unicidade e não podem ser alterados pela API; nomes são textos, não chaves. Não se exclui cadastro: inativação preserva referências/histórico e impede novas seleções.
 
@@ -142,3 +143,21 @@ Nenhum snapshot/PDF emitido é recalculado ou regravado. Detalhes, matriz e limi
 ## Finalização Issue #20 — decisões de FC/MR
 
 O importador offline aplica a decisão da direção do comentário PR #21 `6500884942`: FC desabilitado para os IDs de Interna, Lavagem e Inspeção técnica; opção MR `Padrão`, fator decimal canônico `1.2` (= `1.20`). Não infere MR de `fator_curadoria`. O cadastro da opção não seleciona `mrId`: continua sendo PATCH explícito de parâmetros por Atendimento. MR local equivalente é reutilizado pelo próprio ID; divergências/duplicidades são reportadas sem sobrescrita. FR, Desconto, Negociação, especial exato e a API de orçamento permanecem nos contratos acima. Nenhuma execução na inicialização ou migração nova.
+
+## Issue #31 — presença global de peça (Etapa 2)
+
+Os seletores de peças representam presença em `diagnosis_items`, compartilhada pelos cenários. `pieceFlags`, `serviceFlags` e `componentFlags` continuam sendo habilitação por cenário, manipulada pelo editor/comparação. Selecionar uma peça já presente não a recria nem modifica suas flags. Remover da composição apaga a peça e seus filhos dos rascunhos de todos os cenários, preservando catálogo e versões/PDFs emitidos.
+
+`DELETE /api/atendimentos/:id/diagnosticos` aceita um ou dois IDs, para remover também Ambos em uma transação:
+
+```json
+{
+  "pieces": [{"id": "ID_MESTRE", "revision": 1}],
+  "compositionRevision": 5,
+  "scenarios": [{"id": "ID_CENARIO", "revision": 4}]
+}
+```
+
+As revisões vêm do último workspace confirmado; `scenarios` deve conter o conjunto completo de cenários atuais. Retorno: `{removed:true, removedIds:[...]}`. O servidor revalida composição, conjunto/revisões dos cenários e cada peça dentro da transação antes de qualquer exclusão. Conteúdo ou cenário alterados geram conflito, sem exclusão parcial. Requisição sem guard é inválida. O DELETE individual permanece disponível com `revision`, `compositionRevision` e `scenarios`, sujeito à mesma proteção.
+
+A UI pede confirmação antes de enfileirar remoção quando há outros cenários habilitados ou conteúdo configurado, incluindo diagnóstico/anotação, serviços ou componentes. Cancelar não faz consulta nem gravação para essa remoção. Em resposta perdida/ilegível, a fila interrompe e oferece leitura/reconciliação explícita; não repete DELETE cegamente. Se o mesmo código reaparecer com outro ID, a intenção antiga não remove esse novo registro. Recriar uma peça após remoção global confirmada é uma nova inclusão vazia, não restauração de filhos apagados.
