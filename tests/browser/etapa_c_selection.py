@@ -2,7 +2,6 @@
 import asyncio,json,subprocess,traceback,sqlite3,hashlib
 from playwright.async_api import async_playwright,expect
 from m1_atendimentos import Harness,ROOT,ORIGIN
-from issue28_map import reference
 ARTIFACTS=ROOT/'docs/evidencias/etapa-c'
 
 async def device_case(browser,device,viewport):
@@ -87,7 +86,7 @@ async def device_case(browser,device,viewport):
   async def region(key):await page.locator('[data-region="'+key+'"]').first.click();return page.get_by_role('dialog')
   async def radial_button(dialog,name):
    for _ in range(10):
-    b=dialog.locator('.piece-options').get_by_role('button',name=name,exact=True)
+    b=dialog.locator('.disc-ring').get_by_role('button',name=name,exact=True)
     if await b.count():return b
     more=dialog.get_by_role('button',name='Ver mais opções',exact=True)
     assert await more.count(),name
@@ -95,9 +94,14 @@ async def device_case(browser,device,viewport):
    raise AssertionError(name)
   for key,pairname in [('frente','Farol'),('traseira','Lanterna traseira')]:
    dialog=await region(key)
-   canonical,_=reference();code='farol__motorista'if key=='frente'else'lanterna_traseira__motorista'
-   steps=next(r['path'][1:-1]for r in canonical if r['codigo']==code)
-   for step in steps:await(await radial_button(dialog,step)).click()
+   def find_path(node):
+    if node['tipo']=='grupo_lados'and node['nome']==pairname:return []
+    for child in node.get('itens',[]):
+     found=find_path(child)
+     if found is not None:return [child]+found
+    return None
+   steps=find_path(catalog_response['hierarchy']['regioes'][key]);assert steps is not None
+   for step in steps:await(await radial_button(dialog,step['nome'])).click()
    both=dialog.get_by_role('button',name='Ambos',exact=True);driver=dialog.get_by_role('button',name='Motorista',exact=True);passenger=dialog.get_by_role('button',name='Passageiro',exact=True)
    bb,bd,bp=[await n.bounding_box()for n in [both,driver,passenger]];assert bb['y']<bd['y']and bb['y']<bp['y']and bd['x']<bp['x']
    await shot(key+'-ambos-lados');await both.click();await idle();await expect(both).to_have_attribute('aria-pressed','true')
@@ -105,15 +109,22 @@ async def device_case(browser,device,viewport):
   h.mark(device+': front/rear keep real radial pairs with Ambos centered above Motorista/Passageiro; selection creates only existing codes')
   for key in ['motorista','passageiro']:
    dialog=await region(key)
-   canonical,_=reference();steps=next(r['path'][1:]for r in canonical if r['codigo']=='retrovisor__'+key)
-   for i,step in enumerate(steps):
-    labels=await dialog.locator('.piece-options button').evaluate_all('(bs)=>bs.map(b=>b.getAttribute("aria-label"))')
+   def code_path(node,code):
+    if node.get('codigo_peca')==code:return []
+    for child in node.get('itens',[]):
+     found=code_path(child,code)
+     if found is not None:return [child]+found
+    return None
+   steps=code_path(catalog_response['hierarchy']['regioes'][key],'retrovisor__'+key);assert steps
+   for step in steps:
+    labels=await dialog.locator('.disc-ring button').evaluate_all('(bs)=>bs.map(b=>b.getAttribute("aria-label"))')
     assert 'Ambos'not in labels and 'Motorista'not in labels and 'Passageiro'not in labels
-    b=await radial_button(dialog,step)
-    if i==len(steps)-1:
+    b=await radial_button(dialog,step['nome'])
+    if step['tipo']=='grupo_lados':
+     # The V2 pair becomes the actual contextual leaf, rather than a side chooser.
      await expect(b).to_have_attribute('aria-pressed','true'if key=='motorista'else'false')
-     await b.click();await idle();await expect(b).to_have_attribute('aria-pressed','false'if key=='motorista'else'true')
-    else:await b.click()
+     await b.click();await idle();await expect(b).to_have_attribute('aria-pressed','false'if key=='motorista'else'true');break
+    await b.click()
    await shot(key+'-contextual');await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
   final=await ws();assert len({p['pieceId']for p in final['items']})==len(final['items']);assert next(p for p in final['items']if p['pieceId']==entry['id'])['id']==created['id'];assert final['scenarios'][0]['pieceFlags'][created['id']]==False
   h.mark(device+': contextual sides remove opposite/Ambos/redundant choice; Map and functional selection retain same master IDs without duplicates')
