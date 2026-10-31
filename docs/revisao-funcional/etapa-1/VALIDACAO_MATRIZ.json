@@ -1,0 +1,115 @@
+{
+  "estado": "PROPOSTA NÃO APLICADA — SOMENTE ETAPA 1",
+  "main": "b0fdba268bc9250a04267e3d313c3eca26c625c5",
+  "source": "server/data/hierarquia-v2.json",
+  "source_sha256": "20d8ac528f3708bf259d5c0d53959d843b189df4583ec24c2c57d026ce827e30",
+  "codigos_origem": 163,
+  "linhas_matriz": 163,
+  "codigos_unicos": 163,
+  "caminhos_propostos_unicos": 163,
+  "codigos_excluidos": [],
+  "codigos_criados": [],
+  "nomes_de_cadastro_alterados": [],
+  "casos_com_decisao": 25,
+  "regioes": {
+    "Frente": 27,
+    "Estrutura dianteira": 7,
+    "Motorista": 40,
+    "Passageiro": 40,
+    "Traseira": 27,
+    "Estrutura traseira": 10,
+    "Topo": 12
+  },
+  "primeiro_nivel": {
+    "Frente": [
+      "Acabamentos dianteiros",
+      "Alma do para-choque dianteiro",
+      "Capô",
+      "Complementos dianteiros",
+      "Grades e entradas de ar",
+      "Iluminação dianteira",
+      "Para-choque dianteiro",
+      "Sensor de estacionamento"
+    ],
+    "Estrutura dianteira": [
+      "Cofre do motor dianteiro",
+      "Longarina dianteira",
+      "Painel dianteiro",
+      "Travessa do radiador",
+      "Vidros dianteiros"
+    ],
+    "Motorista": [
+      "Abastecimento",
+      "Acessórios e acabamentos",
+      "Caixa de roda",
+      "Componentes das portas",
+      "Estrutura lateral",
+      "Lateral traseira",
+      "Para-barro",
+      "Para-lama",
+      "Pinça de freio",
+      "Porta de carga lateral",
+      "Porta dianteira",
+      "Porta traseira",
+      "Roda"
+    ],
+    "Passageiro": [
+      "Abastecimento",
+      "Acessórios e acabamentos",
+      "Caixa de roda",
+      "Componentes das portas",
+      "Estrutura lateral",
+      "Lateral traseira",
+      "Para-barro",
+      "Para-lama",
+      "Pinça de freio",
+      "Porta de carga lateral",
+      "Porta dianteira",
+      "Porta traseira",
+      "Roda"
+    ],
+    "Traseira": [
+      "Acabamentos traseiros",
+      "Alma do para-choque traseiro",
+      "Complementos traseiros",
+      "Iluminação traseira",
+      "Para-choque traseiro",
+      "Porta de carga traseira",
+      "Sensor de estacionamento",
+      "Tampa do porta-malas"
+    ],
+    "Estrutura traseira": [
+      "Assoalho do porta-malas",
+      "Bojo / caixa do estepe",
+      "Cofre do motor traseiro",
+      "Interior do porta-malas",
+      "Longarina traseira",
+      "Painel traseiro",
+      "Vidros traseiros"
+    ],
+    "Topo": [
+      "Acabamentos do teto",
+      "Acessórios do teto",
+      "Teto",
+      "Vidros e aberturas"
+    ]
+  },
+  "caminhos_mapa_main": 199,
+  "codigos_repetidos_mapa_main": 36,
+  "pares_ambos_propostos": 23,
+  "observacoes": [
+    "A matriz usa somente códigos fornecidos da V2, não linhas lidas do SQLite instalado.",
+    "IDs v2:<código> correspondem ao seed versionado, sem comprovar o estado do cadastro instalado.",
+    "Uma linha por código não aprova equivalências nem resolve automaticamente as decisões D01–D05.",
+    "A atividade/inativação real deve ser conferida no banco por leitura autenticada."
+  ],
+  "validacao_arquivos": {
+    "csv_linhas": 163,
+    "xlsx_linhas": 163,
+    "csv_xlsx_iguais": true,
+    "nomes_originais_preservados": true,
+    "ids_seed_preservados": true,
+    "pares_ambos": 23,
+    "mutacoes_app": false
+  }
+}
