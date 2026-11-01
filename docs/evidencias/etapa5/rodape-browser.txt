@@ -1,0 +1,18 @@
+PASS desktop: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS desktop: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS desktop: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS desktop: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS desktop: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS desktop: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS mobile390: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS mobile390: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS mobile390: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS mobile390: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS mobile390: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS mobile390: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS mobile320: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS mobile320: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS mobile320: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS mobile320: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS mobile320: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS mobile320: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls

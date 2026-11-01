@@ -292,7 +292,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     if(node){mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
   }
   const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onArchive={()=>onView('orcamentos')} onCompare={()=>onView('comparacao')}/>
-  return <>{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
+  return <div className="commercial-workspace">{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
 
     <div className="diagnostics-body" ref={body} onScroll={e=>{if(loaded)scrollPositions.set(viewKey,{top:e.currentTarget.scrollTop,left:0})}}>
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
@@ -331,8 +331,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
 
         </>}
       </>}
-    </div>{workspace && !budget && !matrix && <FinancialPanel onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}
-  </div>}</>
+    </div>
+  </div>}{workspace && !budget && !matrix && <FinancialPanel onArchive={()=>onView('orcamentos')} onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}</div>
+
 }
 
 export function CatalogManager({ catalog, onChanged, onDirty, onBusy, onAuthRequired }: {

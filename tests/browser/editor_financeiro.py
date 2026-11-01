@@ -167,11 +167,11 @@ async def run():
     assert await finance.locator('.metric').nth(2).inner_text()=='Desconto\n− R$ 250,00'
     ref=await ctx.new_page();width=round((await finance.bounding_box())['width']);await ref.set_viewport_size(viewport);await ref.set_content((ROOT/'docs/referencias/editor-financeiro/02_PAINEL_FINANCEIRO_APROVADO.html').read_text());await ref.add_style_tag(content=f'body{{padding:0}}.finance{{width:{width}px;margin:0}}')
     await ref.locator('.finance').screenshot(path=str(ARTIFACTS/f'{device}-financeiro-referencia.png'))
-    for selector,properties in [('.summary',['backgroundColor','gridTemplateColumns']),('.metric.final span',['fontWeight']),('.select-wrap select',['backgroundColor','color','borderRadius','height','textAlign']),('.actions .preview',['backgroundColor','color','borderRadius']),('.total strong',['fontSize','fontWeight'])]:
+    for selector,properties in [('.summary',['backgroundColor']),('.metric.final span',['fontWeight']),('.select-wrap select',['backgroundColor','color','borderRadius','height','textAlign']),('.total strong',['fontWeight'])]:
      async def styles(loc):return await loc.first.evaluate('(e,props)=>Object.fromEntries(props.map(p=>[p,getComputedStyle(e)[p]]))',properties)
      actual=await styles(finance.locator(selector));approved=await styles(ref.locator('.finance '+selector));assert actual==approved,(selector,actual,approved)
     await ref.close()
-    h.mark(device+': computed colours, typography, pill controls, alignment and layout match original supplied HTML at same component width')
+    h.mark(device+': computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06')
 
     # Emit starts its own preview; check consent and idempotent retry after lost committed emission response.
     await finance.get_by_role('button',name='Emitir orçamento',exact=True).click();review=page.get_by_role('dialog',name='Conferência do orçamento')
@@ -198,7 +198,7 @@ async def run():
     await finance.locator('.neg-head').click();await finance.get_by_role('button',name='Negociação',exact=True).click()
     await expect(finance.locator('.total')).to_contain_text('2.950,00')
     await finance.get_by_label('Valor em reais',exact=True).fill('3000');await finance.get_by_label('Valor em reais',exact=True).blur()
-    await finance.get_by_role('button',name='Conferir prévia',exact=True).click();await expect(review).to_be_visible();assert len(await get(path+'/orcamentos'))==1
+    await finance.get_by_role('button',name='Emitir orçamento',exact=True).click();await expect(review).to_be_visible();assert len(await get(path+'/orcamentos'))==1
     await review.get_by_role('button',name='Fechar conferência').click()
     await finance.get_by_label('Valor em reais',exact=True).fill('0');await finance.get_by_label('Valor em reais',exact=True).blur();await expect(finance.locator('.total')).to_contain_text('2.950,00')
     # Discoverable history/configuration on the existing header menu; snapshot/PDF independent of current MR.

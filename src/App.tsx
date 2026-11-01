@@ -10,6 +10,7 @@ import { CommercialPanel } from './CommercialPanel'
 import {detailScreen,parentDetail,swipeTab} from './detail-navigation'
 import type {DetailScreen} from './detail-navigation'
 import './App.css'
+import './footer-copilot.css'
 
 type Area = 'conversas' | 'funil' | 'configuracoes'
 type Route = { path: string; search: string }
@@ -174,10 +175,10 @@ function App() {
     if(!root||!shell)return
     let frame=0,observed:Element|null=null
     const measure=()=>{
-      const surface=root.querySelector('.approved-finance,.compose')
+      const surface=root.querySelector('.approved-finance')
       if(surface!==observed){if(observed)resize.unobserve(observed);observed=surface;if(surface)resize.observe(surface)}
-      const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top+8):0
-      shell.style.setProperty('--copilot-bottom',offset+'px')
+      const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top):0
+      shell.style.setProperty('--finance-height',offset+'px')
     }
     const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)}
     const resize=new ResizeObserver(schedule);resize.observe(root)

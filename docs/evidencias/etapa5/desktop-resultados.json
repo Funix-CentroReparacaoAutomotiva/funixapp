@@ -1,0 +1,321 @@
+{
+  "device": "desktop",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "desktop: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons",
+      "pass": true
+    },
+    {
+      "name": "desktop: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged",
+      "pass": true
+    },
+    {
+      "name": "desktop: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control",
+      "pass": true
+    },
+    {
+      "name": "desktop: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version",
+      "pass": true
+    },
+    {
+      "name": "desktop: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls",
+      "pass": true
+    }
+  ],
+  "geometry": [
+    {
+      "case": "Chat:False",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 843.5625,
+        "width": 518,
+        "height": 120.4375
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 856.5625,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "Chat:True",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 547.28125,
+        "width": 518,
+        "height": 416.71875
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 560.28125,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "Diagnósticos:False",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 843.5625,
+        "width": 518,
+        "height": 120.4375
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 856.5625,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "Diagnósticos:True",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 547.28125,
+        "width": 518,
+        "height": 416.71875
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 560.28125,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "Mapa:False",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 843.5625,
+        "width": 518,
+        "height": 120.4375
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 856.5625,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "Mapa:True",
+      "safeBottom": 0,
+      "safeRight": 0,
+      "copilot": {
+        "x": 919,
+        "y": 904,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 547.28125,
+        "width": 518,
+        "height": 416.71875
+      },
+      "history": {
+        "x": 471,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "emit": {
+        "x": 690,
+        "y": 912,
+        "width": 211,
+        "height": 44
+      },
+      "total": {
+        "x": 783.5,
+        "y": 560.28125,
+        "width": 99.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 903,
+        "width": 518,
+        "height": 61
+      }
+    },
+    {
+      "case": "safe-area",
+      "safeBottom": 20,
+      "safeRight": 12,
+      "copilot": {
+        "x": 907,
+        "y": 884,
+        "width": 60,
+        "height": 60
+      },
+      "finance": {
+        "x": 461,
+        "y": 823.5625,
+        "width": 518,
+        "height": 140.4375
+      },
+      "history": {
+        "x": 471,
+        "y": 892,
+        "width": 205,
+        "height": 44
+      },
+      "emit": {
+        "x": 684,
+        "y": 892,
+        "width": 205,
+        "height": 44
+      },
+      "total": {
+        "x": 774.5,
+        "y": 836.5625,
+        "width": 96.5,
+        "height": 34.4375
+      },
+      "actions": {
+        "x": 461,
+        "y": 883,
+        "width": 518,
+        "height": 81
+      }
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}
