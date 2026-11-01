@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "node": {
+    "pass": 188,
+    "fail": 0,
+    "command": "npm run check",
+    "warnings": "4 preexisting react/set-state-in-effect in App.tsx"
+  },
+  "deployScripts": {
+    "pass": 23,
+    "fail": 0,
+    "command": "python -m unittest discover -s deploy/tests -v"
+  },
+  "browserCuration": {
+    "groups": 21,
+    "pass": true,
+    "viewports": [
+      1440,
+      390,
+      320
+    ],
+    "command": "python tests/browser/curation_final.py"
+  },
+  "browserRegressions": {
+    "groups": 199,
+    "suites": 15,
+    "pass": true,
+    "command": "python tests/browser/curation_regressions.py"
+  },
+  "browserGroupsTotal": 220,
+  "productionAccess": false,
+  "realImport": false,
+  "canonicalTechnicalIdentity": "blocked pending historical reference audit"
+}

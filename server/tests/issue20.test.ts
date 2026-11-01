@@ -85,7 +85,7 @@ test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH 
   const saved=repo.save({revision:repo.get().revision,config:legacy});assert.equal(saved.config.services[0]!.colorFactorEnabled,false);assert.equal(saved.config.services[0]!.discountable,false)
   for(const flag of ['colorFactorEnabled','discountable','billable']){const invalid=structuredClone(config);Object.assign(invalid.services[0]!,{[flag]:'false'});assert.throws(()=>repo.save({revision:repo.get().revision,config:invalid}))}
   db.close();db=openDatabase(file);assert.equal(new PricingConfigurationRepository(db).get().config.services[0]!.discountable,false)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,7);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,8);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
 
@@ -111,7 +111,7 @@ test('Issue20 technical import preserves all relation IDs and prevents stages le
  const db=openDatabase(':memory:'),source=codaFixture()
  try{
   pushRow(source,TABLES.dimensionNames,row('i-name2',{'c-FJw9NIz2cO':'Outra dimensão QA'}))
-  pushRow(source,TABLES.dimensions,row('i-dim2',{'c-TvFH_jzZ3k':ref(TABLES.services,'i-synthetic-service'),'c-DGi7Us0d5f':ref(TABLES.dimensionNames,'i-name2'),'c-YB4iqbCDp_':2,'c-wZoGYfi40i':8}))
+  pushRow(source,TABLES.dimensions,row('i-dim2',{'c-TvFH_jzZ3k':ref(TABLES.services,'i-XDTMBmueos'),'c-DGi7Us0d5f':ref(TABLES.dimensionNames,'i-name2'),'c-YB4iqbCDp_':2,'c-wZoGYfi40i':8}))
   pushRow(source,TABLES.energy,row('i-energy6',{'c-3-8rupyDNx':6}))
   pushRow(source,TABLES.stageDimensions,row('i-stage-dim2',{'c-tb4TOqyqh7':'Outra dimensão técnica QA','c-ufXqc_8vWI':ref(TABLES.energy,'i-energy6')}))
   const duplicate=structuredClone(table(source,TABLES.relations).rows[0]!);duplicate.rowId='i-repeated-stage';pushRow(source,TABLES.relations,duplicate)

@@ -6,7 +6,7 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {migrate as v6} from './fixtures/m1_6_migrations.ts'
 import {openDatabase} from '../database.ts'
-import {commercialFixture} from './fixtures/commercial.ts'
+import {commercialFixture} from './fixtures/pre-curation/fixture.ts'
 import {ComponentRepository} from '../components.ts'
 import {BudgetRepository} from '../budgets.ts'
 import {randomUUID} from 'node:crypto'
@@ -22,7 +22,7 @@ test('V6 to V7 removes only the obsolete column, preserving inputs, catalogs, co
   const before=tables.map(t=>db.prepare(`SELECT * FROM ${t}`).all()),component={...db.prepare('SELECT * FROM component_items').get()};delete component.fct
   db.close();db=openDatabase(file)
   assert(!db.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))
-  assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version,7)
+  assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version,8)
   assert.deepEqual({...db.prepare('SELECT * FROM component_items').get()},component)
   tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT * FROM ${t}`).all(),before[i]))
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])

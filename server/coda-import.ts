@@ -1,3 +1,5 @@
+import{COMMERCIAL_CURATION,servicePolicy}from'../shared/commercial-curation.ts'
+import{CURATION_STAMP}from'./curation.ts'
 import {createHash} from 'node:crypto'
 import {DatabaseSync} from 'node:sqlite'
 import type {CatalogKind} from '../shared/commercial.ts'
@@ -18,7 +20,7 @@ interface Finding {source:string;reason:string}
 export interface ImportPlan {
  sourceDigest:string; targetDigest:string; planHash:string
  catalog:Entry[]; config:PricingConfig
- report:{sourceCounts:Record<string,number>; imported:Finding[]; pending:Finding[]; conflicts:Finding[]; warnings:Finding[]; mapping:{source:string;target:string}[]; inserts:number; unchanged:number}
+ report:{curation?:{version:string;digest:string;services:{id:string;visible:boolean;billing:string;execution:string;canonicalBlocked:boolean}[]}; sourceCounts:Record<string,number>; imported:Finding[]; pending:Finding[]; conflicts:Finding[]; warnings:Finding[]; mapping:{source:string;target:string}[]; inserts:number; unchanged:number}
 }
 function fail(message:string):never {throw new Error(message)}
 function exact(v:unknown):string|null {
@@ -28,7 +30,7 @@ function exact(v:unknown):string|null {
  try{return Q.from(String(v)).toString()}catch{return null}
 }
 function checkDatabase(db:DatabaseSync){
- if(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v!==7)fail('A importação exige banco existente com schema exatamente V7; não executa migrações.')
+ if(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v!==8)fail('A importação exige banco existente com schema exatamente V8; não executa migrações.')
  if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok' || db.prepare('PRAGMA foreign_key_check').all().length)fail('Banco com falha de integridade; importação recusada.')
 }
 function targetState(db:DatabaseSync){return {catalog:db.prepare('SELECT * FROM catalog_items ORDER BY id').all(),pricing:db.prepare('SELECT * FROM pricing_configuration ORDER BY id').all()}}
@@ -66,6 +68,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   catalog.push({id:id(t,r),kind,name,serviceId});report.mapping.push({source:`${t}/${r.rowId}`,target:id(t,r)})
  }
  for(const r of rows(TABLES.services)){
+  if(!servicePolicy(id(TABLES.services,r)))conflict(id(TABLES.services,r),'ID de serviço sem política explícita de curadoria; carga recusada.');
   const name=label(cell(r,'c-TvFH_jzZ3k'));add(TABLES.services,r,'servico',name)
   if(/mec[aâ]nica|el[eé]trica|eletr[oô]nica|vidra|refrigera/i.test(name))warning(id(TABLES.services,r),'Possível serviço terceirizado/fora da execução interna: mantido ativo, sem exclusão automática.')
   if(typeof cell(r,'c-mJimiTomMd')!=='boolean' || typeof cell(r,'c-r5HLQrISpN')!=='boolean')pending(id(TABLES.services,r),'Faturável/descontável ausente: desconto não será permitido por omissão.')
@@ -220,8 +223,13 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  const names=new Map<string,Entry[]>()
  for(const c of catalog){const key=JSON.stringify([c.kind,c.serviceId,c.name.normalize('NFC').toLocaleLowerCase('pt-BR')]),group=names.get(key)??[];group.push(c);names.set(key,group)}
  for(const group of names.values())if(group.length>1)conflict(group.map(g=>g.id).join(', '),'Nomes duplicados na origem para mesmo tipo/pai; resolver antes de gravar.')
- const candidate={sourceDigest:digest(source),targetDigest:digest(targetState(db)),catalog,config}
- // Validate the complete merged configuration with existing V7 repository contracts in memory.
+ if(config.commercialCuration && digest(config.commercialCuration)!==digest(CURATION_STAMP))conflict('commercialCuration','Política local divergente; nenhuma substituição automática.')
+ if(!config.commercialCuration){config.commercialCuration={...CURATION_STAMP};report.inserts++}
+ report.curation={...CURATION_STAMP,services:catalog.filter(c=>c.kind==='servico').flatMap(c=>{const p=servicePolicy(c.id);return p?[{id:c.id,visible:p.visible,billing:p.billing,execution:p.execution,canonicalBlocked:!!p.canonicalBlocked}]:[]})}
+ // Visibility is policy, NOT catalog.active: preserve existing legacy references.
+ const candidate={sourceDigest:digest(source),targetDigest:digest(targetState(db)),catalog,config,curation:COMMERCIAL_CURATION}
+ // Validate the complete merged configuration with current repository contracts in memory.
+ if(!report.conflicts.length){
  const validation=new DatabaseSync(':memory:')
  try{
   migrate(validation)
@@ -229,6 +237,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
   for(const c of [...existing,...catalog])insertCatalog(validation,c)
   candidate.config=new PricingConfigurationRepository(validation).save({revision:1,config}).config
  }finally{validation.close()}
+ }
  const planHash=digest(candidate)
  return {...candidate,planHash,report}
 }

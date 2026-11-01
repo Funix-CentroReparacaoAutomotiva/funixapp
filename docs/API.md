@@ -144,6 +144,27 @@ Nenhum snapshot/PDF emitido é recalculado ou regravado. Detalhes, matriz e limi
 
 O importador offline aplica a decisão da direção do comentário PR #21 `6500884942`: FC desabilitado para os IDs de Interna, Lavagem e Inspeção técnica; opção MR `Padrão`, fator decimal canônico `1.2` (= `1.20`). Não infere MR de `fator_curadoria`. O cadastro da opção não seleciona `mrId`: continua sendo PATCH explícito de parâmetros por Atendimento. MR local equivalente é reutilizado pelo próprio ID; divergências/duplicidades são reportadas sem sobrescrita. FR, Desconto, Negociação, especial exato e a API de orçamento permanecem nos contratos acima. Nenhuma execução na inicialização ou migração nova.
 
+### Curadoria comercial — Issue #31 / schema V8
+
+Complemento posterior ao contrato V7 acima. [Relatório e decisões](CURADORIA_COMERCIAL_IMPLEMENTACAO.md). O manifesto por IDs Coda em `shared/commercial-curation.ts` distingue visibilidade de atividade: Interna/Encantamento ficam fora de novas inclusões, sem apagar/desativar referências antigas. Novas inclusões de serviço oculto, de origem Coda desconhecida ou da atividade técnica sem identidade canônica aprovada recebem `409 CURATION_SELECTION_BLOCKED`, antes de gravar. Diagnóstico Técnico/Inspeção técnica são uma oferta bloqueada para novas linhas, com ambos os IDs históricos preservados. Dimensões incompletas e os 16 diagnósticos não são filtrados por calculabilidade.
+
+Confirmação de terceiros:
+
+```http
+PATCH /api/atendimentos/:at/cenarios/:scenario/servicos/:line/confirmacao
+Content-Type: application/json
+
+{"revision":2,"pieceRevision":3,"scope":"<executionScope da linha confirmada pelo servidor>","confirmed":true}
+```
+
+`scope` é a string JSON gerada por `executionScope` do contrato compartilhado (versão, política, serviço, dimensão e quantidade canônica). Exige sessão, mesma origem, linha pertencente ao Atendimento/cenário e revisões atuais. A confirmação exige peça/serviço habilitados e dimensão selecionada. Resposta: cenário atualizado, com revisão incrementada e mapa opcional `serviceConfirmations: { [lineId]: scope }`. Rejeita escopo/revisões obsoletos com `409 VERSION_CONFLICT`; linha de outro contexto resulta em 404; formato inválido em 400.
+
+`DiagnosisItem.services[].executionConfirmed` é derivado/read-only e aparece somente em terceiros; não reenviar esse campo no PATCH genérico de serviços. O mapa de confirmações não é aceito no PATCH genérico de cenário. `confirmed:false` revoga a confirmação daquela linha/cenário. Cópia de cenário não copia autorização; mudar serviço/dimensão/quantidade revoga todos os escopos daquela linha; desabilitar peça/serviço revoga no cenário afetado. Resposta perdida exige reconciliar por GET antes de decidir novo PATCH, sem replay automático.
+
+`Calculation.lines[]` pode conter `billing: 'billable' | 'not_billed'`, `execution: 'internal' | 'external_confirmation'` e `executionConfirmed`. Sem cobrança implica `unit/finalUnit/total: null`, não preço zero. A linha fica fora de subtotal, desconto e negociação, mas mantém energia/prazo e respectivas pendências. Cenário só com atividades sem cobrança pode emitir com total agregado zero quando tecnicamente válido; `nonBillableOnly: true` permite apresentá-lo como “Sem cobrança”. Terceiro sem confirmação e atividade sem energia válida bloqueiam emissão, mesmo com preço matematicamente disponível.
+
+Novos snapshots guardam `commercialCuration: { version, digest }` e os escopos confirmados do cenário. Leituras de versões/PDFs anteriores continuam usando os registros imutáveis existentes. V8 acrescenta somente `scenario_service_confirmations` (FKs de cenário e linha, chave composta). O CLI de importação exige schema **exatamente V8**, não executa migração, inclui o manifesto no hash/relatório e recusa conflitos de curadoria/configuração local. Nenhum dado real foi importado como parte desta implementação.
+
 ## Issue #31 — presença global de peça (Etapa 2)
 
 Os seletores de peças representam presença em `diagnosis_items`, compartilhada pelos cenários. `pieceFlags`, `serviceFlags` e `componentFlags` continuam sendo habilitação por cenário, manipulada pelo editor/comparação. Selecionar uma peça já presente não a recria nem modifica suas flags. Remover da composição apaga a peça e seus filhos dos rascunhos de todos os cenários, preservando catálogo e versões/PDFs emitidos.

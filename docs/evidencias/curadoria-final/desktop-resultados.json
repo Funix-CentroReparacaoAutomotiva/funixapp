@@ -1,0 +1,36 @@
+{
+  "device": "desktop",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection",
+      "pass": true
+    },
+    {
+      "name": "desktop: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included",
+      "pass": true
+    },
+    {
+      "name": "desktop: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario",
+      "pass": true
+    },
+    {
+      "name": "desktop: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines",
+      "pass": true
+    },
+    {
+      "name": "desktop: real API restart/relogin preserves scenario-scoped confirmation and committed service data",
+      "pass": true
+    },
+    {
+      "name": "desktop: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery",
+      "pass": true
+    },
+    {
+      "name": "desktop: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

@@ -1,0 +1,21 @@
+PASS desktop: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS desktop: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS desktop: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS desktop: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS desktop: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS desktop: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS desktop: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS mobile390: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS mobile390: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS mobile390: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS mobile390: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS mobile390: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS mobile390: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS mobile390: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS mobile320: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS mobile320: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS mobile320: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS mobile320: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS mobile320: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS mobile320: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS mobile320: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls

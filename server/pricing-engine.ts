@@ -1,3 +1,4 @@
+import{servicePolicy,executionScope,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
 import { catalogItemUsable, scenarioLabel } from '../shared/commercial.ts'
 import type { Calculation, ComponentItem, Negotiation, PricedLine, PricingConfig, PricingSettings } from '../shared/pricing.ts'
@@ -23,6 +24,8 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
   for(const service of item.services){
    const enabled=parent && Boolean(scenario.serviceFlags[service.id])
    const line:PricedLine={id:service.id,pieceId:item.id,kind:'service',name:byId(service.serviceId)?.name ?? 'Serviço ausente',pieceName:piece?.name ?? 'Peça ausente',dimension:byId(service.dimensionId)?.name ?? 'Pendente',diagnosis:byId(service.diagnosisId ?? item.diagnosisId)?.name ?? '',notes:service.notes ?? '',quantity:service.quantity,included:enabled,unit:null,finalUnit:null,total:null,path:null,factors:{},stages:[],energy:null}
+   const policy=servicePolicy(service.serviceId)
+   if(policy){line.billing=policy.billing;line.execution=policy.execution;line.name=policy.displayName??line.name}
    lines.push(line)
    if(!enabled)continue
    try {
@@ -30,19 +33,23 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
     const dimension=eligible(service.dimensionId,'dimensao')
     if(dimension.serviceId!==service.serviceId)throw new Error('Dimensão não pertence ao serviço.')
     if(service.diagnosisId || item.diagnosisId)eligible(service.diagnosisId ?? item.diagnosisId,'diagnostico')
-    if(!table)throw new Error('Tabela comercial não selecionada/configurada.')
-    const special=config.specialPrices.filter(p=>p.tableId===table.id && p.serviceId===service.serviceId && p.dimensionId===service.dimensionId)
+    if(policy?.execution==='external_confirmation')line.executionConfirmed=scenario.serviceConfirmations?.[service.id]===executionScope(service)
+    if(policy?.execution==='external_confirmation' && !line.executionConfirmed)errors.push(`${line.pieceName} / ${line.name}: confirme a execução/contratação do terceiro neste cenário para esta linha e escopo.`)
+    if(policy?.billing!=='not_billed' && !table)throw new Error('Tabela comercial não selecionada/configurada.')
+    const special=config.specialPrices.filter(p=>p.tableId===table?.id && p.serviceId===service.serviceId && p.dimensionId===service.dimensionId)
     if(special.length>1)throw new Error('Preço especial duplicado para a chave exata.')
     let unit:Q
     const pricing=config.services.find(p=>p.serviceId===service.serviceId),dim=pricing?.dimensions.find(d=>d.dimensionId===service.dimensionId)
     line.discountable=pricing?.discountable===true
+    if(policy?.billing!=='not_billed'){
     if(special.length){unit=Q.from(special[0]!.unit).ceilUnit();line.path='special';line.factors={specialUnit:special[0]!.unit}}
     else {
      if(pricing?.colorFactorEnabled===null)throw new Error('Habilitação de FC do serviço pendente.')
-     const base=required(pricing?.base,'Preço base'),fd=required(dim?.fd,'FD'),fv=required(table.factor,'FV'),fc=pricing?.colorFactorEnabled===false?Q.from('1'):required(color?.factor,'FC'),fr=required(risk?.factor,'FR')
+     const base=required(pricing?.base,'Preço base'),fd=required(dim?.fd,'FD'),fv=required(table?.factor,'FV'),fc=pricing?.colorFactorEnabled===false?Q.from('1'):required(color?.factor,'FC'),fr=required(risk?.factor,'FR')
      unit=base.mul(fd).mul(fv).mul(fc).mul(fr).ceilUnit();line.path='normal';line.factors={base:base.toString(),FD:fd.toString(),FV:fv.toString(),FC:fc.toString(),FR:fr.toString()}
     }
     line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(service.quantity)).toString()
+    }
     // Energy is independent of commercial multipliers and special prices.
     if(!dim?.stages.length)throw new Error('Etapas técnicas de serviço/dimensão não configuradas.')
     line.stages=structuredClone(dim.stages)
@@ -64,7 +71,9 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
   }
   if(parent && !lines.some(l=>l.pieceId===item.id && l.included))errors.push(`${piece?.name ?? 'Peça'}: nenhum serviço ou componente incluído.`)
  }
- const included=lines.filter(l=>l.included),services=included.filter(l=>l.kind==='service'),parts=included.filter(l=>l.kind==='component')
+ const technicalAliases=new Set(items.filter(i=>scenario.pieceFlags[i.id]).flatMap(i=>i.services.filter(l=>scenario.serviceFlags[l.id] && servicePolicy(l.serviceId)?.group===TECHNICAL_ACTIVITY).map(l=>l.serviceId)))
+ if(technicalAliases.size>1)errors.push('Atividade técnica possui duas origens equivalentes neste cenário; revise as referências antes de emitir. Nenhuma origem foi removida.')
+ const included=lines.filter(l=>l.included),services=included.filter(l=>l.kind==='service' && l.billing!=='not_billed'),parts=included.filter(l=>l.kind==='component')
  if(!included.length)errors.push('Cenário sem linhas efetivas para emissão.')
  // Exact calculated outputs may have >6 decimal places; parse them without narrowing precision.
  const exact=(value:string)=>{const [w,f='']=value.split('.');return new Q(BigInt(w+f),10n**BigInt(f.length))}
@@ -105,6 +114,6 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
  let days:string|null=null
  if(energy){if(config.capacity===null || Q.from(config.capacity).n===0n)errors.push('Capacidade diária global positiva não configurada.');else days=energy.div(Q.from(config.capacity)).ceil().toString()}
  const serviceNet=serviceSubtotal?.sub(discount)??null,adjustment=serviceNet&&serviceGross?serviceNet.sub(serviceGross):null
- const pieceTotals=items.map(item=>{const rows=included.filter(l=>l.pieceId===item.id);return {pieceId:item.id,total:!scenario.pieceFlags[item.id]?'0':!rows.length?null:totalRows(rows)?.toString()??null}})
- return {scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,discountEligibleSubtotal:discountEligibleSubtotal?.toString()??null,serviceNet:serviceNet?.toString()??null,adjustment:adjustment?.toString()??null,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
+ const pieceTotals=items.map(item=>{const rows=included.filter(l=>l.pieceId===item.id&&l.billing!=='not_billed');const activities=included.some(l=>l.pieceId===item.id&&l.billing==='not_billed');return {...(activities&&!rows.length?{nonBillableOnly:true}:{}),pieceId:item.id,total:!scenario.pieceFlags[item.id]?'0':!rows.length?(activities?'0':null):totalRows(rows)?.toString()??null}})
+ return {...(included.some(l=>l.billing==='not_billed')?{nonBillableOnly:!included.some(l=>l.billing!=='not_billed')}:{}),scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),lines,pieceTotals,discountEligibleSubtotal:discountEligibleSubtotal?.toString()??null,serviceNet:serviceNet?.toString()??null,adjustment:adjustment?.toString()??null,errors:[...new Set(errors)],originalServiceSubtotal:serviceGross?.toString()??null,serviceSubtotal:serviceSubtotal?.toString()??null,componentSubtotal:componentSubtotal?.toString()??null,discount:discount.toString(),total:total?.toString()??null,energy:energy?.toString()??null,days,negotiation:deal,residual:residual.toString(),target:target?.toString()??null}
 }

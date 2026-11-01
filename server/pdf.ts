@@ -38,7 +38,7 @@ export function budgetPdf(version:BudgetVersion):Buffer {
  for(const line of c.lines.filter(l=>l.included)){
   paragraphs.push(`${line.pieceName} | ${line.kind==='service'?'Serviço':'Componente'}: ${line.name}`,
    `Dimensão: ${line.dimension||'Não aplicável'} | Diagnóstico: ${line.diagnosis||'Não informado'}`,
-   `${line.quantity} x ${money(line.finalUnit)} = ${money(line.total)}`)
+   line.billing==='not_billed'?`${line.quantity} · Sem cobrança`:`${line.quantity} x ${money(line.finalUnit)} = ${money(line.total)}`)
   if(line.finalUnit!==line.unit)paragraphs.push(`Unitário de referência: ${money(line.unit)} | Unitário efetivo: ${money(line.finalUnit)}`)
   if(line.notes)paragraphs.push(`Observação: ${line.notes}`)
   if(line.kind==='component')paragraphs.push(`Preço manual: ${money(line.factors.manualPrice)} | MR do Atendimento: ${line.factors.MR}`)

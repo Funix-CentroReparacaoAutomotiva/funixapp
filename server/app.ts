@@ -129,6 +129,13 @@ export function createRequestHandler(options: AppOptions) {
         if (kind === 'parametros') return send(200,pricing.saveSettings(at!,body))
         return send(req.method === 'POST' ? 201 : 200,req.method === 'DELETE' ? components.remove(at!,id!,body) : req.headers['x-funix-include-revision']==='1'?components.save(at!,body,id,true):components.save(at!,body,id))
       }
+      const confirmationRoute=/^\/api\/atendimentos\/([^/]{1,100})\/cenarios\/([^/]{1,100})\/servicos\/([^/]{1,100})\/confirmacao$/.exec(url.pathname)
+      if(confirmationRoute){
+        if(req.method!=='PATCH')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        return send(200,scenarios.confirmService(confirmationRoute[1]!,confirmationRoute[2]!,confirmationRoute[3]!,await readJson(req,4096)))
+      }
       const scenarioRoute = /^\/api\/atendimentos\/([^/]{1,100})\/cenarios(?:\/([^/]{1,100}))?$/.exec(url.pathname)
       if (scenarioRoute) {
         const at = scenarioRoute[1]!, id = scenarioRoute[2]

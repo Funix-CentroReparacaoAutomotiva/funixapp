@@ -20,7 +20,7 @@ export interface CatalogResponse {
   hierarchy: { versao: string; regioes: Record<string, HierarchyNode>; acesso_geral: HierarchyNode }
 }
 export interface DiagnosisService {
-  id: string; serviceId: string; dimensionId: string | null; quantity: string; enabled: boolean; notes?: string; diagnosisId?: string | null
+  id: string; serviceId: string; dimensionId: string | null; quantity: string; enabled: boolean; executionConfirmed?: boolean; notes?: string; diagnosisId?: string | null
 }
 export interface DiagnosisItem {
   id: string; atendimentoId: string; pieceId: string; diagnosisId: string | null
@@ -32,6 +32,7 @@ export interface Scenario {
   id: string; atendimentoId: string; name: string; position: number; revision: number
   pieceFlags: Record<string, boolean>; serviceFlags: Record<string, boolean>
   componentFlags: Record<string, boolean>
+  serviceConfirmations?: Record<string,string>
 }
 export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {
   return `Cenário ${scenario.position}`
