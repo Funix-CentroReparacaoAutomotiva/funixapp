@@ -1,0 +1,144 @@
+{
+  "method": "Superhuman Docs/Coda: table_columns_read e table_rows_read projetado somente de fatores/atividade/capacidade; sem exportação ou importação",
+  "tables": [
+    {
+      "catalog": "diagnoses",
+      "table": "cnf_Diagnostico",
+      "sourceRowCount": 16,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "services",
+      "table": "cnf_Servicos",
+      "sourceRowCount": 28,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "dimensions",
+      "table": "cnf_DimensoesServicos",
+      "sourceRowCount": 76,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "dimensionNames",
+      "table": "cnf_NomeDimensoesServicos",
+      "sourceRowCount": 34,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "tables",
+      "table": "cnf_BasePrecificacao",
+      "sourceRowCount": 4,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "colors",
+      "table": "cnf_TiposTinta",
+      "sourceRowCount": 3,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "risks",
+      "table": "cnf_RiscoOperacional",
+      "sourceRowCount": 4,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "capacity",
+      "table": "cnf_CapacidadeDiaria",
+      "sourceRowCount": 1,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "rules",
+      "table": "cnf_BasePrecificacaoServicos",
+      "sourceRowCount": 56,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "relations",
+      "table": "cnf_RelacaoServicoEtapa",
+      "sourceRowCount": 113,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "stageDimensions",
+      "table": "cnf_DimensoesEtapas",
+      "sourceRowCount": 16,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "stages",
+      "table": "cnf_Etapas",
+      "sourceRowCount": 39,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    },
+    {
+      "catalog": "energy",
+      "table": "cnf_Energia",
+      "sourceRowCount": 11,
+      "readOnly": true,
+      "installedDatabaseVerified": false
+    }
+  ],
+  "limitations": [
+    "Contagem na origem não prova importação ou configuração do SQLite instalado.",
+    "Verificados apenas preenchimento/tipo/sinal dos fatores e capacidade na origem. Não validados vínculos comerciais completos, FC por serviço ou seleção efetiva de MR no destino.",
+    "Sem SSH/VPN/TCP administrativo configurado; domínio app.funix.com.br fora da lista de rede autorizada."
+  ],
+  "parameterAggregates": [
+    {
+      "catalog": "colors",
+      "readRows": 3,
+      "hasMore": false,
+      "numericFinite": 3,
+      "positive": 3,
+      "zero": 0,
+      "negative": 0,
+      "missingOrNonNumeric": 0
+    },
+    {
+      "catalog": "risks",
+      "readRows": 4,
+      "hasMore": false,
+      "numericFinite": 4,
+      "positive": 4,
+      "zero": 0,
+      "negative": 0,
+      "missingOrNonNumeric": 0
+    },
+    {
+      "catalog": "capacity",
+      "readRows": 1,
+      "hasMore": false,
+      "numericFinite": 1,
+      "positive": 1,
+      "zero": 0,
+      "negative": 0,
+      "missingOrNonNumeric": 0
+    },
+    {
+      "catalog": "tables",
+      "readRows": 4,
+      "hasMore": false,
+      "numericFinite": 4,
+      "positive": 3,
+      "zero": 1,
+      "negative": 0,
+      "missingOrNonNumeric": 0,
+      "active": 4
+    }
+  ]
+}

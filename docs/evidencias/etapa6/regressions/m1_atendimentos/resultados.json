@@ -1,0 +1,84 @@
+{
+  "suite": "M1 Atendimento — real local API and temporary SQLite",
+  "data": "Synthetic QA only; no production data or provider calls",
+  "fault_injection": "One PATCH 503 and one delayed GET; remaining requests use the real API",
+  "assertions": [
+    {
+      "name": "desktop: Conversas, Funil and global Configurações navigation; no Veículos",
+      "pass": true
+    },
+    {
+      "name": "real empty SQLite database is usable without Coda credentials",
+      "pass": true
+    },
+    {
+      "name": "manual creation requires only a minimum phone; optional data stays empty",
+      "pass": true
+    },
+    {
+      "name": "optional fields and manual commercial phase persist; header updates to saved record",
+      "pass": true
+    },
+    {
+      "name": "search locates actual stored records by name, plate and phone",
+      "pass": true
+    },
+    {
+      "name": "detail back preserves list and search context",
+      "pass": true
+    },
+    {
+      "name": "switching records never combines another contact or plate in the header",
+      "pass": true
+    },
+    {
+      "name": "Chat and global/context IA stay unavailable without simulated integration",
+      "pass": true
+    },
+    {
+      "name": "cancelling unsaved navigation keeps the form until explicit discard",
+      "pass": true
+    },
+    {
+      "name": "injected save failure retains input and does not alter persisted data",
+      "pass": true
+    },
+    {
+      "name": "real revision conflict preserves stale input and refuses silent overwrite",
+      "pass": true
+    },
+    {
+      "name": "Rejeitados requires explicit refusal and reason; no automatic loss",
+      "pass": true
+    },
+    {
+      "name": "Kanban preserves six approved labels and collapsible lanes",
+      "pass": true
+    },
+    {
+      "name": "delayed response from another Atendimento cannot replace the active header",
+      "pass": true
+    },
+    {
+      "name": "same SQLite records survive API stop/restart and a completely new browser session",
+      "pass": true
+    },
+    {
+      "name": "mobile: no body horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "mobile: editor scrolling/save is usable and edited data survives reload",
+      "pass": true
+    },
+    {
+      "name": "legacy vehicle/experience URLs cannot expose operational views",
+      "pass": true
+    },
+    {
+      "name": "no external providers, legacy Coda APIs, IA calls or uncaught page errors",
+      "pass": true
+    }
+  ],
+  "external_hosts": []
+}

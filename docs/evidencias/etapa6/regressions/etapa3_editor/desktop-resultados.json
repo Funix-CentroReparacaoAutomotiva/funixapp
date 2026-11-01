@@ -1,0 +1,36 @@
+{
+  "device": "desktop",
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved",
+      "pass": true
+    },
+    {
+      "name": "desktop: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning",
+      "pass": true
+    },
+    {
+      "name": "desktop: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero",
+      "pass": true
+    },
+    {
+      "name": "desktop: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules",
+      "pass": true
+    },
+    {
+      "name": "desktop: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence",
+      "pass": true
+    },
+    {
+      "name": "desktop: bottom sheet anchored to viewport/safe-area, unified search and global removal confirmation preserved, Cancel/Escape/close restore focus without mutation",
+      "pass": true
+    },
+    {
+      "name": "desktop: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}
