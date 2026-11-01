@@ -44,6 +44,9 @@ O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não 
 
 ## Engenharia e validação
 
+Autorização vigente Issue #31 Etapa 3/6, base `ef5c4b1f748c3d5491e070e01a15cef9b5da3acf`, mesma branch integrada. Somente E01–E09/C05–C06: editor/toggles/linha de ações/vazios/Voltar, bottom sheet de seleção funcional e estados completos/incompletos/configuração/erro. Preservar contratos e testes da Etapa2, seleção global versus flags, confirmações, autosave/ack/reconciliação, motor/MR/catálogos e histórico. Sem reorganizar Mapa circular ou rodapé/Copiloto, Etapas4/5, importar dados, migrações, infraestrutura, merge/deploy. Testes locais sintéticos desktop/390/320 e relatório/commit na Issue antes de Etapa4. Esta autorização supera a restrição anterior de não iniciar Etapa3, mantendo o restante.
+
+
 Autorização vigente Issue #31 Etapa 2/6, auditoria 6539836714: somente persistência/semântica na branch integrada `feature/revisao-integrada-funix`, base main restaurada `8a4eb8a4f5677b7f4e8384ecc17ebcd16a46544e`. Seletores Mapa/Diagnósticos controlam composição global; editor/comparação controlam flags por cenário. Remoção global com confirmação antes de qualquer mudança quando há filhos/conteúdo ou outros cenários ativos, transação/revisões de composição e cenários, Ambos atômico e recuperação sem replay cego. Preservar snapshots/PDF, autosave e IDs dos itens restantes; remoção confirmada apaga somente a peça/filhos dos rascunhos. Sem Etapas 3–6, mudanças no radial, importação, dados reais, motor, migrações, configurações comerciais, VPS ou infraestrutura. Dados reais A02–A09 continuam não verificados. Publicar código nesta branch e relatório na Issue; sem merge/deploy; parar para auditoria antes de Etapa 3.
 
 

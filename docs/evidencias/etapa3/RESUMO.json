@@ -1,0 +1,23 @@
+{
+  "scope": "Issue31 Etapa3 E01-E09 C05-C06",
+  "base": "ef5c4b1f748c3d5491e070e01a15cef9b5da3acf",
+  "synthetic": true,
+  "environment": "Chromium local emulado; API Node24 e SQLite temporário",
+  "npmCheck": {
+    "exitCode": 0,
+    "nodeTests": 150,
+    "fail": 0,
+    "lintWarnings": 4,
+    "warningsPreexisting": true
+  },
+  "deployScriptTests": 23,
+  "stage3BrowserGroups": 21,
+  "stage2BrowserGroups": 21,
+  "regressionBrowserGroups": 121,
+  "totalBrowserGroups": 163,
+  "screenshots": 24,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false,
+  "ci": "Não disparada: branch de integração sem PR; workflow restrito a main/PRs."
+}

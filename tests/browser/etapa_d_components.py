@@ -39,7 +39,7 @@ async def device_case(browser,device,viewport):
   # Two rows, exact DOM/order and geometry. The MR is output, not an editable selector.
   first=row().locator('.component-first-line');second=row().locator('.component-values')
   boxes=[await n.bounding_box()for n in [first.get_by_role('button',name='Habilitar componente neste cenário'),first.get_by_label('Descrição do componente'),first.get_by_role('button',name='Excluir componente')]]
-  assert boxes[0]['x']<boxes[1]['x']<boxes[2]['x']and max(b['y']for b in boxes)-min(b['y']for b in boxes)<5
+  assert boxes[0]['x']<boxes[1]['x']<boxes[2]['x']and max(b['y']+b['height']/2 for b in boxes)-min(b['y']+b['height']/2 for b in boxes)<5
   assert await second.locator(':scope > *').evaluate_all('(es)=>es.map(e=>e.innerText.split("\\n")[0])')==['Qtd.','Preço unitário (R$)','MR','Total']
   positions=[await second.locator(':scope > *').nth(i).bounding_box()for i in range(4)];assert max(p['y']for p in positions)-min(p['y']for p in positions)<3
   assert await row().get_by_role('combobox').count()==0 and await editor.locator('.bottom-label').count()==0

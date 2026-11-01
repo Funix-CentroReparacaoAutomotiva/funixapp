@@ -7,6 +7,7 @@ import { api } from './api'
 import type { RequestFailure } from './api'
 import { Icon, Login } from './ui'
 import { PieceDialog } from './PieceDialog'
+import {PieceSheet} from './PieceSheet'
 import {DiagnosisEditor} from './DiagnosisEditor'
 import type {PricingConfiguration} from '../shared/pricing'
 import type {CalculationState} from './calculation-state'
@@ -50,6 +51,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const loadVersion = useRef(0), mutationInFlight = useRef(false)
   const mapStage = useRef<HTMLDivElement>(null), mapOpener = useRef('.map-search-trigger')
   const returnMapFocus = useCallback(() => { mapStage.current?.querySelector<HTMLElement>(mapOpener.current)?.focus() }, [])
+  const sheetOpener=useRef<HTMLButtonElement>(null)
+  const returnSheetFocus=useCallback(()=>sheetOpener.current?.focus(),[])
   const [differences,setDifferences] = useState(false)
   const [failure, setFailure] = useState(''), [message, setMessage] = useState(''), [localBusy, setBusy] = useState(false)
   const [failureDetails, setFailureDetails] = useState<RequestFailure | null>(null), [refreshNeeded, setRefreshNeeded] = useState(false)
@@ -271,6 +274,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   })}</tbody><tfoot>{(['serviceSubtotal','componentSubtotal','total','energy','days'] as const).map((field,i)=><tr key={field}><th>{['Serviços','Componentes','Total antes da negociação','Energia','Dias técnicos'][i]}</th>{scenarios.map(s=>{const c=workspace?.calculations.find(c=>c.scenarioId===s.id),value=c?.[field];return <td key={s.id}>{field==='energy'||field==='days'?value??'Indisponível':money(value)}</td>})}</tr>)}</tfoot></table></div>
   const calculation = workspace?.calculations.find(c => c.scenarioId === scenarioId)
   const mapSelecting = tab === 'mapa' && selecting && !draft && !matrix && !budget && !reauth && Boolean(catalog)
+  const sheetSelecting=tab==='diagnosticos'&&selecting&&!screen&&!reauth&&Boolean(catalog)
   useEffect(() => {
     if (mapSelecting) document.querySelector<HTMLElement>('.map-piece-dialog [data-initial-focus]')?.focus()
   }, [path, discPage, mapSelecting])
@@ -296,7 +300,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     <div className="diagnostics-body" ref={body} onScroll={e=>{if(loaded)scrollPositions.set(viewKey,{top:e.currentTarget.scrollTop,left:0})}}>
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
-      {!mapSelecting && feedback}
+      {!mapSelecting && !sheetSelecting && feedback}
       {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
 
@@ -327,12 +331,12 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
               <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Presente':'Removida'} na composição compartilhada</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
             </article>
           })}</div>
-          <button className="codex-add add-piece" disabled={baseBusy} aria-expanded={selecting} onClick={() => {if(!selecting){setPath([]);setQuery('');setDiscPage(0)}setSelecting(v=>!v)}}>{selecting ? 'Fechar seleção' : '+ Adicionar peça'}</button>
-          {selecting && picker}
+          <button ref={sheetOpener} aria-haspopup="dialog" className="codex-add add-piece" disabled={baseBusy} aria-expanded={selecting} onClick={() => {if(!selecting){setPath([]);setQuery('');setDiscPage(0)}setSelecting(v=>!v)}}>+ Adicionar peça</button>
+          {sheetSelecting&&<PieceSheet busy={baseBusy} onClose={()=>setSelecting(false)} returnFocus={returnSheetFocus}>{feedback}{picker}</PieceSheet>}
 
         </>}
       </>}
-    </div>{workspace && !budget && !matrix && <FinancialPanel onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}
+    </div>{workspace && !budget && !matrix && <FinancialPanel onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}
   </div>}</>
 }
 

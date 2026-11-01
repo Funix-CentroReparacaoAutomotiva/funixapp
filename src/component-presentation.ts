@@ -1,7 +1,7 @@
 import type {CommercialWorkspace,DiagnosisItem} from '../shared/commercial.ts'
 import type {ComponentItem,PricingConfiguration} from '../shared/pricing.ts'
 import type {CalculationState} from './calculation-state.ts'
-import {partSignature} from './calculation-state.ts'
+import {partSignature,componentIncomplete} from './calculation-state.ts'
 
 // Presentation of a configured factor only. No component price/rounding is computed here.
 export function resalePercent(factor:string|null|undefined):string|null{
@@ -23,6 +23,7 @@ export function componentMR(workspace:CommercialWorkspace,configuration:PricingC
 export function componentResult(part:ComponentItem&{enabled:boolean},piece:DiagnosisItem,workspace:CommercialWorkspace,parameterState:CalculationState,error:boolean,configuration:PricingConfiguration|null=null){
  const savedPiece=workspace.items.find(p=>p.id===piece.id),scene=workspace.scenarios.find(s=>s.id===workspace.selectedId),saved=workspace.components.find(p=>p.id===part.id)
  if(error||parameterState==='error')return{state:'error',text:'Valor não atualizado',value:null}as const
+ if(componentIncomplete(part))return{state:'incomplete',text:'Rascunho incompleto',value:null}as const
  const pending=!saved||!savedPiece||piece.enabled!==savedPiece.enabled||partSignature(part)!==partSignature({...saved,enabled:Boolean(scene?.componentFlags[part.id])})
  if(pending||parameterState==='pending')return{state:'pending',text:'Calculando…',value:null}as const
  if(!part.enabled||!piece.enabled)return{state:'excluded',text:'Fora do orçamento',value:null}as const

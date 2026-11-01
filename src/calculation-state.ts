@@ -1,6 +1,6 @@
 import type {DiagnosisItem,DiagnosisService} from '../shared/commercial.ts'
 import type {ComponentItem} from '../shared/pricing.ts'
-export type CalculationState='current'|'pending'|'error'
+export type CalculationState='current'|'pending'|'incomplete'|'missing'|'error'
 // Compare input identities/attributes only. All monetary calculation stays in the API.
 const normalized=(v:string)=>v.trim().replace(',','.').replace(/^0+(?=\d)/,'').replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'')
 export function serviceInputs(piece:DiagnosisItem|undefined,line:DiagnosisService|undefined){
@@ -21,3 +21,14 @@ export function pieceDataSignature(p:DiagnosisItem,ids=true){return JSON.stringi
 export function pieceSignature(p:DiagnosisItem,ids=true){return JSON.stringify([p.diagnosisId,p.notes.trim(),p.enabled,persistedServices(p,ids,true)])}
 export function partDataSignature(p:ComponentItem){return JSON.stringify([p.pieceId,p.name.trim(),normalized(p.quantity),p.manualPrice===null?null:normalized(p.manualPrice),p.notes.trim()])}
 export function partSignature(p:ComponentItem&{enabled:boolean}){return JSON.stringify([partDataSignature(p),p.enabled])}
+
+// Form completeness only: no pricing formulas or default commercial values.
+export const validQuantity=(v:string)=>/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(v.trim().replace(',','.'))&&/[1-9]/.test(v)
+export const validManualPrice=(v:string|null)=>v===null||/^\d{1,12}(?:\.\d{1,6})?$/.test(v.trim().replace(',','.'))
+export function serviceIncomplete(line:DiagnosisService){return !line.serviceId||!line.dimensionId||!validQuantity(line.quantity)}
+export function componentIncomplete(part:ComponentItem){return !part.name.trim()||!validQuantity(part.quantity)||!validManualPrice(part.manualPrice)}
+export function draftIncomplete(piece:DiagnosisItem,parts:(ComponentItem&{enabled?:boolean})[]){
+ const unsavedInput=piece.services.some(l=>!l.serviceId||!validQuantity(l.quantity))||parts.some(componentIncomplete)
+ return unsavedInput||piece.enabled&&piece.services.some(l=>l.enabled&&!l.dimensionId)
+}
+export function calculationLabel(state:CalculationState){return state==='pending'?'Calculando…':state==='incomplete'?'Rascunho incompleto':state==='missing'?'Configuração pendente':state==='error'?'Valor não atualizado':''}

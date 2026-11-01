@@ -153,7 +153,8 @@ async def run():
             assert len([i for i in await get(path + '/diagnosticos') if i['pieceId'] == pool[9]['id']]) == 1
             h.mark('HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST')
 
-            # Autosave conflict keeps local input; an explicit saved-version recovery precedes new editing.
+            # Autosave conflict keeps local input; close the modal selector before editing.
+            await page.get_by_role('button',name='Fechar seleção',exact=True).click()
             await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await page.get_by_role('button',name='Observação da peça',exact=True).click()
             current=next(i for i in await get(path+'/diagnosticos') if i['id']==item['id'])

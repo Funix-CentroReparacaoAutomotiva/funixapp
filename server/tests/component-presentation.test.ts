@@ -39,3 +39,13 @@ test('Etapa D an official calculation failure with valid MR is not mislabeled as
  const t=fixture()
  try{const line=t.workspace.calculations[0]!.lines.find(l=>l.id===t.part.id)!;line.total=null;line.factors={};assert.equal(componentResult(t.draft,t.piece,t.workspace,'current',false,t.configuration).text,'Valor não atualizado');assert.equal(componentResult(t.draft,t.piece,t.workspace,'current',false,{...t.configuration,config:{...t.config,resaleMultipliers:[{id:'mr',name:'Pendente',factor:null}]}}).text,'MR não configurado')}finally{t.db.close()}
 })
+
+test('Stage3 incomplete component fields never claim an active calculation or silently replace a missing price with zero',()=>{
+ const t=fixture()
+ try{
+  for(const p of [{...t.draft,name:''},{...t.draft,quantity:'0'},{...t.draft,manualPrice:'bad'}])assert.deepEqual(componentResult(p,t.piece,t.workspace,'current',false),{state:'incomplete',text:'Rascunho incompleto',value:null})
+  assert.equal(componentResult({...t.draft,name:''},t.piece,t.workspace,'current',true).state,'error')
+  const w=structuredClone(t.workspace);w.components[0]!.manualPrice=null;w.calculations[0]!.lines.find(l=>l.id===t.part.id)!.total=null
+  assert.equal(componentResult({...t.draft,manualPrice:null},t.piece,w,'current',false).text,'Preço não informado')
+ }finally{t.db.close()}
+})
