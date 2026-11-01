@@ -21,7 +21,9 @@ import {RemovalConfirmation} from './RemovalConfirmation'
 import type {NegotiationState} from './negotiation'
 import {money} from './money'
 import {usePieceSelection} from './usePieceSelection'
-import {selectablePieces,functionalTree,contextualTree,groupSelection,nodeCodes} from './piece-navigation'
+import {selectablePieces,functionalTree,groupSelection,nodeCodes} from './piece-navigation'
+import{mapTree,mapPage,radialPosition,radialLabel}from'./map-navigation'
+import './map-radial.css'
 import {ApprovedIcon} from './ApprovedIcon'
 import './piece-selection.css'
 import carMap from './assets/car-map.svg?raw'
@@ -198,9 +200,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     if (codes.length) select(codes)
   }
   const [regionKey,setRegionKey]=useState<string|null>(null)
-  const geographicRoots=useMemo(()=>catalog?Object.entries(catalog.hierarchy.regioes).flatMap(([key,node])=>{const projected=contextualTree(node,key==='motorista'||key==='passageiro'?key:null,catalog.items);return projected?[projected]:[]}):[],[catalog])
+  const geographicRoots=useMemo(()=>catalog?mapTree(catalog.items):[],[catalog])
   const roots=tab==='mapa'?geographicRoots:functionalTree(catalog?.items??[])
-  const regionRoot=regionKey&&catalog?geographicRoots.find(r=>r.id===catalog.hierarchy.regioes[regionKey]?.id):undefined
+  const regionRoot=geographicRoots.find(r=>r.id===regionKey)
 
   function searchNodes(): HierarchyNode[] {
     const seen = new Set<string>(), found: HierarchyNode[] = []
@@ -223,23 +225,20 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   }
   const nodes = query.trim() ? searchNodes() : path.length ? path[path.length - 1].itens ?? [] : roots
   const searchField = <label className="piece-search"><Icon name="search" /><input aria-label="Buscar peça em todas as vistas" placeholder="Buscar peça…" value={query} onChange={e => { setQuery(e.target.value); setDiscPage(0) }} maxLength={150} /></label>
-  function option(node: HierarchyNode, index = 0, count = 1, radial = false) {
+  function option(node: HierarchyNode, radial = false) {
     const group = node.tipo === 'grupo' || node.tipo === 'grupo_lados'
     const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca ?? [] : node.codigo_peca ? [node.codigo_peca] : []
     const stats=groupSelection(node,validPieces,selectedCode)
     const available=codes.length>0&&codes.every(code=>validPieces.has(code))
     const selected=!group&&codes.length>0&&codes.every(selectedCode)
     const pending=nodeCodes(node,validPieces).some(code=>selectionState.intents.has(code))
-    const sideLayout=radial&&path.at(-1)?.tipo==='grupo_lados'
-    const position=sideLayout?(node.tipo==='acao_ambos'?{left:'50%',top:'22%'}:node.lado==='motorista'?{left:'25%',top:'70%'}:node.lado==='passageiro'?{left:'75%',top:'70%'}:null):null
-    const angle = index * 2 * Math.PI / count - Math.PI / 2
-    const radius = count <= 2 ? 29 : count <= 4 ? 32 : 36
+    const position=radial?radialPosition(node,visibleNodes,path.at(-1),regionKey):null
     return <button key={node.id} className={radial ? 'disc-node' : undefined}
-      style={radial ? position??{left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%`} : undefined}
+      style={position?{left:position.left+'%',top:position.top+'%'}:undefined} data-ring={position&&'inner'in position&&position.inner?'inner':'outer'} data-node-id={node.id}
       aria-label={node.nome} data-selection-state={group?stats.state:selected?'all':'none'} data-pending={pending} aria-pressed={!group && codes.length ? selected : undefined}
       disabled={pieceLocked || (group?stats.total===0:!available&&!codes.every(selectedCode))} onClick={() => showNode(node)}
       title={group?`${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}`:!available?'Peça inativa ou sem código cadastrado':pending?'Seleção pendente de confirmação':selected?'Selecionada':'Não selecionada'}>
-      {group&&<span className="selection-indicator" aria-hidden="true"/>}<span>{node.nome}</span>{group && <span aria-hidden="true">›</span>}
+      {group&&<span className="selection-indicator" aria-hidden="true"/>}<span>{radial?radialLabel(node.nome):node.nome}</span>{group && <span aria-hidden="true">›</span>}
     </button>
   }
   const picker = <section className="piece-picker" aria-label="Selecionar peça">
@@ -253,16 +252,15 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const active = scenarios.find(s=>s.id===scenarioId)
   const mapMarkup = useMemo(() => {
     return carMap.replace(/(<g data-region="([^"]+)"[^>]*>)([\s\S]*?)(<\/g>)/g, (_match, opening:string,region:string,body:string,closing:string)=>{
-      const root=geographicRoots.find(r=>r.id===catalog?.hierarchy.regioes[region]?.id)
+      const root=geographicRoots.find(r=>r.id===region)
       const stats=root?groupSelection(root,validPieces,selectedCode):{count:0,total:0,state:'none'}
       const pending=root?nodeCodes(root,validPieces).some(code=>selectionState.intents.has(code)):false
       const tag=opening.replace(/aria-label="([^"]+)"/,`aria-label="$1: ${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}"`).slice(0,-1)+` data-selected="${stats.count>0}" data-selection-state="${stats.state}">`
       const xy=body.match(/<text x="([\d.]+)" y="([\d.]+)"/)
-      const state=xy?`<g class="map-region-state" aria-hidden="true" pointer-events="none"><circle cx="${Number(xy[1])-28}" cy="${Number(xy[2])-4}" r="5"/>${stats.state==='partial'?`<path d="M${Number(xy[1])-31} ${Number(xy[2])-4}h6"/>`:''}</g>`:''
-      const count=stats.count&&xy?`<g class="map-region-count" aria-hidden="true" pointer-events="none"><circle cx="${Number(xy[1])+26}" cy="${Number(xy[2])-15}" r="10"/><text x="${Number(xy[1])+26}" y="${Number(xy[2])-15}" text-anchor="middle" dy=".35em">${stats.count}</text></g>`:''
-      return tag+body+state+count+closing
+      const count=xy?`<tspan class="map-region-count" x="${xy[1]}" dy="1.3em" font-size="10">${stats.count}/${stats.total}</tspan>`:''
+      return tag+body.replace('</text>',count+'</text>')+closing
     })
-  },[catalog,geographicRoots,validPieces,selectedCode,selectionState.intents])
+  },[geographicRoots,validPieces,selectedCode,selectionState.intents])
   const differs = (values: boolean[]) => values.some(value=>value!==values[0])
   const matrixValue = (scenarioId:string,lineId:string) => {const line=workspace?.calculations.find(c=>c.scenarioId===scenarioId)?.lines.find(l=>l.id===lineId);return line?.included?money(line.total):'Não incluído'}
   const comparison = <div className="scenario-matrix" role="region" aria-label="Matriz de cenários" tabIndex={0}><table><thead><tr><th>Composição mestre</th>{scenarios.map(s=><th key={s.id}>{scenarioLabel(s)}</th>)}</tr></thead><tbody>{items.map(item=>{
@@ -287,12 +285,11 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       {selectionBlocked&&<button className="fh-filter" disabled={busy} onClick={discardSelections}>Descartar seleções pendentes e atualizar</button>}
       {failureDetails?.method && <details className="at-form-hint"><summary>Detalhes da falha</summary><p>{failureDetails.method} {failureDetails.endpoint} · {failureDetails.kind === 'network' ? 'Transporte sem resposta HTTP' : failureDetails.kind === 'response' ? 'Resposta não legível' : 'Resposta HTTP'}{failureDetails.status ? ` · HTTP ${failureDetails.status}` : ''}{failureDetails.elapsedMs !== undefined ? ` · ${failureDetails.elapsedMs} ms` : ''}{failureDetails.requestId ? ` · Referência ${failureDetails.requestId}` : ''}</p></details>}
   </>
-  const visibleNodes = nodes.slice(discPage * 7, discPage * 7 + 7)
-  const discCount = visibleNodes.length + (nodes.length > 7 ? 1 : 0)
+  const page=mapPage(nodes,discPage,path.length<=1)
+  const visibleNodes=page.nodes
   function openRegion(region: string) {
-    const original=catalog?.hierarchy.regioes[region]
-    const node=geographicRoots.find(r=>r.id===original?.id)
-    if (node) { mapOpener.current = `[data-region="${region}"]`; setRegionKey(region);setPath([node]); setQuery(''); setDiscPage(0); setSelecting(true) }
+    const node=geographicRoots.find(r=>r.id===region)
+    if(node){mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
   }
   const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onArchive={()=>onView('orcamentos')} onCompare={()=>onView('comparacao')}/>
   return <>{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
@@ -309,16 +306,14 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             if (region) openRegion(region)
           }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region'); if (region) { event.preventDefault(); openRegion(region) } } }} dangerouslySetInnerHTML={{ __html: mapMarkup }} />
           {mapSelecting && <PieceDialog busy={baseBusy} onClose={() => setSelecting(false)} returnFocus={returnMapFocus}>
-            <header className="map-selector-head"><span>Seleção de peças</span><button className="fh-filter" disabled={baseBusy} aria-label="Fechar seleção" onClick={() => setSelecting(false)}>×</button></header>
+            <header className="map-selector-head"><button className="fh-filter" disabled={baseBusy} aria-label="Fechar seleção" onClick={()=>setSelecting(false)}>×</button></header>
             {feedback}
-            {searchField}
-            {query.trim() ? <div className="piece-options map-search-results">{nodes.map(node => option(node))}{!nodes.length && <p>Nenhuma peça encontrada.</p>}</div> : <div className="disc-wrap">
-              <strong className="disc-name">{path.at(-1)?.nome ?? 'Regiões e acesso geral'}</strong>
-              <div className="disc-ring piece-options">{visibleNodes.map((node, i) => option(node, i, discCount, true))}
-                {nodes.length > 7 && <button className="disc-node disc-more" disabled={baseBusy} style={{left: `${50 + Math.cos((discCount - 1) * 2 * Math.PI / discCount - Math.PI / 2) * 36}%`, top: `${50 + Math.sin((discCount - 1) * 2 * Math.PI / discCount - Math.PI / 2) * 36}%`}} onClick={() => setDiscPage(value => (value + 1) * 7 < nodes.length ? value + 1 : 0)}>{(discPage + 1) * 7 < nodes.length ? 'Ver mais opções' : 'Voltar ao início'}</button>}
-              </div>
-              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length > 1 ? 'Voltar ao nível anterior' : 'Fechar seleção central'} onClick={() => { if (path.length > 1) { setPath(p => p.slice(0, -1)); setDiscPage(0) } else setSelecting(false) }}>{path.length > 1 ? '←' : '×'}</button>
-            </div>}
+            <div className="disc-wrap" data-region-key={regionKey} data-depth={path.length}>
+              <strong className="disc-name">{path.at(-1)?.nome??'Regiões'}</strong>
+              <div className="disc-ring piece-options" data-count={visibleNodes.length}>{visibleNodes.map(node=>option(node,true))}</div>
+              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length>1?'Voltar ao nível anterior':'Fechar seleção central'} onClick={()=>{if(path.length>1){setPath(p=>p.slice(0,-1));setDiscPage(0)}else setSelecting(false)}}>{path.length>1?'←':'×'}</button>
+            </div>
+            {page.pages>1&&<button className="disc-more" disabled={baseBusy} onClick={()=>setDiscPage((page.page+1)%page.pages)}>{page.page+1<page.pages?'Ver mais opções':'Voltar ao início'}</button>}
           </PieceDialog>}
         </div> : <>
           <div className="diagnosis-heading"><h1>Diagnósticos</h1><span>{items.length} peça{items.length !== 1 ? 's' : ''}</span></div>

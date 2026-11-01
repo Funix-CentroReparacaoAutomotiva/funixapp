@@ -1,0 +1,1772 @@
+{
+  "source": "PR27@97abe59f7693d29d4a91b2d2df147d495ab7bc0e + Issue31 D01-D04",
+  "regions": {
+    "Frente": "frente",
+    "Estrutura dianteira": "estrutura_dianteira",
+    "Motorista": "motorista",
+    "Passageiro": "passageiro",
+    "Traseira": "traseira",
+    "Estrutura traseira": "estrutura_traseira",
+    "Topo": "teto"
+  },
+  "pieces": [
+    {
+      "code": "acabamentos_plasticos_dianteiros",
+      "path": [
+        "Frente",
+        "Acabamentos dianteiros",
+        "Acabamentos plásticos dianteiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "adesivos_dianteiros",
+      "path": [
+        "Frente",
+        "Acabamentos dianteiros",
+        "Adesivos dianteiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "churrasqueira",
+      "path": [
+        "Frente",
+        "Acabamentos dianteiros",
+        "Churrasqueira (base do para-brisa)"
+      ],
+      "side": ""
+    },
+    {
+      "code": "frisos_dianteiros",
+      "path": [
+        "Frente",
+        "Acabamentos dianteiros",
+        "Frisos dianteiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "moldura_dianteira_generica",
+      "path": [
+        "Frente",
+        "Acabamentos dianteiros",
+        "Moldura dianteira (genérica)"
+      ],
+      "side": ""
+    },
+    {
+      "code": "alma_para_choque_dianteiro",
+      "path": [
+        "Frente",
+        "Alma do para-choque dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "capo",
+      "path": [
+        "Frente",
+        "Capô"
+      ],
+      "side": ""
+    },
+    {
+      "code": "defletor_inferior_dianteiro",
+      "path": [
+        "Frente",
+        "Complementos dianteiros",
+        "Defletor inferior dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "difusor_dianteiro",
+      "path": [
+        "Frente",
+        "Complementos dianteiros",
+        "Difusor dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "spoiler_dianteiro",
+      "path": [
+        "Frente",
+        "Complementos dianteiros",
+        "Spoiler dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "grade_dianteira",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade dianteira"
+      ],
+      "side": ""
+    },
+    {
+      "code": "grade_inferior__motorista",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade inferior",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "grade_inferior__passageiro",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade inferior",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "grade_inferior_central",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade inferior central / inteiriça"
+      ],
+      "side": ""
+    },
+    {
+      "code": "grade_lateral__motorista",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade lateral",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "grade_lateral__passageiro",
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade lateral",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "alojamento_farol__motorista",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Alojamento do farol",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "alojamento_farol__passageiro",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Alojamento do farol",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "farol__motorista",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "farol__passageiro",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "farol_milha__motorista",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol de milha",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "farol_milha__passageiro",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol de milha",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "moldura_farol_milha__motorista",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Moldura do farol de milha",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "moldura_farol_milha__passageiro",
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Moldura do farol de milha",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "para_choque_dianteiro",
+      "path": [
+        "Frente",
+        "Para-choque dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "sensor_estacionamento_dianteiro__motorista",
+      "path": [
+        "Frente",
+        "Sensor de estacionamento",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "sensor_estacionamento_dianteiro__passageiro",
+      "path": [
+        "Frente",
+        "Sensor de estacionamento",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "cofre_motor_dianteiro",
+      "path": [
+        "Estrutura dianteira",
+        "Cofre do motor dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "longarina_dianteira__motorista",
+      "path": [
+        "Estrutura dianteira",
+        "Longarina dianteira",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "longarina_dianteira__passageiro",
+      "path": [
+        "Estrutura dianteira",
+        "Longarina dianteira",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "painel_dianteiro",
+      "path": [
+        "Estrutura dianteira",
+        "Painel dianteiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "travessa_do_radiador",
+      "path": [
+        "Estrutura dianteira",
+        "Travessa do radiador"
+      ],
+      "side": ""
+    },
+    {
+      "code": "para_brisa",
+      "path": [
+        "Estrutura dianteira",
+        "Vidros dianteiros",
+        "Para-brisa"
+      ],
+      "side": ""
+    },
+    {
+      "code": "vidro_dianteiro_outro",
+      "path": [
+        "Estrutura dianteira",
+        "Vidros dianteiros",
+        "Vidro dianteiro (outro)"
+      ],
+      "side": ""
+    },
+    {
+      "code": "alojamento_portinhola_combustivel__motorista",
+      "path": [
+        "Motorista",
+        "Abastecimento",
+        "Alojamento da portinhola"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "portinhola_combustivel__motorista",
+      "path": [
+        "Motorista",
+        "Abastecimento",
+        "Portinhola de combustível"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "acabamentos_plasticos_laterais__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Acabamentos plásticos laterais"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "adesivos_laterais__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Adesivos laterais"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "frisos_laterais__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Frisos laterais"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "moldura_lateral__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Moldura lateral"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "rack_lateral__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Rack lateral"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "soleira__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Soleira"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "spoiler_lateral__motorista",
+      "path": [
+        "Motorista",
+        "Acessórios e acabamentos",
+        "Spoiler lateral"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "caixa_roda_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Caixa de roda",
+        "Dianteiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "caixa_roda_generica__motorista",
+      "path": [
+        "Motorista",
+        "Caixa de roda",
+        "Posição não especificada"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "caixa_roda_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Caixa de roda",
+        "Traseiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "friso_porta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Friso"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "macaneta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Maçaneta"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "moldura_porta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Moldura"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "interno_porta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Parte interna"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "vidro_porta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Vidro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "friso_porta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta traseira",
+        "Friso"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "macaneta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta traseira",
+        "Maçaneta"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "moldura_porta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta traseira",
+        "Moldura"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "interno_porta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta traseira",
+        "Parte interna"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "vidro_porta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Porta traseira",
+        "Vidro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "retrovisor__motorista",
+      "path": [
+        "Motorista",
+        "Componentes das portas",
+        "Retrovisor"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "caixa_de_ar__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Caixa de ar"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "coluna_a__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna A (dianteira)"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "coluna_b__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna B (central)"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "coluna_c__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna C (traseira)"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "coluna_generica__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna (posição não especificada)"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "painel_lateral_interno__motorista",
+      "path": [
+        "Motorista",
+        "Estrutura lateral",
+        "Painel lateral interno"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "lateral_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Lateral traseira"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "para_barro_dianteiro__motorista",
+      "path": [
+        "Motorista",
+        "Para-barro",
+        "Dianteiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "para_barro_traseiro__motorista",
+      "path": [
+        "Motorista",
+        "Para-barro",
+        "Traseiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "para_lama_dianteiro__motorista",
+      "path": [
+        "Motorista",
+        "Para-lama"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "pinca_freio_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Pinça de freio",
+        "Dianteiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "pinca_freio_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Pinça de freio",
+        "Traseiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "porta_carga_lateral__motorista",
+      "path": [
+        "Motorista",
+        "Porta de carga lateral"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "porta_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Porta dianteira"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "porta_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Porta traseira"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "roda_dianteira__motorista",
+      "path": [
+        "Motorista",
+        "Roda",
+        "Dianteiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "roda_traseira__motorista",
+      "path": [
+        "Motorista",
+        "Roda",
+        "Traseiro"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "alojamento_portinhola_combustivel__passageiro",
+      "path": [
+        "Passageiro",
+        "Abastecimento",
+        "Alojamento da portinhola"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "portinhola_combustivel__passageiro",
+      "path": [
+        "Passageiro",
+        "Abastecimento",
+        "Portinhola de combustível"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "acabamentos_plasticos_laterais__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Acabamentos plásticos laterais"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "adesivos_laterais__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Adesivos laterais"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "frisos_laterais__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Frisos laterais"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "moldura_lateral__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Moldura lateral"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "rack_lateral__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Rack lateral"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "soleira__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Soleira"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "spoiler_lateral__passageiro",
+      "path": [
+        "Passageiro",
+        "Acessórios e acabamentos",
+        "Spoiler lateral"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "caixa_roda_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Caixa de roda",
+        "Dianteiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "caixa_roda_generica__passageiro",
+      "path": [
+        "Passageiro",
+        "Caixa de roda",
+        "Posição não especificada"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "caixa_roda_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Caixa de roda",
+        "Traseiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "friso_porta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Friso"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "macaneta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Maçaneta"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "moldura_porta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Moldura"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "interno_porta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Parte interna"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "vidro_porta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta dianteira",
+        "Vidro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "friso_porta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta traseira",
+        "Friso"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "macaneta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta traseira",
+        "Maçaneta"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "moldura_porta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta traseira",
+        "Moldura"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "interno_porta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta traseira",
+        "Parte interna"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "vidro_porta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Porta traseira",
+        "Vidro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "retrovisor__passageiro",
+      "path": [
+        "Passageiro",
+        "Componentes das portas",
+        "Retrovisor"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "caixa_de_ar__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Caixa de ar"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "coluna_a__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna A (dianteira)"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "coluna_b__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna B (central)"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "coluna_c__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna C (traseira)"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "coluna_generica__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Colunas",
+        "Coluna (posição não especificada)"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "painel_lateral_interno__passageiro",
+      "path": [
+        "Passageiro",
+        "Estrutura lateral",
+        "Painel lateral interno"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "lateral_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Lateral traseira"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "para_barro_dianteiro__passageiro",
+      "path": [
+        "Passageiro",
+        "Para-barro",
+        "Dianteiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "para_barro_traseiro__passageiro",
+      "path": [
+        "Passageiro",
+        "Para-barro",
+        "Traseiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "para_lama_dianteiro__passageiro",
+      "path": [
+        "Passageiro",
+        "Para-lama"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "pinca_freio_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Pinça de freio",
+        "Dianteiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "pinca_freio_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Pinça de freio",
+        "Traseiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "porta_carga_lateral__passageiro",
+      "path": [
+        "Passageiro",
+        "Porta de carga lateral"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "porta_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Porta dianteira"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "porta_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Porta traseira"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "roda_dianteira__passageiro",
+      "path": [
+        "Passageiro",
+        "Roda",
+        "Dianteiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "roda_traseira__passageiro",
+      "path": [
+        "Passageiro",
+        "Roda",
+        "Traseiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "acabamentos_plasticos_traseiros",
+      "path": [
+        "Traseira",
+        "Acabamentos traseiros",
+        "Acabamentos plásticos traseiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "adesivos_porta_malas",
+      "path": [
+        "Traseira",
+        "Acabamentos traseiros",
+        "Adesivos do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "adesivos_traseiros",
+      "path": [
+        "Traseira",
+        "Acabamentos traseiros",
+        "Adesivos traseiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "frisos_traseiros",
+      "path": [
+        "Traseira",
+        "Acabamentos traseiros",
+        "Frisos traseiros"
+      ],
+      "side": ""
+    },
+    {
+      "code": "moldura_traseira_generica",
+      "path": [
+        "Traseira",
+        "Acabamentos traseiros",
+        "Moldura traseira (genérica)"
+      ],
+      "side": ""
+    },
+    {
+      "code": "alma_para_choque_traseiro",
+      "path": [
+        "Traseira",
+        "Alma do para-choque traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "aerofolio",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Aerofólio"
+      ],
+      "side": ""
+    },
+    {
+      "code": "defletor_inferior_traseiro",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Defletor inferior traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "difusor_traseiro",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Difusor traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "grade_traseira",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Grade traseira"
+      ],
+      "side": ""
+    },
+    {
+      "code": "ponteira_para_choque_traseiro__motorista",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Ponteira do para-choque traseiro",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "ponteira_para_choque_traseiro__passageiro",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Ponteira do para-choque traseiro",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "spoiler_traseiro",
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Spoiler traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "alojamento_lanterna_traseira__motorista",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Alojamento da lanterna",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "alojamento_lanterna_traseira__passageiro",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Alojamento da lanterna",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "lanterna_central",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna central"
+      ],
+      "side": ""
+    },
+    {
+      "code": "lanterna_re__motorista",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna de ré",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "lanterna_re__passageiro",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna de ré",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "lanterna_traseira__motorista",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna traseira",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "lanterna_traseira__passageiro",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna traseira",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "luz_placa",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Luz de placa"
+      ],
+      "side": ""
+    },
+    {
+      "code": "lampada_luz_placa",
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lâmpada da luz de placa"
+      ],
+      "side": ""
+    },
+    {
+      "code": "para_choque_traseiro",
+      "path": [
+        "Traseira",
+        "Para-choque traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "porta_carga_traseira",
+      "path": [
+        "Traseira",
+        "Porta de carga traseira"
+      ],
+      "side": ""
+    },
+    {
+      "code": "sensor_estacionamento_traseiro__motorista",
+      "path": [
+        "Traseira",
+        "Sensor de estacionamento",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "sensor_estacionamento_traseiro__passageiro",
+      "path": [
+        "Traseira",
+        "Sensor de estacionamento",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "tampa_porta_malas",
+      "path": [
+        "Traseira",
+        "Tampa do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "assoalho_porta_malas",
+      "path": [
+        "Estrutura traseira",
+        "Assoalho do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "bojo_estepe",
+      "path": [
+        "Estrutura traseira",
+        "Bojo / caixa do estepe"
+      ],
+      "side": ""
+    },
+    {
+      "code": "cofre_motor_traseiro",
+      "path": [
+        "Estrutura traseira",
+        "Cofre do motor traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "longarina_traseira__motorista",
+      "path": [
+        "Estrutura traseira",
+        "Longarina traseira",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "longarina_traseira__passageiro",
+      "path": [
+        "Estrutura traseira",
+        "Longarina traseira",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "painel_traseiro",
+      "path": [
+        "Estrutura traseira",
+        "Painel traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "acabamentos_porta_malas",
+      "path": [
+        "Estrutura traseira",
+        "Interior do porta-malas",
+        "Acabamentos plásticos do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "interno_porta_malas",
+      "path": [
+        "Estrutura traseira",
+        "Interior do porta-malas",
+        "Interno do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "moldura_porta_malas",
+      "path": [
+        "Estrutura traseira",
+        "Interior do porta-malas",
+        "Molduras do porta-malas"
+      ],
+      "side": ""
+    },
+    {
+      "code": "vidro_traseiro",
+      "path": [
+        "Estrutura traseira",
+        "Vidros traseiros",
+        "Vidro traseiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "acabamentos_plasticos_teto",
+      "path": [
+        "Topo",
+        "Acabamentos do teto",
+        "Acabamentos plásticos do teto"
+      ],
+      "side": ""
+    },
+    {
+      "code": "adesivos_teto",
+      "path": [
+        "Topo",
+        "Acabamentos do teto",
+        "Adesivos do teto"
+      ],
+      "side": ""
+    },
+    {
+      "code": "antena",
+      "path": [
+        "Topo",
+        "Acessórios do teto",
+        "Antena"
+      ],
+      "side": ""
+    },
+    {
+      "code": "bagageiro",
+      "path": [
+        "Topo",
+        "Acessórios do teto",
+        "Bagageiro"
+      ],
+      "side": ""
+    },
+    {
+      "code": "rack_teto__motorista",
+      "path": [
+        "Topo",
+        "Acessórios do teto",
+        "Rack de teto",
+        "Motorista"
+      ],
+      "side": "motorista"
+    },
+    {
+      "code": "rack_teto__passageiro",
+      "path": [
+        "Topo",
+        "Acessórios do teto",
+        "Rack de teto",
+        "Passageiro"
+      ],
+      "side": "passageiro"
+    },
+    {
+      "code": "teto_chapa",
+      "path": [
+        "Topo",
+        "Teto"
+      ],
+      "side": ""
+    },
+    {
+      "code": "teto_panoramico",
+      "path": [
+        "Topo",
+        "Vidros e aberturas",
+        "Teto panorâmico"
+      ],
+      "side": ""
+    },
+    {
+      "code": "teto_solar",
+      "path": [
+        "Topo",
+        "Vidros e aberturas",
+        "Teto solar"
+      ],
+      "side": ""
+    },
+    {
+      "code": "vidro_teto",
+      "path": [
+        "Topo",
+        "Vidros e aberturas",
+        "Vidro do teto (não especificado)"
+      ],
+      "side": ""
+    },
+    {
+      "code": "vidro_teto_solar",
+      "path": [
+        "Topo",
+        "Vidros e aberturas",
+        "Vidro do teto solar"
+      ],
+      "side": ""
+    },
+    {
+      "code": "vidro_panoramico",
+      "path": [
+        "Topo",
+        "Vidros e aberturas",
+        "Vidro panorâmico"
+      ],
+      "side": ""
+    }
+  ],
+  "pairs": [
+    {
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Alojamento do farol"
+      ],
+      "codes": [
+        "alojamento_farol__motorista",
+        "alojamento_farol__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Alojamento da lanterna"
+      ],
+      "codes": [
+        "alojamento_lanterna_traseira__motorista",
+        "alojamento_lanterna_traseira__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol"
+      ],
+      "codes": [
+        "farol__motorista",
+        "farol__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Farol de milha"
+      ],
+      "codes": [
+        "farol_milha__motorista",
+        "farol_milha__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade inferior"
+      ],
+      "codes": [
+        "grade_inferior__motorista",
+        "grade_inferior__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Grades e entradas de ar",
+        "Grade lateral"
+      ],
+      "codes": [
+        "grade_lateral__motorista",
+        "grade_lateral__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna de ré"
+      ],
+      "codes": [
+        "lanterna_re__motorista",
+        "lanterna_re__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Traseira",
+        "Iluminação traseira",
+        "Lanterna traseira"
+      ],
+      "codes": [
+        "lanterna_traseira__motorista",
+        "lanterna_traseira__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Estrutura dianteira",
+        "Longarina dianteira"
+      ],
+      "codes": [
+        "longarina_dianteira__motorista",
+        "longarina_dianteira__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Estrutura traseira",
+        "Longarina traseira"
+      ],
+      "codes": [
+        "longarina_traseira__motorista",
+        "longarina_traseira__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Iluminação dianteira",
+        "Moldura do farol de milha"
+      ],
+      "codes": [
+        "moldura_farol_milha__motorista",
+        "moldura_farol_milha__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Traseira",
+        "Complementos traseiros",
+        "Ponteira do para-choque traseiro"
+      ],
+      "codes": [
+        "ponteira_para_choque_traseiro__motorista",
+        "ponteira_para_choque_traseiro__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Topo",
+        "Acessórios do teto",
+        "Rack de teto"
+      ],
+      "codes": [
+        "rack_teto__motorista",
+        "rack_teto__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Frente",
+        "Sensor de estacionamento"
+      ],
+      "codes": [
+        "sensor_estacionamento_dianteiro__motorista",
+        "sensor_estacionamento_dianteiro__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Traseira",
+        "Sensor de estacionamento"
+      ],
+      "codes": [
+        "sensor_estacionamento_traseiro__motorista",
+        "sensor_estacionamento_traseiro__passageiro"
+      ],
+      "axis": "Lado"
+    },
+    {
+      "path": [
+        "Motorista",
+        "Roda"
+      ],
+      "codes": [
+        "roda_dianteira__motorista",
+        "roda_traseira__motorista"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Motorista",
+        "Pinça de freio"
+      ],
+      "codes": [
+        "pinca_freio_dianteira__motorista",
+        "pinca_freio_traseira__motorista"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Motorista",
+        "Caixa de roda"
+      ],
+      "codes": [
+        "caixa_roda_dianteira__motorista",
+        "caixa_roda_traseira__motorista"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Motorista",
+        "Para-barro"
+      ],
+      "codes": [
+        "para_barro_dianteiro__motorista",
+        "para_barro_traseiro__motorista"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Passageiro",
+        "Roda"
+      ],
+      "codes": [
+        "roda_dianteira__passageiro",
+        "roda_traseira__passageiro"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Passageiro",
+        "Pinça de freio"
+      ],
+      "codes": [
+        "pinca_freio_dianteira__passageiro",
+        "pinca_freio_traseira__passageiro"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Passageiro",
+        "Caixa de roda"
+      ],
+      "codes": [
+        "caixa_roda_dianteira__passageiro",
+        "caixa_roda_traseira__passageiro"
+      ],
+      "axis": "Posição"
+    },
+    {
+      "path": [
+        "Passageiro",
+        "Para-barro"
+      ],
+      "codes": [
+        "para_barro_dianteiro__passageiro",
+        "para_barro_traseiro__passageiro"
+      ],
+      "axis": "Posição"
+    }
+  ]
+}

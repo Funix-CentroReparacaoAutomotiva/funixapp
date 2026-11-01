@@ -1,0 +1,30 @@
+{
+  "base": "857cbcda0c34d6660eac0c6098d545d5aa814d07",
+  "scope": "Issue31 Etapa4 M01-M24",
+  "synthetic": true,
+  "nodeTests": 178,
+  "deployScriptTests": 23,
+  "mapBrowserGroups": 9,
+  "regressionBrowserGroups": 163,
+  "totalBrowserGroups": 172,
+  "devices": [
+    "1440x1000",
+    "390x844",
+    "320x568"
+  ],
+  "canonicalCodesPerDevice": 163,
+  "layersPerDevice": 57,
+  "pairsPerDevice": 23,
+  "totalMeasuredLayers": 171,
+  "totalPairOperations": 69,
+  "minimumTargetDimension": 44,
+  "labelFontPx": 11,
+  "collisionTolerancePx": 0.05,
+  "collisions": 0,
+  "labelOverflow": 0,
+  "screenshots": 36,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false,
+  "ci": "Não disparada; branch de integração sem PR."
+}

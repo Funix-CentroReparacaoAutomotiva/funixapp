@@ -44,6 +44,8 @@ O App não consulta/cria clientes, veículos, entidades ou pagadores Coda; não 
 
 ## Engenharia e validação
 
+Autorização vigente Issue #31 Etapa 4/6, base `857cbcda0c34d6660eac0c6098d545d5aa814d07`, branch integrada. Somente M01–M24: círculos em todos os níveis, 13 categorias laterais diretas, 163 caminhos canônicos e 23 pares reais. PR27 subordinado à Issue31: grade/lista proibidas, interromper se geometria e legibilidade forem incompatíveis. Preservar Etapas2/3, fila/remoção global, motor, catálogos, banco, migrações, rodapé/Copiloto. QA desktop/390/320 com colisões/alvos e regressões2/3; publicar relatório/commit na Issue e parar antes da Etapa5. Sem merge/deploy.
+
 Autorização vigente Issue #31 Etapa 3/6, base `ef5c4b1f748c3d5491e070e01a15cef9b5da3acf`, mesma branch integrada. Somente E01–E09/C05–C06: editor/toggles/linha de ações/vazios/Voltar, bottom sheet de seleção funcional e estados completos/incompletos/configuração/erro. Preservar contratos e testes da Etapa2, seleção global versus flags, confirmações, autosave/ack/reconciliação, motor/MR/catálogos e histórico. Sem reorganizar Mapa circular ou rodapé/Copiloto, Etapas4/5, importar dados, migrações, infraestrutura, merge/deploy. Testes locais sintéticos desktop/390/320 e relatório/commit na Issue antes de Etapa4. Esta autorização supera a restrição anterior de não iniciar Etapa3, mantendo o restante.
 
 

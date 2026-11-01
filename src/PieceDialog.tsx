@@ -13,7 +13,7 @@ export function PieceDialog({ children, busy, onClose, returnFocus }: {
     dialog.querySelector<HTMLElement>('[data-initial-focus]')?.focus()
     return () => { dialog.close(); returnFocus() }
   }, [returnFocus])
-  return <dialog ref={ref} className="map-piece-dialog" aria-label="Selecionar peça no mapa"
+  return <dialog ref={ref} className="map-piece-dialog canonical-map" aria-label="Selecionar peça no mapa"
     onCancel={event => { event.preventDefault(); if (!busy) onClose() }}
     onKeyDown={event => {
       if (event.key !== 'Tab') return
