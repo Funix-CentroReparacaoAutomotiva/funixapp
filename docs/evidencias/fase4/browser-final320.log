@@ -1,0 +1,11 @@
+PASS mobile320: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS mobile320: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS mobile320: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS mobile320: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS mobile320: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS mobile320: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS mobile320: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS mobile320: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS mobile320: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS mobile320: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS mobile320: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
