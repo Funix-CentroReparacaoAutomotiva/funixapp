@@ -202,6 +202,15 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       CHECK((status='valid' AND reason IS NULL) OR (status='pending' AND reason IS NOT NULL))
     );
     CREATE INDEX recommendations_lookup ON diagnosis_recommendations(diagnosis_id,intensity,status);
+  `)},
+  {version:10,apply:db=>db.exec(`
+    ALTER TABLE diagnosis_services ADD COLUMN recommendation_rule_id TEXT REFERENCES diagnosis_recommendations(id) ON DELETE RESTRICT;
+    CREATE TABLE recommendation_applications (
+      piece_id TEXT NOT NULL REFERENCES diagnosis_items(id) ON DELETE CASCADE,
+      scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+      request_key TEXT NOT NULL, request_hash TEXT NOT NULL, result TEXT NOT NULL,
+      PRIMARY KEY(piece_id,scenario_id,request_key)
+    );
   `)}
 ]
 

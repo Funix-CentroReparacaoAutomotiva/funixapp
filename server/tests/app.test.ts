@@ -394,3 +394,15 @@ test('Fase3 authenticated intensity persistence and read-only recommendation loo
   const again=await app.request('/api/atendimentos/'+f.at.id+'/cenarios',{headers:{Cookie:cookie}});assert.equal((await again.json()).items[0].intensity,'leve')
  }finally{app.close()}
 })
+
+test('Fase4 recommendation batch endpoint enforces session/origin/JSON/revisions and replays the same verified receipt without duplicates',async()=>{
+ const app=start()
+ try{
+  const{fase4Fixture}=await import('./fixtures/fase4.ts'),f=fase4Fixture(app.db),p=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,diagnosisId:f.diagnosis.id,intensity:'leve'}),s=f.scenarios.list(f.at.id)[0]!,path='/api/atendimentos/'+f.at.id+'/diagnosticos/'+p.id+'/recomendacoes',input={revision:p.revision,scenarioId:s.id,scenarioRevision:s.revision,diagnosisId:p.diagnosisId,intensity:p.intensity,mode:'automatic',idempotencyKey:'fase4-api-stable-key'}
+  assert.equal((await app.write(path,'POST',input,'')).status,401);const cookie=await authenticate(app);assert.equal((await app.write(path,'POST',input,cookie,'https://invalid.example')).status,403);assert.equal((await app.request(path,{headers:{Cookie:cookie}})).status,405)
+  assert.equal((await app.write(path,'POST',{...input,revision:input.revision-1},cookie)).status,409)
+  for(const mode of[['automatic'],null,true,'other'])assert.equal((await app.write(path,'POST',{...input,mode},cookie)).status,400)
+  const saved=await app.write(path,'POST',input,cookie);assert.equal(saved.status,200);const ack=await saved.json();assert.equal(ack.created.length,6);assert.equal(ack.idempotencyKey,input.idempotencyKey);assert.equal(ack.item.services.length,6)
+  const replay=await app.write(path,'POST',input,cookie);assert.equal(replay.status,200);assert.deepEqual(await replay.json(),ack);assert.equal(f.commercial.list(f.at.id)[0]!.services.length,6)
+ }finally{app.close()}
+})

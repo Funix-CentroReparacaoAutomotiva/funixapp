@@ -21,3 +21,14 @@
 .detail-header .diagnosis-note-slot .plain-action{display:grid;place-items:center;width:44px;height:44px;padding:4px;border:0;background:transparent;color:#d9e4f4;cursor:pointer}
 .detail-header .diagnosis-note-slot .icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85}
 @media(max-width:400px){.approved-editor .diagnosis-actions{grid-template-columns:36px minmax(0,1fr) minmax(100px,.7fr);gap:4px}.approved-editor .diagnosis-actions>.piece-toggle{width:36px}.approved-editor .diagnosis-actions .top-select select{padding-left:9px;padding-right:22px}}
+
+/* Fase 4: only recommendation controls in Services; fieldsets do not change geometry. */
+.approved-editor .recommendation-guard{border:0;margin:0;padding:0;min-width:0}
+.approved-editor .suggestion-controls{margin:-2px 0 12px;min-width:0;font-size:12px}
+.approved-editor .suggestion-link{border:0;background:transparent;color:#315a84;text-decoration:underline;padding:4px 0;min-height:32px;cursor:pointer}
+.approved-editor .suggestion-list{border:1px solid #d7e0ec;border-radius:10px;padding:9px;margin-top:4px;overflow-wrap:anywhere}
+.approved-editor .suggestion-list p{margin:4px 0 8px}
+.approved-editor .suggestion-option{display:flex;gap:8px;align-items:center;min-height:44px;margin:0 0 6px}
+.approved-editor .suggestion-option input{width:18px;height:18px;flex:none}.approved-editor .suggestion-option span{min-width:0}.approved-editor .suggestion-option strong,.approved-editor .suggestion-option small{display:block;font-weight:400}.approved-editor .suggestion-option small{color:#6e6e72;font-size:11px}
+.approved-editor .suggestion-list button{min-height:36px;max-width:100%;border:1px solid #c6d3e2;border-radius:8px;background:#f7faff;color:#315a84;padding:5px 10px}
+.approved-editor .suggestion-origin{display:block;color:#6e6e72;font-size:10px;margin:0 0 4px}

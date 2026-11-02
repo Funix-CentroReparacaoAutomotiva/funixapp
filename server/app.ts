@@ -1,3 +1,4 @@
+import{applySuggestedServices}from'./apply-recommendations.ts'
 import{recommendations}from'./diagnosis-recommendations.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
@@ -135,6 +136,13 @@ export function createRequestHandler(options: AppOptions) {
         if (globalPricing) return send(200,pricing.save(body))
         if (kind === 'parametros') return send(200,initializing?pricing.initializeSettings(at!,body):pricing.saveSettings(at!,body))
         return send(req.method === 'POST' ? 201 : 200,req.method === 'DELETE' ? components.remove(at!,id!,body) : req.headers['x-funix-include-revision']==='1'?components.save(at!,body,id,true):components.save(at!,body,id))
+      }
+      const applyRoute=/^\/api\/atendimentos\/([^/]{1,100})\/diagnosticos\/([^/]{1,100})\/recomendacoes$/.exec(url.pathname)
+      if(applyRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        return send(200,applySuggestedServices(options.atendimentos.db,applyRoute[1]!,applyRoute[2]!,await readJson(req,64*1024)))
       }
       const confirmationRoute=/^\/api\/atendimentos\/([^/]{1,100})\/cenarios\/([^/]{1,100})\/servicos\/([^/]{1,100})\/confirmacao$/.exec(url.pathname)
       if(confirmationRoute){

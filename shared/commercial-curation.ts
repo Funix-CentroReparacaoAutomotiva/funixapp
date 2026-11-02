@@ -30,3 +30,10 @@ export function executionScope(line:{serviceId:string;dimensionId:string|null;qu
  const quantity=line.quantity.includes('.')?line.quantity.replace(/0+$/,'').replace(/\.$/,''):line.quantity
  return JSON.stringify([CURATION_VERSION,servicePolicy(line.serviceId),line.serviceId,line.dimensionId,quantity])
 }
+
+// Fase 4 approved operational order; stable catalog identities, never names/factors.
+const recommendationOrder=['i-vmJ3Org23i','i-q8IL0mnuIJ','i-XDTMBmueos','i-SW0n7TLbtf','i-6tWzUWof8c'].map(codaServiceId)
+export function compareRecommendations(a:{serviceId:string;id:string},b:{serviceId:string;id:string}){
+ const rank=(id:string)=>{const n=recommendationOrder.indexOf(id);return n<0?recommendationOrder.length:n}
+ return rank(a.serviceId)-rank(b.serviceId)||a.id.localeCompare(b.id)
+}
