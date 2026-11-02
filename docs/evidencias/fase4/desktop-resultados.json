@@ -1,0 +1,51 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+      "pass": true
+    },
+    {
+      "name": "desktop: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+      "pass": true
+    },
+    {
+      "name": "desktop: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+      "pass": true
+    },
+    {
+      "name": "desktop: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+      "pass": true
+    },
+    {
+      "name": "desktop: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+      "pass": true
+    },
+    {
+      "name": "desktop: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+      "pass": true
+    },
+    {
+      "name": "desktop: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+      "pass": true
+    },
+    {
+      "name": "desktop: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+      "pass": true
+    },
+    {
+      "name": "desktop: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+      "pass": true
+    },
+    {
+      "name": "desktop: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+      "pass": true
+    },
+    {
+      "name": "desktop: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

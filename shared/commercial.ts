@@ -20,7 +20,7 @@ export interface CatalogResponse {
   hierarchy: { versao: string; regioes: Record<string, HierarchyNode>; acesso_geral: HierarchyNode }
 }
 export interface DiagnosisService {
-  id: string; serviceId: string; dimensionId: string | null; quantity: string; enabled: boolean; executionConfirmed?: boolean; notes?: string; diagnosisId?: string | null
+  id: string; serviceId: string; dimensionId: string | null; quantity: string; enabled: boolean; executionConfirmed?: boolean; recommendationRuleId?:string|null; notes?: string; diagnosisId?: string | null
 }
 export const DIAGNOSIS_INTENSITIES=['leve','moderado','severo']as const
 export type DiagnosisIntensity=typeof DIAGNOSIS_INTENSITIES[number]
@@ -52,4 +52,13 @@ export interface PieceRemoval {
   pieces:{id:string;revision:number}[]
   compositionRevision:number
   scenarios:{id:string;revision:number}[]
+}
+
+export interface RecommendationApplicationRequest {
+ revision:number;scenarioId:string;scenarioRevision:number;diagnosisId:string;intensity:DiagnosisIntensity;
+ mode:'automatic'|'assisted';ruleIds?:string[];idempotencyKey:string
+}
+export interface RecommendationApplication extends CommercialSave<DiagnosisItem>{
+ idempotencyKey:string;created:{lineId:string;ruleId:string}[];
+ skipped:{ruleId:string;reason:string}[];notEmpty:boolean
 }

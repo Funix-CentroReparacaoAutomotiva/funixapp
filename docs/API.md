@@ -233,3 +233,29 @@ Contrato local normalizado, conferido com `funix-fase3-regras-importacao-v9.json
 Exemplo estrutural, não dados para carga. IDs FUNIX seguem `sourceId(tabela,rowId)` da importação anterior; são conferidos contra tabela/documento/tipo, sem associação por nome. Intensidades do arquivo podem vir com capitalização Leve/Moderado/Severo; são normalizadas exclusivamente para os três valores do enum. Seleção padrão precisa ser boolean. O original não é modificado. Se seu formato real divergir, a carga deve parar para adaptar/testar somente a leitura, sem deduzir relações.
 
 Compatibilidade: o importador comercial atualizado aceita V8 **ou** V9 com histórico contínuo e não altera a tabela de recomendações. Continua sem migrar o alvo. O importador anterior mantém seu bloqueio exatamente V8 e não deve ser usado sobre V9. A API V8 também recusa banco futuro V9: eventual recuperação exige a combinação compatível de imagem e banco, não apenas trocar a imagem.
+
+## Fase 4 — aplicação de serviços sugeridos (V10)
+
+Decisão posterior da direção, base `b0995ae5795719f7ebbe853a44f166a7becda65f`: após uma escolha de diagnóstico/intensidade ser persistida, uma peça realmente sem serviços **e** componentes pode receber a composição inicial automaticamente. Abrir/recarregar não gera esse comando; peça vazia já salva oferece aplicação explícita. Com qualquer serviço/componente, somente consulta/aplicação assistida por escolha do operador. Ausência de diagnóstico/intensidade, inclusive Cuidados operacionais sem intensidade, não inventa dados.
+
+`POST /api/atendimentos/:at/diagnosticos/:piece/recomendacoes` usa a sessão, Origin e JSON existentes. Corpo:
+
+```ts
+{
+  revision: number; scenarioId: string; scenarioRevision: number;
+  diagnosisId: string; intensity: 'leve'|'moderado'|'severo';
+  mode: 'automatic'|'assisted'; ruleIds?: string[]; idempotencyKey: string
+}
+```
+
+`automatic` reconsulta todas as regras da combinação e exige ausência de serviços/componentes. Se já houver conteúdo, devolve `notEmpty:true` e nenhuma linha é inserida. `assisted` exige a lista explícita de IDs únicos; inclui somente regras válidas/ativas, autorizadas pela curadoria e cujo serviço ainda não existe na peça. Não cria segunda linha de um serviço existente, mesmo com dimensão diferente; a edição manual continua aceitando repetições conscientes. Regras não disponíveis são reportadas como `NOT_AVAILABLE`; curadoria negada como `CURATION_BLOCKED`; existentes como `ALREADY_PRESENT`. Esses casos não impedem as outras regras elegíveis. Pendências de origem jamais são recuperadas por aproximação.
+
+Transação verifica Atendimento/peça/cenário, revisões e combinação, revalida política/referências, calcula a quantidade de linhas antes de gravar e insere tudo ou nada. Mais de 50 linhas resulta em 422 `RECOMMENDATION_LIMIT`, sem inserção parcial. Novas linhas usam quantidade textual `"1"`, dimensão exata da regra e flags iniciais de `selectedByDefault` **somente no cenário solicitado**; demais cenários começam false. Componentes, peça pai, linhas existentes e suas flags/confirmações não são alterados. Terceiros permanecem sem confirmação até ação explícita de contratação/execução.
+
+Prioridade por IDs estáveis: Montagem → Funilaria → Pintura → Degradê → Alinhamento → Outros. Novas linhas são anexadas nessa ordem; a ordem manual anterior é preservada. Sem decisão inequívoca entre várias dimensões do mesmo serviço ausente, o automático reporta `CHOOSE_DIMENSION` em vez de escolher por nome/ordem; o assistido permite uma escolha explícita por serviço. Escolher uma recomendação opcional significa incluí-la na composição; sua flag inicial continua false, identificada como tal na lista e editável pelo toggle existente.
+
+Retorno `RecommendationApplication`: `{item,scenarioRevision,idempotencyKey,created:[{lineId,ruleId}],skipped:[{ruleId,reason}],notEmpty}`. A confirmação é conferida contra o workspace atual antes de adotar os dados. Resposta perdida/ilegível ou conflito preserva a intenção, bloqueia os controles da operação e exige leitura antes de repetir o mesmo corpo/chave; alterações concorrentes após ACK também impedem adoção silenciosa. Carregar versão salva é uma ação explícita de recuperação.
+
+V10 é estritamente aditiva: `diagnosis_services.recommendation_rule_id` nullable/FK e `recommendation_applications` para recibos por peça/cenário/chave. Mesma chave/corpo retorna o recibo original sem recriar/excluir/habilitar linhas, inclusive se o operador já ajustou ou removeu as sugestões. Mesma chave com outro corpo é conflito. Origem é somente leitura para o cliente: PATCH manual não pode forjá-la; editar uma linha preserva a origem histórica da sua criação. Novos snapshots podem contê-la; versões/PDFs existentes não são recalculados.
+
+Importador comercial atualizado aceita V8/V9/V10; importador de recomendações aceita V9/V10, sempre com histórico contínuo e sem aplicar migrações no alvo. Nenhum catálogo/regra é importado pelo startup ou pela aplicação de serviços. Migração V9→V10 preserva as relações já instaladas. Ferramentas/imagens antigas que recusam o esquema novo exigem banco compatível para rollback.

@@ -60,6 +60,7 @@ async def run():
    await h.restart_api();await ctx.close()
    ctx=await browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True);await h.watch(ctx)
    page=await ctx.new_page();await h.attach(page);await page.goto(ORIGIN+'/atendimentos/'+at['id']+'?aba=diagnosticos');await h.login(page)
+   await expect(page.locator('.scenario-trigger')).to_be_visible()
    await compare(page)
    matrix=page.get_by_role('region',name='Matriz de cenários')
    await expect(matrix.locator('tbody tr')).to_have_count(3)
