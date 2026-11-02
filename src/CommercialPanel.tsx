@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, useEffectEvent } from 'react'
-import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
+import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisIntensity, RecommendationApplication, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
 import { catalogItemUsable as usable, scenarioLabel } from '../shared/commercial'
 import { api } from './api'
 import type { RequestFailure } from './api'
@@ -73,7 +73,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [editorBusy,setEditorBusy]=useState(false),[financeBusy,setFinanceBusy]=useState(false)
   const baseBusy=localBusy||editorBusy||financeBusy
   const [pendingBack,setPendingBack]=useState(false)
-  const [mapEditor,setMapEditor]=useState<{code:string;scenario:string}|null>(null)
+  const [quick,setQuick]=useState<{code:string;scenario:string;diagnosis:string;intensity:DiagnosisIntensity|null}|null>(null)
+  const [quickBusy,setQuickBusy]=useState(false),[quickError,setQuickError]=useState('')
   const [revealedPiece,setRevealedPiece]=useState<string|null>(null),[swipeContext,setSwipeContext]=useState('')
   const [removal,setRemoval]=useState<RemovalReview|null>(null)
   const removalAnswer=useRef<((answer:boolean)=>void)|null>(null)
@@ -145,7 +146,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     try { await operation(); return true } catch (cause) { failed(cause); return false }
     finally { mutationInFlight.current = false; setBusy(false) }
   }
-  function discardContext() {setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);setMapEditor(null);onDirty(false)}
+  function discardContext() {setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);setQuick(null);onDirty(false)}
   function canChangeScenario() {return !busy && (!(managerDirty || negotiationDirty) || window.confirm('Há alterações não salvas de diagnóstico, configuração ou negociação. Deseja descartá-las para trocar de cenário?'))}
   async function chooseScenario(id:string) {
     if(id===scenarioId && !scenarioGone)return true
@@ -202,38 +203,55 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       setMessage(managerDirty ? 'Dados atualizados. Os campos em edição foram preservados; confira antes de salvar.' : 'Dados atualizados. Confira os itens antes de adicionar novamente.')
     }, true)
   }
-  useEffect(()=>{
-    if(!mapEditor)return
-    const interrupt=()=>setMapEditor(null)
-    window.addEventListener('blur',interrupt);document.addEventListener('visibilitychange',interrupt)
-    return()=>{window.removeEventListener('blur',interrupt);document.removeEventListener('visibilitychange',interrupt)}
-  },[mapEditor])
-  const openConfirmedMapEditor=useEffectEvent(()=>{
-    if(!mapEditor)return
-    if(tab!=='mapa'||screen||!selecting||mapEditor.scenario!==scenarioId||pieceLocked){setMapEditor(null);return}
-    if(selectionState.phase!=='idle')return
-    const item=workspace?.items.find(p=>p.pieceId===pieceIdentities.get(mapEditor.code))
-    if(!item)return
-    setMapEditor(null)
-    if(onView('peca',item.id)){setSelecting(false);setMessage('')}
-  })
-  useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)openConfirmedMapEditor()});return()=>{active=false}},[mapEditor,tab,screen,selecting,scenarioId,pieceLocked,selectionState.phase,workspace,pieceIdentities])
+  // The long-press interaction is local to the map. Do not route to the full editor.
   function mapPiece(codes:string[],open=false){
     if(!workspace||pieceLocked||mutationInFlight.current||!codes.length)return
-    setMapEditor(null)
     const missing=codes.filter(code=>!workspace.items.some(p=>p.pieceId===pieceIdentities.get(code)))
-    // Ambos is additive only: never pick an arbitrary editor or change existing masks.
     if(codes.length>1){if(missing.length)select(missing,true);return}
     const code=codes[0]!,existing=workspace.items.find(p=>p.pieceId===pieceIdentities.get(code))
+    if(open){setQuickError('');setQuick({code,scenario:scenarioId,diagnosis:existing?.diagnosisId??'',intensity:existing?.intensity??null});return}
     if(existing&&selectionQueue.status==='idle'){
       if(onView('peca',existing.id)){setSelecting(false);setMessage('')}
-    }else{
-      if(open||existing)setMapEditor({code,scenario:scenarioId})
-      if(!existing)select([code],true)
-    }
+    }else if(!existing)select([code],true)
   }
+  async function confirmQuick(){
+    const state=quick
+    if(!state||!workspace||quickBusy||busy||pieceLocked)return
+    if(!state.diagnosis||!state.intensity){setQuickError('Selecione diagnóstico e intensidade.');return}
+    setQuickBusy(true);setQuickError('')
+    const base='/api/atendimentos/'+atendimentoId
+    try{
+      if(state.scenario!==scenarioId||tab!=='mapa'||!selecting)throw Error('Contexto alterado. Reabra a peça.')
+      let latest=workspace
+      let current=latest.items.find(p=>p.pieceId===pieceIdentities.get(state.code))
+      if(!current){
+        await api<DiagnosisItem[]>(base+'/diagnosticos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pieceCodes:[state.code],scenarioId:state.scenario,scenarioRevision:latest.scenarios.find(s=>s.id===state.scenario)?.revision})})
+        latest=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(state.scenario))
+        current=latest.items.find(p=>p.pieceId===pieceIdentities.get(state.code))
+        if(!current)throw Error('Não foi possível confirmar a inclusão. Atualize os dados.')
+      }
+      const changed=current.diagnosisId!==state.diagnosis||current.intensity!==state.intensity
+      if(changed){
+        const ack=await api<{item:DiagnosisItem;scenarioRevision:number}>(base+'/diagnosticos/'+current.id,{method:'PATCH',headers:{'Content-Type':'application/json','X-Funix-Include-Revision':'1'},body:JSON.stringify({revision:current.revision,scenarioId:state.scenario,scenarioRevision:latest.scenarios.find(s=>s.id===state.scenario)?.revision,diagnosisId:state.diagnosis,intensity:state.intensity})})
+        current=ack.item
+        latest=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(state.scenario))
+      }
+      // Apply the existing Phase 4 suggestions only after a confirmed new diagnosis.
+      if(changed&&!current.services.length&&!latest.components.some(p=>p.pieceId===current.id)){
+        await api<RecommendationApplication>(base+'/diagnosticos/'+current.id+'/recomendacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision,scenarioId:state.scenario,scenarioRevision:latest.scenarios.find(s=>s.id===state.scenario)?.revision,diagnosisId:state.diagnosis,intensity:state.intensity,mode:'automatic',idempotencyKey:crypto.randomUUID()})})
+      }
+      const refreshed=await api<CommercialWorkspace>(base+'/cenarios?scenarioId='+encodeURIComponent(state.scenario))
+      acceptWorkspace(refreshed,state.scenario)
+      setQuick(null);setMessage('Diagnóstico registrado.')
+    }catch(cause){
+      setQuickError((cause as Error).message+' Confira os dados salvos antes de tentar novamente.')
+      setRefreshNeeded(true)
+    }finally{setQuickBusy(false)}
+  }
+  useEffect(()=>{if(!quick)return;const interrupted=()=>{if(!quickBusy)setQuick(null)};window.addEventListener('blur',interrupted);return()=>window.removeEventListener('blur',interrupted)},[quick,quickBusy])
+  useEffect(()=>{if(quick&&(tab!=='mapa'||Boolean(screen)||!selecting||quick.scenario!==scenarioId)&&!quickBusy)setQuick(null)},[tab,screen,selecting,scenarioId,quick,quickBusy])
   function showNode(node: HierarchyNode) {
-    if (node.tipo === 'grupo' || node.tipo === 'grupo_lados') { setMapEditor(null);setPath(previous => [...previous, node]); setQuery(''); setDiscPage(0); return }
+    if (node.tipo === 'grupo' || node.tipo === 'grupo_lados') { setQuick(null);setPath(previous => [...previous, node]); setQuery(''); setDiscPage(0); return }
     const codes = node.tipo === 'acao_ambos' ? node.gera_codigos_peca! : node.codigo_peca ? [node.codigo_peca] : []
     if(codes.length){if(tab==='mapa')mapPiece(codes);else select(codes)}
   }
@@ -331,7 +349,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const visibleNodes=page.nodes
   function openRegion(region: string) {
     const node=geographicRoots.find(r=>r.id===region)
-    if(node){setMapEditor(null);mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
+    if(node){setQuick(null);mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
   }
   const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onArchive={()=>onView('orcamentos')} onCompare={()=>onView('comparacao')}/>
   return <div className="commercial-workspace">{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
@@ -347,15 +365,24 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region')
             if (region) openRegion(region)
           }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region'); if (region) { event.preventDefault(); openRegion(region) } } }} dangerouslySetInnerHTML={{ __html: mapMarkup }} />
-          {mapSelecting && <PieceDialog closeOutsideDisk busy={baseBusy} onClose={() => {setMapEditor(null);setSelecting(false)}} returnFocus={returnMapFocus}>
+          {mapSelecting && <PieceDialog closeOutsideDisk busy={baseBusy} onClose={() => {setQuick(null);setSelecting(false)}} returnFocus={returnMapFocus}>
             
             {feedback}
             <div className="disc-wrap" data-region-key={regionKey} data-depth={path.length}>
               <strong className="disc-name">{path.at(-1)?.nome??'Regiões'}</strong>
               <div className="disc-ring piece-options" data-count={visibleNodes.length}>{visibleNodes.map(node=>option(node,true))}</div>
-              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length>1?'Voltar ao nível anterior':'Fechar seleção central'} onClick={()=>{setMapEditor(null);if(path.length>1){setPath(p=>p.slice(0,-1));setDiscPage(0)}else setSelecting(false)}}>{path.length>1?'←':'×'}</button>
+              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length>1?'Voltar ao nível anterior':'Fechar seleção central'} onClick={()=>{if(quick||quickBusy)return;if(path.length>1){setPath(p=>p.slice(0,-1));setDiscPage(0)}else setSelecting(false)}}>{path.length>1?'←':'×'}</button>
             </div>
-            {page.pages>1&&<button className="disc-more" disabled={baseBusy} onClick={()=>{setMapEditor(null);setDiscPage((page.page+1)%page.pages)}}>{page.page+1<page.pages?'Ver mais opções':'Voltar ao início'}</button>}
+            {quick&&<section className="map-quick-shade" role="dialog" aria-label="Diagnóstico rápido" aria-modal="true" onClick={e=>e.stopPropagation()}>
+              <div className="map-quick-card">
+                <h2>{byCode(quick.code)?.name??'Peça'}</h2>
+                <label>Diagnóstico<select autoFocus aria-label="Diagnóstico rápido" value={quick.diagnosis} disabled={quickBusy} onChange={e=>setQuick(q=>q?{...q,diagnosis:e.target.value}:q)}><option value="">Selecionar…</option>{catalog.items.filter(item=>item.kind==='diagnostico'&&(item.active||item.id===quick.diagnosis)).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+                <label>Intensidade<select aria-label="Intensidade rápida" value={quick.intensity??''} disabled={quickBusy} onChange={e=>setQuick(q=>q?{...q,intensity:e.target.value?e.target.value as DiagnosisIntensity:null}:q)}><option value="">Selecionar…</option><option value="leve">Leve</option><option value="moderado">Moderado</option><option value="severo">Severo</option></select></label>
+                {quickError&&<p role="alert">{quickError}</p>}
+                <div className="map-quick-actions"><button type="button" disabled={quickBusy} onClick={()=>{setQuick(null);setQuickError('')}}>Cancelar</button><button type="button" disabled={quickBusy||!quick.diagnosis||!quick.intensity||refreshNeeded} onClick={()=>void confirmQuick()}>{quickBusy?'Salvando…':'Confirmar'}</button></div>
+              </div>
+            </section>}
+            {page.pages>1&&<button className="disc-more" disabled={baseBusy} onClick={()=>{setQuick(null);setDiscPage((page.page+1)%page.pages)}}>{page.page+1<page.pages?'Ver mais opções':'Voltar ao início'}</button>}
           </PieceDialog>}
         </div> : <>
           <div className="diagnosis-heading"><h1>Diagnósticos</h1><span>{items.length} peça{items.length !== 1 ? 's' : ''}</span></div>
