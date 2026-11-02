@@ -1,0 +1,68 @@
+{
+  "synthetic": true,
+  "device": "desktop",
+  "results": [
+    {
+      "name": "desktop: short touch opens present enabled/disabled masters, including a piece enabled only in another scenario, without writes or changed flags",
+      "pass": true
+    },
+    {
+      "name": "desktop: absent short tap adds once and stays in map; long press on existing opens once without follow-up click, other scenario disabled",
+      "pass": true
+    },
+    {
+      "name": "desktop: new long press waits for confirmed POST+GET before routing; slow network creates exactly one master and no stale short-click mutation",
+      "pass": true
+    },
+    {
+      "name": "desktop: drag, touchCancel and window interruption cancel long press; Shift+Enter adds/opens and right mouse click opens existing without duplicate activation",
+      "pass": true
+    },
+    {
+      "name": "desktop: Ambos adds exactly two real codes, repeated tap/hold never disables, deletes, duplicates or opens an arbitrary editor",
+      "pass": true
+    },
+    {
+      "name": "desktop: committed add response lost blocks navigation; explicit read-first recovery confirms master once and requires a fresh tap to edit",
+      "pass": true
+    },
+    {
+      "name": "desktop: genuine revision conflict cancels pending editor shortcut; explicit recovery preserves concurrent flags and adds only missing master",
+      "pass": true
+    },
+    {
+      "name": "desktop: pre-delivery network failure leaves no partial master; explicit recovery safely includes once and cancels stale long-press routing",
+      "pass": true
+    },
+    {
+      "name": "desktop: a fresh short selection interrupts an earlier pending long-press route; serial writes confirm both masters once and stay in map",
+      "pass": true
+    },
+    {
+      "name": "desktop: window interruption after request dispatch cancels pending editor routing, without discarding the confirmed addition",
+      "pass": true
+    },
+    {
+      "name": "desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions",
+      "pass": true
+    },
+    {
+      "name": "desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs",
+      "pass": true
+    },
+    {
+      "name": "desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working",
+      "pass": true
+    },
+    {
+      "name": "desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history",
+      "pass": true
+    },
+    {
+      "name": "desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

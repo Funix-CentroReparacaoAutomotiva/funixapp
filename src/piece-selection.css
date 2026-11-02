@@ -28,3 +28,13 @@
 .diagnosis-list .piece-delete{display:flex;align-items:center;justify-content:center;width:32px;min-height:44px;padding:5px;border:0;background:transparent;color:#75849b}
 .diagnosis-list .piece-delete svg{width:16px;height:16px}
 .diagnosis-list .piece-delete:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+
+/* Fase 5: the existing row stays unchanged until a deliberate right swipe. */
+.diagnosis-swipe-shell{position:relative;overflow:hidden;touch-action:pan-y}
+.diagnosis-swipe-shell .diagnosis-row{width:100%;transition:transform .16s ease,width .16s ease;background:#fff}
+.diagnosis-swipe-shell .diagnosis-open{touch-action:pan-y}
+.diagnosis-swipe-shell[data-revealed=true] .diagnosis-row{transform:translateX(64px);width:calc(100% - 64px)}
+.diagnosis-swipe-shell .swipe-delete{position:absolute;inset:0 auto 0 0;width:64px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;background:#fbe7e7;color:#9b3030;border:0;font-size:10px;visibility:hidden}
+.diagnosis-swipe-shell[data-revealed=true] .swipe-delete{visibility:visible}
+.diagnosis-swipe-shell .swipe-delete svg{width:18px;height:18px}
+@media(prefers-reduced-motion:reduce){.diagnosis-swipe-shell .diagnosis-row{transition:none}}
