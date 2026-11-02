@@ -145,7 +145,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     try { await operation(); return true } catch (cause) { failed(cause); return false }
     finally { mutationInFlight.current = false; setBusy(false) }
   }
-  function discardContext() {setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);onDirty(false)}
+  function discardContext() {setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);setMapEditor(null);onDirty(false)}
   function canChangeScenario() {return !busy && (!(managerDirty || negotiationDirty) || window.confirm('Há alterações não salvas de diagnóstico, configuração ou negociação. Deseja descartá-las para trocar de cenário?'))}
   async function chooseScenario(id:string) {
     if(id===scenarioId && !scenarioGone)return true
@@ -331,7 +331,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const visibleNodes=page.nodes
   function openRegion(region: string) {
     const node=geographicRoots.find(r=>r.id===region)
-    if(node){mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
+    if(node){setMapEditor(null);mapOpener.current=`[data-region="${region}"]`;setRegionKey(region);setPath([node]);setQuery('');setDiscPage(0);setSelecting(true)}
   }
   const scenarioControl=<ScenarioMenu scenarios={scenarios} selected={scenarioId} busy={busy || refreshNeeded} comparing={matrix} onSelect={chooseScenario} onAdd={addScenario} onDelete={deleteScenario} onArchive={()=>onView('orcamentos')} onCompare={()=>onView('comparacao')}/>
   return <div className="commercial-workspace">{removal&&<RemovalConfirmation review={removal} onAnswer={answerRemoval}/>}{scenarioSlot && createPortal(scenarioControl,scenarioSlot)}{tab==='chat'&&!screen?<div className="chat-with-scenarios">{(failure || scenarioGone)&&<div className="chat-commercial-alert">{feedback}{scenarioGone&&<p role="alert">Cenário anterior excluído. Selecione um cenário no menu para continuar.</p>}</div>}{reauth&&<div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>setReauth(false)}/></div>}{chat}</div>:<div className={`detail-page commercial-page ${screen?'internal-page':''} ${tab === 'mapa' && !screen ? 'map-page' : ''}`}>
@@ -347,15 +347,15 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region')
             if (region) openRegion(region)
           }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region'); if (region) { event.preventDefault(); openRegion(region) } } }} dangerouslySetInnerHTML={{ __html: mapMarkup }} />
-          {mapSelecting && <PieceDialog busy={baseBusy} onClose={() => setSelecting(false)} returnFocus={returnMapFocus}>
-            <header className="map-selector-head"><button className="fh-filter" disabled={baseBusy} aria-label="Fechar seleção" onClick={()=>setSelecting(false)}>×</button></header>
+          {mapSelecting && <PieceDialog busy={baseBusy} onClose={() => {setMapEditor(null);setSelecting(false)}} returnFocus={returnMapFocus}>
+            <header className="map-selector-head"><button className="fh-filter" disabled={baseBusy} aria-label="Fechar seleção" onClick={()=>{setMapEditor(null);setSelecting(false)}}>×</button></header>
             {feedback}
             <div className="disc-wrap" data-region-key={regionKey} data-depth={path.length}>
               <strong className="disc-name">{path.at(-1)?.nome??'Regiões'}</strong>
               <div className="disc-ring piece-options" data-count={visibleNodes.length}>{visibleNodes.map(node=>option(node,true))}</div>
-              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length>1?'Voltar ao nível anterior':'Fechar seleção central'} onClick={()=>{if(path.length>1){setPath(p=>p.slice(0,-1));setDiscPage(0)}else setSelecting(false)}}>{path.length>1?'←':'×'}</button>
+              <button className="disc-center" data-initial-focus disabled={baseBusy} aria-label={path.length>1?'Voltar ao nível anterior':'Fechar seleção central'} onClick={()=>{setMapEditor(null);if(path.length>1){setPath(p=>p.slice(0,-1));setDiscPage(0)}else setSelecting(false)}}>{path.length>1?'←':'×'}</button>
             </div>
-            {page.pages>1&&<button className="disc-more" disabled={baseBusy} onClick={()=>setDiscPage((page.page+1)%page.pages)}>{page.page+1<page.pages?'Ver mais opções':'Voltar ao início'}</button>}
+            {page.pages>1&&<button className="disc-more" disabled={baseBusy} onClick={()=>{setMapEditor(null);setDiscPage((page.page+1)%page.pages)}}>{page.page+1<page.pages?'Ver mais opções':'Voltar ao início'}</button>}
           </PieceDialog>}
         </div> : <>
           <div className="diagnosis-heading"><h1>Diagnósticos</h1><span>{items.length} peça{items.length !== 1 ? 's' : ''}</span></div>
