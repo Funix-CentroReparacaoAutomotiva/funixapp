@@ -1,0 +1,27 @@
+PASS desktop: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS desktop: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS desktop: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS desktop: shared master intensity is independent of active/inactive scenario flags
+PASS desktop: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS desktop: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS desktop: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS desktop: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS desktop: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow
+PASS mobile390: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS mobile390: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS mobile390: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS mobile390: shared master intensity is independent of active/inactive scenario flags
+PASS mobile390: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS mobile390: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS mobile390: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS mobile390: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS mobile390: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow
+PASS mobile320: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS mobile320: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS mobile320: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS mobile320: shared master intensity is independent of active/inactive scenario flags
+PASS mobile320: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS mobile320: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS mobile320: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS mobile320: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS mobile320: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow

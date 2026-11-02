@@ -199,3 +199,37 @@ Decisão posterior da direção: novos Atendimentos recebem Tabela `Padrão`, FC
 - Esquema SQLite continua V8: parâmetros em `commercial_state.settings_json` e padrões em `pricing_configuration.data`; nenhuma tabela/migração nova.
 
 Esta seção substitui exclusivamente as orientações anteriores de seleção manual obrigatória de `mrId`; os demais contratos comerciais permanecem vigentes.
+
+## Fase 3 — intensidade mestre e regras de recomendação (V9)
+
+Decisão posterior da direção: cada `DiagnosisItem` acrescenta `intensity: 'leve'|'moderado'|'severo'|null`, compartilhada por todos os cenários como `diagnosisId`. O campo é opcional **apenas nos tipos de leitura histórica**; os registros atuais retornam null quando não informados. O PATCH de diagnóstico existente aceita `intensity`, valida o enum e preserva o valor quando omitido. Null é uma limpeza explícita. Não altera serviços, dimensões, quantidades, componentes ou máscaras automaticamente. Revisões e recuperação do editor continuam no fluxo existente. Novos snapshots incluem a intensidade na composição; snapshots/PDFs antigos não são reescritos.
+
+V9 acrescenta somente a coluna nullable/check de intensidade e `diagnosis_recommendations`. Não recria o banco. A nova tabela guarda ID estável de origem, tabela/linha Coda, diagnóstico, intensidade, serviço, dimensão, seleção padrão e status/reason da validação. FK aponta para o catálogo, não para Atendimentos. O par serviço–dimensão é conferido integralmente na carga e novamente na consulta; divergências são preservadas como `pending/DIMENSION_SERVICE_MISMATCH` e jamais retornadas como recomendações válidas. ID repetido, relação semântica duplicada, origem inválida, referência ausente ou alteração conflitante de regra existente impedem toda a gravação.
+
+`GET /api/recomendacoes?diagnosisId=ID&intensity=leve` usa a sessão autenticada existente, não grava e retorna `{items:[{id,sourceRowId,sourceTable,serviceId,dimensionId,selectedByDefault}]}`. Somente regras válidas, com cadastros ativos/identificados e dimensão pertencente ao serviço. Não filtra `selectedByDefault=false`. Consulta vazia não insere nada. Métodos de escrita são recusados. Consulta não promete calculabilidade, não substitui a curadoria comercial nem concede autorização de seleção/execução: esses contratos continuam nos endpoints existentes. Nenhuma lista de sugestões nem inclusão automática foi criada nesta fase.
+
+Carga administrativa: `node server/import-recommendations.ts --source ARQUIVO --database SQLITE_EXISTENTE` produz dry-run estritamente read-only; `--confirm-plan HASH` aplica o plano exato em transação, revalidando fonte e estado atual. O comando não carrega `.env`, não presume banco, não cria arquivo, não migra, não acessa rede nem roda no startup. Exige schema exatamente V9 e histórico contínuo. Relatório separa válidas, não selecionadas por padrão, pendências, conflitos, inserções e inalteradas. Repetição não duplica nem substitui regras. Mudanças de fonte/catálogo/regras invalidam o hash anterior. Pendências não são convertidas automaticamente em válidas quando a origem muda: divergência com registro existente exige revisão.
+
+Contrato local normalizado, conferido com `funix-fase3-regras-importacao-v9.json` (SHA-256 `bcc58f8242825cae68486a61b4cdb40751c80977f0c9c6a3424692a2490da8af`) em SQLite V9 isolado: 77 relações, 74 válidas, três pendências, 16 false e zero conflitos. Evidência em `docs/evidencias/fase3/validacao-fonte-real.json`. O exemplo abaixo permanece exclusivamente estrutural/sintético:
+
+```json
+{
+  "format": "funix-diagnosis-recommendations-v1",
+  "documentId": "2zsjI-nqWr",
+  "tableId": "grid-bfhEBGqPTC",
+  "rows": [
+    {
+      "id": "i-EXEMPLO-SINTETICO",
+      "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-DIAGNOSTICO-SINTETICO",
+      "intensity": "leve",
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-SERVICO-SINTETICO",
+      "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-DIMENSAO-SINTETICA",
+      "selectedByDefault": false
+    }
+  ]
+}
+```
+
+Exemplo estrutural, não dados para carga. IDs FUNIX seguem `sourceId(tabela,rowId)` da importação anterior; são conferidos contra tabela/documento/tipo, sem associação por nome. Intensidades do arquivo podem vir com capitalização Leve/Moderado/Severo; são normalizadas exclusivamente para os três valores do enum. Seleção padrão precisa ser boolean. O original não é modificado. Se seu formato real divergir, a carga deve parar para adaptar/testar somente a leitura, sem deduzir relações.
+
+Compatibilidade: o importador comercial atualizado aceita V8 **ou** V9 com histórico contínuo e não altera a tabela de recomendações. Continua sem migrar o alvo. O importador anterior mantém seu bloqueio exatamente V8 e não deve ser usado sobre V9. A API V8 também recusa banco futuro V9: eventual recuperação exige a combinação compatível de imagem e banco, não apenas trocar a imagem.

@@ -1,3 +1,5 @@
+import {DIAGNOSIS_INTENSITIES}from'../shared/commercial.ts'
+import type{DiagnosisIntensity}from'../shared/commercial.ts'
 import{newServiceSelectionIssue,servicePolicy,executionScope}from'../shared/commercial-curation.ts'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
@@ -88,7 +90,7 @@ export class CommercialRepository {
   }
   private diagnosis(row: Row, lines: Row[]): DiagnosisItem {
     const services = lines.map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled:s.scenario_enabled===1, notes:String(s.notes), diagnosisId:s.diagnosis_id===null?null:String(s.diagnosis_id), ...(servicePolicy(String(s.service_id))?.execution==='external_confirmation'?{executionConfirmed:s.execution_scope===executionScope({serviceId:String(s.service_id),dimensionId:s.dimension_id===null?null:String(s.dimension_id),quantity:String(s.quantity)})}:{}) }))
-    return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),notes:String(row.notes),enabled:row.scenario_enabled===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
+    return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),intensity:row.intensity==null?null:String(row.intensity)as DiagnosisIntensity,notes:String(row.notes),enabled:row.scenario_enabled===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
   }
   private getDiagnosis(atendimentoId: string, id: string, scenarioId?: string) {
     const selected=selectedScenario(this.db,atendimentoId,scenarioId)
@@ -122,13 +124,15 @@ export class CommercialRepository {
   updateDiagnosis(atendimentoId:string,id:string,input:unknown):DiagnosisItem
   updateDiagnosis(atendimentoId:string,id:string,input:unknown,withRevision:true):CommercialSave<DiagnosisItem>
   updateDiagnosis(atendimentoId:string,id:string,input:unknown,withRevision=false):DiagnosisItem|CommercialSave<DiagnosisItem> {
-    const data = object(input, ['revision','diagnosisId','notes','enabled','services','scenarioId','scenarioRevision'])
+    const data = object(input, ['revision','diagnosisId','intensity','notes','enabled','services','scenarioId','scenarioRevision'])
     const expected = revision(data.revision)
     return this.transaction(() => {
       const scenarioId = selectedScenario(this.db,atendimentoId,data.scenarioId,data.scenarioRevision)
       const old = this.getDiagnosis(atendimentoId, id,scenarioId)
       if (old.revision !== expected) conflict()
       const diagnosisId = data.diagnosisId === undefined ? old.diagnosisId : data.diagnosisId === null ? null : text(data.diagnosisId, 100, true)
+      const intensity=data.intensity===undefined?old.intensity??null:data.intensity
+      if(intensity!==null&&!DIAGNOSIS_INTENSITIES.includes(intensity as DiagnosisIntensity))invalid('Intensidade inválida.')
       const notes = data.notes === undefined ? old.notes : text(data.notes, 8000)
       const enabled = data.enabled === undefined ? old.enabled : bool(data.enabled)
       if (diagnosisId && diagnosisId !== old.diagnosisId) this.usable(diagnosisId, 'diagnostico')
@@ -160,7 +164,7 @@ export class CommercialRepository {
           return { id: lineId, serviceId, dimensionId, quantity, notes, diagnosisId, enabled: bool(service.enabled ?? true) } satisfies DiagnosisService
         })
       }
-      this.db.prepare('UPDATE diagnosis_items SET diagnosis_id=?,notes=?,enabled=?,revision=revision+1,updated_at=? WHERE id=?').run(diagnosisId, notes, enabled ? 1 : 0, new Date().toISOString(), id)
+      this.db.prepare('UPDATE diagnosis_items SET diagnosis_id=?,intensity=?,notes=?,enabled=?,revision=revision+1,updated_at=? WHERE id=?').run(diagnosisId, intensity as DiagnosisIntensity|null, notes, enabled ? 1 : 0, new Date().toISOString(), id)
       this.db.prepare('UPDATE scenario_piece_flags SET enabled=? WHERE scenario_id=? AND piece_id=?').run(enabled ? 1 : 0,scenarioId,id)
       const retained = new Set(services.map(service => service.id))
       for (const previous of old.services) if (!retained.has(previous.id)) this.db.prepare('DELETE FROM diagnosis_services WHERE id=?').run(previous.id)

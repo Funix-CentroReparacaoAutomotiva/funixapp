@@ -51,7 +51,7 @@ async def run():
     await ref.close()
 
     first_ids=[s['id'] for s in item['services']]
-    await editor.get_by_role('button',name='Observação da peça',exact=True).click();await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Texto autosave QA '+device)
+    await page.get_by_role('button',name='Observação da peça',exact=True).click();await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Texto autosave QA '+device)
     await expect(editor).to_have_attribute('data-save-state','confirmed')
     saved=(await get(path+'/cenarios'))['items'][0]
     assert saved['notes']=='Texto autosave QA '+device and [s['id'] for s in saved['services']]==first_ids

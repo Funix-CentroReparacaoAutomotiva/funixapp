@@ -1,5 +1,5 @@
 /* Etapa 3: editor/list controls only; no radial, footer or Copilot geometry. */
-.approved-editor .diagnosis-actions{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;min-height:44px}
+.approved-editor .diagnosis-actions{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(104px,.6fr);gap:6px;align-items:center;min-height:44px}
 .approved-editor .diagnosis-actions>.piece-toggle,.approved-editor .diagnosis-actions>.plain-action{display:grid;place-items:center;width:44px;height:44px;padding:4px;background:transparent;justify-self:center}
 .approved-editor .diagnosis-actions .top-select{min-width:0}
 .approved-editor .diagnosis-actions .piece-toggle .icon{width:24px;height:20px}
@@ -15,3 +15,9 @@
 .approved-editor .component-total output[data-state=incomplete]{font-size:11px;color:#6e6e72;font-weight:400}
 .approved-editor .component-first-line .toggle,.approved-editor .component-first-line .trash{align-self:center}
 .third-confirmation{display:flex;gap:8px;align-items:center;font-size:11px;color:#365675;margin:8px 0;min-height:44px}.third-confirmation input{width:20px;height:20px;flex:none}.activity-notice{font-size:11px;color:#365675;margin:6px 0}
+
+/* Fase 3: only the two approved editor header rows. */
+.detail-header .diagnosis-note-slot{display:flex;flex:none;width:44px;height:44px}
+.detail-header .diagnosis-note-slot .plain-action{display:grid;place-items:center;width:44px;height:44px;padding:4px;border:0;background:transparent;color:#d9e4f4;cursor:pointer}
+.detail-header .diagnosis-note-slot .icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85}
+@media(max-width:400px){.approved-editor .diagnosis-actions{grid-template-columns:36px minmax(0,1fr) minmax(100px,.7fr);gap:4px}.approved-editor .diagnosis-actions>.piece-toggle{width:36px}.approved-editor .diagnosis-actions .top-select select{padding-left:9px;padding-right:22px}}

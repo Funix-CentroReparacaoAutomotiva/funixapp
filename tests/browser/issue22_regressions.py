@@ -114,7 +114,7 @@ async def device_case(browser,device,viewport):
   h.mark(device+': failed refresh after acknowledged save preserves fields and retries reads without replaying the write')
 
   # Genuine revision conflict: keep remote data and local draft; retry never overwrites it.
-  await editor.get_by_role('button',name='Observação da peça',exact=True).click()
+  await page.get_by_role('button',name='Observação da peça',exact=True).click()
   w=await get(base+'/cenarios');p=w['items'][0];s=w['scenarios'][0]
   await write(base+'/diagnosticos/'+p['id'],{'revision':p['revision'],'scenarioId':s['id'],'scenarioRevision':s['revision'],'notes':'Alteração remota QA'})
   await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Rascunho local QA')

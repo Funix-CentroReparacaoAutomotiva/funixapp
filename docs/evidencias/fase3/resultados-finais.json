@@ -1,0 +1,31 @@
+{
+  "base": "0a7644b21293c64e95d459082c41b7dd3e4bebda",
+  "nodeTests": 217,
+  "nodeFailures": 0,
+  "deployTests": 23,
+  "phase3BrowserGroups": 27,
+  "existingBrowserGroups": 280,
+  "totalBrowserGroups": 307,
+  "schemaVersion": 9,
+  "realSourceAvailable": true,
+  "realRulesValidated": 77,
+  "resolutions": [
+    1440,
+    390,
+    320
+  ],
+  "lintPreExistingWarnings": 4,
+  "newLintWarnings": 0,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false,
+  "automatedSuitesSynthetic": true,
+  "automatedSuitesApplicationCommit": "ed18900764a229fbbf922a7be87d640ec37c9447",
+  "realRulesImportedIsolated": 77,
+  "realRulesImportedProduction": 0,
+  "realRuleValid": 74,
+  "realRulePending": 3,
+  "realRuleNotSelectedByDefault": 16,
+  "realRuleConflicts": 0,
+  "realRuleEvidence": "validacao-fonte-real.json"
+}

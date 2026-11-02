@@ -1,0 +1,74 @@
+{
+  "synthetic": true,
+  "realSourceAvailable": false,
+  "dryRun": {
+    "total": 6,
+    "valid": 3,
+    "notSelectedByDefault": 3,
+    "validNotSelectedByDefault": 1,
+    "pending": [
+      {
+        "sourceRowId": "i-qa-pending-0",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "leve",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      },
+      {
+        "sourceRowId": "i-qa-pending-1",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "moderado",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      },
+      {
+        "sourceRowId": "i-qa-pending-2",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "severo",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      }
+    ],
+    "conflicts": [],
+    "inserts": 6,
+    "unchanged": 0
+  },
+  "repeat": {
+    "total": 6,
+    "valid": 3,
+    "notSelectedByDefault": 3,
+    "validNotSelectedByDefault": 1,
+    "pending": [
+      {
+        "sourceRowId": "i-qa-pending-0",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "leve",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      },
+      {
+        "sourceRowId": "i-qa-pending-1",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "moderado",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      },
+      {
+        "sourceRowId": "i-qa-pending-2",
+        "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-synthetic-diagnosis",
+        "intensity": "severo",
+        "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-XDTMBmueos",
+        "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-qa-wrong",
+        "reason": "DIMENSION_SERVICE_MISMATCH"
+      }
+    ],
+    "conflicts": [],
+    "inserts": 0,
+    "unchanged": 6
+  }
+}

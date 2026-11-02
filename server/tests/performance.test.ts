@@ -31,7 +31,7 @@ test('batched reads equal original SQL for every scenario and calculated result,
    assert.deepEqual(f.scenarios.list(f.at.id),legacyScenarios(db,f.at.id))
    for(const s of f.scenarios.list(f.at.id)){
     const before=legacyItems(db,f.at.id,s.id),after=f.commercial.list(f.at.id,s.id)
-    assert.deepEqual(after,before,s.id)
+    assert.deepEqual(after.map(({intensity:_intensity,...p})=>p),before,s.id)
     const args=[f.components.list(f.at.id),f.commercial.catalogs().items,s,f.pricing.get().config,f.pricing.settings(f.at.id).settings] as const
     assert.deepEqual(calculate(after,...args),calculate(before,...args))
    }

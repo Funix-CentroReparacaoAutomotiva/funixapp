@@ -1,0 +1,113 @@
+{
+  "isolated": true,
+  "syntheticRules": false,
+  "applicationCommit": "ed18900764a229fbbf922a7be87d640ec37c9447",
+  "sourceFile": "funix-fase3-regras-importacao-v9.json",
+  "sourceBytes": 23798,
+  "sourceSHA256": "bcc58f8242825cae68486a61b4cdb40751c80977f0c9c6a3424692a2490da8af",
+  "commercialExportSHA256": "76698e523f4d497d417dcb0d9cccb19c635d412d0eba9337a63b01bf9717a35a",
+  "schema": 9,
+  "catalogs": {
+    "pieces": 163,
+    "services": 28,
+    "diagnoses": 16,
+    "dimensions": 75
+  },
+  "dryRun": {
+    "total": 77,
+    "valid": 74,
+    "pending": 3,
+    "notSelectedByDefault": 16,
+    "validNotSelectedByDefault": 16,
+    "conflicts": 0,
+    "inserts": 77,
+    "unchanged": 0,
+    "planHash": "7b088144a1bacecaf60645f058f44557e074478695c9b53a7e9bf9edc9cc077e"
+  },
+  "applied": {
+    "valid": 74,
+    "pending": 3,
+    "stored": 77,
+    "notSelectedByDefault": 16
+  },
+  "queries": {
+    "diagnosisIntensityGroups": 28,
+    "repositoryQueriesVerified": 28,
+    "apiQueriesVerified": 28,
+    "returned": 74,
+    "uniqueReturned": 74,
+    "returnedNotSelectedByDefault": 16,
+    "pendingNeverOffered": true,
+    "unauthenticatedStatus": 401,
+    "writeMethodStatus": 405
+  },
+  "repeatDryRun": {
+    "inserts": 0,
+    "unchanged": 77,
+    "conflicts": 0,
+    "valid": 74,
+    "pending": 3,
+    "notSelectedByDefault": 16
+  },
+  "pending": [
+    {
+      "sourceRowId": "i-9oEY4LbHDG",
+      "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-3vCNEjmS7V",
+      "diagnosis": "Desalinhamento",
+      "intensity": "leve",
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-PlG9A_vqDj",
+      "dimension": "M",
+      "actualDimensionServiceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "actualDimensionService": "Montagem",
+      "reason": "DIMENSION_SERVICE_MISMATCH"
+    },
+    {
+      "sourceRowId": "i-a2r0X9YsT1",
+      "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-3vCNEjmS7V",
+      "diagnosis": "Desalinhamento",
+      "intensity": "moderado",
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-KJmrRf6yDy",
+      "dimension": "G",
+      "actualDimensionServiceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "actualDimensionService": "Montagem",
+      "reason": "DIMENSION_SERVICE_MISMATCH"
+    },
+    {
+      "sourceRowId": "i-cSTVgKIpv3",
+      "diagnosisId": "coda:2zsjI-nqWr:grid-2ANpptuaKz:i-3vCNEjmS7V",
+      "diagnosis": "Desalinhamento",
+      "intensity": "severo",
+      "serviceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c",
+      "service": "Alinhamento",
+      "dimensionId": "coda:2zsjI-nqWr:grid-7521QzZOVd:i-vG6AqHxqTg",
+      "dimension": "GG",
+      "actualDimensionServiceId": "coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i",
+      "actualDimensionService": "Montagem",
+      "reason": "DIMENSION_SERVICE_MISMATCH"
+    }
+  ],
+  "integrity": {
+    "sqlite": "ok",
+    "foreignKeyErrors": 0,
+    "dryRunReadOnlyVerified": true,
+    "nonRulesUnchanged": true,
+    "sourceFilesUnchanged": true,
+    "databaseModePreserved": true
+  },
+  "compositionCounts": {
+    "atendimentos": 0,
+    "scenarios": 0,
+    "budgets": 0,
+    "serviceLines": 0,
+    "components": 0
+  },
+  "productionAccess": false,
+  "productionImport": false,
+  "merge": false,
+  "deploy": false,
+  "note": "The plan hash belongs only to this isolated database. A future authorized destination requires a new dry-run/hash."
+}

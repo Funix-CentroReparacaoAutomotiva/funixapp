@@ -82,10 +82,10 @@ test('real M1.2 migration preserves raw records including repeated services, qua
   db.prepare("INSERT INTO catalog_items(id,kind,name,status,source,created_at,updated_at) VALUES('svc','servico','Sintético','validado','operador',?,?)").run(now,now)
   db.prepare("INSERT INTO diagnosis_items(id,atendimento_id,piece_id,enabled,created_at,updated_at) VALUES('piece',?,'v2:capo',0,?,?)").run(at.id,now,now)
   db.exec("INSERT INTO diagnosis_services VALUES('l1','piece','svc',NULL,'0.25',1),('l2','piece','svc',NULL,'2',0)")
-  const rawAt=db.prepare('SELECT * FROM atendimentos').all(),rawPiece=db.prepare('SELECT * FROM diagnosis_items').all(),rawCatalog=db.prepare('SELECT * FROM catalog_items').all()
+  const rawAt=db.prepare('SELECT * FROM atendimentos').all(),rawPiece=db.prepare('SELECT id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at FROM diagnosis_items').all(),rawCatalog=db.prepare('SELECT * FROM catalog_items').all()
   db.close();db=openDatabase(file)
   assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),rawAt)
-  assert.deepEqual(db.prepare('SELECT * FROM diagnosis_items').all(),rawPiece)
+  assert.deepEqual(db.prepare('SELECT id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at FROM diagnosis_items').all(),rawPiece)
   assert.deepEqual(db.prepare('SELECT * FROM catalog_items').all(),rawCatalog)
   const first=new ScenarioRepository(db).list(at.id)[0]!
   assert.equal(first.pieceFlags.piece,false);assert.equal(first.serviceFlags.l1,true);assert.equal(first.serviceFlags.l2,false)
