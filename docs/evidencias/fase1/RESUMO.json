@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "base": "c29aedf3fcc6c66a7771c833273b4f7f39db4f8f",
+  "nodeTests": 197,
+  "deployScriptTests": 23,
+  "browserNewGroups": 39,
+  "browserRegressionGroups": 220,
+  "regressionSuites": 16,
+  "browserTotalGroups": 259,
+  "viewports": [
+    1440,
+    390,
+    320
+  ],
+  "screenshots": 21,
+  "productionAccess": false,
+  "schemaChanges": false,
+  "commands": [
+    "npm run check",
+    "python -m unittest discover -s deploy/tests -v",
+    "python tests/browser/fase1_selection.py",
+    "python tests/browser/fase1_regressions.py",
+    "python tests/browser/fase1_regressions.py etapa6_integrated",
+    "python tests/browser/fase1_regressions.py etapa2_persistencia",
+    "python tests/browser/fase1_regressions.py etapa_b_navigation",
+    "python tests/browser/fase1_regressions.py issue12_inclusion"
+  ]
+}

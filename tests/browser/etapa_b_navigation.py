@@ -115,6 +115,7 @@ async def device_case(browser,device,viewport):
    await main('Diagnósticos');await body.evaluate('(e)=>e.scrollTop=0');url=page.url
    await physical(200,500,0,-170);assert page.url==url;assert await body.evaluate('(e)=>e.scrollTop')>50
    await cdp.detach()
+   await body.evaluate('''async e=>{let last=-1,stable=0;for(let i=0;i<120&&stable<8;i++){await new Promise(requestAnimationFrame);const top=e.scrollTop;stable=top===last?stable+1:0;last=top}}''')
    h.mark(device+': Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional')
 
 
@@ -146,7 +147,7 @@ async def device_case(browser,device,viewport):
 
   gate=asyncio.Event();started=asyncio.Event()
   async def hold(route):started.set();await gate.wait();await route.continue_()
-  await page.route('**/diagnosticos/*',hold);await field.fill('QA ETAPA B — gravação pendente');await asyncio.wait_for(started.wait(),10)
+  await page.route('**/diagnosticos/*',hold);await field.fill('QA ETAPA B — gravação pendente');await asyncio.wait_for(started.wait(),10);await expect(page.get_by_role('button',name='Emitir orçamento',exact=True)).to_be_disabled();await page.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
   url=page.url;await page.evaluate('history.back()');await page.wait_for_timeout(150);await expect(page).to_have_url(url);gate.set();await saved();await page.unroute('**/diagnosticos/*',hold)
   await back();await expect(page.locator('.diagnosis-list')).to_be_visible();await back();await expect(page).to_have_url(ORIGIN+'/funil')
   assert (await get(base+'/orcamentos/'+ids['version']))['snapshot']==ids['snapshot']

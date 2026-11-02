@@ -94,13 +94,14 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const {queue:selectionQueue,state:selectionState}=usePieceSelection(atendimentoId,{
     read:async id=>{const version=++loadVersion.current,w=await api<CommercialWorkspace>(`/api/atendimentos/${atendimentoId}/cenarios?scenarioId=${encodeURIComponent(id)}`);if(version!==loadVersion.current)throw new Error('Atualização substituída. Confira os dados antes de retomar.');return w},
     add:(codes,id,revision)=>api<DiagnosisItem[]>(`/api/atendimentos/${atendimentoId}/diagnosticos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pieceCodes:codes,scenarioId:id,scenarioRevision:revision})}),
+    setEnabled:(id,revision,flags)=>api<Scenario>(`/api/atendimentos/${atendimentoId}/cenarios/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision,pieceFlags:flags})}),
     remove:request=>api<{removedIds:string[]}>(`/api/atendimentos/${atendimentoId}/diagnosticos`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)}),
     confirmRemoval,
     confirmed:w=>acceptWorkspace(w),failed:error=>{setRefreshNeeded(true);failed(error,'As seleções pendentes foram preservadas. '+(error as Error).message)}
   })
   const selectionSaving=selectionState.phase==='saving',selectionBlocked=selectionState.phase==='blocked'
   const busy=baseBusy||selectionSaving
-  const pieceLocked=baseBusy||selectionBlocked||refreshNeeded||scenarioGone
+  const pieceLocked=baseBusy||selectionBlocked||refreshNeeded||scenarioGone||Boolean(selectionState.deleting)||Boolean(removal)
   useEffect(()=>{onBusy(busy)},[busy,onBusy])
   useEffect(() => { onDirty(editorDirty||financeDirty||selectionState.phase!=='idle') }, [editorDirty,financeDirty,selectionState.phase,onDirty])
   useEffect(() => () => { onDirty(false); onBusy(false) }, [onDirty, onBusy])
@@ -171,7 +172,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const byCode = (code?: string) => catalog?.items.find(item => item.code === code)
   const validPieces=useMemo(()=>selectablePieces(catalog?.items??[]),[catalog])
   const pieceIdentities=useMemo(()=>new Map((catalog?.items??[]).filter(c=>c.kind==='peca'&&c.code).map(c=>[c.code!,c.id])),[catalog])
-  const selectedCode=useCallback((code:string)=>selectionState.intents.get(code)??Boolean(workspace?.items.some(p=>p.pieceId===pieceIdentities.get(code))),[selectionState.intents,workspace,pieceIdentities])
+  const selectedCode=useCallback((code:string)=>selectionState.intents.get(code)??Boolean(workspace?.items.some(p=>p.pieceId===pieceIdentities.get(code)&&workspace.scenarios.find(s=>s.id===workspace.selectedId)?.pieceFlags[p.id])),[selectionState.intents,workspace,pieceIdentities])
   function select(codes:string[],enabled?:boolean){
     if(!workspace||pieceLocked||mutationInFlight.current||!codes.length)return
     setMessage('')
@@ -184,7 +185,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   }
   async function refresh() {
     if(selectionBlocked){
-      if(!window.confirm('Consultar o estado salvo e retomar minhas seleções pendentes neste cenário? Remoções com conteúdo ou participação alterados exigem nova confirmação.'))return
+      if(!window.confirm('Consultar o estado salvo e retomar minhas seleções pendentes neste cenário? Exclusões pendentes exigem nova confirmação se o conteúdo mudar.'))return
       const ok=await selectionQueue.recover()
       if(ok){setRefreshNeeded(false);setFailure('');setFailureDetails(null)}
       return
@@ -237,7 +238,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       style={position?{left:position.left+'%',top:position.top+'%'}:undefined} data-ring={position&&'inner'in position&&position.inner?'inner':'outer'} data-node-id={node.id}
       aria-label={node.nome} data-selection-state={group?stats.state:selected?'all':'none'} data-pending={pending} aria-pressed={!group && codes.length ? selected : undefined}
       disabled={pieceLocked || (group?stats.total===0:!available&&!codes.every(selectedCode))} onClick={() => showNode(node)}
-      title={group?`${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}`:!available?'Peça inativa ou sem código cadastrado':pending?'Seleção pendente de confirmação':selected?'Selecionada':'Não selecionada'}>
+      title={group?`${stats.count} de ${stats.total} peças habilitadas neste cenário${pending?' — salvando':''}`:!available?'Peça inativa ou sem código cadastrado':pending?'Seleção pendente de confirmação':selected?'Selecionada':'Não selecionada'}>
       {group&&<span className="selection-indicator" aria-hidden="true"/>}<span>{radial?radialLabel(node.nome):node.nome}</span>{group && <span aria-hidden="true">›</span>}
     </button>
   }
@@ -255,7 +256,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       const root=geographicRoots.find(r=>r.id===region)
       const stats=root?groupSelection(root,validPieces,selectedCode):{count:0,total:0,state:'none'}
       const pending=root?nodeCodes(root,validPieces).some(code=>selectionState.intents.has(code)):false
-      const tag=opening.replace(/aria-label="([^"]+)"/,`aria-label="$1: ${stats.count} de ${stats.total} peças na composição${pending?' — salvando':''}"`).slice(0,-1)+` data-selected="${stats.count>0}" data-selection-state="${stats.state}">`
+      const tag=opening.replace(/aria-label="([^"]+)"/,`aria-label="$1: ${stats.count} de ${stats.total} peças habilitadas neste cenário${pending?' — salvando':''}"`).slice(0,-1)+` data-selected="${stats.count>0}" data-selection-state="${stats.state}">`
       const xy=body.match(/<text x="([\d.]+)" y="([\d.]+)"/)
       const count=xy?`<tspan class="map-region-count" x="${xy[1]}" dy="1.3em" font-size="10">${stats.count}/${stats.total}</tspan>`:''
       return tag+body.replace('</text>',count+'</text>')+closing
@@ -322,8 +323,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const included = byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):Boolean(active?.pieceFlags[item.id])
             const components = workspace?.components.filter(c => c.pieceId === item.id).length ?? 0
             return <article className={`diagnosis-card diagnosis-row ${included ? '' : 'excluded'}`} key={item.id}>
-              <button type="button" role="switch" className="piece-inclusion-toggle" aria-label={`Selecionar peça ${byId(item.pieceId)?.name} na composição compartilhada`} aria-checked={byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included} aria-describedby="piece-selection-status" data-pending={selectionState.intents.has(byId(item.pieceId)?.code??'')} disabled={pieceLocked||!active||!byId(item.pieceId)||(!included&&!usable(byId(item.pieceId)!))} onClick={()=>{const code=byId(item.pieceId)?.code;if(code)select([code])}}><ApprovedIcon name={(byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included)?'toggle':'off'}/></button>
-              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Presente':'Removida'} na composição compartilhada</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':calculation.pieceTotals.find(p=>p.pieceId===item.id)?.nonBillableOnly?'Sem cobrança':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
+              <button type="button" role="switch" className="piece-inclusion-toggle" aria-label={`Habilitar peça ${byId(item.pieceId)?.name} neste cenário`} aria-checked={byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included} aria-describedby="piece-selection-status" data-pending={selectionState.intents.has(byId(item.pieceId)?.code??'')} disabled={pieceLocked||!active||!byId(item.pieceId)||(!included&&!usable(byId(item.pieceId)!))} onClick={()=>{const code=byId(item.pieceId)?.code;if(code)select([code])}}><ApprovedIcon name={(byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included)?'toggle':'off'}/></button>
+              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Habilitada':'Desabilitada'} neste cenário</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':calculation.pieceTotals.find(p=>p.pieceId===item.id)?.nonBillableOnly?'Sem cobrança':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
+              <button type="button" className="piece-delete" aria-label={`Excluir peça ${byId(item.pieceId)?.name} de todos os cenários`} disabled={busy||pieceLocked} onClick={()=>{const code=byId(item.pieceId)?.code;if(code&&workspace)void selectionQueue.enqueueRemoval([code],workspace,pieceIdentities)}}><ApprovedIcon name="trash"/></button>
             </article>
           })}</div>
           <button ref={sheetOpener} aria-haspopup="dialog" className="codex-add add-piece" disabled={baseBusy} aria-expanded={selecting} onClick={() => {if(!selecting){setPath([]);setQuery('');setDiscPage(0)}setSelecting(v=>!v)}}>+ Adicionar peça</button>

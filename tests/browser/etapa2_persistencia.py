@@ -16,32 +16,34 @@ async def device_case(browser,device,viewport):
   async def ws():return await get(base+'/cenarios')
   async def idle():await expect(page.locator('.scenario-trigger')).to_be_enabled();await expect(page.locator('.form-error')).to_have_count(0)
   async def shot(name):await page.screenshot(path=str(ARTIFACTS/(device+'-'+name+'.png')))
-  def toggle(name):return page.get_by_role('switch',name='Selecionar peça '+name+' na composição compartilhada',exact=True)
+  def toggle(name):return page.get_by_role('switch',name='Habilitar peça '+name+' neste cenário',exact=True)
+  def trash(name):return page.get_by_role('button',name='Excluir peça '+name+' de todos os cenários',exact=True)
   await page.goto(ORIGIN);await h.login(page);await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos');await expect(page.locator('.diagnosis-list')).to_be_visible();await idle()
   original=await ws();pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['version']+'/pdf');pdf_hash=hashlib.sha256(await pdf.body()).hexdigest()
   # Editor enablement remains scenario-specific; selector presence remains global.
   await page.locator('.diagnosis-open').filter(has_text='Capô').click();editor=page.get_by_role('region',name='Editor de diagnóstico');await expect(editor).to_have_attribute('data-save-state','confirmed')
   await expect(page.get_by_role('button',name='Excluir peça de todos os cenários',exact=True)).to_have_count(0)
   await editor.get_by_role('button',name='Habilitar peça neste cenário',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed');w=await ws();assert not w['scenarios'][0]['pieceFlags'][ids['piece']]and w['scenarios'][1]['pieceFlags'][ids['piece']]
-  await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click();await expect(toggle(ids['capoName'])).to_have_attribute('aria-checked','true')
+  await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click();await expect(toggle(ids['capoName'])).to_have_attribute('aria-checked','false')
   await page.locator('.diagnosis-open').filter(has_text='Capô').click();await editor.get_by_role('button',name='Habilitar peça neste cenário',exact=True).click();await expect(editor).to_have_attribute('data-save-state','confirmed');await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
-  h.mark(device+': editor changes scenario flags only; disabled master stays globally selected; confirmed back has no discard dialog; redundant global trash absent')
+  h.mark(device+': editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent')
   # Cancel must not even send a GET; exact persisted snapshot is unchanged.
   requests=[];record=lambda r:requests.append((r.method,r.url))if '/api/'in r.url else None;before=await ws();page.on('request',record)
-  await toggle(ids['capoName']).click();dialog=page.get_by_role('dialog',name='Confirmar remoção da composição');await expect(dialog).to_contain_text('1, 3');await expect(dialog).to_contain_text('conteúdo');await shot('confirmacao-global');await dialog.get_by_role('button',name='Cancelar',exact=True).click();await page.wait_for_timeout(100);page.remove_listener('request',record);assert requests==[],requests;assert await ws()==before;await expect(toggle(ids['capoName'])).to_have_attribute('aria-checked','true')
+  await trash(ids['capoName']).click();dialog=page.get_by_role('dialog',name='Confirmar remoção da composição');await expect(dialog).to_contain_text('1, 3');await expect(dialog).to_contain_text('conteúdo');await shot('confirmacao-global');await dialog.get_by_role('button',name='Cancelar',exact=True).click();await page.wait_for_timeout(100);page.remove_listener('request',record);assert requests==[],requests;assert await ws()==before;await expect(toggle(ids['capoName'])).to_have_attribute('aria-checked','true')
   h.mark(device+': compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags')
-  # Four empty masters can be removed consecutively; no layout-changing normal status.
-  gate=asyncio.Event();deletes=[]
+  # Explicit deletions are confirmed individually; toggles never delete.
+  deletes=[]
   async def delayed(route):
-   if route.request.method!='DELETE':await route.continue_();return
-   deletes.append(route.request.post_data_json);await gate.wait();await route.continue_()
+   if route.request.method=='DELETE':deletes.append(route.request.post_data_json)
+   await route.continue_()
   await page.route('**/diagnosticos',delayed)
-  for p in ids['blank']:await toggle(p['name']).click()
-  status_box=await page.locator('#piece-selection-status').bounding_box();assert status_box['width']<=1 and status_box['height']<=1;gate.set();await idle();await expect(page.locator('.diagnosis-row')).to_have_count(1);await page.unroute('**/diagnosticos',delayed)
-  assert len(deletes)<=3,len(deletes);w=await ws();assert len(w['items'])==1 and w['items'][0]['services']==original['items'][0]['services'];assert w['components']==original['components']
-  h.mark(device+': four consecutive global removals serialize without blocking other toggles; remaining IDs/services/fractional components preserved; routine status outside layout')
+  for p in ids['blank']:
+   await trash(p['name']).click();await dialog.get_by_role('button',name='Prosseguir',exact=True).click();await idle()
+  status_box=await page.locator('#piece-selection-status').bounding_box();assert status_box is None or status_box['width']<=1 and status_box['height']<=1;await expect(page.locator('.diagnosis-row')).to_have_count(1);await page.unroute('**/diagnosticos',delayed)
+  assert len(deletes)==4;w=await ws();assert len(w['items'])==1 and w['items'][0]['services']==original['items'][0]['services'];assert w['components']==original['components']
+  h.mark(device+': four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout')
   # Concurrent component edit after dialog opens must invalidate deletion even if piece revision is unchanged.
-  await toggle(ids['capoName']).click();await expect(dialog).to_be_visible();w=await ws();part=w['components'][0];r=await ctx.request.patch(ORIGIN+base+'/componentes/'+part['id'],headers={'Origin':ORIGIN},data={**{k:part[k]for k in ['revision','pieceId','quantity','manualPrice','notes']},'name':'QA editado durante confirmacao'});assert r.ok,await r.text()
+  await trash(ids['capoName']).click();await expect(dialog).to_be_visible();w=await ws();part=w['components'][0];r=await ctx.request.patch(ORIGIN+base+'/componentes/'+part['id'],headers={'Origin':ORIGIN},data={**{k:part[k]for k in ['revision','pieceId','quantity','manualPrice','notes']},'name':'QA editado durante confirmacao'});assert r.ok,await r.text()
   await dialog.get_by_role('button',name='Prosseguir',exact=True).click();await expect(page.get_by_role('alert').first).to_be_visible();assert len((await ws())['items'])==1
   await page.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await expect(dialog).to_be_visible();await dialog.get_by_role('button',name='Cancelar',exact=True).click();await idle();assert(await ws())['components'][0]['name']=='QA editado durante confirmacao';await shot('recuperacao-conflito')
   h.mark(device+': changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content')
@@ -50,7 +52,7 @@ async def device_case(browser,device,viewport):
   async def lose(route):
    if route.request.method=='DELETE':lost.append(route.request.post_data_json);await route.fetch();await route.abort('failed')
    else:await route.continue_()
-  await page.route('**/diagnosticos',lose);await toggle(ids['capoName']).click();await dialog.get_by_role('button',name='Prosseguir',exact=True).click();await expect(page.get_by_role('alert').first).to_be_visible();assert(await ws())['items']==[];assert(await ws())['components']==[];await page.unroute('**/diagnosticos',lose);await page.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert len(lost)==1;await expect(page.locator('.diagnosis-row')).to_have_count(0)
+  await page.route('**/diagnosticos',lose);await trash(ids['capoName']).click();await dialog.get_by_role('button',name='Prosseguir',exact=True).click();await expect(page.get_by_role('alert').first).to_be_visible();assert(await ws())['items']==[];assert(await ws())['components']==[];await page.unroute('**/diagnosticos',lose);await page.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert len(lost)==1;await expect(page.locator('.diagnosis-row')).to_have_count(0)
   h.mark(device+': lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent')
   # Unified picker still works, creates one fresh identity; 503 before delete preserves it until explicit retry.
   async def add_capo():
@@ -59,7 +61,7 @@ async def device_case(browser,device,viewport):
   async def fail(route):
    if route.request.method=='DELETE':await route.fulfill(status=503,content_type='application/json',body=json.dumps({'error':{'message':'QA transporte indisponivel'}}))
    else:await route.continue_()
-  await page.route('**/diagnosticos',fail);await toggle(ids['capoName']).click();await expect(page.get_by_role('alert').first).to_be_visible();assert(await ws())['items'][0]['id']==new_id;await page.unroute('**/diagnosticos',fail);await page.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert(await ws())['items']==[];await add_capo();before_restart=await ws();await h.restart_api();await page.reload();await h.login(page);await expect(page.locator('.diagnosis-list')).to_be_visible();assert await ws()==before_restart
+  await page.route('**/diagnosticos',fail);await trash(ids['capoName']).click();await dialog.get_by_role('button',name='Prosseguir',exact=True).click();await expect(page.get_by_role('alert').first).to_be_visible();assert(await ws())['items'][0]['id']==new_id;await page.unroute('**/diagnosticos',fail);await page.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert(await ws())['items']==[];await add_capo();before_restart=await ws();await h.restart_api();await page.reload();await h.login(page);await expect(page.locator('.diagnosis-list')).to_be_visible();assert await ws()==before_restart
   version=await get(base+'/orcamentos/'+ids['version']);assert version['snapshot']==ids['snapshot'];pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['version']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==pdf_hash
   with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:
    assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert db.execute('PRAGMA foreign_key_check').fetchall()==[];assert db.execute('SELECT COUNT(*) FROM diagnosis_items').fetchone()[0]==1
@@ -67,11 +69,11 @@ async def device_case(browser,device,viewport):
   h.mark(device+': 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors')
   # The existing radial uses global presence too. Ambos operates on its two real codes atomically.
   w=await ws();scene=w['scenarios'][0];r=await ctx.request.patch(ORIGIN+base+'/cenarios/'+scene['id'],headers={'Origin':ORIGIN},data={'revision':scene['revision'],'pieceFlags':{w['items'][0]['id']:False}});assert r.ok
-  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=mapa');await expect(page.locator('.interactive-map')).to_be_visible();await page.locator('[data-region="frente"]').first.click();radial=page.get_by_role('dialog',name='Selecionar peça no mapa');await expect(radial.get_by_role('button',name='Capô',exact=True)).to_have_attribute('aria-pressed','true');await radial.get_by_role('button',name='Capô',exact=True).click();await idle();assert(await ws())['items']==[]
+  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=mapa');await expect(page.locator('.interactive-map')).to_be_visible();await page.locator('[data-region="frente"]').first.click();radial=page.get_by_role('dialog',name='Selecionar peça no mapa');await expect(radial.get_by_role('button',name='Capô',exact=True)).to_have_attribute('aria-pressed','false');await radial.get_by_role('button',name='Capô',exact=True).click();await idle();assert len((await ws())['items'])==1
   await radial.get_by_role('button',name='Grades e entradas de ar',exact=True).click();await radial.get_by_role('button',name='Grade inferior',exact=True).click();await radial.get_by_role('button',name='Ambos',exact=True).click();await idle();await expect(radial.get_by_role('button',name='Ambos',exact=True)).to_have_attribute('aria-pressed','true');await shot('radial-ambos-preservado')
-  w=await ws();catalog=(await get('/api/catalogos'))['items'];codes={next(c['code']for c in catalog if c['id']==p['pieceId'])for p in w['items']};assert codes=={'grade_inferior__motorista','grade_inferior__passageiro'}
-  await radial.get_by_role('button',name='Ambos',exact=True).click();await idle();assert(await ws())['items']==[];assert(await get(base+'/orcamentos/'+ids['version']))['snapshot']==ids['snapshot'];assert await radial.locator('.disc-ring').count()==1
-  h.mark(device+': existing circular map is unchanged; disabled master still selected globally; real Ambos adds/removes exactly two codes with no duplicates and preserves issued history')
+  w=await ws();catalog=(await get('/api/catalogos'))['items'];codes={next(c['code']for c in catalog if c['id']==p['pieceId'])for p in w['items']};assert codes=={'capo','grade_inferior__motorista','grade_inferior__passageiro'}
+  await radial.get_by_role('button',name='Ambos',exact=True).click();await idle();assert len((await ws())['items'])==3;assert(await get(base+'/orcamentos/'+ids['version']))['snapshot']==ids['snapshot'];assert await radial.locator('.disc-ring').count()==1
+  h.mark(device+': existing circular map is unchanged; disabled master reflects scenario flag; real Ambos enables/disables exactly two codes without removing masters with no duplicates and preserves issued history')
 
  except Exception as error:
   if page:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')))

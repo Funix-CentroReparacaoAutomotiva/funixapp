@@ -1,0 +1,221 @@
+Consolidado dos resultados JSON finais por suite; execucoes por sufixo apos atualizar expectativas antigas.
+PASS curation_final / desktop: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS curation_final / desktop: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS curation_final / desktop: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS curation_final / desktop: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS curation_final / desktop: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS curation_final / desktop: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS curation_final / desktop: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS curation_final / mobile390: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS curation_final / mobile390: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS curation_final / mobile390: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS curation_final / mobile390: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS curation_final / mobile390: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS curation_final / mobile390: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS curation_final / mobile390: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS curation_final / mobile320: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS curation_final / mobile320: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS curation_final / mobile320: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS curation_final / mobile320: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS curation_final / mobile320: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS curation_final / mobile320: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS curation_final / mobile320: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS etapa6_integrated / desktop: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS etapa6_integrated / desktop: sheet and circular Map share active-scenario flags; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS etapa6_integrated / desktop: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+PASS etapa6_integrated / mobile390: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS etapa6_integrated / mobile390: sheet and circular Map share active-scenario flags; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS etapa6_integrated / mobile390: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+PASS etapa6_integrated / mobile320: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS etapa6_integrated / mobile320: sheet and circular Map share active-scenario flags; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS etapa6_integrated / mobile320: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+PASS etapa5_rodape / desktop: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS etapa5_rodape / desktop: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS etapa5_rodape / desktop: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS etapa5_rodape / desktop: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS etapa5_rodape / desktop: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS etapa5_rodape / desktop: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS etapa5_rodape / mobile390: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS etapa5_rodape / mobile390: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS etapa5_rodape / mobile390: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS etapa5_rodape / mobile390: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS etapa5_rodape / mobile390: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS etapa5_rodape / mobile390: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS etapa5_rodape / mobile320: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS etapa5_rodape / mobile320: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS etapa5_rodape / mobile320: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged
+PASS etapa5_rodape / mobile320: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS etapa5_rodape / mobile320: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS etapa5_rodape / mobile320: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS etapa4_mapa / desktop: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS etapa4_mapa / desktop: all 23 exact pairs (15 side and 8 axle) enable/disable precisely two real identities without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS etapa4_mapa / desktop: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS etapa4_mapa / mobile390: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS etapa4_mapa / mobile390: all 23 exact pairs (15 side and 8 axle) enable/disable precisely two real identities without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS etapa4_mapa / mobile390: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS etapa4_mapa / mobile320: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS etapa4_mapa / mobile320: all 23 exact pairs (15 side and 8 axle) enable/disable precisely two real identities without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS etapa4_mapa / mobile320: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS etapa2_persistencia / desktop: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS etapa2_persistencia / desktop: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS etapa2_persistencia / desktop: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS etapa2_persistencia / desktop: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS etapa2_persistencia / desktop: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS etapa2_persistencia / desktop: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS etapa2_persistencia / desktop: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos enables/disables exactly two codes without removing masters with no duplicates and preserves issued history
+PASS etapa2_persistencia / mobile390: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS etapa2_persistencia / mobile390: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS etapa2_persistencia / mobile390: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS etapa2_persistencia / mobile390: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS etapa2_persistencia / mobile390: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS etapa2_persistencia / mobile390: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS etapa2_persistencia / mobile390: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos enables/disables exactly two codes without removing masters with no duplicates and preserves issued history
+PASS etapa2_persistencia / mobile320: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS etapa2_persistencia / mobile320: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS etapa2_persistencia / mobile320: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS etapa2_persistencia / mobile320: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS etapa2_persistencia / mobile320: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS etapa2_persistencia / mobile320: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS etapa2_persistencia / mobile320: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos enables/disables exactly two codes without removing masters with no duplicates and preserves issued history
+PASS etapa3_editor / desktop: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS etapa3_editor / desktop: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS etapa3_editor / desktop: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS etapa3_editor / desktop: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS etapa3_editor / desktop: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS etapa3_editor / desktop: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS etapa3_editor / desktop: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS etapa3_editor / mobile390: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS etapa3_editor / mobile390: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS etapa3_editor / mobile390: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS etapa3_editor / mobile390: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS etapa3_editor / mobile390: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS etapa3_editor / mobile390: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS etapa3_editor / mobile390: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS etapa3_editor / mobile320: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS etapa3_editor / mobile320: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS etapa3_editor / mobile320: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS etapa3_editor / mobile320: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS etapa3_editor / mobile320: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS etapa3_editor / mobile320: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS etapa3_editor / mobile320: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS etapa_b_navigation / desktop: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS etapa_b_navigation / desktop: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS etapa_b_navigation / desktop: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS etapa_b_navigation / desktop: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash
+PASS etapa_b_navigation / desktop: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS etapa_b_navigation / desktop: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS etapa_b_navigation / desktop: explicit discard remount retains the prior diagnosis list scroll position
+PASS etapa_b_navigation / desktop: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS etapa_b_navigation / desktop: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS etapa_b_navigation / desktop: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable
+PASS etapa_b_navigation / mobile: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS etapa_b_navigation / mobile: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS etapa_b_navigation / mobile: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS etapa_b_navigation / mobile: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash
+PASS etapa_b_navigation / mobile: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS etapa_b_navigation / mobile: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS etapa_b_navigation / mobile: Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional
+PASS etapa_b_navigation / mobile: explicit discard remount retains the prior diagnosis list scroll position
+PASS etapa_b_navigation / mobile: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS etapa_b_navigation / mobile: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS etapa_b_navigation / mobile: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable
+PASS etapa_d_components / desktop: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS etapa_d_components / desktop: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS etapa_d_components / desktop: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS etapa_d_components / desktop: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS etapa_d_components / desktop: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS etapa_d_components / desktop: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS etapa_d_components / desktop: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS etapa_d_components / desktop: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors
+PASS etapa_d_components / mobile: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS etapa_d_components / mobile: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS etapa_d_components / mobile: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS etapa_d_components / mobile: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS etapa_d_components / mobile: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS etapa_d_components / mobile: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS etapa_d_components / mobile: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS etapa_d_components / mobile: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors
+PASS pr17_auditoria / desktop: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers
+PASS pr17_auditoria / desktop: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected
+PASS pr17_auditoria / desktop: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation
+PASS pr17_auditoria / desktop: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined
+PASS pr17_auditoria / mobile: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers
+PASS pr17_auditoria / mobile: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected
+PASS pr17_auditoria / mobile: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation
+PASS pr17_auditoria / mobile: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined
+PASS editor_financeiro / desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS editor_financeiro / desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS editor_financeiro / desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS editor_financeiro / desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS editor_financeiro / desktop: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+PASS editor_financeiro / desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF
+PASS editor_financeiro / desktop: global piece removal uses explicit trash and preserves historical emission
+PASS editor_financeiro / desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS editor_financeiro / mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS editor_financeiro / mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS editor_financeiro / mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS editor_financeiro / mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS editor_financeiro / mobile: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+PASS editor_financeiro / mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF
+PASS editor_financeiro / mobile: global piece removal uses explicit trash and preserves historical emission
+PASS editor_financeiro / mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS editor_financeiro / no browser runtime errors or external requests; desktop/mobile no horizontal overflow
+PASS m1_atendimentos / desktop: Conversas, Funil and global Configurações navigation; no Veículos
+PASS m1_atendimentos / real empty SQLite database is usable without Coda credentials
+PASS m1_atendimentos / manual creation requires only a minimum phone; optional data stays empty
+PASS m1_atendimentos / optional fields and manual commercial phase persist; header updates to saved record
+PASS m1_atendimentos / search locates actual stored records by name, plate and phone
+PASS m1_atendimentos / detail back preserves list and search context
+PASS m1_atendimentos / switching records never combines another contact or plate in the header
+PASS m1_atendimentos / Chat and global/context IA stay unavailable without simulated integration
+PASS m1_atendimentos / cancelling unsaved navigation keeps the form until explicit discard
+PASS m1_atendimentos / injected save failure retains input and does not alter persisted data
+PASS m1_atendimentos / real revision conflict preserves stale input and refuses silent overwrite
+PASS m1_atendimentos / Rejeitados requires explicit refusal and reason; no automatic loss
+PASS m1_atendimentos / Kanban preserves six approved labels and collapsible lanes
+PASS m1_atendimentos / delayed response from another Atendimento cannot replace the active header
+PASS m1_atendimentos / same SQLite records survive API stop/restart and a completely new browser session
+PASS m1_atendimentos / mobile: no body horizontal overflow
+PASS m1_atendimentos / mobile: editor scrolling/save is usable and edited data survives reload
+PASS m1_atendimentos / legacy vehicle/experience URLs cannot expose operational views
+PASS m1_atendimentos / no external providers, legacy Coda APIs, IA calls or uncaught page errors
+PASS issue7_scenarios / duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context
+PASS issue7_scenarios / editing master attributes in one scenario changes the same line in the other scenario
+PASS issue7_scenarios / fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20
+PASS issue12_inclusion / existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved
+PASS issue12_inclusion / second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones
+PASS issue12_inclusion / ordinary mutations and recovery use cached catalogs; failed post-commit GET keeps confirmed rows and resumes after explicit read without POST replay
+PASS issue12_inclusion / POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy
+PASS issue12_inclusion / lost POST response reconciles the same physical ID without duplicates; deselection disables the same master only in the active scenario
+PASS issue12_inclusion / HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST
+PASS issue12_inclusion / autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit
+PASS issue12_inclusion / initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data
+PASS issue12_inclusion / full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces
+PASS issue12_inclusion / rapid on/off during committed POST remains interactive, one POST without duplicates, final disabled flag with retained master confirmed
+PASS issue12_inclusion / fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates
+PASS issue22_regressions / desktop: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions
+PASS issue22_regressions / desktop: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay
+PASS issue22_regressions / desktop: unreadable committed component POST is recovered without a duplicate or blind replay
+PASS issue22_regressions / desktop: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct
+PASS issue22_regressions / desktop: failed refresh after acknowledged save preserves fields and retries reads without replaying the write
+PASS issue22_regressions / desktop: content and mask conflicts block replay, preserve drafts and support explicit loading
+PASS issue22_regressions / desktop: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct
+PASS issue22_regressions / mobile: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions
+PASS issue22_regressions / mobile: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay
+PASS issue22_regressions / mobile: unreadable committed component POST is recovered without a duplicate or blind replay
+PASS issue22_regressions / mobile: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct
+PASS issue22_regressions / mobile: failed refresh after acknowledged save preserves fields and retries reads without replaying the write
+PASS issue22_regressions / mobile: content and mask conflicts block replay, preserve drafts and support explicit loading
+PASS issue22_regressions / mobile: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct
+PASS issue18_import / desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present
+PASS issue18_import / desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected
+PASS issue18_import / desktop: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged
+PASS issue18_import / mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present
+PASS issue18_import / mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected
+PASS issue18_import / mobile: imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged
+PASS issue20_pricing / desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence
+PASS issue20_pricing / desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent
+PASS issue20_pricing / desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged
+PASS issue20_pricing / mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence
+PASS issue20_pricing / mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent
+PASS issue20_pricing / mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged

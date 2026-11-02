@@ -136,8 +136,8 @@ async def run():
             await page.unroute('**/diagnosticos', lose_response); await recover()
             assert [i['id']for i in await get(path+'/diagnosticos')if i['pieceId']==pool[8]['id']]==[saved['id']]
             await (await button(pool[8])).click();await expect(page.locator('#piece-selection-status')).to_be_empty()
-            assert [i['id']for i in await get(path+'/diagnosticos')if i['pieceId']==pool[8]['id']]==[]
-            h.mark('lost POST response reconciles the same physical ID without duplicates; deliberate deselection now removes the empty master globally')
+            assert [(i['id'],i['enabled'])for i in await get(path+'/diagnosticos')if i['pieceId']==pool[8]['id']]==[(saved['id'],False)]
+            h.mark('lost POST response reconciles the same physical ID without duplicates; deselection disables the same master only in the active scenario')
 
             async def truncated_response(route):
                 if route.request.method == 'POST':
@@ -221,8 +221,8 @@ async def run():
             await expect(target).to_be_enabled();await target.click()
             release_post.set();await expect(page.locator('#piece-selection-status')).to_be_empty();await page.unroute('**/diagnosticos',hold_post)
             rows=[i for i in await get(path+'/diagnosticos')if i['pieceId']==pool[17]['id']]
-            assert rows==[] and post_count==n+1
-            h.mark('rapid on/off during committed POST remains interactive, one POST without duplicates, final global absence confirmed')
+            assert len(rows)==1 and rows[0]['enabled']is False and post_count==n+1
+            h.mark('rapid on/off during committed POST remains interactive, one POST without duplicates, final disabled flag with retained master confirmed')
 
             expected = await get(path + '/diagnosticos')
             await h.restart_api(); await a.close(); await b.close()

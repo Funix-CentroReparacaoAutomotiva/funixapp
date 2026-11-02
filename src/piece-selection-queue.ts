@@ -1,21 +1,24 @@
-import type {CommercialWorkspace,DiagnosisItem,PieceRemoval} from '../shared/commercial.ts'
+import type {CommercialWorkspace,DiagnosisItem,PieceRemoval,Scenario} from '../shared/commercial.ts'
 import {removalRequest,removalReview} from '../shared/piece-removal.ts'
 import type {RemovalReview} from '../shared/piece-removal.ts'
 export type SelectionPhase='idle'|'saving'|'blocked'
-export interface SelectionState {phase:SelectionPhase;intents:ReadonlyMap<string,boolean>;error:unknown|null}
+export interface SelectionState {phase:SelectionPhase;intents:ReadonlyMap<string,boolean>;error:unknown|null;deleting?:boolean}
 export interface PieceSelectionTransport {
  read(scenario:string):Promise<CommercialWorkspace>
  add(codes:string[],scenario:string,revision:number):Promise<DiagnosisItem[]>
+ setEnabled(scenario:string,revision:number,flags:Record<string,boolean>):Promise<Scenario>
  remove(request:PieceRemoval):Promise<{removedIds:string[]}>
  confirmRemoval(review:RemovalReview):Promise<boolean>
  confirmed(workspace:CommercialWorkspace):void
  changed(state:SelectionState):void
 }
 export const emptySelectionState=():SelectionState=>({phase:'idle',intents:new Map(),error:null})
-// In-memory intentions; shared composition, never scenario flags, is authoritative here.
+// Serial intentions: add absent masters, otherwise change only active-scenario flags.
+// Global removal is an explicit, separately confirmed command in the same queue.
 export class PieceSelectionQueue {
  private intents=new Map<string,boolean>()
  private codes=new Map<string,string>()
+ private deleting=new Set<string>()
  private consent=new Map<string,string>()
  private removing=new Map<string,string>()
  private requests=new Map<string,number>()
@@ -30,7 +33,7 @@ export class PieceSelectionQueue {
  private at:string
  private io:PieceSelectionTransport
  constructor(at:string,io:PieceSelectionTransport){this.at=at;this.io=io}
- private emit(){if(this.active)this.io.changed({phase:this.phase,intents:new Map(this.intents),error:this.error})}
+ private emit(){if(this.active)this.io.changed({phase:this.phase,intents:new Map(this.intents),error:this.error,deleting:this.deleting.size>0})}
  private scene(w=this.workspace!){const s=w.scenarios.find(s=>s.id===w.selectedId);if(!s)throw Error('Cenário indisponível. Seleções locais preservadas.');return s}
  private validate(w:CommercialWorkspace,scenario:string){
   if(!w||!Array.isArray(w.items)||!Array.isArray(w.scenarios)||!Array.isArray(w.components)||!Array.isArray(w.calculations)||w.selectedId!==scenario||!Number.isSafeInteger(w.revision)||w.revision<1)throw Error('Não foi possível confirmar o cenário. Seleções locais preservadas.')
@@ -41,9 +44,12 @@ export class PieceSelectionQueue {
  get status():SelectionPhase{return this.phase}
  desired(code:string,confirmed:boolean){return this.intents.get(code)??confirmed}
  private item(code:string,w=this.workspace!){return w.items.find(p=>p.pieceId===this.codes.get(code))}
- private reconcile(){for(const [code,on]of this.intents)if(Boolean(this.item(code))===on){this.intents.delete(code);this.consent.delete(code);this.batches.delete(code)}}
- async enqueue(codes:string[],enabled:boolean,w:CommercialWorkspace,identities:ReadonlyMap<string,string>){
-  if(!this.active||this.phase==='blocked')return false
+ private enabled(code:string){const p=this.item(code);return Boolean(p&&this.scene().pieceFlags[p.id])}
+ private reconcile(){for(const [code,on]of this.intents)if(this.deleting.has(code)?!this.item(code):this.enabled(code)===on){this.intents.delete(code);this.deleting.delete(code);this.consent.delete(code);this.batches.delete(code)}}
+ enqueue(codes:string[],enabled:boolean,w:CommercialWorkspace,identities:ReadonlyMap<string,string>){return this.enqueueIntent(codes,enabled,w,identities,false)}
+ enqueueRemoval(codes:string[],w:CommercialWorkspace,identities:ReadonlyMap<string,string>){return this.enqueueIntent(codes,false,w,identities,true)}
+ private async enqueueIntent(codes:string[],enabled:boolean,w:CommercialWorkspace,identities:ReadonlyMap<string,string>,removing:boolean){
+  if(!this.active||this.phase==='blocked'||this.deleting.size||(removing&&this.phase!=='idle'))return false
   try{
    if(this.phase==='idle'){
     const incoming=this.validate(w,w.selectedId),current=this.workspace
@@ -54,24 +60,25 @@ export class PieceSelectionQueue {
    const unique=[...new Set(codes)],epoch=this.epoch,sequence=++this.sequence
    if(!unique.length||w.selectedId!==this.workspace!.selectedId||unique.some(code=>!this.codes.has(code)))return false
    unique.forEach(code=>this.requests.set(code,sequence))
-   if(!enabled){
-    const review=removalReview(this.workspace!,unique,this.codes),signatures=new Map(unique.map(code=>[code,removalReview(this.workspace!,[code],this.codes).signature]))
+   if(removing){
+    const review={...removalReview(this.workspace!,unique,this.codes),required:true},signatures=new Map(unique.map(code=>[code,removalReview(this.workspace!,[code],this.codes).signature]))
     // Before consent there is no optimistic change, dirty flag, GET or write.
     if(review.required&&!await this.io.confirmRemoval(review))return false
     if(!this.active||epoch!==this.epoch||this.status==='blocked'||unique.some(c=>this.requests.get(c)!==sequence))return false
     for(const code of unique)this.consent.set(code,signatures.get(code)!)
    }
-   for(const code of unique){this.intents.set(code,enabled);this.batches.set(code,unique)}
+   for(const code of unique){this.intents.set(code,enabled);if(removing)this.deleting.add(code);this.batches.set(code,unique)}
    this.phase='saving';this.error=null;this.emit();queueMicrotask(()=>{void this.drain()});return true
   }catch(error){this.phase='blocked';this.error=error;this.emit();return false}
  }
- private async read(scenario:string,epoch:number){
+ private async read(scenario:string,epoch:number,expectedFlags?:Record<string,boolean>){
   const w=this.validate(await this.io.read(scenario),scenario)
   if(!this.active||this.epoch!==epoch)return false
   for(const code of this.intents.keys()){
    const old=this.item(code),now=this.item(code,w)
    if(old&&(!now||old.id!==now.id)&&!(this.removing.get(code)===old.id&&!now))throw Error('Uma peça pendente foi removida ou substituída em outra edição. Descarte as intenções e confira a composição antes de selecionar novamente.')
   }
+  if(expectedFlags&&Object.entries(expectedFlags).some(([id,on])=>this.scene(w).pieceFlags[id]!==on))throw Error('A habilitação mudou após a confirmação da gravação. Atualize os dados antes de retomar sua intenção.')
   this.workspace=w;this.io.confirmed(w);this.reconcile();this.emit();return true
  }
  private batch(candidates:string[]){
@@ -88,21 +95,29 @@ export class PieceSelectionQueue {
   try{
    while(this.intents.size&&this.active&&epoch===this.epoch){
     this.reconcile();if(!this.intents.size)break
+    let expectedFlags:Record<string,boolean>|undefined
     const missing=this.batch([...this.intents].filter(([code,on])=>on&&!this.item(code)).map(([code])=>code))
     if(missing.length){
      const result=await this.io.add(missing,scenario,this.scene().revision)
-     if(!Array.isArray(result)||missing.some(code=>!result.some(p=>p.atendimentoId===this.at&&p.pieceId===this.codes.get(code)&&typeof p.id==='string')))throw Error('Inclusão sem confirmação legível. Confira o estado salvo antes de retomar.')
+     if(!Array.isArray(result)||missing.some(code=>!result.some(p=>p.atendimentoId===this.at&&p.pieceId===this.codes.get(code)&&typeof p.id==='string'&&typeof p.enabled==='boolean')))throw Error('Inclusão sem confirmação legível. Confira o estado salvo antes de retomar.')
+     expectedFlags=Object.fromEntries(missing.map(code=>{const item=result.find(p=>p.pieceId===this.codes.get(code))!;return[item.id,item.enabled]}))
+    }else if([...this.intents].some(([code,on])=>!this.deleting.has(code)&&this.item(code)&&this.enabled(code)!==on)){
+     const codes=this.batch([...this.intents].filter(([code,on])=>!this.deleting.has(code)&&this.item(code)&&this.enabled(code)!==on).map(([code])=>code))
+     const flags=Object.fromEntries(codes.map(code=>[this.item(code)!.id,this.intents.get(code)!])),revision=this.scene().revision
+     const ack=await this.io.setEnabled(scenario,revision,flags)
+     if(!ack||ack.id!==scenario||ack.atendimentoId!==this.at||!Number.isSafeInteger(ack.revision)||ack.revision<=revision||Object.entries(flags).some(([id,on])=>ack.pieceFlags?.[id]!==on))throw Error('Habilitação sem confirmação legível. Confira o estado salvo antes de retomar.')
+     expectedFlags=flags
     }else{
-     const codes=this.batch([...this.intents].filter(([code,on])=>!on&&this.item(code)).map(([code])=>code))
+     const codes=this.batch([...this.intents].filter(([code])=>this.deleting.has(code)&&this.item(code)).map(([code])=>code))
      if(!codes.length)break
-     for(const code of codes){const r=removalReview(this.workspace,[code],this.codes);if(r.required&&this.consent.get(code)!==r.signature)throw Error('Conteúdo ou cenários da peça mudaram. Atualize os dados e confirme a remoção novamente.')}
+     for(const code of codes){const r=removalReview(this.workspace,[code],this.codes);if(this.consent.get(code)!==r.signature)throw Error('Conteúdo ou cenários da peça mudaram. Atualize os dados e confirme a remoção novamente.')}
      const request=removalRequest(this.workspace,codes,this.codes)
      codes.forEach(code=>this.removing.set(code,this.item(code)!.id))
      const ack=await this.io.remove(request)
      if(!ack||!Array.isArray(ack.removedIds)||ack.removedIds.length!==request.pieces.length||request.pieces.some(p=>!ack.removedIds.includes(p.id)))throw Error('Remoção sem confirmação legível. Confira o estado salvo antes de retomar.')
     }
     // Never replay a write when its acknowledgement or the following read is uncertain.
-    if(!await this.read(scenario,epoch))return
+    if(!await this.read(scenario,epoch,expectedFlags))return
    }
    if(this.active&&epoch===this.epoch){this.phase='idle';this.error=null;this.emit()}
   }catch(error){if(this.active&&epoch===this.epoch){this.phase='blocked';this.error=error;this.emit()}}
@@ -113,11 +128,11 @@ export class PieceSelectionQueue {
   this.running=true;this.phase='saving';this.error=null;this.emit();const epoch=this.epoch
   try{
    if(!await this.read(this.workspace.selectedId,epoch))return false
-   const codes=[...this.intents].filter(([c,on])=>!on&&this.item(c)&&removalReview(this.workspace!,[c],this.codes).required&&this.consent.get(c)!==removalReview(this.workspace!,[c],this.codes).signature).map(([c])=>c)
+   const codes=[...this.intents].filter(([c])=>this.deleting.has(c)&&this.item(c)&&this.consent.get(c)!==removalReview(this.workspace!,[c],this.codes).signature).map(([c])=>c)
    if(codes.length){
-    const review=removalReview(this.workspace,codes,this.codes),accepted=await this.io.confirmRemoval(review)
+    const review={...removalReview(this.workspace,codes,this.codes),required:true},accepted=await this.io.confirmRemoval(review)
     if(!this.active||this.epoch!==epoch)return false
-    for(const c of codes)if(accepted)this.consent.set(c,removalReview(this.workspace,[c],this.codes).signature);else{this.intents.delete(c);this.consent.delete(c);this.batches.delete(c)}
+    for(const c of codes)if(accepted)this.consent.set(c,removalReview(this.workspace,[c],this.codes).signature);else{this.intents.delete(c);this.deleting.delete(c);this.consent.delete(c);this.batches.delete(c)}
    }
    this.phase=this.intents.size?'saving':'idle';this.emit()
   }catch(error){this.phase='blocked';this.error=error;this.emit()}
@@ -125,7 +140,7 @@ export class PieceSelectionQueue {
   if(this.phase==='saving')await this.drain()
   return this.status==='idle'
  }
- discard(){if(this.running)return false;this.intents.clear();this.consent.clear();this.removing.clear();this.requests.clear();this.batches.clear();this.epoch++;this.workspace=null;this.phase='idle';this.error=null;this.emit();return true}
+ discard(){if(this.running)return false;this.intents.clear();this.deleting.clear();this.consent.clear();this.removing.clear();this.requests.clear();this.batches.clear();this.epoch++;this.workspace=null;this.phase='idle';this.error=null;this.emit();return true}
  suspend(){this.active=false;this.epoch++}
  resume(){this.active=true;this.emit()}
 }

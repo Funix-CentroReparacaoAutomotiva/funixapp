@@ -146,6 +146,8 @@ O importador offline aplica a decisão da direção do comentário PR #21 `65008
 
 ### Curadoria comercial — Issue #31 / schema V8
 
+**Decisão posterior — Fase 1 (V8):** os seletores da lista de Diagnósticos, Mapa e Adicionar peça representam habilitação no cenário ativo. Para peça ausente, o frontend usa o POST existente e a habilita nesse cenário. Para peça já existente, usa `PATCH /api/atendimentos/:at/cenarios/:id` com `revision` e `pieceFlags`, sem criar nova identidade. Desabilitar não envia DELETE e não modifica `serviceFlags`/`componentFlags`. Exclusão global é ação explícita da lixeira, sempre confirmada na interface, usando a rota DELETE de composição e os mesmos guardas de revisão. Não há mudança de schema ou dos endpoints; essa decisão substitui a antiga semântica global dos seletores da Etapa 2. [Relatório](FASE1_HABILITACAO_EXCLUSAO.md).
+
 Complemento posterior ao contrato V7 acima. [Relatório e decisões](CURADORIA_COMERCIAL_IMPLEMENTACAO.md). O manifesto por IDs Coda em `shared/commercial-curation.ts` distingue visibilidade de atividade: Interna/Encantamento ficam fora de novas inclusões, sem apagar/desativar referências antigas. Novas inclusões de serviço oculto, de origem Coda desconhecida ou da atividade técnica sem identidade canônica aprovada recebem `409 CURATION_SELECTION_BLOCKED`, antes de gravar. Diagnóstico Técnico/Inspeção técnica são uma oferta bloqueada para novas linhas, com ambos os IDs históricos preservados. Dimensões incompletas e os 16 diagnósticos não são filtrados por calculabilidade.
 
 Confirmação de terceiros:
