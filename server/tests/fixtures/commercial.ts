@@ -14,7 +14,7 @@ export function commercialFixture(db:DatabaseSync,withMR=true){
  const item=commercial.updateDiagnosis(at.id,p.id,{revision:p.revision,services:[{serviceId:service.id,dimensionId:dimension.id,quantity:'3'}]})
  const config={...(withMR?{resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'2'}]}:{}),tables:[{id:'table',name:'Tabela sintética',factor:'1'}],colors:[{id:'color',name:'Cor sintética',factor:'1'}],risks:[{id:'risk',name:'Risco sintético',factor:'1'}],capacity:'4',conditions:'Condições de homologação sintética. Não executar serviço.',services:[{serviceId:service.id,colorFactorEnabled:true,discountable:true,billable:true,base:'100.01',dimensions:[{dimensionId:dimension.id,fd:'1',stages:[{id:'step',name:'Etapa sintética',dimension:'Técnica',baseEnergy:'2',dimensionEnergy:'3'}]}]}],specialPrices:[]}
  pricing.save({revision:1,config})
- pricing.saveSettings(at.id,{revision:pricing.settings(at.id).revision,tableId:'table',colorId:'color',riskId:'risk',...(withMR?{mrId:'mr'}:{})})
+ pricing.saveSettings(at.id,{revision:pricing.settings(at.id).revision,tableId:'table',colorId:'color',riskId:'risk',...(withMR?{mrId:'mr'}:{mrPercent:null})})
  const scenario=scenarios.list(at.id)[0]!
  return {at,atendimentos,commercial,scenarios,pricing,item,service,dimension,scenario,config}
 }

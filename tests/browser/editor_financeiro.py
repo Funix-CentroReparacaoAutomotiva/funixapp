@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """Approved HTML visual contract + real autosave/MR/emission; synthetic SQLite only."""
 import asyncio,json,hashlib,traceback
 from playwright.async_api import async_playwright,expect
@@ -144,11 +145,11 @@ async def run():
     h.mark(device+': incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier')
     await page.get_by_role('button',name='Voltar aos Diagnósticos',exact=True).click()
     finance=page.get_by_role('region',name='Painel financeiro',exact=True)
-    await finance.locator('.summary').click();await expect(finance.get_by_label('MR',exact=True)).to_have_value('mr')
-    await finance.get_by_label('MR',exact=True).select_option('mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('360,00')
-    await finance.get_by_label('MR',exact=True).select_option('mr');await expect(finance.locator('.metric').nth(1)).to_contain_text('216,00')
+    await finance.locator('.summary').click();await expect(finance.get_by_label('MR',exact=True)).to_have_value('20')
+    await select_mr(finance,'mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('360,00')
+    await select_mr(finance,'mr');await expect(finance.locator('.metric').nth(1)).to_contain_text('216,00')
     await add_scenario(page);await expect(page.locator('.scenario-trigger')).to_have_attribute('aria-label','Cenários: Cenário 2')
-    await expect(finance.get_by_label('MR',exact=True)).to_have_value('mr')
+    await expect(finance.get_by_label('MR',exact=True)).to_have_value('20')
     before_requests=len([r for r in h.api_requests if r['path'].endswith('/cenarios') and r['method']=='GET'])
     await page.get_by_role('button',name='Mapa',exact=True).click();await expect(page.locator('.interactive-map')).to_be_visible()
     await page.get_by_role('button',name='Diagnósticos',exact=True).click()
@@ -206,7 +207,7 @@ async def run():
     await expect(page.get_by_role('heading',name='Orçamentos emitidos',exact=True)).to_be_visible()
     assert await page.get_by_role('button',name='Configuração comercial',exact=True).count()==0
     await page.locator('.detail-header .back-detail').click()
-    await finance.locator('.summary').click();await finance.get_by_label('MR',exact=True).select_option('mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00')
+    await finance.locator('.summary').click();await select_mr(finance,'mr2');await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00')
     assert await get(path+'/orcamentos/'+v['id'])==v
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==pdf_hash
     h.mark(device+': global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF')

@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """Autosave request budget and adversarial recovery. Local API/file SQLite; synthetic only."""
 import asyncio,json,subprocess,traceback,hashlib
 from pathlib import Path
@@ -133,8 +134,8 @@ async def device_case(browser,device,viewport):
   # Real persisted parameters invalidate the scenario revision; next edit must remain usable.
   finance=page.get_by_role('region',name='Painel financeiro',exact=True)
   if not await finance.get_by_label('MR',exact=True).is_visible():await finance.locator('.summary').click()
-  await finance.get_by_label('MR',exact=True).select_option('')
-  await expect(finance.get_by_label('MR',exact=True)).to_be_enabled();await finance.get_by_label('MR',exact=True).select_option('mr')
+  await finance.get_by_label('MR',exact=True).fill('0');await finance.get_by_label('MR',exact=True).press('Enter');await expect(finance).to_have_attribute('data-calculation-state','current')
+  await expect(finance.get_by_label('MR',exact=True)).to_be_enabled();await select_mr(finance,'mr')
   await expect(finance.get_by_label('MR',exact=True)).to_be_enabled()
   await editor.get_by_role('textbox',name='Observação da peça',exact=True).fill('Após parâmetros QA');await saved()
   assert (await get(base+'/cenarios'))['items'][0]['notes']=='Após parâmetros QA'

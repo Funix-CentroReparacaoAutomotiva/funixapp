@@ -1,3 +1,4 @@
+import{resolveMR}from'../shared/mr.ts'
 import{servicePolicy,executionScope,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
 import { catalogItemUsable, scenarioLabel } from '../shared/commercial.ts'
@@ -64,8 +65,10 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
    if(!enabled)continue
    try {
     eligible(item.pieceId,'peca')
-    const price=required(component.manualPrice,'Preço manual do componente'),mr=required(config.resaleMultipliers?.find(m=>m.id===settings.mrId)?.factor,'MR do Atendimento')
-    line.factors={manualPrice:price.toString(),MR:mr.toString()}
+    const price=required(component.manualPrice,'Preço manual do componente'),resolved=resolveMR(settings,config)
+    if(resolved.factor===null)throw new Error('MR do Atendimento não configurado.')
+    const [whole,fraction='']=resolved.factor.split('.'),mr=new Q(BigInt(whole!+fraction),10n**BigInt(fraction.length))
+    line.factors={manualPrice:price.toString(),MR:mr.toString(),...(resolved.source==='percent'?{MRPercent:resolved.percent!}:{})}
     const unit=price.mul(mr).ceilUnit();line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(component.quantity)).toString()
    }catch(cause){errors.push(`${line.name}: ${(cause as Error).message}`)}
   }

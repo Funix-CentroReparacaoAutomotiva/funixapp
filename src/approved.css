@@ -105,3 +105,8 @@
 .approved-editor .component-total output[data-state=error]{color:#995321;font-size:11px;font-weight:500}
 .approved-editor .component[data-included=false] .component-first-line .name{background:#f5f6f8;color:#677587}
 @media(max-width:360px){.approved-editor .component-values{grid-template-columns:58px minmax(0,1fr);gap:8px 10px}.approved-editor .component-total output{justify-content:flex-start;text-align:left}.approved-editor .component-total>span{text-align:left}}
+
+/* MR percentual mantém a geometria dos quatro controles financeiros. */
+.approved-finance .select-wrap .mr-percent{appearance:none;display:block;width:100%;min-width:0;box-sizing:border-box;background:var(--field);border:1px solid #607b9e;border-radius:999px;color:white;font-size:13px;font-weight:650;text-align:center;padding:0 22px 0 6px;height:37px;outline-offset:2px;color-scheme:dark}
+.approved-finance .mr-suffix{position:absolute;right:9px;top:10px;font-size:13px;pointer-events:none}
+@media(max-width:400px){.approved-finance .select-wrap .mr-percent{font-size:12px;padding-right:16px;padding-left:3px}.approved-finance .mr-suffix{right:5px}}

@@ -12,7 +12,7 @@ test('MR options and global selection are explicit, revision protected and prese
  try{
   const f=commercialFixture(db,false),before=db.prepare('SELECT * FROM component_items').all()
   assert.equal(f.pricing.get().config.resaleMultipliers,undefined)
-  assert.equal(f.pricing.settings(f.at.id).settings.mrId,undefined)
+  assert.equal(f.pricing.settings(f.at.id).settings.mrId,null)
   const old=f.pricing.settings(f.at.id)
   assert.throws(()=>f.pricing.saveSettings(f.at.id,{revision:old.revision,mrId:'not-registered'}))
   f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,resaleMultipliers:[{id:'mr-qa',name:'MR sintético',factor:'1.2'}]}})

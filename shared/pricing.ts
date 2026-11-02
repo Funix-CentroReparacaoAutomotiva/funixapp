@@ -9,13 +9,15 @@ export interface ServicePricing {
  dimensions: {dimensionId: string; fd: string | null; stages: TechnicalStage[]}[]
 }
 export interface PricingConfig {
+ defaults?:FinancialDefaults
  commercialCuration?: {version:string;digest:string}
  tables: FactorOption[]; colors: FactorOption[]; risks: FactorOption[]; resaleMultipliers?: FactorOption[]
  capacity: string | null; services: ServicePricing[]
  specialPrices: {tableId: string; serviceId: string; dimensionId: string; unit: string}[]
  conditions: string
 }
-export interface PricingSettings {tableId: string | null; colorId: string | null; riskId: string | null; mrId?: string | null}
+export interface FinancialDefaults {tableId:string|null;colorId:string|null;riskId:string|null;mrPercent:string|null}
+export interface PricingSettings {tableId: string | null; colorId: string | null; riskId: string | null; mrId?: string | null;mrPercent?:string|null;defaultsInitialized?:boolean}
 export interface PricingConfiguration {revision: number; updatedAt: string; config: PricingConfig}
 export interface ComponentItem {
  id: string; atendimentoId: string; pieceId: string; name: string; quantity: string

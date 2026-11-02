@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """Offline import into isolated V7, then real API/UI on desktop/mobile. Synthetic rows only."""
 import asyncio,json,subprocess,traceback
 from playwright.async_api import async_playwright,expect
@@ -42,7 +43,7 @@ async def device_case(browser,device,viewport):
   await expect(editor).to_have_attribute('data-save-state','confirmed')
   finance=page.get_by_role('region',name='Painel financeiro',exact=True)
   if not await finance.get_by_label('Tabela',exact=True).is_visible():await finance.locator('.summary').click()
-  for label,name in [('Tabela','Tabela QA sintética'),('FC','1,00'),('FR','1,00')]:
+  for label,name in [('Tabela','Tabela QA sintética'),('FC','Cor sintética QA'),('FR','Risco sintético QA')]:
    await finance.get_by_label(label,exact=True).select_option(label=name)
    await expect(finance.get_by_label(label,exact=True)).to_be_enabled()
    # Wait for the actual settings write/refresh, not a browser-local value.
@@ -52,14 +53,14 @@ async def device_case(browser,device,viewport):
     await asyncio.sleep(.1)
    else:raise AssertionError('Parameter was not persisted')
   await expect(editor.locator('.calculated strong')).to_have_text('R$ 100,05')
-  assert await finance.get_by_label('MR',exact=True).locator('option').count()==2
-  await expect(finance.get_by_label('MR',exact=True)).to_have_value('')
+  assert await finance.get_by_label('MR',exact=True).evaluate('(e)=>e.tagName')=='INPUT'
+  await expect(finance.get_by_label('MR',exact=True)).to_have_value('20')
   assert not (await get(path+'/parametros'))['settings'].get('mrId')
   w=await get(path+'/cenarios');assert w['calculations'][0]['energy']=='5';assert w['calculations'][0]['days']=='2';assert w['calculations'][0]['errors']==[]
   await page.screenshot(path=str(ARTIFACTS/f'{device}-diagnostico.png'))
   await page.reload();await expect(page.get_by_role('region',name='Editor de diagnóstico',exact=True)).to_be_visible()
   await expect(page.get_by_label('Serviço',exact=True)).to_have_value(w['items'][0]['services'][0]['serviceId'])
-  h.mark(device+': real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; MR is registered but not automatically selected')
+  h.mark(device+': real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; legacy MR record is preserved; new Atendimento has approved MR20%')
   # The approved direction option is imported, never inferred from Coda's curator factor.
   cfg=await get('/api/precificacao');mr=next(m for m in cfg['config']['resaleMultipliers'] if m['name']=='Padrão')
   assert mr['factor']=='1.2'
@@ -70,12 +71,12 @@ async def device_case(browser,device,viewport):
   await editor.get_by_label('Preço unitário do componente',exact=True).fill('100')
   await expect(editor).to_have_attribute('data-save-state','confirmed')
   current=await get(path+'/cenarios');request={'scenarioId':current['selectedId'],'negotiation':{'mode':'none'}}
-  pending=await write(path+'/orcamentos/previa',request);assert pending['canEmit'] is False
-  assert any('MR do Atendimento' in e for e in pending['snapshot']['calculation']['errors'])
+  pending=await write(path+'/orcamentos/previa',request);assert pending['canEmit'] is True
+  assert pending['snapshot']['settings']['mrPercent']=='20'
   if not await finance.get_by_label('MR',exact=True).is_visible():await finance.locator('.summary').click()
-  await finance.get_by_label('MR',exact=True).select_option(mr['id'])
+  await select_mr(finance,mr['id'])
   for _ in range(50):
-   if (await get(path+'/parametros'))['settings'].get('mrId')==mr['id']:break
+   if (await get(path+'/parametros'))['settings'].get('mrPercent')=='20':break
    await asyncio.sleep(.1)
   else:raise AssertionError('Approved MR selection not saved')
   preview=await write(path+'/orcamentos/previa',request)
@@ -84,8 +85,8 @@ async def device_case(browser,device,viewport):
   await page.screenshot(path=str(ARTIFACTS/f'{device}-mr-aprovado.png'))
   await page.reload();finance=page.get_by_role('region',name='Painel financeiro',exact=True)
   if not await finance.get_by_label('MR',exact=True).is_visible():await finance.locator('.summary').click()
-  await expect(finance.get_by_label('MR',exact=True)).to_have_value(mr['id'])
-  h.mark(device+': imported Padrão MR selected manually, persists on reload, prices component 100 as 120 and leaves service unchanged')
+  await expect(finance.get_by_label('MR',exact=True)).to_have_value('20')
+  h.mark(device+': approved MR20% is a per-Atendimento percentage, persists on reload, prices component 100 as 120 and leaves service unchanged')
   assert h.external==[] and h.page_errors==[],(h.external,h.page_errors)
   return h.results
  except Exception:

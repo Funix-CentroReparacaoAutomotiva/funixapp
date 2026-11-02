@@ -1,0 +1,21 @@
+PASS desktop: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS desktop: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS desktop: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS desktop: manual table/FC/FR/MR preserved across reload and API restart
+PASS desktop: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS desktop: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS desktop: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento
+PASS mobile390: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS mobile390: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS mobile390: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS mobile390: manual table/FC/FR/MR preserved across reload and API restart
+PASS mobile390: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS mobile390: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS mobile390: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento
+PASS mobile320: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS mobile320: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS mobile320: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS mobile320: manual table/FC/FR/MR preserved across reload and API restart
+PASS mobile320: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS mobile320: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS mobile320: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento

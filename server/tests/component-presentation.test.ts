@@ -8,7 +8,7 @@ import type {CommercialWorkspace} from '../../shared/commercial.ts'
 import {componentMR,componentResult,resalePercent} from '../../src/component-presentation.ts'
 
 for(const [factor,label]of [['1','0%'],['1.20','+20%'],['1.35','+35%'],['0.80','−20%'],['1.000001','+0,0001%'],['0','−100%']]as const)test(`Etapa D presents configured MR ${factor} as ${label} exactly`,()=>assert.equal(resalePercent(factor),label))
-test('Etapa D absent/invalid MR never implies a neutral factor',()=>{for(const v of [null,undefined,'','NaN','1e2','-1','1.1234567'])assert.equal(resalePercent(v),null)})
+test('Etapa D absent/invalid MR never implies a neutral factor',()=>{for(const v of [null,undefined,'','NaN','1e2','-1','1.123456789'])assert.equal(resalePercent(v),null)})
 function fixture(factor='1.2',price:string|null='100',quantity='2'){
  const db=openDatabase(':memory:'),f=commercialFixture(db),repo=new ComponentRepository(db),part=repo.save(f.at.id,{pieceId:f.item.id,name:'Componente QA',manualPrice:price,quantity,notes:''}),config={...f.config,resaleMultipliers:[{id:'mr',name:'MR QA',factor}]}
  const scenarios=f.scenarios.list(f.at.id),items=f.commercial.list(f.at.id,scenarios[0]!.id),components=repo.list(f.at.id),parameters=f.pricing.settings(f.at.id)
@@ -47,5 +47,16 @@ test('Stage3 incomplete component fields never claim an active calculation or si
   assert.equal(componentResult({...t.draft,name:''},t.piece,t.workspace,'current',true).state,'error')
   const w=structuredClone(t.workspace);w.components[0]!.manualPrice=null;w.calculations[0]!.lines.find(l=>l.id===t.part.id)!.total=null
   assert.equal(componentResult({...t.draft,manualPrice:null},t.piece,w,'current',false).text,'Preço não informado')
+ }finally{t.db.close()}
+})
+
+test('Fase2 MR percent changes invalidate component totals until confirmed, without a component-specific MR',()=>{
+ const t=fixture()
+ try{
+  const w=structuredClone(t.workspace);w.settings={...w.settings,mrId:null,mrPercent:'25.500001'}
+  assert.equal(componentMR(w,t.configuration).label,'+25,500001%')
+  assert.deepEqual(componentResult(t.draft,t.piece,w,'incomplete',false,t.configuration),{state:'incomplete',text:'MR incompleto',value:null})
+  assert.equal(componentResult(t.draft,t.piece,w,'pending',false,t.configuration).value,null)
+  assert.equal(componentResult(t.draft,t.piece,w,'error',false,t.configuration).value,null)
  }finally{t.db.close()}
 })

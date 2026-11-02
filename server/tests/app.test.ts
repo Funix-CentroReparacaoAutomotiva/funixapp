@@ -357,3 +357,22 @@ test('curation confirmation HTTP rejects auth/origin/scope/mask bypass, persists
   const readonly=await app.write(at+'/diagnosticos/'+item.id,'PATCH',{revision:item.revision,services:[{...line,executionConfirmed:true}]},cookie);assert.equal(readonly.status,400)
  }finally{app.close()}
 })
+
+test('Fase2 HTTP percentage persistence/guards and explicit one-time initialization never mutate through GET',async()=>{
+ const app=start()
+ try{
+  const f=commercialFixture(app.db),cookie=await authenticate(app),path='/api/atendimentos/'+f.at.id+'/parametros'
+  app.db.prepare('UPDATE commercial_state SET settings_json=? WHERE atendimento_id=?').run('{}',f.at.id)
+  const before=String(app.db.prepare('SELECT settings_json FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!.settings_json)
+  const read=await app.request(path,{headers:{Cookie:cookie}});assert.equal(read.status,200)
+  assert.equal(String(app.db.prepare('SELECT settings_json FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!.settings_json),before)
+  assert.equal((await app.write(path+'/inicializar','POST',{},'')).status,401)
+  assert.equal((await app.write(path+'/inicializar','POST',{},cookie,'https://invalid.example')).status,403)
+  const initialized=await app.write(path+'/inicializar','POST',{},cookie);assert.equal(initialized.status,200);const current=await initialized.json();assert.equal(current.settings.mrPercent,'20')
+  const again=await app.write(path+'/inicializar','POST',{},cookie);assert.deepEqual(await again.json(),current)
+  for(const mrPercent of['','-1','NaN','Infinity','25,5',20])assert.equal((await app.write(path,'PATCH',{revision:current.revision,mrPercent},cookie)).status,400)
+  const saved=await app.write(path,'PATCH',{revision:current.revision,mrPercent:'25.5'},cookie);assert.equal(saved.status,200);assert.equal((await saved.json()).settings.mrPercent,'25.5')
+  assert.equal((await app.write(path,'PATCH',{revision:current.revision,mrPercent:'0'},cookie)).status,409)
+  const latest=await(await app.request(path,{headers:{Cookie:cookie}})).json();assert.equal(latest.settings.mrPercent,'25.5')
+ }finally{app.close()}
+})

@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """Stage3 E01-E09/C05-C06, real local API/file SQLite; synthetic data only."""
 import asyncio,hashlib,json,sqlite3,subprocess,traceback
 from playwright.async_api import async_playwright,expect
@@ -40,7 +41,7 @@ async def device_case(browser,device,viewport):
   h.mark(device+': dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero')
   # Missing table/MR are configuration states, not loading. Options remain usable to resolve them.
   w=await ws();await write(base+'/parametros',{'revision':w['revision'],'tableId':None,'mrId':None});await page.reload();await saved();await expect(finance).to_have_attribute('data-calculation-state','missing');await finance.locator('.summary').click();await expect(finance.locator('.notice')).to_contain_text('Configuração pendente');await expect(finance.get_by_label('Tabela',exact=True)).to_be_enabled();await expect(editor.locator('.calculated strong')).to_have_text('Configuração pendente');await expect(editor.get_by_label('Total do componente')).to_have_text('MR não configurado');await shot('configuracao-pendente')
-  await finance.get_by_label('Tabela',exact=True).select_option('table');await saved();await expect(finance.get_by_label('MR',exact=True)).to_be_enabled();await finance.get_by_label('MR',exact=True).select_option('mr');await expect(editor.get_by_label('Total do componente')).to_have_text('R$ 0,00');await finance.locator('.summary').click()
+  await finance.get_by_label('Tabela',exact=True).select_option('table');await saved();await expect(finance.get_by_label('MR',exact=True)).to_be_enabled();await select_mr(finance,'mr');await expect(editor.get_by_label('Total do componente')).to_have_text('R$ 0,00');await finance.locator('.summary').click()
   h.mark(device+': missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules')
   # Slow real write: saving is not confirmation; normal status does not move layout or focus.
   await editor.get_by_role('button',name='Observação da peça').click();note=editor.get_by_role('textbox',name='Observação da peça');gate=asyncio.Event();started=asyncio.Event()
