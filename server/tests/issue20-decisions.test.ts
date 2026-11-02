@@ -54,7 +54,7 @@ test('direction disables FC only for the three stable source IDs; source flags, 
  }finally{db.close()}
 })
 
-test('approved MR is added once without selecting existing or new Atendimentos; selection prices all components only',()=>{
+test('approved legacy MR option is added once; new MR20% default prices components only without selecting legacy IDs',()=>{
  const db=openDatabase(':memory:')
  try{
   const ats=new AtendimentoRepository(db),existing=ats.create({phone:'123'}),pricing=new PricingConfigurationRepository(db),source=codaFixture(),before=digest(pricing.get())
@@ -69,7 +69,7 @@ test('approved MR is added once without selecting existing or new Atendimentos; 
   parts.save(existing.id,{pieceId:item.id,name:'Componente QA A',quantity:'1',manualPrice:'100',notes:''})
   parts.save(existing.id,{pieceId:item.id,name:'Componente QA B',quantity:'0.25',manualPrice:'10.01',notes:''})
   const scenario=new ScenarioRepository(db).list(existing.id)[0]!,budgets=new BudgetRepository(db),request={scenarioId:scenario.id,negotiation:{mode:'none'}}
-  const pending=budgets.preview(existing.id,request);assert(!pending.canEmit);assert(pending.snapshot.calculation.errors.some(e=>e.includes('MR do Atendimento')))
+  const initialized=budgets.preview(existing.id,request);assert(initialized.canEmit);assert.equal(pricing.settings(existing.id).settings.mrPercent,'20')
   pricing.saveSettings(existing.id,{revision:pricing.settings(existing.id).revision,mrId:mr.id})
   const preview=budgets.preview(existing.id,request),calc=preview.snapshot.calculation
   assert(preview.canEmit);assert.equal(calc.serviceSubtotal,'100.05');assert.equal(calc.componentSubtotal,'123.0125');assert.equal(calc.total,'223.0625')

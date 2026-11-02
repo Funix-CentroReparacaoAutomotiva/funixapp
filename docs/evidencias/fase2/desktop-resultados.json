@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow",
+      "pass": true,
+      "boxes": [
+        {
+          "x": 474,
+          "y": 644.109375,
+          "width": 117,
+          "height": 37
+        },
+        {
+          "x": 599,
+          "y": 644.109375,
+          "width": 117,
+          "height": 37
+        },
+        {
+          "x": 724,
+          "y": 644.109375,
+          "width": 117,
+          "height": 37
+        },
+        {
+          "x": 849,
+          "y": 644.109375,
+          "width": 117,
+          "height": 37
+        }
+      ]
+    },
+    {
+      "name": "desktop: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero",
+      "pass": true
+    },
+    {
+      "name": "desktop: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected",
+      "pass": true
+    },
+    {
+      "name": "desktop: manual table/FC/FR/MR preserved across reload and API restart",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost committed MR response keeps draft and reconciles by read only without repeat write",
+      "pass": true
+    },
+    {
+      "name": "desktop: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite",
+      "pass": true
+    },
+    {
+      "name": "desktop: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento",
+      "pass": true
+    }
+  ]
+}

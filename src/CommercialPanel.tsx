@@ -118,6 +118,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       const [c, workspace] = await Promise.all([refreshCatalog || !catalogCache.current ? api<CatalogResponse>('/api/catalogos', { signal }) : Promise.resolve(catalogCache.current), api<CommercialWorkspace>(`/api/atendimentos/${atendimentoId}/cenarios${suffix}`, { signal })])
       if (signal?.aborted || version !== loadVersion.current) return
       acceptWorkspace(workspace,preferred);catalogCache.current=c;setCatalog(c)
+      return workspace
 
     } catch(cause) {if(!signal?.aborted && version === loadVersion.current)throw cause}
   }, [atendimentoId,acceptWorkspace])
@@ -143,7 +144,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   async function chooseScenario(id:string) {
     if(id===scenarioId && !scenarioGone)return true
     if(!canChangeScenario())return false
-    const ok=await mutate(()=>load(undefined,id));if(ok){discardContext();setRefreshNeeded(false)};return ok
+    const ok=await mutate(async()=>{await load(undefined,id)});if(ok){discardContext();setRefreshNeeded(false)};return ok
   }
   async function addScenario() {
     const active=scenarios.find(s=>s.id===scenarioId)
@@ -299,7 +300,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       {scenarioGone && <p className="form-error" role="alert">O cenário anterior foi excluído. Seus campos locais foram preservados. Selecione um cenário no menu superior antes de continuar.</p>}
       {reauth && <div className="commercial-reauth"><p>Entre novamente. Os campos em edição foram preservados.</p><Login session={{ authenticated: false, configured: true }} error="" refresh={() => {}} onSession={() => setReauth(false)} /></div>}
       {!mapSelecting && !sheetSelecting && feedback}
-      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={()=>load()} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
+      {!catalog ? <p className="at-form-hint">{failure ? 'A seleção ficará disponível após atualizar os dados.' : 'Carregando catálogos e diagnósticos…'}</p> : budget && workspace ? <BudgetPanel key={scenarioId} at={atendimentoId} onBusy={onManagerBusy} onAuthRequired={()=>setReauth(true)} externalBusy={busy || refreshNeeded || scenarioGone} versionId={versionId} onOpenVersion={id=>onView('orcamentos',id)} onTitle={onTitle}/> : matrix ? <><label className="commercial-check"><input type="checkbox" checked={differences} onChange={e=>setDifferences(e.target.checked)} /> Só diferenças</label>{comparison}</> : draft && workspace ? <><DiagnosisEditor pricingConfiguration={pricingConfiguration} key={draft.id+':'+scenarioId} initial={draft} workspace={workspace} catalog={catalog.items} onDirty={onManagerDirty} onBusy={onManagerBusy} onSync={async()=>{await load()}} onAuthRequired={()=>setReauth(true)} onCalculationState={setCalculationState} parameterState={parameterState}/></> : screen==='peca'?<p role="alert">A peça não está disponível neste Atendimento. Use Voltar para retornar.</p> : <>
         {tab === 'mapa' ? <div className="map-stage" ref={mapStage}>
 
           <div className="interactive-map" onClick={event => {

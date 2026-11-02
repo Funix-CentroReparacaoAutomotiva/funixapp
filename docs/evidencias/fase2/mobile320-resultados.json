@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "mobile320: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow",
+      "pass": true,
+      "boxes": [
+        {
+          "x": 11,
+          "y": 448,
+          "width": 70,
+          "height": 37
+        },
+        {
+          "x": 87,
+          "y": 448,
+          "width": 70,
+          "height": 37
+        },
+        {
+          "x": 163,
+          "y": 448,
+          "width": 70,
+          "height": 37
+        },
+        {
+          "x": 239,
+          "y": 448,
+          "width": 70,
+          "height": 37
+        }
+      ]
+    },
+    {
+      "name": "mobile320: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero",
+      "pass": true
+    },
+    {
+      "name": "mobile320: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected",
+      "pass": true
+    },
+    {
+      "name": "mobile320: manual table/FC/FR/MR preserved across reload and API restart",
+      "pass": true
+    },
+    {
+      "name": "mobile320: lost committed MR response keeps draft and reconciles by read only without repeat write",
+      "pass": true
+    },
+    {
+      "name": "mobile320: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite",
+      "pass": true
+    },
+    {
+      "name": "mobile320: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento",
+      "pass": true
+    }
+  ]
+}

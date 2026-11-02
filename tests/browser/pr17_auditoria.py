@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """PR17 audit decisions: global settings, truthful pending values, MR-only PDFs/schema.
 Every device uses its own temporary file-backed database and owned API/Vite.
 """
@@ -130,20 +131,20 @@ async def device_case(browser,device,viewport):
    if route.request.method=='PATCH':param_wait.set();await allow_param.wait()
    await route.continue_()
   await page.route('**'+path+'/parametros',hold_param)
-  await finance.get_by_label('MR',exact=True).select_option(cfg['resaleMultipliers'][1]['id']);await asyncio.wait_for(param_wait.wait(),10)
+  await select_mr(finance,cfg['resaleMultipliers'][1]['id']);await asyncio.wait_for(param_wait.wait(),10)
   await expect(finance.locator('.metric.final')).to_contain_text('Calculando…');await expect(first.locator('.calculated strong')).to_have_text('Calculando…')
   allow_param.set();await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00');await expect(first.locator('.calculated strong')).to_have_text('R$ 666,75');await page.unroute('**'+path+'/parametros',hold_param)
   await page.route('**'+path+'/parametros',unavailable)
-  await finance.get_by_label('MR',exact=True).select_option(cfg['resaleMultipliers'][0]['id']);await expect(finance.get_by_role('alert')).to_be_visible()
+  await select_mr(finance,cfg['resaleMultipliers'][0]['id']);await expect(finance.get_by_role('alert')).to_be_visible()
   await expect(finance.locator('.metric.final')).to_contain_text('Não atualizado');await expect(finance.get_by_role('button',name='Emitir orçamento',exact=True)).to_be_disabled()
-  await page.unroute('**'+path+'/parametros',unavailable);await finance.get_by_role('button',name='Atualizar valores',exact=True).click();await expect(finance.locator('.metric').nth(1)).to_contain_text('750,00')
-  await finance.get_by_label('MR',exact=True).select_option(cfg['resaleMultipliers'][0]['id']);await expect(finance.locator('.metric').nth(1)).to_contain_text('450,00')
+  await page.unroute('**'+path+'/parametros',unavailable);await finance.get_by_role('button',name='Atualizar valores',exact=True).click();await expect(finance).to_have_attribute('data-calculation-state','incomplete')
+  await select_mr(finance,cfg['resaleMultipliers'][0]['id']);await expect(finance.locator('.metric').nth(1)).to_contain_text('450,00')
   await finance.get_by_role('button',name='Emitir orçamento',exact=True).click();review=page.get_by_role('dialog',name='Conferência do orçamento')
   await review.get_by_role('checkbox').check();await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name='Orçamento A emitido')).to_be_visible()
   async with page.expect_download() as pending:await review.get_by_role('button',name='Baixar PDF',exact=True).click()
   download=await pending.value;file=ARTIFACTS/f'{device}-orcamento-mr.pdf';await download.save_as(str(file))
   text_file=file.with_suffix('.txt');subprocess.run(['pdftotext','-layout',str(file),str(text_file)],check=True)
-  text=text_file.read_text();assert 'MR do Atendimento: 1.2' in text and 'FCT' not in text and 'undefined' not in text,text
+  text=text_file.read_text();assert 'MR do Atendimento: 20%' in text and 'FCT' not in text and 'undefined' not in text,text
   assert 'manual' in text and '375,00' in text and '450,00' in text
   data=await get(path+'/componentes');assert all('fct' not in x for x in data)
   h.mark(device+': error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined')

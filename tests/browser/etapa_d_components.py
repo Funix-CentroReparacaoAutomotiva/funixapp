@@ -1,3 +1,4 @@
+from mr_percent import select_mr
 """Etapa D: official calculation/API, isolated synthetic file SQLite, desktop/mobile states."""
 import asyncio,json,subprocess,traceback,sqlite3,hashlib
 from playwright.async_api import async_playwright,expect
@@ -52,21 +53,23 @@ async def device_case(browser,device,viewport):
   config_gets=[r for r in h.api_requests if r['path']=='/api/precificacao'and r['method']=='GET'];assert len(config_gets)==1,config_gets
   await finance.locator('.summary').click()
   for mr,label in [('m100','0%'),('m135','+35%'),('m080','−20%'),('m120','+20%')]:
-   await finance.get_by_label('MR',exact=True).select_option(mr);await expect(row().get_by_label('MR do componente')).to_have_text(label);w=await official()
-   assert w['settings']['mrId']==mr;await expect(finance.locator('.metric').nth(1)).to_contain_text(money(w['calculations'][0]['componentSubtotal']))
+   await select_mr(finance,mr);await expect(row().get_by_label('MR do componente')).to_have_text(label);w=await official()
+   if mr=='m080':assert w['settings']['mrId']==mr
+   else:assert w['settings']['mrPercent']=={'m100':'0','m135':'35','m120':'20'}[mr]
+   await expect(finance.locator('.metric').nth(1)).to_contain_text(money(w['calculations'][0]['componentSubtotal']))
   h.mark(device+': MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET')
   # Keep stale workspace response in flight after changing the global MR.
   started=asyncio.Event();release=asyncio.Event()
   async def hold_workspace(route):started.set();await release.wait();await route.continue_()
-  await page.route('**/cenarios?*',hold_workspace);await finance.get_by_label('MR',exact=True).select_option('m135');await asyncio.wait_for(started.wait(),10)
+  await page.route('**/cenarios?*',hold_workspace);await select_mr(finance,'m135');await asyncio.wait_for(started.wait(),10)
   for i in range(3):await expect(row(i).get_by_label('Total do componente')).to_have_text('Calculando…')
   await finance.locator('.summary').click();await shot('mr-recalculando');release.set();await expect(row().get_by_label('MR do componente')).to_have_text('+35%');await official();await page.unroute('**/cenarios?*',hold_workspace)
   h.mark(device+': pending MR confirmation invalidates every component and finance; old totals are never presented as current')
   # Missing MR and missing price remain distinct from zero, persisted through real API.
-  await finance.locator('.summary').click();await finance.get_by_label('MR',exact=True).select_option('');await expect(row().get_by_label('MR do componente')).to_have_text('Não configurado');await expect(row().get_by_label('Total do componente')).to_have_text('MR não configurado')
+  await finance.locator('.summary').click();await select_mr(finance,'');await expect(row().get_by_label('MR do componente')).to_have_text('Não configurado');await expect(row().get_by_label('Total do componente')).to_have_text('MR não configurado')
   await finance.locator('.summary').click();await shot('mr-pendente')
-  await finance.locator('.summary').click();await finance.get_by_label('MR',exact=True).select_option('mnull');await expect(row().get_by_label('Total do componente')).to_have_text('MR não configurado')
-  await finance.get_by_label('MR',exact=True).select_option('m120');await expect(row().get_by_label('MR do componente')).to_have_text('+20%');await finance.locator('.summary').click()
+  await finance.locator('.summary').click();await select_mr(finance,'mnull');await expect(row().get_by_label('Total do componente')).to_have_text('MR não configurado')
+  await select_mr(finance,'m120');await expect(row().get_by_label('MR do componente')).to_have_text('+20%');await finance.locator('.summary').click()
   await row().get_by_label('Preço unitário do componente',exact=True).fill('');await saved();await expect(row().get_by_label('Total do componente')).to_have_text('Preço não informado');assert(await ws())['components'][0]['manualPrice']is None
   await shot('preco-pendente');await row().get_by_label('Preço unitário do componente',exact=True).fill('0');await saved();await expect(row().get_by_label('Total do componente')).to_have_text('R$ 0,00')
   h.mark(device+': absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted')

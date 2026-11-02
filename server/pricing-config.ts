@@ -1,3 +1,6 @@
+import{financialDefaults}from'../shared/financial-defaults.ts'
+import{canonicalPercent}from'../shared/mr.ts'
+import{initializeFinancialSettings}from'./financial-initialization.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import type { PricingConfig, PricingConfiguration, PricingSettings, ServicePricing } from '../shared/pricing.ts'
@@ -28,7 +31,7 @@ export class PricingConfigurationRepository {
   const data=inputObject(input,['revision','config'])
   if(!Number.isSafeInteger(data.revision))invalid('Informe a revisão da configuração.')
   return transaction(this.db,()=>{
-   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions','resaleMultipliers','commercialCuration'])
+   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions','resaleMultipliers','commercialCuration','defaults'])
    const options=(field:string)=>{
     const result=array(c[field]).map(raw=>{const o=inputObject(raw,['id','name','factor']);return {id:string(o.id,100),name:string(o.name),factor:optionalDecimal(o.factor)}})
     unique(result.map(o=>o.id));return result
@@ -71,7 +74,12 @@ export class PricingConfigurationRepository {
    const currentCuration=this.get().config.commercialCuration
    const requestedCuration=c.commercialCuration??currentCuration
    if(requestedCuration!==undefined && (!requestedCuration||typeof requestedCuration!=='object'||Array.isArray(requestedCuration)||Object.keys(requestedCuration).length!==2||!('version'in requestedCuration)||requestedCuration.version!==CURATION_STAMP.version||!('digest'in requestedCuration)||requestedCuration.digest!==CURATION_STAMP.digest))invalid('Política de curadoria incompatível; configuração preservada.')
-   const config:PricingConfig={...(requestedCuration?{commercialCuration:{...CURATION_STAMP}}:{}),tables,colors,risks,...(resaleMultipliers===undefined?{}:{resaleMultipliers}),services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
+   const defaults=financialDefaults({...c,tables,colors,risks}as unknown as PricingConfig,this.get().config)
+   const defaultData=inputObject(defaults,['tableId','colorId','riskId','mrPercent'])
+   for(const key of ['tableId','colorId','riskId']as const)if(defaultData[key]!==null&&(typeof defaultData[key]!=='string'||!defaultData[key]||defaultData[key].length>100))invalid('Identidade de padrão financeiro inválida.')
+   if(defaultData.mrPercent!==null&&canonicalPercent(defaultData.mrPercent)===null)invalid('MR padrão deve ser percentual não negativo, com até seis casas decimais.')
+   const validatedDefaults={tableId:defaultData.tableId as string|null,colorId:defaultData.colorId as string|null,riskId:defaultData.riskId as string|null,mrPercent:defaultData.mrPercent===null?null:canonicalPercent(defaultData.mrPercent)!}
+   const config:PricingConfig={defaults:validatedDefaults,...(requestedCuration?{commercialCuration:{...CURATION_STAMP}}:{}),tables,colors,risks,...(resaleMultipliers===undefined?{}:{resaleMultipliers}),services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
    const result=this.db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?').run(JSON.stringify(config),new Date().toISOString(),Number(data.revision))
    if(!result.changes)conflict()
    return this.get()
@@ -82,12 +90,22 @@ export class PricingConfigurationRepository {
   if(!row)invalid('Atendimento inexistente.')
   return {revision:Number(row.revision),settings:{tableId:null,colorId:null,riskId:null,...JSON.parse(String(row.settings_json))}}
  }
+ initializeSettings(at:string,input:unknown){
+  inputObject(input,[])
+  return transaction(this.db,()=>{initializeFinancialSettings(this.db,at);return this.settings(at)})
+ }
  saveSettings(at:string,input:unknown){
-  const data=inputObject(input,['revision','tableId','colorId','riskId','mrId'])
+  const data=inputObject(input,['revision','tableId','colorId','riskId','mrId','mrPercent'])
   if(!Number.isSafeInteger(data.revision))invalid('Informe a revisão da composição.')
   return transaction(this.db,()=>{
    if(this.settings(at).revision!==data.revision)conflict()
    const config=this.get().config,settings:PricingSettings={...this.settings(at).settings}
+   if(data.mrId!==undefined&&data.mrPercent!==undefined)invalid('Informe apenas MR percentual ou identidade legada, nunca ambos.')
+   if(data.mrPercent!==undefined){
+    const percent=data.mrPercent===null?null:canonicalPercent(data.mrPercent)
+    if(data.mrPercent!==null&&percent===null)invalid('MR deve ser percentual não negativo, com até seis casas decimais.')
+    settings.mrPercent=percent;settings.mrId=null
+   }else if(data.mrId!==undefined)delete settings.mrPercent
    for(const [key,list] of [['tableId',config.tables],['colorId',config.colors],['riskId',config.risks],['mrId',config.resaleMultipliers??[]]] as const){
     if(data[key]===undefined)continue
     const value=data[key]

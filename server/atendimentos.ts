@@ -1,3 +1,4 @@
+import{initializeFinancialSettings}from'./financial-initialization.ts'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import { ATENDIMENTO_STAGES } from '../shared/contracts.ts'
@@ -86,7 +87,12 @@ export class AtendimentoRepository {
     const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
     record.phoneNormalized = normalizePhone(record.phone)
     checkRefusal(record)
+    this.db.exec('BEGIN IMMEDIATE')
+    try{
     this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
+      if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
+      this.db.exec('COMMIT')
+    }catch(error){this.db.exec('ROLLBACK');throw error}
     return this.get(record.id)
   }
 

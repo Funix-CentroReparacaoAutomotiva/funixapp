@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "nodeTests": 210,
+  "nodeFailures": 0,
+  "deployTests": 23,
+  "phase2BrowserGroups": 21,
+  "phase1BrowserGroups": 39,
+  "existingBrowserGroups": 220,
+  "totalBrowserGroups": 280,
+  "resolutions": [
+    1440,
+    390,
+    320
+  ],
+  "schemaVersion": 8,
+  "lintPreExistingWarnings": 4,
+  "newLintWarnings": 0,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false
+}

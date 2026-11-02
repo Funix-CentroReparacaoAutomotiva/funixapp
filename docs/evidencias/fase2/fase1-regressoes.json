@@ -1,0 +1,162 @@
+{
+  "synthetic": true,
+  "totalGroups": 39,
+  "results": [
+    {
+      "name": "desktop: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+      "pass": true
+    },
+    {
+      "name": "desktop: scenario switch and reload preserve both masters and independent flags",
+      "pass": true
+    },
+    {
+      "name": "desktop: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+      "pass": true
+    },
+    {
+      "name": "desktop: parent off/on preserves individual service/component masks and shared content without editor redesign",
+      "pass": true
+    },
+    {
+      "name": "desktop: original circular map reflects active scenario; Ambos adds once and subsequent off/on only changes two flags, preserving all identities",
+      "pass": true
+    },
+    {
+      "name": "desktop: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost committed flag response recovers by GET without replay, DELETE or POST",
+      "pass": true
+    },
+    {
+      "name": "desktop: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+      "pass": true
+    },
+    {
+      "name": "desktop: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+      "pass": true
+    },
+    {
+      "name": "desktop: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+      "pass": true
+    },
+    {
+      "name": "desktop: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+      "pass": true
+    },
+    {
+      "name": "desktop: even a blank disabled piece requires explicit confirmation for global deletion",
+      "pass": true
+    },
+    {
+      "name": "desktop: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+      "pass": true
+    },
+    {
+      "name": "mobile320: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+      "pass": true
+    },
+    {
+      "name": "mobile320: scenario switch and reload preserve both masters and independent flags",
+      "pass": true
+    },
+    {
+      "name": "mobile320: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+      "pass": true
+    },
+    {
+      "name": "mobile320: parent off/on preserves individual service/component masks and shared content without editor redesign",
+      "pass": true
+    },
+    {
+      "name": "mobile320: original circular map reflects active scenario; Ambos adds once and subsequent off/on only changes two flags, preserving all identities",
+      "pass": true
+    },
+    {
+      "name": "mobile320: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+      "pass": true
+    },
+    {
+      "name": "mobile320: lost committed flag response recovers by GET without replay, DELETE or POST",
+      "pass": true
+    },
+    {
+      "name": "mobile320: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+      "pass": true
+    },
+    {
+      "name": "mobile320: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+      "pass": true
+    },
+    {
+      "name": "mobile320: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+      "pass": true
+    },
+    {
+      "name": "mobile320: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+      "pass": true
+    },
+    {
+      "name": "mobile320: even a blank disabled piece requires explicit confirmation for global deletion",
+      "pass": true
+    },
+    {
+      "name": "mobile320: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+      "pass": true
+    },
+    {
+      "name": "mobile390: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+      "pass": true
+    },
+    {
+      "name": "mobile390: scenario switch and reload preserve both masters and independent flags",
+      "pass": true
+    },
+    {
+      "name": "mobile390: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+      "pass": true
+    },
+    {
+      "name": "mobile390: parent off/on preserves individual service/component masks and shared content without editor redesign",
+      "pass": true
+    },
+    {
+      "name": "mobile390: original circular map reflects active scenario; Ambos adds once and subsequent off/on only changes two flags, preserving all identities",
+      "pass": true
+    },
+    {
+      "name": "mobile390: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+      "pass": true
+    },
+    {
+      "name": "mobile390: lost committed flag response recovers by GET without replay, DELETE or POST",
+      "pass": true
+    },
+    {
+      "name": "mobile390: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+      "pass": true
+    },
+    {
+      "name": "mobile390: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+      "pass": true
+    },
+    {
+      "name": "mobile390: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+      "pass": true
+    },
+    {
+      "name": "mobile390: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+      "pass": true
+    },
+    {
+      "name": "mobile390: even a blank disabled piece requires explicit confirmation for global deletion",
+      "pass": true
+    },
+    {
+      "name": "mobile390: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+      "pass": true
+    }
+  ]
+}
