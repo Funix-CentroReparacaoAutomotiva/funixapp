@@ -210,7 +210,7 @@ V9 acrescenta somente a coluna nullable/check de intensidade e `diagnosis_recomm
 
 Carga administrativa: `node server/import-recommendations.ts --source ARQUIVO --database SQLITE_EXISTENTE` produz dry-run estritamente read-only; `--confirm-plan HASH` aplica o plano exato em transação, revalidando fonte e estado atual. O comando não carrega `.env`, não presume banco, não cria arquivo, não migra, não acessa rede nem roda no startup. Exige schema exatamente V9 e histórico contínuo. Relatório separa válidas, não selecionadas por padrão, pendências, conflitos, inserções e inalteradas. Repetição não duplica nem substitui regras. Mudanças de fonte/catálogo/regras invalidam o hash anterior. Pendências não são convertidas automaticamente em válidas quando a origem muda: divergência com registro existente exige revisão.
 
-Contrato local normalizado, **ainda não conferido contra o arquivo real ausente** `funix-fase3-regras-coda.json`:
+Contrato local normalizado, conferido com `funix-fase3-regras-importacao-v9.json` (SHA-256 `bcc58f8242825cae68486a61b4cdb40751c80977f0c9c6a3424692a2490da8af`) em SQLite V9 isolado: 77 relações, 74 válidas, três pendências, 16 false e zero conflitos. Evidência em `docs/evidencias/fase3/validacao-fonte-real.json`. O exemplo abaixo permanece exclusivamente estrutural/sintético:
 
 ```json
 {

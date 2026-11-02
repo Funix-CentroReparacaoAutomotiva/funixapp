@@ -1,0 +1,17 @@
+{
+  "file": "funix-fase3-regras-importacao-v9.json",
+  "status": "validated_in_isolated_v9",
+  "fileSHA256": "bcc58f8242825cae68486a61b4cdb40751c80977f0c9c6a3424692a2490da8af",
+  "bytes": 23798,
+  "actualValidatedRows": 77,
+  "validRows": 74,
+  "pendingRows": 3,
+  "notSelectedByDefault": 16,
+  "conflicts": 0,
+  "actualImportedRowsIsolated": 77,
+  "actualImportedRowsProduction": 0,
+  "evidence": "validacao-fonte-real.json",
+  "sourceFileVersioned": false,
+  "commercialExportVersioned": false,
+  "databaseVersioned": false
+}

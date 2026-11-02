@@ -1,6 +1,6 @@
 # Fase 3 — intensidade do diagnóstico e dados de recomendação
 
-Base: `main`/`0a7644b21293c64e95d459082c41b7dd3e4bebda`, com Fases 1 e 2 homologadas. Branch exclusiva: `feature/fase3-intensidade-recomendacoes`. Implementação local, exclusivamente bancos/dados sintéticos. Sem merge, deploy, VPS, SQLite instalado, coleta Coda ou uso da exportação comercial privada.
+Base: `main`/`0a7644b21293c64e95d459082c41b7dd3e4bebda`, com Fases 1 e 2 homologadas. Branch exclusiva: `feature/fase3-intensidade-recomendacoes`. Implementação/regressões com dados sintéticos; complementação posterior com relações e catálogos reais exclusivamente em SQLite V9 novo e isolado. Sem merge, deploy, VPS, SQLite instalado ou nova coleta Coda. Arquivos de origem privados foram somente lidos, nunca alterados ou versionados.
 
 ## Entrega e limite da fonte
 
@@ -8,16 +8,35 @@ A intensidade agora pertence ao diagnóstico mestre da peça e é persistida por
 
 Foi implementada a carga controlada de relações por IDs e a consulta autenticada somente leitura para a Fase 4. Não há aplicação automática/assistida nem nova lista de sugestões. A composição comercial só continua sendo alterada pelas ações já existentes do operador.
 
-**O arquivo `funix-fase3-regras-coda.json` não foi disponibilizado entre os anexos acessíveis nem encontrado nos arquivos do workspace/repositório. A solicitação contém somente o texto do escopo.** Foi utilizada a alternativa explicitamente autorizada: implementar/testar o contrato com fixtures sintéticas. Não foi feita nova coleta, reconstrução da fonte privada ou associação por nomes.
+**A pendência de fonte da primeira entrega foi resolvida.** A direção forneceu `funix-fase3-regras-importacao-v9.json`, já convertido para o contrato `funix-diagnosis-recommendations-v1` e previamente conferido contra a exportação original. Nesta complementação, seu conteúdo foi validado pelo importador existente e pelas referências dos catálogos reais em um **SQLite V9 novo e isolado**, sem clientes ou Atendimentos. Nenhuma adaptação de código ou correção de origem foi necessária.
 
-| Fonte real mencionada pela direção | Resultado desta execução |
+| Verificação real no banco isolado | Resultado observado |
 | --- | --- |
-| 77 relações, sendo 61 true e 16 false | Contagens informadas na solicitação; **não conferidas no arquivo real** |
-| 74 relações potencialmente coerentes | **Pendentes de validação integral**, não importadas |
-| 3 Desalinhamento → Alinhamento, dimensões de Montagem | Divergências informadas pela direção; mecanismo de detecção/retenção testado sinteticamente, sem declarar seus IDs reais validados |
-| Arquivo original e seu SHA-256 | Indisponíveis; nenhuma integridade real afirmada |
+| Arquivo de recomendações | 23.798 bytes; SHA-256 `bcc58f8242825cae68486a61b4cdb40751c80977f0c9c6a3424692a2490da8af` |
+| Exportação comercial privada usada para os catálogos | SHA-256 `76698e523f4d497d417dcb0d9cccb19c635d412d0eba9337a63b01bf9717a35a` |
+| Catálogos existentes antes da carga de recomendações | 163 peças, 28 serviços, 16 diagnósticos e 75 dimensões |
+| Dry-run de recomendações | 77 relações: **74 válidas, três pendentes, 16 false, zero conflitos** |
+| Aplicação do plano confirmado | 77 registros conservados: 74 valid / três pending; nenhuma referência corrigida |
+| Consultas de repositório e API autenticada | 28 combinações diagnóstico + intensidade conferidas em cada camada; 74 relações únicas retornadas, incluindo as 16 false |
+| Pendências oferecidas como válidas | **Zero**, nas duas camadas |
+| Segundo dry-run | **Zero inserções, 77 inalteradas, zero conflitos**, mesmas 74 válidas/três pendentes/16 false |
+| Integridade | SQLite `ok`, zero erros de FK, schema V9 |
+| Preservação | Dry-run sem alteração de bytes/permissões do banco; todos os registros das demais tabelas inalterados após a carga; hashes dos dois arquivos de origem preservados |
+| Atendimentos/cenários/orçamentos/linhas/componentes | Zero antes/depois; nenhuma composição foi criada ou alterada |
 
-Não se deve carregar uma fonte real antes de confirmar seu contrato/IDs, integridade e relatório. Não há aqui um arquivo contendo 77 relações inventadas. O JSON estrutural documentado não é uma exportação real nem está aprovado para carga.
+As três pendências são exatamente Desalinhamento → Alinhamento, com dimensões ainda vinculadas a Montagem:
+
+| ID original da relação | Intensidade | Dimensão original (ID Coda) | Motivo |
+| --- | --- | --- | --- |
+| `i-9oEY4LbHDG` | leve | M — `i-PlG9A_vqDj` | `DIMENSION_SERVICE_MISMATCH` |
+| `i-a2r0X9YsT1` | moderado | G — `i-KJmrRf6yDy` | `DIMENSION_SERVICE_MISMATCH` |
+| `i-cSTVgKIpv3` | severo | GG — `i-vG6AqHxqTg` | `DIMENSION_SERVICE_MISMATCH` |
+
+Diagnóstico: `coda:2zsjI-nqWr:grid-2ANpptuaKz:i-3vCNEjmS7V`. Serviço recomendado Alinhamento: `coda:2zsjI-nqWr:grid-lhdFxol6x-:i-6tWzUWof8c`. Serviço ao qual as dimensões pertencem, Montagem: `coda:2zsjI-nqWr:grid-lhdFxol6x-:i-vmJ3Org23i`. Os IDs completos das dimensões/relações e as evidências agregadas estão em `docs/evidencias/fase3/validacao-fonte-real.json`.
+
+**Não houve divergência adicional.** Os três vínculos permanecem pendentes, rastreáveis e fora da consulta, sem associação por nome, troca de dimensão ou alteração do catálogo. Validade estrutural das demais 74 relações não dispensa a curadoria operacional nem a configuração técnica/comercial necessária na futura Fase 4.
+
+A exportação comercial, o anexo original, o SQLite e os logs privados com dados comerciais não foram versionados. O relatório público contém somente hashes, contagens e os IDs das três pendências. A carga ocorreu exclusivamente na cópia isolada, nunca na VPS.
 
 ## Persistência e migração
 
@@ -34,7 +53,7 @@ O importador comercial existente foi apenas revisado para aceitar V8/V9 com sequ
 
 ## Regras e consulta
 
-Contrato normalizado explícito em `docs/API.md`, sem presumir o formato do original ausente. Usa o mesmo `sourceId`/documento/tabelas do importador comercial. IDs do diagnóstico, serviço e dimensão precisam existir com tipos corretos; dimensão deve pertencer ao serviço. Nome, semelhança textual ou preço nunca são chaves de associação.
+Contrato normalizado explícito em `docs/API.md`, conferido contra o arquivo convertido fornecido pela direção. Usa o mesmo `sourceId`/documento/tabelas do importador comercial. IDs do diagnóstico, serviço e dimensão precisam existir com tipos corretos; dimensão deve pertencer ao serviço. Nome, semelhança textual ou preço nunca são chaves de associação.
 
 O dry-run valida a fonte completa. Ausência/tipo inválido de referência, ID/semântica duplicada, intensidade/boolean inválidos e conflito com regra local bloqueiam toda a transação. Vínculos serviço–dimensão incompatíveis ficam armazenados como pendências com os IDs originais e motivo, sem substituição de dimensão. O restante pode ser preparado/carregado por plano explicitamente confirmado. As pendências não são consideradas recomendações válidas.
 
@@ -75,10 +94,10 @@ Não foram modificados painel financeiro, Mapa circular, lista de peças, Copilo
 | 6–8 Preservação de serviços, diagnóstico, observações e componentes | Aprovado por comparação de IDs/atributos/valores |
 | 9 Autosave sem duplicidade | Aprovado, uma gravação por escolha confirmada e últimas intenções durante resposta atrasada |
 | 10 Resposta perdida/concorrência | Aprovado, leitura antes de repetição e recuperação explícita sem sobrescrita |
-| 11 IDs da fonte | Validação implementada/testada sinteticamente; **IDs do arquivo real bloqueados por ausência da fonte** |
-| 12 Importação idempotente | Aprovado com fixtures; carga real não executada |
-| 13 Dezesseis false preservados | Aprovado com 16 regras explicitamente sintéticas; **as 16 reais ainda não conferidas** |
-| 14 Três divergências | Aprovado mecanismo com três vínculos sintéticos incompatíveis; **os três registros reais dependem do arquivo** |
+| 11 IDs da fonte | Aprovado: 77 IDs de relações e referências reais validados contra os catálogos importados |
+| 12 Importação idempotente | Aprovado com fixtures e fonte real em SQLite isolado; segundo dry-run com zero inserções e 77 inalteradas |
+| 13 Dezesseis false preservados | Aprovado com fixtures e as 16 regras reais false, todas conservadas e retornadas nas consultas |
+| 14 Três divergências | Aprovado com os três IDs reais acima: pending e jamais oferecidos como válidos |
 | 15 Recusa de vínculo incorreto | Aprovado: pendente/não consultável, sem substituir dimensão |
 | 16 Consulta por diagnóstico/intensidade | Aprovado em função e API autenticada, incluindo false |
 | 17 Nenhuma inclusão automática | Aprovado: sem mudança nas linhas e sem UI de sugestões |
@@ -95,30 +114,30 @@ Não foram modificados painel financeiro, Mapa circular, lista de peças, Copilo
 - Total navegador: **307 grupos**, mobile emulado em Chromium. Não é teste em dispositivo físico nem homologação na VPS.
 - `importacao-sintetica.json`: fixture de seis regras, três coerentes e três pendentes por vínculo incorreto; segunda carga com zero inserções. Teste independente preserva e consulta **16 regras false inteiramente sintéticas**, sem gerar serviços.
 
-Resultados/logs/screenshot e matriz agregada em `docs/evidencias/fase3/`; `fonte-pendente.json` distingue as contagens informadas das relações reais não verificadas. Nenhuma fonte privada ou banco é versionado. Smoke tests de imagens Docker/Compose serão executados pela CI existente do PR; não foram alterados workflows nem executado deploy.
+Resultados/logs/screenshot e matriz agregada em `docs/evidencias/fase3/`; `fonte-validada.json` e `validacao-fonte-real.json` registram a validação posterior das relações reais, separada das suítes sintéticas. Nenhuma fonte privada ou banco é versionado. Smoke tests de imagens Docker/Compose serão executados pela CI existente do PR; não foram alterados workflows nem executado deploy.
 
 ## Procedimento futuro de carga — não executado
 
-**Pré-condições obrigatórias:** auditoria/aprovação/publicação separadas; API desta entrega e SQLite V9; arquivo original disponibilizado em canal privado, SHA conferido e contrato/IDs validados. Se o JSON real divergir do contrato documentado, parar e adaptar/testar a leitura antes de qualquer carga. Não renomear campos ou reatribuir referências por aproximação.
+**Pré-condições obrigatórias:** auditoria/aprovação/publicação separadas; API desta entrega e SQLite V9; arquivo validado disponibilizado em canal privado com o SHA-256 acima. A validação isolada não autoriza carga na VPS. Não renomear campos ou reatribuir referências por aproximação. O destino efetivo exige seu próprio dry-run e hash; o hash do ensaio isolado não deve ser reutilizado.
 
-1. Disponibilizar o arquivo aprovado em `/var/lib/funix/app-data/funix-fase3-regras-coda.json`, por canal privado, proprietário UID/GID 1000 e modo 0600 para acesso do contêiner, sem Git/servidor público. Esse diretório já corresponde a `/data`; não adicionar volume nem serviço.
+1. Disponibilizar o arquivo aprovado em `/var/lib/funix/app-data/funix-fase3-regras-importacao-v9.json`, por canal privado, proprietário UID/GID 1000 e modo 0600 para acesso do contêiner, sem Git/servidor público. Esse diretório já corresponde a `/data`; não adicionar volume nem serviço.
 2. No terminal administrativo autorizado, executar **dry-run**:
 
 ```bash
 sudo docker compose --project-name funixapp \
   --env-file /var/lib/funix/current.env -f /opt/funix/compose.yaml \
   exec -T api node server/import-recommendations.ts \
-  --source /data/funix-fase3-regras-coda.json --database /data/funix.sqlite
+  --source /data/funix-fase3-regras-importacao-v9.json --database /data/funix.sqlite
 ```
 
-3. Revisar SHA do arquivo, IDs, contagens, `pending`, `conflicts` e `planHash`. Expectativa informada pela direção: 77 relações/61 true/16 false, sendo 74 coerentes e três vínculos de Desalinhamento pendentes; **não é resultado comprovado desta execução**. Qualquer divergência inesperada, referência ausente ou conflito: interromper. Pendências não podem ser convertidas em sugestões válidas por aproximação.
+3. Revisar SHA do arquivo, IDs, contagens, `pending`, `conflicts` e `planHash`. Resultado comprovado na cópia isolada: 77 relações/61 true/16 false, sendo 74 válidas e os três vínculos de Desalinhamento pendentes. Esses resultados devem ser novamente conferidos no destino efetivo antes de qualquer carga. Qualquer divergência inesperada, referência ausente ou conflito: interromper. Pendências não podem ser convertidas em sugestões válidas por aproximação.
 4. Somente após autorização da carga e validação do relatório, repetir o mesmo comando com o hash efetivo:
 
 ```bash
 sudo docker compose --project-name funixapp \
   --env-file /var/lib/funix/current.env -f /opt/funix/compose.yaml \
   exec -T api node server/import-recommendations.ts \
-  --source /data/funix-fase3-regras-coda.json --database /data/funix.sqlite \
+  --source /data/funix-fase3-regras-importacao-v9.json --database /data/funix.sqlite \
   --confirm-plan HASH_DO_DRY_RUN_EFETIVO
 ```
 
@@ -128,4 +147,22 @@ O CLI não migra, cria banco, troca permissões, reinicia contêineres ou altera
 
 ## Pendências reais
 
-A única dependência de dados desta entrega é o arquivo original de regras e a conferência de seu formato/77 relações. Não há preço, dimensão alternativa, intensidade ou regra comercial a inferir. Fases 4 e 5 permanecem fora de escopo. Parar no PR para auditoria; sem merge/deploy.
+A pendência de acesso/validação das 77 relações foi resolvida sem alterar o código funcional. Permanecem os três vínculos incompatíveis identificados, que exigem decisão de origem posterior antes de se tornarem recomendações válidas; não impedem a preparação das outras 74. Não há preço, dimensão alternativa ou regra comercial a inferir. Publicação e carga na VPS continuam sem autorização nesta tarefa. Fases 4 e 5 permanecem fora de escopo; aguardar auditoria do mesmo PR #35, sem merge/deploy.
+
+## Complementação de validação — reprodução
+
+Código funcional utilizado: `ed18900764a229fbbf922a7be87d640ec37c9447`, inalterado. Banco novo em diretório privado `.runtime/fase3-validacao-real-*`, modo 0600/diretório 0700, schema V9 criado pela aplicação. A exportação comercial privada de hash conhecido foi lida pelo `server/import-coda.ts`: dry-run sem conflitos, seguido de aplicação **somente nesse banco isolado**, antes de validar as recomendações.
+
+Foram executados os comandos reais abaixo com caminhos explícitos privados; stdout/stderr completos permanecem fora do Git:
+
+```bash
+node server/import-coda.ts --source EXPORTACAO_COMERCIAL_PRIVADA --database SQLITE_V9_ISOLADO
+node server/import-coda.ts --source EXPORTACAO_COMERCIAL_PRIVADA --database SQLITE_V9_ISOLADO --confirm-plan HASH_COMERCIAL_ISOLADO
+node server/import-recommendations.ts --source ARQUIVO_ANEXO_VALIDADO --database SQLITE_V9_ISOLADO
+node server/import-recommendations.ts --source ARQUIVO_ANEXO_VALIDADO --database SQLITE_V9_ISOLADO --confirm-plan HASH_RECOMENDACOES_ISOLADO
+node server/import-recommendations.ts --source ARQUIVO_ANEXO_VALIDADO --database SQLITE_V9_ISOLADO
+```
+
+Entre preparação/aplicação/leitura, foram conferidos hash/permissão do banco no dry-run, hashes dos arquivos originais e digest das demais tabelas. As consultas foram executadas com `DatabaseSync(...,{readOnly:true})` e pelo handler real autenticado (`GET /api/recomendacoes`), sem abrir porta ou contêiner: 28 grupos por camada, correspondência exata de IDs/serviço/dimensão/boolean, 74 retornos únicos e 16 false. GET sem sessão retorna 401; POST retorna 405. A API e as consultas não alteraram os bytes do SQLite.
+
+Nenhum código, interface, cálculo ou regra foi modificado nesta complementação. Os 217 testes Node, 23 de implantação e 307 grupos de navegador da entrega anterior permanecem como evidência do código inalterado; a nova evidência é a validação real isolada descrita acima. A CI do commit documental será conferida no mesmo PR.
