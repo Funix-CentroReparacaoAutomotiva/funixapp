@@ -19,3 +19,17 @@
 
 .canonical-map .disc-node{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .canonical-map .disc-node>span.map-group-cue:last-child{display:block;font-size:9px;line-height:9px;flex:none;font-weight:400}
+
+/* Fase 5 refinement: focused in-map quick diagnosis. */
+.canonical-map .map-selector-head{display:none}
+.canonical-map .disc-wrap{margin-top:28px}
+.canonical-map .map-quick-shade{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:14px;background:rgba(10,31,68,.42)}
+.canonical-map .map-quick-card{width:min(350px,100%);max-height:calc(100dvh - 28px);overflow:auto;background:#fff;color:#142c60;border-radius:15px;padding:20px;box-shadow:0 15px 55px #06162b44;display:grid;gap:13px}
+.canonical-map .map-quick-card h2{margin:0;font-size:18px;line-height:1.25}
+.canonical-map .map-quick-card label{display:grid;gap:5px;font-size:13px;font-weight:600}
+.canonical-map .map-quick-card select{width:100%;min-height:44px;border:1px solid #b8cce5;border-radius:8px;background:#fff;color:#142c60;padding:8px}
+.canonical-map .map-quick-card p[role=alert]{font-size:12px;color:#a22a2a;margin:0}
+.canonical-map .map-quick-actions{display:flex;justify-content:flex-end;gap:10px}
+.canonical-map .map-quick-actions button{min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid #afc4dd;background:#fff;color:#142c60}
+.canonical-map .map-quick-actions button:last-child{background:#142c60;color:#fff}
+.canonical-map .map-quick-actions button:disabled{opacity:.55}

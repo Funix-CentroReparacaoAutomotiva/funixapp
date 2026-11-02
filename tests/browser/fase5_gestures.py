@@ -7,7 +7,7 @@ async def device_case(browser,device,viewport):
  h=Harness();ctx=None;page=None
  try:
   h.check_ports()
-  setup="""import{writeFileSync}from'node:fs';import{openDatabase}from'./server/database.ts';import{commercialFixture}from'./server/tests/fixtures/commercial.ts';import{ComponentRepository}from'./server/components.ts';import{BudgetRepository}from'./server/budgets.ts';const db=openDatabase(process.argv[1]),f=commercialFixture(db),parts=new ComponentRepository(db);parts.save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'10',notes:''});const b=new BudgetRepository(db),one=f.scenarios.list(f.at.id)[0],req={scenarioId:one.id,negotiation:{mode:'none'}},p=b.preview(f.at.id,req),version=b.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:'fase5-frozen-history'});const grade=f.commercial.add(f.at.id,{pieceCodes:['grade_dianteira']}).find(p=>p.pieceId===f.commercial.catalogs().items.find(c=>c.code==='grade_dianteira').id);let scene=f.scenarios.list(f.at.id)[0];const two=f.scenarios.create(f.at.id,{name:'Outro cenário QA',duplicateFrom:scene.id,sourceRevision:scene.revision});f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,pieceFlags:{[grade.id]:false}});writeFileSync(process.argv[2],JSON.stringify({at:f.at.id,capo:f.item.id,grade:grade.id,one:scene.id,two:two.id,budget:version.id,snapshot:version.snapshot}));db.close();"""
+  setup="""import{writeFileSync}from'node:fs';import{openDatabase}from'./server/database.ts';import{commercialFixture}from'./server/tests/fixtures/commercial.ts';import{ComponentRepository}from'./server/components.ts';import{BudgetRepository}from'./server/budgets.ts';const db=openDatabase(process.argv[1]),f=commercialFixture(db),parts=new ComponentRepository(db);parts.save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'10',notes:''});f.commercial.saveCatalog({kind:'diagnostico',name:'Risco superficial QA',status:'validado'});const b=new BudgetRepository(db),one=f.scenarios.list(f.at.id)[0],req={scenarioId:one.id,negotiation:{mode:'none'}},p=b.preview(f.at.id,req),version=b.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:'fase5-frozen-history'});const grade=f.commercial.add(f.at.id,{pieceCodes:['grade_dianteira']}).find(p=>p.pieceId===f.commercial.catalogs().items.find(c=>c.code==='grade_dianteira').id);let scene=f.scenarios.list(f.at.id)[0];const two=f.scenarios.create(f.at.id,{name:'Outro cenário QA',duplicateFrom:scene.id,sourceRevision:scene.revision});f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,pieceFlags:{[grade.id]:false}});writeFileSync(process.argv[2],JSON.stringify({at:f.at.id,capo:f.item.id,grade:grade.id,one:scene.id,two:two.id,budget:version.id,snapshot:version.snapshot}));db.close();"""
   subprocess.run(['node','--input-type=module','-e',setup,str(h.folder/'atendimentos.sqlite'),str(h.folder/'ids.json')],cwd=ROOT,check=True)
   ids=json.loads((h.folder/'ids.json').read_text());base='/api/atendimentos/'+ids['at'];await h.start_api();vite=h.start(['node','node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','5173','--strictPort'],'preview');await h.ready(ORIGIN,vite)
   ctx=await browser.new_context(viewport=viewport,is_mobile=device!='desktop',has_touch=True);await h.watch(ctx);page=await ctx.new_page();await h.attach(page);await page.goto(ORIGIN);await h.login(page);await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=mapa');await expect(page.locator('.interactive-map')).to_be_visible();await expect(page.locator('.scenario-trigger')).to_be_enabled();cdp=await ctx.new_cdp_session(page)
@@ -32,55 +32,71 @@ async def device_case(browser,device,viewport):
   writes=[];page.on('request',lambda r:writes.append((r.method,r.url,r.post_data_json))if'/api/'in r.url and r.method in ['POST','PATCH','DELETE']else None)
   initial=await ws();pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['budget']+'/pdf');pdf_hash=hashlib.sha256(await pdf.body()).hexdigest()
   await main('Diagnósticos');await expect(page.locator('.diagnosis-row')).to_have_count(2);await shot('depois-lista');await main('Mapa')
-  await region('motorista');await expect(dialog.locator('.disc-node')).to_have_count(13);await expect(dialog.locator('.map-group-cue')).to_have_count(8);await shot('depois-mapa');await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  await region();before=len(writes);await touch(dialog.get_by_role('button',name='Capô',exact=True));await expect(editor).to_be_visible();assert (await ws())==initial and len(writes)==before;await back();await region();await dialog.get_by_role('button',name='Grades e entradas de ar',exact=True).click();grade=dialog.get_by_role('button',name='Grade dianteira',exact=True);await expect(grade).to_have_attribute('aria-pressed','false');await expect(grade).to_have_attribute('data-presence','present');await touch(grade);await expect(editor).to_be_visible();await expect(editor.get_by_role('button',name='Habilitar peça neste cenário',exact=True)).to_have_attribute('aria-pressed','false');assert len(writes)==before and await ws()==initial;await back()
-  h.mark(device+': short touch opens present enabled/disabled masters, including a piece enabled only in another scenario, without writes or changed flags')
-  await region();bumper=dialog.get_by_role('button',name='Para-choque dianteiro',exact=True);before=len(writes);await touch(bumper);await idle();await expect(dialog).to_be_visible();w=await ws();assert len(w['items'])==3 and len(writes)==before+1 and writes[-1][0]=='POST';added=next(p for p in w['items']if p['id']not in[ids['capo'],ids['grade']]);assert not w['scenarios'][1]['pieceFlags'][added['id']];await expect(bumper).to_have_attribute('data-presence','present');await touch(bumper,hold=.7);await expect(editor).to_be_visible();assert len(writes)==before+1;await back()
-  h.mark(device+': absent short tap adds once and stays in map; long press on existing opens once without follow-up click, other scenario disabled')
-  # New long press waits for persisted workspace; short click must not run after long press.
-  await region('estrutura_dianteira');panel=dialog.get_by_role('button',name='Painel dianteiro',exact=True);gate=asyncio.Event();started=asyncio.Event()
-  async def slow(route):
-   if route.request.method=='POST':started.set();await gate.wait()
-   await route.continue_()
-  await page.route('**/diagnosticos',slow);before=len(writes);task=asyncio.create_task(touch(panel,hold=.7));await asyncio.wait_for(started.wait(),10);await expect(editor).to_have_count(0);await expect(panel).to_have_attribute('data-pending','true');gate.set();await task;await expect(editor).to_be_visible();await page.unroute('**/diagnosticos',slow);assert len(writes)==before+1;await back();w=await ws();assert len(w['items'])==4
-  h.mark(device+': new long press waits for confirmed POST+GET before routing; slow network creates exactly one master and no stale short-click mutation')
-  await region();churr=dialog.get_by_role('button',name='Alma do para-choque dianteiro',exact=True);before=len(writes);await touch(churr,dx=22,hold=.15);await asyncio.sleep(.65);assert len(writes)==before;await touch(churr,hold=.15,cancel=True);await asyncio.sleep(.65);assert len(writes)==before;await churr.dispatch_event('pointerdown',{'pointerId':7,'isPrimary':True,'button':0,'clientX':10,'clientY':10});await page.evaluate("window.dispatchEvent(new Event('blur'))");await asyncio.sleep(.65);assert len(writes)==before
-  await churr.focus();await page.keyboard.press('Shift+Enter');await expect(editor).to_be_visible();assert len(writes)==before+1;await back();await region();before=len(writes);await dialog.get_by_role('button',name='Capô',exact=True).click(button='right');await expect(editor).to_be_visible();assert len(writes)==before;await page.get_by_role('button',name='Voltar ao Mapa',exact=True).focus();await page.keyboard.press('Enter');await expect(page.locator('.interactive-map')).to_be_visible()
-  h.mark(device+': drag, touchCancel and window interruption cancel long press; Shift+Enter adds/opens and right mouse click opens existing without duplicate activation')
-  # Ambos is additive and never opens an arbitrary side or toggles an existing mask.
-  await region();await dialog.get_by_role('button',name='Grades e entradas de ar',exact=True).click();await dialog.get_by_role('button',name='Grade inferior',exact=True).click();ambos=dialog.get_by_role('button',name='Ambos',exact=True);before=len(writes);old=await ws();await touch(ambos);await idle();new=await ws();assert len(new['items'])==len(old['items'])+2 and len(writes)==before+1;await touch(ambos);await touch(ambos,hold=.7);assert len(writes)==before+1 and await ws()==new;await expect(dialog).to_be_visible();await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  w=await ws();pair=sorted([p for p in w['items']if p['id']not in [x['id']for x in old['items']]],key=lambda p:p['id']);r=await ctx.request.patch(ORIGIN+base+'/cenarios/'+ids['one'],headers={'Origin':ORIGIN},data={'revision':w['scenarios'][0]['revision'],'pieceFlags':{pair[0]['id']:False}});assert r.ok
-  await page.reload();await expect(page.locator('.interactive-map')).to_be_visible();await idle();await region();await dialog.get_by_role('button',name='Grades e entradas de ar',exact=True).click();await dialog.get_by_role('button',name='Grade inferior',exact=True).click();mixed=await ws();before=len(writes);await touch(ambos);assert await ws()==mixed and len(writes)==before;await expect(ambos).to_have_attribute('data-selection-state','partial');await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': Ambos adds exactly two real codes, repeated tap/hold never disables, deletes, duplicates or opens an arbitrary editor')
-  # Lost committed add response: remain in map, block uncertain selection, recover read-first.
-  await region('traseira');rear=dialog.get_by_role('button',name='Para-choque traseiro',exact=True);lost=[]
-  async def lose(route):
-   if route.request.method=='POST':lost.append(1);await route.fetch();await route.abort('failed')
-   else:await route.continue_()
-  await page.route('**/diagnosticos',lose);await touch(rear,hold=.7);await expect(dialog.get_by_role('alert').first).to_be_visible();await expect(editor).to_have_count(0);await page.unroute('**/diagnosticos',lose);await dialog.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert len(lost)==1;await expect(dialog).to_be_visible();await expect(rear).to_have_attribute('data-presence','present');await touch(rear);await expect(editor).to_be_visible();await back()
-  h.mark(device+': committed add response lost blocks navigation; explicit read-first recovery confirms master once and requires a fresh tap to edit')
-  # Genuine revision conflict, then pre-delivery transport failure, preserve serial intents.
-  await region('estrutura_dianteira');windscreen=dialog.get_by_role('button',name='Cofre do motor dianteiro',exact=True);conflict=[]
-  async def compete(route):
-   if route.request.method=='POST'and not conflict:
-    conflict.append(1);w=await ws();s=w['scenarios'][0];r=await ctx.request.patch(ORIGIN+base+'/cenarios/'+ids['one'],headers={'Origin':ORIGIN},data={'revision':s['revision'],'pieceFlags':{ids['capo']:False}});assert r.ok
-   await route.continue_()
-  await page.route('**/diagnosticos',compete);await touch(windscreen,hold=.7);await expect(dialog.get_by_role('alert').first).to_be_visible();await expect(editor).to_have_count(0);await page.unroute('**/diagnosticos',compete);await dialog.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert not(await ws())['scenarios'][0]['pieceFlags'][ids['capo']];await expect(windscreen).to_have_attribute('data-presence','present');await expect(editor).to_have_count(0);await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': genuine revision conflict cancels pending editor shortcut; explicit recovery preserves concurrent flags and adds only missing master')
-  await region('traseira');lid=dialog.get_by_role('button',name='Tampa do porta-malas',exact=True);failed=[]
-  async def before_delivery(route):
-   if route.request.method=='POST':failed.append(1);await route.abort('failed')
-   else:await route.continue_()
-  await page.route('**/diagnosticos',before_delivery);before=await ws();await touch(lid,hold=.7);await expect(dialog.get_by_role('alert').first).to_be_visible();assert await ws()==before;await expect(editor).to_have_count(0);await page.unroute('**/diagnosticos',before_delivery);await dialog.get_by_role('button',name='Atualizar dados e retomar seleções',exact=True).click();await idle();assert len(failed)==1;await expect(lid).to_have_attribute('data-presence','present');await expect(editor).to_have_count(0);await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': pre-delivery network failure leaves no partial master; explicit recovery safely includes once and cancels stale long-press routing')
-  await region('traseira');alma=dialog.get_by_role('button',name='Alma do para-choque traseiro',exact=True);cargo=dialog.get_by_role('button',name='Porta de carga traseira',exact=True);gate=asyncio.Event();started=asyncio.Event()
-  async def pause_add(route):
-   if route.request.method=='POST':started.set();await gate.wait()
-   await route.continue_()
-  await page.route('**/diagnosticos',pause_add);old=await ws();task=asyncio.create_task(touch(alma,hold=.7));await asyncio.wait_for(started.wait(),10);await task;await touch(cargo);gate.set();await idle();await page.unroute('**/diagnosticos',pause_add);await expect(dialog).to_be_visible();await expect(editor).to_have_count(0);w=await ws();assert len(w['items'])==len(old['items'])+2 and len({p['pieceId']for p in w['items']})==len(w['items']);await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': a fresh short selection interrupts an earlier pending long-press route; serial writes confirm both masters once and stay in map')
-  await region('estrutura_dianteira');cross=dialog.get_by_role('button',name='Travessa do radiador',exact=True);gate=asyncio.Event();started=asyncio.Event();await page.route('**/diagnosticos',pause_add);old=await ws();task=asyncio.create_task(touch(cross,hold=.7));await asyncio.wait_for(started.wait(),10);await task;await page.evaluate("window.dispatchEvent(new Event('blur'))");gate.set();await idle();await page.unroute('**/diagnosticos',pause_add);await expect(dialog).to_be_visible();await expect(editor).to_have_count(0);assert len((await ws())['items'])==len(old['items'])+1;await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': window interruption after request dispatch cancels pending editor routing, without discarding the confirmed addition')
+  # Core radial geometry and the new two ways to dismiss.
+  await region('motorista');await expect(dialog.locator('.disc-node')).to_have_count(13);await expect(dialog.locator('.map-group-cue')).to_have_count(8)
+  await expect(dialog.get_by_role('button',name='Fechar seleção',exact=True)).to_have_count(0)
+  await shot('depois-mapa');await dialog.get_by_role('button',name='Fechar seleção central',exact=True).click();await expect(dialog).to_have_count(0)
+  await region();disc=await dialog.locator('.disc-wrap').bounding_box();outer=await dialog.bounding_box()
+  assert disc and outer and disc['y']-outer['y']>=9
+  await page.mouse.click(outer['x']+outer['width']/2,disc['y']-7);await expect(dialog).to_have_count(0)
+  h.mark(device+': no upper X; central X and click outside circular disk close the selector')
+
+  # Long press on an existing piece opens only a quick overlay, never navigates.
+  await region();capo=dialog.get_by_role('button',name='Capô',exact=True);quick=dialog.get_by_role('dialog',name='Diagnóstico rápido');before=len(writes)
+  await touch(capo,hold=.7);await expect(quick).to_be_visible();await expect(editor).to_have_count(0)
+  assert len(writes)==before and page.url.endswith('aba=mapa')
+  await quick.get_by_role('button',name='Cancelar',exact=True).click();await expect(quick).to_have_count(0)
+  assert await ws()==initial and len(writes)==before
+  await touch(capo,hold=.7);await expect(quick).to_be_visible()
+  await quick.get_by_label('Diagnóstico rápido').select_option(label='Risco superficial QA')
+  await quick.get_by_label('Intensidade rápida').select_option('moderado')
+  await quick.get_by_role('button',name='Confirmar',exact=True).click();await expect(quick).to_have_count(0)
+  await expect(dialog).to_be_visible();await expect(editor).to_have_count(0)
+  current=await ws();saved=next(p for p in current['items'] if p['id']==ids['capo'])
+  assert saved['diagnosisId'] and saved['intensity']=='moderado' and len(saved['services'])==len(next(p for p in initial['items'] if p['id']==ids['capo'])['services'])
+  assert [r[0] for r in writes[before:]]==['PATCH']
+  await touch(capo,hold=.7);await expect(quick.get_by_label('Intensidade rápida')).to_have_value('moderado')
+  await quick.get_by_role('button',name='Cancelar',exact=True).click()
+  await touch(capo);await expect(editor).to_be_visible();await back()
+  h.mark(device+': long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor')
+
+  # For an absent item long press does NOT add until Confirm; no arbitrary dimension is invented.
+  await region('estrutura_dianteira');panel=dialog.get_by_role('button',name='Painel dianteiro',exact=True);before=len(writes)
+  await touch(panel,hold=.7);await expect(quick).to_be_visible()
+  assert len(writes)==before
+  await expect(quick.get_by_role('button',name='Confirmar',exact=True)).to_be_disabled()
+  await quick.get_by_role('button',name='Cancelar',exact=True).click()
+  assert len(writes)==before
+  await touch(panel,hold=.7);await quick.get_by_label('Diagnóstico rápido').select_option(label='Risco superficial QA')
+  await quick.get_by_label('Intensidade rápida').select_option('leve')
+  await quick.get_by_role('button',name='Confirmar',exact=True).click();await expect(quick).to_have_count(0)
+  await expect(dialog).to_be_visible();await expect(editor).to_have_count(0)
+  current=await ws();added=next(p for p in current['items'] if p['id'] not in [ids['capo'],ids['grade']])
+  assert added['diagnosisId'] and added['intensity']=='leve' and not current['scenarios'][1]['pieceFlags'].get(added['id'],False)
+  requests=writes[before:]
+  assert sum(method=='POST' and url.endswith('/diagnosticos') for method,url,_ in requests)==1
+  assert sum(method=='PATCH' and url.endswith('/diagnosticos/'+added['id']) for method,url,_ in requests)==1
+  assert not any(method=='DELETE' for method,_,_ in requests)
+  h.mark(device+': missing master is created once only upon confirmation, and active scenario is unchanged elsewhere')
+
+  # Group/Ambos remains additive. The center returns to parent groups.
+  await dialog.get_by_role('button',name='Fechar seleção central',exact=True).click();await region()
+  await dialog.get_by_role('button',name='Grades e entradas de ar',exact=True).click()
+  await dialog.get_by_role('button',name='Grade inferior',exact=True).click()
+  ambos=dialog.get_by_role('button',name='Ambos',exact=True);before=len(writes);old=await ws()
+  await touch(ambos);await idle();now=await ws();assert len(now['items'])==len(old['items'])+2
+  await touch(ambos,hold=.7);await expect(quick).to_have_count(0);assert len(writes)==before+1
+  await dialog.get_by_role('button',name='Voltar ao nível anterior',exact=True).click()
+  await dialog.get_by_role('button',name='Voltar ao nível anterior',exact=True).click()
+  await dialog.get_by_role('button',name='Fechar seleção central',exact=True).click()
+  h.mark(device+': bilateral groups add missing pieces without opening an arbitrary editor')
+
+  await region();churr=dialog.get_by_role('button',name='Alma do para-choque dianteiro',exact=True);before=len(writes)
+  await touch(churr,dx=22,hold=.15);await asyncio.sleep(.65);await expect(quick).to_have_count(0)
+  await touch(churr,hold=.15,cancel=True);await asyncio.sleep(.65)
+  assert len(writes)==before;await expect(quick).to_have_count(0)
+  await dialog.get_by_role('button',name='Fechar seleção central',exact=True).click()
+  h.mark(device+': drag/cancel do not open quick overlay or perform mutations')
   await main('Diagnósticos');await expect(page.locator('.diagnosis-list')).to_be_visible();capo=page.locator('.diagnosis-swipe-shell').filter(has=page.locator('.diagnosis-title strong',has_text='Capô'));open_button=capo.locator('.diagnosis-open');before=await ws();calls=len(writes);url=page.url;await touch(open_button,dx=100);await expect(capo).to_have_attribute('data-revealed','true');assert page.url==url and len(writes)==calls;await shot('swipe-revelado');revealed_box=await capo.locator('.swipe-delete').bounding_box();row_box=await capo.locator('.diagnosis-row').bounding_box();shell_box=await capo.bounding_box();assert row_box['x']>=revealed_box['x']+revealed_box['width']-1;assert row_box['x']+row_box['width']<=shell_box['x']+shell_box['width']+1;await capo.locator('.swipe-delete').click();consent=page.get_by_role('dialog',name='Confirmar remoção da composição');await expect(consent).to_contain_text('todos os cenários');await consent.get_by_role('button',name='Cancelar',exact=True).click();assert await ws()==before and len(writes)==calls;await expect(capo).to_have_attribute('data-revealed','false')
   h.mark(device+': physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions')
   await touch(open_button,dx=100);await expect(capo).to_have_attribute('data-revealed','true');await page.keyboard.press('Escape');await expect(capo).to_have_attribute('data-revealed','false');await expect(open_button).to_be_focused();await touch(open_button,dx=100);await main('Mapa');await main('Diagnósticos');await expect(capo).to_have_attribute('data-revealed','false');await touch(open_button,dx=100);await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 2',exact=True).click();await expect(capo).to_have_attribute('data-revealed','false');await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 1',exact=True).click();await idle()
@@ -90,7 +106,7 @@ async def device_case(browser,device,viewport):
   # Current tab swipe preserved away from controls; no wrapping and no vertical hijack.
   async def swipe(selector,dx,dy=0):
    await page.locator(selector).first.evaluate('''(e,d)=>{const t=(x,y)=>new Touch({identifier:1,target:e,clientX:x,clientY:y});e.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[t(180,260)]}));e.dispatchEvent(new TouchEvent('touchend',{bubbles:true,touches:[],changedTouches:[t(180+d[0],260+d[1])]}))}''',[dx,dy])
-  await main('Chat');await swipe('.detail-page',100);await expect(page.get_by_role('button',name='Chat',exact=True)).to_have_attribute('aria-current','page');await swipe('.detail-page',-100);await expect(page.get_by_role('button',name='Diagnósticos',exact=True)).to_have_attribute('aria-current','page');await swipe('.diagnosis-heading',-100);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page');await swipe('.detail-page',-100);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page');await region();url=page.url;await swipe('.disc-wrap',100);assert page.url==url;await dialog.get_by_role('button',name='Fechar seleção',exact=True).click();await swipe('.detail-page',100,100);assert page.url==url;await swipe('.detail-page',100);await expect(page.get_by_role('button',name='Diagnósticos',exact=True)).to_have_attribute('aria-current','page')
+  await main('Chat');await swipe('.detail-page',100);await expect(page.get_by_role('button',name='Chat',exact=True)).to_have_attribute('aria-current','page');await swipe('.detail-page',-100);await expect(page.get_by_role('button',name='Diagnósticos',exact=True)).to_have_attribute('aria-current','page');await swipe('.diagnosis-heading',-100);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page');await swipe('.detail-page',-100);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page');await region();url=page.url;await swipe('.disc-wrap',100);assert page.url==url;await dialog.get_by_role('button',name='Fechar seleção central',exact=True).click();await swipe('.detail-page',100,100);assert page.url==url;await swipe('.detail-page',100);await expect(page.get_by_role('button',name='Diagnósticos',exact=True)).to_have_attribute('aria-current','page')
   h.mark(device+': existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working')
   # Gesture and desktop trash both use exact same confirmation + global-delete transport.
   await touch(open_button,dx=100);await capo.locator('.swipe-delete').click();await consent.get_by_role('button',name='Prosseguir',exact=True).click();await idle();await expect(capo).to_have_count(0);w=await ws();assert all(ids['capo']not in s['pieceFlags']for s in w['scenarios']);assert not any(c['pieceId']==ids['capo']for c in w['components']);assert writes[-1][0]=='DELETE';await shot('exclusao-confirmada')
