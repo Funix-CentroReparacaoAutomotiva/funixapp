@@ -1,0 +1,1644 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "suite": "fase4_recommendations",
+      "groups": 33,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "desktop: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "desktop: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "desktop: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "desktop: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "desktop: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "desktop: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "desktop: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "desktop: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "mobile390: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "mobile390: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "mobile390: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "mobile390: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "mobile390: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "mobile390: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "mobile390: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "mobile390: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "mobile390: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "mobile320: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "mobile320: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "mobile320: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "mobile320: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "mobile320: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "mobile320: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "mobile320: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "mobile320: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "mobile320: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "fase3_diagnosis",
+      "groups": 27,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 473,
+              "y": 104,
+              "width": 44,
+              "height": 44
+            },
+            {
+              "x": 523,
+              "y": 107.5,
+              "width": 273.75,
+              "height": 37
+            },
+            {
+              "x": 802.75,
+              "y": 107.5,
+              "width": 164.25,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "desktop: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals",
+          "pass": true
+        },
+        {
+          "name": "desktop: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload",
+          "pass": true
+        },
+        {
+          "name": "desktop: shared master intensity is independent of active/inactive scenario flags",
+          "pass": true
+        },
+        {
+          "name": "desktop: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "desktop: committed lost response reconciles by read without replay, preserving the intensity draft",
+          "pass": true
+        },
+        {
+          "name": "desktop: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "desktop: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI",
+          "pass": true
+        },
+        {
+          "name": "desktop: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile390: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 13,
+              "y": 69,
+              "width": 36,
+              "height": 44
+            },
+            {
+              "x": 53,
+              "y": 72.5,
+              "width": 188.234375,
+              "height": 37
+            },
+            {
+              "x": 245.234375,
+              "y": 72.5,
+              "width": 131.75,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "mobile390: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals",
+          "pass": true
+        },
+        {
+          "name": "mobile390: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload",
+          "pass": true
+        },
+        {
+          "name": "mobile390: shared master intensity is independent of active/inactive scenario flags",
+          "pass": true
+        },
+        {
+          "name": "mobile390: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile390: committed lost response reconciles by read without replay, preserving the intensity draft",
+          "pass": true
+        },
+        {
+          "name": "mobile390: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile390: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI",
+          "pass": true
+        },
+        {
+          "name": "mobile390: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile320: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 13,
+              "y": 69,
+              "width": 36,
+              "height": 44
+            },
+            {
+              "x": 53,
+              "y": 72.5,
+              "width": 147.046875,
+              "height": 37
+            },
+            {
+              "x": 204.046875,
+              "y": 72.5,
+              "width": 102.953125,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "mobile320: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals",
+          "pass": true
+        },
+        {
+          "name": "mobile320: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload",
+          "pass": true
+        },
+        {
+          "name": "mobile320: shared master intensity is independent of active/inactive scenario flags",
+          "pass": true
+        },
+        {
+          "name": "mobile320: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile320: committed lost response reconciles by read without replay, preserving the intensity draft",
+          "pass": true
+        },
+        {
+          "name": "mobile320: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile320: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI",
+          "pass": true
+        },
+        {
+          "name": "mobile320: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "fase1_selection",
+      "groups": 39,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+          "pass": true
+        },
+        {
+          "name": "desktop: scenario switch and reload preserve both masters and independent flags",
+          "pass": true
+        },
+        {
+          "name": "desktop: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: parent off/on preserves individual service/component masks and shared content without editor redesign",
+          "pass": true
+        },
+        {
+          "name": "desktop: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics",
+          "pass": true
+        },
+        {
+          "name": "desktop: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost committed flag response recovers by GET without replay, DELETE or POST",
+          "pass": true
+        },
+        {
+          "name": "desktop: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+          "pass": true
+        },
+        {
+          "name": "desktop: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+          "pass": true
+        },
+        {
+          "name": "desktop: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+          "pass": true
+        },
+        {
+          "name": "desktop: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+          "pass": true
+        },
+        {
+          "name": "desktop: even a blank disabled piece requires explicit confirmation for global deletion",
+          "pass": true
+        },
+        {
+          "name": "desktop: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile390: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: scenario switch and reload preserve both masters and independent flags",
+          "pass": true
+        },
+        {
+          "name": "mobile390: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: parent off/on preserves individual service/component masks and shared content without editor redesign",
+          "pass": true
+        },
+        {
+          "name": "mobile390: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics",
+          "pass": true
+        },
+        {
+          "name": "mobile390: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+          "pass": true
+        },
+        {
+          "name": "mobile390: lost committed flag response recovers by GET without replay, DELETE or POST",
+          "pass": true
+        },
+        {
+          "name": "mobile390: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+          "pass": true
+        },
+        {
+          "name": "mobile390: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile390: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+          "pass": true
+        },
+        {
+          "name": "mobile390: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+          "pass": true
+        },
+        {
+          "name": "mobile390: even a blank disabled piece requires explicit confirmation for global deletion",
+          "pass": true
+        },
+        {
+          "name": "mobile390: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile320: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: scenario switch and reload preserve both masters and independent flags",
+          "pass": true
+        },
+        {
+          "name": "mobile320: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: parent off/on preserves individual service/component masks and shared content without editor redesign",
+          "pass": true
+        },
+        {
+          "name": "mobile320: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics",
+          "pass": true
+        },
+        {
+          "name": "mobile320: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate",
+          "pass": true
+        },
+        {
+          "name": "mobile320: lost committed flag response recovers by GET without replay, DELETE or POST",
+          "pass": true
+        },
+        {
+          "name": "mobile320: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention",
+          "pass": true
+        },
+        {
+          "name": "mobile320: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile320: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state",
+          "pass": true
+        },
+        {
+          "name": "mobile320: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios",
+          "pass": true
+        },
+        {
+          "name": "mobile320: even a blank disabled piece requires explicit confirmation for global deletion",
+          "pass": true
+        },
+        {
+          "name": "mobile320: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "fase2_financial",
+      "groups": 21,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 474,
+              "y": 644.109375,
+              "width": 117,
+              "height": 37
+            },
+            {
+              "x": 599,
+              "y": 644.109375,
+              "width": 117,
+              "height": 37
+            },
+            {
+              "x": 724,
+              "y": 644.109375,
+              "width": 117,
+              "height": 37
+            },
+            {
+              "x": 849,
+              "y": 644.109375,
+              "width": 117,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "desktop: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero",
+          "pass": true
+        },
+        {
+          "name": "desktop: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected",
+          "pass": true
+        },
+        {
+          "name": "desktop: manual table/FC/FR/MR preserved across reload and API restart",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost committed MR response keeps draft and reconciles by read only without repeat write",
+          "pass": true
+        },
+        {
+          "name": "desktop: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "desktop: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento",
+          "pass": true
+        },
+        {
+          "name": "mobile390: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 11,
+              "y": 541.453125,
+              "width": 87.5,
+              "height": 37
+            },
+            {
+              "x": 104.5,
+              "y": 541.453125,
+              "width": 87.5,
+              "height": 37
+            },
+            {
+              "x": 198,
+              "y": 541.453125,
+              "width": 87.5,
+              "height": 37
+            },
+            {
+              "x": 291.5,
+              "y": 541.453125,
+              "width": 87.5,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "mobile390: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero",
+          "pass": true
+        },
+        {
+          "name": "mobile390: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected",
+          "pass": true
+        },
+        {
+          "name": "mobile390: manual table/FC/FR/MR preserved across reload and API restart",
+          "pass": true
+        },
+        {
+          "name": "mobile390: lost committed MR response keeps draft and reconciles by read only without repeat write",
+          "pass": true
+        },
+        {
+          "name": "mobile390: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile390: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento",
+          "pass": true
+        },
+        {
+          "name": "mobile320: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow",
+          "pass": true,
+          "boxes": [
+            {
+              "x": 11,
+              "y": 448,
+              "width": 70,
+              "height": 37
+            },
+            {
+              "x": 87,
+              "y": 448,
+              "width": 70,
+              "height": 37
+            },
+            {
+              "x": 163,
+              "y": 448,
+              "width": 70,
+              "height": 37
+            },
+            {
+              "x": 239,
+              "y": 448,
+              "width": 70,
+              "height": 37
+            }
+          ]
+        },
+        {
+          "name": "mobile320: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero",
+          "pass": true
+        },
+        {
+          "name": "mobile320: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected",
+          "pass": true
+        },
+        {
+          "name": "mobile320: manual table/FC/FR/MR preserved across reload and API restart",
+          "pass": true
+        },
+        {
+          "name": "mobile320: lost committed MR response keeps draft and reconciles by read only without repeat write",
+          "pass": true
+        },
+        {
+          "name": "mobile320: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile320: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "curation_final",
+      "groups": 21,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection",
+          "pass": true
+        },
+        {
+          "name": "desktop: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included",
+          "pass": true
+        },
+        {
+          "name": "desktop: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario",
+          "pass": true
+        },
+        {
+          "name": "desktop: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines",
+          "pass": true
+        },
+        {
+          "name": "desktop: real API restart/relogin preserves scenario-scoped confirmation and committed service data",
+          "pass": true
+        },
+        {
+          "name": "desktop: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery",
+          "pass": true
+        },
+        {
+          "name": "desktop: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection",
+          "pass": true
+        },
+        {
+          "name": "mobile390: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included",
+          "pass": true
+        },
+        {
+          "name": "mobile390: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario",
+          "pass": true
+        },
+        {
+          "name": "mobile390: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines",
+          "pass": true
+        },
+        {
+          "name": "mobile390: real API restart/relogin preserves scenario-scoped confirmation and committed service data",
+          "pass": true
+        },
+        {
+          "name": "mobile390: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile390: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection",
+          "pass": true
+        },
+        {
+          "name": "mobile320: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included",
+          "pass": true
+        },
+        {
+          "name": "mobile320: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario",
+          "pass": true
+        },
+        {
+          "name": "mobile320: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines",
+          "pass": true
+        },
+        {
+          "name": "mobile320: real API restart/relogin preserves scenario-scoped confirmation and committed service data",
+          "pass": true
+        },
+        {
+          "name": "mobile320: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile320: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa6_integrated",
+      "groups": 9,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt",
+          "pass": true
+        },
+        {
+          "name": "desktop: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally",
+          "pass": true
+        },
+        {
+          "name": "desktop: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests",
+          "pass": true
+        },
+        {
+          "name": "mobile390: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt",
+          "pass": true
+        },
+        {
+          "name": "mobile390: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally",
+          "pass": true
+        },
+        {
+          "name": "mobile390: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests",
+          "pass": true
+        },
+        {
+          "name": "mobile320: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt",
+          "pass": true
+        },
+        {
+          "name": "mobile320: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally",
+          "pass": true
+        },
+        {
+          "name": "mobile320: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa5_rodape",
+      "groups": 18,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "desktop: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons",
+          "pass": true
+        },
+        {
+          "name": "desktop: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control",
+          "pass": true
+        },
+        {
+          "name": "desktop: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version",
+          "pass": true
+        },
+        {
+          "name": "desktop: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile390: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons",
+          "pass": true
+        },
+        {
+          "name": "mobile390: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile390: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control",
+          "pass": true
+        },
+        {
+          "name": "mobile390: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version",
+          "pass": true
+        },
+        {
+          "name": "mobile390: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile320: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons",
+          "pass": true
+        },
+        {
+          "name": "mobile320: always-visible footer history opens existing list/version/PDF and returns to original tab/scenario; historical PDF unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile320: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control",
+          "pass": true
+        },
+        {
+          "name": "mobile320: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version",
+          "pass": true
+        },
+        {
+          "name": "mobile320: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa4_mapa",
+      "groups": 9,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile390: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile390: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile320: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile320: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa2_persistencia",
+      "groups": 21,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent",
+          "pass": true
+        },
+        {
+          "name": "desktop: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags",
+          "pass": true
+        },
+        {
+          "name": "desktop: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout",
+          "pass": true
+        },
+        {
+          "name": "desktop: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent",
+          "pass": true
+        },
+        {
+          "name": "desktop: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors",
+          "pass": true
+        },
+        {
+          "name": "desktop: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history",
+          "pass": true
+        },
+        {
+          "name": "mobile390: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent",
+          "pass": true
+        },
+        {
+          "name": "mobile390: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags",
+          "pass": true
+        },
+        {
+          "name": "mobile390: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout",
+          "pass": true
+        },
+        {
+          "name": "mobile390: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content",
+          "pass": true
+        },
+        {
+          "name": "mobile390: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent",
+          "pass": true
+        },
+        {
+          "name": "mobile390: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile390: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history",
+          "pass": true
+        },
+        {
+          "name": "mobile320: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent",
+          "pass": true
+        },
+        {
+          "name": "mobile320: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags",
+          "pass": true
+        },
+        {
+          "name": "mobile320: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout",
+          "pass": true
+        },
+        {
+          "name": "mobile320: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content",
+          "pass": true
+        },
+        {
+          "name": "mobile320: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent",
+          "pass": true
+        },
+        {
+          "name": "mobile320: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile320: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa3_editor",
+      "groups": 21,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning",
+          "pass": true
+        },
+        {
+          "name": "desktop: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero",
+          "pass": true
+        },
+        {
+          "name": "desktop: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules",
+          "pass": true
+        },
+        {
+          "name": "desktop: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence",
+          "pass": true
+        },
+        {
+          "name": "desktop: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus",
+          "pass": true
+        },
+        {
+          "name": "desktop: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile390: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning",
+          "pass": true
+        },
+        {
+          "name": "mobile390: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero",
+          "pass": true
+        },
+        {
+          "name": "mobile390: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules",
+          "pass": true
+        },
+        {
+          "name": "mobile390: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence",
+          "pass": true
+        },
+        {
+          "name": "mobile390: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus",
+          "pass": true
+        },
+        {
+          "name": "mobile390: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile320: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning",
+          "pass": true
+        },
+        {
+          "name": "mobile320: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero",
+          "pass": true
+        },
+        {
+          "name": "mobile320: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules",
+          "pass": true
+        },
+        {
+          "name": "mobile320: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence",
+          "pass": true
+        },
+        {
+          "name": "mobile320: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus",
+          "pass": true
+        },
+        {
+          "name": "mobile320: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa_b_navigation",
+      "groups": 21,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload",
+          "pass": true
+        },
+        {
+          "name": "desktop: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts",
+          "pass": true
+        },
+        {
+          "name": "desktop: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return",
+          "pass": true
+        },
+        {
+          "name": "desktop: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash",
+          "pass": true
+        },
+        {
+          "name": "desktop: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance",
+          "pass": true
+        },
+        {
+          "name": "desktop: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET",
+          "pass": true
+        },
+        {
+          "name": "desktop: explicit discard remount retains the prior diagnosis list scroll position",
+          "pass": true
+        },
+        {
+          "name": "desktop: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return",
+          "pass": true
+        },
+        {
+          "name": "desktop: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft",
+          "pass": true
+        },
+        {
+          "name": "desktop: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable",
+          "pass": true
+        },
+        {
+          "name": "mobile: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload",
+          "pass": true
+        },
+        {
+          "name": "mobile: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts",
+          "pass": true
+        },
+        {
+          "name": "mobile: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return",
+          "pass": true
+        },
+        {
+          "name": "mobile: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash",
+          "pass": true
+        },
+        {
+          "name": "mobile: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance",
+          "pass": true
+        },
+        {
+          "name": "mobile: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET",
+          "pass": true
+        },
+        {
+          "name": "mobile: Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional",
+          "pass": true
+        },
+        {
+          "name": "mobile: explicit discard remount retains the prior diagnosis list scroll position",
+          "pass": true
+        },
+        {
+          "name": "mobile: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return",
+          "pass": true
+        },
+        {
+          "name": "mobile: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft",
+          "pass": true
+        },
+        {
+          "name": "mobile: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "etapa_d_components",
+      "groups": 16,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label",
+          "pass": true
+        },
+        {
+          "name": "desktop: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET",
+          "pass": true
+        },
+        {
+          "name": "desktop: pending MR confirmation invalidates every component and finance; old totals are never presented as current",
+          "pass": true
+        },
+        {
+          "name": "desktop: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted",
+          "pass": true
+        },
+        {
+          "name": "desktop: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values",
+          "pass": true
+        },
+        {
+          "name": "desktop: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes",
+          "pass": true
+        },
+        {
+          "name": "desktop: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows",
+          "pass": true
+        },
+        {
+          "name": "desktop: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors",
+          "pass": true
+        },
+        {
+          "name": "mobile: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label",
+          "pass": true
+        },
+        {
+          "name": "mobile: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET",
+          "pass": true
+        },
+        {
+          "name": "mobile: pending MR confirmation invalidates every component and finance; old totals are never presented as current",
+          "pass": true
+        },
+        {
+          "name": "mobile: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted",
+          "pass": true
+        },
+        {
+          "name": "mobile: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values",
+          "pass": true
+        },
+        {
+          "name": "mobile: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes",
+          "pass": true
+        },
+        {
+          "name": "mobile: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows",
+          "pass": true
+        },
+        {
+          "name": "mobile: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "pr17_auditoria",
+      "groups": 8,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+          "pass": true
+        },
+        {
+          "name": "desktop: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+          "pass": true
+        },
+        {
+          "name": "desktop: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+          "pass": true
+        },
+        {
+          "name": "desktop: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+          "pass": true
+        },
+        {
+          "name": "mobile: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+          "pass": true
+        },
+        {
+          "name": "mobile: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+          "pass": true
+        },
+        {
+          "name": "mobile: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+          "pass": true
+        },
+        {
+          "name": "mobile: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "editor_financeiro",
+      "groups": 17,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+          "pass": true
+        },
+        {
+          "name": "desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier",
+          "pass": true
+        },
+        {
+          "name": "desktop: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06",
+          "pass": true
+        },
+        {
+          "name": "desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF",
+          "pass": true
+        },
+        {
+          "name": "desktop: global piece removal uses explicit trash and preserves historical emission",
+          "pass": true
+        },
+        {
+          "name": "desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+          "pass": true
+        },
+        {
+          "name": "mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite",
+          "pass": true
+        },
+        {
+          "name": "mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery",
+          "pass": true
+        },
+        {
+          "name": "mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier",
+          "pass": true
+        },
+        {
+          "name": "mobile: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06",
+          "pass": true
+        },
+        {
+          "name": "mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF",
+          "pass": true
+        },
+        {
+          "name": "mobile: global piece removal uses explicit trash and preserves historical emission",
+          "pass": true
+        },
+        {
+          "name": "mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact",
+          "pass": true
+        },
+        {
+          "name": "no browser runtime errors or external requests; desktop/mobile no horizontal overflow",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "m1_atendimentos",
+      "groups": 19,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: Conversas, Funil and global Configurações navigation; no Veículos",
+          "pass": true
+        },
+        {
+          "name": "real empty SQLite database is usable without Coda credentials",
+          "pass": true
+        },
+        {
+          "name": "manual creation requires only a minimum phone; optional data stays empty",
+          "pass": true
+        },
+        {
+          "name": "optional fields and manual commercial phase persist; header updates to saved record",
+          "pass": true
+        },
+        {
+          "name": "search locates actual stored records by name, plate and phone",
+          "pass": true
+        },
+        {
+          "name": "detail back preserves list and search context",
+          "pass": true
+        },
+        {
+          "name": "switching records never combines another contact or plate in the header",
+          "pass": true
+        },
+        {
+          "name": "Chat and global/context IA stay unavailable without simulated integration",
+          "pass": true
+        },
+        {
+          "name": "cancelling unsaved navigation keeps the form until explicit discard",
+          "pass": true
+        },
+        {
+          "name": "injected save failure retains input and does not alter persisted data",
+          "pass": true
+        },
+        {
+          "name": "real revision conflict preserves stale input and refuses silent overwrite",
+          "pass": true
+        },
+        {
+          "name": "Rejeitados requires explicit refusal and reason; no automatic loss",
+          "pass": true
+        },
+        {
+          "name": "Kanban preserves six approved labels and collapsible lanes",
+          "pass": true
+        },
+        {
+          "name": "delayed response from another Atendimento cannot replace the active header",
+          "pass": true
+        },
+        {
+          "name": "same SQLite records survive API stop/restart and a completely new browser session",
+          "pass": true
+        },
+        {
+          "name": "mobile: no body horizontal overflow",
+          "pass": true
+        },
+        {
+          "name": "mobile: editor scrolling/save is usable and edited data survives reload",
+          "pass": true
+        },
+        {
+          "name": "legacy vehicle/experience URLs cannot expose operational views",
+          "pass": true
+        },
+        {
+          "name": "no external providers, legacy Coda APIs, IA calls or uncaught page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue7_scenarios",
+      "groups": 3,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context",
+          "pass": true
+        },
+        {
+          "name": "editing master attributes in one scenario changes the same line in the other scenario",
+          "pass": true
+        },
+        {
+          "name": "fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue12_inclusion",
+      "groups": 11,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved",
+          "pass": true
+        },
+        {
+          "name": "second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones",
+          "pass": true
+        },
+        {
+          "name": "ordinary mutations and recovery use cached catalogs; failed post-commit GET keeps confirmed rows and resumes after explicit read without POST replay",
+          "pass": true
+        },
+        {
+          "name": "POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy",
+          "pass": true
+        },
+        {
+          "name": "lost POST response reconciles the same physical ID without duplicates; deselection disables the same master only in the active scenario",
+          "pass": true
+        },
+        {
+          "name": "HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST",
+          "pass": true
+        },
+        {
+          "name": "autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit",
+          "pass": true
+        },
+        {
+          "name": "initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data",
+          "pass": true
+        },
+        {
+          "name": "full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces",
+          "pass": true
+        },
+        {
+          "name": "rapid on/off during committed POST remains interactive, one POST without duplicates, final disabled flag with retained master confirmed",
+          "pass": true
+        },
+        {
+          "name": "fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue22_regressions",
+      "groups": 14,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+          "pass": true
+        },
+        {
+          "name": "desktop: unreadable committed component POST is recovered without a duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+          "pass": true
+        },
+        {
+          "name": "desktop: content and mask conflicts block replay, preserve drafts and support explicit loading",
+          "pass": true
+        },
+        {
+          "name": "desktop: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+          "pass": true
+        },
+        {
+          "name": "mobile: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions",
+          "pass": true
+        },
+        {
+          "name": "mobile: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay",
+          "pass": true
+        },
+        {
+          "name": "mobile: unreadable committed component POST is recovered without a duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "mobile: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct",
+          "pass": true
+        },
+        {
+          "name": "mobile: failed refresh after acknowledged save preserves fields and retries reads without replaying the write",
+          "pass": true
+        },
+        {
+          "name": "mobile: content and mask conflicts block replay, preserve drafts and support explicit loading",
+          "pass": true
+        },
+        {
+          "name": "mobile: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue18_import",
+      "groups": 6,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+          "pass": true
+        },
+        {
+          "name": "desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; legacy MR record is preserved; new Atendimento has approved MR20%",
+          "pass": true
+        },
+        {
+          "name": "desktop: approved MR20% is a per-Atendimento percentage, persists on reload, prices component 100 as 120 and leaves service unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present",
+          "pass": true
+        },
+        {
+          "name": "mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; legacy MR record is preserved; new Atendimento has approved MR20%",
+          "pass": true
+        },
+        {
+          "name": "mobile: approved MR20% is a per-Atendimento percentage, persists on reload, prices component 100 as 120 and leaves service unchanged",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "issue20_pricing",
+      "groups": 6,
+      "pass": true,
+      "assertions": [
+        {
+          "name": "desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+          "pass": true
+        },
+        {
+          "name": "desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+          "pass": true
+        },
+        {
+          "name": "desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence",
+          "pass": true
+        },
+        {
+          "name": "mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent",
+          "pass": true
+        },
+        {
+          "name": "mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged",
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "totalGroups": 340
+}

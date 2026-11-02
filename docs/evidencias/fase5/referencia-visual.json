@@ -1,0 +1,21 @@
+{
+  "base": "11164d5e4e255f92f50187becba3e024629de552",
+  "baselineBuild": "git archive base src/shared/public/configs -> temporary Vite production build, isolated outDir; backend unchanged",
+  "fixture": "same setup as tests/browser/fase5_gestures.py",
+  "viewports": {
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile390": [
+      390,
+      844
+    ],
+    "mobile320": [
+      320,
+      844
+    ]
+  },
+  "captures": "before/after list with the same two initial synthetic masters; before/after Motorista initial radial; additional screenshot of revealed action after transition completion",
+  "productionAccess": false
+}

@@ -190,7 +190,7 @@ function App() {
     touch.current=null
     if(!isDetail||screen||editor||event.touches.length!==1||document.querySelector('dialog[open]')||copilotOpen)return
     const target=event.target as Element
-    if(target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix'))return
+    if(target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix,[data-row-gesture],.disc-wrap,.interactive-map,[contenteditable=true],[role=slider],[role=switch],[role=checkbox]'))return
     for(let node:Element|null=target;node&&node!==event.currentTarget;node=node.parentElement){
       if(node.scrollWidth>node.clientWidth+1&&/auto|scroll/.test(getComputedStyle(node).overflowX))return
     }

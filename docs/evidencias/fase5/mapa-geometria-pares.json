@@ -1,0 +1,4479 @@
+{
+  "synthetic": true,
+  "source": "etapa4_mapa regression run",
+  "results": [
+    {
+      "device": "desktop",
+      "visibleCodes": [
+        "alma_para_choque_dianteiro",
+        "capo",
+        "para_choque_dianteiro",
+        "acabamentos_plasticos_dianteiros",
+        "adesivos_dianteiros",
+        "churrasqueira",
+        "frisos_dianteiros",
+        "moldura_dianteira_generica",
+        "defletor_inferior_dianteiro",
+        "difusor_dianteiro",
+        "spoiler_dianteiro",
+        "grade_dianteira",
+        "grade_inferior_central",
+        "grade_inferior__motorista",
+        "grade_inferior__passageiro",
+        "grade_lateral__motorista",
+        "grade_lateral__passageiro",
+        "alojamento_farol__motorista",
+        "alojamento_farol__passageiro",
+        "farol__motorista",
+        "farol__passageiro",
+        "farol_milha__motorista",
+        "farol_milha__passageiro",
+        "moldura_farol_milha__motorista",
+        "moldura_farol_milha__passageiro",
+        "sensor_estacionamento_dianteiro__motorista",
+        "sensor_estacionamento_dianteiro__passageiro",
+        "cofre_motor_dianteiro",
+        "painel_dianteiro",
+        "travessa_do_radiador",
+        "longarina_dianteira__motorista",
+        "longarina_dianteira__passageiro",
+        "para_brisa",
+        "vidro_dianteiro_outro",
+        "lateral_traseira__motorista",
+        "para_lama_dianteiro__motorista",
+        "porta_carga_lateral__motorista",
+        "porta_dianteira__motorista",
+        "porta_traseira__motorista",
+        "alojamento_portinhola_combustivel__motorista",
+        "portinhola_combustivel__motorista",
+        "acabamentos_plasticos_laterais__motorista",
+        "adesivos_laterais__motorista",
+        "frisos_laterais__motorista",
+        "moldura_lateral__motorista",
+        "rack_lateral__motorista",
+        "soleira__motorista",
+        "spoiler_lateral__motorista",
+        "caixa_roda_dianteira__motorista",
+        "caixa_roda_generica__motorista",
+        "caixa_roda_traseira__motorista",
+        "retrovisor__motorista",
+        "friso_porta_dianteira__motorista",
+        "macaneta_dianteira__motorista",
+        "moldura_porta_dianteira__motorista",
+        "interno_porta_dianteira__motorista",
+        "vidro_porta_dianteira__motorista",
+        "friso_porta_traseira__motorista",
+        "macaneta_traseira__motorista",
+        "moldura_porta_traseira__motorista",
+        "interno_porta_traseira__motorista",
+        "vidro_porta_traseira__motorista",
+        "caixa_de_ar__motorista",
+        "painel_lateral_interno__motorista",
+        "coluna_a__motorista",
+        "coluna_b__motorista",
+        "coluna_c__motorista",
+        "coluna_generica__motorista",
+        "para_barro_dianteiro__motorista",
+        "para_barro_traseiro__motorista",
+        "pinca_freio_dianteira__motorista",
+        "pinca_freio_traseira__motorista",
+        "roda_dianteira__motorista",
+        "roda_traseira__motorista",
+        "lateral_traseira__passageiro",
+        "para_lama_dianteiro__passageiro",
+        "porta_carga_lateral__passageiro",
+        "porta_dianteira__passageiro",
+        "porta_traseira__passageiro",
+        "alojamento_portinhola_combustivel__passageiro",
+        "portinhola_combustivel__passageiro",
+        "acabamentos_plasticos_laterais__passageiro",
+        "adesivos_laterais__passageiro",
+        "frisos_laterais__passageiro",
+        "moldura_lateral__passageiro",
+        "rack_lateral__passageiro",
+        "soleira__passageiro",
+        "spoiler_lateral__passageiro",
+        "caixa_roda_dianteira__passageiro",
+        "caixa_roda_generica__passageiro",
+        "caixa_roda_traseira__passageiro",
+        "retrovisor__passageiro",
+        "friso_porta_dianteira__passageiro",
+        "macaneta_dianteira__passageiro",
+        "moldura_porta_dianteira__passageiro",
+        "interno_porta_dianteira__passageiro",
+        "vidro_porta_dianteira__passageiro",
+        "friso_porta_traseira__passageiro",
+        "macaneta_traseira__passageiro",
+        "moldura_porta_traseira__passageiro",
+        "interno_porta_traseira__passageiro",
+        "vidro_porta_traseira__passageiro",
+        "caixa_de_ar__passageiro",
+        "painel_lateral_interno__passageiro",
+        "coluna_a__passageiro",
+        "coluna_b__passageiro",
+        "coluna_c__passageiro",
+        "coluna_generica__passageiro",
+        "para_barro_dianteiro__passageiro",
+        "para_barro_traseiro__passageiro",
+        "pinca_freio_dianteira__passageiro",
+        "pinca_freio_traseira__passageiro",
+        "roda_dianteira__passageiro",
+        "roda_traseira__passageiro",
+        "alma_para_choque_traseiro",
+        "para_choque_traseiro",
+        "porta_carga_traseira",
+        "tampa_porta_malas",
+        "acabamentos_plasticos_traseiros",
+        "adesivos_porta_malas",
+        "adesivos_traseiros",
+        "frisos_traseiros",
+        "moldura_traseira_generica",
+        "aerofolio",
+        "defletor_inferior_traseiro",
+        "difusor_traseiro",
+        "grade_traseira",
+        "spoiler_traseiro",
+        "ponteira_para_choque_traseiro__motorista",
+        "ponteira_para_choque_traseiro__passageiro",
+        "lanterna_central",
+        "luz_placa",
+        "lampada_luz_placa",
+        "alojamento_lanterna_traseira__motorista",
+        "alojamento_lanterna_traseira__passageiro",
+        "lanterna_re__motorista",
+        "lanterna_re__passageiro",
+        "lanterna_traseira__motorista",
+        "lanterna_traseira__passageiro",
+        "sensor_estacionamento_traseiro__motorista",
+        "sensor_estacionamento_traseiro__passageiro",
+        "assoalho_porta_malas",
+        "bojo_estepe",
+        "cofre_motor_traseiro",
+        "painel_traseiro",
+        "longarina_traseira__motorista",
+        "longarina_traseira__passageiro",
+        "acabamentos_porta_malas",
+        "interno_porta_malas",
+        "moldura_porta_malas",
+        "vidro_traseiro",
+        "teto_chapa",
+        "acabamentos_plasticos_teto",
+        "adesivos_teto",
+        "antena",
+        "bagageiro",
+        "rack_teto__motorista",
+        "rack_teto__passageiro",
+        "teto_panoramico",
+        "teto_solar",
+        "vidro_teto",
+        "vidro_teto_solar",
+        "vidro_panoramico"
+      ],
+      "uniqueCodes": 163,
+      "pairs": [
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "codes": [
+            "alojamento_farol__motorista",
+            "alojamento_farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "codes": [
+            "alojamento_lanterna_traseira__motorista",
+            "alojamento_lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "codes": [
+            "farol__motorista",
+            "farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "codes": [
+            "farol_milha__motorista",
+            "farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "codes": [
+            "grade_inferior__motorista",
+            "grade_inferior__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "codes": [
+            "grade_lateral__motorista",
+            "grade_lateral__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "codes": [
+            "lanterna_re__motorista",
+            "lanterna_re__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "codes": [
+            "lanterna_traseira__motorista",
+            "lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "codes": [
+            "longarina_dianteira__motorista",
+            "longarina_dianteira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "codes": [
+            "longarina_traseira__motorista",
+            "longarina_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "codes": [
+            "moldura_farol_milha__motorista",
+            "moldura_farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "codes": [
+            "ponteira_para_choque_traseiro__motorista",
+            "ponteira_para_choque_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "codes": [
+            "rack_teto__motorista",
+            "rack_teto__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_dianteiro__motorista",
+            "sensor_estacionamento_dianteiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_traseiro__motorista",
+            "sensor_estacionamento_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 549.734375,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 786.25,
+              "y": 597.359375,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__motorista",
+            "roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 795.015625,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__motorista",
+            "pinca_freio_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 795.015625,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__motorista",
+            "caixa_roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 795.015625,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__motorista",
+            "para_barro_traseiro__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 795.015625,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__passageiro",
+            "roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 540.96875,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__passageiro",
+            "pinca_freio_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 540.96875,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__passageiro",
+            "caixa_roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 540.96875,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__passageiro",
+            "para_barro_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 540.96875,
+              "y": 501,
+              "width": 104,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 668,
+              "y": 369.59375,
+              "width": 104,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 668,
+              "y": 632.390625,
+              "width": 104,
+              "height": 56
+            }
+          },
+          "pass": true
+        }
+      ],
+      "paths": [
+        {
+          "path": [
+            "Frente"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Acabamentos dianteiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Complementos dianteiros"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Vidros dianteiros"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Acabamentos traseiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Interior do porta-malas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Vidros traseiros"
+          ],
+          "controls": 2,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acabamentos do teto"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Vidros e aberturas"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        }
+      ],
+      "results": [
+        {
+          "name": "desktop: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "device": "mobile390",
+      "visibleCodes": [
+        "alma_para_choque_dianteiro",
+        "capo",
+        "para_choque_dianteiro",
+        "acabamentos_plasticos_dianteiros",
+        "adesivos_dianteiros",
+        "churrasqueira",
+        "frisos_dianteiros",
+        "moldura_dianteira_generica",
+        "defletor_inferior_dianteiro",
+        "difusor_dianteiro",
+        "spoiler_dianteiro",
+        "grade_dianteira",
+        "grade_inferior_central",
+        "grade_inferior__motorista",
+        "grade_inferior__passageiro",
+        "grade_lateral__motorista",
+        "grade_lateral__passageiro",
+        "alojamento_farol__motorista",
+        "alojamento_farol__passageiro",
+        "farol__motorista",
+        "farol__passageiro",
+        "farol_milha__motorista",
+        "farol_milha__passageiro",
+        "moldura_farol_milha__motorista",
+        "moldura_farol_milha__passageiro",
+        "sensor_estacionamento_dianteiro__motorista",
+        "sensor_estacionamento_dianteiro__passageiro",
+        "cofre_motor_dianteiro",
+        "painel_dianteiro",
+        "travessa_do_radiador",
+        "longarina_dianteira__motorista",
+        "longarina_dianteira__passageiro",
+        "para_brisa",
+        "vidro_dianteiro_outro",
+        "lateral_traseira__motorista",
+        "para_lama_dianteiro__motorista",
+        "porta_carga_lateral__motorista",
+        "porta_dianteira__motorista",
+        "porta_traseira__motorista",
+        "alojamento_portinhola_combustivel__motorista",
+        "portinhola_combustivel__motorista",
+        "acabamentos_plasticos_laterais__motorista",
+        "adesivos_laterais__motorista",
+        "frisos_laterais__motorista",
+        "moldura_lateral__motorista",
+        "rack_lateral__motorista",
+        "soleira__motorista",
+        "spoiler_lateral__motorista",
+        "caixa_roda_dianteira__motorista",
+        "caixa_roda_generica__motorista",
+        "caixa_roda_traseira__motorista",
+        "retrovisor__motorista",
+        "friso_porta_dianteira__motorista",
+        "macaneta_dianteira__motorista",
+        "moldura_porta_dianteira__motorista",
+        "interno_porta_dianteira__motorista",
+        "vidro_porta_dianteira__motorista",
+        "friso_porta_traseira__motorista",
+        "macaneta_traseira__motorista",
+        "moldura_porta_traseira__motorista",
+        "interno_porta_traseira__motorista",
+        "vidro_porta_traseira__motorista",
+        "caixa_de_ar__motorista",
+        "painel_lateral_interno__motorista",
+        "coluna_a__motorista",
+        "coluna_b__motorista",
+        "coluna_c__motorista",
+        "coluna_generica__motorista",
+        "para_barro_dianteiro__motorista",
+        "para_barro_traseiro__motorista",
+        "pinca_freio_dianteira__motorista",
+        "pinca_freio_traseira__motorista",
+        "roda_dianteira__motorista",
+        "roda_traseira__motorista",
+        "lateral_traseira__passageiro",
+        "para_lama_dianteiro__passageiro",
+        "porta_carga_lateral__passageiro",
+        "porta_dianteira__passageiro",
+        "porta_traseira__passageiro",
+        "alojamento_portinhola_combustivel__passageiro",
+        "portinhola_combustivel__passageiro",
+        "acabamentos_plasticos_laterais__passageiro",
+        "adesivos_laterais__passageiro",
+        "frisos_laterais__passageiro",
+        "moldura_lateral__passageiro",
+        "rack_lateral__passageiro",
+        "soleira__passageiro",
+        "spoiler_lateral__passageiro",
+        "caixa_roda_dianteira__passageiro",
+        "caixa_roda_generica__passageiro",
+        "caixa_roda_traseira__passageiro",
+        "retrovisor__passageiro",
+        "friso_porta_dianteira__passageiro",
+        "macaneta_dianteira__passageiro",
+        "moldura_porta_dianteira__passageiro",
+        "interno_porta_dianteira__passageiro",
+        "vidro_porta_dianteira__passageiro",
+        "friso_porta_traseira__passageiro",
+        "macaneta_traseira__passageiro",
+        "moldura_porta_traseira__passageiro",
+        "interno_porta_traseira__passageiro",
+        "vidro_porta_traseira__passageiro",
+        "caixa_de_ar__passageiro",
+        "painel_lateral_interno__passageiro",
+        "coluna_a__passageiro",
+        "coluna_b__passageiro",
+        "coluna_c__passageiro",
+        "coluna_generica__passageiro",
+        "para_barro_dianteiro__passageiro",
+        "para_barro_traseiro__passageiro",
+        "pinca_freio_dianteira__passageiro",
+        "pinca_freio_traseira__passageiro",
+        "roda_dianteira__passageiro",
+        "roda_traseira__passageiro",
+        "alma_para_choque_traseiro",
+        "para_choque_traseiro",
+        "porta_carga_traseira",
+        "tampa_porta_malas",
+        "acabamentos_plasticos_traseiros",
+        "adesivos_porta_malas",
+        "adesivos_traseiros",
+        "frisos_traseiros",
+        "moldura_traseira_generica",
+        "aerofolio",
+        "defletor_inferior_traseiro",
+        "difusor_traseiro",
+        "grade_traseira",
+        "spoiler_traseiro",
+        "ponteira_para_choque_traseiro__motorista",
+        "ponteira_para_choque_traseiro__passageiro",
+        "lanterna_central",
+        "luz_placa",
+        "lampada_luz_placa",
+        "alojamento_lanterna_traseira__motorista",
+        "alojamento_lanterna_traseira__passageiro",
+        "lanterna_re__motorista",
+        "lanterna_re__passageiro",
+        "lanterna_traseira__motorista",
+        "lanterna_traseira__passageiro",
+        "sensor_estacionamento_traseiro__motorista",
+        "sensor_estacionamento_traseiro__passageiro",
+        "assoalho_porta_malas",
+        "bojo_estepe",
+        "cofre_motor_traseiro",
+        "painel_traseiro",
+        "longarina_traseira__motorista",
+        "longarina_traseira__passageiro",
+        "acabamentos_porta_malas",
+        "interno_porta_malas",
+        "moldura_porta_malas",
+        "vidro_traseiro",
+        "teto_chapa",
+        "acabamentos_plasticos_teto",
+        "adesivos_teto",
+        "antena",
+        "bagageiro",
+        "rack_teto__motorista",
+        "rack_teto__passageiro",
+        "teto_panoramico",
+        "teto_solar",
+        "vidro_teto",
+        "vidro_teto_solar",
+        "vidro_panoramico"
+      ],
+      "uniqueCodes": 163,
+      "pairs": [
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "codes": [
+            "alojamento_farol__motorista",
+            "alojamento_farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "codes": [
+            "alojamento_lanterna_traseira__motorista",
+            "alojamento_lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "codes": [
+            "farol__motorista",
+            "farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "codes": [
+            "farol_milha__motorista",
+            "farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "codes": [
+            "grade_inferior__motorista",
+            "grade_inferior__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "codes": [
+            "grade_lateral__motorista",
+            "grade_lateral__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "codes": [
+            "lanterna_re__motorista",
+            "lanterna_re__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "codes": [
+            "lanterna_traseira__motorista",
+            "lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "codes": [
+            "longarina_dianteira__motorista",
+            "longarina_dianteira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "codes": [
+            "longarina_traseira__motorista",
+            "longarina_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "codes": [
+            "moldura_farol_milha__motorista",
+            "moldura_farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "codes": [
+            "ponteira_para_choque_traseiro__motorista",
+            "ponteira_para_choque_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "codes": [
+            "rack_teto__motorista",
+            "rack_teto__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_dianteiro__motorista",
+            "sensor_estacionamento_dianteiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_traseiro__motorista",
+            "sensor_estacionamento_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 43.921875,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 253.4375,
+              "y": 508.359375,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__motorista",
+            "roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 261.203125,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__motorista",
+            "pinca_freio_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 261.203125,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__motorista",
+            "caixa_roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 261.203125,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__motorista",
+            "para_barro_traseiro__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 261.203125,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__passageiro",
+            "roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 36.15625,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__passageiro",
+            "pinca_freio_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 36.15625,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__passageiro",
+            "caixa_roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 36.15625,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__passageiro",
+            "para_barro_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 36.15625,
+              "y": 423,
+              "width": 92.625,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 148.6875,
+              "y": 306.59375,
+              "width": 92.625,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 148.6875,
+              "y": 539.390625,
+              "width": 92.625,
+              "height": 56
+            }
+          },
+          "pass": true
+        }
+      ],
+      "paths": [
+        {
+          "path": [
+            "Frente"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Acabamentos dianteiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Complementos dianteiros"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Vidros dianteiros"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Acabamentos traseiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Interior do porta-malas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Vidros traseiros"
+          ],
+          "controls": 2,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acabamentos do teto"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Vidros e aberturas"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        }
+      ],
+      "results": [
+        {
+          "name": "mobile390: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile390: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "device": "mobile320",
+      "visibleCodes": [
+        "alma_para_choque_dianteiro",
+        "capo",
+        "para_choque_dianteiro",
+        "acabamentos_plasticos_dianteiros",
+        "adesivos_dianteiros",
+        "churrasqueira",
+        "frisos_dianteiros",
+        "moldura_dianteira_generica",
+        "defletor_inferior_dianteiro",
+        "difusor_dianteiro",
+        "spoiler_dianteiro",
+        "grade_dianteira",
+        "grade_inferior_central",
+        "grade_inferior__motorista",
+        "grade_inferior__passageiro",
+        "grade_lateral__motorista",
+        "grade_lateral__passageiro",
+        "alojamento_farol__motorista",
+        "alojamento_farol__passageiro",
+        "farol__motorista",
+        "farol__passageiro",
+        "farol_milha__motorista",
+        "farol_milha__passageiro",
+        "moldura_farol_milha__motorista",
+        "moldura_farol_milha__passageiro",
+        "sensor_estacionamento_dianteiro__motorista",
+        "sensor_estacionamento_dianteiro__passageiro",
+        "cofre_motor_dianteiro",
+        "painel_dianteiro",
+        "travessa_do_radiador",
+        "longarina_dianteira__motorista",
+        "longarina_dianteira__passageiro",
+        "para_brisa",
+        "vidro_dianteiro_outro",
+        "lateral_traseira__motorista",
+        "para_lama_dianteiro__motorista",
+        "porta_carga_lateral__motorista",
+        "porta_dianteira__motorista",
+        "porta_traseira__motorista",
+        "alojamento_portinhola_combustivel__motorista",
+        "portinhola_combustivel__motorista",
+        "acabamentos_plasticos_laterais__motorista",
+        "adesivos_laterais__motorista",
+        "frisos_laterais__motorista",
+        "moldura_lateral__motorista",
+        "rack_lateral__motorista",
+        "soleira__motorista",
+        "spoiler_lateral__motorista",
+        "caixa_roda_dianteira__motorista",
+        "caixa_roda_generica__motorista",
+        "caixa_roda_traseira__motorista",
+        "retrovisor__motorista",
+        "friso_porta_dianteira__motorista",
+        "macaneta_dianteira__motorista",
+        "moldura_porta_dianteira__motorista",
+        "interno_porta_dianteira__motorista",
+        "vidro_porta_dianteira__motorista",
+        "friso_porta_traseira__motorista",
+        "macaneta_traseira__motorista",
+        "moldura_porta_traseira__motorista",
+        "interno_porta_traseira__motorista",
+        "vidro_porta_traseira__motorista",
+        "caixa_de_ar__motorista",
+        "painel_lateral_interno__motorista",
+        "coluna_a__motorista",
+        "coluna_b__motorista",
+        "coluna_c__motorista",
+        "coluna_generica__motorista",
+        "para_barro_dianteiro__motorista",
+        "para_barro_traseiro__motorista",
+        "pinca_freio_dianteira__motorista",
+        "pinca_freio_traseira__motorista",
+        "roda_dianteira__motorista",
+        "roda_traseira__motorista",
+        "lateral_traseira__passageiro",
+        "para_lama_dianteiro__passageiro",
+        "porta_carga_lateral__passageiro",
+        "porta_dianteira__passageiro",
+        "porta_traseira__passageiro",
+        "alojamento_portinhola_combustivel__passageiro",
+        "portinhola_combustivel__passageiro",
+        "acabamentos_plasticos_laterais__passageiro",
+        "adesivos_laterais__passageiro",
+        "frisos_laterais__passageiro",
+        "moldura_lateral__passageiro",
+        "rack_lateral__passageiro",
+        "soleira__passageiro",
+        "spoiler_lateral__passageiro",
+        "caixa_roda_dianteira__passageiro",
+        "caixa_roda_generica__passageiro",
+        "caixa_roda_traseira__passageiro",
+        "retrovisor__passageiro",
+        "friso_porta_dianteira__passageiro",
+        "macaneta_dianteira__passageiro",
+        "moldura_porta_dianteira__passageiro",
+        "interno_porta_dianteira__passageiro",
+        "vidro_porta_dianteira__passageiro",
+        "friso_porta_traseira__passageiro",
+        "macaneta_traseira__passageiro",
+        "moldura_porta_traseira__passageiro",
+        "interno_porta_traseira__passageiro",
+        "vidro_porta_traseira__passageiro",
+        "caixa_de_ar__passageiro",
+        "painel_lateral_interno__passageiro",
+        "coluna_a__passageiro",
+        "coluna_b__passageiro",
+        "coluna_c__passageiro",
+        "coluna_generica__passageiro",
+        "para_barro_dianteiro__passageiro",
+        "para_barro_traseiro__passageiro",
+        "pinca_freio_dianteira__passageiro",
+        "pinca_freio_traseira__passageiro",
+        "roda_dianteira__passageiro",
+        "roda_traseira__passageiro",
+        "alma_para_choque_traseiro",
+        "para_choque_traseiro",
+        "porta_carga_traseira",
+        "tampa_porta_malas",
+        "acabamentos_plasticos_traseiros",
+        "adesivos_porta_malas",
+        "adesivos_traseiros",
+        "frisos_traseiros",
+        "moldura_traseira_generica",
+        "aerofolio",
+        "defletor_inferior_traseiro",
+        "difusor_traseiro",
+        "grade_traseira",
+        "spoiler_traseiro",
+        "ponteira_para_choque_traseiro__motorista",
+        "ponteira_para_choque_traseiro__passageiro",
+        "lanterna_central",
+        "luz_placa",
+        "lampada_luz_placa",
+        "alojamento_lanterna_traseira__motorista",
+        "alojamento_lanterna_traseira__passageiro",
+        "lanterna_re__motorista",
+        "lanterna_re__passageiro",
+        "lanterna_traseira__motorista",
+        "lanterna_traseira__passageiro",
+        "sensor_estacionamento_traseiro__motorista",
+        "sensor_estacionamento_traseiro__passageiro",
+        "assoalho_porta_malas",
+        "bojo_estepe",
+        "cofre_motor_traseiro",
+        "painel_traseiro",
+        "longarina_traseira__motorista",
+        "longarina_traseira__passageiro",
+        "acabamentos_porta_malas",
+        "interno_porta_malas",
+        "moldura_porta_malas",
+        "vidro_traseiro",
+        "teto_chapa",
+        "acabamentos_plasticos_teto",
+        "adesivos_teto",
+        "antena",
+        "bagageiro",
+        "rack_teto__motorista",
+        "rack_teto__passageiro",
+        "teto_panoramico",
+        "teto_solar",
+        "vidro_teto",
+        "vidro_teto_solar",
+        "vidro_panoramico"
+      ],
+      "uniqueCodes": 163,
+      "pairs": [
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "codes": [
+            "alojamento_farol__motorista",
+            "alojamento_farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "codes": [
+            "alojamento_lanterna_traseira__motorista",
+            "alojamento_lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "codes": [
+            "farol__motorista",
+            "farol__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "codes": [
+            "farol_milha__motorista",
+            "farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "codes": [
+            "grade_inferior__motorista",
+            "grade_inferior__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "codes": [
+            "grade_lateral__motorista",
+            "grade_lateral__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "codes": [
+            "lanterna_re__motorista",
+            "lanterna_re__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "codes": [
+            "lanterna_traseira__motorista",
+            "lanterna_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "codes": [
+            "longarina_dianteira__motorista",
+            "longarina_dianteira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "codes": [
+            "longarina_traseira__motorista",
+            "longarina_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "codes": [
+            "moldura_farol_milha__motorista",
+            "moldura_farol_milha__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "codes": [
+            "ponteira_para_choque_traseiro__motorista",
+            "ponteira_para_choque_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "codes": [
+            "rack_teto__motorista",
+            "rack_teto__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_dianteiro__motorista",
+            "sensor_estacionamento_dianteiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "codes": [
+            "sensor_estacionamento_traseiro__motorista",
+            "sensor_estacionamento_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Motorista": {
+              "x": 36.125,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            },
+            "Passageiro": {
+              "x": 207.859375,
+              "y": 354.953125,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__motorista",
+            "roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 214.21875,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__motorista",
+            "pinca_freio_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 214.21875,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__motorista",
+            "caixa_roda_traseira__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 214.21875,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__motorista",
+            "para_barro_traseiro__motorista"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 214.21875,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "codes": [
+            "roda_dianteira__passageiro",
+            "roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 29.765625,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "codes": [
+            "pinca_freio_dianteira__passageiro",
+            "pinca_freio_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 29.765625,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "codes": [
+            "caixa_roda_dianteira__passageiro",
+            "caixa_roda_traseira__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 29.765625,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "codes": [
+            "para_barro_dianteiro__passageiro",
+            "para_barro_traseiro__passageiro"
+          ],
+          "geometry": {
+            "Ambos": {
+              "x": 29.765625,
+              "y": 285,
+              "width": 76,
+              "height": 56
+            },
+            "Dianteiro": {
+              "x": 122,
+              "y": 189.59375,
+              "width": 76,
+              "height": 56
+            },
+            "Traseiro": {
+              "x": 122,
+              "y": 380.390625,
+              "width": 76,
+              "height": 56
+            }
+          },
+          "pass": true
+        }
+      ],
+      "paths": [
+        {
+          "path": [
+            "Frente"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Acabamentos dianteiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Complementos dianteiros"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade inferior"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Grades e entradas de ar",
+            "Grade lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Alojamento do farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Iluminação dianteira",
+            "Moldura do farol de milha"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Frente",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Longarina dianteira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura dianteira",
+            "Vidros dianteiros"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Motorista",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro"
+          ],
+          "controls": 14,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Abastecimento"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Acessórios e acabamentos"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Caixa de roda"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta dianteira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Componentes das portas",
+            "Porta traseira"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Estrutura lateral",
+            "Colunas"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Para-barro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Pinça de freio"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Passageiro",
+            "Roda"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira"
+          ],
+          "controls": 9,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Acabamentos traseiros"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Complementos traseiros",
+            "Ponteira do para-choque traseiro"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira"
+          ],
+          "controls": 7,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Alojamento da lanterna"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna de ré"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Iluminação traseira",
+            "Lanterna traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Traseira",
+            "Sensor de estacionamento"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira"
+          ],
+          "controls": 8,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Longarina traseira"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Interior do porta-malas"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Estrutura traseira",
+            "Vidros traseiros"
+          ],
+          "controls": 2,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo"
+          ],
+          "controls": 5,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acabamentos do teto"
+          ],
+          "controls": 3,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Acessórios do teto",
+            "Rack de teto"
+          ],
+          "controls": 4,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        },
+        {
+          "path": [
+            "Topo",
+            "Vidros e aberturas"
+          ],
+          "controls": 6,
+          "minWidth": 44,
+          "minHeight": 44,
+          "labelOverflows": 0
+        }
+      ],
+      "results": [
+        {
+          "name": "mobile320: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile320: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

@@ -38,7 +38,7 @@ async def device_case(browser,device,viewport):
    await open_region(root);await verify(root,[root['nome']]);await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
   assert len(visible_codes)==163 and len(set(visible_codes))==163
   h.mark(device+': every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions')
-  # Each pair changes active-scenario flags; shared identities are retained.
+  # Fase 5: pairs add absent masters only; repeated touch preserves flags and identity.
   for index,pair in enumerate(ids['pairs']):
    root=next(r for r in ids['tree']if r['nome']==pair['path'][0]);await open_region(root)
    for name in pair['path'][1:]:await dialog.get_by_role('button',name=name,exact=True).click()
@@ -51,9 +51,9 @@ async def device_case(browser,device,viewport):
    old=await ws();old_ids={p['id']for p in old['items']};await ambos.click();await idle();new=await ws();catalog=await get('/api/catalogos');code_by_id={p['id']:p['code']for p in catalog['items']};selected=[p for p in new['items']if code_by_id[p['pieceId']]in pair['codes']];assert sorted(code_by_id[p['pieceId']]for p in selected)==sorted(pair['codes']);assert all(new['scenarios'][0]['pieceFlags'][p['id']]for p in selected)
    assert len({p['pieceId']for p in new['items']})==len(new['items'])
    if index in [0,15,19]:await shot('ambos-'+str(index))
-   await ambos.click();await idle();disabled=await ws();assert {p['id']for p in disabled['items']}=={p['id']for p in new['items']};assert all(not disabled['scenarios'][0]['pieceFlags'][p['id']]for p in selected);assert all(disabled['scenarios'][0]['pieceFlags'][p['id']]==old['scenarios'][0]['pieceFlags'][p['id']]for p in old['items']if code_by_id[p['pieceId']]not in pair['codes']);pairs.append({'path':pair['path'],'codes':pair['codes'],'geometry':positions,'pass':True})
+   await ambos.click();await idle();disabled=await ws();assert {p['id']for p in disabled['items']}=={p['id']for p in new['items']};assert disabled==new;assert all(disabled['scenarios'][0]['pieceFlags'][p['id']]==old['scenarios'][0]['pieceFlags'][p['id']]for p in old['items']if code_by_id[p['pieceId']]not in pair['codes']);pairs.append({'path':pair['path'],'codes':pair['codes'],'geometry':positions,'pass':True})
    await dialog.get_by_role('button',name='Fechar seleção',exact=True).click()
-  h.mark(device+': all 23 exact pairs (15 side and 8 axle) enable/disable precisely two real identities without removing shared masters; direction geometry, uniqueness and other pieces preserved')
+  h.mark(device+': all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved')
   # Real content removal still needs consent; Cancel has no API calls. Existing Capo fixture is protected.
   await page.get_by_role('button',name='Diagnósticos',exact=True).click();await page.locator('.diagnosis-row').filter(has=page.locator('.diagnosis-title strong',has_text='Capô')).locator('.piece-delete').click();confirm=page.get_by_role('dialog',name='Confirmar remoção da composição');await expect(confirm).to_be_visible();requests=[];record=lambda r:requests.append(r.url)if'/api/'in r.url else None;page.on('request',record);await confirm.get_by_role('button',name='Cancelar',exact=True).click();await page.wait_for_timeout(100);page.remove_listener('request',record);assert requests==[];assert any(p['id']==before['items'][0]['id']for p in(await ws())['items']);await shot('confirmacao-preservada');await page.get_by_role('button',name='Mapa',exact=True).click()
   # Keyboard open, containment, Escape and region focus restore.
