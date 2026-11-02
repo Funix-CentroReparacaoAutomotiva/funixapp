@@ -17,7 +17,7 @@ import {BudgetRepository} from '../budgets.ts'
 import {normalizeConnectorCapture} from '../coda-connector-export.ts'
 
 function snapshot(db:DatabaseSync){return db.prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name").all().map(r=>({table:r.name,rows:db.prepare(`SELECT * FROM "${r.name}" ORDER BY rowid`).all()}))}
-const imported=(table:string,id:string)=>sourceId(table,'i-synthetic-'+id)
+const imported=(table:string,id:string)=>sourceId(table,table===TABLES.services && id==='service'?'i-XDTMBmueos':'i-synthetic-'+id)
 
 test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, configuration and immutable budget/PDF; repeat/restart is idempotent',async()=>{
  const folder=mkdtempSync(join(tmpdir(),'funix18-')),file=join(folder,'v7.sqlite'),backup=join(folder,'copy.sqlite')
@@ -43,7 +43,7 @@ test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, c
   const after=snapshot(db),repeat=planImport(db,src);assert.equal(repeat.report.inserts,0)
   applyImport(db,src,repeat.planHash);assert.deepEqual(snapshot(db),after)
   db.close();db=openDatabase(file)
-  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,7)
+  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,8)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
  }finally{db.close();rmSync(folder,{recursive:true,force:true})}
 })
@@ -138,7 +138,7 @@ test('Issue20 imports actual FV instead of Coda inheritance; source IDs remain s
   pushRow(s,TABLES.tables,row('i-synthetic-derived',{'c-CeD0PIBx4t':'Tabela derivada sintética','c-tZ94U6MuW-':{name:'Interno'},'c-o2aKUZyPE7':true,'c-QMXNRk1uDX':0.6,'c-DMeUkMin9e':ref(TABLES.tables,'i-synthetic-table')}))
   const p=planImport(db,s);assert.equal(p.config.tables.at(-1)!.factor,'0.6')
   set(s,TABLES.services,'c-TvFH_jzZ3k','Novo nome sintético');assert.equal(planImport(db,s).catalog[0]!.id,p.catalog[0]!.id)
-  assert.throws(()=>{db.exec('DELETE FROM schema_migrations WHERE version=7');planImport(db,s)},/exatamente V7/)
+  assert.throws(()=>{db.exec('DELETE FROM schema_migrations WHERE version=8');planImport(db,s)},/exatamente V8/)
  }finally{db.close()}
 })
 

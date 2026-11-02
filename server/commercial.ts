@@ -1,3 +1,4 @@
+import{newServiceSelectionIssue,servicePolicy,executionScope}from'../shared/commercial-curation.ts'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService, CommercialSave } from '../shared/commercial.ts'
@@ -80,20 +81,20 @@ export class CommercialRepository {
     new AtendimentoRepository(this.db).get(atendimentoId)
     const selected = selectedScenario(this.db,atendimentoId,scenarioId)
     const rows = this.db.prepare(`SELECT p.*,f.enabled AS scenario_enabled FROM diagnosis_items p LEFT JOIN scenario_piece_flags f ON f.piece_id=p.id AND f.scenario_id=? WHERE p.atendimento_id=? ORDER BY p.created_at,p.id`).all(selected,atendimentoId)
-    const services = this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? WHERE p.atendimento_id=? ORDER BY l.rowid`).all(selected,atendimentoId)
+    const services = this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled,ec.scope AS execution_scope FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? LEFT JOIN scenario_service_confirmations ec ON ec.scenario_id=f.scenario_id AND ec.service_line_id=l.id WHERE p.atendimento_id=? ORDER BY l.rowid`).all(selected,atendimentoId)
     const grouped = new Map<string,Row[]>()
     for(const line of services){const key=String(line.diagnosis_item_id),list=grouped.get(key)??[];list.push(line);grouped.set(key,list)}
     return rows.map(row=>this.diagnosis(row,grouped.get(String(row.id))??[]))
   }
   private diagnosis(row: Row, lines: Row[]): DiagnosisItem {
-    const services = lines.map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled:s.scenario_enabled===1, notes:String(s.notes), diagnosisId:s.diagnosis_id===null?null:String(s.diagnosis_id) }))
+    const services = lines.map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), enabled:s.scenario_enabled===1, notes:String(s.notes), diagnosisId:s.diagnosis_id===null?null:String(s.diagnosis_id), ...(servicePolicy(String(s.service_id))?.execution==='external_confirmation'?{executionConfirmed:s.execution_scope===executionScope({serviceId:String(s.service_id),dimensionId:s.dimension_id===null?null:String(s.dimension_id),quantity:String(s.quantity)})}:{}) }))
     return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),notes:String(row.notes),enabled:row.scenario_enabled===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
   }
   private getDiagnosis(atendimentoId: string, id: string, scenarioId?: string) {
     const selected=selectedScenario(this.db,atendimentoId,scenarioId)
     const row=this.db.prepare(`SELECT p.*,f.enabled AS scenario_enabled FROM diagnosis_items p LEFT JOIN scenario_piece_flags f ON f.piece_id=p.id AND f.scenario_id=? WHERE p.id=? AND p.atendimento_id=?`).get(selected,id,atendimentoId)
     if(!row)notFound()
-    const lines=this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled FROM diagnosis_services l LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? WHERE l.diagnosis_item_id=? ORDER BY l.rowid`).all(selected,id)
+    const lines=this.db.prepare(`SELECT l.*,f.enabled AS scenario_enabled,ec.scope AS execution_scope FROM diagnosis_services l LEFT JOIN scenario_service_flags f ON f.service_id=l.id AND f.scenario_id=? LEFT JOIN scenario_service_confirmations ec ON ec.scenario_id=f.scenario_id AND ec.service_line_id=l.id WHERE l.diagnosis_item_id=? ORDER BY l.rowid`).all(selected,id)
     return this.diagnosis(row,lines)
   }
   add(atendimentoId: string, input: unknown) {
@@ -144,7 +145,10 @@ export class CommercialRepository {
           if (service.id !== undefined && !previous) invalid('Linha de serviço não pertence a este diagnóstico.')
           if (ids.has(lineId)) invalid('Linha de serviço duplicada.'); ids.add(lineId)
           // Existing references remain editable/removable after a catalog deactivation.
-          if (!previous || serviceId !== previous.serviceId) this.usable(serviceId, 'servico')
+          if (!previous || serviceId !== previous.serviceId) {
+            const issue=newServiceSelectionIssue(serviceId);if(issue)throw new ServiceError(409,'CURATION_SELECTION_BLOCKED',issue)
+            this.usable(serviceId, 'servico')
+          }
           if (dimensionId && (!previous || dimensionId !== previous.dimensionId || serviceId !== previous.serviceId)) {
             if (this.usable(dimensionId, 'dimensao').serviceId !== serviceId) invalid('A dimensão não pertence a este serviço.')
           }
@@ -162,6 +166,9 @@ export class CommercialRepository {
       for (const previous of old.services) if (!retained.has(previous.id)) this.db.prepare('DELETE FROM diagnosis_services WHERE id=?').run(previous.id)
       const insert = this.db.prepare(`INSERT INTO diagnosis_services(id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET service_id=excluded.service_id,dimension_id=excluded.dimension_id,quantity=excluded.quantity,notes=excluded.notes,diagnosis_id=excluded.diagnosis_id`)
       for (const service of services) {
+        const previous=old.services.find(l=>l.id===service.id)
+        if(previous && executionScope(previous)!==executionScope(service))this.db.prepare('DELETE FROM scenario_service_confirmations WHERE service_line_id=?').run(service.id)
+        if(!enabled||!service.enabled)this.db.prepare('DELETE FROM scenario_service_confirmations WHERE scenario_id=? AND service_line_id=?').run(scenarioId,service.id)
         insert.run(service.id,id,service.serviceId,service.dimensionId,service.quantity,service.enabled ? 1 : 0,service.notes ?? '',service.diagnosisId ?? null)
         this.db.prepare('UPDATE scenario_service_flags SET enabled=? WHERE scenario_id=? AND service_id=?').run(service.enabled ? 1 : 0,scenarioId,service.id)
       }
@@ -171,13 +178,25 @@ export class CommercialRepository {
     })
   }
   remove(atendimentoId: string, id: string, input: unknown) {
-    const data = object(input, ['revision']), expected = revision(data.revision)
+    const data = object(input, ['revision','compositionRevision','scenarios'])
+    return this.removeMany(atendimentoId,{pieces:[{id,revision:data.revision}],compositionRevision:data.compositionRevision,scenarios:data.scenarios})
+  }
+  removeMany(atendimentoId:string,input:unknown){
+    const data=object(input,['pieces','compositionRevision','scenarios'])
+    const expected=revision(data.compositionRevision)
+    if(!Array.isArray(data.pieces)||!data.pieces.length||data.pieces.length>2||!Array.isArray(data.scenarios)||!data.scenarios.length)invalid('Informe peças e revisões dos cenários para remover da composição.')
+    const pieces=data.pieces.map(raw=>{const p=object(raw,['id','revision']);return{id:text(p.id,100,true),revision:revision(p.revision)}})
+    const scenarios=data.scenarios.map(raw=>{const s=object(raw,['id','revision']);return{id:text(s.id,100,true),revision:revision(s.revision)}})
+    if(new Set(pieces.map(p=>p.id)).size!==pieces.length||new Set(scenarios.map(s=>s.id)).size!==scenarios.length)invalid('Identidades duplicadas na remoção.')
     return this.transaction(() => {
-      const old = this.getDiagnosis(atendimentoId, id)
-      if (old.revision !== expected) conflict()
-      this.db.prepare('DELETE FROM diagnosis_items WHERE id=?').run(id)
+      new AtendimentoRepository(this.db).get(atendimentoId)
+      const state=this.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimentoId)
+      const current=this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=?').all(atendimentoId)
+      if(state?.revision!==expected||current.length!==scenarios.length||current.some(s=>!scenarios.some(v=>v.id===s.id&&v.revision===s.revision)))conflict()
+      for(const p of pieces){const old=this.getDiagnosis(atendimentoId,p.id);if(old.revision!==p.revision)conflict()}
+      for(const p of pieces)this.db.prepare('DELETE FROM diagnosis_items WHERE id=?').run(p.id)
       touchComposition(this.db,atendimentoId)
-      return { removed: true }
+      return { removed: true,removedIds:pieces.map(p=>p.id) }
     })
   }
 }

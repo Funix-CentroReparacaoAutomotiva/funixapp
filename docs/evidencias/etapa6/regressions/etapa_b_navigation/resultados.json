@@ -1,0 +1,91 @@
+{
+  "pass": true,
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload",
+      "pass": true
+    },
+    {
+      "name": "desktop: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts",
+      "pass": true
+    },
+    {
+      "name": "desktop: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return",
+      "pass": true
+    },
+    {
+      "name": "desktop: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash",
+      "pass": true
+    },
+    {
+      "name": "desktop: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance",
+      "pass": true
+    },
+    {
+      "name": "desktop: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET",
+      "pass": true
+    },
+    {
+      "name": "desktop: explicit discard remount retains the prior diagnosis list scroll position",
+      "pass": true
+    },
+    {
+      "name": "desktop: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return",
+      "pass": true
+    },
+    {
+      "name": "desktop: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft",
+      "pass": true
+    },
+    {
+      "name": "desktop: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable",
+      "pass": true
+    },
+    {
+      "name": "mobile: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload",
+      "pass": true
+    },
+    {
+      "name": "mobile: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts",
+      "pass": true
+    },
+    {
+      "name": "mobile: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return",
+      "pass": true
+    },
+    {
+      "name": "mobile: issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash",
+      "pass": true
+    },
+    {
+      "name": "mobile: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance",
+      "pass": true
+    },
+    {
+      "name": "mobile: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET",
+      "pass": true
+    },
+    {
+      "name": "mobile: Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional",
+      "pass": true
+    },
+    {
+      "name": "mobile: explicit discard remount retains the prior diagnosis list scroll position",
+      "pass": true
+    },
+    {
+      "name": "mobile: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return",
+      "pass": true
+    },
+    {
+      "name": "mobile: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft",
+      "pass": true
+    },
+    {
+      "name": "mobile: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable",
+      "pass": true
+    }
+  ],
+  "error": null
+}

@@ -10,12 +10,12 @@ export function main(args:string[]){
  const values=new Map<string,string>()
  for(let n=0;n<args.length;n++){
   const key=args[n]!
-  if(!['--source','--database','--confirm-plan'].includes(key) || values.has(key) || !args[n+1] || args[n+1]!.startsWith('--'))throw new Error('Uso: node server/import-coda.ts --source export.json --database copia-v7.sqlite [--confirm-plan HASH_DO_DRY_RUN]')
+  if(!['--source','--database','--confirm-plan'].includes(key) || values.has(key) || !args[n+1] || args[n+1]!.startsWith('--'))throw new Error('Uso: node server/import-coda.ts --source export.json --database copia-v8.sqlite [--confirm-plan HASH_DO_DRY_RUN]')
   values.set(key,args[++n]!)
  }
  if(!values.has('--source') || !values.has('--database'))throw new Error('Informe explicitamente --source e --database. Sem opções o comando não acessa banco algum.')
  const file=resolve(values.get('--database')!),sourceFile=resolve(values.get('--source')!)
- if(!lstatSync(file).isFile() || lstatSync(file).isSymbolicLink() || realpathSync(file)!==file)throw new Error('O banco deve ser arquivo V7 existente, sem links simbólicos no caminho.')
+ if(!lstatSync(file).isFile() || lstatSync(file).isSymbolicLink() || realpathSync(file)!==file)throw new Error('O banco deve ser arquivo V8 existente, sem links simbólicos no caminho.')
  if(lstatSync(sourceFile).size>20*1024*1024)throw new Error('Exportação excede limite de 20 MiB.')
  const source=parseCodaJson(readFileSync(sourceFile,'utf8')),confirmation=values.get('--confirm-plan')
  if(confirmation && !/^[a-f0-9]{64}$/.test(confirmation))throw new Error('Confirmação inválida.')

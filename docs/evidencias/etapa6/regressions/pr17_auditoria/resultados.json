@@ -1,0 +1,38 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "name": "desktop: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+      "pass": true
+    },
+    {
+      "name": "desktop: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+      "pass": true
+    },
+    {
+      "name": "desktop: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+      "pass": true
+    },
+    {
+      "name": "desktop: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+      "pass": true
+    },
+    {
+      "name": "mobile: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers",
+      "pass": true
+    },
+    {
+      "name": "mobile: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected",
+      "pass": true
+    },
+    {
+      "name": "mobile: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation",
+      "pass": true
+    },
+    {
+      "name": "mobile: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined",
+      "pass": true
+    }
+  ],
+  "error": null
+}

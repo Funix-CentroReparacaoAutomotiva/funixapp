@@ -1,0 +1,9 @@
+PASS desktop: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS desktop: all 23 exact pairs (15 side and 8 axle) add/remove precisely two real identities via global queue; direction geometry, uniqueness and other pieces preserved
+PASS desktop: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS mobile390: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS mobile390: all 23 exact pairs (15 side and 8 axle) add/remove precisely two real identities via global queue; direction geometry, uniqueness and other pieces preserved
+PASS mobile390: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS mobile320: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS mobile320: all 23 exact pairs (15 side and 8 axle) add/remove precisely two real identities via global queue; direction geometry, uniqueness and other pieces preserved
+PASS mobile320: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors

@@ -177,6 +177,14 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   // V4–V6 SQL remains immutable upgrade history, not the active component contract.
   // Remove only the retired column; no Atendimento, catalog, flag or PDF is reset.
   {version:7,apply:db=>db.exec('ALTER TABLE component_items DROP COLUMN fct;')},
+  {version:8,apply:db=>db.exec(`
+    CREATE TABLE scenario_service_confirmations (
+      scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+      service_line_id TEXT NOT NULL REFERENCES diagnosis_services(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      PRIMARY KEY(scenario_id,service_line_id)
+    );
+  `)}
 ]
 
 export function migrate(db: DatabaseSync) {

@@ -102,7 +102,7 @@ async def run():
             one, two = workspace['scenarios']
             assert one['pieceFlags'] == two['pieceFlags'] and len(workspace['items']) == 1
             await compare(page)
-            checkbox = page.get_by_label('Cenário 2: incluir peça Capô', exact=True)
+            checkbox = page.get_by_label('Cenário 2: habilitar peça Capô', exact=True)
             await checkbox.click(); await expect(checkbox).not_to_be_checked()
             await compare(page)
             await select_named_scenario(page,'Cenário 1')

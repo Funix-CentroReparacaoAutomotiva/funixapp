@@ -238,7 +238,7 @@ test('commercial APIs enforce authentication/origin/JSON and operate entirely lo
     assert.equal((await app.write(itemUrl, 'PATCH', { revision: 2, notes: 'x'.repeat(70000) }, cookie)).status, 413)
     assert.equal((await app.write(itemUrl, 'DELETE', { revision: 2 }, cookie, 'https://other.example')).status, 403)
     assert.equal((await (await app.request(path, { headers })).json())[0].services.length, 1)
-    assert.equal((await app.write(itemUrl, 'DELETE', { revision: 2 }, cookie)).status, 200)
+    assert.equal((await app.write(itemUrl, 'DELETE', { revision: 2,compositionRevision:Number(app.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(at.id)!.revision),scenarios:new (await import('../scenarios.ts')).ScenarioRepository(app.db).list(at.id).map(s=>({id:s.id,revision:s.revision})) }, cookie)).status, 200)
     assert.deepEqual(await (await app.request(path, { headers })).json(), [])
     assert.equal(network, 0)
   } finally { globalThis.fetch = oldFetch; app.close() }
@@ -320,4 +320,40 @@ test('Issue22 acknowledgement revision is captured inside the write transaction,
   const stale=await app.write(base+'/cenarios/'+s.id,'PATCH',{revision:saved.scenarioRevision,pieceFlags:{[f.item.id]:false}},cookie)
   assert.equal(stale.status,409)
  }finally{app.db.exec=exec;app.close()}
+})
+
+test('Stage2 authenticated batch DELETE guards origin, all scenario revisions and atomicity; replay never deletes another identity',async()=>{
+ const app=start();try{
+  const f=commercialFixture(app.db),cookie=await authenticate(app),headers={Cookie:cookie},path='/api/atendimentos/'+f.at.id
+  f.commercial.add(f.at.id,{pieceCodes:['alma_para_choque_dianteiro']})
+  const read=async()=>await(await app.request(path+'/cenarios',{headers})).json()
+  const w=await read(),pieces=w.items.map((p:{id:string;revision:number})=>({id:p.id,revision:p.revision})),request={pieces,compositionRevision:w.revision,scenarios:w.scenarios.map((s:{id:string;revision:number})=>({id:s.id,revision:s.revision}))}
+  assert.equal((await app.request(path+'/diagnosticos',{method:'DELETE'})).status,401)
+  assert.equal((await app.write(path+'/diagnosticos','DELETE',request,cookie,'https://wrong.example')).status,403)
+  assert.equal((await app.write(path+'/diagnosticos','DELETE',{pieces},cookie)).status,400)
+  const s=w.scenarios[0];f.scenarios.update(f.at.id,s.id,{revision:s.revision,pieceFlags:{[f.item.id]:false}})
+  assert.equal((await app.write(path+'/diagnosticos','DELETE',request,cookie)).status,409);assert.equal((await read()).items.length,2)
+  const current=await read();const fresh={...request,scenarios:current.scenarios.map((s:{id:string;revision:number})=>({id:s.id,revision:s.revision}))}
+  const deleted=await app.write(path+'/diagnosticos','DELETE',fresh,cookie);assert.equal(deleted.status,200);assert.deepEqual((await deleted.json()).removedIds.sort(),pieces.map((p:{id:string})=>p.id).sort());assert.equal((await read()).items.length,0)
+  f.commercial.add(f.at.id,{pieceCodes:['capo']});assert.equal((await app.write(path+'/diagnosticos','DELETE',fresh,cookie)).status,409);const after=await read();assert.equal(after.items.length,1);assert.notEqual(after.items[0].id,f.item.id)
+ }finally{app.close()}
+})
+
+test('curation confirmation HTTP rejects auth/origin/scope/mask bypass, persists exact scenario authority and blocks hidden new inclusions',async()=>{
+ const{curationFixture}=await import('./fixtures/curation.ts'),{ScenarioRepository}=await import('../scenarios.ts'),{executionScope}=await import('../../shared/commercial-curation.ts')
+ const app=start()
+ try{const f=curationFixture(app.db),cookie=await authenticate(app),at='/api/atendimentos/'+f.at.id,item=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:[{serviceId:f.ids.third,dimensionId:f.dimensions.third,quantity:'1'}]}),line=item.services[0]!,scenarios=new ScenarioRepository(app.db),s=scenarios.list(f.at.id)[0]!,path=at+'/cenarios/'+s.id+'/servicos/'+line.id+'/confirmacao',payload={revision:s.revision,pieceRevision:item.revision,scope:executionScope(line),confirmed:true}
+  assert.equal((await app.write(path,'PATCH',payload,'')).status,401)
+  assert.equal((await app.write(path,'PATCH',payload,cookie,'https://invalid.example')).status,403)
+  assert.equal((await app.write(path,'PATCH',{...payload,scope:'stale'},cookie)).status,409)
+  assert.equal((await app.write(path,'PATCH',payload,cookie)).status,200)
+  assert.equal(app.db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,1)
+  assert.equal((await app.write(path,'PATCH',payload,cookie)).status,409)
+  const current=scenarios.list(f.at.id)[0]!
+  assert.equal((await app.write(at+'/cenarios/'+s.id,'PATCH',{revision:current.revision,serviceConfirmations:{[line.id]:payload.scope}},cookie)).status,400)
+  const copy=scenarios.create(f.at.id,{name:'Copy',duplicateFrom:current.id,sourceRevision:current.revision});assert(!copy.serviceConfirmations)
+  const denied=await app.write(at+'/diagnosticos/'+item.id,'PATCH',{revision:item.revision,services:[{serviceId:f.ids.hidden,dimensionId:f.dimensions.hidden,quantity:'1'}]},cookie);assert.equal(denied.status,409)
+  assert.equal(f.commercial.list(f.at.id)[0]!.services[0]!.serviceId,f.ids.third)
+  const readonly=await app.write(at+'/diagnosticos/'+item.id,'PATCH',{revision:item.revision,services:[{...line,executionConfirmed:true}]},cookie);assert.equal(readonly.status,400)
+ }finally{app.close()}
 })

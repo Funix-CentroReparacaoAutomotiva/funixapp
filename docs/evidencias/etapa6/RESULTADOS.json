@@ -1,0 +1,20 @@
+{
+  "base": "8f47a1c8dc661621fac00a7d35014858142119d6",
+  "syntheticLocalOnly": true,
+  "nodeTests": 178,
+  "deployScriptTests": 23,
+  "browserRegressionSuites": 14,
+  "browserRegressionGroups": 190,
+  "integratedJourneyGroups": 9,
+  "totalBrowserGroups": 199,
+  "screenshots": 30,
+  "matrix": {
+    "aprovado": 62,
+    "parcial": 1,
+    "bloqueado por acesso": 9
+  },
+  "functionalChanges": false,
+  "productionAccess": false,
+  "realSourceReadOnly": true,
+  "ci": "Ver resultado remoto no PR e na Issue #31; não confundir com estes testes locais."
+}

@@ -1,0 +1,105 @@
+{
+  "base": "8a4eb8a4f5677b7f4e8384ecc17ebcd16a46544e",
+  "branch": "feature/revisao-integrada-funix",
+  "syntheticOnly": true,
+  "node": {
+    "pass": 148,
+    "fail": 0
+  },
+  "deployScripts": {
+    "pass": 23,
+    "fail": 0
+  },
+  "browser": {
+    "focusedGroups": 21,
+    "regressionGroups": 121,
+    "totalGroups": 142,
+    "viewports": [
+      [
+        1440,
+        1000
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        320,
+        568
+      ]
+    ]
+  },
+  "screenshots": 12,
+  "protectedFiles": [
+    {
+      "file": "server/pricing-engine.ts",
+      "unchanged": true,
+      "sha256": "604767f0b820b8e341cb6375969ce45410b002426c54f85325fe5da04c3504b2"
+    },
+    {
+      "file": "server/pricing-config.ts",
+      "unchanged": true,
+      "sha256": "eba0ed192edf29cdb0ff11409157c9729832ddd8fc388c94d79f43a7bfa58276"
+    },
+    {
+      "file": "server/coda-import.ts",
+      "unchanged": true,
+      "sha256": "8f61896cc1cb28812dd1ffd3103814d83ea64e2352cd92dbf5986afe0d0ffb10"
+    },
+    {
+      "file": "server/migrations.ts",
+      "unchanged": true,
+      "sha256": "d61cc3ff2a26fd22983f3499c144552c933ca93bc1cac3f989bb4de3ab2adf81"
+    },
+    {
+      "file": "shared/pricing.ts",
+      "unchanged": true,
+      "sha256": "ac707587f6106a454c87f68b784bb16d04533c1e4dd6703b12255159e4685594"
+    },
+    {
+      "file": "src/assets/car-map.svg",
+      "unchanged": true,
+      "sha256": "5d8c3ce348825e502a2ba6252880798d631386256403e79f02baf519ec01dc75"
+    },
+    {
+      "file": "src/App.css",
+      "unchanged": true,
+      "sha256": "a09003f04224f283f6fdea8fff4fbd07bb6065320e5212d896b81173da883fbc"
+    },
+    {
+      "file": "src/approved.css",
+      "unchanged": true,
+      "sha256": "ea82ce729d00051e8571b4f4f18c935e8c34e44351e7e2ac9ccdb2c34747b3c5"
+    },
+    {
+      "file": "src/piece-selection.css",
+      "unchanged": true,
+      "sha256": "f146455bb9f6dc2f9c9232d4f142335e5958909c5465e9104d05589876133c7a"
+    },
+    {
+      "file": ".github/workflows/funix.yml",
+      "unchanged": true,
+      "sha256": "06af40273b46a74ce9adad5de43187304f7c96d7264c7967840c896a9ada36dd"
+    },
+    {
+      "file": "compose.yaml",
+      "unchanged": true,
+      "sha256": "41533e0a3e362da962f77ef5f0ab61c0124b09e71ca6dabe97589917e7bd9339"
+    },
+    {
+      "file": "server/data/hierarquia-v2.json",
+      "unchanged": true,
+      "sha256": "20d8ac528f3708bf259d5c0d53959d843b189df4583ec24c2c57d026ce827e30"
+    }
+  ],
+  "newCI": "Not triggered: integration branch only, no PR; unchanged workflow validates main pushes and PRs",
+  "notPerformed": [
+    "merge",
+    "deploy",
+    "Coda access",
+    "VPS access",
+    "real data import",
+    "installed database changes",
+    "Stage3 implementation"
+  ]
+}

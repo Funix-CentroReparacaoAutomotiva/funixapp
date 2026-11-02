@@ -1,5 +1,7 @@
 # Issue #18 — importação comercial pontual Coda → FUNIX V7
 
+> **Contrato histórico dos PRs #19/#21.** A implementação posterior da Issue #31 exige schema **exatamente V8**, inclui curadoria por IDs no plano e preserva ajustes locais. Não executar os exemplos V7 abaixo com a nova revisão. Consulte [CURADORIA_COMERCIAL_IMPLEMENTACAO.md](CURADORIA_COMERCIAL_IMPLEMENTACAO.md) e [API.md](API.md). O CLI novo não migra bancos; carga produtiva continua dependente de autorização específica. As contagens e resultados reais deste documento pertencem ao ensaio anterior e não certificam uma nova importação.
+
 Implementação em `feat/issue18-importacao-coda`, baseada na main `4371b4841266ac5ca22c6c89523a26a79ca98d1c`. Nenhuma alteração no Coda, VPS, banco produtivo, motor de cálculo, UI, migrações, workflows ou instalação. Sem sincronização permanente, novos endpoints ou token Coda no aplicativo/produção. Entrega para auditoria, sem merge/deploy.
 
 **Complemento após revisão:** [PR19_REVISAO.md](PR19_REVISAO.md) registra o caminho de exportação pelo conector efetivamente executado, o dry-run real sem conflitos, a matriz de 60 casos e a regressão de energia compensada. Esse é o procedimento comprovado para obter a fonte; o coletor REST abaixo continua experimental, testado apenas com transporte simulado.

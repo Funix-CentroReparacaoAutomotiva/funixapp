@@ -1,0 +1,21 @@
+PASS desktop: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS desktop: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS desktop: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS desktop: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS desktop: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS desktop: bottom sheet anchored to viewport/safe-area, unified search and global removal confirmation preserved, Cancel/Escape/close restore focus without mutation
+PASS desktop: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS mobile390: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS mobile390: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS mobile390: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS mobile390: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS mobile390: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS mobile390: bottom sheet anchored to viewport/safe-area, unified search and global removal confirmation preserved, Cancel/Escape/close restore focus without mutation
+PASS mobile390: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS mobile320: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS mobile320: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS mobile320: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS mobile320: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS mobile320: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS mobile320: bottom sheet anchored to viewport/safe-area, unified search and global removal confirmation preserved, Cancel/Escape/close restore focus without mutation
+PASS mobile320: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors

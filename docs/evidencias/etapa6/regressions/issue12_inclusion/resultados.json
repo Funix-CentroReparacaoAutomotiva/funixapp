@@ -1,0 +1,55 @@
+{
+  "suite": "Issue12 inclusão e recuperação",
+  "synthetic": true,
+  "assertions": [
+    {
+      "name": "existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved",
+      "pass": true
+    },
+    {
+      "name": "second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones",
+      "pass": true
+    },
+    {
+      "name": "ordinary mutations and recovery use cached catalogs; failed post-commit GET keeps confirmed rows and resumes after explicit read without POST replay",
+      "pass": true
+    },
+    {
+      "name": "POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy",
+      "pass": true
+    },
+    {
+      "name": "lost POST response reconciles the same physical ID without duplicates; deliberate deselection now removes the empty master globally",
+      "pass": true
+    },
+    {
+      "name": "HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST",
+      "pass": true
+    },
+    {
+      "name": "autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit",
+      "pass": true
+    },
+    {
+      "name": "initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data",
+      "pass": true
+    },
+    {
+      "name": "full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces",
+      "pass": true
+    },
+    {
+      "name": "rapid on/off during committed POST remains interactive, one POST without duplicates, final global absence confirmed",
+      "pass": true
+    },
+    {
+      "name": "fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates",
+      "pass": true
+    }
+  ],
+  "observed_ui_post_count": 14,
+  "fault_injection": "Controlled request aborts and lost/truncated responses; all successful writes use real API/SQLite",
+  "error": null,
+  "external_hosts": [],
+  "page_errors": []
+}

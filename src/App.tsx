@@ -10,6 +10,7 @@ import { CommercialPanel } from './CommercialPanel'
 import {detailScreen,parentDetail,swipeTab} from './detail-navigation'
 import type {DetailScreen} from './detail-navigation'
 import './App.css'
+import './footer-copilot.css'
 
 type Area = 'conversas' | 'funil' | 'configuracoes'
 type Route = { path: string; search: string }
@@ -174,10 +175,10 @@ function App() {
     if(!root||!shell)return
     let frame=0,observed:Element|null=null
     const measure=()=>{
-      const surface=root.querySelector('.approved-finance,.compose')
+      const surface=root.querySelector('.approved-finance')
       if(surface!==observed){if(observed)resize.unobserve(observed);observed=surface;if(surface)resize.observe(surface)}
-      const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top+8):0
-      shell.style.setProperty('--copilot-bottom',offset+'px')
+      const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top):0
+      shell.style.setProperty('--finance-height',offset+'px')
     }
     const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)}
     const resize=new ResizeObserver(schedule);resize.observe(root)
@@ -260,7 +261,7 @@ function App() {
           <button className="session-exit" onClick={logout}>Sair</button>
         </>}
       </main> : <>
-        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}>←</button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':'Orçamentos emitidos')}</h1></>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
+        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':'Orçamentos emitidos')}</h1></>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone).slice(0, 2).toUpperCase() : '·'}</span><strong>{record ? record.name || record.phone : 'Atendimento'}</strong></div><div className="detail-identity"><strong>{record?.plate || record?.phone || '—'}</strong><span>{record ? vehicleLabel(record) || record.phone : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
         {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}

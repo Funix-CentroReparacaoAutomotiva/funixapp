@@ -121,7 +121,7 @@ async def device_case(browser,device,viewport):
   await page.screenshot(path=str(ARTIFACTS/f'{device}-autosave-erro.png'))
   await page.unroute('**'+path+'/diagnosticos/'+item['id'],unavailable);await editor.get_by_role('button',name='Tentar novamente',exact=True).click()
   await expect(editor).to_have_attribute('data-save-state','confirmed');await expect(first.locator('.calculated strong')).to_have_text('R$ 666,75')
-  await first.get_by_label('Dimensão',exact=True).select_option('');await expect(editor).to_have_attribute('data-save-state','confirmed');await expect(first.locator('.calculated strong')).to_have_text('—')
+  await first.get_by_label('Dimensão',exact=True).select_option('');await expect(editor).to_have_attribute('data-save-state','confirmed');await expect(first.locator('.calculated strong')).to_have_text('Rascunho incompleto')
   await first.get_by_label('Dimensão',exact=True).select_option(dim['id']);await expect(editor).to_have_attribute('data-save-state','confirmed');await expect(first.locator('.calculated strong')).to_have_text('R$ 666,75')
   await finance.locator('.summary').click()
   for label in ['Tabela','FC','FR','MR']:await expect(finance.get_by_label(label,exact=True)).to_be_visible()

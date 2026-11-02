@@ -1,3 +1,4 @@
+import{executionScope,servicePolicy}from'../shared/commercial-curation.ts'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { Scenario } from '../shared/commercial.ts'
@@ -34,15 +35,17 @@ export class ScenarioRepository {
   constructor(db: DatabaseSync) { this.db = db }
   list(at: string): Scenario[] {
     new AtendimentoRepository(this.db).get(at)
+    const confirmations=new Map<string,Record<string,string>>()
     const flags = (table:string,column:string) => {
       const grouped=new Map<string,Record<string,boolean>>()
-      for(const row of this.db.prepare(`SELECT f.scenario_id,f.${column} AS id,f.enabled FROM ${table} f JOIN scenarios s ON s.id=f.scenario_id WHERE s.atendimento_id=?`).all(at)){
+      for(const row of this.db.prepare(`SELECT f.scenario_id,f.${column} AS id,f.enabled${table==='scenario_service_flags'?',ec.scope':''} FROM ${table} f ${table==='scenario_service_flags'?'LEFT JOIN scenario_service_confirmations ec ON ec.scenario_id=f.scenario_id AND ec.service_line_id=f.service_id':''} JOIN scenarios s ON s.id=f.scenario_id WHERE s.atendimento_id=?`).all(at)){
         const key=String(row.scenario_id),values=grouped.get(key)??{};values[String(row.id)]=row.enabled===1;grouped.set(key,values)
+        if(typeof row.scope==='string'){const scopes=confirmations.get(key)??{};scopes[String(row.id)]=row.scope;confirmations.set(key,scopes)}
       }
       return grouped
     }
     const pieces=flags('scenario_piece_flags','piece_id'),services=flags('scenario_service_flags','service_id'),components=flags('scenario_component_flags','component_id')
-    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row=>({id:String(row.id),atendimentoId:at,name:String(row.name),position:Number(row.position),revision:Number(row.revision),pieceFlags:pieces.get(String(row.id))??{},serviceFlags:services.get(String(row.id))??{},componentFlags:components.get(String(row.id))??{}}))
+    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row=>({id:String(row.id),atendimentoId:at,name:String(row.name),position:Number(row.position),revision:Number(row.revision),pieceFlags:pieces.get(String(row.id))??{},serviceFlags:services.get(String(row.id))??{},componentFlags:components.get(String(row.id))??{},...(confirmations.has(String(row.id))?{serviceConfirmations:confirmations.get(String(row.id))}:{})}))
   }
 
   create(at: string, input: unknown) {
@@ -96,10 +99,32 @@ export class ScenarioRepository {
           if (typeof value !== 'boolean') invalid('Inclusão deve ser verdadeira ou falsa.')
           const result = this.db.prepare(`UPDATE ${table} SET enabled=? WHERE scenario_id=? AND ${column}=?`).run(value ? 1 : 0,id,key)
           if (!result.changes) invalid('Item não pertence a este Atendimento.')
+          if(value===false && field==='serviceFlags')this.db.prepare('DELETE FROM scenario_service_confirmations WHERE scenario_id=? AND service_line_id=?').run(id,key)
+          if(value===false && field==='pieceFlags')this.db.prepare('DELETE FROM scenario_service_confirmations WHERE scenario_id=? AND service_line_id IN (SELECT id FROM diagnosis_services WHERE diagnosis_item_id=?)').run(id,key)
         }
       }
       this.db.prepare('UPDATE scenarios SET revision=revision+1 WHERE id=?').run(id)
       return this.list(at).find(s => s.id === id)!
     })
   }
+  confirmService(at:string,scenarioId:string,lineId:string,input:unknown){
+    const data=inputObject(input,['revision','pieceRevision','scope','confirmed'])
+    if(!Number.isSafeInteger(data.revision)||!Number.isSafeInteger(data.pieceRevision)||typeof data.scope!=='string'||typeof data.confirmed!=='boolean')invalid('Confirmação exige revisões, escopo e escolha explícita.')
+    return transaction(this.db,()=>{
+      selectedScenario(this.db,at,scenarioId,data.revision)
+      const line=this.db.prepare(`SELECT l.service_id,l.dimension_id,l.quantity,p.revision,pf.enabled AS parent_enabled,sf.enabled AS line_enabled FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id JOIN scenario_piece_flags pf ON pf.piece_id=p.id AND pf.scenario_id=? JOIN scenario_service_flags sf ON sf.service_id=l.id AND sf.scenario_id=pf.scenario_id WHERE p.atendimento_id=? AND l.id=?`).get(scenarioId,at,lineId)
+      if(!line)throw new ServiceError(404,'NOT_FOUND','Linha não pertence ao Atendimento/cenário.')
+      if(line.revision!==data.pieceRevision)conflict()
+      const scope=executionScope({serviceId:String(line.service_id),dimensionId:line.dimension_id===null?null:String(line.dimension_id),quantity:String(line.quantity)})
+      if(scope!==data.scope)conflict()
+      if(servicePolicy(String(line.service_id))?.execution!=='external_confirmation')invalid('Linha não requer confirmação de terceiro.')
+      if(data.confirmed){
+        if(line.parent_enabled!==1||line.line_enabled!==1||line.dimension_id===null)invalid('Habilite a linha e selecione a dimensão antes de confirmar.')
+        this.db.prepare('INSERT INTO scenario_service_confirmations(scenario_id,service_line_id,scope) VALUES(?,?,?) ON CONFLICT(scenario_id,service_line_id) DO UPDATE SET scope=excluded.scope').run(scenarioId,lineId,scope)
+      }else this.db.prepare('DELETE FROM scenario_service_confirmations WHERE scenario_id=? AND service_line_id=?').run(scenarioId,lineId)
+      this.db.prepare('UPDATE scenarios SET revision=revision+1 WHERE id=?').run(scenarioId)
+      return this.list(at).find(s=>s.id===scenarioId)!
+    })
+  }
+
 }

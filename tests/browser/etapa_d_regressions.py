@@ -10,7 +10,7 @@ async def run():
         suite.ARTIFACTS.mkdir(parents=True,exist_ok=True)
         print('SUITE',name,flush=True)
         await suite.run()
-        files=['resultados.json']if name=='etapa_b_navigation'else['desktop-resultados.json','mobile-resultados.json']
+        files=['resultados.json']if name=='etapa_b_navigation'else['desktop-resultados.json','mobile390-resultados.json','mobile320-resultados.json']
         groups=[]
         for filename in files:
             data=json.loads((suite.ARTIFACTS/filename).read_text())

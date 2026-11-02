@@ -14,3 +14,8 @@ export const emptyNegotiationState=():NegotiationState=>({draft:emptyNegotiation
 export function negotiationSignature(workspace:CommercialWorkspace,draft:NegotiationDraft){
  return JSON.stringify({scenario:workspace.selectedId,composition:workspace.revision,configuration:workspace.configurationRevision,revision:workspace.scenarios.find(s=>s.id===workspace.selectedId)?.revision,draft})
 }
+
+// A neutral deal has no unsaved commercial effect; real/invalid drafts stay guarded.
+export function negotiationIsDirty(draft:NegotiationDraft){
+ try{return negotiationInput(draft).mode!=='none'}catch{return true}
+}

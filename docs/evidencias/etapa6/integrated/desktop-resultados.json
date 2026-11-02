@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt",
+      "pass": true
+    },
+    {
+      "name": "desktop: sheet and circular Map share presence despite disabled scenario; Cancel is inert and confirmed removal affects draft composition globally",
+      "pass": true
+    },
+    {
+      "name": "desktop: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests",
+      "pass": true
+    }
+  ]
+}

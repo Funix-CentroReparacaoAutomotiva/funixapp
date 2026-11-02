@@ -74,16 +74,18 @@ async def device_case(browser,device,viewport):
 
   for label in ['Chat','Diagnósticos','Mapa']:
    await main(label);await expect(page.locator('.copilot-fixed')).to_be_visible()
-   if label!='Chat':
-    finance=await page.locator('.approved-finance').bounding_box();button=await page.locator('.copilot-fixed').bounding_box();assert button['y']+button['height']<=finance['y']
-    await page.locator('.approved-finance .summary').click();await page.wait_for_timeout(100)
-    finance=await page.locator('.approved-finance').bounding_box();button=await page.locator('.copilot-fixed').bounding_box();assert button['y']+button['height']<=finance['y']
-    await page.locator('.approved-finance .summary').click()
+   for expanded in [False,True]:
+    finance=page.locator('.approved-finance');summary=finance.locator('.summary')
+    if(await summary.get_attribute('aria-expanded')=='true')!=expanded:await summary.click()
+    button=await page.locator('.copilot-fixed').bounding_box();shell=await page.locator('.app-shell').bounding_box();assert abs(button['y']+button['height']-shell['y']-shell['height'])<=2
+    for action in ['Orçamentos emitidos','Emitir orçamento']:
+     box=await finance.get_by_role('button',name=action,exact=True).bounding_box();assert box['x']+box['width']<=button['x']
+   await summary.click()
    await page.get_by_role('button',name='Abrir Copiloto FUNIX',exact=True).click();await expect(page.get_by_role('region',name='Copiloto FUNIX',exact=True)).to_contain_text('IA ainda indisponível');await shot('copiloto-'+label.lower())
    await page.get_by_role('button',name='Recolher Copiloto',exact=True).click();await expect(page.get_by_role('region',name='Copiloto FUNIX',exact=True)).to_have_count(0)
    if label=='Mapa':await shot('mapa')
   await main('Diagnósticos');await page.get_by_role('button',name='+ Adicionar peça',exact=True).click();await expect(page.get_by_label('Buscar peça em todas as vistas')).to_be_visible()
-  await main('Mapa');await expect(page.get_by_role('dialog',name='Selecionar peça no mapa')).to_have_count(0)
+  await page.get_by_role('button',name='Fechar seleção',exact=True).click();await main('Mapa');await expect(page.get_by_role('dialog',name='Selecionar peça no mapa')).to_have_count(0)
   h.mark(device+': main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance')
 
   await main('Chat');before=len([r for r in requests if r[1].endswith(base)])

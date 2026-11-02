@@ -15,7 +15,7 @@ import {BudgetRepository} from '../budgets.ts'
 const approvedServices=[['i-qCp1gLfJn4','Interna'],['i-AlsNigbGqx','Lavagem'],['i-dMshyG5NMo','Inspeção técnica']] as const
 const mr={id:'funix:mr:padrao',name:'Padrão',factor:'1.2'}
 function sourceFor(id:string,name:string){
- const source=JSON.parse(JSON.stringify(codaFixture()).replaceAll('i-synthetic-service',id)) as ReturnType<typeof codaFixture>
+ const source=JSON.parse(JSON.stringify(codaFixture()).replaceAll('i-XDTMBmueos',id)) as ReturnType<typeof codaFixture>
  set(source,TABLES.services,'c-TvFH_jzZ3k',name)
  return source
 }
@@ -31,19 +31,24 @@ test('direction disables FC only for the three stable source IDs; source flags, 
    applyImport(db,source,plan.planHash)
    const pricing=new PricingConfigurationRepository(db),commercial=new CommercialRepository(db),at=new AtendimentoRepository(db).create({phone:'123'})
    const item=commercial.add(at.id,{pieceCodes:['capo']})[0]!
-   commercial.updateDiagnosis(at.id,item.id,{revision:item.revision,services:[{serviceId:service.serviceId,dimensionId:service.dimensions[0]!.dimensionId,quantity:'1'}]})
+   if(id==='i-qCp1gLfJn4'||id==='i-dMshyG5NMo'){
+    assert.throws(()=>commercial.updateDiagnosis(at.id,item.id,{revision:item.revision,services:[{serviceId:service.serviceId,dimensionId:service.dimensions[0]!.dimensionId,quantity:'1'}]}),e=>(e as {code:string}).code==='CURATION_SELECTION_BLOCKED')
+    // A real pre-curation reference is not reactivated or rewritten: seed it only in this synthetic legacy scenario.
+    db.prepare('INSERT INTO diagnosis_services(id,diagnosis_item_id,service_id,dimension_id,quantity,enabled) VALUES(?,?,?,?,?,1)').run('legacy-line',item.id,service.serviceId,service.dimensions[0]!.dimensionId,'1')
+    db.prepare('UPDATE scenario_service_flags SET enabled=1 WHERE service_id=?').run('legacy-line')
+   }else commercial.updateDiagnosis(at.id,item.id,{revision:item.revision,services:[{serviceId:service.serviceId,dimensionId:service.dimensions[0]!.dimensionId,quantity:'1'}]})
    const scenario=new ScenarioRepository(db).list(at.id)[0]!,budgets=new BudgetRepository(db)
    pricing.saveSettings(at.id,{revision:pricing.settings(at.id).revision,tableId:plan.config.tables[0]!.id,riskId:plan.config.risks[0]!.id,colorId:null})
    let preview=budgets.preview(at.id,{scenarioId:scenario.id,negotiation:{mode:'none'}})
-   assert(preview.canEmit,name);assert.equal(preview.snapshot.calculation.total,'100.05');assert.equal(preview.snapshot.calculation.lines[0]!.factors.FC,'1')
+   assert(preview.canEmit,name);if(id==='i-dMshyG5NMo'){assert.equal(preview.snapshot.calculation.total,'0');assert.equal(preview.snapshot.calculation.lines[0]!.unit,null)}else{assert.equal(preview.snapshot.calculation.total,'100.05');assert.equal(preview.snapshot.calculation.lines[0]!.factors.FC,'1')}
    pricing.saveSettings(at.id,{revision:pricing.settings(at.id).revision,riskId:null})
    preview=budgets.preview(at.id,{scenarioId:scenario.id,negotiation:{mode:'none'}})
-   assert(!preview.canEmit);assert(preview.snapshot.calculation.errors.some(e=>e.includes('FR não configurado')))
+   if(id==='i-dMshyG5NMo')assert(preview.canEmit,'not-billed activity does not enter the normal price path');else{assert(!preview.canEmit);assert(preview.snapshot.calculation.errors.some(e=>e.includes('FR não configurado')))}
   }finally{db.close()}
  }
  const db=openDatabase(':memory:')
  try{
-  const source=sourceFor('i-synthetic-service','Interna')
+  const source=sourceFor('i-XDTMBmueos','Interna')
   assert.equal(planImport(db,source).config.services[0]!.colorFactorEnabled,true,'name alone must not override another identity')
   set(source,TABLES.rules,'c-jIfhQ2URf5',false);assert.equal(planImport(db,source).config.services[0]!.colorFactorEnabled,false)
  }finally{db.close()}

@@ -52,7 +52,7 @@ test('N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots su
   assert.throws(()=>db.prepare('DELETE FROM budget_versions WHERE id=?').run(first.id),/immutable/)
   f.atendimentos.update(f.at.id,{revision:f.at.revision,name:'Alterado após emissão'})
   f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,capacity:'1',services:[{...f.config.services[0]!,base:'999'}]}})
-  f.commercial.remove(f.at.id,f.item.id,{revision:f.item.revision})
+  f.commercial.remove(f.at.id,f.item.id,{revision:f.item.revision,compositionRevision:f.pricing.settings(f.at.id).revision,scenarios:f.scenarios.list(f.at.id).map(s=>({id:s.id,revision:s.revision}))})
   assert.deepEqual(repo.get(f.at.id,first.id),first);assert.deepEqual(repo.pdf(f.at.id,first.id),pdf)
   assert.equal(repo.emit(f.at.id,firstPayload).id,first.id)
   assert.throws(()=>repo.emit(f.at.id,{...firstPayload,negotiation:{mode:'discount',value:'1',acknowledgeResidual:false}}))

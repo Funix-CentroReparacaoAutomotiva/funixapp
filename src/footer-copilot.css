@@ -1,0 +1,35 @@
+/* Etapa 5: shared footer geometry; no commercial calculations or map/editor rules. */
+.app-shell{--copilot-gutter:0px;--copilot-size:60px;--funix-safe-bottom:env(safe-area-inset-bottom,0px);--funix-safe-right:env(safe-area-inset-right,0px)}
+.app-shell:has(>.copilot-fixed):has(.commercial-workspace){--copilot-gutter:68px}
+.commercial-workspace{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0}
+.commercial-workspace .compose{padding-right:8px}
+.commercial-workspace .approved-finance{display:flex;flex-direction:column;min-height:0}
+.commercial-workspace .approved-finance .summary{flex:none;min-height:56px;padding-right:calc(12px + var(--copilot-gutter) + var(--funix-safe-right));text-align:left}
+.commercial-workspace .approved-finance .summary .metric span{white-space:normal;overflow-wrap:anywhere}
+.commercial-workspace .approved-finance .body{min-height:0;max-height:min(36dvh,320px,calc(100dvh - 290px));overflow:auto;overscroll-behavior:contain;padding-bottom:12px}
+.commercial-workspace .approved-finance .body .total{padding-right:calc(var(--copilot-gutter) + var(--funix-safe-right));flex-wrap:wrap}
+.commercial-workspace .approved-finance .total strong,.commercial-workspace .approved-finance .line .number{white-space:normal;overflow-wrap:anywhere;min-width:0;max-width:100%;text-align:right}
+.commercial-workspace .approved-finance .actions{flex:none;grid-template-columns:1fr 1fr;padding:8px calc(10px + var(--copilot-gutter) + var(--funix-safe-right)) calc(8px + var(--funix-safe-bottom)) 10px;border-top:1px solid var(--border);gap:8px}
+.commercial-workspace .approved-finance .actions button{height:auto;min-height:44px;font-size:11px;line-height:1.25;padding:6px;white-space:normal;overflow-wrap:break-word}
+.commercial-workspace .approved-finance .history{border:1px solid #cad8ef;background:transparent;color:#fff}
+.commercial-workspace .finance-feedback{padding:0 12px;max-height:32dvh;overflow:auto}
+.commercial-workspace .finance-feedback button{min-height:44px}
+.app-shell:has(.commercial-workspace)>.copilot-fixed{width:var(--copilot-size);height:var(--copilot-size);right:var(--funix-safe-right);bottom:var(--funix-safe-bottom)}
+.app-shell:has(.commercial-workspace)>.copilot-panel{right:10px;bottom:calc(var(--finance-height,0px) + 24px);width:min(370px,calc(100% - 20px));max-height:min(360px,calc(100% - var(--finance-height,0px) - 140px))}
+.app-shell:has(.commercial-workspace)>.copilot-panel .copilot-feed{flex:1;min-height:0}
+.app-shell:has(.commercial-workspace)>.copilot-panel .copilot-status{flex:none}
+.app-shell:has(.commercial-workspace)>.copilot-panel header button{width:44px;height:44px;flex:none}
+@media(max-width:400px){
+ .commercial-workspace .approved-finance .summary{grid-template-columns:repeat(2,minmax(0,1fr)) 12px;gap:7px 8px;padding-top:8px;padding-bottom:8px}
+ .commercial-workspace .approved-finance .summary>.metric:nth-child(3){grid-row:2;grid-column:1}
+ .commercial-workspace .approved-finance .summary>.metric.final{grid-row:2;grid-column:2}
+ .commercial-workspace .approved-finance .summary>.icon{grid-row:1/3;grid-column:3}
+ .commercial-workspace .approved-finance .factors{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .commercial-workspace .approved-finance .total strong{font-size:19px}
+}
+@media(max-height:600px){.commercial-workspace .approved-finance .body{max-height:28dvh}}
+.app-shell:has(.commercial-workspace)>.copilot-panel header{padding:8px 10px}
+.app-shell:has(.commercial-workspace)>.copilot-panel .copilot-feed{padding:4px 10px}
+.app-shell:has(.commercial-workspace)>.copilot-panel .notice{padding:0;min-height:0;text-align:left;font-size:12px}
+.app-shell:has(.commercial-workspace)>.copilot-panel .notice strong{font-size:12px}
+.app-shell:has(.commercial-workspace)>.copilot-panel .notice p{margin:4px 0;line-height:1.4}

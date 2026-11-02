@@ -1,0 +1,11 @@
+.piece-sheet{position:fixed;inset:auto 0 0;width:min(680px,100vw);max-width:100vw;max-height:82dvh;margin:0 auto;padding:0;border:1px solid #cbd9e9;border-bottom:0;border-radius:18px 18px 0 0;background:#fff;color:#142c60;overflow:hidden;box-shadow:0 -8px 34px #102e4b29}
+.piece-sheet::backdrop{background:#0a1e3b52}
+.piece-sheet>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px;border-bottom:1px solid #dce5ef;background:#f3f7fc}
+.piece-sheet h2{font-size:15px;line-height:1.4;margin:0}
+.piece-sheet>header>button{width:44px;height:44px;display:grid;place-items:center;border:1px solid #cbd9e9;border-radius:50%;background:#fff;color:#142c60;font-size:24px;padding:0}
+.piece-sheet-body{max-height:calc(82dvh - 62px);overflow:auto;overscroll-behavior:contain;padding:12px 14px max(16px,env(safe-area-inset-bottom))}
+.piece-sheet .piece-picker{margin:0;padding:0;border:0;border-radius:0;background:transparent}
+.piece-sheet .piece-options>button{min-height:44px;min-width:0}
+.piece-sheet .piece-search input{min-height:44px}
+.piece-sheet .commercial-toolbar{flex-wrap:wrap}
+.piece-sheet .commercial-toolbar>span{min-width:0;overflow-wrap:anywhere}

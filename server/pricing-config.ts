@@ -1,3 +1,4 @@
+import{CURATION_STAMP}from'./curation.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import type { PricingConfig, PricingConfiguration, PricingSettings, ServicePricing } from '../shared/pricing.ts'
 import { CommercialRepository } from './commercial.ts'
@@ -27,7 +28,7 @@ export class PricingConfigurationRepository {
   const data=inputObject(input,['revision','config'])
   if(!Number.isSafeInteger(data.revision))invalid('Informe a revisão da configuração.')
   return transaction(this.db,()=>{
-   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions','resaleMultipliers'])
+   const c=inputObject(data.config,['tables','colors','risks','capacity','services','specialPrices','conditions','resaleMultipliers','commercialCuration'])
    const options=(field:string)=>{
     const result=array(c[field]).map(raw=>{const o=inputObject(raw,['id','name','factor']);return {id:string(o.id,100),name:string(o.name),factor:optionalDecimal(o.factor)}})
     unique(result.map(o=>o.id));return result
@@ -67,7 +68,10 @@ export class PricingConfigurationRepository {
    });unique(specialPrices.map(p=>JSON.stringify([p.tableId,p.serviceId,p.dimensionId])))
    if(typeof c.conditions!=='string' || c.conditions.length>8000)invalid('Condições comerciais inválidas.')
    const resaleMultipliers=c.resaleMultipliers===undefined ? this.get().config.resaleMultipliers : options('resaleMultipliers')
-   const config:PricingConfig={tables,colors,risks,...(resaleMultipliers===undefined?{}:{resaleMultipliers}),services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
+   const currentCuration=this.get().config.commercialCuration
+   const requestedCuration=c.commercialCuration??currentCuration
+   if(requestedCuration!==undefined && (!requestedCuration||typeof requestedCuration!=='object'||Array.isArray(requestedCuration)||Object.keys(requestedCuration).length!==2||!('version'in requestedCuration)||requestedCuration.version!==CURATION_STAMP.version||!('digest'in requestedCuration)||requestedCuration.digest!==CURATION_STAMP.digest))invalid('Política de curadoria incompatível; configuração preservada.')
+   const config:PricingConfig={...(requestedCuration?{commercialCuration:{...CURATION_STAMP}}:{}),tables,colors,risks,...(resaleMultipliers===undefined?{}:{resaleMultipliers}),services,specialPrices,capacity:optionalDecimal(c.capacity,true),conditions:c.conditions.trim()}
    const result=this.db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?').run(JSON.stringify(config),new Date().toISOString(),Number(data.revision))
    if(!result.changes)conflict()
    return this.get()

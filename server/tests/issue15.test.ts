@@ -1,3 +1,5 @@
+import{commercialFixture as legacyFixture}from'./fixtures/pre-curation/fixture.ts'
+import{BudgetRepository as LegacyBudgetRepository}from'./fixtures/pre-curation/budgets.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -15,7 +17,7 @@ import {ComponentRepository} from '../components.ts'
 import {Q} from '../exact.ts'
 import type {ComponentItem} from '../../shared/pricing.ts'
 
-function component(f:ReturnType<typeof commercialFixture>,db:DatabaseSync,values:Record<string,unknown>={}){
+function component(f:{at:{id:string};item:{id:string}},db:DatabaseSync,values:Record<string,unknown>={}){
  return new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'40',notes:'Sintético',...values})
 }
 function fields(p:ComponentItem){return {revision:p.revision,pieceId:p.pieceId,name:p.name,quantity:p.quantity,manualPrice:p.manualPrice,notes:p.notes}}
@@ -26,7 +28,7 @@ test('V5 additive upgrade and scenario deletion preserve composition, snapshot/P
  let db=new DatabaseSync(file)
  try{
   db.exec('PRAGMA foreign_keys=ON');baselineV5(db)
-  const f=commercialFixture(db),part=component(f,db),s=f.scenarios
+  const f=legacyFixture(db),part=component(f,db),s=f.scenarios
   const one=s.list(f.at.id)[0]!
   function v5Copy(position:number){
    const id=randomUUID();db.prepare('INSERT INTO scenarios(id,atendimento_id,name,position,created_at) VALUES(?,?,?,?,?)').run(id,f.at.id,'Cópia V5',position,new Date().toISOString())
@@ -34,7 +36,7 @@ test('V5 additive upgrade and scenario deletion preserve composition, snapshot/P
    return s.list(f.at.id).find(v=>v.id===id)!
   }
   const two=v5Copy(2),three=v5Copy(3)
-  const repo=new BudgetRepository(db),input={scenarioId:two.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,input)
+  const repo=new LegacyBudgetRepository(db),input={scenarioId:two.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,input)
   const payload={...input,previewToken:preview.token,idempotencyKey:randomUUID()},version=repo.emit(f.at.id,payload),pdf=repo.pdf(f.at.id,version.id)
   const rawAt=db.prepare('SELECT * FROM atendimentos').all(),rawPiece=db.prepare('SELECT * FROM diagnosis_items').all(),rawServices=db.prepare('SELECT * FROM diagnosis_services').all(),rawFlags=s.list(f.at.id)
   db.close();db=openDatabase(file)

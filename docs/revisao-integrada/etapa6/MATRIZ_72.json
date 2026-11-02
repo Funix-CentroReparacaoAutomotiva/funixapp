@@ -1,0 +1,1961 @@
+[
+  {
+    "id": "A01",
+    "title": "revisão e rollback",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A01 — revisão e rollback",
+      "Implementado",
+      "Workflow comprovado; consulta direta BA",
+      "`.github/workflows/funix.yml:93,130`; Actions citado acima",
+      "Conferir endpoints/aba atual pelo canal existente quando disponível",
+      "Acesso de leitura",
+      "Dois endpoints com SHA restaurado; separar runner de leitura direta"
+    ]
+  },
+  {
+    "id": "A02",
+    "title": "diagnósticos disponíveis",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A02 — diagnósticos disponíveis",
+      "Implementado",
+      "BA",
+      "`server/commercial.ts:33`; `DiagnosisEditor.tsx:132,142`",
+      "Consultar contagens/itens atuais antes de corrigir UI ou carregar",
+      "Acesso",
+      "Diagnósticos reais utilizáveis da API aparecem; nenhum seed fictício"
+    ]
+  },
+  {
+    "id": "A03",
+    "title": "serviços disponíveis",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A03 — serviços disponíveis",
+      "Implementado",
+      "BA",
+      "`DiagnosisEditor.tsx:132,144`; `shared/commercial.ts:10`",
+      "Conferir carga, atividade e identificação",
+      "Acesso",
+      "Serviços ativos identificados aparecem, sem bloqueio por validação legada"
+    ]
+  },
+  {
+    "id": "A04",
+    "title": "dimensões do serviço",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A04 — dimensões do serviço",
+      "Implementado",
+      "BA",
+      "`DiagnosisEditor.tsx:144`; `server/commercial.ts:148`",
+      "Conferir `serviceId` do destino, sem associar por nome",
+      "Acesso",
+      "Só dimensões do serviço correto; IDs preservados"
+    ]
+  },
+  {
+    "id": "A05",
+    "title": "opções Tabela/FC/FR",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A05 — opções Tabela/FC/FR",
+      "Implementado",
+      "BA",
+      "`FinancialPanel.tsx:24,54,58`; `server/pricing-config.ts:22,76`",
+      "Separar lista global vazia de seleção vazia",
+      "Acesso",
+      "API/config/seletores coerentes e recarga persistente"
+    ]
+  },
+  {
+    "id": "A06",
+    "title": "MR global explícito",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A06 — MR global explícito",
+      "Implementado",
+      "BA",
+      "`server/coda-import.ts:14,191`; `server/pricing-config.ts:81`; `component-presentation.ts:14`",
+      "Conferir opção aprovada no destino; nunca selecionar default por suposição",
+      "Acesso",
+      "Sem MR, componente pendente; seleção explícita vale para todos os componentes"
+    ]
+  },
+  {
+    "id": "A07",
+    "title": "bases/FD/etapas/capacidade",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A07 — bases/FD/etapas/capacidade",
+      "Implementado",
+      "BA",
+      "`PricingEditor.tsx:29`; `server/pricing-config.ts:37`; `server/coda-import.ts:120`",
+      "Reutilizar carga existente; tratar pendências reais separadamente",
+      "Acesso/fonte",
+      "Casos configurados calculam; faltantes ficam identificados, sem valores inventados"
+    ]
+  },
+  {
+    "id": "A08",
+    "title": "origem, carga e idempotência",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A08 — origem, carga e idempotência",
+      "Implementado",
+      "Aplicação atual BA",
+      "`server/import-coda.ts:16–25`; `server/coda-import.ts:183,241`",
+      "Conferir estado real sem executar carga nesta etapa",
+      "Acesso/autorização futura específica",
+      "Fonte rastreável, sem sobrescrever divergências ou duplicar IDs"
+    ]
+  },
+  {
+    "id": "A09",
+    "title": "API/UI/cache",
+    "status": "bloqueado por acesso",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Instalação/destino não acessível: não foi possível confirmar SHA, conteúdo SQLite, seleção efetiva dos parâmetros ou carga. Origem Coda consultada somente por metadados, sem equivalência presumida com destino.",
+    "code": [
+      "server/coda-import-source.ts",
+      "server/coda-import.ts",
+      "server/import-coda.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/origem-coda-readonly.json"
+    ],
+    "scope": "Origem real read-only; destino bloqueado",
+    "originalBaseline": [
+      "A09 — API/UI/cache",
+      "Parcial",
+      "BA",
+      "`CommercialPanel.tsx:100–108,172`; cache até recarga explícita/montagem",
+      "Só corrigir defeito demonstrado; manter recuperação/recarregamento existente",
+      "Acesso",
+      "Dado utilizável retornado é mostrado; erro de transporte não vira lista vazia silenciosa"
+    ]
+  },
+  {
+    "id": "F01",
+    "title": "Orçamentos emitidos inferior/esquerda",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Histórico permanece na faixa inferior/esquerda, inclusive recolhido; lista, versão e download PDF funcionam.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F01 — Orçamentos emitidos inferior/esquerda",
+      "Pendente",
+      "BA",
+      "`ScenarioMenu.tsx:27`: acesso hoje no menu de cenários; `FinancialPanel.tsx:60` sem histórico no rodapé",
+      "Reposicionar acesso reutilizando a rota histórica",
+      "Etapa 5",
+      "Abre lista/versão/PDF corretos pelo rodapé, sem perder cenário"
+    ]
+  },
+  {
+    "id": "F02",
+    "title": "retirar Conferir prévia",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Ausência do botão Conferir prévia; a emissão obtém token internamente.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F02 — retirar Conferir prévia",
+      "Pendente",
+      "BA",
+      "`FinancialPanel.tsx:60`: botão presente",
+      "Remover ação visual redundante; manter obtenção técnica da prévia/token",
+      "Etapa 5",
+      "Emissão parte diretamente do botão principal sem clique prévio obrigatório"
+    ]
+  },
+  {
+    "id": "F03",
+    "title": "Emitir orçamento à direita",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Emissão à direita, consentimento obrigatório e mesmo token/chave após resposta perdida; duplo clique não duplica.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F03 — Emitir orçamento à direita",
+      "Parcial",
+      "BA",
+      "`FinancialPanel.tsx:60–61`: está à direita, mas painel recolhido oculta ações",
+      "Integrar rodapé aprovado preservando confirmação, token e idempotência",
+      "Etapas 2/3/5",
+      "Botão na posição prevista, sem dupla emissão ou perda da revisão"
+    ]
+  },
+  {
+    "id": "F04",
+    "title": "Copiloto fixo nas três abas",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Âncora idêntica nas três abas e nos estados aberto/recolhido; insets CSS simulados respeitados.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F04 — Copiloto fixo nas três abas",
+      "Parcial",
+      "BA",
+      "`App.tsx:172–185,275`: offset depende da altura de finance/compose",
+      "Ancorar consistentemente à base/safe-area; reservar espaço para controles",
+      "Etapa 5",
+      "Mesma posição em Chat/Diagnósticos/Mapa, expandido/recolhido"
+    ]
+  },
+  {
+    "id": "F05",
+    "title": "Total sem sobreposição",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Reserva lateral separa valores/ações do launcher; balão fica acima do financeiro sem interceptar controles.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F05 — Total sem sobreposição",
+      "Parcial",
+      "BA",
+      "`approved.css:47,66`; proteção atual move Copiloto acima do painel",
+      "Reservar largura/posição do total e rodapé conforme pedido",
+      "Etapa 5",
+      "Total e ações legíveis sem interseção com Copiloto em 320/390/1440"
+    ]
+  },
+  {
+    "id": "F06",
+    "title": "sem nova IA",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Copiloto continua explicitamente indisponível; testes não observaram chamadas externas.",
+    "code": [
+      "src/FinancialPanel.tsx",
+      "src/footer-copilot.css",
+      "src/App.tsx",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa5_rodape"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "F06 — sem nova IA",
+      "Implementado",
+      "BA",
+      "`App.tsx:274`: indisponibilidade explícita",
+      "Preservar; somente apresentação",
+      "Etapa 5",
+      "Nenhuma integração, chamada ou sugestão IA simulada"
+    ]
+  },
+  {
+    "id": "E01",
+    "title": "bolinha preenchida/vazada",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Círculo preenchido/vazado acompanha aria-pressed e habilitação por cenário, inclusive teclado.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E01 — bolinha preenchida/vazada",
+      "Parcial",
+      "BA",
+      "`ApprovedIcon.tsx:1`: círculos com `fill=none`, variando posição/cor",
+      "Distinguir preenchimento, preservando teclado e estado acessível",
+      "Etapa 3",
+      "Ligado/desligado distinguíveis também sem cor"
+    ]
+  },
+  {
+    "id": "E02",
+    "title": "retirar halo decorativo",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Sem cápsula/halo decorativo; geometria e CSS conferidos nas capturas.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E02 — retirar halo decorativo",
+      "Pendente",
+      "BA",
+      "`piece-selection.css:14–16`: fundo arredondado azul-claro na lista",
+      "Remover halo; manter foco/pending acessíveis",
+      "Etapa 3",
+      "Sem disco decorativo; foco e estado continuam identificáveis"
+    ]
+  },
+  {
+    "id": "E03",
+    "title": "Toggle / Selecionar / Anotações na segunda linha",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Três controles na mesma linha, centros alinhados e sem sobreposição nas três larguras.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E03 — Toggle / Selecionar / Anotações na segunda linha",
+      "Pendente",
+      "BA",
+      "`DiagnosisEditor.tsx:142`: toggle/anotação em `piece-row`, diagnóstico em linha separada; CSS interno oculta nome",
+      "Reorganizar controles usando o cabeçalho contextual já existente",
+      "Etapa 3",
+      "Uma segunda linha com três controles em 320 px, sem terceira linha isolada"
+    ]
+  },
+  {
+    "id": "E04",
+    "title": "vazio tracejado Serviços",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Card tracejado adiciona serviço e foca campo; desaparece com primeiro item.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E04 — vazio tracejado Serviços",
+      "Pendente",
+      "BA",
+      "`DiagnosisEditor.tsx:143–144`: só título/adicionar/map; nenhuma ação vazia condicional",
+      "Card clicável quando lista vazia reutiliza adicionar serviço",
+      "Etapa 3",
+      "Aparece só sem serviços; clique/teclado adicionam e focam"
+    ]
+  },
+  {
+    "id": "E05",
+    "title": "vazio tracejado Componentes",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Card tracejado adiciona componente e foca descrição; desaparece com primeiro item.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E05 — vazio tracejado Componentes",
+      "Pendente",
+      "BA",
+      "`DiagnosisEditor.tsx:145–148`: nenhuma ação vazia condicional",
+      "Equivalente para componente, preservando campos da Etapa D",
+      "Etapa 3",
+      "Some após inclusão; sem MR/preço inventados"
+    ]
+  },
+  {
+    "id": "E06",
+    "title": "Voltar centralizado",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Seta centralizada no contorno; botão de retorno alinhado no cabeçalho.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E06 — Voltar centralizado",
+      "Parcial",
+      "BA",
+      "`App.tsx:263`; `App.css:62`: grid centralizado 30×30, seta textual",
+      "Ajustar alinhamento/alvo mantendo histórico/guard; contorno transparente só se coerente",
+      "Etapa 3",
+      "Seta centrada e toque confortável, retorno preserva contexto"
+    ]
+  },
+  {
+    "id": "E07",
+    "title": "Adicionar peça em bottom sheet",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Dialog inferior ancorado ao viewport, foco contido, Escape/fechar devolvem foco; seleção global e consentimento preservados.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E07 — Adicionar peça em bottom sheet",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:234–238,328–329`: painel inline abaixo do botão",
+      "Reutilizar busca funcional/fila num sheet acessível; não trocar radial do Mapa",
+      "Etapas 2/3",
+      "Abre de baixo, fecha por Escape/ação; foco retorna; sem overflow horizontal"
+    ]
+  },
+  {
+    "id": "E08",
+    "title": "busca de Diagnósticos preservada",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Busca unificada por nome/código permanece no sheet de Diagnósticos; não exige origem/status validado.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E08 — busca de Diagnósticos preservada",
+      "Implementado",
+      "BA",
+      "`CommercialPanel.tsx:194–214`; `piece-navigation.ts:18`",
+      "Manter busca unificada e grupos funcionais",
+      "Etapa 3",
+      "Peças das duas origens no mesmo catálogo, com IDs originais"
+    ]
+  },
+  {
+    "id": "E09",
+    "title": "componentes, cenários, comparação e anotações",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Edição global e comparação por flags preservam cenários, notas, frações e componentes; regressões anteriores reexecutadas.",
+    "code": [
+      "src/DiagnosisEditor.tsx",
+      "src/diagnosis-editor.css",
+      "src/PieceSheet.tsx",
+      "src/piece-sheet.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa3_editor"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "E09 — componentes, cenários, comparação e anotações",
+      "Implementado",
+      "BA",
+      "`DiagnosisEditor.tsx:142–148`; `CommercialPanel.tsx:257–263`",
+      "Preservar evolução funcional; mudar somente posição/apresentação e semântica autorizada",
+      "Etapas 2/3",
+      "Repetições/fracionários/notas/MR e comparação continuam operacionais"
+    ]
+  },
+  {
+    "id": "P01",
+    "title": "autosave sem Salvar operacional",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Editor persiste automaticamente, com confirmação real da API; não há Salvar operacional obrigatório.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P01 — autosave sem Salvar operacional",
+      "Implementado",
+      "BA",
+      "`DiagnosisEditor.tsx:62–123`: debounce 450 ms/seleções imediatas, ack e sync",
+      "Reaproveitar; não transformar em formulário manual",
+      "Etapas 2/3",
+      "Edição completa persiste e reabre correta sem botão Salvar"
+    ]
+  },
+  {
+    "id": "P02",
+    "title": "sem avisos normais deslocando layout",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Status normal anunciado fora do fluxo; sem alerta verde repetitivo ou deslocamento por salvamento.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P02 — sem avisos normais deslocando layout",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:269–273`; `piece-selection.css:12–13`; `DiagnosisEditor.tsx:149`",
+      "Tirar status normal do fluxo visual; manter anúncio acessível/erros/recuperação",
+      "Etapas 2/3",
+      "Nenhum salto de posição durante salva/salvo; erros continuam explícitos"
+    ]
+  },
+  {
+    "id": "P03",
+    "title": "retorno sem falso não salvo após ack",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Retorno após ack não abre falso alerta; negociação zero permanece sem ajuste.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P03 — retorno sem falso não salvo após ack",
+      "Parcial",
+      "BA",
+      "`DiagnosisEditor.tsx:114–117` limpa dirty se completo; `App.tsx:61,107`; `CommercialPanel.tsx:35` não normaliza negociação zero",
+      "Preservar retorno seguro; distinguir rascunho real, pendência e negociação efetivamente neutra",
+      "Etapa 2",
+      "Ack completo permite voltar; negociação R$0 não cria falso dirty; rascunho real continua protegido"
+    ]
+  },
+  {
+    "id": "P04",
+    "title": "navegação durante gravação",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Tentativa de sair durante gravação pendente permanece no editor; erro conserva formulário até recuperação/decisão.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P04 — navegação durante gravação",
+      "Implementado",
+      "BA",
+      "`App.tsx:62,112,122`; `CommercialPanel.tsx:88–98`",
+      "Preservar espera/bloqueio seguro; não remover guard para ocultar alerta",
+      "Etapa 2",
+      "Rede lenta/voltar/recarregar não descarta intenção nem abandona escrita incerta"
+    ]
+  },
+  {
+    "id": "P05",
+    "title": "toques consecutivos, último estado",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Fila serial consolida intenções por código; inversões e respostas antigas respeitam último estado.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P05 — toques consecutivos, último estado",
+      "Implementado para flags; parcial para novo contrato",
+      "BA",
+      "`piece-selection-queue.ts:37–75`: consolidação/fila serial e confirmação",
+      "Adaptar a mesma fila para presença/remoção global, sem fila externa",
+      "Etapa 2",
+      "Sequências rápidas e respostas antigas convergem para a última intenção confirmada"
+    ]
+  },
+  {
+    "id": "P06",
+    "title": "Mapa/lista controlam composição",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Mapa e lista usam presença na composição, inclusive quando peça está desabilitada no cenário ativo.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P06 — Mapa/lista controlam composição",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:161–165,321–324`; fila `selected()` usa flags",
+      "Ler presença por item mestre, incluir/remover globalmente pelo contrato oficial",
+      "Etapa 2 antes da 4",
+      "Peça desabilitada no cenário continua selecionada na composição; desseleção remove de todos os rascunhos"
+    ]
+  },
+  {
+    "id": "P07",
+    "title": "editor/comparação controlam habilitação",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Editor/matriz alteram flags do cenário; IDs/composição e flags dos demais permanecem.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P07 — editor/comparação controlam habilitação",
+      "Implementado",
+      "BA",
+      "`DiagnosisEditor.tsx:57–60,96–99`; `CommercialPanel.tsx:239,262`",
+      "Preservar flags e deixar rótulos inequívocos",
+      "Etapas 2/3",
+      "Desabilitar só afeta cenário escolhido, mantendo composição/flags dos filhos"
+    ]
+  },
+  {
+    "id": "P08",
+    "title": "remover botão Excluir peça de todos",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Botão de exclusão global ausente no editor operacional; remoção ocorre pelos seletores.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P08 — remover botão Excluir peça de todos",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:285–289,298`: botão e confirmação global presentes",
+      "Retirar só depois do fluxo de desseleção global seguro; não adicionar menu substituto",
+      "Etapa 2",
+      "Exclusão ocorre pelo seletor; sem ação redundante no editor"
+    ]
+  },
+  {
+    "id": "P09",
+    "title": "confirmação quando ativa em outro cenário",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Consentimento lista cenários efetivamente afetados; nenhum DELETE antes da decisão.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P09 — confirmação quando ativa em outro cenário",
+      "Pendente",
+      "BA",
+      "Não há cálculo dos cenários afetados no `select`; confirmação atual é genérica do botão",
+      "Confirmar com posições reais `scenario.position` e Cancelar/Prosseguir",
+      "Etapa 2",
+      "Exibe cenários efetivamente afetados, inclusive numeração com lacunas"
+    ]
+  },
+  {
+    "id": "P10",
+    "title": "confirmar quando houver serviços/componentes",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Conteúdo/serviços/componentes também exigem confirmação, mesmo sem outro cenário ativo.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P10 — confirmar quando houver serviços/componentes",
+      "Pendente",
+      "BA",
+      "`select()` não avalia filhos preenchidos",
+      "Acrescentar proteção mesmo sem habilitação em outros cenários",
+      "Etapa 2",
+      "Peça com conteúdo pede confirmação; peça vazia sem outro cenário remove diretamente"
+    ]
+  },
+  {
+    "id": "P11",
+    "title": "Cancelar não altera nada",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Cancelar não dispara requisição de leitura/gravação nem altera workspace.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P11 — Cancelar não altera nada",
+      "Pendente no novo fluxo",
+      "BA",
+      "Hoje seletor enfileira sem confirmação; não há estado de confirmação compacta",
+      "Confirmar antes de enfileirar remoção; cancelamento sem mutação/alteração otimista",
+      "Etapa 2",
+      "Comparar composição, flags, revisões e requests antes/depois do cancelamento"
+    ]
+  },
+  {
+    "id": "P12",
+    "title": "exclusão concorrente segura",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "DELETE transacional verifica revisão da composição, peças e conjunto completo de cenários; conflito não remove parcialmente.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P12 — exclusão concorrente segura",
+      "Parcial",
+      "BA",
+      "`server/commercial.ts:173–179` valida revisão da peça, não composição/cenários; `scenarios.ts:83–102` altera flags sem revisão da peça",
+      "Revalidar contexto global e revisões relevantes na mesma transação; reconciliar resposta perdida antes de repetir",
+      "Etapa 2",
+      "Mudança concorrente de filho/cenário invalida confirmação; ausência após resposta perdida é conciliada sem recriar/apagar outra peça"
+    ]
+  },
+  {
+    "id": "P13",
+    "title": "não duplicar peças/serviços/componentes",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Resposta perdida é reconciliada por leitura explícita antes de novas intenções; criação/remoção não duplica filhos ou peças.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P13 — não duplicar peças/serviços/componentes",
+      "Implementado para fluxo atual; parcial para remoção",
+      "BA",
+      "`commercial.ts:102–118`; `components.ts:28`; fila `read():49` bloqueia peça desaparecida",
+      "Preservar IDs e idempotência; ensinar fila a distinguir remoção própria confirmada de remoção externa",
+      "Etapa 2",
+      "Inclusão/remarcação/Ambos/resposta perdida sem duplicar nem reconstruir filhos apagados"
+    ]
+  },
+  {
+    "id": "P14",
+    "title": "snapshots/PDF imutáveis",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Snapshot e hash PDF originais idênticos após edição, remoção, emissão posterior e reinício.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P14 — snapshots/PDF imutáveis",
+      "Implementado",
+      "BA",
+      "`migrations.ts:163–170`; `budgets.ts:47,62–76`",
+      "Não alterar tabelas/contratos históricos",
+      "Todas",
+      "Exclusão/configuração/novo orçamento não muda bytes do snapshot/PDF emitido"
+    ]
+  },
+  {
+    "id": "P15",
+    "title": "rótulos e acessibilidade",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "ARIA dos seletores diz composição compartilhada; editor explicita habilitação neste cenário.",
+    "code": [
+      "src/usePieceSelection.ts",
+      "src/piece-selection-queue.ts",
+      "src/CommercialPanel.tsx",
+      "src/App.tsx",
+      "server/commercial.ts",
+      "shared/piece-removal.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa2_persistencia",
+      "docs/evidencias/etapa6/integrated"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "P15 — rótulos e acessibilidade",
+      "Parcial",
+      "BA",
+      "Lista anuncia “Incluir peça ... neste cenário”; editor também usa “Incluir peça”",
+      "Diferenciar selecionar/remover da composição de habilitar/desabilitar no cenário",
+      "Etapas 2/3/4",
+      "Texto, indicadores e leitor de tela expressam a operação efetiva"
+    ]
+  },
+  {
+    "id": "C01",
+    "title": "cálculo só no motor oficial",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "UI apresenta resultados oficiais do backend; cálculo exato e arredondamento regressados sem alteração.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C01 — cálculo só no motor oficial",
+      "Implementado",
+      "BA",
+      "`server/pricing-engine.ts:17`; `server/exact.ts:3,19`; UI usa resultado do workspace",
+      "Preservar fórmulas, arredondamento e quantidades exatas",
+      "Todas",
+      "Casos de referência mantêm resultados exatos, sem soma monetária no frontend"
+    ]
+  },
+  {
+    "id": "C02",
+    "title": "FC condicional/FR obrigatório",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "FC condicional por serviço e FR obrigatório no cálculo normal, inclusive FV zero; testes das decisões Issue20.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C02 — FC condicional/FR obrigatório",
+      "Implementado",
+      "Flags reais BA",
+      "`pricing-engine.ts:41–43`; `coda-import.ts:14,127`",
+      "Conferir configuração instalada, sem reimplementar motor",
+      "Acesso",
+      "FC false usa 1; FC ativo exige fator; FR exigido no normal inclusive FV zero"
+    ]
+  },
+  {
+    "id": "C03",
+    "title": "especial exato/desconto elegível",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Exceção exata tem precedência; desconto restrito ao subtotal elegível sem reduzir componentes/não descontáveis.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C03 — especial exato/desconto elegível",
+      "Implementado",
+      "BA",
+      "`pricing-engine.ts:34–43,74–79`; `budgets.ts:36–43`",
+      "Preservar precedência/negociação total geral",
+      "Todas",
+      "Especial não vaza tabela; desconto não atinge protegidos/componentes"
+    ]
+  },
+  {
+    "id": "C04",
+    "title": "MR único, sem FCT",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "MR único do Atendimento, seleção explícita; componentes usam fator global, sem FCT individual.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C04 — MR único, sem FCT",
+      "Implementado",
+      "Cadastro/seleção BA",
+      "`pricing-engine.ts:60–62`; `component-presentation.ts:14–33`",
+      "Não criar MR por peça; não presumir seleção",
+      "Acesso/Etapa 3",
+      "Mesmo MR para componentes, arredondamento unitário e fracionários preservados"
+    ]
+  },
+  {
+    "id": "C05",
+    "title": "pendência de parâmetro explícita",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Tabela/MR ausentes mostram configuração pendente; seletores continuam disponíveis para resolver.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C05 — pendência de parâmetro explícita",
+      "Parcial",
+      "BA",
+      "`FinancialPanel.tsx:35–38,54`; serviço nulo mostra “—”; componente já identifica preço/MR ausentes",
+      "Mostrar motivo útil para falta de configuração/seleção, sem alterar motor",
+      "Etapas 3/5",
+      "Ausente se distingue de carregamento e de erro; recuperação disponível"
+    ]
+  },
+  {
+    "id": "C06",
+    "title": "não ficar Calculando eternamente",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Serviço/dimensão/componente incompletos deixam estado de rascunho, sem Calculando indefinido.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C06 — não ficar Calculando eternamente",
+      "Parcial",
+      "BA",
+      "`calculation-state.ts:10–13`; `DiagnosisEditor.tsx:85–87,104,115,135–149`: rascunho incompleto permanece pending",
+      "Distinguir incompleto de escrita em andamento; tratar fim de operação/erro sem timeout fictício",
+      "Etapas 2/3",
+      "Serviço vazio/componente sem nome não permanece “Calculando” como se houvesse request ativo"
+    ]
+  },
+  {
+    "id": "C07",
+    "title": "ausente não vira R$0",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Preço não informado e MR ausente são indisponíveis; zero explícito continua zero legítimo.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C07 — ausente não vira R$0",
+      "Implementado",
+      "BA",
+      "`FinancialPanel.tsx:38`; `shared/format.ts:2`; `component-presentation.ts:31–33`",
+      "Preservar null e aprimorar rótulos",
+      "Etapas 3/5",
+      "Ausente indisponível; zero explícito e Retrabalho FV=0 continuam válidos"
+    ]
+  },
+  {
+    "id": "C08",
+    "title": "impedir emissão inválida",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Preço/configuração/revisão inválidos bloqueiam emissão; token e chave idempotente preservados.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C08 — impedir emissão inválida",
+      "Implementado",
+      "BA",
+      "`budgets.ts:48,64–66`; `FinancialPanel.tsx:61`",
+      "Preservar canEmit/token/chave/revisão e erro visível",
+      "Etapa 5",
+      "Backend recusa incompleto; retirar botão de prévia não remove handshake"
+    ]
+  },
+  {
+    "id": "C09",
+    "title": "energia/prazo e preço parcial",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Energia/capacidade/prazo e preços parciais conservam contratos existentes; nenhuma independência nova implementada.",
+    "code": [
+      "server/pricing-engine.ts",
+      "src/calculation-state.ts",
+      "src/FinancialPanel.tsx",
+      "src/component-presentation.ts",
+      "server/budgets.ts"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/check.log",
+      "docs/evidencias/etapa6/regressions/issue20_pricing",
+      "docs/evidencias/etapa6/regressions/pr17_auditoria"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "C09 — energia/prazo e preço parcial",
+      "Implementado com bloqueios existentes",
+      "BA",
+      "`pricing-engine.ts:45–51,103–109`; `budgets.ts:48`",
+      "Não corrigir independência preço/energia nesta revisão; manter pendências reais",
+      "Todas",
+      "Mesma energia aditiva, capacidade/prazo, resultados e bloqueios técnicos aprovados"
+    ]
+  },
+  {
+    "id": "M01",
+    "title": "círculo obrigatório",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Travessia de todas as camadas conserva disc-ring radial; nenhuma grade/lista substituta.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M01 — círculo obrigatório",
+      "Implementado na base",
+      "BA",
+      "`CommercialPanel.tsx:309–315`; `App.css:160–164`",
+      "Preservar radial em todos os níveis; não recuperar grade do PR #29",
+      "Etapa 4",
+      "Primeiros níveis também circulares em 320/390/1440"
+    ]
+  },
+  {
+    "id": "M02",
+    "title": "13 categorias laterais diretas",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "13 opções iniciais em cada lateral, em dois anéis medidos e sem paginação.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M02 — 13 categorias laterais diretas",
+      "Pendente",
+      "BA",
+      "Projeção atual tem 8 por lateral; `nodes.slice(...7...)` pagina",
+      "Reprojetar 13 entradas no círculo, com distribuição responsiva",
+      "Etapa 4 após 2",
+      "Todas acessíveis no primeiro nível, sem grid, submenu extra ou paginação"
+    ]
+  },
+  {
+    "id": "M03",
+    "title": "sem Ver mais no primeiro nível",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Primeiro nível não apresenta Ver mais, independentemente da quantidade.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M03 — sem Ver mais no primeiro nível",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:278–279,312`: pagina qualquer lista maior que 7",
+      "Separar política raiz/interna",
+      "Etapa 4",
+      "Frente, Traseira e laterais mostram todas as categorias diretas"
+    ]
+  },
+  {
+    "id": "M04",
+    "title": "pager interno abaixo do centro",
+    "status": "parcial",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Implementação mantém pager interno abaixo do centro; mapPage testado com 14 nós sintéticos. Árvore real não aciona pager: apresentação visual desse fallback não exercitada.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M04 — pager interno abaixo do centro",
+      "Pendente",
+      "BA",
+      "`disc-more` ocupa posição angular, não base fixa",
+      "Posicionar abaixo do X/seta, quando necessário",
+      "Etapa 4",
+      "Pager não compete com peças/centro; foco e retorno corretos"
+    ]
+  },
+  {
+    "id": "M05",
+    "title": "uma opção oculta não gera submenu",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Grupos até 13 entradas são diretos, inclusive nove opções; sem submenu por única opção oculta.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M05 — uma opção oculta não gera submenu",
+      "Pendente",
+      "BA",
+      "Regra atual cria página 7+1 para 8 escolhas",
+      "Acomodar opção no círculo, sem aba/página adicional",
+      "Etapa 4",
+      "Oitava escolha acessível diretamente, sem último item isolado"
+    ]
+  },
+  {
+    "id": "M06",
+    "title": "SVG só rótulo, quantidade, intensidade",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Carro mostra região, contagem e intensidade; círculos auxiliares de estado ausentes.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M06 — SVG só rótulo, quantidade, intensidade",
+      "Parcial",
+      "BA",
+      "`CommercialPanel.tsx:243–253`: injeta círculos de estado e contagem; CSS intensidade já existe",
+      "Retirar círculos auxiliares; manter número legível sem depender só da cor",
+      "Etapa 4",
+      "Estados nenhum/parcial/todos compreensíveis sem ícones triestado no carro"
+    ]
+  },
+  {
+    "id": "M07",
+    "title": "retirar busca do Mapa",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Nenhuma busca nas camadas do Mapa; busca de Diagnósticos preservada.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M07 — retirar busca do Mapa",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:308` renderiza `searchField`",
+      "Retirar apenas dessa apresentação",
+      "Etapa 4",
+      "Sem busca superior no Mapa; busca de Diagnósticos funciona"
+    ]
+  },
+  {
+    "id": "M08",
+    "title": "retirar título redundante",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Sem título Seleção de peças redundante; apenas contexto da região/camada.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M08 — retirar título redundante",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:306`: “Seleção de peças”, além de `disc-name`",
+      "Manter só contexto útil da região/camada",
+      "Etapa 4",
+      "Sem texto redundante, fechar/voltar identificáveis"
+    ]
+  },
+  {
+    "id": "M09",
+    "title": "sem status normal movimentando Mapa",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Seleções não inserem mensagem de salvamento no fluxo do Mapa.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M09 — sem status normal movimentando Mapa",
+      "Pendente",
+      "BA",
+      "`CommercialPanel.tsx:269,307`; CSS status em fluxo",
+      "Usar tratamento da Etapa 2, sem esconder falha real",
+      "Etapas 2/4",
+      "Bounding boxes estáveis durante confirmação; erro e recuperar acessíveis"
+    ]
+  },
+  {
+    "id": "M10",
+    "title": "preservar 163 códigos/IDs",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Conjunto de 163 códigos coincide com hierarquia original; IDs resolvidos do catálogo runtime, não fabricados.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M10 — preservar 163 códigos/IDs",
+      "Implementado como catálogo versionado",
+      "Quantidade/atividade reais BA",
+      "`hierarchyPieces()` deduplica; matriz PR27 tem mesmo conjunto",
+      "Manter catálogo intacto, separar projeção de navegação",
+      "Etapa 4",
+      "Igualdade de conjuntos, IDs/nomes comerciais sem alterações"
+    ]
+  },
+  {
+    "id": "M11",
+    "title": "um caminho canônico por código",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Uma folha canônica por código; comparação individual com CSV e travessia completa.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M11 — um caminho canônico por código",
+      "Pendente",
+      "BA",
+      "Projeção pura atual: 199 folhas para 163 códigos; 36 ocorrências excedentes",
+      "Aplicar caminhos canônicos documentados sem apagar cadastros",
+      "Etapa 4",
+      "Exatamente uma folha por código na projeção, sem contar ações Ambos"
+    ]
+  },
+  {
+    "id": "M12",
+    "title": "Frente externa",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Frente externa sem estruturais/para-brisa; iluminação frontal e pares por lado exclusivos.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M12 — Frente externa",
+      "Parcial",
+      "BA",
+      "Hierarquia atual inclui para-lamas/estrutura/vidros junto de Frente",
+      "Frente só itens externos aprovados; faróis/compostos aqui",
+      "Etapa 4",
+      "Capô/para-choque/alma/iluminação acessíveis sem rotas laterais duplicadas"
+    ]
+  },
+  {
+    "id": "M13",
+    "title": "Estrutura dianteira separada",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Estrutura dianteira própria contém internos/estruturais e para-brisa conforme decisão.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M13 — Estrutura dianteira separada",
+      "Pendente",
+      "BA",
+      "SVG tem área Estrutura, mas `data-region=frente` repetido",
+      "Chave própria para área existente; caminhos estruturais da matriz",
+      "Etapa 4",
+      "Travessa/cofre/painel/para-brisa em Estrutura, sem redesenhar forma"
+    ]
+  },
+  {
+    "id": "M14",
+    "title": "componentes laterais/porta de carga",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Motorista/Passageiro contextualizados, incluindo porta de carga lateral.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M14 — componentes laterais/porta de carga",
+      "Parcial",
+      "BA",
+      "Itens existem; há agrupamentos redundantes e iluminação frontal repetida",
+      "Reorganizar rotas pelo lado previamente escolhido; manter porta de carga",
+      "Etapa 4",
+      "Cada peça lateral acessível no lado correto, sem escolha repetida de lado"
+    ]
+  },
+  {
+    "id": "M15",
+    "title": "abastecimento separado de iluminação",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Abastecimento é categoria própria; sem mistura ou repetição de iluminação frontal nas laterais.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M15 — abastecimento separado de iluminação",
+      "Pendente",
+      "BA",
+      "Código atual usa “Iluminação e extremidades”",
+      "Categoria Abastecimento e iluminação regional exclusiva",
+      "Etapa 4",
+      "Itens de combustível fora de iluminação; faróis não repetidos nas laterais"
+    ]
+  },
+  {
+    "id": "M16",
+    "title": "A/B/C e descrições entre parênteses",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "A/B/C usam parênteses; genéricos preservados separadamente como posição não especificada conforme decisão posterior.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M16 — A/B/C e descrições entre parênteses",
+      "Parcial",
+      "BA",
+      "Catálogo contém códigos específicos e genéricos; organização antiga persiste",
+      "Rótulos de navegação A (dianteira), B (central), C (traseira), sem mudar cadastros",
+      "Etapa 4",
+      "Códigos específicos preservados, nenhuma fusão com genéricos"
+    ]
+  },
+  {
+    "id": "M17",
+    "title": "Roda/Pinça/Caixa/Para-barro diretos",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Roda/Pinça/Caixa de roda/Para-barro diretos nas laterais.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M17 — Roda/Pinça/Caixa/Para-barro diretos",
+      "Pendente",
+      "BA",
+      "Hoje sob “Rodas, estrutura e acabamentos” e subgrupos",
+      "Quatro tipos no primeiro nível lateral, posições só depois",
+      "Etapa 4",
+      "Não exigir Dianteiro/Traseiro antes de escolher componente; Pinça preservada"
+    ]
+  },
+  {
+    "id": "M18",
+    "title": "Dianteiro/Traseiro/Ambos no lado escolhido",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Tipo antes da posição; Dianteiro acima/Traseiro abaixo, Ambos direita motorista/esquerda passageiro.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M18 — Dianteiro/Traseiro/Ambos no lado escolhido",
+      "Pendente",
+      "BA",
+      "Radial só especializa `grupo_lados`; pares atuais não são os 8 pares por posição",
+      "Posições com códigos reais, sem repetir Motorista/Passageiro",
+      "Etapa 4",
+      "Dianteiro acima, Traseiro abaixo, Ambos direita Motorista/esquerda Passageiro"
+    ]
+  },
+  {
+    "id": "M19",
+    "title": "23 pares corretos, não só contagem 23",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "23 pares confrontados individualmente com CSV: 15 de lado e oito de posição, cada um inclui/remove os dois códigos exatos.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M19 — 23 pares corretos, não só contagem 23",
+      "Parcial",
+      "BA",
+      "Há 23 ações atuais, mas só 15 pares coincidem com a proposta; faltam os 8 por posição",
+      "Usar os 15 pares por lado + 8 por posição do PR27",
+      "Etapas 2/4",
+      "Cada ação opera exatamente nos dois códigos esperados; indisponível se membro inutilizável"
+    ]
+  },
+  {
+    "id": "M20",
+    "title": "caixa de roda sem duplicidade",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Cada caixa de roda tem caminho único; genérica não fundida ao eixo nem participa de Ambos.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M20 — caixa de roda sem duplicidade",
+      "Pendente",
+      "BA",
+      "Genérica e específicas em organização antiga",
+      "Caminho canônico lateral; genérica separada, sem fingir equivalência",
+      "Etapa 4",
+      "Cada código acessível uma vez, sem genérico em Ambos"
+    ]
+  },
+  {
+    "id": "M21",
+    "title": "Traseira/Estrutura traseira",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Traseira e Estrutura traseira independentes, com todos seus códigos acessíveis.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M21 — Traseira/Estrutura traseira",
+      "Parcial",
+      "BA",
+      "`data-region=traseira` repetido; mistura estrutura/rodas na navegação",
+      "Chave estrutural distinta e rotas da matriz",
+      "Etapa 4",
+      "Áreas existentes abrem conteúdos distintos e sem repetição"
+    ]
+  },
+  {
+    "id": "M22",
+    "title": "Topo/demais categorias",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Topo e demais caminhos cobrem os 163 códigos sem perda de interiores/vidros.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M22 — Topo/demais categorias",
+      "Parcial",
+      "BA",
+      "Quatro raízes em Topo existentes; demais rotas ainda V2 original",
+      "Aplicar mesma canonização, preservando geometria e ações válidas",
+      "Etapa 4",
+      "Cobertura total inclusive vidro/interior, teto e acessórios"
+    ]
+  },
+  {
+    "id": "M23",
+    "title": "lados contextuais já corretos",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Lado implícito respeitado nas posições; pares por lado mantêm Motorista/Passageiro reais.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M23 — lados contextuais já corretos",
+      "Implementado parcialmente",
+      "BA",
+      "`piece-navigation.ts:29–46` filtra lado; `CommercialPanel.tsx:222–227` posiciona Motorista/Passageiro/Ambos",
+      "Reaproveitar comportamento válido ao adaptar as posições",
+      "Etapa 4",
+      "Lado nunca muda silenciosamente ao selecionar próximo nível"
+    ]
+  },
+  {
+    "id": "M24",
+    "title": "teclado, foco e fechamento",
+    "status": "aprovado",
+    "decisionSource": "Issue #31: matriz original e auditorias posteriores das Etapas 2–5; autorização Etapa 6",
+    "observed": "Enter/Tab/ShiftTab/Escape e retorno de foco ao acionador verificados nos diálogos.",
+    "code": [
+      "src/map-navigation.ts",
+      "src/data/map-navigation.json",
+      "src/CommercialPanel.tsx",
+      "src/map-radial.css"
+    ],
+    "evidence": [
+      "docs/evidencias/etapa6/regressions/etapa4_mapa",
+      "docs/evidencias/etapa6/check.log"
+    ],
+    "scope": "Chromium/API/SQLite temporário sintético",
+    "originalBaseline": [
+      "M24 — teclado, foco e fechamento",
+      "Implementado como base",
+      "BA",
+      "`PieceDialog.tsx:8–34`; SVG Enter/Espaço em `CommercialPanel.tsx:304`",
+      "Preservar/revalidar após acomodar 13 entradas",
+      "Etapa 4",
+      "Tab contido, Escape, foco de volta à região, sem alvos inacessíveis"
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "base": "e4837f513ca44bc7fc75df1a6f05013e53be8856",
+  "scope": "Issue31 Etapa5 F01-F06",
+  "synthetic": true,
+  "nodeTests": 178,
+  "deployScriptTests": 23,
+  "footerBrowserGroups": 18,
+  "regressionBrowserGroups": 172,
+  "totalBrowserGroups": 190,
+  "regressionSuites": 13,
+  "devices": [
+    "1440x1000",
+    "390x844",
+    "320x568"
+  ],
+  "mainTabFinancialStatesPerDevice": 6,
+  "safeAreaSimulation": {
+    "bottomPx": 20,
+    "rightPx": 12
+  },
+  "screenshots": 33,
+  "preservedFiles": 113,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false,
+  "ci": "Não disparada: branch de integração sem PR."
+}

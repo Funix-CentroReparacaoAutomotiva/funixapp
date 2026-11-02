@@ -1,0 +1,269 @@
+{
+  "base": "ef5c4b1f748c3d5491e070e01a15cef9b5da3acf",
+  "files": [
+    {
+      "path": ".github/workflows/funix.yml",
+      "sha256": "06af40273b46a74ce9adad5de43187304f7c96d7264c7967840c896a9ada36dd",
+      "unchanged": true
+    },
+    {
+      "path": "compose.yaml",
+      "sha256": "41533e0a3e362da962f77ef5f0ab61c0124b09e71ca6dabe97589917e7bd9339",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/check-install.py",
+      "sha256": "73ee8c1c7b3a2f2cf15fe36b15d1f2616a17d392739baf00412ebbecf3de757b",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/funix-deploy",
+      "sha256": "d8441132318534760bbda450ef534e320099d5bf57e691312fdf8ab98223c845",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/funix-deploy.sudoers",
+      "sha256": "bcec73124cad0223b480aea3e24751da71a995daec91591e305f03bd75f023ee",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/funix-install",
+      "sha256": "2250a62cc2e1bea203e1c106459af97a3d17d6f4643b6f0a1f18ec1777f5d49b",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/funix-ssh",
+      "sha256": "30da93bd457d82673a930b78d3385fc28082658a56bdf929cc7c7b80fe3de686",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/nginx.conf",
+      "sha256": "a302a87f187953778d9831e4bf94459b8d3819ccef8306568e3cff6054eb81ac",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/release.env.example",
+      "sha256": "5648bc3124d78075c03d5fb50bd040f94f772a5536723ae3e1dbebcd08537b51",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/runtime.env.example",
+      "sha256": "77fe8af59b816cd3788def59943c465c2842ceb0baa144ca4e29bd625d52c4c4",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/test-containers.sh",
+      "sha256": "88b6f91cf1de40b59fd803807a33d476bf4dfe8ebb6d1ba509de66c6fead61d9",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/tests/test_compose_config.py",
+      "sha256": "fc0bb4a80ffebc7208104ec19572fad80889cfffdbdf66c8ba51a391d71ae9cb",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/tests/test_deploy.py",
+      "sha256": "79ee5de9cca6bbfcbcf88f74c77b7ed2113671cfbb6bcda4968a57ee90659f52",
+      "unchanged": true
+    },
+    {
+      "path": "deploy/tests/test_install.py",
+      "sha256": "9d8e9ffc6aa7ccbb0d658a4c1e9456b3763ce3cb6134526eeeff8847063ae86e",
+      "unchanged": true
+    },
+    {
+      "path": "server/app.ts",
+      "sha256": "0530cd7c062b65f35258cb4c2b523a42fe83c15f8bdfcff27f94ddf03bdf61c2",
+      "unchanged": true
+    },
+    {
+      "path": "server/atendimentos.ts",
+      "sha256": "08114d3dc1c40c9538cfde76a3dbba759331a61c6c6f49e333f539159bb3fe6c",
+      "unchanged": true
+    },
+    {
+      "path": "server/backup.ts",
+      "sha256": "1af63d4a8bb35870e9d86d32d8c6b84427b6bc69c59da23bff8b21600fd083f6",
+      "unchanged": true
+    },
+    {
+      "path": "server/budgets.ts",
+      "sha256": "1768c38054915f97334fb3bf92c5269933a53de40ebacca00b542eb014dcba4c",
+      "unchanged": true
+    },
+    {
+      "path": "server/coda-connector-export.ts",
+      "sha256": "2f401a7f9af322452b48ac4833df40b6dc2b078f6ddbf4c3021fd9b4b2510898",
+      "unchanged": true
+    },
+    {
+      "path": "server/coda-import-source.ts",
+      "sha256": "fe2b4fbde1282bc953333f2d106be34aed110c4e54edca2300be2106e4ff0614",
+      "unchanged": true
+    },
+    {
+      "path": "server/coda-import.ts",
+      "sha256": "8f61896cc1cb28812dd1ffd3103814d83ea64e2352cd92dbf5986afe0d0ffb10",
+      "unchanged": true
+    },
+    {
+      "path": "server/coda.ts",
+      "sha256": "04811a5de218fb1573f916994f89e23759b0795352595970ece907c967ea621c",
+      "unchanged": true
+    },
+    {
+      "path": "server/commercial.ts",
+      "sha256": "809ebefeaa93ca2511ac3b9b1eca51bfb53e136045fdf10b9b38c3bfc719648e",
+      "unchanged": true
+    },
+    {
+      "path": "server/components.ts",
+      "sha256": "90cc68a8f37e53558aff1f1aded6f1c8311bd864a775c8ca5a12593b86e987d2",
+      "unchanged": true
+    },
+    {
+      "path": "server/data/fonts/DejaVuSans.ttf",
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+      "unchanged": true
+    },
+    {
+      "path": "server/data/fonts/LICENSE.txt",
+      "sha256": "e81d9dced49fea2a7d576cbea283873de58563c5d488f954deb282843c3ea79c",
+      "unchanged": true
+    },
+    {
+      "path": "server/data/hierarquia-v2.json",
+      "sha256": "20d8ac528f3708bf259d5c0d53959d843b189df4583ec24c2c57d026ce827e30",
+      "unchanged": true
+    },
+    {
+      "path": "server/database.ts",
+      "sha256": "b77619a531ba87c5833d0de75db7eb05f806caab33506137437867e71042a140",
+      "unchanged": true
+    },
+    {
+      "path": "server/errors.ts",
+      "sha256": "08e482036b1f7afb433b9600032fcea875ffdf08c5c9e5b5580cd46aaab743d9",
+      "unchanged": true
+    },
+    {
+      "path": "server/exact.ts",
+      "sha256": "e38eade198291eb05a5d00bb6dfa7026602214a6260f985802090525fd2b426c",
+      "unchanged": true
+    },
+    {
+      "path": "server/hierarchy.ts",
+      "sha256": "67cbfb172208c8cd338d46d306c490ad18d2fb1d26dc3a5f6a131398e61e6cfc",
+      "unchanged": true
+    },
+    {
+      "path": "server/import-coda.ts",
+      "sha256": "5167e98650d375fe5083db0e9f0671e466a1e86d9bbf71296651329ab4ebf2e3",
+      "unchanged": true
+    },
+    {
+      "path": "server/index.ts",
+      "sha256": "c81a2d28a809338bdfe37f277fe0f270b057feb59f8a4ffa57646dfd0ef2362a",
+      "unchanged": true
+    },
+    {
+      "path": "server/migrations.ts",
+      "sha256": "d61cc3ff2a26fd22983f3499c144552c933ca93bc1cac3f989bb4de3ab2adf81",
+      "unchanged": true
+    },
+    {
+      "path": "server/pdf.ts",
+      "sha256": "9b34bc513465a7aaa12b276dcb823a73948674efa129d6a98247c03550247043",
+      "unchanged": true
+    },
+    {
+      "path": "server/pricing-config.ts",
+      "sha256": "eba0ed192edf29cdb0ff11409157c9729832ddd8fc388c94d79f43a7bfa58276",
+      "unchanged": true
+    },
+    {
+      "path": "server/pricing-engine.ts",
+      "sha256": "604767f0b820b8e341cb6375969ce45410b002426c54f85325fe5da04c3504b2",
+      "unchanged": true
+    },
+    {
+      "path": "server/repository.ts",
+      "sha256": "1dcb14868aaae8e074c3e9655bf9564b1e34fcddba1f88555a68f5a4931c13a5",
+      "unchanged": true
+    },
+    {
+      "path": "server/scenarios.ts",
+      "sha256": "171c615250b73080503e42aaf554b31e1501c40e985d9634ad69bdfe1fe36f6c",
+      "unchanged": true
+    },
+    {
+      "path": "server/tsconfig.json",
+      "sha256": "00107399362c81880e2d5f594d577da6c9cd6ee4b6ac08429b613b15dd5054c2",
+      "unchanged": true
+    },
+    {
+      "path": "shared/commercial.ts",
+      "sha256": "e2c0f55a5f28512d3ad92d14afe51e2880737a6daa16c845a1df13fe96d6c875",
+      "unchanged": true
+    },
+    {
+      "path": "shared/contracts.ts",
+      "sha256": "134ecb4a6b8f4d32dfcb76a571f4bf918a3974f6f52ea88a2e78757f71c67ef4",
+      "unchanged": true
+    },
+    {
+      "path": "shared/format.ts",
+      "sha256": "34238b7a95016bf03bf8e84f84b30fb7c5909df5267594a4e52af2b23526209f",
+      "unchanged": true
+    },
+    {
+      "path": "shared/piece-removal.ts",
+      "sha256": "d1a97e72ee1e0977e4db175526d5f327fdc937f8165f425a8ce49b600fd4405f",
+      "unchanged": true
+    },
+    {
+      "path": "shared/pricing.ts",
+      "sha256": "ac707587f6106a454c87f68b784bb16d04533c1e4dd6703b12255159e4685594",
+      "unchanged": true
+    },
+    {
+      "path": "src/App.css",
+      "sha256": "a09003f04224f283f6fdea8fff4fbd07bb6065320e5212d896b81173da883fbc",
+      "unchanged": true
+    },
+    {
+      "path": "src/PieceDialog.tsx",
+      "sha256": "4ff55e65aa417b91ca739ed0ddf0589c404ff447d60780376a6c1ed56a68fd2e",
+      "unchanged": true
+    },
+    {
+      "path": "src/approved.css",
+      "sha256": "ea82ce729d00051e8571b4f4f18c935e8c34e44351e7e2ac9ccdb2c34747b3c5",
+      "unchanged": true
+    },
+    {
+      "path": "src/piece-selection-queue.ts",
+      "sha256": "64b970010981aacf934e07b85e2a85f0568ced38dd827f58c0b61fa6e8aace3d",
+      "unchanged": true
+    },
+    {
+      "path": "src/piece-selection.css",
+      "sha256": "f146455bb9f6dc2f9c9232d4f142335e5958909c5465e9104d05589876133c7a",
+      "unchanged": true
+    },
+    {
+      "path": "src/usePieceSelection.ts",
+      "sha256": "d33dff0b729e9bedea34926975ad442f2803ba699f328a886eb85692beb1c632",
+      "unchanged": true
+    },
+    {
+      "path": "tests/browser/etapa2_persistencia.py",
+      "sha256": "529bd3a65ec8c9562a68a70b73831eba98d2857558b2f2dc29fb4fbf8e9cf84c",
+      "unchanged": true
+    }
+  ],
+  "fragments": {
+    "Map JSX unchanged": "1b0e9e2ea7a10a6363260345470c5b0be84fb67c2faab813b3c5ab62fe134eb2",
+    "App only replaces internal back arrow": true
+  }
+}
