@@ -22,3 +22,9 @@
 .interactive-map [data-selection-state=all] .map-region-count circle{fill:white}
 .interactive-map [data-selection-state=all] .map-region-count text{fill:#142c60}
 .map-page .map-stage{padding-top:4px}
+
+/* Fase 1: only the requested rightmost deletion control. */
+.diagnosis-list .diagnosis-row{grid-template-columns:20px minmax(0,1fr) 32px}
+.diagnosis-list .piece-delete{display:flex;align-items:center;justify-content:center;width:32px;min-height:44px;padding:5px;border:0;background:transparent;color:#75849b}
+.diagnosis-list .piece-delete svg{width:16px;height:16px}
+.diagnosis-list .piece-delete:focus-visible{outline:2px solid #142c60;outline-offset:2px}

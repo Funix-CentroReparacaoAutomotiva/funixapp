@@ -211,12 +211,12 @@ async def run():
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');assert hashlib.sha256(await pdf.body()).hexdigest()==pdf_hash
     h.mark(device+': global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF')
     assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth'),device
-    await page.locator('.piece-inclusion-toggle').first.click()
+    await page.locator('.piece-delete').first.click()
     await page.get_by_role('dialog',name='Confirmar remoção da composição').get_by_role('button',name='Prosseguir',exact=True).click()
     await expect(page.locator('.diagnosis-row')).to_have_count(0)
     assert not (await get(path+'/cenarios'))['items'] and not (await get(path+'/cenarios'))['components']
     assert (await get(path+'/orcamentos/'+v['id']))==v
-    h.mark(device+': global piece removal uses the composition selector and preserves historical emission')
+    h.mark(device+': global piece removal uses explicit trash and preserves historical emission')
     before=await get(path+'/cenarios');await h.restart_api()
     await write('/api/session',{'password':h.password});after=await get(path+'/cenarios');assert before==after
     assert (await get(path+'/orcamentos/'+v['id']))==v
