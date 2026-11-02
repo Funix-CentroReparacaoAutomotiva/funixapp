@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 
 // Native dialog provides keyboard containment, Escape and focus restoration.
 // This is a visual selector only; all writes remain in CommercialPanel.
-export function PieceDialog({ children, busy, onClose, returnFocus }: {
-  children: ReactNode; busy: boolean; onClose: () => void; returnFocus: () => void
+export function PieceDialog({ children, busy, onClose, returnFocus, closeOutsideDisk = false }: {
+  children: ReactNode; busy: boolean; onClose: () => void; returnFocus: () => void; closeOutsideDisk?: boolean
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -24,7 +24,18 @@ export function PieceDialog({ children, busy, onClose, returnFocus }: {
       }
     }}
     onClick={event => {
-      if (event.target !== event.currentTarget || busy) return
+      if (busy) return
+      const target = event.target
+      if (closeOutsideDisk) {
+        if (target instanceof Element && target.closest('.map-quick-shade,.disc-node,.disc-center,.disc-more,.disc-back,.form-error,.fh-filter,details')) return
+        const disc = event.currentTarget.querySelector('.disc-wrap')?.getBoundingClientRect()
+        if (!disc) return
+        const dx = event.clientX - disc.left - disc.width / 2
+        const dy = event.clientY - disc.top - disc.height / 2
+        if (Math.hypot(dx, dy) > Math.min(disc.width, disc.height) / 2) onClose()
+        return
+      }
+      if (target !== event.currentTarget) return
       const box = event.currentTarget.getBoundingClientRect()
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose()
     }}>
