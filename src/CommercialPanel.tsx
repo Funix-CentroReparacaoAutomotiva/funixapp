@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, useEffectEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisIntensity, RecommendationApplication, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
 import { catalogItemUsable as usable, scenarioLabel } from '../shared/commercial'
 import { api } from './api'
