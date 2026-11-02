@@ -22,8 +22,11 @@ export interface CatalogResponse {
 export interface DiagnosisService {
   id: string; serviceId: string; dimensionId: string | null; quantity: string; enabled: boolean; executionConfirmed?: boolean; notes?: string; diagnosisId?: string | null
 }
+export const DIAGNOSIS_INTENSITIES=['leve','moderado','severo']as const
+export type DiagnosisIntensity=typeof DIAGNOSIS_INTENSITIES[number]
+export interface DiagnosisRecommendation {id:string;sourceRowId:string;sourceTable:string;serviceId:string;dimensionId:string;selectedByDefault:boolean}
 export interface DiagnosisItem {
-  id: string; atendimentoId: string; pieceId: string; diagnosisId: string | null
+  id: string; atendimentoId: string; pieceId: string; diagnosisId: string | null; intensity?:DiagnosisIntensity|null
   notes: string; enabled: boolean; revision: number; createdAt: string; updatedAt: string
   services: DiagnosisService[]
 }

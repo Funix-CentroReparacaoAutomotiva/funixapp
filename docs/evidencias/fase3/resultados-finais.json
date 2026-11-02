@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "base": "0a7644b21293c64e95d459082c41b7dd3e4bebda",
+  "nodeTests": 217,
+  "nodeFailures": 0,
+  "deployTests": 23,
+  "phase3BrowserGroups": 27,
+  "existingBrowserGroups": 280,
+  "totalBrowserGroups": 307,
+  "schemaVersion": 9,
+  "realSourceAvailable": false,
+  "realRulesImported": 0,
+  "realRulesValidated": 0,
+  "resolutions": [
+    1440,
+    390,
+    320
+  ],
+  "lintPreExistingWarnings": 4,
+  "newLintWarnings": 0,
+  "productionAccess": false,
+  "merge": false,
+  "deploy": false
+}

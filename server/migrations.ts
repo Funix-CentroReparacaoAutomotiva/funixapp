@@ -184,6 +184,24 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       scope TEXT NOT NULL,
       PRIMARY KEY(scenario_id,service_line_id)
     );
+  `)},
+  {version:9,apply:db=>db.exec(`
+    ALTER TABLE diagnosis_items ADD COLUMN intensity TEXT CHECK(intensity IS NULL OR intensity IN ('leve','moderado','severo'));
+    CREATE TABLE diagnosis_recommendations (
+      id TEXT PRIMARY KEY,
+      source_table TEXT NOT NULL, source_row_id TEXT NOT NULL,
+      diagnosis_id TEXT NOT NULL REFERENCES catalog_items(id) ON DELETE RESTRICT,
+      intensity TEXT NOT NULL CHECK(intensity IN ('leve','moderado','severo')),
+      service_id TEXT NOT NULL REFERENCES catalog_items(id) ON DELETE RESTRICT,
+      dimension_id TEXT NOT NULL REFERENCES catalog_items(id) ON DELETE RESTRICT,
+      selected_by_default INTEGER NOT NULL CHECK(selected_by_default IN (0,1)),
+      status TEXT NOT NULL CHECK(status IN ('valid','pending')),
+      reason TEXT,
+      UNIQUE(source_table,source_row_id),
+      UNIQUE(diagnosis_id,intensity,service_id,dimension_id),
+      CHECK((status='valid' AND reason IS NULL) OR (status='pending' AND reason IS NOT NULL))
+    );
+    CREATE INDEX recommendations_lookup ON diagnosis_recommendations(diagnosis_id,intensity,status);
   `)}
 ]
 

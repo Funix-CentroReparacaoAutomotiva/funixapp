@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap",
+      "pass": true,
+      "boxes": [
+        {
+          "x": 473,
+          "y": 104,
+          "width": 44,
+          "height": 44
+        },
+        {
+          "x": 523,
+          "y": 107.5,
+          "width": 273.75,
+          "height": 37
+        },
+        {
+          "x": 802.75,
+          "y": 107.5,
+          "width": 164.25,
+          "height": 37
+        }
+      ]
+    },
+    {
+      "name": "desktop: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals",
+      "pass": true
+    },
+    {
+      "name": "desktop: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload",
+      "pass": true
+    },
+    {
+      "name": "desktop: shared master intensity is independent of active/inactive scenario flags",
+      "pass": true
+    },
+    {
+      "name": "desktop: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite",
+      "pass": true
+    },
+    {
+      "name": "desktop: committed lost response reconciles by read without replay, preserving the intensity draft",
+      "pass": true
+    },
+    {
+      "name": "desktop: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite",
+      "pass": true
+    },
+    {
+      "name": "desktop: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI",
+      "pass": true
+    },
+    {
+      "name": "desktop: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

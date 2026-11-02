@@ -376,3 +376,21 @@ test('Fase2 HTTP percentage persistence/guards and explicit one-time initializat
   const latest=await(await app.request(path,{headers:{Cookie:cookie}})).json();assert.equal(latest.settings.mrPercent,'25.5')
  }finally{app.close()}
 })
+
+test('Fase3 authenticated intensity persistence and read-only recommendation lookup preserve composition; invalid and stale writes rejected',async()=>{
+ const app=start()
+ try{
+  const{recommendationsFixture}=await import('./fixtures/recommendations.ts'),{planRecommendations,applyRecommendations}=await import('../diagnosis-recommendations.ts')
+  const f=commercialFixture(app.db),rules=recommendationsFixture(app.db),plan=planRecommendations(app.db,rules.source);applyRecommendations(app.db,rules.source,plan.planHash)
+  const cookie=await authenticate(app),path='/api/atendimentos/'+f.at.id+'/diagnosticos/'+f.item.id
+  const route='/api/recomendacoes?diagnosisId='+encodeURIComponent(rules.diagnosisId)+'&intensity=moderado'
+  assert.equal((await app.request(route)).status,401)
+  const query=await app.request(route,{headers:{Cookie:cookie}});assert.equal(query.status,200);const data=await query.json();assert.equal(data.items.length,1);assert.equal(data.items[0].selectedByDefault,false)
+  assert.equal((await app.write('/api/recomendacoes','POST',{},cookie)).status,405)
+  for(const q of['?intensity=extremo','?intensity=leve&diagnosisId=x&diagnosisId=y','?diagnosisId=x&intensity=leve&apply=true'])assert.equal((await app.request('/api/recomendacoes'+q,{headers:{Cookie:cookie}})).status,400)
+  const before=f.commercial.list(f.at.id)[0]!,saved=await app.write(path,'PATCH',{revision:before.revision,intensity:'leve'},cookie);assert.equal(saved.status,200);const item=await saved.json();assert.equal(item.intensity,'leve');assert.deepEqual(item.services,before.services)
+  assert.equal((await app.write(path,'PATCH',{revision:before.revision,intensity:'severo'},cookie)).status,409)
+  assert.equal((await app.write(path,'PATCH',{revision:item.revision,intensity:'improvável'},cookie)).status,400)
+  const again=await app.request('/api/atendimentos/'+f.at.id+'/cenarios',{headers:{Cookie:cookie}});assert.equal((await again.json()).items[0].intensity,'leve')
+ }finally{app.close()}
+})

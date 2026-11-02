@@ -1,3 +1,4 @@
+import{recommendations}from'./diagnosis-recommendations.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import type { AtendimentoRepository } from './atendimentos.ts'
@@ -88,6 +89,11 @@ export function createRequestHandler(options: AppOptions) {
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
       if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
         return fail(req.method === 'GET' ? 410 : 405, 'FEATURE_UNAVAILABLE', 'Esta função operacional não pertence ao MVP Comercial. Nenhum acesso ao Coda foi realizado.')
+      }
+      if(url.pathname==='/api/recomendacoes'){
+        if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Consulta somente leitura.')
+        if([...url.searchParams.keys()].some(k=>!['diagnosisId','intensity'].includes(k))||url.searchParams.getAll('diagnosisId').length!==1||url.searchParams.getAll('intensity').length!==1)return fail(400,'INVALID_INPUT','Informe apenas diagnosisId e intensity.')
+        return send(200,{items:recommendations(options.atendimentos.db,url.searchParams.get('diagnosisId'),url.searchParams.get('intensity'))})
       }
       const budgetRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos(?:\/([^/]{1,100}))?(\/pdf)?$/.exec(url.pathname)
       if (budgetRoute) {
