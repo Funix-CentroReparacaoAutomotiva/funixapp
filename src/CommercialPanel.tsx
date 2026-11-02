@@ -347,8 +347,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region')
             if (region) openRegion(region)
           }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { const region = (event.target as Element).closest('[data-region]')?.getAttribute('data-region'); if (region) { event.preventDefault(); openRegion(region) } } }} dangerouslySetInnerHTML={{ __html: mapMarkup }} />
-          {mapSelecting && <PieceDialog busy={baseBusy} onClose={() => {setMapEditor(null);setSelecting(false)}} returnFocus={returnMapFocus}>
-            <header className="map-selector-head"><button className="fh-filter" disabled={baseBusy} aria-label="Fechar seleção" onClick={()=>{setMapEditor(null);setSelecting(false)}}>×</button></header>
+          {mapSelecting && <PieceDialog closeOutsideDisk busy={baseBusy} onClose={() => {setMapEditor(null);setSelecting(false)}} returnFocus={returnMapFocus}>
+            
             {feedback}
             <div className="disc-wrap" data-region-key={regionKey} data-depth={path.length}>
               <strong className="disc-name">{path.at(-1)?.nome??'Regiões'}</strong>
