@@ -43,7 +43,7 @@ test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, c
   const after=snapshot(db),repeat=planImport(db,src);assert.equal(repeat.report.inserts,0)
   applyImport(db,src,repeat.planHash);assert.deepEqual(snapshot(db),after)
   db.close();db=openDatabase(file)
-  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,10)
+  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,11)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
  }finally{db.close();rmSync(folder,{recursive:true,force:true})}
 })
