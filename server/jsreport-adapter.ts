@@ -20,7 +20,7 @@ export function frozenTerms(snapshot:BudgetSnapshot):JsreportTerms{
 }
 export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenTerms(version.snapshot)):JsreportDocument{
  const s=version.snapshot,c=s.calculation
- if(!version.documentNumber||budgetBlockingErrors(s).length||c.total==null||c.serviceSubtotal==null||c.componentSubtotal==null)throw Error('Emissão sem identificação ou cálculo completo.')
+ if(!version.documentNumber||budgetBlockingErrors(s).length||c.total==null||c.serviceSubtotal==null||c.serviceNet==null||c.componentSubtotal==null)throw Error('Emissão sem identificação ou cálculo completo.')
  if(!/^\d+$/.test(terms.prazoDiasUteis)||!Number.isSafeInteger(Number(terms.prazoDiasUteis))||Number(terms.prazoDiasUteis)<1)throw Error('Prazo comercial em dias úteis não informado.')
  for(const[key]of INSTALLMENT_PLANS){const plan=terms.parcelamento[key];if(!plan||!/^R\$ ?[\d.,]+$/.test(plan.valorParcela)||!/^R\$ ?[\d.,]+$/.test(plan.total))throw Error('Condições de parcelamento incompletas.')}
  const included=c.lines.filter(l=>l.included)
@@ -45,6 +45,7 @@ export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenT
   cliente:{nome:s.atendimento.name,contato:s.atendimento.phone},
   veiculo:{modelo:s.atendimento.vehicle||[s.atendimento.brand,s.atendimento.model].filter(Boolean).join(' '),placa:s.atendimento.plate},
   diagnosticos:diagnostics,condicoes:{prazo:terms.prazoDiasUteis},parcelamento:structuredClone(terms.parcelamento),
-  financeiro:{servicos:money(c.serviceSubtotal),pecas:money(c.componentSubtotal),desconto:exactAmount(c.discount).n===0n?'':money(c.discount),totalVista:money(c.total)}
+  // The supplied template prints services + components = total. Discount is already included in serviceNet.
+  financeiro:{servicos:money(c.serviceNet),pecas:money(c.componentSubtotal),desconto:exactAmount(c.discount).n===0n?'':money(c.discount),totalVista:money(c.total)}
  }
 }

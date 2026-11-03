@@ -272,3 +272,7 @@ Esta seção prevalece sobre descrições anteriores de geração síncrona/PDF 
 - Falhas do gerador: `PDF_NOT_CONFIGURED`, `PDF_CONFIGURATION_INVALID`, `PDF_RENDER_UNAVAILABLE`, `PDF_RENDER_FAILURE`, `PDF_INVALID_RESPONSE`, `PDF_INCOMPLETE`, `PDF_TOO_LARGE`. Não criam versão parcial. Revisão/token divergente continuam bloqueados.
 - Snapshot opcionalmente inclui `document:{template,data}` com JSON exato entregue ao jsreport, taxas/resultados racionais e apresentação congelados, prazo efetivo e avisos. Nunca contém conexão/credenciais. Campos opcionais preservam leitura de snapshots históricos schema1.
 - GET PDF retorna BLOB original, Content-Type PDF e Content-Disposition com nome amigável UTF-8 congelado. GET não chama jsreport e não cria versão. Versões antigas sem OR não recebem número retroativo.
+
+### PR39 — template fornecido pela direção
+
+`document.data.financeiro.servicos` apresenta `calculation.serviceNet` para a igualdade “Serviços + Componentes = Total” do HTML recebido. `desconto` permanece destacado, sem segunda dedução; detalhamento por peça continua bruto. Nenhum cálculo oficial nem JSON/PDF já congelado é reescrito. Referência e limitações: `docs/PR39_CONFERENCIA_TEMPLATE.md`.

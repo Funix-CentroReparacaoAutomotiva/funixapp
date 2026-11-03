@@ -77,7 +77,7 @@ Template fixo **`FUNIX - Orcamento`**, endpoint HTTPS terminado em `/api/report`
 - A configuração atual não tem a taxonomia antiga de clusters de etapas do ERP. Usam-se serviços/etapas explícitos do App, sem transportar automaticamente as antigas regras de exposição/injeção de colorimetria. Nomes/renderização desses clusters devem ser conferidos no template real durante homologação.
 - Componentes preservam quantidade fracionária e preço unitário final com MR oficial, nunca custo manual no lugar da revenda.
 - Serviços sem cobrança continuam identificados como **Sem cobrança**, sem preço unitário zero artificial. Não entram nos totais ou no desconto.
-- Serviços brutos efetivos + componentes − desconto = total à vista. Acréscimo por negociação já está nos unitários oficiais; não se aplica novamente. Moeda é apresentação pt-BR com duas casas; valores exatos permanecem no snapshot.
+- No resumo do template recebido: Serviços líquido + componentes = total à vista; desconto é destacado em quadro separado. Os detalhes por peça continuam brutos, sem rateio inventado. Acréscimo por negociação já está nos unitários oficiais; não se aplica novamente. Moeda é apresentação pt-BR com duas casas; valores exatos permanecem no snapshot.
 - `condicoes.prazo` usa o prazo comercial congelado. Parcelamento usa a configuração congelada, nunca o valor global atual durante leitura/download.
 
 Nome: `<PLACA normalizada> - Orçamento FUNIX - <serial sem zeros>.pdf`; sem placa, `Orçamento FUNIX - <serial>.pdf`. UUID e letras legadas continuam internos/compatíveis. O histórico é a lista simples já iniciada no PR; links antigos de versões continuam acessíveis. PDFs antigos são BLOBs lidos literalmente, sem regeneração ou renumeração.
@@ -128,3 +128,7 @@ Todos os dados, PDFs, credenciais e respostas HTTP usados nos testes são sinté
 6. Só depois da auditoria/homologação e autorização específicas, decidir merge/publicação. Esta tarefa não executou nenhuma dessas operações.
 
 **Pendência real:** configuração e homologação visual/operacional do template jsreport instalado. Os mocks comprovam o contrato e o fluxo do aplicativo, não o resultado visual do serviço real. Não é declarada homologação produtiva concluída.
+
+## Conferência posterior do template fornecido
+
+Ver [PR39_CONFERENCIA_TEMPLATE.md](PR39_CONFERENCIA_TEMPLATE.md): HTML real recebido, correção de `financeiro.servicos` para líquido, contrato/renderização local em dez casos, textos fixos, campos não impressos e limite de apresentação de centavos. Esta revisão acrescentou 12 testes Node (265 no total); os resultados anteriores acima permanecem como evidência da entrega inicial. O jsreport produtivo continua sem execução/homologação.
