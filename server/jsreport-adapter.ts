@@ -20,7 +20,7 @@ export interface JsreportDocument{
 function money(value:string|null|undefined):string{
  if(value==null||!/^[-+]?\d+(?:\.\d+)?$/.test(value))throw Error('Valor monetário do orçamento inválido.')
  const n=Q.from(value),negative=n.n<0n
- const positive=negative?n.mul(Q.from('-1')).toString():n.toString()
+ const positive=negative?n.mul(new Q(-1n)).toString():n.toString()
  const [w,part='']=positive.split('.')
  const grouped=w.replace(/\B(?=(\d{3})+(?!\d))/g,'.')
  // Preserve sub-cent fractions exactly; never silently round the pricing engine.
