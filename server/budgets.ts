@@ -75,7 +75,7 @@ export class BudgetRepository {
    const createdAt=new Date().toISOString(),version:BudgetVersion={id:randomUUID(),atendimentoId:at,sequence,label:versionLabel(sequence),createdAt,documentNumber:commercialNumber(serial),filename:budgetFilename(preview.snapshot.atendimento.plate,serial),snapshot:{...preview.snapshot,issuedAt:createdAt}}
    const pdf=budgetPdf(version)
    this.db.prepare('INSERT INTO budget_versions(id,atendimento_id,sequence,label,created_at,snapshot,pdf,idempotency_key,request_hash) VALUES(?,?,?,?,?,?,?,?,?)').run(version.id,at,sequence,version.label,createdAt,JSON.stringify(version.snapshot),pdf,key,requestHash)
-   this.db.prepare('INSERT INTO budget_document_identity(serial,budget_version_id,filename) VALUES(?,?,?)').run(serial,version.id,version.filename)
+   this.db.prepare('INSERT INTO budget_document_identity(serial,budget_version_id,filename) VALUES(?,?,?)').run(serial,version.id,version.filename!)
    return version
   })
  }
