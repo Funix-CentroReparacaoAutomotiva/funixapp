@@ -104,7 +104,7 @@ export function createRequestHandler(options: AppOptions) {
           if (pdf) {
             const data = budgets.pdf(at,id), version = budgets.get(at,id)
             res.setHeader('Content-Type','application/pdf')
-            res.setHeader('Content-Disposition',`attachment; filename="FUNIX-orcamento-${version.label}.pdf"`)
+            res.setHeader('Content-Disposition',`attachment; filename="FUNIX-orcamento-${version.documentNumber?.replace(/[^A-Za-z0-9-]/g,'')??version.label}.pdf"; filename*=UTF-8\'\'${encodeURIComponent(version.filename??`FUNIX-orcamento-${version.label}.pdf`)}`)
             res.setHeader('Content-Length',data.length)
             res.writeHead(200);res.end(data);return
           }
