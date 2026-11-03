@@ -1,3 +1,5 @@
+import{clusterName,stagePresentation,clusterById,sourceStageCluster}from'./stage-presentation.ts'
+import type{StagePresentation}from'../shared/stage-clusters.ts'
 import{financialDefaults}from'../shared/financial-defaults.ts'
 import{canonicalPercent}from'../shared/mr.ts'
 import{initializeFinancialSettings}from'./financial-initialization.ts'
@@ -25,7 +27,10 @@ export class PricingConfigurationRepository {
  constructor(db:DatabaseSync){this.db=db}
  get():PricingConfiguration {
   const row=this.db.prepare('SELECT * FROM pricing_configuration WHERE id=1').get()!
-  return {revision:Number(row.revision),updatedAt:String(row.updated_at),config:JSON.parse(String(row.data))}
+  const config=JSON.parse(String(row.data))as PricingConfig
+  // Read-only compatibility for exact historical relation/service/dimension IDs.
+  for(const service of config.services)for(const dim of service.dimensions)for(const stage of dim.stages){if(!stage.presentation){const p=stagePresentation(stage,service.serviceId,dim.dimensionId);if(p)stage.presentation=p}}
+  return {revision:Number(row.revision),updatedAt:String(row.updated_at),config}
  }
  save(input:unknown):PricingConfiguration {
   const data=inputObject(input,['revision','config'])
@@ -54,8 +59,19 @@ export class PricingConfigurationRepository {
      const d=inputObject(raw,['dimensionId','fd','stages']),dimensionId=string(d.dimensionId,100),item=repo.item(dimensionId)
      if(item.kind!=='dimensao' || item.serviceId!==serviceId)invalid('Dimensão não pertence ao serviço.')
      const stages=array(d.stages).map(raw=>{
-      const stage=inputObject(raw,['id','name','dimension','baseEnergy','dimensionEnergy'])
-      return {id:string(stage.id,100),name:string(stage.name),dimension:string(stage.dimension),baseEnergy:optionalDecimal(stage.baseEnergy),dimensionEnergy:optionalDecimal(stage.dimensionEnergy)}
+      const stage=inputObject(raw,['id','name','dimension','baseEnergy','dimensionEnergy','presentation'])
+      const id=string(stage.id,100),oldStage=previous?.dimensions.find(d=>d.dimensionId===dimensionId)?.stages.find(s=>s.id===id)
+      let presentation:StagePresentation|undefined=oldStage?stagePresentation(oldStage,serviceId,dimensionId):undefined
+      if(stage.presentation!==undefined){
+       const p=inputObject(stage.presentation,['stageId','stageDimensionId','clusterId','cluster','order'])
+       if(p.cluster!==null&&!clusterName(p.cluster))invalid('Categoria de etapa não reconhecida.')
+       if(p.order!==null&&(!Number.isSafeInteger(p.order)||Number(p.order)<0))invalid('Ordem de etapa inválida.')
+       const optionalId=(value:unknown)=>value===null?null:string(value,100)
+       if(p.cluster!==null&&p.clusterId!==null&&clusterById(optionalId(p.clusterId))!==p.cluster)invalid('ID e categoria de etapa incompatíveis.')
+       if(p.cluster!==null&&sourceStageCluster(optionalId(p.stageId))&&sourceStageCluster(optionalId(p.stageId))!==p.cluster)invalid('Categoria difere da referência aprovada para este ID de etapa.')
+       presentation={stageId:optionalId(p.stageId),stageDimensionId:optionalId(p.stageDimensionId),clusterId:optionalId(p.clusterId),cluster:p.cluster as StagePresentation['cluster'],order:p.order as number|null}
+      }
+      return {id,name:string(stage.name),dimension:string(stage.dimension),baseEnergy:optionalDecimal(stage.baseEnergy),dimensionEnergy:optionalDecimal(stage.dimensionEnergy),...(presentation?{presentation}:{})}
      });unique(stages.map(t=>t.id))
      return {dimensionId,fd:optionalDecimal(d.fd),stages}
     });unique(dimensions.map(d=>d.dimensionId))

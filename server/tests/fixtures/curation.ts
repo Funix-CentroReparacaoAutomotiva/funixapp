@@ -10,7 +10,7 @@ export function curationFixture(db:DatabaseSync){
  const config=structuredClone(f.pricing.get().config)
  for(const key of Object.keys(ids) as (keyof typeof ids)[]){
   insert.run(ids[key],'servico',names[key],null);const dimension='qa-curation-dimension:'+key;insert.run(dimension,'dimensao','Dimensão QA '+key,ids[key]);dimensions[key]=dimension
-  config.services.push({serviceId:ids[key],billable:true,discountable:true,colorFactorEnabled:true,base:'100.01',dimensions:[{dimensionId:dimension,fd:'1',stages:[{id:'qa-step:'+key,name:'Etapa QA',dimension:'Técnica QA',baseEnergy:'2',dimensionEnergy:'3'}]}]})
+  config.services.push({serviceId:ids[key],billable:true,discountable:true,colorFactorEnabled:true,base:'100.01',dimensions:[{dimensionId:dimension,fd:'1',stages:[{id:'qa-step:'+key,name:'Etapa QA',dimension:'Técnica QA',presentation:{stageId:null,stageDimensionId:null,clusterId:null,cluster:'Preparação técnica' as const,order:null},baseEnergy:'2',dimensionEnergy:'3'}]}]})
  }
  f.pricing.save({revision:f.pricing.get().revision,config})
  return{...f,ids,dimensions}

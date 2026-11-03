@@ -36,8 +36,8 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
 }
 
 export function CalculationView({preview,scenarioName}:{preview:BudgetPreview;scenarioName?:string}){
- const c=preview.snapshot.calculation
- return <section className="budget-preview" aria-label="Prévia de orçamento"><h3>{scenarioName??c.scenarioName}</h3>{c.errors.length>0&&<ul className="form-error">{c.errors.map((e,i)=><li key={i}>{e}</li>)}</ul>}
+ const c=preview.snapshot.calculation,errors=[...c.errors,...(preview.snapshot.pdfPresentation?.errors??[])]
+ return <section className="budget-preview" aria-label="Prévia de orçamento"><h3>{scenarioName??c.scenarioName}</h3>{errors.length>0&&<ul className="form-error">{errors.map((e,i)=><li key={i}>{e}</li>)}</ul>}
  {c.lines.map(l=><article className={`diagnosis-card ${l.included?'':'excluded'}`} key={l.id}><strong>{l.pieceName} · {l.name}</strong><p>{l.dimension} {l.diagnosis} {l.notes}</p>{l.included?<p>{l.billing==='not_billed'?`${l.quantity} · Sem cobrança`:<>{l.quantity} × {money(l.finalUnit)} = {money(l.total)}</>}</p>:<p>{l.quantity} · Fora deste cenário: não integra totais ou PDF.</p>}{l.finalUnit!==l.unit&&<small>Unitário de referência: {money(l.unit)}</small>}</article>)}
  <dl className="budget-summary"><div><dt>Serviços originais</dt><dd>{money(c.originalServiceSubtotal)}</dd></div><div><dt>Serviços efetivos</dt><dd>{money(c.serviceSubtotal)}</dd></div><div><dt>Desconto em serviços</dt><dd>{money(c.discount)}</dd></div><div><dt>Componentes</dt><dd>{money(c.componentSubtotal)}</dd></div><div><dt>Total efetivo</dt><dd>{money(c.total)}</dd></div><div><dt>Energia / dias técnicos</dt><dd>{c.energy??'Pendente'} / {c.days??'Pendente'}</dd></div></dl>
  {preview.snapshot.requestedTotal!==undefined&&<p>Total final desejado: {money(preview.snapshot.requestedTotal)}.</p>}

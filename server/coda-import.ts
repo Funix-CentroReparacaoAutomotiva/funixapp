@@ -1,3 +1,4 @@
+import{referencePresentation,clusterById,clusterName,sourceStageCluster}from'./stage-presentation.ts'
 import{COMMERCIAL_CURATION,servicePolicy}from'../shared/commercial-curation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash} from 'node:crypto'
@@ -163,7 +164,15 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
      pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
     }
-    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy})
+    const prior=referencePresentation(id(TABLES.relations,r),id(TABLES.services,s),id(TABLES.dimensions,d.row))
+    const rawCluster=cell(st,'c-96H1EFHFA1'),clusterId=rawCluster&&typeof rawCluster==='object'&&'rowId'in rawCluster&&typeof rawCluster.rowId==='string'?rawCluster.rowId:null
+    const brokenCluster=rawCluster&&typeof rawCluster==='object'&&'isBroken'in rawCluster&&rawCluster.isBroken
+    let cluster=brokenCluster?null:rawCluster===undefined?(prior?.stageId===st.rowId?prior.cluster:null):clusterId?clusterById(clusterId):clusterName(label(rawCluster))
+    if(sourceStageCluster(st.rowId)&&cluster!==sourceStageCluster(st.rowId))cluster=null
+    const rawOrder=scalar(cell(r,'c-oh6TT09I-z')),order=rawOrder===undefined?prior?.order??null:typeof rawOrder==='number'||typeof rawOrder==='string'&&/^\d+$/.test(rawOrder)?Number(rawOrder):null
+    const presentation={stageId:st.rowId,stageDimensionId:sd.rowId,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
+    if(!cluster)pending(id(TABLES.relations,r),'Categoria de apresentação ausente/não reconhecida; preço/energia preservados, emissão PDF pendente.')
+    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy,presentation})
    }
    const total=number(d.row,'c-wZoGYfi40i')
    if(total===null || !validEnergy || sum(stages.map(st=>Q.from(st.baseEnergy!).add(Q.from(st.dimensionEnergy!)))).cmp(Q.from(total??'0'))!==0){validEnergy=false;pending(id(TABLES.dimensions,d.row),'Conjunto de etapas incompleto/incompatível com a energia total Coda; nenhuma etapa parcial liberada.')}
@@ -191,7 +200,18 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
    else {old.push(v);report.inserts++}
   }
  }
- merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);merge(config.services,services,v=>v.serviceId)
+ merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);// Enrich only absent presentation metadata when the complete old pricing/energy payload matches.
+ for(const incoming of services){
+  const existing=config.services.find(s=>s.serviceId===incoming.serviceId)
+  if(!existing)continue
+  const withoutPresentation=(s:ServicePricing)=>({...s,dimensions:s.dimensions.map(d=>({...d,stages:d.stages.map(({presentation:_,...stage})=>stage)}))})
+  if(digest(withoutPresentation(existing))!==digest(withoutPresentation(incoming)))continue
+  for(const dim of incoming.dimensions)for(const stage of dim.stages){
+   const oldStage=existing.dimensions.find(d=>d.dimensionId===dim.dimensionId)?.stages.find(s=>s.id===stage.id)
+   if(oldStage&&!oldStage.presentation&&stage.presentation){oldStage.presentation=structuredClone(stage.presentation);report.imported.push({source:stage.id,reason:'Metadados de apresentação ausentes acrescentados; preços, energias e IDs preservados.'})}
+  }
+ }
+ merge(config.services,services,v=>v.serviceId)
  const mrOptions=config.resaleMultipliers??=[]
  const mrName=(value:string)=>value.trim().normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
  const localMR=mrOptions.filter(m=>m.id===approvedMR.id || mrName(m.name)===mrName(approvedMR.name))

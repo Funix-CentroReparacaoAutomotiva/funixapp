@@ -45,5 +45,5 @@ export function executionDeadline(setting:ScenarioDeadline|undefined,technicalDa
 // suggestion. Prices, energy and every other existing engine error remain blocking.
 export function budgetBlockingErrors(snapshot:BudgetSnapshot):string[]{
  const d=snapshot.executionDeadline,manual=d?.mode==='manual'&&d.effectiveDays!==null&&snapshot.calculation.energy!==null
- return snapshot.calculation.errors.filter(error=>!(manual&&error==='Capacidade diária global positiva não configurada.'))
+ return [...snapshot.calculation.errors.filter(error=>!(manual&&error==='Capacidade diária global positiva não configurada.')),...(snapshot.pdfPresentation?.errors??[])]
 }

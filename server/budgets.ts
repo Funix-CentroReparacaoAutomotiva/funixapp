@@ -1,3 +1,4 @@
+import{technicalGroups}from'./stage-allocation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync,SQLOutputValue} from 'node:sqlite'
@@ -55,6 +56,7 @@ export class BudgetRepository {
   const calculation=calculate(items,components,catalog,scenario,configuration.config,state.settings,deal)
   const referenced=new Set(items.flatMap(item=>[item.pieceId,item.diagnosisId,...item.services.flatMap(l=>[l.serviceId,l.dimensionId,l.diagnosisId])]).filter((v):v is string=>typeof v==='string'))
   const snapshot:BudgetSnapshot={schema:1,...(scenario.serviceConfirmations?{serviceConfirmations:structuredClone(scenario.serviceConfirmations)}:{}),commercialCuration:{...CURATION_STAMP},...(requestedTotal!==undefined?{requestedTotal}:{}),atendimento,composition:{items,components,catalog:catalog.filter(item=>referenced.has(item.id))},scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),compositionRevision:state.revision,scenarioRevision:scenario.revision,configuration,settings:state.settings,calculation,conditions:configuration.config.conditions}
+  snapshot.pdfPresentation={version:"technical-stage-v1",errors:technicalGroups(snapshot).errors}
   snapshot.executionDeadline=executionDeadline(scenario.deadline,calculation.days)
   if(calculation.total!==null)snapshot.installments=installmentSnapshot(calculation.total,new InstallmentRepository(this.db).get())
   return {snapshot,token:hash(snapshot),canEmit:budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}

@@ -10,6 +10,9 @@ export async function templateCase(name:TemplateCase){
  const db=openDatabase(':memory:')
  try{
   const f=curationFixture(db),components=new ComponentRepository(db)
+  const cfg=f.pricing.get(),original=cfg.config.services.find(s=>s.serviceId===f.service.id)!.dimensions[0]!.stages[0]!
+  cfg.config.services.find(s=>s.serviceId===f.service.id)!.dimensions[0]!.stages=[{...original,id:'qa-prep',name:'Preparação QA',baseEnergy:'2',dimensionEnergy:'0',presentation:{stageId:'qa-prep',stageDimensionId:null,clusterId:null,cluster:'Preparação técnica',order:1}},{...original,id:'qa-paint',name:'Pintura QA',baseEnergy:'3',dimensionEnergy:'0',presentation:{stageId:'qa-paint',stageDimensionId:null,clusterId:null,cluster:'Pintura e acabamento',order:2}}]
+  f.pricing.save({revision:cfg.revision,config:cfg.config})
   f.atendimentos.update(f.at.id,{revision:f.at.revision,name:name==='empty-details'?'':name==='normal'?'Pessoa QA <script>alert(1)</script> & ação':'Cliente sintético QA',phone:'123456',plate:name==='empty-details'?'':'QA00000',vehicle:name==='empty-details'?'':'Veículo sintético'})
   const diagnosis=f.commercial.saveCatalog({kind:'diagnostico',name:'Quebrado QA'})
   let item=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,diagnosisId:diagnosis.id,intensity:'moderado'})

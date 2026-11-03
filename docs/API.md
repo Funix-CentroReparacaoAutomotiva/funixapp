@@ -276,3 +276,9 @@ Esta seção prevalece sobre descrições anteriores de geração síncrona/PDF 
 ### PR39 — template fornecido pela direção
 
 `document.data.financeiro.servicos` apresenta `calculation.serviceNet` para a igualdade “Serviços + Componentes = Total” do HTML recebido. `desconto` permanece destacado, sem segunda dedução; detalhamento por peça continua bruto. Nenhum cálculo oficial nem JSON/PDF já congelado é reescrito. Referência e limitações: `docs/PR39_CONFERENCIA_TEMPLATE.md`.
+
+### PR39 — categorias técnicas e pendências PDF
+
+`TechnicalStage.presentation` opcional preserva `stageId`, `stageDimensionId`, `clusterId`, `cluster` e `order`. Categorias são as cinco opções de `shared/stage-clusters.ts`; ausência/valor desconhecido nunca vira Serviços complementares. Configuração antiga é resolvida somente por IDs exatos da referência offline, sem escrita no getter. PATCH antigo sem o objeto preserva metadados existentes.
+
+`BudgetSnapshot.pdfPresentation = {version:"technical-stage-v1",errors:string[]}` identifica pendências que bloqueiam `canEmit` e a confirmação, preservando os valores do motor. Os clusters agrupam etapas por categoria e contexto peça/diagnóstico; rateio racional usa `line.total × energiaEtapa / energiaServiço`. Categorias representam subtotal bruto efetivo; desconto global não é redistribuído. Centavos de apresentação por maiores restos fecham o subtotal de cada diagnóstico, sem alterar parcelamento, total oficial ou snapshots/PDFs existentes. Detalhes: `docs/PR39_AGRUPAMENTO_ETAPAS.md`.

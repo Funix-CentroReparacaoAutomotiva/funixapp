@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "desktop: missing category is explicit in review, prices remain calculable, confirm is blocked and no PDF/identity is reserved",
+      "pass": true
+    },
+    {
+      "name": "desktop: operator can explicitly classify a stage in existing Settings; both categories persist after reload without inferred defaults",
+      "pass": true
+    },
+    {
+      "name": "desktop: one commercial service is emitted once across two stage categories, original exact total and automatic download preserved; no JS errors or external calls",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

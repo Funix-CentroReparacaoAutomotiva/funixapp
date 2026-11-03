@@ -73,8 +73,8 @@ Template fixo **`FUNIX - Orcamento`**, endpoint HTTPS terminado em `/api/report`
 
 - `meta.id` recebe o OR permanente; data em America/Sao_Paulo.
 - Peças agrupam suas linhas efetivamente habilitadas no cenário. Diagnóstico e intensidade vêm do snapshot.
-- Serviços repetidos são agrupados pelo **ID do serviço**, não por semelhança de nomes. Cada cluster mantém dimensões, quantidades, etapas realmente cadastradas e observações; não inventa nem rateia etapas legadas do Coda.
-- A configuração atual não tem a taxonomia antiga de clusters de etapas do ERP. Usam-se serviços/etapas explícitos do App, sem transportar automaticamente as antigas regras de exposição/injeção de colorimetria. Nomes/renderização desses clusters devem ser conferidos no template real durante homologação.
+- **Decisão vigente posterior:** serviços são distribuídos por energia entre as categorias das etapas técnicas, conforme `CODA_STAGE_CLUSTERS_2026-11-03.json`. Ver `PR39_AGRUPAMENTO_ETAPAS.md` para rateio, desconto global e pendências.
+- A categoria da etapa agora é preservada na configuração/importação, por IDs originais. Não se inventam etapas como Colorimetria quando ausentes; relações não resolvidas bloqueiam a apresentação.
 - Componentes preservam quantidade fracionária e preço unitário final com MR oficial, nunca custo manual no lugar da revenda.
 - Serviços sem cobrança continuam identificados como **Sem cobrança**, sem preço unitário zero artificial. Não entram nos totais ou no desconto.
 - No resumo do template recebido: Serviços líquido + componentes = total à vista; desconto é destacado em quadro separado. Os detalhes por peça continuam brutos, sem rateio inventado. Acréscimo por negociação já está nos unitários oficiais; não se aplica novamente. Moeda é apresentação pt-BR com duas casas; valores exatos permanecem no snapshot.
@@ -132,3 +132,7 @@ Todos os dados, PDFs, credenciais e respostas HTTP usados nos testes são sinté
 ## Conferência posterior do template fornecido
 
 Ver [PR39_CONFERENCIA_TEMPLATE.md](PR39_CONFERENCIA_TEMPLATE.md): HTML real recebido, correção de `financeiro.servicos` para líquido, contrato/renderização local em dez casos, textos fixos, campos não impressos e limite de apresentação de centavos. Esta revisão acrescentou 12 testes Node (265 no total); os resultados anteriores acima permanecem como evidência da entrega inicial. O jsreport produtivo continua sem execução/homologação.
+
+## Correção posterior obrigatória de categorias
+
+O agrupamento inicial por serviço foi substituído pela decisão aprovada de agrupamento por **categorias de etapas**, inclusive quando um serviço participa de várias categorias. Implementação, compatibilidade, rateio e resultados atuais: [PR39_AGRUPAMENTO_ETAPAS.md](PR39_AGRUPAMENTO_ETAPAS.md). Parcelamento aprovado permanece inalterado.

@@ -1,3 +1,4 @@
+import{technicalGroups,categoryCents}from'./stage-allocation.ts'
 // Presentation only, from frozen values. Never reprice or infer technical activities.
 import{exactAmount,centAmount,budgetBlockingErrors}from'./budget-terms.ts'
 import{Q}from'./exact.ts'
@@ -25,18 +26,14 @@ export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenT
  for(const[key]of INSTALLMENT_PLANS){const plan=terms.parcelamento[key];if(!plan||!/^R\$ ?[\d.,]+$/.test(plan.valorParcela)||!/^R\$ ?[\d.,]+$/.test(plan.total))throw Error('Condições de parcelamento incompletas.')}
  const included=c.lines.filter(l=>l.included)
  if(included.some(l=>l.billing!=='not_billed'&&(l.total==null||l.finalUnit==null)))throw Error('Linha de orçamento incompleta.')
- const byPiece=new Map<string,PricedLine[]>()
- for(const line of included){const rows=byPiece.get(line.pieceId)??[];rows.push(line);byPiece.set(line.pieceId,rows)}
- const diagnostics=[...byPiece].map(([pieceId,rows])=>{
-  const item=s.composition.items.find(i=>i.id===pieceId)
-  const rawDiagnosis=s.composition.catalog.find(x=>x.id===item?.diagnosisId)?.name??rows.find(x=>x.diagnosis)?.diagnosis??''
+ const technical=technicalGroups(s)
+ if(technical.errors.length)throw Error(technical.errors.join(' '))
+ const diagnostics=technical.groups.map(group=>{
+  const rows=group.rows,item=s.composition.items.find(i=>i.id===group.pieceId)
+  const rawDiagnosis=s.composition.catalog.find(x=>x.id===group.diagnosisId)?.name??rows.find(x=>x.diagnosis)?.diagnosis??''
   const resumo=[rawDiagnosis,item?.intensity?({leve:'Leve',moderado:'Moderada',severo:'Severa'}as const)[item.intensity]:null].filter(Boolean).join(' · ')
-  const services=rows.filter(l=>l.kind==='service'),components=rows.filter(l=>l.kind==='component'),groups=new Map<string,PricedLine[]>()
-  for(const line of services){const master=item?.services.find(l=>l.id===line.id);if(!master)throw Error('Serviço sem origem no snapshot.');const group=groups.get(master.serviceId)??[];group.push(line);groups.set(master.serviceId,group)}
-  const clusters:JsreportDocument['diagnosticos'][number]['clusters']=[...groups.values()].map(lines=>({
-   tipo:'servico',nome:lines[0]!.name,valor:lines.every(l=>l.billing==='not_billed')?'Sem cobrança':money(sumLines(lines)),
-   descricaoTexto:lines.flatMap(line=>[...line.stages.map(stage=>stage.name),[line.name,line.dimension?`Dimensão: ${line.dimension}`:'',`Qtd.: ${line.quantity}`].filter(Boolean).join(' · '),...(line.notes?[line.notes]:[])])
-  }))
+  const services=rows.filter(l=>l.kind==='service'),components=rows.filter(l=>l.kind==='component'),cents=categoryCents(group.categories)
+  const clusters:JsreportDocument['diagnosticos'][number]['clusters']=group.categories.map(category=>({tipo:'servico',nome:category.name,valor:category.billable?money(cents.get(category.name)!.toString()):'Sem cobrança',descricaoTexto:category.descriptions}))
   if(components.length)clusters.push({tipo:'itens',nome:'Itens',valor:money(sumLines(components)),itensDetalhados:components.map(line=>({nome:line.name,valorUnitario:money(line.finalUnit),quantidade:line.quantity,valorTotal:money(line.total)}))})
   return{nome:rows[0]!.pieceName,resumo,totalServicos:services.some(l=>l.billing!=='not_billed')?money(sumLines(services)):'',totalComponentes:components.length?money(sumLines(components)):'',clusters}
  })

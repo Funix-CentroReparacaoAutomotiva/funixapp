@@ -1,5 +1,7 @@
 # PR39 — conferência com o HTML fornecido pela direção
 
+**Atualização posterior:** o agrupamento por serviço desta conferência foi corrigido para categorias de etapas. O parecer vigente sobre agrupamento/rateio está em [PR39_AGRUPAMENTO_ETAPAS.md](PR39_AGRUPAMENTO_ETAPAS.md).
+
 Complemento de `PR39_EMISSAO_PDF.md`, a partir de `39d0c283b7762a5e6d0ecc6fda02780c2942c2df`. A referência passou a ser o HTML efetivamente fornecido pelo proprietário, preservado em [referencias/pdf/FUNIX_ORCAMENTO_TEMPLATE_FORNECIDO.html](referencias/pdf/FUNIX_ORCAMENTO_TEMPLATE_FORNECIDO.html). A amostra de dados que acompanha a mensagem **não foi versionada**; toda a QA usa dados sintéticos.
 
 Não houve acesso ao jsreport instalado, VPS, Coda ou banco existente, nem merge/deploy. O HTML de referência não é instalado ou enviado para substituir o template: o cliente continua solicitando `template.name = FUNIX - Orcamento` ao serviço existente.
@@ -21,13 +23,13 @@ Exemplo exclusivamente sintético: serviços brutos R$ 300,15, desconto R$ 50,00
 | `veiculo.placa`, `veiculo.modelo` | Campos congelados; opcionais vazios ativam os fallbacks do próprio HTML |
 | `diagnosticos[].nome/resumo` | Peça, diagnóstico e intensidade atuais do snapshot; sem inferência de diagnósticos |
 | `totalServicos`, `totalComponentes` | Detalhamento bruto efetivo; ausência representada por string vazia para os `#if`; componente existente com total zero não é confundido com ausência |
-| `clusters[].nome/valor/descricaoTexto` | Arrays e nomes aceitos pelo template; agrupamento por ID do serviço; etapas, dimensões, quantidades e observações reais do snapshot |
+| `clusters[].nome/valor/descricaoTexto` | Arrays e nomes aceitos pelo template; agrupamento por categoria da etapa (correção posterior); etapas, dimensões, quantidades e observações reais do snapshot |
 | `clusters[].itensDetalhados` | Nomes e totais finais com MR oficial; campos extras de quantidade/unitário continuam disponíveis no snapshot |
 | `condicoes.prazo` | Apenas número de dias; o HTML já acrescenta “dias úteis”, sem duplicação |
 | `parcelamento.tres/seis/nove/doze` | `valorParcela` e `total` formatados; o template não calcula valores ou taxas |
 | `financeiro` | Serviços líquido na igualdade; componentes e total oficiais; desconto vazio quando inexistente, evitando “− R$ 0,00” |
 
-O template é genérico quanto aos nomes dos clusters: a amostra antiga usa grupos de etapas do Coda, mas o HTML não exige esses nomes nem aplica classificação. Não foi recriada a taxonomia antiga nem inventado rateio de valores entre etapas. Atividades sem cobrança aparecem como **Sem cobrança** no cluster, mantendo preço unitário/total da atividade nulos no snapshot; o zero do total agregado do orçamento não cria preço fictício para a atividade.
+O template é genérico quanto aos nomes dos clusters: a amostra antiga usa grupos de etapas do Coda, mas o HTML não exige esses nomes nem aplica classificação. A solicitação posterior aprovou recuperar as categorias e ratear por energia; a implementação vigente está no relatório específico de agrupamento. Atividades sem cobrança aparecem como **Sem cobrança** no cluster, mantendo preço unitário/total da atividade nulos no snapshot; o zero do total agregado do orçamento não cria preço fictício para a atividade.
 
 ## Limitações identificadas no próprio template
 
