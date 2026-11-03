@@ -15,7 +15,7 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
  }finally{setTimeout(()=>URL.revokeObjectURL(url),5000)}
 }
 
-export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onOpenVersion,onTitle}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
+export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
  const requireAuth=useEffectEvent(onAuthRequired)
  const selected=version?.id===versionId?version:null
