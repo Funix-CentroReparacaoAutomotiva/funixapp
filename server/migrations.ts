@@ -220,6 +220,8 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       budget_version_id TEXT NOT NULL UNIQUE REFERENCES budget_versions(id) ON DELETE RESTRICT,
       filename TEXT NOT NULL
     );
+    CREATE TRIGGER immutable_budget_identity_update BEFORE UPDATE ON budget_document_identity BEGIN SELECT RAISE(ABORT,'Budget identities are immutable');END;
+    CREATE TRIGGER immutable_budget_identity_delete BEFORE DELETE ON budget_document_identity BEGIN SELECT RAISE(ABORT,'Budget identities are immutable');END;
   `)}
 ]
 
