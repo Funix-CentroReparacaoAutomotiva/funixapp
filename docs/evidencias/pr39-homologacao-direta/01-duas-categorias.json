@@ -1,0 +1,72 @@
+{
+  "template": {
+    "name": "FUNIX - Orcamento"
+  },
+  "data": {
+    "meta": {
+      "id": "OR-000001",
+      "dataCriacao": "03/11/2026"
+    },
+    "cliente": {
+      "nome": "",
+      "contato": "123456"
+    },
+    "veiculo": {
+      "modelo": "",
+      "placa": ""
+    },
+    "diagnosticos": [
+      {
+        "nome": "Capô",
+        "resumo": "Quebrado QA · Moderada",
+        "totalServicos": "R$ 300,15",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 120,06",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 180,09",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          }
+        ]
+      }
+    ],
+    "condicoes": {
+      "prazo": "4"
+    },
+    "parcelamento": {
+      "tres": {
+        "valorParcela": "R$ 106,05",
+        "total": "R$ 318,16"
+      },
+      "seis": {
+        "valorParcela": "R$ 54,03",
+        "total": "R$ 324,16"
+      },
+      "nove": {
+        "valorParcela": "R$ 36,69",
+        "total": "R$ 330,17"
+      },
+      "doze": {
+        "valorParcela": "R$ 28,01",
+        "total": "R$ 336,17"
+      }
+    },
+    "financeiro": {
+      "servicos": "R$ 300,15",
+      "pecas": "R$ 0,00",
+      "desconto": "",
+      "totalVista": "R$ 300,15"
+    }
+  }
+}

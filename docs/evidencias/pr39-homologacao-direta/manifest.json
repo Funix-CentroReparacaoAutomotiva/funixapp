@@ -1,0 +1,49 @@
+{
+  "revision": "85d8659e0b6bcadb2a18c220e374c63a431334d7",
+  "synthetic": true,
+  "status": "prepared-not-sent",
+  "realJsreportRequests": 0,
+  "realPdfs": 0,
+  "preparation": "Existing in-memory QA fixtures use a mock renderer solely to reserve/freeze adapter data. No mock PDF is delivered as a real document.",
+  "results": [
+    {
+      "file": "01-duas-categorias.json",
+      "sha256": "ec9593aab69f357e06bd51889aa8010ff966eae249556dc1b89186a235a9efd0",
+      "bytes": 1558,
+      "fixture": "empty-details",
+      "categories": [
+        "Preparação técnica",
+        "Pintura e acabamento"
+      ],
+      "diagnosticos": 1,
+      "adapterEqualsFrozenJson": true,
+      "canEmit": true
+    },
+    {
+      "file": "02-servicos-componentes-desconto.json",
+      "sha256": "797481045f6e5a82ab4408af18822fd57ce97b94f0eff789c6ebf50e4858190a",
+      "bytes": 1995,
+      "fixture": "discount",
+      "categories": [
+        "Preparação técnica",
+        "Pintura e acabamento"
+      ],
+      "diagnosticos": 1,
+      "adapterEqualsFrozenJson": true,
+      "canEmit": true
+    },
+    {
+      "file": "03-extenso-21-pecas.json",
+      "sha256": "26cd218128b479ab32a8b62cae11aa51c99f02347b8221e3982f8bbe51cb3945",
+      "bytes": 26186,
+      "fixture": "long",
+      "categories": [
+        "Preparação técnica",
+        "Pintura e acabamento"
+      ],
+      "diagnosticos": 21,
+      "adapterEqualsFrozenJson": true,
+      "canEmit": true
+    }
+  ]
+}
