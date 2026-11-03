@@ -51,4 +51,4 @@ export interface BudgetSnapshot {
  settings: PricingSettings; calculation: Calculation; conditions: string
 }
 export interface BudgetPreview { snapshot: BudgetSnapshot; token: string; canEmit: boolean }
-export interface BudgetVersion {id:string; atendimentoId:string; sequence:number; label:string; createdAt:string; snapshot:BudgetSnapshot}
+export interface BudgetVersion {id:string; atendimentoId:string; sequence:number; label:string; createdAt:string; documentNumber?:string; filename?:string; snapshot:BudgetSnapshot}
