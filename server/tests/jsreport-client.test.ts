@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {openDatabase} from '../database.ts'
-import {BudgetRepository} from '../budgets.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {renderJsreportPdf} from '../jsreport-client.ts'
 import type {JsreportTerms} from '../jsreport-adapter.ts'
@@ -20,8 +20,8 @@ test('jsreport POST uses exact template and structured JSON; PDF validation prev
  try{
   const f=commercialFixture(db),b=new BudgetRepository(db),request={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
   const preview=b.preview(f.at.id,request)
-  const v=b.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:randomUUID()})
-  const pdf=Buffer.from('%PDF-1.7\nsynthetic QA content')
+  const v=(await b.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:randomUUID()}))
+  const pdf=Buffer.from('%PDF-1.7\nsynthetic QA content\n%%EOF')
   let sent=0
   const mock:typeof fetch=async(url,init)=>{
    sent++
@@ -43,5 +43,18 @@ test('jsreport POST uses exact template and structured JSON; PDF validation prev
   await assert.rejects(renderJsreportPdf(v,terms,connection,async()=>new Response('not-pdf',{status:200,headers:{'Content-Type':'application/pdf'}})),/arquivo inválido/)
   await assert.rejects(renderJsreportPdf(v,terms,connection,async()=>{throw Error('private network') }),/não respondeu/)
   await assert.rejects(renderJsreportPdf(v,terms,{...connection,endpoint:'http://external.example/api/report'},mock),/HTTPS/)
+ }finally{db.close()}
+})
+
+test('jsreport rejects truncated, oversized and interrupted streams; timeout and backend-only credentials never leak in errors',async()=>{
+ const db=openDatabase(':memory:');try{
+  const f=commercialFixture(db),b=new BudgetRepository(db),req={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=b.preview(f.at.id,req),v=await b.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:randomUUID()})
+  await assert.rejects(renderJsreportPdf(v,terms,connection,async()=>new Response('%PDF-1.7\nTRUNCATED',{headers:{'Content-Type':'application/pdf'}})),/inválido ou incompleto/)
+  await assert.rejects(renderJsreportPdf(v,terms,{...connection,maxPdfBytes:100},async()=>new Response('%PDF-1.7\n'+'.'.repeat(200)+'\n%%EOF',{headers:{'Content-Type':'application/pdf'}})),e=>(e as{code:string}).code==='PDF_TOO_LARGE')
+  let cancelled=false
+  const stream=new ReadableStream<Uint8Array>({pull(c){c.enqueue(new Uint8Array(64))},cancel(){cancelled=true}})
+  await assert.rejects(renderJsreportPdf(v,terms,{...connection,maxPdfBytes:100},async()=>new Response(stream,{headers:{'Content-Type':'application/pdf'}})),e=>(e as{code:string}).code==='PDF_TOO_LARGE');assert(cancelled)
+  const mock:typeof fetch=async(_url,init)=>new Promise((_resolve,reject)=>{const timer=setTimeout(()=>reject(Error('mock must abort')),1000);init?.signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(Error('private credentials and endpoint must not appear'))},{once:true})})
+  await assert.rejects(renderJsreportPdf(v,terms,{...connection,timeoutMs:10},mock),e=>{assert(!(e as Error).message.includes('credentials'));return(e as{code:string}).code==='PDF_RENDER_UNAVAILABLE'})
  }finally{db.close()}
 })

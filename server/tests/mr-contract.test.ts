@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {ComponentRepository} from '../components.ts'
-import {BudgetRepository} from '../budgets.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {negotiationInput} from '../../src/negotiation.ts'
 import {openDatabase} from '../database.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
@@ -28,7 +28,7 @@ test('MR options and global selection are explicit, revision protected and prese
  }finally{db.close()}
 })
 
-test('global MR ceilings units before fractional quantity, never changes services, rows or previous emissions',()=>{
+test('global MR ceilings units before fractional quantity, never changes services, rows or previous emissions',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db,false),components=new ComponentRepository(db),budgets=new BudgetRepository(db)
@@ -42,7 +42,7 @@ test('global MR ceilings units before fractional quantity, never changes service
   assert.equal(c.componentSubtotal,'27.1125');assert.equal(c.originalServiceSubtotal,'300.15')
   assert.deepEqual(c.lines.filter(l=>l.kind==='component').map(l=>l.unit),['12.05','12.05'])
   assert.equal(c.serviceNet,'300.15');assert.equal(c.adjustment,'0')
-  const version=budgets.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:randomUUID()}),pdf=budgets.pdf(f.at.id,version.id)
+  const version=(await budgets.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:randomUUID()})),pdf=budgets.pdf(f.at.id,version.id)
   components.save(f.at.id,{revision:a.revision,pieceId:a.pieceId,name:a.name,quantity:'0.5',manualPrice:a.manualPrice,notes:a.notes},a.id)
   f.pricing.saveSettings(f.at.id,{revision:f.pricing.settings(f.at.id).revision,mrId:'zero'})
   assert.equal(budgets.preview(f.at.id,request).snapshot.calculation.componentSubtotal,'0')

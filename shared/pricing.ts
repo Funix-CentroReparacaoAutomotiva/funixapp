@@ -46,6 +46,7 @@ export type Negotiation = {mode:'none'} | {mode:'discount'|'adjust'; value:strin
 // Optional input scope translates a requested whole-budget total into the existing service adjustment.
 export type NegotiationInput = Negotiation | {mode:'adjust'; value:string; acknowledgeResidual:boolean; valueIncludesComponents:true}
 export interface BudgetSnapshot {
+ installments?:import('./budget-terms.ts').InstallmentSnapshot;executionDeadline?:import('./budget-terms.ts').ExecutionDeadline;document?:{template:string;data:import('./budget-terms.ts').JsreportDocument}
  schema: 1; serviceConfirmations?:Record<string,string>; commercialCuration?:{version:string;digest:string}; issuedAt?: string; requestedTotal?: string; composition: {items:DiagnosisItem[];components:ComponentItem[];catalog:CatalogItem[]}; atendimento: Atendimento; scenarioId: string; scenarioName: string
  compositionRevision: number; scenarioRevision: number; configuration: PricingConfiguration
  settings: PricingSettings; calculation: Calculation; conditions: string

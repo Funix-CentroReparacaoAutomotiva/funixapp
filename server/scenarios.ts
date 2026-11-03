@@ -45,7 +45,7 @@ export class ScenarioRepository {
       return grouped
     }
     const pieces=flags('scenario_piece_flags','piece_id'),services=flags('scenario_service_flags','service_id'),components=flags('scenario_component_flags','component_id')
-    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row=>({id:String(row.id),atendimentoId:at,name:String(row.name),position:Number(row.position),revision:Number(row.revision),pieceFlags:pieces.get(String(row.id))??{},serviceFlags:services.get(String(row.id))??{},componentFlags:components.get(String(row.id))??{},...(confirmations.has(String(row.id))?{serviceConfirmations:confirmations.get(String(row.id))}:{})}))
+    return this.db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(row=>({id:String(row.id),atendimentoId:at,name:String(row.name),position:Number(row.position),deadline:{mode:row.deadline_mode as 'automatic'|'manual',manualDays:row.deadline_days===null?null:Number(row.deadline_days)},revision:Number(row.revision),pieceFlags:pieces.get(String(row.id))??{},serviceFlags:services.get(String(row.id))??{},componentFlags:components.get(String(row.id))??{},...(confirmations.has(String(row.id))?{serviceConfirmations:confirmations.get(String(row.id))}:{})}))
   }
 
   create(at: string, input: unknown) {
@@ -84,13 +84,20 @@ export class ScenarioRepository {
     })
   }
   update(at: string, id: string, input: unknown) {
-    const data = inputObject(input, ['revision','name','pieceFlags','serviceFlags','componentFlags'])
+    const data = inputObject(input, ['revision','name','pieceFlags','serviceFlags','componentFlags','deadline'])
     if (!Number.isSafeInteger(data.revision)) invalid('Informe a revisão do cenário.')
     return transaction(this.db, () => {
       selectedScenario(this.db, at, id, data.revision)
       if (data.name !== undefined) {
         if (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 100) invalid('Nome de cenário inválido.')
         this.db.prepare('UPDATE scenarios SET name=? WHERE id=?').run(data.name.trim(),id)
+      }
+      if(data.deadline!==undefined){
+        const deadline=inputObject(data.deadline,['mode','manualDays'])
+        if(deadline.mode!=='automatic'&&deadline.mode!=='manual')invalid('Modo de prazo inválido.')
+        if(deadline.mode==='manual'&&(!Number.isSafeInteger(deadline.manualDays)||Number(deadline.manualDays)<=0))invalid('Prazo manual exige dias úteis inteiros positivos.')
+        if(deadline.mode==='automatic'&&deadline.manualDays!==null)invalid('Prazo automático não possui substituição manual.')
+        this.db.prepare('UPDATE scenarios SET deadline_mode=?,deadline_days=? WHERE id=?').run(deadline.mode,deadline.mode==='manual'?Number(deadline.manualDays):null,id)
       }
       for (const [field,table,column] of [['pieceFlags','scenario_piece_flags','piece_id'],['serviceFlags','scenario_service_flags','service_id'],['componentFlags','scenario_component_flags','component_id']]) {
         if (data[field] === undefined) continue

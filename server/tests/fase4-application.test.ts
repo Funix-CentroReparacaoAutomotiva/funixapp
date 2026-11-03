@@ -10,7 +10,7 @@ import{commercialFixture}from'./fixtures/commercial.ts'
 import{applySuggestedServices}from'../apply-recommendations.ts'
 import{recommendations}from'../diagnosis-recommendations.ts'
 import{ComponentRepository}from'../components.ts'
-import{BudgetRepository}from'../budgets.ts'
+import{BudgetRepository}from'./fixtures/budget-renderer.ts'
 import{executionScope,compareRecommendations}from'../../shared/commercial-curation.ts'
 import{sourceId,TABLES}from'../coda-import-source.ts'
 import type{RecommendationApplicationRequest}from'../../shared/commercial.ts'
@@ -74,10 +74,10 @@ test('Fase4 capacity and actual write failure roll back all inserts/flags/origin
   }finally{db.close()}
  }
 })
-test('Fase4 new suggestions do not alter financial rules, component MR, technical totals or frozen budgets/PDF; third parties require explicit confirmation',()=>{
+test('Fase4 new suggestions do not alter financial rules, component MR, technical totals or frozen budgets/PDF; third parties require explicit confirmation',async ()=>{
  const db=openDatabase(':memory:')
  try{
-  const f=fase4Fixture(db,false),b=new BudgetRepository(db);new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'QA componente',manualPrice:'10.01',quantity:'0.25',notes:''});const s=f.scenarios.list(f.at.id)[0]!,input={scenarioId:s.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,input),v=b.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()}),pdf=b.pdf(f.at.id,v.id)
+  const f=fase4Fixture(db,false),b=new BudgetRepository(db);new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'QA componente',manualPrice:'10.01',quantity:'0.25',notes:''});const s=f.scenarios.list(f.at.id)[0]!,input={scenarioId:s.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,input),v=(await b.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})),pdf=b.pdf(f.at.id,v.id)
   ready(f);const req=request(f,'assisted',recommendations(db,f.diagnosis.id,'leve').map(r=>r.id)),settings=f.pricing.settings(f.at.id).settings,r=applySuggestedServices(db,f.at.id,f.item.id,req);assert(r.item.services.at(-1)!.executionConfirmed===false);assert.equal(db.prepare('SELECT COUNT(*)n FROM scenario_service_confirmations').get()!.n,0)
   assert(b.preview(f.at.id,input).snapshot.calculation.errors.some(e=>e.toLowerCase().includes('confirm')));assert.equal(b.preview(f.at.id,input).snapshot.calculation.componentSubtotal,preview.snapshot.calculation.componentSubtotal);assert.deepEqual(f.pricing.settings(f.at.id).settings,settings);assert.deepEqual(b.get(f.at.id,v.id),v);assert.deepEqual(b.pdf(f.at.id,v.id),pdf)
   const scene=f.scenarios.list(f.at.id)[0]!,external=r.item.services.find(l=>l.serviceId===f.entries[5]!.serviceId)!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,serviceFlags:{[external.id]:false}});const p=b.preview(f.at.id,input);assert(p.canEmit);assert.equal(p.snapshot.calculation.energy,'21');assert.equal(p.snapshot.calculation.days,'6')
@@ -88,7 +88,7 @@ test('Fase4 V9→V10 additive origin/receipt migration preserves all existing re
  try{
   db.exec('PRAGMA foreign_keys=ON');v9(db);const f=commercialFixture(db),before=db.prepare('SELECT * FROM diagnosis_services').all(),settings=f.pricing.settings(f.at.id)
   db.exec('CREATE VIEW recommendation_applications AS SELECT id FROM scenarios');assert.throws(()=>migrate(db));assert(!db.prepare('PRAGMA table_info(diagnosis_services)').all().some(c=>c.name==='recommendation_rule_id'));assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,9);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all(),before)
-  db.exec('DROP VIEW recommendation_applications');migrate(db);assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,11);assert.deepEqual(f.pricing.settings(f.at.id),settings);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all().map(({recommendation_rule_id,...r})=>{assert.equal(recommendation_rule_id,null);return{...r}}),before.map(r=>({...r})));assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+  db.exec('DROP VIEW recommendation_applications');migrate(db);assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,12);assert.deepEqual(f.pricing.settings(f.at.id),settings);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all().map(({recommendation_rule_id,...r})=>{assert.equal(recommendation_rule_id,null);return{...r}}),before.map(r=>({...r})));assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
 test('Fase4 ambiguous suggestions require explicit dimension choice, preserving exact rule identity without automatic inference',()=>{

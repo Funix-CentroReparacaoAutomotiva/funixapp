@@ -7,7 +7,7 @@ import{randomUUID}from'node:crypto'
 import{openDatabase}from'../database.ts'
 import{PricingConfigurationRepository}from'../pricing-config.ts'
 import{ComponentRepository}from'../components.ts'
-import{BudgetRepository}from'../budgets.ts'
+import{BudgetRepository}from'./fixtures/budget-renderer.ts'
 import{commercialFixture}from'./fixtures/commercial.ts'
 import{financialDefaults}from'../../shared/financial-defaults.ts'
 import{canonicalPercent,percentInput,percentToFactor,legacyPercent,resolveMR}from'../../shared/mr.ts'
@@ -68,7 +68,7 @@ test('Fase2 one-time legacy initialization preserves explicit null/zero/manual c
   assert.equal(f.pricing.settings(at.id).settings.mrId,'reduction');assert.equal(resolveMR(f.pricing.settings(at.id).settings,cfg.config).factor,'0.8')
  }finally{db.close()}
 })
-for(const[percent,unit,total]of[['20','120.05','30.0125'],['30','130.05','32.5125'],['0','100.05','25.0125'],['25.5','125.55','31.3875'],['0.000001','100.05','25.0125']]as const)test('Fase2 MR '+percent+'% exact unit ceiling before fractional quantity; shared scenarios and frozen emissions',()=>{
+for(const[percent,unit,total]of[['20','120.05','30.0125'],['30','130.05','32.5125'],['0','100.05','25.0125'],['25.5','125.55','31.3875'],['0.000001','100.05','25.0125']]as const)test('Fase2 MR '+percent+'% exact unit ceiling before fractional quantity; shared scenarios and frozen emissions',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db),parts=new ComponentRepository(db),b=new BudgetRepository(db),part=parts.save(f.at.id,{pieceId:f.item.id,name:'QA componente',quantity:'0.25',manualPrice:'100.01',notes:''})
@@ -77,7 +77,7 @@ for(const[percent,unit,total]of[['20','120.05','30.0125'],['30','130.05','32.512
   const scene=f.scenarios.list(f.at.id)[0]!,two=f.scenarios.create(f.at.id,{name:'Outro',duplicateFrom:scene.id,sourceRevision:scene.revision}),req={scenarioId:scene.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,req),calc=preview.snapshot.calculation
   assert(preview.canEmit);assert.equal(calc.componentSubtotal,total);assert.equal(calc.originalServiceSubtotal,'300.15');assert.equal(calc.lines.find(l=>l.id===part.id)!.unit,unit);assert.equal(calc.lines.find(l=>l.id===part.id)!.factors.MRPercent,percent)
   assert.equal(b.preview(f.at.id,{...req,scenarioId:two.id}).snapshot.calculation.componentSubtotal,total)
-  const v=b.emit(f.at.id,{...req,previewToken:preview.token,idempotencyKey:randomUUID()}),pdf=b.pdf(f.at.id,v.id)
+  const v=(await b.emit(f.at.id,{...req,previewToken:preview.token,idempotencyKey:randomUUID()})),pdf=b.pdf(f.at.id,v.id)
   assert.equal(v.snapshot.settings.mrPercent,percent)
   f.pricing.saveSettings(f.at.id,{revision:f.pricing.settings(f.at.id).revision,mrPercent:'50'})
   assert.deepEqual(b.get(f.at.id,v.id),v);assert.deepEqual(b.pdf(f.at.id,v.id),pdf)
@@ -94,12 +94,12 @@ test('Fase2 invalid writes and stale revisions preserve MR; dual interpretation 
   assert.equal(f.pricing.settings(f.at.id).settings.mrPercent,'0');assert.equal(f.pricing.settings(f.at.id).settings.mrId,null)
  }finally{db.close()}
 })
-test('Fase2 FC/FR factor edits retain identity, change applicable draft prices, invalidate previews, freeze PDF',()=>{
+test('Fase2 FC/FR factor edits retain identity, change applicable draft prices, invalidate previews, freeze PDF',async ()=>{
  const db=openDatabase(':memory:')
  try{
-  const f=commercialFixture(db),budgets=new BudgetRepository(db),req={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=budgets.preview(f.at.id,req),v=budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:randomUUID()}),pdf=budgets.pdf(f.at.id,v.id)
+  const f=commercialFixture(db),budgets=new BudgetRepository(db),req={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=budgets.preview(f.at.id,req),v=(await budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:randomUUID()})),pdf=budgets.pdf(f.at.id,v.id)
   for(const key of['colors','risks']as const){const c=f.pricing.get();c.config[key][0]!.factor='1.05';f.pricing.save({revision:c.revision,config:c.config});assert.equal(c.config[key][0]!.id,key==='colors'?'color':'risk');assert.notEqual(budgets.preview(f.at.id,req).snapshot.calculation.total,p.snapshot.calculation.total)}
-  assert.throws(()=>budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:randomUUID()}))
+  await assert.rejects(async ()=>(await budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:randomUUID()})))
   assert.deepEqual(budgets.get(f.at.id,v.id),v);assert.deepEqual(budgets.pdf(f.at.id,v.id),pdf)
   const settings=f.pricing.settings(f.at.id).settings,config=f.pricing.get().config;config.colors[0]!.factor=null
   assert(calculate(f.commercial.list(f.at.id),[],f.commercial.catalogs().items,f.scenarios.list(f.at.id)[0]!,config,settings).errors.length>0)

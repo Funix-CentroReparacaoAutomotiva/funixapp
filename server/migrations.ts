@@ -222,6 +222,22 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     );
     CREATE TRIGGER immutable_budget_identity_update BEFORE UPDATE ON budget_document_identity BEGIN SELECT RAISE(ABORT,'Budget identities are immutable');END;
     CREATE TRIGGER immutable_budget_identity_delete BEFORE DELETE ON budget_document_identity BEGIN SELECT RAISE(ABORT,'Budget identities are immutable');END;
+  `)},
+  {version:12,apply:db=>db.exec(`
+    ALTER TABLE scenarios ADD COLUMN deadline_mode TEXT NOT NULL DEFAULT 'automatic' CHECK(deadline_mode IN ('automatic','manual'));
+    ALTER TABLE scenarios ADD COLUMN deadline_days INTEGER CHECK(deadline_days IS NULL OR (typeof(deadline_days)='integer' AND deadline_days>0));
+    CREATE TABLE installment_configuration(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL CHECK(revision>0),rates TEXT NOT NULL,updated_at TEXT NOT NULL);
+    INSERT INTO installment_configuration VALUES(1,1,'{"tres":"6","seis":"8","nove":"10","doze":"12"}',strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+    CREATE TABLE budget_emission_attempts(
+      serial INTEGER PRIMARY KEY AUTOINCREMENT,
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,
+      idempotency_key TEXT NOT NULL,request_hash TEXT NOT NULL,
+      version_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,snapshot TEXT NOT NULL,
+      state TEXT NOT NULL CHECK(state IN ('rendering','failed','issued')),
+      lease_token TEXT NOT NULL,lease_expires INTEGER NOT NULL,
+      UNIQUE(atendimento_id,idempotency_key)
+    );
+    INSERT INTO sqlite_sequence(name,seq) VALUES('budget_emission_attempts',(SELECT COALESCE(MAX(serial),0) FROM budget_document_identity));
   `)}
 ]
 

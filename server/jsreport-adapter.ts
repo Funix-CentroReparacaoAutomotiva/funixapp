@@ -1,69 +1,50 @@
-// Convert the immutable commercial snapshot to the existing FUNIX jsreport template contract.
-// This module never calculates prices, installments or delivery promises.
-import {Q} from './exact.ts'
-import type {BudgetVersion,PricedLine} from '../shared/pricing.ts'
+// Presentation only, from frozen values. Never reprice or infer technical activities.
+import{exactAmount,centAmount,budgetBlockingErrors}from'./budget-terms.ts'
+import{Q}from'./exact.ts'
+import type{BudgetSnapshot,BudgetVersion,PricedLine}from'../shared/pricing.ts'
+import type{JsreportDocument,JsreportTerms}from'../shared/budget-terms.ts'
+import{INSTALLMENT_PLANS}from'../shared/budget-terms.ts'
+export type{JsreportDocument,JsreportTerms}from'../shared/budget-terms.ts'
 
-type Installment={valorParcela:string;total:string}
-export type JsreportTerms={
- prazoDiasUteis:string
- parcelamento:{tres:Installment;seis:Installment;nove:Installment;doze:Installment}
-}
-export interface JsreportDocument{
- meta:{id:string;dataCriacao:string}
- cliente:{nome:string;contato:string}
- veiculo:{modelo:string;placa:string}
- diagnosticos:{nome:string;resumo:string;totalServicos:string;totalComponentes:string;clusters:({tipo:'servico';nome:string;valor:string;descricaoTexto:string[]}|{tipo:'itens';nome:'Itens';valor:string;itensDetalhados:{nome:string;valorUnitario:string;quantidade:string;valorTotal:string}[]})[]}[]
- condicoes:{prazo:string}
- parcelamento:JsreportTerms['parcelamento']
- financeiro:{servicos:string;pecas:string;desconto:string;totalVista:string}
-}
 function money(value:string|null|undefined):string{
- if(value==null||!/^[-+]?\d+(?:\.\d+)?$/.test(value))throw Error('Valor monetário do orçamento inválido.')
- const n=Q.from(value),negative=n.n<0n
- const positive=negative?n.mul(new Q(-1n)).toString():n.toString()
- const [w,part='']=positive.split('.')
- const grouped=w.replace(/\B(?=(\d{3})+(?!\d))/g,'.')
- // Preserve sub-cent fractions exactly; never silently round the pricing engine.
- return (negative?'-':'')+'R$'+grouped+','+part.padEnd(2,'0')
+ if(value==null)throw Error('Valor monetário do orçamento inválido.')
+ const formatted=centAmount(exactAmount(value)),negative=formatted.startsWith('-'),[whole,fraction]=(negative?formatted.slice(1):formatted).split('.')
+ return(negative?'-':'')+'R$ '+whole.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+fraction
 }
-function sumLines(lines:PricedLine[],kind:'service'|'component'):string{
- return lines.filter(l=>l.kind===kind&&l.billing!=='not_billed').reduce((total,l)=>total.add(Q.from(l.total!)),Q.from('0')).toString()
+function sumLines(lines:PricedLine[]):string{return lines.filter(l=>l.billing!=='not_billed').reduce((sum,l)=>sum.add(exactAmount(l.total!)),new Q(0n)).toString()}
+export function frozenTerms(snapshot:BudgetSnapshot):JsreportTerms{
+ if(!snapshot.installments||!snapshot.executionDeadline?.effectiveDays)throw Error('Condições de emissão incompletas.')
+ const parcelamento={}as JsreportTerms['parcelamento']
+ for(const[key]of INSTALLMENT_PLANS){const plan=snapshot.installments.plans[key];parcelamento[key]={valorParcela:money(plan.unit),total:money(plan.total)}}
+ return{prazoDiasUteis:String(snapshot.executionDeadline.effectiveDays),parcelamento}
 }
-export function toJsreportData(version:BudgetVersion,terms:JsreportTerms):JsreportDocument{
+export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenTerms(version.snapshot)):JsreportDocument{
  const s=version.snapshot,c=s.calculation
- if(!version.documentNumber||c.errors.length||c.total==null||c.serviceSubtotal==null||c.componentSubtotal==null)throw Error('Emissão sem identificação ou cálculo completo.')
- if(!/^\d+$/.test(terms.prazoDiasUteis)||Number(terms.prazoDiasUteis)<1)throw Error('Prazo comercial em dias úteis não informado.')
- for(const plan of Object.values(terms.parcelamento)){
-  if(!plan||typeof plan.valorParcela!=='string'||typeof plan.total!=='string'||!/^R\$ ?[\d.,]+$/.test(plan.valorParcela)||!/^R\$ ?[\d.,]+$/.test(plan.total))throw Error('Condições de parcelamento incompletas.')
- }
- const included=c.lines.filter(l=>l.included&&l.billing!=='not_billed')
- if(included.some(l=>l.total==null||l.finalUnit==null))throw Error('Linha de orçamento incompleta.')
+ if(!version.documentNumber||budgetBlockingErrors(s).length||c.total==null||c.serviceSubtotal==null||c.componentSubtotal==null)throw Error('Emissão sem identificação ou cálculo completo.')
+ if(!/^\d+$/.test(terms.prazoDiasUteis)||!Number.isSafeInteger(Number(terms.prazoDiasUteis))||Number(terms.prazoDiasUteis)<1)throw Error('Prazo comercial em dias úteis não informado.')
+ for(const[key]of INSTALLMENT_PLANS){const plan=terms.parcelamento[key];if(!plan||!/^R\$ ?[\d.,]+$/.test(plan.valorParcela)||!/^R\$ ?[\d.,]+$/.test(plan.total))throw Error('Condições de parcelamento incompletas.')}
+ const included=c.lines.filter(l=>l.included)
+ if(included.some(l=>l.billing!=='not_billed'&&(l.total==null||l.finalUnit==null)))throw Error('Linha de orçamento incompleta.')
  const byPiece=new Map<string,PricedLine[]>()
  for(const line of included){const rows=byPiece.get(line.pieceId)??[];rows.push(line);byPiece.set(line.pieceId,rows)}
  const diagnostics=[...byPiece].map(([pieceId,rows])=>{
   const item=s.composition.items.find(i=>i.id===pieceId)
   const rawDiagnosis=s.composition.catalog.find(x=>x.id===item?.diagnosisId)?.name??rows.find(x=>x.diagnosis)?.diagnosis??''
-  const intensity=item?.intensity
-  const resumo=[rawDiagnosis,intensity?({leve:'Leve',moderado:'Moderada',severo:'Severa'} as const)[intensity]:null].filter(Boolean).join(' · ')
-  const services=rows.filter(l=>l.kind==='service')
-  const components=rows.filter(l=>l.kind==='component')
-  const clusters:JsreportDocument['diagnosticos'][number]['clusters']=services.map(line=>({
-   tipo:'servico',nome:line.name,valor:money(line.total),
-   // No fabricated category or technical activities: use the explicit service wording only.
-   descricaoTexto:[line.name,...(line.notes?[line.notes]:[])]
+  const resumo=[rawDiagnosis,item?.intensity?({leve:'Leve',moderado:'Moderada',severo:'Severa'}as const)[item.intensity]:null].filter(Boolean).join(' · ')
+  const services=rows.filter(l=>l.kind==='service'),components=rows.filter(l=>l.kind==='component'),groups=new Map<string,PricedLine[]>()
+  for(const line of services){const master=item?.services.find(l=>l.id===line.id);if(!master)throw Error('Serviço sem origem no snapshot.');const group=groups.get(master.serviceId)??[];group.push(line);groups.set(master.serviceId,group)}
+  const clusters:JsreportDocument['diagnosticos'][number]['clusters']=[...groups.values()].map(lines=>({
+   tipo:'servico',nome:lines[0]!.name,valor:lines.every(l=>l.billing==='not_billed')?'Sem cobrança':money(sumLines(lines)),
+   descricaoTexto:lines.flatMap(line=>[...line.stages.map(stage=>stage.name),[line.name,line.dimension?`Dimensão: ${line.dimension}`:'',`Qtd.: ${line.quantity}`].filter(Boolean).join(' · '),...(line.notes?[line.notes]:[])])
   }))
-  if(components.length)clusters.push({tipo:'itens',nome:'Itens',valor:money(sumLines(components,'component')),itensDetalhados:components.map(line=>({
-   nome:line.name,valorUnitario:money(line.finalUnit),quantidade:line.quantity,valorTotal:money(line.total)
-  }))})
-  return {nome:rows[0]!.pieceName,resumo,totalServicos:money(sumLines(services,'service')),totalComponentes:components.length?money(sumLines(components,'component')):'',clusters}
+  if(components.length)clusters.push({tipo:'itens',nome:'Itens',valor:money(sumLines(components)),itensDetalhados:components.map(line=>({nome:line.name,valorUnitario:money(line.finalUnit),quantidade:line.quantity,valorTotal:money(line.total)}))})
+  return{nome:rows[0]!.pieceName,resumo,totalServicos:services.some(l=>l.billing!=='not_billed')?money(sumLines(services)):'',totalComponentes:components.length?money(sumLines(components)):'',clusters}
  })
- return {
+ return{
   meta:{id:version.documentNumber,dataCriacao:new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(version.createdAt))},
   cliente:{nome:s.atendimento.name,contato:s.atendimento.phone},
   veiculo:{modelo:s.atendimento.vehicle||[s.atendimento.brand,s.atendimento.model].filter(Boolean).join(' '),placa:s.atendimento.plate},
-  diagnosticos:diagnostics,
-  condicoes:{prazo:terms.prazoDiasUteis},
-  parcelamento:structuredClone(terms.parcelamento),
-  financeiro:{servicos:money(c.serviceSubtotal),pecas:money(c.componentSubtotal),desconto:c.discount==='0'?'':money(c.discount),totalVista:money(c.total)}
+  diagnosticos:diagnostics,condicoes:{prazo:terms.prazoDiasUteis},parcelamento:structuredClone(terms.parcelamento),
+  financeiro:{servicos:money(c.serviceSubtotal),pecas:money(c.componentSubtotal),desconto:exactAmount(c.discount).n===0n?'':money(c.discount),totalVista:money(c.total)}
  }
 }

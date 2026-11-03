@@ -3,6 +3,8 @@ import{recommendations}from'./diagnosis-recommendations.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import type { AtendimentoRepository } from './atendimentos.ts'
+import{InstallmentRepository}from'./budget-terms.ts'
+import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
@@ -12,6 +14,7 @@ import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
 
 export interface AppOptions {
+  budgetRenderer?:BudgetOptions['render']
   atendimentos: AtendimentoRepository
   password?: string
   origin?: string
@@ -24,7 +27,7 @@ export function createRequestHandler(options: AppOptions) {
   const scenarios = new ScenarioRepository(options.atendimentos.db)
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
-  const budgets = new BudgetRepository(options.atendimentos.db)
+  const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const now = options.now ?? Date.now
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
@@ -104,7 +107,7 @@ export function createRequestHandler(options: AppOptions) {
           if (pdf) {
             const data = budgets.pdf(at,id), version = budgets.get(at,id)
             res.setHeader('Content-Type','application/pdf')
-            res.setHeader('Content-Disposition',`attachment; filename="FUNIX-orcamento-${version.documentNumber?.replace(/[^A-Za-z0-9-]/g,'')??version.label}.pdf"; filename*=UTF-8\'\'${encodeURIComponent(version.filename??`FUNIX-orcamento-${version.label}.pdf`)}`)
+            res.setHeader('Content-Disposition',`attachment; filename="FUNIX-orcamento-${version.documentNumber?.replace(/[^A-Za-z0-9-]/g,'')??version.label}.pdf"; filename*=UTF-8''${encodeURIComponent(version.filename??`FUNIX-orcamento-${version.label}.pdf`)}`)
             res.setHeader('Content-Length',data.length)
             res.writeHead(200);res.end(data);return
           }
@@ -114,7 +117,15 @@ export function createRequestHandler(options: AppOptions) {
         if (req.headers.origin !== origin) return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie um corpo JSON.')
         const body = await readJson(req,64*1024)
-        return send(id === 'previa' ? 200 : 201,id === 'previa' ? budgets.preview(at,body) : budgets.emit(at,body))
+        return send(id === 'previa' ? 200 : 201,id === 'previa' ? budgets.preview(at,body) : await budgets.emit(at,body))
+      }
+      if(url.pathname==='/api/parcelamento'){
+        const repository=new InstallmentRepository(options.atendimentos.db)
+        if(req.method==='GET')return send(200,repository.get())
+        if(req.method!=='PATCH')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        return send(200,repository.save(await readJson(req,4096)))
       }
       const globalPricing = url.pathname === '/api/precificacao'
       const pricingRoute = /^\/api\/atendimentos\/([^/]{1,100})\/(parametros|componentes)(?:\/([^/]{1,100}))?$/.exec(url.pathname)

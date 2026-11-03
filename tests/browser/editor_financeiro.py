@@ -189,7 +189,7 @@ async def run():
      else:await route.continue_()
     await page.route('**'+path+'/orcamentos',lost_emit)
     await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('alert')).to_be_visible()
-    await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name='Orçamento A emitido')).to_be_visible();await page.unroute('**'+path+'/orcamentos',lost_emit)
+    await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name=f"Orçamento {(await get(path+'/orcamentos'))[0]['documentNumber']} emitido")).to_be_visible();await page.unroute('**'+path+'/orcamentos',lost_emit)
     versions=await get(path+'/orcamentos');assert len(versions)==1
     v=await get(path+'/orcamentos/'+versions[0]['id']);assert v['snapshot']['calculation']['total']=='2700' and v['snapshot']['calculation']['componentSubtotal']=='450'
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');pdf_hash=hashlib.sha256(await pdf.body()).hexdigest()

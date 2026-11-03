@@ -8,6 +8,10 @@ A Issue #7 autoriza desenvolvimento/commits/PRs, sem merge ou deploy. [Relatóri
 
 A atualização atual está descrita em [Editor e painel financeiro aprovados](docs/EDITOR_FINANCEIRO_APROVADO.md): autosave, componentes dentro do diagnóstico, MR único e emissão direta com conferência. O menu superior de cenários dá acesso ao histórico/PDF do Atendimento. Catálogos e Precificação ficam na área global **Configurações** (`/configuracoes`), ao lado de Conversas e Funil. [Ajustes pós-auditoria](docs/PR17_AJUSTES_AUDITORIA.md) e [migração V7](docs/MIGRACAO_V7_MR.md).
 
+## Emissão com jsreport — PR #39
+
+[Contrato, configuração, validação e pendências de homologação](docs/PR39_EMISSAO_PDF.md). Novas emissões usam o template existente por HTTP autenticado no backend; exigem `FUNIX_JSREPORT_ENDPOINT`, `FUNIX_JSREPORT_USERNAME` e `FUNIX_JSREPORT_PASSWORD`. Não há fallback silencioso. Parcelamento é global em Configurações; prazo comercial automático/manual pertence ao cenário. Snapshot, condições, identidade OR e PDF são preservados juntos, com download após confirmação. PDFs históricos permanecem acessíveis mesmo sem o renderer configurado.
+
 ## Executar localmente
 
 Requisitos: Node 24 e npm 11, conforme `.nvmrc` e `package.json`.

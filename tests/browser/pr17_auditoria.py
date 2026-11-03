@@ -140,7 +140,7 @@ async def device_case(browser,device,viewport):
   await page.unroute('**'+path+'/parametros',unavailable);await finance.get_by_role('button',name='Atualizar valores',exact=True).click();await expect(finance).to_have_attribute('data-calculation-state','incomplete')
   await select_mr(finance,cfg['resaleMultipliers'][0]['id']);await expect(finance.locator('.metric').nth(1)).to_contain_text('450,00')
   await finance.get_by_role('button',name='Emitir orçamento',exact=True).click();review=page.get_by_role('dialog',name='Conferência do orçamento')
-  await review.get_by_role('checkbox').check();await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name='Orçamento A emitido')).to_be_visible()
+  await review.get_by_role('checkbox').check();await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name='Orçamento OR-000001 emitido')).to_be_visible()
   async with page.expect_download() as pending:await review.get_by_role('button',name='Baixar PDF',exact=True).click()
   download=await pending.value;file=ARTIFACTS/f'{device}-orcamento-mr.pdf';await download.save_as(str(file))
   text_file=file.with_suffix('.txt');subprocess.run(['pdftotext','-layout',str(file),str(text_file)],check=True)

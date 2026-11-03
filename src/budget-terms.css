@@ -1,0 +1,14 @@
+.settings-tabs{flex-wrap:wrap}
+.installment-rates{border-collapse:collapse;width:100%;margin:12px 0}
+.installment-rates th,.installment-rates td{text-align:left;padding:8px;border-bottom:1px solid #d4e0ef}
+.installment-rates input{width:100%;max-width:140px;border:1px solid #cbd9e9;border-radius:12px;padding:8px}
+.execution-deadline{margin:12px 0;padding-top:10px;border-top:1px solid #ffffff30;font-size:12px}
+.deadline-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.deadline-toggle{display:flex;align-items:center;gap:5px;background:transparent;border:0;color:inherit;font-size:11px;padding:4px 0;min-height:36px}
+.deadline-toggle svg{width:22px;height:18px;color:inherit}
+.deadline-value{margin:4px 0;text-align:right}
+.deadline-manual{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.deadline-manual input{min-width:0;width:100px;padding:7px 10px;border:1px solid #9cacc7;background:transparent;color:inherit;border-radius:18px;text-align:right}
+.deadline-notice{font-size:11px;margin:5px 0;color:inherit}
+.execution-deadline [role=alert]{font-size:11px}
+.execution-deadline [role=alert] button{border:1px solid #9cacc7;border-radius:12px;background:transparent;color:inherit;padding:6px;margin:3px 5px 0 0}

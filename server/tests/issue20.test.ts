@@ -8,7 +8,7 @@ import {calculate} from '../pricing-engine.ts'
 import {openDatabase} from '../database.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {PricingConfigurationRepository} from '../pricing-config.ts'
-import {BudgetRepository} from '../budgets.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {codaFixture,set,pushRow,row,ref,table} from './fixtures/coda-import.ts'
 import {planImport,applyImport} from '../coda-import.ts'
 import {TABLES} from '../coda-import-source.ts'
@@ -66,7 +66,7 @@ test('Issue20 reuses additive multi-stage energy, dimension isolation, quantity,
  const unit=f.run().lines[0]!.unit;f.config.resaleMultipliers![0]!.factor='9';assert.equal(f.run().lines[0]!.unit,unit)
 })
 
-test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH omissions/restart and do not change frozen snapshots/PDF',()=>{
+test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH omissions/restart and do not change frozen snapshots/PDF',async ()=>{
  const dir=mkdtempSync(join(tmpdir(),'funix20-')),file=join(dir,'qa-v7.sqlite');let db=openDatabase(file)
  try{
   const f=commercialFixture(db),repo=new PricingConfigurationRepository(db),budgets=new BudgetRepository(db)
@@ -76,7 +76,7 @@ test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH 
   db.prepare('UPDATE pricing_configuration SET data=? WHERE id=1').run(JSON.stringify(original))
   assert.equal(repo.get().revision,2)
   const request={scenarioId:f.scenario.id,negotiation:{mode:'none'}},preview=budgets.preview(f.at.id,request)
-  const version=budgets.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'issue20-preserve-snapshot'}),pdf=budgets.pdf(f.at.id,version.id),before=repo.get()
+  const version=(await budgets.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'issue20-preserve-snapshot'})),pdf=budgets.pdf(f.at.id,version.id),before=repo.get()
   assert.equal(version.snapshot.calculation.discountEligibleSubtotal,'0')
   const config=structuredClone(before.config);config.services[0]!.colorFactorEnabled=false;config.services[0]!.discountable=false;config.services[0]!.billable=false
   repo.save({revision:before.revision,config})
@@ -85,7 +85,7 @@ test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH 
   const saved=repo.save({revision:repo.get().revision,config:legacy});assert.equal(saved.config.services[0]!.colorFactorEnabled,false);assert.equal(saved.config.services[0]!.discountable,false)
   for(const flag of ['colorFactorEnabled','discountable','billable']){const invalid=structuredClone(config);Object.assign(invalid.services[0]!,{[flag]:'false'});assert.throws(()=>repo.save({revision:repo.get().revision,config:invalid}))}
   db.close();db=openDatabase(file);assert.equal(new PricingConfigurationRepository(db).get().config.services[0]!.discountable,false)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,11);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,12);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
 

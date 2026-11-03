@@ -259,3 +259,16 @@ Retorno `RecommendationApplication`: `{item,scenarioRevision,idempotencyKey,crea
 V10 é estritamente aditiva: `diagnosis_services.recommendation_rule_id` nullable/FK e `recommendation_applications` para recibos por peça/cenário/chave. Mesma chave/corpo retorna o recibo original sem recriar/excluir/habilitar linhas, inclusive se o operador já ajustou ou removeu as sugestões. Mesma chave com outro corpo é conflito. Origem é somente leitura para o cliente: PATCH manual não pode forjá-la; editar uma linha preserva a origem histórica da sua criação. Novos snapshots podem contê-la; versões/PDFs existentes não são recalculados.
 
 Importador comercial atualizado aceita V8/V9/V10; importador de recomendações aceita V9/V10, sempre com histórico contínuo e sem aplicar migrações no alvo. Nenhum catálogo/regra é importado pelo startup ou pela aplicação de serviços. Migração V9→V10 preserva as relações já instaladas. Ferramentas/imagens antigas que recusam o esquema novo exigem banco compatível para rollback.
+
+
+### PR39 — condições e emissão assíncrona jsreport (decisão vigente)
+
+Esta seção prevalece sobre descrições anteriores de geração síncrona/PDF alternativo e prazo exclusivamente técnico. Detalhes: [PR39_EMISSAO_PDF.md](PR39_EMISSAO_PDF.md).
+
+- `GET /api/parcelamento` retorna `{revision,updatedAt,rates:{tres,seis,nove,doze}}`, percentuais como textos decimais exatos. `PATCH` recebe `{revision,rates}` completo, autenticado, JSON, mesma Origin; revisão obsoleta é 409. Sem taxa por Atendimento/cenário.
+- `Scenario.deadline = {mode:'automatic'|'manual', manualDays:number|null}`. `PATCH /api/atendimentos/:at/cenarios/:id` aceita `deadline` junto da revisão existente. Manual exige inteiro positivo seguro; automático exige null. Duplicação não copia a substituição.
+- Prévia inclui `snapshot.executionDeadline` e `snapshot.installments`; token cobre esses dados. Ausência de prazo efetivo bloqueia emissão. Prazo manual pode substituir somente sugestão ausente por capacidade; não elimina erros de preço/energia.
+- Emissão usa POST/previewToken/idempotencyKey existentes e só retorna 201 após persistir snapshot + PDF + identidade. Sem transação durante HTTP. Número global reservado não é reutilizado; falha pode deixar lacuna. Mesma chave/corpo retorna o mesmo documento; outro corpo é `IDEMPOTENCY_CONFLICT`. Em andamento: 409 `PDF_RENDER_IN_PROGRESS`; executor expirado: `PDF_LEASE_EXPIRED`; recuperar com a mesma solicitação.
+- Falhas do gerador: `PDF_NOT_CONFIGURED`, `PDF_CONFIGURATION_INVALID`, `PDF_RENDER_UNAVAILABLE`, `PDF_RENDER_FAILURE`, `PDF_INVALID_RESPONSE`, `PDF_INCOMPLETE`, `PDF_TOO_LARGE`. Não criam versão parcial. Revisão/token divergente continuam bloqueados.
+- Snapshot opcionalmente inclui `document:{template,data}` com JSON exato entregue ao jsreport, taxas/resultados racionais e apresentação congelados, prazo efetivo e avisos. Nunca contém conexão/credenciais. Campos opcionais preservam leitura de snapshots históricos schema1.
+- GET PDF retorna BLOB original, Content-Type PDF e Content-Disposition com nome amigável UTF-8 congelado. GET não chama jsreport e não cria versão. Versões antigas sem OR não recebem número retroativo.

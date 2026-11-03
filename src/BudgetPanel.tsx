@@ -6,7 +6,7 @@ import {money} from './money'
 type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;serial?:number}
 export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id'|'label'|'filename'>){
  const response=await fetch(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(version.id)}/pdf`,{credentials:'same-origin'})
- if(!response.ok||!response.headers.get('content-type')?.includes('application/pdf'))throw new Error('Não foi possível baixar o PDF.')
+ if(!response.ok||!response.headers.get('content-type')?.includes('application/pdf'))throw Object.assign(new Error('Não foi possível baixar o PDF.'),{status:response.status})
  const url=URL.createObjectURL(await response.blob())
  try{
   const link=document.createElement('a')
@@ -20,7 +20,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
  const requireAuth=useEffectEvent(onAuthRequired)
  const selected=version?.id===versionId?version:null
  const busy=ownBusy||externalBusy
- useLayoutEffect(()=>{onTitle(versionId?selected?'Orçamento '+selected.label:'Orçamento emitido':'Orçamentos emitidos')},[versionId,selected,onTitle])
+ useLayoutEffect(()=>{onTitle(versionId?selected?'Orçamento '+(selected.documentNumber??selected.label):'Orçamento emitido':'Orçamentos emitidos')},[versionId,selected,onTitle])
  useEffect(()=>{
   if(!versionId)return
   const controller=new AbortController()
@@ -42,5 +42,5 @@ export function CalculationView({preview,scenarioName}:{preview:BudgetPreview;sc
  <dl className="budget-summary"><div><dt>Serviços originais</dt><dd>{money(c.originalServiceSubtotal)}</dd></div><div><dt>Serviços efetivos</dt><dd>{money(c.serviceSubtotal)}</dd></div><div><dt>Desconto em serviços</dt><dd>{money(c.discount)}</dd></div><div><dt>Componentes</dt><dd>{money(c.componentSubtotal)}</dd></div><div><dt>Total efetivo</dt><dd>{money(c.total)}</dd></div><div><dt>Energia / dias técnicos</dt><dd>{c.energy??'Pendente'} / {c.days??'Pendente'}</dd></div></dl>
  {preview.snapshot.requestedTotal!==undefined&&<p>Total final desejado: {money(preview.snapshot.requestedTotal)}.</p>}
  {c.target!==null&&<p>{preview.snapshot.requestedTotal!==undefined?'Meta do subtotal de serviços':'Subtotal de serviços informado'}: {money(c.target)}. Resíduo (informado − efetivo): {money(c.residual)}.</p>}
- <p className="at-form-hint">Dias técnicos são estimativa de escopo, não data de entrega nem autorização de execução.</p><p>{preview.snapshot.conditions||'Condições comerciais ainda não informadas.'}</p></section>
+ {preview.snapshot.executionDeadline&&<><p>Prazo de execução: {preview.snapshot.executionDeadline.effectiveDays===null?'Pendente':preview.snapshot.executionDeadline.effectiveDays+' dias úteis'}.</p>{preview.snapshot.executionDeadline.warning&&<p role="status">{preview.snapshot.executionDeadline.warning}</p>}</>}<p className="at-form-hint">Dias técnicos são estimativa de escopo, não data de entrega nem autorização de execução.</p><p>{preview.snapshot.conditions||'Condições comerciais ainda não informadas.'}</p></section>
 }

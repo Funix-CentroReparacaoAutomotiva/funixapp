@@ -13,7 +13,7 @@ import {commercialFixture} from './fixtures/commercial.ts'
 import {CommercialRepository} from '../commercial.ts'
 import {ScenarioRepository} from '../scenarios.ts'
 import {PricingConfigurationRepository} from '../pricing-config.ts'
-import {BudgetRepository} from '../budgets.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {normalizeConnectorCapture} from '../coda-connector-export.ts'
 
 function snapshot(db:DatabaseSync){return db.prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name").all().map(r=>({table:r.name,rows:db.prepare(`SELECT * FROM "${r.name}" ORDER BY rowid`).all()}))}
@@ -25,7 +25,7 @@ test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, c
  try{
   assert.equal(db.prepare("SELECT count(*) n FROM catalog_items WHERE kind='peca' AND active=1").get()!.n,163)
   const f=commercialFixture(db),budgets=new BudgetRepository(db),preview=budgets.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'}})
-  const version=budgets.emit(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'},previewToken:preview.token,idempotencyKey:'synthetic-import-preserve'})
+  const version=(await budgets.emit(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'},previewToken:preview.token,idempotencyKey:'synthetic-import-preserve'}))
   const initial=snapshot(db),pdf=budgets.pdf(f.at.id,version.id),config=f.pricing.get().config
   await backupDatabase(db,backup)
   const copy=new DatabaseSync(backup,{readOnly:true})
@@ -43,12 +43,12 @@ test('dry-run is read-only; apply preserves V7 pieces, Atendimento, scenarios, c
   const after=snapshot(db),repeat=planImport(db,src);assert.equal(repeat.report.inserts,0)
   applyImport(db,src,repeat.planHash);assert.deepEqual(snapshot(db),after)
   db.close();db=openDatabase(file)
-  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,11)
+  assert.deepEqual(snapshot(db),after);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,12)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
  }finally{db.close();rmSync(folder,{recursive:true,force:true})}
 })
 
-test('imported service/dimension/diagnosis feed existing composition, exact pricing, energy, preview, emission and PDF contracts',()=>{
+test('imported service/dimension/diagnosis feed existing composition, exact pricing, energy, preview, emission and PDF contracts',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db)
@@ -62,7 +62,7 @@ test('imported service/dimension/diagnosis feed existing composition, exact pric
   const scenario=new ScenarioRepository(db).list(f.at.id)[0]!,budgets=new BudgetRepository(db)
   const preview=budgets.preview(f.at.id,{scenarioId:scenario.id,negotiation:{mode:'none'}})
   assert(preview.canEmit);assert.equal(preview.snapshot.calculation.total,'300.15');assert.equal(preview.snapshot.calculation.energy,'15');assert.equal(preview.snapshot.calculation.days,'4')
-  const version=budgets.emit(f.at.id,{scenarioId:scenario.id,negotiation:{mode:'none'},previewToken:preview.token,idempotencyKey:'synthetic-import-calculation'})
+  const version=(await budgets.emit(f.at.id,{scenarioId:scenario.id,negotiation:{mode:'none'},previewToken:preview.token,idempotencyKey:'synthetic-import-calculation'}))
   assert.match(budgets.pdf(f.at.id,version.id).toString('latin1'),/^%PDF/)
  }finally{db.close()}
 })
@@ -149,7 +149,7 @@ test('source decimals are not rounded by JSON Number before V7 precision validat
  try{set(source,TABLES.rules,'c-sGROPfan5w',parsed.scalar);assert.equal(planImport(db,source).config.services[0]!.base,null)}finally{db.close()}
 })
 
-test('negative base energy compensated by positive dimension never becomes a valid stage, even with matching relation and total',()=>{
+test('negative base energy compensated by positive dimension never becomes a valid stage, even with matching relation and total',async ()=>{
  const db=openDatabase(':memory:'),source=codaFixture()
  try{
   const f=commercialFixture(db)
@@ -172,7 +172,7 @@ test('negative base energy compensated by positive dimension never becomes a val
   const request={scenarioId:scenario.id,negotiation:{mode:'none'}},preview=budget.preview(f.at.id,request)
   assert.equal(preview.canEmit,false);assert.equal(preview.snapshot.calculation.energy,null)
   assert(preview.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')))
-  assert.throws(()=>budget.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-negative-energy'}),/Etapas técnicas/)
+  await assert.rejects(async ()=>(await budget.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-negative-energy'})),/Etapas técnicas/)
   assert.equal(budget.list(f.at.id).length,0)
  }finally{db.close()}
 })
