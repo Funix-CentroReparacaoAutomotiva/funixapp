@@ -78,3 +78,9 @@ As outras duas relações desse serviço/dimensão apontam para Limpeza de couro
 - Preservados testes de idempotência, concorrência, morte/retomada, falha HTTP/commit, arquivos legados e rollback de migrações. Casos sintéticos antigos sem categoria agora comprovam primeiro o bloqueio; uma categoria é configurada explicitamente antes de uma nova emissão, sem editar fixtures históricas congeladas.
 
 Evidências locais não são homologação do jsreport instalado. Configuração e execução real com dados sintéticos continuam necessárias antes de publicar. Sem alterações no HTML, motor de precificação, fórmulas de energia, SQL/migrações, Mapa, VPS ou dados comerciais reais.
+
+## Adendo de persistência — verificação final
+
+O planejamento e a comparação antes da gravação usam o **JSON fisicamente armazenado**. A visão de compatibilidade em memória não pode mascarar a ausência de metadados no SQLite: mesmo que o getter já consiga exibir a categoria pelo ID histórico, a aplicação futura do importador precisa gravar esses metadados e avançar a revisão uma única vez. A repetição não grava novamente.
+
+Foi acrescentada uma regressão sintética com IDs originais e valores exclusivamente de QA, cobrindo leitura sem escrita, dry-run, persistência física e segunda aplicação idempotente. O ambiente local encerrou após as validações registradas acima; este adendo é validado pelo `npm run check` da CI remota do mesmo PR. Resultado e link da execução atual constam no PR. Nenhuma importação real foi executada.

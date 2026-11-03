@@ -192,7 +192,8 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  warning(TABLES.rules,'Quantidades abaixo de 1 têm resultado diferente no Coda (Fator Quantidade Produto / Qnt.). A V7 preserva a regra aprovada de quantidade linear, inclusive fracionária; equivalência de preço declarada somente para quantidade >= 1.')
  const capRows=rows(TABLES.capacity),capacity=capRows.length===1?number(capRows[0]!,'c-hnqUeXrBqw'):null
  if(capacity===null || Q.from(capacity).n===0n)pending(TABLES.capacity,'Capacidade global positiva não comprovada.')
- const old=new PricingConfigurationRepository(db).get(),config=structuredClone(old.config)
+ // Plan against persisted JSON, not the read-only compatibility view that decorates missing metadata.
+ const config=JSON.parse(String(db.prepare('SELECT data FROM pricing_configuration WHERE id=1').get()!.data))as PricingConfig
  // Additive import only. Different source/local values require manual review, never overwrite.
  const merge=<T>(old:T[],incoming:T[],key:(v:T)=>string)=>{
   for(const v of incoming){const k=key(v),present=old.find(o=>key(o)===k)
@@ -275,8 +276,8 @@ export function applyImport(db:DatabaseSync,source:unknown,confirmation:string){
   if(plan.planHash!==confirmation)fail('Plano mudou: execute dry-run novamente antes de aplicar.')
   if(plan.report.conflicts.length)fail('Conflitos pendentes; nenhuma gravação realizada.')
   for(const c of plan.catalog)insertCatalog(db,c)
-  const old=new PricingConfigurationRepository(db).get()
-  if(digest(old.config)!==digest(plan.config))db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1').run(JSON.stringify(plan.config),new Date().toISOString())
+  const stored=JSON.parse(String(db.prepare('SELECT data FROM pricing_configuration WHERE id=1').get()!.data))as PricingConfig
+  if(digest(stored)!==digest(plan.config))db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1').run(JSON.stringify(plan.config),new Date().toISOString())
   checkDatabase(db)
   db.exec('COMMIT');return plan
  }catch(error){db.exec('ROLLBACK');throw error}

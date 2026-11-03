@@ -69,3 +69,24 @@ test('an import with unresolved category remains mathematically usable but canno
 test('a known original stage cannot be reclassified by a different relation or service name',()=>{
  const f=clusterFixture();try{const cfg=f.pricing.get(),p=cfg.config.services[0]!.dimensions[0]!.stages[0]!.presentation!;p.stageId='i-r-BGU6n_WO';p.cluster='Pintura e acabamento';assert.throws(()=>f.pricing.save({revision:cfg.revision,config:cfg.config}),/referência aprovada/);const snapshot=f.b.preview(f.at.id,f.req).snapshot;snapshot.calculation.lines[0]!.stages[0]!.presentation={...p};assert(technicalGroups(snapshot).errors.length)}finally{f.db.close()}
 })
+
+test('legacy known-ID metadata is physically persisted even when the read-only getter already resolves its category',async()=>{
+ const db=openDatabase(':memory:');try{
+  const source=codaFixture(),changes=[[TABLES.dimensions,'i-synthetic-dimension','i-wM6LbsSEQq'],[TABLES.relations,'i-synthetic-relation','i-hQLlAD77AN'],[TABLES.stages,'i-synthetic-stage','i-r-BGU6n_WO'],[TABLES.stageDimensions,'i-synthetic-stage-dimension','i-acqqhU8QgB']]
+  for(const[table,from,to]of changes){
+   source.tables.find(t=>t.id===table)!.rows.find(r=>r.rowId===from)!.rowId=to
+   const walk=(value:unknown):void=>{if(value&&typeof value==='object'){const object=value as Record<string,unknown>;if(object.targetTableId===table&&object.rowId===from)object.rowId=to;for(const child of Object.values(object))walk(child)}}
+   for(const t of source.tables)for(const r of t.rows)walk(r.values)
+  }
+  set(source,TABLES.stages,'c-96H1EFHFA1',{type:'ref',rowId:'i-ojPb8OV3E_',targetTableId:'qa-cluster-table'})
+  const initial=planImport(db,source);assert.deepEqual(initial.report.conflicts,[]);applyImport(db,source,initial.planHash)
+  const raw=()=>JSON.parse(String(db.prepare('SELECT data FROM pricing_configuration WHERE id=1').get()!.data))
+  const config=raw();delete config.services[0].dimensions[0].stages[0].presentation;db.prepare('UPDATE pricing_configuration SET data=?').run(JSON.stringify(config))
+  const{PricingConfigurationRepository}=await import('../pricing-config.ts'),repository=new PricingConfigurationRepository(db),revision=repository.get().revision
+  assert.equal(repository.get().config.services[0]!.dimensions[0]!.stages[0]!.presentation!.cluster,'Preparação técnica')
+  assert.equal(raw().services[0].dimensions[0].stages[0].presentation,undefined)
+  const plan=planImport(db,source);assert.deepEqual(plan.report.conflicts,[]);assert(plan.report.imported.some(x=>x.reason.includes('Metadados de apresentação ausentes')))
+  applyImport(db,source,plan.planHash);assert.equal(raw().services[0].dimensions[0].stages[0].presentation.cluster,'Preparação técnica');assert.equal(repository.get().revision,revision+1)
+  const again=planImport(db,source);assert.equal(again.report.inserts,0);applyImport(db,source,again.planHash);assert.equal(repository.get().revision,revision+1)
+ }finally{db.close()}
+})
