@@ -31,6 +31,36 @@ test('new budget snapshots use numeric scenario order without renaming legacy da
  }finally{db.close()}
 })
 
+test('commercial identity is globally sequential, distinct from UUID and frozen filename',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const f=commercialFixture(db),repo=new BudgetRepository(db)
+  f.atendimentos.update(f.at.id,{revision:f.at.revision,plate:'QUM-7553'})
+  const input={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
+  const p=repo.preview(f.at.id,input)
+  const first=repo.emit(f.at.id,{...input,previewToken:p.token,idempotencyKey:randomUUID()})
+  assert.equal(first.documentNumber,'OR-000001')
+  assert.equal(first.filename,'QUM7553 - Orçamento FUNIX - 1.pdf')
+  const again=repo.emit(f.at.id,{...input,previewToken:p.token,idempotencyKey:randomUUID()})
+  assert.equal(again.documentNumber,'OR-000002')
+  const other=f.atendimentos.create({phone:'31999999999',plate:'',name:'Outra pessoa'})
+  const op=new BudgetRepository(db)
+  const scenario=f.scenarios.list(f.at.id)[0]!
+  const copy=f.scenarios.create(f.at.id,{name:'Alternativa',duplicateFrom:scenario.id,sourceRevision:scenario.revision})
+  const pp=op.preview(f.at.id,{scenarioId:copy.id,negotiation:{mode:'none'}})
+  const third=op.emit(f.at.id,{scenarioId:copy.id,negotiation:{mode:'none'},previewToken:pp.token,idempotencyKey:randomUUID()})
+  assert.equal(third.documentNumber,'OR-000003')
+  assert.equal(other.plate,'')
+  assert.deepEqual(repo.get(f.at.id,first.id),first)
+  assert.deepEqual(repo.list(f.at.id).map(v=>v.documentNumber),['OR-000003','OR-000002','OR-000001'])
+  const priorPdf=repo.pdf(f.at.id,first.id)
+  const changed=f.atendimentos.get(f.at.id)
+  f.atendimentos.update(f.at.id,{revision:changed.revision,plate:'ABC1234'})
+  assert.equal(repo.get(f.at.id,first.id).filename,'QUM7553 - Orçamento FUNIX - 1.pdf')
+  assert.deepEqual(repo.pdf(f.at.id,first.id),priorPdf)
+ }finally{db.close()}
+})
+
 test('N immutable budget versions include 26 Z/27 AA; PDF bytes and snapshots survive all live edits and replay',async()=>{
  const directory=mkdtempSync(join(tmpdir(),'funix-versions-')),file=join(directory,'test.sqlite')
  let db=openDatabase(file)
