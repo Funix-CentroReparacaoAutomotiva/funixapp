@@ -211,6 +211,15 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       request_key TEXT NOT NULL, request_hash TEXT NOT NULL, result TEXT NOT NULL,
       PRIMARY KEY(piece_id,scenario_id,request_key)
     );
+  `)},
+  // Commercial numbers are independent of the immutable budget snapshot and PDF.
+  // Historical versions retain their original letters/PDFs and are not renumbered.
+  {version:11,apply:db=>db.exec(`
+    CREATE TABLE budget_document_identity (
+      serial INTEGER PRIMARY KEY CHECK(serial > 0),
+      budget_version_id TEXT NOT NULL UNIQUE REFERENCES budget_versions(id) ON DELETE RESTRICT,
+      filename TEXT NOT NULL
+    );
   `)}
 ]
 
