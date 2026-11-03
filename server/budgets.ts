@@ -15,7 +15,12 @@ import {scenarioLabel} from '../shared/commercial.ts'
 
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export function versionLabel(sequence:number){let n=sequence,label='';while(n>0){n--;label=String.fromCharCode(65+n%26)+label;n=Math.floor(n/26)}return label}
-function record(row:Record<string,SQLOutputValue>):BudgetVersion{return {id:String(row.id),atendimentoId:String(row.atendimento_id),sequence:Number(row.sequence),label:String(row.label),createdAt:String(row.created_at),snapshot:JSON.parse(String(row.snapshot))}}
+export function commercialNumber(serial:number){return 'OR-'+String(serial).padStart(6,'0')}
+export function budgetFilename(plate:string,serial:number){
+ const normalized=plate.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'')
+ return (normalized?normalized+' - ':'')+'Orçamento FUNIX - '+serial+'.pdf'
+}
+function record(row:Record<string,SQLOutputValue>):BudgetVersion{return {id:String(row.id),atendimentoId:String(row.atendimento_id),sequence:Number(row.sequence),label:String(row.label),createdAt:String(row.created_at),...(row.serial!=null?{documentNumber:commercialNumber(Number(row.serial)),filename:String(row.filename)}:{}),snapshot:JSON.parse(String(row.snapshot))}}
 export class BudgetRepository {
  readonly db:DatabaseSync
  constructor(db:DatabaseSync){this.db=db}
@@ -60,19 +65,21 @@ export class BudgetRepository {
   const scenarioId=data.scenarioId,deal=this.requestDeal(data.negotiation),token=data.previewToken,key=data.idempotencyKey,requestHash=hash({scenarioId,deal,token})
   return transaction(this.db,()=>{
    new AtendimentoRepository(this.db).get(at)
-   const existing=this.db.prepare('SELECT * FROM budget_versions WHERE atendimento_id=? AND idempotency_key=?').get(at,key)
+   const existing=this.db.prepare('SELECT b.*,i.serial,i.filename FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? AND b.idempotency_key=?').get(at,key)
    if(existing){if(existing.request_hash!==requestHash)throw new ServiceError(409,'IDEMPOTENCY_CONFLICT','Esta chave já foi usada para outra emissão.');return record(existing)}
    const preview=this.build(at,scenarioId,deal)
    if(preview.token!==token)conflict()
    if(!preview.canEmit)throw new ServiceError(422,'BUDGET_INCOMPLETE',preview.snapshot.calculation.errors.join(' '))
    const sequence=Number(this.db.prepare('SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM budget_versions WHERE atendimento_id=?').get(at)!.sequence)
-   const createdAt=new Date().toISOString(),version:BudgetVersion={id:randomUUID(),atendimentoId:at,sequence,label:versionLabel(sequence),createdAt,snapshot:{...preview.snapshot,issuedAt:createdAt}}
+   const serial=Number(this.db.prepare('SELECT COALESCE(MAX(serial),0)+1 AS serial FROM budget_document_identity').get()!.serial)
+   const createdAt=new Date().toISOString(),version:BudgetVersion={id:randomUUID(),atendimentoId:at,sequence,label:versionLabel(sequence),createdAt,documentNumber:commercialNumber(serial),filename:budgetFilename(preview.snapshot.atendimento.plate,serial),snapshot:{...preview.snapshot,issuedAt:createdAt}}
    const pdf=budgetPdf(version)
    this.db.prepare('INSERT INTO budget_versions(id,atendimento_id,sequence,label,created_at,snapshot,pdf,idempotency_key,request_hash) VALUES(?,?,?,?,?,?,?,?,?)').run(version.id,at,sequence,version.label,createdAt,JSON.stringify(version.snapshot),pdf,key,requestHash)
+   this.db.prepare('INSERT INTO budget_document_identity(serial,budget_version_id,filename) VALUES(?,?,?)').run(serial,version.id,version.filename)
    return version
   })
  }
- list(at:string){new AtendimentoRepository(this.db).get(at);return this.db.prepare("SELECT id,atendimento_id AS atendimentoId,sequence,label,created_at AS createdAt,json_extract(snapshot,'$.calculation.total') AS total FROM budget_versions WHERE atendimento_id=? ORDER BY sequence DESC").all(at)}
- get(at:string,id:string):BudgetVersion{const row=this.db.prepare('SELECT id,atendimento_id,sequence,label,created_at,snapshot FROM budget_versions WHERE atendimento_id=? AND id=?').get(at,id);if(!row)throw new ServiceError(404,'NOT_FOUND','Versão não encontrada neste Atendimento.');return record(row)}
+ list(at:string){new AtendimentoRepository(this.db).get(at);return this.db.prepare("SELECT b.id,b.atendimento_id AS atendimentoId,b.sequence,b.label,b.created_at AS createdAt,json_extract(b.snapshot,'$.calculation.total') AS total,i.serial,i.filename,json_extract(b.snapshot,'$.scenarioName') AS scenarioName FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? ORDER BY b.sequence DESC").all(at).map(row=>({...row,...(row.serial==null?{}:{documentNumber:commercialNumber(Number(row.serial))})}))}
+ get(at:string,id:string):BudgetVersion{const row=this.db.prepare('SELECT b.id,b.atendimento_id,b.sequence,b.label,b.created_at,b.snapshot,i.serial,i.filename FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? AND b.id=?').get(at,id);if(!row)throw new ServiceError(404,'NOT_FOUND','Versão não encontrada neste Atendimento.');return record(row)}
  pdf(at:string,id:string):Buffer{this.get(at,id);const row=this.db.prepare('SELECT pdf FROM budget_versions WHERE atendimento_id=? AND id=?').get(at,id)!;return Buffer.from(row.pdf as Uint8Array)}
 }
