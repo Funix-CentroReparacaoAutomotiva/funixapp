@@ -3,7 +3,18 @@ import type {BudgetPreview,BudgetVersion} from '../shared/pricing'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
-type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string}
+type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;serial?:number}
+export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id'|'label'|'filename'>){
+ const response=await fetch(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(version.id)}/pdf`,{credentials:'same-origin'})
+ if(!response.ok||!response.headers.get('content-type')?.includes('application/pdf'))throw new Error('Não foi possível baixar o PDF.')
+ const url=URL.createObjectURL(await response.blob())
+ try{
+  const link=document.createElement('a')
+  link.href=url;link.download=version.filename??`FUNIX-orcamento-${version.label}.pdf`
+  document.body.appendChild(link);link.click();link.remove()
+ }finally{setTimeout(()=>URL.revokeObjectURL(url),5000)}
+}
+
 export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onOpenVersion,onTitle}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
  const requireAuth=useEffectEvent(onAuthRequired)
@@ -20,7 +31,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onO
  useEffect(()=>{let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load])
  async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
  return <section aria-label="Orçamentos emitidos">{error&&<p role="alert" className="form-error">{error}</p>}
- {selected?<><p>Documento imutável, emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. Não utiliza o catálogo atual.</p><CalculationView preview={{snapshot:selected.snapshot,token:'',canEmit:true}}/><button className="primary-btn" disabled={busy} onClick={()=>operation(async()=>{const r=await fetch(`/api/atendimentos/${at}/orcamentos/${selected.id}/pdf`,{credentials:'same-origin'});if(!r.ok||!r.headers.get('content-type')?.includes('application/pdf'))throw new Error('Não foi possível baixar o PDF.');const u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download=`FUNIX-${selected.label}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)})}>Baixar PDF {selected.label}</button></>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando versão emitida…'}</p>:<>{versions.map(v=><button className="catalog-row" key={v.id} disabled={busy} onClick={()=>onOpenVersion(v.id)}>Orçamento {v.label} · {new Date(v.createdAt).toLocaleString('pt-BR')} · {money(v.total)}</button>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
+ {selected?<><p>Documento emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. O PDF original fica preservado, independente de mudanças posteriores.</p><button className="primary-btn" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,selected))}>Baixar PDF {selected.documentNumber??selected.label}</button></>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>{versions.map(v=><button className="catalog-row" key={v.id} disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,v))} title="Baixar PDF original">{v.documentNumber??'Orçamento '+v.label} · {v.scenarioName??'Cenário anterior'} · {new Date(v.createdAt).toLocaleString('pt-BR')} · {money(v.total)} · Baixar PDF</button>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
  </section>
 }
 
