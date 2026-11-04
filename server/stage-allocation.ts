@@ -1,3 +1,4 @@
+import{pdfStage}from'./pdf-text.ts'
 // PDF presentation only. Official prices/energy/discounts are never recalculated.
 import{Q}from'./exact.ts'
 import{exactAmount,centAmount}from'./budget-terms.ts'
@@ -34,9 +35,8 @@ export function technicalGroups(snapshot:BudgetSnapshot):{groups:TechnicalGroup[
    let category=group.categories.find(g=>g.name===s.category)
    if(!category){category={name:s.category,amount:new Q(0n),billable:false,descriptions:[]};group.categories.push(category)}
    if(billable){category.amount=category.amount.add(exactAmount(line.total!).mul(s.energy).div(totalEnergy));category.billable=true}
-   const label=s.stage.name+` (${[line.dimension,`Qtd.: ${line.quantity}`].filter(Boolean).join(' · ')})`
-   if(!category.descriptions.includes(label))category.descriptions.push(label)
-   if(line.notes&&!category.descriptions.includes(line.notes))category.descriptions.push(line.notes)
+   const label=pdfStage(s.stage.name)
+   if(label&&!category.descriptions.some(existing=>existing.toLocaleLowerCase('pt-BR')===label.toLocaleLowerCase('pt-BR')))category.descriptions.push(label)
   }
  }
  for(const group of grouped.values())group.categories.sort((a,b)=>STAGE_CLUSTERS.indexOf(a.name)-STAGE_CLUSTERS.indexOf(b.name))

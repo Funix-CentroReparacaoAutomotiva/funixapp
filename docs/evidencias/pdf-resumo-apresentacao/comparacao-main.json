@@ -1,0 +1,84 @@
+{
+  "baseRevision": "84c173d0db6267b858fc8bcee3e16d86e5325702",
+  "synthetic": true,
+  "templateUnchanged": true,
+  "results": [
+    {
+      "case": "normal",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "discount",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "adjust-down",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "adjust-up",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "free",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "mixed",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "components",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "empty-details",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "long",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "fractional",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "1"
+    },
+    {
+      "case": "resumo-aprovado",
+      "pass": true,
+      "financialFieldsAndCategoryAmountsIdentical": true,
+      "sourceSnapshotUnchanged": true,
+      "displayedSumDifferenceCents": "0"
+    }
+  ]
+}

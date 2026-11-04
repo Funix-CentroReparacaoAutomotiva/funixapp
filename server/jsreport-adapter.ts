@@ -1,3 +1,4 @@
+import{pdfExpression,pdfDiagnosis}from'./pdf-text.ts'
 import{technicalGroups,categoryCents}from'./stage-allocation.ts'
 // Presentation only, from frozen values. Never reprice or infer technical activities.
 import{exactAmount,centAmount,budgetBlockingErrors}from'./budget-terms.ts'
@@ -31,11 +32,11 @@ export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenT
  const diagnostics=technical.groups.map(group=>{
   const rows=group.rows,item=s.composition.items.find(i=>i.id===group.pieceId)
   const rawDiagnosis=s.composition.catalog.find(x=>x.id===group.diagnosisId)?.name??rows.find(x=>x.diagnosis)?.diagnosis??''
-  const resumo=[rawDiagnosis,item?.intensity?({leve:'Leve',moderado:'Moderada',severo:'Severa'}as const)[item.intensity]:null].filter(Boolean).join(' · ')
+  const resumo=pdfDiagnosis(rawDiagnosis,item?.intensity)
   const services=rows.filter(l=>l.kind==='service'),components=rows.filter(l=>l.kind==='component'),cents=categoryCents(group.categories)
   const clusters:JsreportDocument['diagnosticos'][number]['clusters']=group.categories.map(category=>({tipo:'servico',nome:category.name,valor:category.billable?money(cents.get(category.name)!.toString()):'Sem cobrança',descricaoTexto:category.descriptions}))
   if(components.length)clusters.push({tipo:'itens',nome:'Itens',valor:money(sumLines(components)),itensDetalhados:components.map(line=>({nome:line.name,valorUnitario:money(line.finalUnit),quantidade:line.quantity,valorTotal:money(line.total)}))})
-  return{nome:rows[0]!.pieceName,resumo,totalServicos:services.some(l=>l.billing!=='not_billed')?money(sumLines(services)):'',totalComponentes:components.length?money(sumLines(components)):'',clusters}
+  return{nome:pdfExpression(rows[0]!.pieceName),resumo,totalServicos:services.some(l=>l.billing!=='not_billed')?money(sumLines(services)):'',totalComponentes:components.length?money(sumLines(components)):'',clusters}
  })
  return{
   meta:{id:version.documentNumber,dataCriacao:new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(version.createdAt))},
