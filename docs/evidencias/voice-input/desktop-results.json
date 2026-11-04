@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "mockProvider": true,
+  "realSmartphone": false,
+  "results": [
+    {
+      "name": "desktop: short tap opens existing panel",
+      "pass": true
+    },
+    {
+      "name": "desktop: native WebM/Opus capture and release call real authenticated read-only API with deterministic provider mocks",
+      "pass": true
+    },
+    {
+      "name": "desktop: accessible keyboard press/release records and processes",
+      "pass": true
+    },
+    {
+      "name": "desktop: late permission frees tracks and never records or sends hidden audio",
+      "pass": true
+    },
+    {
+      "name": "desktop: denied permission and pointercancel preserve data and release resources",
+      "pass": true
+    },
+    {
+      "name": "desktop: React tab navigation cancels active recording without upload",
+      "pass": true
+    },
+    {
+      "name": "desktop: scenario switch discards previous result",
+      "pass": true
+    },
+    {
+      "name": "desktop: three tabs preserve launcher/footer geometry, no horizontal overflow at 1440px",
+      "pass": true
+    },
+    {
+      "name": "desktop: navigation/unmount cancels capture",
+      "pass": true
+    },
+    {
+      "name": "desktop: no commercial write request, no external network, no JS errors; synthetic SQLite integrity and quantity unchanged",
+      "pass": true
+    }
+  ],
+  "pageErrors": []
+}

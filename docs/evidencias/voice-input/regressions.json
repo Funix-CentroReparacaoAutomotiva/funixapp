@@ -1,0 +1,543 @@
+{
+  "synthetic": true,
+  "totalGroups": 129,
+  "suites": [
+    {
+      "suite": "fase5_gestures",
+      "groups": 30,
+      "pass": true,
+      "results": [
+        {
+          "name": "desktop: no upper X; central X and click outside circular disk close the selector",
+          "pass": true
+        },
+        {
+          "name": "desktop: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor",
+          "pass": true
+        },
+        {
+          "name": "desktop: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere",
+          "pass": true
+        },
+        {
+          "name": "desktop: bilateral groups add missing pieces without opening an arbitrary editor",
+          "pass": true
+        },
+        {
+          "name": "desktop: drag/cancel do not open quick overlay or perform mutations",
+          "pass": true
+        },
+        {
+          "name": "desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs",
+          "pass": true
+        },
+        {
+          "name": "desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working",
+          "pass": true
+        },
+        {
+          "name": "desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history",
+          "pass": true
+        },
+        {
+          "name": "desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors",
+          "pass": true
+        },
+        {
+          "name": "mobile320: no upper X; central X and click outside circular disk close the selector",
+          "pass": true
+        },
+        {
+          "name": "mobile320: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor",
+          "pass": true
+        },
+        {
+          "name": "mobile320: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere",
+          "pass": true
+        },
+        {
+          "name": "mobile320: bilateral groups add missing pieces without opening an arbitrary editor",
+          "pass": true
+        },
+        {
+          "name": "mobile320: drag/cancel do not open quick overlay or perform mutations",
+          "pass": true
+        },
+        {
+          "name": "mobile320: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions",
+          "pass": true
+        },
+        {
+          "name": "mobile320: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs",
+          "pass": true
+        },
+        {
+          "name": "mobile320: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working",
+          "pass": true
+        },
+        {
+          "name": "mobile320: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history",
+          "pass": true
+        },
+        {
+          "name": "mobile320: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors",
+          "pass": true
+        },
+        {
+          "name": "mobile390: no upper X; central X and click outside circular disk close the selector",
+          "pass": true
+        },
+        {
+          "name": "mobile390: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor",
+          "pass": true
+        },
+        {
+          "name": "mobile390: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere",
+          "pass": true
+        },
+        {
+          "name": "mobile390: bilateral groups add missing pieces without opening an arbitrary editor",
+          "pass": true
+        },
+        {
+          "name": "mobile390: drag/cancel do not open quick overlay or perform mutations",
+          "pass": true
+        },
+        {
+          "name": "mobile390: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions",
+          "pass": true
+        },
+        {
+          "name": "mobile390: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs",
+          "pass": true
+        },
+        {
+          "name": "mobile390: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working",
+          "pass": true
+        },
+        {
+          "name": "mobile390: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history",
+          "pass": true
+        },
+        {
+          "name": "mobile390: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "fase4_recommendations",
+      "groups": 33,
+      "pass": true,
+      "results": [
+        {
+          "name": "desktop: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "desktop: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "desktop: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "desktop: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "desktop: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "desktop: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "desktop: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "desktop: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "desktop: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "desktop: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile320: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "mobile320: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "mobile320: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "mobile320: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "mobile320: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "mobile320: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "mobile320: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "mobile320: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "mobile320: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "mobile320: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved",
+          "pass": true
+        },
+        {
+          "name": "mobile390: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement",
+          "pass": true
+        },
+        {
+          "name": "mobile390: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments",
+          "pass": true
+        },
+        {
+          "name": "mobile390: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first",
+          "pass": true
+        },
+        {
+          "name": "mobile390: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR",
+          "pass": true
+        },
+        {
+          "name": "mobile390: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies",
+          "pass": true
+        },
+        {
+          "name": "mobile390: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch",
+          "pass": true
+        },
+        {
+          "name": "mobile390: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change",
+          "pass": true
+        },
+        {
+          "name": "mobile390: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity",
+          "pass": true
+        },
+        {
+          "name": "mobile390: failed read is distinct from uncertain write, retains every manual value and recovers without mutation",
+          "pass": true
+        },
+        {
+          "name": "mobile390: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "suite": "pdf_emission",
+      "groups": 66,
+      "pass": true,
+      "results": [
+        {
+          "name": "desktop: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+          "pass": true
+        },
+        {
+          "name": "desktop: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+          "pass": true
+        },
+        {
+          "name": "desktop: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "desktop: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+          "pass": true
+        },
+        {
+          "name": "desktop: mobile fallback opens the existing PDF blob without another render or automatic download",
+          "pass": true
+        },
+        {
+          "name": "desktop: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable",
+          "pass": true
+        },
+        {
+          "name": "desktop: preview network failure is explicit and retryable, with no number, download or document",
+          "pass": true
+        },
+        {
+          "name": "desktop: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained",
+          "pass": true
+        },
+        {
+          "name": "desktop: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF",
+          "pass": true
+        },
+        {
+          "name": "desktop: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download",
+          "pass": true
+        },
+        {
+          "name": "desktop: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked",
+          "pass": true
+        },
+        {
+          "name": "desktop: post-commit download failure retains issued PDF; explicit retry never repeats emission",
+          "pass": true
+        },
+        {
+          "name": "desktop: changed installment revision blocks stale preview before reserving another number",
+          "pass": true
+        },
+        {
+          "name": "desktop: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged",
+          "pass": true
+        },
+        {
+          "name": "desktop: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically",
+          "pass": true
+        },
+        {
+          "name": "desktop: all five summary metrics stay in one row, deadline after total, with no collisions",
+          "pass": true
+        },
+        {
+          "name": "desktop: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions",
+          "pass": true
+        },
+        {
+          "name": "desktop: rapid competing tab requests keep the last route, never applying an old transition callback",
+          "pass": true
+        },
+        {
+          "name": "desktop: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits",
+          "pass": true
+        },
+        {
+          "name": "desktop: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise",
+          "pass": true
+        },
+        {
+          "name": "desktop: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 1440px",
+          "pass": true
+        },
+        {
+          "name": "mobile320: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+          "pass": true
+        },
+        {
+          "name": "mobile320: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+          "pass": true
+        },
+        {
+          "name": "mobile320: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+          "pass": true
+        },
+        {
+          "name": "mobile320: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "mobile320: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+          "pass": true
+        },
+        {
+          "name": "mobile320: mobile fallback opens the existing PDF blob without another render or automatic download",
+          "pass": true
+        },
+        {
+          "name": "mobile320: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable",
+          "pass": true
+        },
+        {
+          "name": "mobile320: preview network failure is explicit and retryable, with no number, download or document",
+          "pass": true
+        },
+        {
+          "name": "mobile320: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained",
+          "pass": true
+        },
+        {
+          "name": "mobile320: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF",
+          "pass": true
+        },
+        {
+          "name": "mobile320: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download",
+          "pass": true
+        },
+        {
+          "name": "mobile320: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked",
+          "pass": true
+        },
+        {
+          "name": "mobile320: post-commit download failure retains issued PDF; explicit retry never repeats emission",
+          "pass": true
+        },
+        {
+          "name": "mobile320: changed installment revision blocks stale preview before reserving another number",
+          "pass": true
+        },
+        {
+          "name": "mobile320: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile320: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically",
+          "pass": true
+        },
+        {
+          "name": "mobile320: all five summary metrics stay in one row, deadline after total, with no collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile320: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions",
+          "pass": true
+        },
+        {
+          "name": "mobile320: rapid competing tab requests keep the last route, never applying an old transition callback",
+          "pass": true
+        },
+        {
+          "name": "mobile320: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits",
+          "pass": true
+        },
+        {
+          "name": "mobile320: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise",
+          "pass": true
+        },
+        {
+          "name": "mobile320: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 320px",
+          "pass": true
+        },
+        {
+          "name": "mobile390: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+          "pass": true
+        },
+        {
+          "name": "mobile390: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+          "pass": true
+        },
+        {
+          "name": "mobile390: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+          "pass": true
+        },
+        {
+          "name": "mobile390: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+          "pass": true
+        },
+        {
+          "name": "mobile390: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+          "pass": true
+        },
+        {
+          "name": "mobile390: mobile fallback opens the existing PDF blob without another render or automatic download",
+          "pass": true
+        },
+        {
+          "name": "mobile390: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable",
+          "pass": true
+        },
+        {
+          "name": "mobile390: preview network failure is explicit and retryable, with no number, download or document",
+          "pass": true
+        },
+        {
+          "name": "mobile390: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained",
+          "pass": true
+        },
+        {
+          "name": "mobile390: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF",
+          "pass": true
+        },
+        {
+          "name": "mobile390: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download",
+          "pass": true
+        },
+        {
+          "name": "mobile390: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked",
+          "pass": true
+        },
+        {
+          "name": "mobile390: post-commit download failure retains issued PDF; explicit retry never repeats emission",
+          "pass": true
+        },
+        {
+          "name": "mobile390: changed installment revision blocks stale preview before reserving another number",
+          "pass": true
+        },
+        {
+          "name": "mobile390: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged",
+          "pass": true
+        },
+        {
+          "name": "mobile390: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically",
+          "pass": true
+        },
+        {
+          "name": "mobile390: all five summary metrics stay in one row, deadline after total, with no collisions",
+          "pass": true
+        },
+        {
+          "name": "mobile390: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions",
+          "pass": true
+        },
+        {
+          "name": "mobile390: rapid competing tab requests keep the last route, never applying an old transition callback",
+          "pass": true
+        },
+        {
+          "name": "mobile390: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits",
+          "pass": true
+        },
+        {
+          "name": "mobile390: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise",
+          "pass": true
+        },
+        {
+          "name": "mobile390: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 390px",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

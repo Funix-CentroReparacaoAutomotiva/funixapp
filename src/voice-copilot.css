@@ -1,0 +1,11 @@
+.voice-launcher{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.voice-launcher.recording{outline:3px solid #dc3545;outline-offset:-5px}
+.voice-launcher.preparing,.voice-launcher.processing{outline:2px solid #23b6aa;outline-offset:-5px}
+.voice-panel .copilot-feed{overflow:auto;overflow-wrap:anywhere}
+.voice-panel details{font-size:12px;margin:6px 0}
+.voice-panel summary{cursor:pointer;min-height:32px}
+.voice-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px}
+.voice-panel .voice-transcript{white-space:pre-wrap}
+.voice-panel .voice-status{white-space:normal;line-height:1.4;font-size:11px}
+.voice-status.error{color:#a12132}
+.voice-cancel{min-height:36px}

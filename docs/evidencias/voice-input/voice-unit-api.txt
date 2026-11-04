@@ -1,0 +1,42 @@
+✔ capture starts only after microphone acquisition; release processes complete audio and frees tracks (3.909278ms)
+✔ release before delayed microphone permission never starts hidden recording (0.303687ms)
+✔ microphone denial, missing device, unsupported APIs and unsupported MIME are distinct and free resources (0.368721ms)
+✔ capture cancellation pointercancel stops tracks and never submits (1.04907ms)
+✔ capture cancellation visibility stops tracks and never submits (1.138246ms)
+✔ capture cancellation navigation stops tracks and never submits (0.791197ms)
+✔ capture cancellation scenario stops tracks and never submits (34.171815ms)
+✔ capture cancellation logout stops tracks and never submits (7.068368ms)
+✔ capture cancellation unmount stops tracks and never submits (0.334928ms)
+✔ empty recording and recorder errors never call the provider (4.534093ms)
+✔ duration limit stops and processes already captured audio (27.797441ms)
+✔ size threshold stops predictably; oversize audio is retained only in memory for optional recovery (2.708117ms)
+✔ context change aborts processing and stale response never reaches current panel (2.363568ms)
+✔ a late stop event from a canceled recording cannot stop a new microphone stream (0.192028ms)
+✔ outside an Atendimento capture is unavailable and repeat hold does not allocate a second recorder (0.153758ms)
+✔ format negotiation falls back to the actually supported MP4 or Ogg MIME (0.262256ms)
+✔ voice endpoint requires authentication, same origin and POST (229.99728ms)
+✔ voice endpoint rejects invalid MIME, mismatched bytes, empty body, excess size and duration before provider (277.160162ms)
+✔ voice rejects missing Atendimento, foreign scenario, stale capture revisions and extra query parameters (122.709505ms)
+✔ structured interpretation yields transcription and read-only plan; snapshot/PDF/SQLite remain unchanged (153.200992ms)
+✔ unresolved and valid independent model commands remain separate in the returned plan (110.198373ms)
+✔ context edits during processing return dedicated stale error and never replan against changed data (90.483546ms)
+✔ provider timeout is bounded and a concurrent request is rejected (156.874479ms)
+✔ logout during provider processing invalidates its eventual result (85.266751ms)
+✔ model context excludes clients, notes, prices, other Atendimentos and other scenario identities (14.600712ms)
+✔ OpenAI adapter: no key means unavailable; requests use fixed endpoint, configured models, schema and store:false (2.300623ms)
+✔ OpenAI errors are sanitized and refusal, incomplete and malformed output are distinct (2.055979ms)
+✔ strict transport conversion preserves explicit nulls, omissions and rejects foreign envelope fields (1.180924ms)
+✔ 30 Brazilian workshop dictations exercise transport conversion and planner against consistent references (23.987537ms)
+✔ unconfigured backend explicitly rejects voice before receiving a paid-provider call (76.289104ms)
+✔ request rate is bounded for the single operator (163.295144ms)
+✔ provider failure before a transcript is explicit and contains no private diagnostics (84.014592ms)
+✔ chunked audio without Content-Length cannot bypass the byte limit (159.33249ms)
+✔ capture revision JSON key order is irrelevant (211.854262ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2366.707438

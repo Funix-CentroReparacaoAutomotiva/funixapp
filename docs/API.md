@@ -290,3 +290,21 @@ Esta seção prevalece sobre descrições anteriores de geração síncrona/PDF 
 - Confirmação mantém o POST definitivo existente e a mesma chave até obter resultado confirmado. Revalida token, inclusive revisões comerciais, prazo e parcelamento, e persiste PDF/snapshot imutáveis como antes. Resposta perdida ou `PDF_RENDER_IN_PROGRESS` mantém a tentativa recuperável; falha de download depois de gravar oferece somente novo GET do documento original. Voltar de uma prévia não emitida não gera efeitos persistentes.
 - GET da lista acrescenta `scenarioId` extraído **do snapshot**, sem depender dos cenários atuais. O frontend agrupa por esse ID, ordena pelo número congelado em `scenarioName` e deriva A/B/C pela sequência de emissões de cada grupo. `sequence`, `label`, OR e PDFs persistidos ficam intactos. Ausência de ID em algum legado não é inferida pela lista atual: documento fica identificado como histórico, sem agrupamento arbitrário. Links por UUID mantidos.
 - Nenhuma migração ou mudança de esquema. `executionDeadline` foi movida literalmente para o módulo compartilhado e reexportada pelo backend, permitindo mostrar o prazo efetivo sem duplicar regra financeira.
+
+### Copiloto de voz — interpretação sem aplicação (PR 2)
+
+`POST /api/atendimentos/:id/copiloto/interpretar?scenarioId=:scenarioId`
+
+Autenticação por sessão e `Origin` exata já existentes. Corpo binário completo (não JSON/multipart), `Content-Type` de áudio permitido:
+`audio/webm;codecs=opus`, `audio/webm`, `audio/ogg;codecs=opus`, `audio/ogg`, `audio/mp4`. O backend também verifica a assinatura inicial do contêiner. Headers:
+
+- `X-Funix-Audio-Duration-Ms`: duração positiva declarada pelo gravador, até 180000 ms.
+- `X-Funix-Voice-Revisions`: JSON `{"composition":N,"configuration":N,"scenario":N}` capturado no início (a ordem das chaves não importa).
+
+Até 12 MiB, upload até 15 s, processamento até 110 s; um processamento por instância e 12 tentativas/minuto. O limite de duração é aplicado pelo gravador e validado como metadado; não há decodificação independente da duração no servidor. O limite de bytes é obrigatório também em transferência chunked. A API Node preserva requestTimeout=15 s e headersTimeout=10 s dos demais endpoints: requestTimeout cobre recebimento, não a duração do processamento após o corpo completo.
+
+Resposta `{requestId, transcription, plan, applied:false}`. Áudio e transcrição não são persistidos pelo app. Envelope, revisões, destino, chave e identificação técnica são construídos pelo backend. Catálogo e composição mínima seguem para a OpenAI; contatos, placas, notas existentes, valores financeiros e outros Atendimentos não seguem. Responses usa `store:false`; políticas de retenção do provedor dependem da conta OpenAI e não são configuradas por este PR.
+
+Erros estruturados com requestId: `VOICE_UNAVAILABLE` (503), `VOICE_AUDIO_FORMAT` (415), `VOICE_AUDIO_TOO_LARGE` (413), `VOICE_INVALID_INPUT` (400), `VOICE_UPLOAD_TIMEOUT` (408), `VOICE_TIMEOUT` (504), `VOICE_BUSY/VOICE_RATE_LIMIT` (429), `VOICE_CONTEXT_STALE` (409), `VOICE_TRANSCRIPTION_FAILED/VOICE_INTERPRETATION_FAILED/VOICE_PROVIDER_UNAVAILABLE/VOICE_MODEL_INVALID/VOICE_MODEL_INCOMPLETE` (502), `VOICE_MODEL_REFUSED` (422). Contexto alterado é distinto de erro de IA e de conflito comercial de gravação. Autenticação/origem/pertencimento mantêm os erros existentes.
+
+Configuração exclusivamente backend: `OPENAI_API_KEY`, `FUNIX_VOICE_TRANSCRIPTION_MODEL=gpt-transcribe`, `FUNIX_VOICE_INTERPRETATION_MODEL=gpt-6.1-terra`. Sem chave: indisponível, nenhuma chamada externa. Nenhum segredo VITE. Não há fallback silencioso de modelo. O Compose existente já injeta runtime.env; não foi modificado. Homologação dos modelos/chave no smartphone e implantação dependem de autorização posterior.
