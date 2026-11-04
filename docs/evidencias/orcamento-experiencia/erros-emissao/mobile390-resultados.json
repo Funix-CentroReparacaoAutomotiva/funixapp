@@ -1,0 +1,96 @@
+{
+  "synthetic": true,
+  "device": "mobile390",
+  "results": [
+    {
+      "name": "mobile390: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+      "pass": true
+    },
+    {
+      "name": "mobile390: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+      "pass": true
+    },
+    {
+      "name": "mobile390: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+      "pass": true
+    },
+    {
+      "name": "mobile390: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+      "pass": true
+    },
+    {
+      "name": "mobile390: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+      "pass": true
+    },
+    {
+      "name": "mobile390: mobile fallback opens the existing PDF blob without another render or automatic download",
+      "pass": true
+    },
+    {
+      "name": "mobile390: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable",
+      "pass": true
+    },
+    {
+      "name": "mobile390: preview network failure is explicit and retryable, with no number, download or document",
+      "pass": true
+    },
+    {
+      "name": "mobile390: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained",
+      "pass": true
+    },
+    {
+      "name": "mobile390: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF",
+      "pass": true
+    },
+    {
+      "name": "mobile390: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download",
+      "pass": true
+    },
+    {
+      "name": "mobile390: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked",
+      "pass": true
+    },
+    {
+      "name": "mobile390: post-commit download failure retains issued PDF; explicit retry never repeats emission",
+      "pass": true
+    },
+    {
+      "name": "mobile390: changed installment revision blocks stale preview before reserving another number",
+      "pass": true
+    },
+    {
+      "name": "mobile390: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged",
+      "pass": true
+    },
+    {
+      "name": "mobile390: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically",
+      "pass": true
+    },
+    {
+      "name": "mobile390: all five summary metrics stay in one row, deadline after total, with no collisions",
+      "pass": true
+    },
+    {
+      "name": "mobile390: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions",
+      "pass": true
+    },
+    {
+      "name": "mobile390: rapid competing tab requests keep the last route, never applying an old transition callback",
+      "pass": true
+    },
+    {
+      "name": "mobile390: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits",
+      "pass": true
+    },
+    {
+      "name": "mobile390: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise",
+      "pass": true
+    },
+    {
+      "name": "mobile390: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 390px",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

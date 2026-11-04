@@ -9,6 +9,7 @@ import type {NegotiationState} from './negotiation'
 import {negotiationInput,negotiationSignature} from './negotiation'
 import type {CalculationState} from './calculation-state'
 import {api} from './api'
+import {emissionWasNotIssued} from './emission-error'
 import {percentInput,resolveMR} from '../shared/mr'
 import {Login} from './ui'
 import {money} from './money'
@@ -71,7 +72,14 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
   setUncertain(true)
   let issued:BudgetVersion
   try{issued=await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:review.preview.snapshot.scenarioId,negotiation:review.deal,previewToken:review.preview.token,idempotencyKey:review.key})})}
-  catch(e){const failure=e as{status:number;code?:string};if([400,401,403,404,422].includes(failure.status)||(failure.status===409&&failure.code==='VERSION_CONFLICT'))setUncertain(false);throw e}
+  catch(e){
+   if(emissionWasNotIssued(e)){
+    setUncertain(false)
+    const message=`O orçamento não foi emitido. ${(e as Error).message}`
+    throw Object.assign(new Error(message),e,{message})
+   }
+   throw e
+  }
   setVersion(issued);setUncertain(false)
   try{await downloadIssuedPdf(at,issued);setReview(null)}catch(e){throw Object.assign(new Error(`Orçamento ${issued.documentNumber??issued.label} emitido, mas não foi possível baixar o PDF. Use Baixar novamente; nenhuma nova emissão será criada.`),{status:(e as{status?:number}).status})}
  })}

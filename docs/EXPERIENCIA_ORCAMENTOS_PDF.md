@@ -57,3 +57,7 @@ Comandos e resultados finais estão em [evidências](evidencias/orcamento-experi
 - Emissão com resultado incerto precisa ser recuperada com a mesma confirmação antes de fechar; não há novo mecanismo de recuperação entre recargas completas do navegador, além do histórico/idempotência já existentes.
 
 Sem merge, deploy, mudanças de infraestrutura ou template instalado.
+
+## Complemento da auditoria final — falhas na confirmação
+
+A classificação de resultados conhecidos/desconhecidos foi ajustada sem modificar a emissão do backend. Ver [relatório da correção](PR41_TRATAMENTO_ERROS.md) e [evidências adicionais](evidencias/orcamento-experiencia/erros-emissao/README.md): 315 testes Node e 66 grupos de navegador, incluindo Voltar liberado após falha reconhecida, mesma chave no retry e reserva comercial preservada.
