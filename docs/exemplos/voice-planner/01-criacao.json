@@ -1,0 +1,315 @@
+{
+  "synthetic": true,
+  "fixture": "server/tests/fixtures/voice-planner.ts#voiceExampleCases",
+  "input": {
+    "format": "funix-voice-commands-v1",
+    "idempotencyKey": "synthetic-voice-first",
+    "atendimentoId": "11111111-1111-4111-8111-111111111111",
+    "scenarioId": "22222222-2222-4222-8222-222222222222",
+    "expected": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": []
+    },
+    "commands": [
+      {
+        "id": "piece",
+        "intent": "instruction",
+        "op": "add_piece",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        }
+      },
+      {
+        "id": "diagnosis",
+        "intent": "instruction",
+        "op": "set_diagnosis",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        },
+        "diagnosis": {
+          "state": "resolved",
+          "id": "qa:diagnosis:dent"
+        },
+        "intensity": "moderado"
+      },
+      {
+        "id": "body",
+        "intent": "instruction",
+        "op": "add_service",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        },
+        "service": {
+          "state": "resolved",
+          "id": "qa:service:body"
+        },
+        "dimension": {
+          "state": "resolved",
+          "id": "qa:dim:body-m"
+        }
+      },
+      {
+        "id": "paint",
+        "intent": "instruction",
+        "op": "add_service",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        },
+        "service": {
+          "state": "resolved",
+          "id": "qa:service:paint"
+        },
+        "dimension": {
+          "state": "resolved",
+          "id": "qa:dim:paint-partial"
+        }
+      }
+    ]
+  },
+  "plan": {
+    "format": "funix-voice-plan-v1",
+    "idempotencyKey": "synthetic-voice-first",
+    "requestDigest": "af104f8bfab42ac9a55dc9174f300ea74f699685c4d5dbce52e7f6c31493154e",
+    "stateDigest": "87ee7a8c18351407685b005e54722b8c2346d3b8b70cf86e2d3037e766a22022",
+    "guards": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": []
+    },
+    "results": [
+      {
+        "index": 0,
+        "commandId": "piece",
+        "status": "valid"
+      },
+      {
+        "index": 1,
+        "commandId": "diagnosis",
+        "status": "valid"
+      },
+      {
+        "index": 2,
+        "commandId": "body",
+        "status": "valid"
+      },
+      {
+        "index": 3,
+        "commandId": "paint",
+        "status": "valid"
+      }
+    ],
+    "changes": [
+      {
+        "origins": {
+          "presence": {
+            "kind": "explicit",
+            "commandId": "piece",
+            "intent": "instruction"
+          },
+          "pieceId": {
+            "kind": "explicit",
+            "commandId": "piece",
+            "intent": "instruction"
+          },
+          "enabled": {
+            "kind": "existing-default",
+            "commandId": "piece",
+            "rule": "new-item-flags"
+          },
+          "diagnosisId": {
+            "kind": "explicit",
+            "commandId": "diagnosis",
+            "intent": "instruction"
+          },
+          "intensity": {
+            "kind": "explicit",
+            "commandId": "diagnosis",
+            "intent": "instruction"
+          }
+        },
+        "impact": {
+          "scope": "shared",
+          "scenarioIds": [
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333"
+          ],
+          "invalidatesExecutionConfirmations": false,
+          "requiresGlobalRemovalConfirmation": false
+        },
+        "op": "add_piece",
+        "target": {
+          "kind": "planned",
+          "id": "piece:5d2e3b31e8528bb386518bde094bebde2b0e1be6db617e861ea21e7b05f334ad"
+        },
+        "pieceId": "qa:piece:rear",
+        "values": {
+          "diagnosisId": "qa:diagnosis:dent",
+          "intensity": "moderado",
+          "notes": ""
+        },
+        "flags": {
+          "22222222-2222-4222-8222-222222222222": true,
+          "33333333-3333-4333-8333-333333333333": false
+        }
+      },
+      {
+        "origins": {
+          "presence": {
+            "kind": "explicit",
+            "commandId": "body",
+            "intent": "instruction"
+          },
+          "serviceId": {
+            "kind": "explicit",
+            "commandId": "body",
+            "intent": "instruction"
+          },
+          "dimensionId": {
+            "kind": "explicit",
+            "commandId": "body",
+            "intent": "instruction"
+          },
+          "quantity": {
+            "kind": "existing-default",
+            "commandId": "body",
+            "rule": "initial-quantity-one"
+          },
+          "enabled": {
+            "kind": "explicit",
+            "commandId": "body",
+            "intent": "instruction"
+          }
+        },
+        "impact": {
+          "scope": "shared",
+          "scenarioIds": [
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333"
+          ],
+          "invalidatesExecutionConfirmations": false,
+          "requiresGlobalRemovalConfirmation": false
+        },
+        "op": "add_service",
+        "target": {
+          "kind": "planned",
+          "id": "service:43f2893f2b234f667ff6a79d9341d168aa022be66d256b5f11c977cd20bd299c"
+        },
+        "piece": {
+          "kind": "planned",
+          "id": "piece:5d2e3b31e8528bb386518bde094bebde2b0e1be6db617e861ea21e7b05f334ad"
+        },
+        "values": {
+          "serviceId": "qa:service:body",
+          "dimensionId": "qa:dim:body-m",
+          "quantity": "1",
+          "notes": "",
+          "diagnosisId": null
+        },
+        "flags": {
+          "22222222-2222-4222-8222-222222222222": true,
+          "33333333-3333-4333-8333-333333333333": false
+        }
+      },
+      {
+        "origins": {
+          "presence": {
+            "kind": "explicit",
+            "commandId": "paint",
+            "intent": "instruction"
+          },
+          "serviceId": {
+            "kind": "explicit",
+            "commandId": "paint",
+            "intent": "instruction"
+          },
+          "dimensionId": {
+            "kind": "explicit",
+            "commandId": "paint",
+            "intent": "instruction"
+          },
+          "quantity": {
+            "kind": "existing-default",
+            "commandId": "paint",
+            "rule": "initial-quantity-one"
+          },
+          "enabled": {
+            "kind": "explicit",
+            "commandId": "paint",
+            "intent": "instruction"
+          }
+        },
+        "impact": {
+          "scope": "shared",
+          "scenarioIds": [
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333"
+          ],
+          "invalidatesExecutionConfirmations": false,
+          "requiresGlobalRemovalConfirmation": false
+        },
+        "op": "add_service",
+        "target": {
+          "kind": "planned",
+          "id": "service:763663ebcb7e3b771f4c64e500e9600ae6fbb130291d3c64bc2778e4535596e9"
+        },
+        "piece": {
+          "kind": "planned",
+          "id": "piece:5d2e3b31e8528bb386518bde094bebde2b0e1be6db617e861ea21e7b05f334ad"
+        },
+        "values": {
+          "serviceId": "qa:service:paint",
+          "dimensionId": "qa:dim:paint-partial",
+          "quantity": "1",
+          "notes": "",
+          "diagnosisId": null
+        },
+        "flags": {
+          "22222222-2222-4222-8222-222222222222": true,
+          "33333333-3333-4333-8333-333333333333": false
+        }
+      }
+    ],
+    "issues": [
+      {
+        "commandId": "diagnosis",
+        "code": "ASSISTED_RECOMMENDATIONS_REQUIRED",
+        "message": "Conteúdo existente preservado; inclusão assistida precisa de IDs de regras explícitos.",
+        "blocking": false,
+        "references": [
+          "qa-rule-body",
+          "qa-rule-paint",
+          "qa-rule-montage",
+          "qa-rule-optional"
+        ]
+      }
+    ],
+    "usedRules": [],
+    "replay": false,
+    "requiresCalculation": true
+  }
+}

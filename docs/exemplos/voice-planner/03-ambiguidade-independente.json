@@ -1,0 +1,140 @@
+{
+  "synthetic": true,
+  "fixture": "server/tests/fixtures/voice-planner.ts#voiceExampleCases",
+  "input": {
+    "format": "funix-voice-commands-v1",
+    "idempotencyKey": "synthetic-voice-ambiguous",
+    "atendimentoId": "11111111-1111-4111-8111-111111111111",
+    "scenarioId": "22222222-2222-4222-8222-222222222222",
+    "expected": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": [
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "revision": 3
+        }
+      ]
+    },
+    "commands": [
+      {
+        "id": "unclear-piece",
+        "intent": "instruction",
+        "op": "add_piece",
+        "piece": {
+          "state": "unresolved",
+          "text": "para-choque, lado não informado",
+          "candidates": [
+            "qa:piece:front",
+            "qa:piece:rear"
+          ]
+        }
+      },
+      {
+        "id": "independent-notes",
+        "intent": "instruction",
+        "op": "set_notes",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        },
+        "value": "Anotação explícita independente"
+      }
+    ]
+  },
+  "plan": {
+    "format": "funix-voice-plan-v1",
+    "idempotencyKey": "synthetic-voice-ambiguous",
+    "requestDigest": "ac79a342f509c757782e63c78b35def6331640731d40bc618fc807bfafd082b5",
+    "stateDigest": "d45d782834efe2ad42248728039a7c4f977ff08eeb9fb920da35d74973d40ad9",
+    "guards": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": [
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "revision": 3
+        }
+      ]
+    },
+    "results": [
+      {
+        "index": 0,
+        "commandId": "unclear-piece",
+        "status": "pending",
+        "reason": "UNRESOLVED_REFERENCE"
+      },
+      {
+        "index": 1,
+        "commandId": "independent-notes",
+        "status": "valid"
+      }
+    ],
+    "changes": [
+      {
+        "origins": {
+          "notes": {
+            "kind": "explicit",
+            "commandId": "independent-notes",
+            "intent": "instruction"
+          }
+        },
+        "impact": {
+          "scope": "shared",
+          "scenarioIds": [
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333"
+          ],
+          "invalidatesExecutionConfirmations": false,
+          "requiresGlobalRemovalConfirmation": false
+        },
+        "op": "update_piece",
+        "target": {
+          "kind": "existing",
+          "id": "44444444-4444-4444-8444-444444444444"
+        },
+        "patch": {
+          "notes": "Anotação explícita independente"
+        },
+        "before": {
+          "notes": "Observação manual preservada"
+        }
+      }
+    ],
+    "issues": [
+      {
+        "commandId": "unclear-piece",
+        "code": "UNRESOLVED_REFERENCE",
+        "message": "para-choque, lado não informado",
+        "blocking": true,
+        "references": [
+          "qa:piece:front",
+          "qa:piece:rear"
+        ]
+      }
+    ],
+    "usedRules": [],
+    "replay": false,
+    "requiresCalculation": true
+  }
+}
