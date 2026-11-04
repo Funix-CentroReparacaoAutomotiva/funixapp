@@ -1,3 +1,6 @@
+import{createVoiceEndpoint}from'./voice-endpoint.ts'
+import{openAIVoiceProvider}from'./voice-provider.ts'
+import type{VoiceProvider}from'./voice-provider.ts'
 import{applySuggestedServices}from'./apply-recommendations.ts'
 import{recommendations}from'./diagnosis-recommendations.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
@@ -14,6 +17,8 @@ import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
 
 export interface AppOptions {
+  voiceProvider?:VoiceProvider|null
+  voiceProcessingMs?:number // injectable timeout for deterministic local tests
   budgetRenderer?:BudgetOptions['render']
   atendimentos: AtendimentoRepository
   password?: string
@@ -28,6 +33,7 @@ export function createRequestHandler(options: AppOptions) {
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
+  const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs)
   const now = options.now ?? Date.now
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
@@ -91,6 +97,15 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      const voiceRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/interpretar$/.exec(url.pathname)
+      if(voiceRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para interpretar áudio.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        const disconnect=()=>{if(!res.writableEnded)req.emit('aborted')}
+        res.once('close',disconnect)
+        try{return send(200,await voice(req,voiceRoute[1]!,url,requestId,()=>(sessions.get(cookie)??0)>now()))}
+        finally{res.off('close',disconnect)}
+      }
       if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
         return fail(req.method === 'GET' ? 410 : 405, 'FEATURE_UNAVAILABLE', 'Esta função operacional não pertence ao MVP Comercial. Nenhum acesso ao Coda foi realizado.')
       }

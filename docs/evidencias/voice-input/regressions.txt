@@ -1,0 +1,132 @@
+SUITE fase5_gestures
+PASS desktop: no upper X; central X and click outside circular disk close the selector
+PASS desktop: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS desktop: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS desktop: bilateral groups add missing pieces without opening an arbitrary editor
+PASS desktop: drag/cancel do not open quick overlay or perform mutations
+PASS desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile390: no upper X; central X and click outside circular disk close the selector
+PASS mobile390: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile390: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile390: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile390: drag/cancel do not open quick overlay or perform mutations
+PASS mobile390: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile390: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile390: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile390: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile390: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile320: no upper X; central X and click outside circular disk close the selector
+PASS mobile320: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile320: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile320: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile320: drag/cancel do not open quick overlay or perform mutations
+PASS mobile320: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile320: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile320: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile320: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile320: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+SUITE fase4_recommendations
+PASS desktop: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS desktop: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS desktop: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS desktop: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS desktop: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS desktop: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS desktop: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS desktop: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS desktop: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS desktop: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS desktop: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+PASS mobile390: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS mobile390: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS mobile390: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS mobile390: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS mobile390: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS mobile390: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS mobile390: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS mobile390: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS mobile390: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS mobile390: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS mobile390: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+PASS mobile320: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS mobile320: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS mobile320: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS mobile320: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS mobile320: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS mobile320: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS mobile320: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS mobile320: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS mobile320: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS mobile320: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS mobile320: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+SUITE pdf_emission
+PASS desktop: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS desktop: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS desktop: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS desktop: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS desktop: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS desktop: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS desktop: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS desktop: preview network failure is explicit and retryable, with no number, download or document
+PASS desktop: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained
+PASS desktop: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS desktop: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download
+PASS desktop: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS desktop: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS desktop: changed installment revision blocks stale preview before reserving another number
+PASS desktop: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS desktop: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS desktop: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS desktop: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS desktop: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS desktop: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits
+PASS desktop: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS desktop: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 1440px
+PASS mobile390: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS mobile390: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS mobile390: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS mobile390: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS mobile390: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS mobile390: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS mobile390: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS mobile390: preview network failure is explicit and retryable, with no number, download or document
+PASS mobile390: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained
+PASS mobile390: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS mobile390: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download
+PASS mobile390: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS mobile390: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS mobile390: changed installment revision blocks stale preview before reserving another number
+PASS mobile390: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS mobile390: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS mobile390: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS mobile390: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS mobile390: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS mobile390: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits
+PASS mobile390: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS mobile390: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 390px
+PASS mobile320: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS mobile320: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS mobile320: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS mobile320: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS mobile320: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS mobile320: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS mobile320: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS mobile320: preview network failure is explicit and retryable, with no number, download or document
+PASS mobile320: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained
+PASS mobile320: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS mobile320: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download
+PASS mobile320: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS mobile320: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS mobile320: changed installment revision blocks stale preview before reserving another number
+PASS mobile320: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS mobile320: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS mobile320: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS mobile320: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS mobile320: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS mobile320: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits
+PASS mobile320: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS mobile320: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 320px

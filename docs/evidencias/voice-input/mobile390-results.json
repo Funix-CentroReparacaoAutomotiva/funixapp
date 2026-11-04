@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "mockProvider": true,
+  "realSmartphone": false,
+  "results": [
+    {
+      "name": "mobile390: short tap opens existing panel",
+      "pass": true
+    },
+    {
+      "name": "mobile390: native WebM/Opus capture and release call real authenticated read-only API with deterministic provider mocks",
+      "pass": true
+    },
+    {
+      "name": "mobile390: accessible keyboard press/release records and processes",
+      "pass": true
+    },
+    {
+      "name": "mobile390: late permission frees tracks and never records or sends hidden audio",
+      "pass": true
+    },
+    {
+      "name": "mobile390: denied permission and pointercancel preserve data and release resources",
+      "pass": true
+    },
+    {
+      "name": "mobile390: React tab navigation cancels active recording without upload",
+      "pass": true
+    },
+    {
+      "name": "mobile390: scenario switch discards previous result",
+      "pass": true
+    },
+    {
+      "name": "mobile390: three tabs preserve launcher/footer geometry, no horizontal overflow at 390px",
+      "pass": true
+    },
+    {
+      "name": "mobile390: navigation/unmount cancels capture",
+      "pass": true
+    },
+    {
+      "name": "mobile390: no commercial write request, no external network, no JS errors; synthetic SQLite integrity and quantity unchanged",
+      "pass": true
+    }
+  ],
+  "pageErrors": []
+}
