@@ -137,3 +137,38 @@ Comandos/resultados em [evidências](evidencias/voice-planner/README.md). Sem te
 Estado real de catálogo/recomendações da VPS não inspecionado; intensidade nula e múltiplos danos permanecem lacunas; identificação canônica da atividade técnica segue bloqueada; confirmação global e recibo transacional serão tratados na integração, não inferidos pelo modelo. Valores/configuração técnica não são fabricados para tornar uma linha calculável.
 
 Não há migração, escrita em dados reais, merge ou deploy. Parar neste PR para auditoria.
+
+## Correções finais da auditoria do PR #42
+
+Base conferida: `26501b3923a10ba8d735a33d6723a0ef1e52ae44`. Escopo limitado ao contrato, validação, planejador puro, testes e documentação.
+
+### Exclusão e correção explícita
+
+A proteção contra exclusões permanece para recomendações e instruções independentes. Uma operação `add_piece` ou `add_service` posterior com `intent: 'correction'` pode restaurar exclusivamente o estado removido e identificado com segurança no mesmo lote.
+
+O planejador conserva cópias do estado imediatamente anterior à remoção, sem persistência adicional. Assim, recupera a mesma identidade (existente ou planejada), diagnóstico, intensidade, notas, dimensões, quantidades, origem de recomendação, flags e relações. Alterações explícitas anteriores à remoção são preservadas; restaurar uma peça não restaura serviços que já haviam sido removidos separadamente. A ordem original das linhas é mantida. Não há alteração de flags de outros cenários.
+
+Para representar “manter o serviço” sem repetir valores desconhecidos, `add_service` permite omitir `dimension` **apenas quando `intent: 'correction'`**. Omissão preserva a dimensão anterior; `null` continua sendo um valor explícito distinto. Sem uma linha anterior inequívoca, a omissão produz `RESTORATION_UNRESOLVED`, nunca uma nova dimensão. Dimensão e quantidade fornecidas explicitamente continuam validadas; os demais atributos não são substituídos. Inclusões comuns mantêm o contrato anterior.
+
+Múltiplas linhas removidas do mesmo serviço, concorrência com linha viva equivalente ou ausência de estado anterior seguro resultam em pendência. Não há escolha por nome, dimensão aproximada ou candidato único não confirmado. A proteção é local ao planejamento; confirmação e aplicação transacional continuam responsabilidades do futuro PR 3.
+
+O diff final continua sendo calculado contra o estado inicial: excluir e restaurar sem outra edição gera zero mudanças e nenhum pedido de confirmação global. Os comandos anulados aparecem como `noop / NO_NET_CHANGE_OR_SUPERSEDED`.
+
+### Serviço explícito ainda não identificado
+
+Referência de serviço não resolvida (inclusive com um único candidato) ou ID ausente/incompatível suspende a derivação **automática** somente naquela peça. A pendência original permanece e o plano registra `AUTOMATIC_RECOMMENDATIONS_SUSPENDED`. Isso também cobre referências de serviço não resolvidas em comandos direcionados a linhas.
+
+Outros comandos explícitos válidos continuam sendo planejados. Outras peças continuam podendo receber recomendações. Não se infere que um comando posterior separado resolveu a pendência anterior; a identidade deve ser resolvida na entrada estruturada antes de replanejar. O fluxo assistido por IDs explícitos de regras mantém o contrato existente.
+
+### Regressões e resultados
+
+Onze testes novos cobrem restauração de serviços e peças, preservação de atributos/identidades/flags, alterações anteriores à remoção, correção de dimensão sem apagar notas, proteção contra recomendações e instruções independentes, restauração ambígua, exclusões separadas, referência explícita pendente com candidato único, isolamento entre peças e comandos, repetição determinística e omissão de dimensão restrita à correção.
+
+O teste integrado de SQLite sintético/histórico também passou a executar exclusão/restauração de serviço e peça e referência não resolvida: `total_changes()`, snapshot e bytes PDF emitidos permanecem invariáveis. Nenhum banco instalado foi acessado.
+
+- `node --test --test-isolation=none server/tests/voice-planner.test.ts`: 58 testes aprovados.
+- `npm run check`: build frontend/backend, **373 testes Node aprovados**, zero falhas; sete avisos de lint preexistentes.
+- `git diff --check`: sem erros.
+- Evidência integral: [correcoes/npm-check.txt](evidencias/voice-planner/correcoes/npm-check.txt).
+
+Interface, endpoints, recomendações cadastradas, motor financeiro, cenários persistidos, migrações, PDFs históricos e infraestrutura não foram modificados. Sem merge/deploy ou início do PR 2.

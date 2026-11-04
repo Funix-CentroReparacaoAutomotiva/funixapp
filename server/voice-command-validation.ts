@@ -35,7 +35,7 @@ function command(v:unknown):v is VoiceCommand{
   case'add_piece':case'remove_piece':return true
   case'set_piece_enabled':return typeof v.enabled==='boolean'
   case'set_diagnosis':return ('diagnosis'in v||'intensity'in v)&&(v.diagnosis===undefined||v.diagnosis===null||reference(v.diagnosis))&&(v.intensity===undefined||v.intensity===null||DIAGNOSIS_INTENSITIES.includes(v.intensity as typeof DIAGNOSIS_INTENSITIES[number]))&&(v.additionalDamage===undefined||typeof v.additionalDamage==='boolean')
-  case'add_service':return reference(v.service)&&(v.dimension===null||reference(v.dimension))&&(v.quantity===undefined||voiceQuantity(v.quantity))
+  case'add_service':return reference(v.service)&&(v.dimension===undefined&&v.intent==='correction'||v.dimension===null||reference(v.dimension))&&(v.quantity===undefined||voiceQuantity(v.quantity))
   case'set_dimension':return line(v.line)&&(v.dimension===null||reference(v.dimension))
   case'set_quantity':return line(v.line)&&(v.mode==='absolute'||v.mode==='increment')&&voiceQuantity(v.value)
   case'set_service_enabled':return line(v.line)&&typeof v.enabled==='boolean'

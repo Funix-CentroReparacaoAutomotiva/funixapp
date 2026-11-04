@@ -74,6 +74,10 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
   const plannedRef=(kind:'piece'|'service',command:string,ruleId?:string):VoiceEntityReference=>({kind:'planned',id:kind+':'+digest([requestDigest,command,ruleId??null])})
   const flags=new Map(w.scenarios.map(s=>[s.id,{piece:{...s.pieceFlags},service:{...s.serviceFlags}}]))
   const origins=new Map<string,VoiceChange['origins']>(),commandLines=new Map<string,{pieceId:string;id:string}>(),removedPieces=new Set<string>(),removedServices=new Set<string>(),removedLines=new Set<string>(),explicitServices=new Set<string>()
+  // Removal snapshots retain identity, manual attributes and all scenario masks.
+  const removedPieceValues=new Map<string,WorkingPiece>(),removedServiceValues=new Map<string,{pieceId:string;line:DiagnosisService}>(),unresolvedServicePieces=new Set<string>()
+  const lineOrder=new Map(w.items.flatMap(p=>p.services.map((l,i)=>[l.id,i]as const)))
+  const nextOrder=new Map(w.items.map(p=>[p.pieceId,p.services.length]))
   const writes=new Map<string,{value:unknown;indexes:number[];conflict:boolean}>(),diagnosisTriggers=new Map<string,number>(),usedRules:VoicePlan['usedRules']=[]
   let index=0
   const c=()=>batch!.commands[index]!
@@ -96,7 +100,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    if(r.kind==='id')id=r.id
    else if(r.kind==='command'){const target=commandLines.get(r.commandId);if(target?.pieceId===p.pieceId)id=target.id}
    else{
-    const service=resolve(r.service,'servico');if(!service)return
+    const service=resolve(r.service,'servico');if(!service){unresolvedServicePieces.add(p.pieceId);return}
     explicitServices.add(p.pieceId+':'+service.id)
     const matches=p.services.filter(l=>l.serviceId===service.id)
     if(!matches.length&&c().op==='remove_service'){removedServices.add(p.pieceId+':'+service.id);results[index]!.reason='ALREADY_ABSENT';return}
@@ -114,6 +118,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    if(p.services.length>=50){issue('SERVICE_LIMIT','A peça atingiria mais de 50 serviços.');return}
    const reference=plannedRef('service',c().id,ruleId),id='@voice:'+reference.id
    const l:DiagnosisService={id,serviceId,dimensionId,quantity,enabled,notes:'',diagnosisId:null,...(ruleId?{recommendationRuleId:ruleId}:{})}
+   lineOrder.set(id,nextOrder.get(p.pieceId)??0);nextOrder.set(p.pieceId,(nextOrder.get(p.pieceId)??0)+1)
    p.services.push(l);refs.set(id,reference)
    const command=c()
    mark(id,'presence',origin);mark(id,'serviceId',origin);mark(id,'dimensionId',origin);mark(id,'quantity',origin.kind==='rule'||command.op==='add_service'&&command.quantity===undefined?{kind:'existing-default',commandId:c().id,rule:'initial-quantity-one'}:origin)
@@ -129,7 +134,12 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    let p=pieces.get(physical.id)
    if(cmd.op==='add_piece'){
     if(p)continue
-    if(removedPieces.has(physical.id)){issue('EXPLICIT_REMOVAL_PRESERVED','Uma remoção neste lote não será revertida implicitamente.');continue}
+    if(removedPieces.has(physical.id)){
+     if(cmd.intent!=='correction'){issue('EXPLICIT_REMOVAL_PRESERVED','Uma remoção neste lote não será revertida implicitamente.');continue}
+     const previous=removedPieceValues.get(physical.id)
+     if(!previous){issue('RESTORATION_UNRESOLVED','Não há estado anterior seguro para restaurar a peça.');continue}
+     pieces.set(physical.id,structuredClone(previous));removedPieces.delete(physical.id);removedPieceValues.delete(physical.id);mark(previous.id,'presence',explicit(cmd));results[index]!.status='valid';continue
+    }
     if(!catalogItemUsable(physical)){issue('INACTIVE_REFERENCE','Peça nova exige código e cadastro ativo.');continue}
     const reference=plannedRef('piece',cmd.id),id='@voice:'+reference.id
     p={id,pieceId:physical.id,diagnosisId:null,intensity:null,notes:'',services:[]};pieces.set(physical.id,p);refs.set(id,reference);mark(id,'presence',explicit(cmd));mark(id,'pieceId',explicit(cmd));mark(id,'enabled',{kind:'existing-default',commandId:cmd.id,rule:'new-item-flags'})
@@ -138,7 +148,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    }
    if(cmd.op==='remove_piece'){
     removedPieces.add(physical.id)
-    if(p){pieces.delete(physical.id);mark(p.id,'presence',explicit(cmd));results[index]!.status='valid'}
+    if(p){removedPieceValues.set(physical.id,structuredClone(p));pieces.delete(physical.id);mark(p.id,'presence',explicit(cmd));results[index]!.status='valid'}
     continue
    }
    if(!p){issue('PIECE_NOT_PRESENT','Inclua explicitamente a peça antes de alterar seu diagnóstico.');continue}
@@ -153,15 +163,32 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
      diagnosisTriggers.set(p.pieceId,index);break
     }
     case'add_service':{
-     const service=resolve(cmd.service,'servico');if(!service)break
-     explicitServices.add(p.pieceId+':'+service.id)
+     const service=resolve(cmd.service,'servico');if(!service){unresolvedServicePieces.add(p.pieceId);break}
+     const serviceKey=p.pieceId+':'+service.id
+     explicitServices.add(serviceKey)
      const matches=p.services.filter(l=>l.serviceId===service.id)
-     const dimension=cmd.dimension===null?null:resolve(cmd.dimension,'dimensao',!matches.some(l=>l.dimensionId===(cmd.dimension?.state==='resolved'?cmd.dimension.id:null)))
-     if(cmd.dimension!==null&&!dimension)break
-     if(dimension&&dimension.serviceId!==service.id){issue('DIMENSION_SERVICE_MISMATCH','Dimensão não pertence ao serviço.',true,[dimension.id,service.id]);break}
+     const restoring=removedServices.has(serviceKey)
+     if(restoring&&cmd.intent!=='correction'){issue('EXPLICIT_REMOVAL_PRESERVED','Não recriar serviço removido no mesmo lote.');break}
+     const removed=[...removedServiceValues.values()].filter(v=>v.pieceId===p.pieceId&&v.line.serviceId===service.id)
+     if(restoring&&(removed.length!==1||matches.length)){
+      issue('RESTORATION_UNRESOLVED','Restauração exige uma única linha anterior, sem lançamentos concorrentes.',true,removed.map(v=>v.line.id));break
+     }
      if(matches.length>1){issue('AMBIGUOUS_SERVICE_LINE','Serviço repetido: escolha a linha exata.',true,matches.map(l=>l.id));break}
-     if(matches.length===1){const existing=matches[0]!;commandLines.set(cmd.id,{pieceId:p.pieceId,id:existing.id});if(existing.dimensionId!==(dimension?.id??null)||(cmd.quantity!==undefined&&existing.quantity!==normalizedQuantity(cmd.quantity)))issue('EXISTING_SERVICE_DIFFERENT','Use uma correção direcionada para mudar dimensão/quantidade, sem duplicar o serviço.',true,[existing.id]);break}
-     if(removedServices.has(p.pieceId+':'+service.id)){issue('EXPLICIT_REMOVAL_PRESERVED','Não recriar serviço removido no mesmo lote.');break}
+     const previous=restoring?removed[0]!.line:matches[0]
+     if(cmd.dimension===undefined&&!previous){issue('RESTORATION_UNRESOLVED','Sem linha anterior não é possível preservar a dimensão.');break}
+     const dimension=cmd.dimension===undefined?undefined:cmd.dimension===null?null:resolve(cmd.dimension,'dimensao',cmd.dimension.state==='resolved'&&cmd.dimension.id!==previous?.dimensionId)
+     if(cmd.dimension!==undefined&&cmd.dimension!==null&&!dimension)break
+     if(dimension&&dimension.serviceId!==service.id){issue('DIMENSION_SERVICE_MISMATCH','Dimensão não pertence ao serviço.',true,[dimension.id,service.id]);break}
+     const dimensionId=cmd.dimension===undefined?previous!.dimensionId:dimension?.id??null
+     if(restoring){
+      const restored=structuredClone(previous!)
+      if(cmd.dimension!==undefined){write(restored.id,'dimensionId',dimensionId,restored.dimensionId);restored.dimensionId=dimensionId}
+      if(cmd.quantity!==undefined){const quantity=normalizedQuantity(cmd.quantity);write(restored.id,'quantity',quantity,restored.quantity);restored.quantity=quantity}
+      p.services.push(restored);p.services.sort((a,b)=>lineOrder.get(a.id)!-lineOrder.get(b.id)!)
+      removedServiceValues.delete(restored.id);removedLines.delete(restored.id);removedServices.delete(serviceKey)
+      mark(restored.id,'presence',explicit(cmd));commandLines.set(cmd.id,{pieceId:p.pieceId,id:restored.id});results[index]!.status='valid';thirdParty(restored);break
+     }
+     if(previous){commandLines.set(cmd.id,{pieceId:p.pieceId,id:previous.id});if(previous.dimensionId!==dimensionId||(cmd.quantity!==undefined&&previous.quantity!==normalizedQuantity(cmd.quantity)))issue('EXISTING_SERVICE_DIFFERENT','Use uma correção direcionada para mudar dimensão/quantidade, sem duplicar o serviço.',true,[previous.id]);break}
      const policyIssue=newServiceSelectionIssue(service.id)
      if(policyIssue||!catalogItemUsable(service)){issue('CURATION_BLOCKED',policyIssue??'Serviço inativo.',true,[service.id]);break}
      const created=addLine(p,service.id,dimension?.id??null,normalizedQuantity(cmd.quantity??'1'),explicit(cmd),true)
@@ -177,7 +204,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
      }
      if(cmd.op==='set_notes'){const entity=target??p;write(entity.id,'notes',cmd.value.trim(),entity.notes??'');entity.notes=cmd.value.trim();break}
      if(!target)break
-     if(cmd.op==='remove_service'){p.services=p.services.filter(l=>l.id!==target.id);removedServices.add(p.pieceId+':'+target.serviceId);removedLines.add(target.id);mark(target.id,'presence',explicit(cmd));results[index]!.status='valid';break}
+     if(cmd.op==='remove_service'){removedServiceValues.set(target.id,{pieceId:p.pieceId,line:structuredClone(target)});p.services=p.services.filter(l=>l.id!==target.id);removedServices.add(p.pieceId+':'+target.serviceId);removedLines.add(target.id);mark(target.id,'presence',explicit(cmd));results[index]!.status='valid';break}
      if(cmd.op==='set_service_enabled'){write(target.id,'enabled',cmd.enabled,Boolean(flags.get(selected)!.service[target.id]));flags.get(selected)!.service[target.id]=cmd.enabled;thirdParty(target);break}
      if(cmd.op==='set_dimension'){
       const dimension=cmd.dimension===null?null:resolve(cmd.dimension,'dimensao',cmd.dimension.state==='resolved'&&cmd.dimension.id!==target.dimensionId)
@@ -198,6 +225,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
   if(incompatible.length)throw new IntentConflict([...new Set(incompatible.flatMap(v=>v.indexes))])
   // The existing Phase 4 empty-piece gate also protects newly dictated manual lines.
   const recommend=(p:WorkingPiece,mode:'automatic'|'assisted',ruleIds?:string[],derived=false)=>{
+   if(mode==='automatic'&&unresolvedServicePieces.has(p.pieceId)){issue('AUTOMATIC_RECOMMENDATIONS_SUSPENDED','Identidade de serviço explícito pendente; derivação automática suspensa somente nesta peça.',false,[p.pieceId]);return}
    const missing=(code:string,message:string)=>issue(code,message,!derived)
    if(!p.diagnosisId||!p.intensity){missing('RECOMMENDATION_CONTEXT_MISSING','Consulta exige diagnóstico e intensidade; regra sem intensidade não pode ser presumida.');return}
    const diagnosis=catalog.get(p.diagnosisId)

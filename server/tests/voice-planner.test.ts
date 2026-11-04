@@ -194,6 +194,17 @@ test('no SQLite import/write and no mutation of an emitted snapshot/PDF during p
   const ctx:VoicePlanningContext={atendimentoId:f.at.id,catalog:f.commercial.catalogs().items,workspace:{selectedId:f.scenario.id,revision:f.pricing.settings(f.at.id).revision,configurationRevision:f.pricing.get().revision,scenarios:f.scenarios.list(f.at.id),items:f.commercial.list(f.at.id,f.scenario.id),components:[]},recommendations:[]}
   const command={...cmd('notes','set_notes',{value:'Planejado, não salvo'}),piece:ref(f.item.pieceId)},input=batch(ctx,[command]),before=db.prepare('SELECT total_changes() AS n').get()!.n
   assert(planVoiceCommands(input,ctx).changes.length);assert.equal(db.prepare('SELECT total_changes() AS n').get()!.n,before)
+  const original=ctx.workspace.items[0]!,service=original.services[0]!
+  const restoration=batch(ctx,[
+   {...cmd('remove-service','remove_service',{line:line(service.id)}),piece:ref(original.pieceId)},
+   {...cmd('restore-service','add_service',{service:ref(service.serviceId)},'correction'),piece:ref(original.pieceId)},
+   {...cmd('remove-piece','remove_piece'),piece:ref(original.pieceId)},
+   {...cmd('restore-piece','add_piece',{},'correction'),piece:ref(original.pieceId)},
+   {...cmd('unknown-service','add_service',{service:{state:'unresolved',text:'serviço não identificado'},dimension:null}),piece:ref(original.pieceId)}
+  ])
+  const restored=planVoiceCommands(restoration,ctx)
+  assert.deepEqual(restored.changes,[]);assert.equal(restored.results[4]!.status,'pending')
+  assert.equal(db.prepare('SELECT total_changes() AS n').get()!.n,before)
   assert.deepEqual(budgets.get(f.at.id,issued.id),snapshot);assert.deepEqual(budgets.pdf(f.at.id,issued.id),pdf);assert.notEqual(f.commercial.list(f.at.id)[0]!.notes,'Planejado, não salvo')
   assert(!/from\s*['"](?:node:sqlite|\.\/(?:commercial|scenarios|budgets|database)\.ts)['"]/.test(readFileSync(new URL('../voice-planner.ts',import.meta.url),'utf8').replace(/import type[^\n]+/g,'')))
  }finally{db.close()}
@@ -325,4 +336,116 @@ test('planned identities have disjoint namespaces and cannot collide through com
  const p=plan([cmd('rear','add_piece'),cmd('damage','set_diagnosis',{diagnosis:ref(V.dent),intensity:'moderado'}),cmd('damage:'+suffix,'add_piece',{piece:ref(V.front)})],ctx)
  const targets=p.changes.filter(c=>c.op==='add_piece'||c.op==='add_service').map(c=>c.target.id)
  assert.equal(targets.length,6);assert.equal(new Set(targets).size,targets.length);assert(p.changes.every(c=>c.target.kind==='planned'))
+})
+
+test('correction restores an existing service with identity, manual attributes and scenario flags intact',()=>{
+ const ctx=voiceFixture(),before=structuredClone(ctx)
+ const commands=[cmd('remove','remove_service',{line:line(V.body)}),cmd('keep','add_service',{service:ref(V.bodyService)},'correction')]
+ const p=plan(commands,ctx)
+ assert.deepEqual(p.changes,[]);assert.deepEqual(p.results.map(r=>r.status),['noop','noop'])
+ assert(!p.issues.some(i=>i.blocking));assert.deepEqual(ctx,before)
+ assert.deepEqual(plan(commands,ctx),p)
+ const changed=plan([...commands,cmd('qty','set_quantity',{line:line(V.body),mode:'increment',value:'0.25'},'correction')],ctx)
+ assert.equal(changed.changes.length,1);const change=changed.changes[0]!
+ assert.equal(change.op,'update_service')
+ if(change.op==='update_service'){assert.equal(change.target.id,V.body);assert.deepEqual(change.patch,{quantity:'1.5'})}
+})
+
+test('service restoration preserves changes made before removal and only applies explicitly supplied attributes',()=>{
+ const commands=[cmd('note','set_notes',{line:line(V.paint),value:'Ajuste manual preservado'}),
+ cmd('remove','remove_service',{line:line(V.paint)}),
+ cmd('keep','add_service',{service:ref(V.paintService),dimension:ref(V.complete)},'correction')]
+ const p=plan(commands)
+ assert.equal(p.changes.length,1);const change=p.changes[0]!
+ assert.equal(change.op,'update_service')
+ if(change.op==='update_service'){assert.equal(change.target.id,V.paint);assert.deepEqual(change.patch,{dimensionId:V.complete,notes:'Ajuste manual preservado'})}
+ assert(!p.changes.some(c=>c.op==='set_service_enabled'))
+})
+
+test('piece correction restores original identity, diagnosis, services, quantities, notes and all flags',()=>{
+ const commands=[cmd('remove','remove_piece'),cmd('keep','add_piece',{},'correction')]
+ const ctx=voiceFixture(),before=structuredClone(ctx),p=plan(commands,ctx)
+ assert.deepEqual(p.changes,[]);assert(!p.issues.some(i=>i.blocking));assert.deepEqual(ctx,before)
+ const edited=plan([...commands,cmd('note','set_notes',{value:'Nova nota'},'correction')],ctx)
+ assert.equal(edited.changes.length,1);const change=edited.changes[0]!
+ assert.equal(change.op,'update_piece');assert.equal(change.target.id,V.piece)
+ if(change.op==='update_piece')assert.deepEqual(change.patch,{notes:'Nova nota'})
+ assert.deepEqual(plan(commands,ctx),p)
+})
+
+test('independent instructions never restore deleted services or pieces; recommendations cannot restore services',()=>{
+ for(const commands of [
+ [cmd('remove','remove_piece'),cmd('again','add_piece')],
+ [cmd('remove','remove_service',{line:line(V.paint)}),cmd('again','add_service',{service:ref(V.paintService),dimension:ref(V.partial)})],
+ [cmd('remove','remove_service',{line:line(V.paint)}),cmd('auto','recommend_services',{mode:'automatic'}),cmd('assist','recommend_services',{mode:'assisted',ruleIds:['qa-rule-paint']})]
+ ]){
+  const p=plan(commands)
+  assert(p.changes.some(c=>c.op==='remove_service'||c.op==='remove_piece'))
+  assert(!p.changes.some(c=>c.op==='add_service'||c.op==='add_piece'))
+ }
+})
+
+test('ambiguous service restoration and absent previous identities stay pending without recreation',()=>{
+ const ctx=voiceFixture();ctx.workspace.items[0]!.services.push({...ctx.workspace.items[0]!.services[0]!,id:'qa:second-body'})
+ const p=plan([cmd('one','remove_service',{line:line(V.body)}),cmd('two','remove_service',{line:line('qa:second-body')}),cmd('keep','add_service',{service:ref(V.bodyService)},'correction')],ctx)
+ assert.equal(p.results[2]!.reason,'RESTORATION_UNRESOLVED');assert.equal(p.changes.filter(c=>c.op==='remove_service').length,2)
+ assert(!p.changes.some(c=>c.op==='add_service'))
+ for(const commands of [
+ [cmd('remove','remove_piece'),cmd('keep','add_piece',{},'correction')],
+ [cmd('add','add_piece'),cmd('remove','remove_service',{line:{kind:'service',service:ref(V.bodyService)}}),cmd('keep','add_service',{service:ref(V.bodyService)},'correction')]
+ ]){
+  const result=plan(commands,empty());assert(result.issues.some(i=>i.code==='RESTORATION_UNRESOLVED'))
+  assert(!result.changes.some(c=>c.op==='add_service'))
+ }
+})
+
+test('separate service exclusions survive piece restoration; canceled removals require no confirmation',()=>{
+ const p=plan([cmd('service','remove_service',{line:line(V.body)}),cmd('piece','remove_piece'),cmd('keep','add_piece',{},'correction')])
+ assert.equal(p.changes.length,1);assert.equal(p.changes[0]!.op,'remove_service')
+ const restored=plan([cmd('service','remove_service',{line:line(V.body)}),cmd('piece','remove_piece'),cmd('keep','add_piece',{},'correction'),cmd('service-back','add_service',{service:ref(V.bodyService)},'correction')])
+ assert.deepEqual(restored.changes,[]);assert(!restored.issues.some(i=>i.code==='GLOBAL_REMOVAL_CONFIRMATION_REQUIRED'))
+})
+
+test('an unresolved explicit service suspends automatic derivation per piece even with a single candidate',()=>{
+ for(const service of [{state:'unresolved',text:'pintura',candidates:[V.paintService]},ref('qa:missing-service')]){
+ const commands=[cmd('piece','add_piece'),cmd('damage','set_diagnosis',{diagnosis:ref(V.dent),intensity:'moderado'}),
+ cmd('unknown','add_service',{service,dimension:null}),cmd('auto','recommend_services',{mode:'automatic'})]
+ const p=plan(commands,empty())
+ assert.equal(p.changes.filter(c=>c.op==='add_service').length,0)
+ assert.equal(p.results[2]!.status,'pending');assert(p.issues.some(i=>i.code==='AUTOMATIC_RECOMMENDATIONS_SUSPENDED'))
+ assert.equal(p.changes.filter(c=>c.op==='add_piece').length,1)
+ assert.deepEqual(plan(commands,empty()),p)
+ }
+})
+
+test('unresolved service-line references also suspend automatic derivation without choosing candidates',()=>{
+ const p=plan([cmd('piece','add_piece'),cmd('damage','set_diagnosis',{diagnosis:ref(V.dent),intensity:'moderado'}),
+ cmd('quantity','set_quantity',{line:{kind:'service',service:{state:'unresolved',text:'pintura',candidates:[V.paintService]}},mode:'absolute',value:'3'})],empty())
+ assert.equal(p.results[2]!.status,'pending');assert(!p.changes.some(c=>c.op==='add_service'))
+ assert(p.issues.some(i=>i.code==='AUTOMATIC_RECOMMENDATIONS_SUSPENDED'))
+})
+
+test('unresolved service preserves independent explicit services and automatic recommendations on other pieces',()=>{
+ const commands=[cmd('rear','add_piece'),cmd('rear-damage','set_diagnosis',{diagnosis:ref(V.dent),intensity:'moderado'}),
+ cmd('unknown','add_service',{service:{state:'unresolved',text:'pintura'},dimension:null}),
+ cmd('body','add_service',{service:ref(V.bodyService),dimension:ref(V.bodyM),quantity:'1.25'}),
+ cmd('front','add_piece',{piece:ref(V.front)}),
+ cmd('front-damage','set_diagnosis',{piece:ref(V.front),diagnosis:ref(V.dent),intensity:'moderado'})]
+ const p=plan(commands,empty()),rear=p.changes.find(c=>c.op==='add_piece'&&c.pieceId===V.rear)!,front=p.changes.find(c=>c.op==='add_piece'&&c.pieceId===V.front)!
+ const services=p.changes.filter(c=>c.op==='add_service')
+ assert.equal(services.filter(c=>c.op==='add_service'&&c.piece.id===rear.target.id).length,1)
+ assert.equal(services.filter(c=>c.op==='add_service'&&c.piece.id===front.target.id).length,4)
+ assert.equal(p.results[2]!.status,'pending');assert.equal(p.results[3]!.status,'valid')
+})
+
+test('repeated removal/correction commands are deterministic and do not duplicate restored identities',()=>{
+ const remove=cmd('remove','remove_service',{line:line(V.paint)}),keep=cmd('keep','add_service',{service:ref(V.paintService)},'correction')
+ const commands=[remove,remove,keep,keep,cmd('remove-again','remove_service',{line:line(V.paint)}),cmd('keep-again','add_service',{service:ref(V.paintService)},'correction')]
+ const p=plan(commands);assert.deepEqual(p.changes,[]);assert.deepEqual(plan(commands),p)
+})
+
+test('dimension omission is correction-only and never fabricates a new service dimension',()=>{
+ assert(validateVoiceCommands(batch(voiceFixture(),[cmd('bad','add_service',{service:ref(V.bodyService)})])).invalidIndexes.includes(0))
+ const p=plan([cmd('keep','add_service',{service:ref(V.montage)},'correction')])
+ assert.equal(p.results[0]!.reason,'RESTORATION_UNRESOLVED');assert.deepEqual(p.changes,[])
 })

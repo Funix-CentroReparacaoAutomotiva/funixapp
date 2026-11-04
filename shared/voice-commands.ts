@@ -10,7 +10,7 @@ export type VoiceCommand=CommandBase&(
  |{op:'remove_piece'}
  |{op:'set_piece_enabled';enabled:boolean}
  |{op:'set_diagnosis';diagnosis?:VoiceReference|null;intensity?:DiagnosisIntensity|null;additionalDamage?:boolean}
- |{op:'add_service';service:VoiceReference;dimension:VoiceReference|null;quantity?:string}
+ |({op:'add_service';service:VoiceReference;quantity?:string}&({intent:'instruction';dimension:VoiceReference|null}|{intent:'correction';dimension?:VoiceReference|null}))
  |{op:'set_dimension';line:VoiceLineReference;dimension:VoiceReference|null}
  |{op:'set_quantity';line:VoiceLineReference;mode:'increment'|'absolute';value:string}
  |{op:'set_service_enabled';line:VoiceLineReference;enabled:boolean}
