@@ -1,0 +1,605 @@
+{
+  "template": {
+    "name": "FUNIX - Orcamento"
+  },
+  "data": {
+    "meta": {
+      "id": "OR-000001",
+      "dataCriacao": "03/11/2026"
+    },
+    "cliente": {
+      "nome": "Cliente sintético QA",
+      "contato": "123456"
+    },
+    "veiculo": {
+      "modelo": "Veículo sintético",
+      "placa": "QA00000"
+    },
+    "diagnosticos": [
+      {
+        "nome": "Capô",
+        "resumo": "Quebrado QA · Moderada",
+        "totalServicos": "R$ 300,15",
+        "totalComponentes": "R$ 200,00",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 120,06",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 180,09",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          },
+          {
+            "tipo": "itens",
+            "nome": "Itens",
+            "valor": "R$ 200,00",
+            "itensDetalhados": [
+              {
+                "nome": "Componente sintético QA",
+                "valorUnitario": "R$ 100,00",
+                "quantidade": "2",
+                "valorTotal": "R$ 200,00"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos dianteiros",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos do porta-malas",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos do teto",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos laterais · Passageiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos laterais · Motorista",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Acabamentos plásticos traseiros",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos dianteiros",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos do teto",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos do porta-malas",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos laterais · Motorista",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos laterais · Passageiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Adesivos traseiros",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Aerofólio",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alma do para-choque dianteiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alma do para-choque traseiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alojamento da lanterna · Motorista",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alojamento da lanterna · Passageiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alojamento da portinhola · Motorista",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alojamento da portinhola · Passageiro",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      },
+      {
+        "nome": "Alojamento do farol · Motorista",
+        "resumo": "Quebrado QA · Leve",
+        "totalServicos": "R$ 100,05",
+        "totalComponentes": "",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 40,02",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 60,03",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 1)",
+              "Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação. Observação sintética de paginação."
+            ]
+          }
+        ]
+      }
+    ],
+    "condicoes": {
+      "prazo": "29"
+    },
+    "parcelamento": {
+      "tres": {
+        "valorParcela": "R$ 883,74",
+        "total": "R$ 2.651,22"
+      },
+      "seis": {
+        "valorParcela": "R$ 450,21",
+        "total": "R$ 2.701,24"
+      },
+      "nove": {
+        "valorParcela": "R$ 305,70",
+        "total": "R$ 2.751,27"
+      },
+      "doze": {
+        "valorParcela": "R$ 233,44",
+        "total": "R$ 2.801,29"
+      }
+    },
+    "financeiro": {
+      "servicos": "R$ 2.301,15",
+      "pecas": "R$ 200,00",
+      "desconto": "",
+      "totalVista": "R$ 2.501,15"
+    }
+  }
+}

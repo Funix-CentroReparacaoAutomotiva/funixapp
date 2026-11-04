@@ -15,7 +15,7 @@ export function main(args:string[]){
  }
  if(!values.has('--source') || !values.has('--database'))throw new Error('Informe explicitamente --source e --database. Sem opções o comando não acessa banco algum.')
  const file=resolve(values.get('--database')!),sourceFile=resolve(values.get('--source')!)
- if(!lstatSync(file).isFile() || lstatSync(file).isSymbolicLink() || realpathSync(file)!==file)throw new Error('O banco deve ser arquivo V8, V9 ou V10 existente, sem links simbólicos no caminho.')
+ if(!lstatSync(file).isFile() || lstatSync(file).isSymbolicLink() || realpathSync(file)!==file)throw new Error('O banco deve ser arquivo V8, V9, V10, V11 ou V12 existente, sem links simbólicos no caminho.')
  if(lstatSync(sourceFile).size>20*1024*1024)throw new Error('Exportação excede limite de 20 MiB.')
  const source=parseCodaJson(readFileSync(sourceFile,'utf8')),confirmation=values.get('--confirm-plan')
  if(confirmation && !/^[a-f0-9]{64}$/.test(confirmation))throw new Error('Confirmação inválida.')

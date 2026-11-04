@@ -30,8 +30,9 @@ const utf16=(value:string)=>{const b=Buffer.from(value,'utf16le');b.swap16();ret
 
 export function budgetPdf(version:BudgetVersion):Buffer {
  const {snapshot:s}=version,c=s.calculation
+ const documentId=version.documentNumber??`Orçamento ${version.label}`
  if(c.errors.length||c.total===null||c.days===null)throw new Error('Não gerar PDF de emissão incompleta.')
- const paragraphs=[`FUNIX | Orçamento ${version.label}`,`Versão ${version.sequence} | ${version.createdAt} | Cenário: ${s.scenarioName}`,
+ const paragraphs=[`FUNIX | ${documentId}`,`Versão ${version.sequence} | ${version.createdAt} | Cenário: ${s.scenarioName}`,
   `Atendimento: ${s.atendimento.id}`,`Contato: ${s.atendimento.name||'Não informado'} | Telefone: ${s.atendimento.phone}`,
   `Veículo: ${s.atendimento.vehicle||[s.atendimento.brand,s.atendimento.model].filter(Boolean).join(' ')||'Não informado'} | Placa: ${s.atendimento.plate||'Não informada'}`,
   'Escopo comercial da versão emitida:']
@@ -53,7 +54,7 @@ export function budgetPdf(version:BudgetVersion):Buffer {
   `Identificador imutável da versão: ${version.id}`)
  const lines=paragraphs.flatMap(wrap),pages:string[][]=[]
  for(let i=0;i<lines.length;i+=46)pages.push(lines.slice(i,i+46))
- const footers=pages.map((_,i)=>`FUNIX | Página ${i+1}/${pages.length} | Orçamento ${version.label}`)
+ const footers=pages.map((_,i)=>`FUNIX | Página ${i+1}/${pages.length} | ${documentId}`)
  const chars=[...new Set([...lines.join(''),...footers.join('')])].sort((a,b)=>a.codePointAt(0)!-b.codePointAt(0)!)
  if(chars.length>65534)throw new Error('Documento excede caracteres suportados.')
  const cid=new Map(chars.map((char,i)=>[char,i+1])),code=(text:string)=>[...text].map(ch=>(cid.get(ch)??0).toString(16).padStart(4,'0')).join('')
@@ -80,7 +81,7 @@ export function budgetPdf(version:BudgetVersion):Buffer {
  })
  objects[0]=Buffer.from('<< /Type /Catalog /Pages 2 0 R /Lang (pt-BR) >>')
  objects[1]=Buffer.from(`<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map(id=>`${id} 0 R`).join(' ')}] >>`)
- const info=add(`<< /Title <FEFF${utf16('FUNIX Orçamento '+version.label)}> /Producer (FUNIX) >>`)
+ const info=add(`<< /Title <FEFF${utf16('FUNIX '+documentId)}> /Producer (FUNIX) >>`)
  const buffers=[Buffer.from('%PDF-1.7\n%\xE2\xE3\xCF\xD3\n','latin1')],offsets=[0];let length=buffers[0]!.length
  objects.forEach((obj,i)=>{offsets.push(length);const b=Buffer.concat([Buffer.from(`${i+1} 0 obj\n`),obj,Buffer.from('\nendobj\n')]);buffers.push(b);length+=b.length})
  buffers.push(Buffer.from(`xref\n0 ${objects.length+1}\n0000000000 65535 f \n${offsets.slice(1).map(n=>`${n.toString().padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length+1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${length}\n%%EOF\n`))

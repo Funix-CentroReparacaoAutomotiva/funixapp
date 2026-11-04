@@ -8,7 +8,7 @@ async def device_case(browser,device,viewport):
  h=Harness();ctx=None;page=None
  try:
   h.check_ports()
-  setup="""import{writeFileSync}from'node:fs';import{createHash}from'node:crypto';import{openDatabase}from'./server/database.ts';import{performanceCases,performanceFixture}from'./server/tests/fixtures/performance.ts';import{BudgetRepository}from'./server/budgets.ts';const db=openDatabase(process.argv[1]),f=performanceFixture(db,performanceCases[1]);const b=new BudgetRepository(db),r={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=b.preview(f.at.id,r),v=b.emit(f.at.id,{...r,previewToken:p.token,idempotencyKey:'etapa-b-frozen-version'});writeFileSync(process.argv[2],JSON.stringify({at:f.at.id,version:v.id,snapshot:v.snapshot,pdfHash:createHash('sha256').update(b.pdf(f.at.id,v.id)).digest('hex')}));db.close();"""
+  setup="import{writeFileSync}from'node:fs';import{createHash}from'node:crypto';import{openDatabase}from'./server/database.ts';import{performanceCases,performanceFixture}from'./server/tests/fixtures/performance.ts';import{BudgetRepository}from'./server/tests/fixtures/budget-renderer.ts';const db=openDatabase(process.argv[1]),f=performanceFixture(db,performanceCases[1]);const b=new BudgetRepository(db),r={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=b.preview(f.at.id,r),v=(await b.emit(f.at.id,{...r,previewToken:p.token,idempotencyKey:'etapa-b-frozen-version'}));writeFileSync(process.argv[2],JSON.stringify({at:f.at.id,version:v.id,snapshot:v.snapshot,pdfHash:createHash('sha256').update(b.pdf(f.at.id,v.id)).digest('hex')}));db.close();"
   subprocess.run(['node','--input-type=module','-e',setup,str(h.folder/'atendimentos.sqlite'),str(h.folder/'ids.json')],cwd=ROOT,check=True)
   ids=json.loads((h.folder/'ids.json').read_text());base='/api/atendimentos/'+ids['at'];await h.start_api()
   vite=h.start(['node','node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','5173','--strictPort'],'preview');await h.ready(ORIGIN,vite)
@@ -65,12 +65,11 @@ async def device_case(browser,device,viewport):
   h.mark(device+': full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return')
 
   m=await menu();await m.get_by_role('menuitem',name='Orçamentos emitidos',exact=True).click();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos');await expect(page.locator('.view-switch')).to_have_count(0);await shot('orcamentos')
-  await page.get_by_role('button',name='Orçamento A ·',exact=False).click();await expect(page.locator('.detail-header h1')).to_have_text('Orçamento A')
-  async with page.expect_download()as download:await page.get_by_role('button',name='Baixar PDF A',exact=True).click()
+  async with page.expect_download()as download:await page.locator('.catalog-row').first.click()
   path=await(await download.value).path();assert hashlib.sha256(path.read_bytes()).hexdigest()==ids['pdfHash']
-  assert (await get(base+'/orcamentos/'+ids['version']))['snapshot']==ids['snapshot'];await shot('versao')
-  await back();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos');await page.go_forward();await expect(page.locator('.detail-header h1')).to_have_text('Orçamento A');await page.go_back();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos');await back();await expect(page.locator('.scenario-trigger')).to_have_attribute('aria-label','Cenários: Cenário 2')
-  h.mark(device+': issued budgets and version are contextual screens, hierarchical back preserves scenario, immutable snapshot and original PDF hash')
+  assert (await get(base+'/orcamentos/'+ids['version']))['snapshot']==ids['snapshot'];await shot('documento-lista')
+  await back();await expect(page.locator('.scenario-trigger')).to_have_attribute('aria-label','Cenários: Cenário 2')
+  h.mark(device+': simplified issued list downloads original stored PDF directly; contextual return preserves scenario, immutable snapshot and original PDF hash')
 
   for label in ['Chat','Diagnósticos','Mapa']:
    await main(label);await expect(page.locator('.copilot-fixed')).to_be_visible()

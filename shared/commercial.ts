@@ -35,6 +35,7 @@ export interface Scenario {
   id: string; atendimentoId: string; name: string; position: number; revision: number
   pieceFlags: Record<string, boolean>; serviceFlags: Record<string, boolean>
   componentFlags: Record<string, boolean>
+  deadline?: import('./budget-terms.ts').ScenarioDeadline
   serviceConfirmations?: Record<string,string>
 }
 export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {

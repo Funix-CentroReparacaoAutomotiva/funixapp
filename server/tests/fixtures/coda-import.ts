@@ -18,7 +18,7 @@ export function codaFixture():CodaExport {
   [TABLES.colors]:[row('i-synthetic-color',{'c-I7ZHbkxSjh':'Cor sintética QA','c-fbLxVOP4TA':1})],
   [TABLES.risks]:[row('i-synthetic-risk',{'c-cxXfUPrtG8':'Risco sintético QA','c-OIxnmBPdct':1})],
   [TABLES.capacity]:[row('i-synthetic-capacity',{'c-hnqUeXrBqw':4})],
-  [TABLES.stages]:[row('i-synthetic-stage',{'c-TvFH_jzZ3k':'Etapa sintética QA','c-K6LT-CKgWA':ref(TABLES.energy,'i-synthetic-base-energy')})],
+  [TABLES.stages]:[row('i-synthetic-stage',{'c-TvFH_jzZ3k':'Etapa sintética QA','c-96H1EFHFA1':'Preparação técnica','c-K6LT-CKgWA':ref(TABLES.energy,'i-synthetic-base-energy')})],
   [TABLES.stageDimensions]:[row('i-synthetic-stage-dimension',{'c-tb4TOqyqh7':'Dimensão técnica sintética QA','c-ufXqc_8vWI':ref(TABLES.energy,'i-synthetic-dimension-energy')})],
   [TABLES.energy]:[row('i-synthetic-base-energy',{'c-3-8rupyDNx':2}),row('i-synthetic-dimension-energy',{'c-3-8rupyDNx':3})],
   [TABLES.relations]:[row('i-synthetic-relation',{'c-7sr002IvYn':ref(TABLES.services,'i-XDTMBmueos'),'c-EBO2IBlQEH':ref(TABLES.dimensions,'i-synthetic-dimension'),'c-AWrfBjSHDl':ref(TABLES.stages,'i-synthetic-stage'),'c-B9QLxROotP':ref(TABLES.stageDimensions,'i-synthetic-stage-dimension'),'c-Ii7Vzlr1ni':5,'c-rTdEY2ynPh':1})],

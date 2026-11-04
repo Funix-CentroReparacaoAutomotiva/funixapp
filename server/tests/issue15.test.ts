@@ -12,7 +12,7 @@ import {migrate as baselineV5} from './fixtures/m1_5_migrations.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {ScenarioRepository} from '../scenarios.ts'
 import {CommercialRepository} from '../commercial.ts'
-import {BudgetRepository} from '../budgets.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {ComponentRepository} from '../components.ts'
 import {Q} from '../exact.ts'
 import type {ComponentItem} from '../../shared/pricing.ts'
@@ -23,7 +23,7 @@ function component(f:{at:{id:string};item:{id:string}},db:DatabaseSync,values:Re
 function fields(p:ComponentItem){return {revision:p.revision,pieceId:p.pieceId,name:p.name,quantity:p.quantity,manualPrice:p.manualPrice,notes:p.notes}}
 const totalDeal=(value:string,acknowledgeResidual=false)=>({mode:'adjust',value,acknowledgeResidual,valueIncludesComponents:true})
 
-test('V5 additive upgrade and scenario deletion preserve composition, snapshot/PDF, flags, fractional quantities and never reuse scenario numbers',()=>{
+test('V5 additive upgrade and scenario deletion preserve composition, snapshot/PDF, flags, fractional quantities and never reuse scenario numbers',async ()=>{
  const dir=mkdtempSync(join(tmpdir(),'funix-issue15-')),file=join(dir,'test.sqlite')
  let db=new DatabaseSync(file)
  try{
@@ -37,16 +37,16 @@ test('V5 additive upgrade and scenario deletion preserve composition, snapshot/P
   }
   const two=v5Copy(2),three=v5Copy(3)
   const repo=new LegacyBudgetRepository(db),input={scenarioId:two.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,input)
-  const payload={...input,previewToken:preview.token,idempotencyKey:randomUUID()},version=repo.emit(f.at.id,payload),pdf=repo.pdf(f.at.id,version.id)
+  const payload={...input,previewToken:preview.token,idempotencyKey:randomUUID()},version=(await repo.emit(f.at.id,payload)),pdf=repo.pdf(f.at.id,version.id)
   const rawAt=db.prepare('SELECT * FROM atendimentos').all(),rawPiece=db.prepare('SELECT id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at FROM diagnosis_items').all(),rawServices=db.prepare('SELECT id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id FROM diagnosis_services').all(),rawFlags=s.list(f.at.id)
   db.close();db=openDatabase(file)
   assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),rawAt);assert.deepEqual(db.prepare('SELECT id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at FROM diagnosis_items').all(),rawPiece);assert.deepEqual(db.prepare('SELECT id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id FROM diagnosis_services').all(),rawServices)
-  const scenarios=new ScenarioRepository(db);assert.deepEqual(scenarios.list(f.at.id),rawFlags)
+  const scenarios=new ScenarioRepository(db);assert.deepEqual(scenarios.list(f.at.id).map(({deadline:_deadline,...s})=>s),rawFlags)
   scenarios.remove(f.at.id,two.id,{revision:two.revision})
-  assert.deepEqual(scenarios.list(f.at.id),[one,three])
+  assert.deepEqual(scenarios.list(f.at.id).map(({deadline:_deadline,...s})=>s),[one,three])
   for(const table of ['scenario_piece_flags','scenario_service_flags','scenario_component_flags'])assert.equal(db.prepare(`SELECT count(*) AS n FROM ${table} WHERE scenario_id=?`).get(two.id)!.n,0)
   assert.deepEqual(new BudgetRepository(db).get(f.at.id,version.id),version);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,version.id),pdf)
-  assert.equal(new BudgetRepository(db).emit(f.at.id,payload).id,version.id)
+  assert.equal((await new BudgetRepository(db).emit(f.at.id,payload)).id,version.id)
   assert.equal(new ComponentRepository(db).list(f.at.id)[0]!.id,part.id)
   const four=scenarios.create(f.at.id,{name:'Quatro'});assert.equal(four.position,4);scenarios.remove(f.at.id,four.id,{revision:four.revision})
   assert.equal(scenarios.create(f.at.id,{name:'Cinco'}).position,5)
@@ -109,7 +109,7 @@ test('discount and whole-budget targets reduce or increase only services, never 
  }finally{db.close()}
 })
 
-test('whole-budget translation preserves generated fractional digits beyond six and retains component quantity',()=>{
+test('whole-budget translation preserves generated fractional digits beyond six and retains component quantity',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db),repo=new BudgetRepository(db);f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,resaleMultipliers:[{id:'mr',name:'MR sintético',factor:'1'}]}});component(f,db,{quantity:'0.000001',manualPrice:'0.05'})
@@ -118,8 +118,8 @@ test('whole-budget translation preserves generated fractional digits beyond six 
   assert.equal(preview.snapshot.calculation.target,'299.99999995')
   assert.equal(preview.snapshot.calculation.total,'300');assert(preview.canEmit)
   const input={scenarioId:f.scenario.id,negotiation:totalDeal('300'),previewToken:preview.token,idempotencyKey:randomUUID()}
-  const emitted=repo.emit(f.at.id,input);assert.equal(emitted.snapshot.composition.components[0]!.quantity,'0.000001')
-  assert.equal(repo.emit(f.at.id,input).id,emitted.id)
+  const emitted=(await repo.emit(f.at.id,input));assert.equal(emitted.snapshot.composition.components[0]!.quantity,'0.000001')
+  assert.equal((await repo.emit(f.at.id,input)).id,emitted.id)
  }finally{db.close()}
 })
 
@@ -140,14 +140,14 @@ test('residual and consent use effective preview total; excessive residual and m
  }finally{db.close()}
 })
 
-test('whole-budget preview rejects stale components at emission; legacy adjust still targets service subtotal',()=>{
+test('whole-budget preview rejects stale components at emission; legacy adjust still targets service subtotal',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db),repo=new BudgetRepository(db),p=component(f,db)
   const request={scenarioId:f.scenario.id,negotiation:totalDeal('310.15')},preview=repo.preview(f.at.id,request)
   const payload={...request,previewToken:preview.token,idempotencyKey:randomUUID()}
   new ComponentRepository(db).save(f.at.id,{...fields(p),manualPrice:'42'},p.id)
-  assert.throws(()=>repo.emit(f.at.id,payload),e=>(e as {code:string}).code==='VERSION_CONFLICT')
+  await assert.rejects(async ()=>(await repo.emit(f.at.id,payload)),e=>(e as {code:string}).code==='VERSION_CONFLICT')
   assert.equal(repo.list(f.at.id).length,0)
   const fresh=repo.preview(f.at.id,request);assert.equal(fresh.snapshot.calculation.total,'310.15');assert.equal(fresh.snapshot.calculation.target,'289.15')
   const legacy=repo.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'adjust',value:'289.15',acknowledgeResidual:false}})

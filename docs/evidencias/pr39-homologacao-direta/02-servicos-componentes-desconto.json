@@ -1,0 +1,85 @@
+{
+  "template": {
+    "name": "FUNIX - Orcamento"
+  },
+  "data": {
+    "meta": {
+      "id": "OR-000001",
+      "dataCriacao": "03/11/2026"
+    },
+    "cliente": {
+      "nome": "Cliente sintético QA",
+      "contato": "123456"
+    },
+    "veiculo": {
+      "modelo": "Veículo sintético",
+      "placa": "QA00000"
+    },
+    "diagnosticos": [
+      {
+        "nome": "Capô",
+        "resumo": "Quebrado QA · Moderada",
+        "totalServicos": "R$ 300,15",
+        "totalComponentes": "R$ 200,00",
+        "clusters": [
+          {
+            "tipo": "servico",
+            "nome": "Preparação técnica",
+            "valor": "R$ 120,06",
+            "descricaoTexto": [
+              "Preparação QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          },
+          {
+            "tipo": "servico",
+            "nome": "Pintura e acabamento",
+            "valor": "R$ 180,09",
+            "descricaoTexto": [
+              "Pintura QA (Dimensão sintética · Qtd.: 3)"
+            ]
+          },
+          {
+            "tipo": "itens",
+            "nome": "Itens",
+            "valor": "R$ 200,00",
+            "itensDetalhados": [
+              {
+                "nome": "Componente sintético QA",
+                "valorUnitario": "R$ 100,00",
+                "quantidade": "2",
+                "valorTotal": "R$ 200,00"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "condicoes": {
+      "prazo": "4"
+    },
+    "parcelamento": {
+      "tres": {
+        "valorParcela": "R$ 159,05",
+        "total": "R$ 477,16"
+      },
+      "seis": {
+        "valorParcela": "R$ 81,03",
+        "total": "R$ 486,16"
+      },
+      "nove": {
+        "valorParcela": "R$ 55,02",
+        "total": "R$ 495,17"
+      },
+      "doze": {
+        "valorParcela": "R$ 42,01",
+        "total": "R$ 504,17"
+      }
+    },
+    "financeiro": {
+      "servicos": "R$ 250,15",
+      "pecas": "R$ 200,00",
+      "desconto": "R$ 50,00",
+      "totalVista": "R$ 450,15"
+    }
+  }
+}

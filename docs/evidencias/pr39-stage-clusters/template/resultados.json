@@ -1,0 +1,80 @@
+{
+  "synthetic": true,
+  "realJsreport": false,
+  "logo": "Local synthetic placeholder; no network access",
+  "handlebars": "4.7.9",
+  "templateSha256": "9ce988a1b0f97ada4808993d9cb6f03a90125e6c44bf700d3a6cb2ed4f8f1c87",
+  "externalRequests": [],
+  "results": [
+    {
+      "case": "normal",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "discount",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "adjust-down",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "adjust-up",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "free",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "mixed",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "components",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "empty-details",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "long",
+      "pass": true,
+      "pages": 4,
+      "pieces": 21,
+      "displayedSumDifferenceCents": "0"
+    },
+    {
+      "case": "fractional",
+      "pass": true,
+      "pages": 1,
+      "pieces": 1,
+      "displayedSumDifferenceCents": "1"
+    }
+  ]
+}

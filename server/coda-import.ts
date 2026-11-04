@@ -1,3 +1,4 @@
+import{referencePresentation,clusterById,clusterName,sourceStageCluster}from'./stage-presentation.ts'
 import{COMMERCIAL_CURATION,servicePolicy}from'../shared/commercial-curation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash} from 'node:crypto'
@@ -31,7 +32,7 @@ function exact(v:unknown):string|null {
 }
 function checkDatabase(db:DatabaseSync){
  const versions=db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(r=>Number(r.version))
- if(![8,9,10].includes(versions.length)||versions.some((v,i)=>v!==i+1))fail('A importação exige banco existente com schema exatamente V8, V9 ou V10; não executa migrações.')
+ if(![8,9,10,11,12].includes(versions.length)||versions.some((v,i)=>v!==i+1))fail('A importação exige banco existente com schema exatamente V8, V9, V10, V11 ou V12; não executa migrações.')
  if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok' || db.prepare('PRAGMA foreign_key_check').all().length)fail('Banco com falha de integridade; importação recusada.')
 }
 function targetState(db:DatabaseSync){return {catalog:db.prepare('SELECT * FROM catalog_items ORDER BY id').all(),pricing:db.prepare('SELECT * FROM pricing_configuration ORDER BY id').all()}}
@@ -163,7 +164,15 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
      pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
     }
-    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy})
+    const prior=referencePresentation(id(TABLES.relations,r),id(TABLES.services,s),id(TABLES.dimensions,d.row))
+    const rawCluster=cell(st,'c-96H1EFHFA1'),clusterId=rawCluster&&typeof rawCluster==='object'&&'rowId'in rawCluster&&typeof rawCluster.rowId==='string'?rawCluster.rowId:null
+    const brokenCluster=rawCluster&&typeof rawCluster==='object'&&'isBroken'in rawCluster&&rawCluster.isBroken
+    let cluster=brokenCluster?null:rawCluster===undefined?(prior?.stageId===st.rowId?prior.cluster:null):clusterId?clusterById(clusterId):clusterName(label(rawCluster))
+    if(sourceStageCluster(st.rowId)&&cluster!==sourceStageCluster(st.rowId))cluster=null
+    const rawOrder=scalar(cell(r,'c-oh6TT09I-z')),order=rawOrder===undefined?prior?.order??null:typeof rawOrder==='number'||typeof rawOrder==='string'&&/^\d+$/.test(rawOrder)?Number(rawOrder):null
+    const presentation={stageId:st.rowId,stageDimensionId:sd.rowId,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
+    if(!cluster)pending(id(TABLES.relations,r),'Categoria de apresentação ausente/não reconhecida; preço/energia preservados, emissão PDF pendente.')
+    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy,presentation})
    }
    const total=number(d.row,'c-wZoGYfi40i')
    if(total===null || !validEnergy || sum(stages.map(st=>Q.from(st.baseEnergy!).add(Q.from(st.dimensionEnergy!)))).cmp(Q.from(total??'0'))!==0){validEnergy=false;pending(id(TABLES.dimensions,d.row),'Conjunto de etapas incompleto/incompatível com a energia total Coda; nenhuma etapa parcial liberada.')}
@@ -183,7 +192,8 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  warning(TABLES.rules,'Quantidades abaixo de 1 têm resultado diferente no Coda (Fator Quantidade Produto / Qnt.). A V7 preserva a regra aprovada de quantidade linear, inclusive fracionária; equivalência de preço declarada somente para quantidade >= 1.')
  const capRows=rows(TABLES.capacity),capacity=capRows.length===1?number(capRows[0]!,'c-hnqUeXrBqw'):null
  if(capacity===null || Q.from(capacity).n===0n)pending(TABLES.capacity,'Capacidade global positiva não comprovada.')
- const old=new PricingConfigurationRepository(db).get(),config=structuredClone(old.config)
+ // Plan against persisted JSON, not the read-only compatibility view that decorates missing metadata.
+ const config=JSON.parse(String(db.prepare('SELECT data FROM pricing_configuration WHERE id=1').get()!.data))as PricingConfig
  // Additive import only. Different source/local values require manual review, never overwrite.
  const merge=<T>(old:T[],incoming:T[],key:(v:T)=>string)=>{
   for(const v of incoming){const k=key(v),present=old.find(o=>key(o)===k)
@@ -191,7 +201,18 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
    else {old.push(v);report.inserts++}
   }
  }
- merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);merge(config.services,services,v=>v.serviceId)
+ merge(config.tables,commercialTables,v=>v.id);merge(config.colors,colors,v=>v.id);merge(config.risks,risks,v=>v.id);// Enrich only absent presentation metadata when the complete old pricing/energy payload matches.
+ for(const incoming of services){
+  const existing=config.services.find(s=>s.serviceId===incoming.serviceId)
+  if(!existing)continue
+  const withoutPresentation=(s:ServicePricing)=>({...s,dimensions:s.dimensions.map(d=>({...d,stages:d.stages.map(({presentation:_,...stage})=>stage)}))})
+  if(digest(withoutPresentation(existing))!==digest(withoutPresentation(incoming)))continue
+  for(const dim of incoming.dimensions)for(const stage of dim.stages){
+   const oldStage=existing.dimensions.find(d=>d.dimensionId===dim.dimensionId)?.stages.find(s=>s.id===stage.id)
+   if(oldStage&&!oldStage.presentation&&stage.presentation){oldStage.presentation=structuredClone(stage.presentation);report.imported.push({source:stage.id,reason:'Metadados de apresentação ausentes acrescentados; preços, energias e IDs preservados.'})}
+  }
+ }
+ merge(config.services,services,v=>v.serviceId)
  const mrOptions=config.resaleMultipliers??=[]
  const mrName=(value:string)=>value.trim().normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
  const localMR=mrOptions.filter(m=>m.id===approvedMR.id || mrName(m.name)===mrName(approvedMR.name))
@@ -255,8 +276,8 @@ export function applyImport(db:DatabaseSync,source:unknown,confirmation:string){
   if(plan.planHash!==confirmation)fail('Plano mudou: execute dry-run novamente antes de aplicar.')
   if(plan.report.conflicts.length)fail('Conflitos pendentes; nenhuma gravação realizada.')
   for(const c of plan.catalog)insertCatalog(db,c)
-  const old=new PricingConfigurationRepository(db).get()
-  if(digest(old.config)!==digest(plan.config))db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1').run(JSON.stringify(plan.config),new Date().toISOString())
+  const stored=JSON.parse(String(db.prepare('SELECT data FROM pricing_configuration WHERE id=1').get()!.data))as PricingConfig
+  if(digest(stored)!==digest(plan.config))db.prepare('UPDATE pricing_configuration SET data=?,revision=revision+1,updated_at=? WHERE id=1').run(JSON.stringify(plan.config),new Date().toISOString())
   checkDatabase(db)
   db.exec('COMMIT');return plan
  }catch(error){db.exec('ROLLBACK');throw error}

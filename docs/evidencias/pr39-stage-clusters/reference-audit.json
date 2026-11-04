@@ -1,0 +1,34 @@
+{
+  "referenceSha256": "289f57ef197c67383c003af4d1e0f4c8175a4b2fd775d39f6fe1b798d073837c",
+  "stages": 39,
+  "relations": 113,
+  "resolvedRelations": 111,
+  "categories": [
+    "Preparação técnica",
+    "Correção estrutural",
+    "Pintura e acabamento",
+    "Estética e revitalização",
+    "Serviços complementares"
+  ],
+  "unresolved": [
+    {
+      "relationRowId": "i-cz0vjyEOB7",
+      "serviceRowId": "i-VQqzDP1-v2",
+      "serviceDimensionRowId": "i-WLedwbySUP",
+      "stageRowId": null,
+      "stageDimensionRowId": null,
+      "clusterRowId": null,
+      "order": ""
+    },
+    {
+      "relationRowId": "i-_C-sMqVV7H",
+      "serviceRowId": "i-VQqzDP1-v2",
+      "serviceDimensionRowId": "i-WLedwbySUP",
+      "stageRowId": null,
+      "stageDimensionRowId": null,
+      "clusterRowId": null,
+      "order": ""
+    }
+  ],
+  "policy": "Unresolved identities are retained, never inferred, never assigned to Serviços complementares."
+}

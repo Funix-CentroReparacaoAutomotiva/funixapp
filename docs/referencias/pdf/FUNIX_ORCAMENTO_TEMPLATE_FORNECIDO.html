@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Orçamento</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; margin:0; padding:0; background:#ffffff; color:#1a1a2e;">
+
+<div style="
+max-width:800px;
+margin:auto;
+background:#fff;
+padding:32px 32px 24px 32px;
+">
+
+<!-- ===================================================== -->
+<!-- SEÇÃO 1 - HEADER -->
+<!-- ===================================================== -->
+
+<table style="
+width:100%;
+border-collapse:collapse;
+table-layout:fixed;
+margin-bottom:18px;
+">
+
+<tr>
+
+<!-- LOGO -->
+
+<!-- ===================================================== -->
+<td style="
+width:30%;
+vertical-align:middle;
+text-align:left;
+">
+
+<img
+  src="https://funix.com.br/assets/logo-header.svg"
+  alt="FUNIX"
+  style="
+    max-height:25px;
+    width:auto;
+    display:block;
+  "
+>
+
+
+
+</td>
+
+<!-- TÍTULO -->
+<td style="
+width:40%;
+vertical-align:middle;
+text-align:center;
+">
+
+<div style="
+font-size:18px;
+font-weight:700;
+color:#0A1F44;
+letter-spacing:-0.2px;
+line-height:1.2;
+">
+Proposta técnica comercial
+</div>
+
+</td>
+
+<!-- META -->
+<td style="
+width:30%;
+vertical-align:middle;
+text-align:right;
+">
+
+<div style="
+font-size:10px;
+font-weight:500;
+color:#64748b;
+line-height:1.35;
+">
+Orçamento {{meta.id}}
+</div>
+
+<div style="
+font-size:10px;
+font-weight:500;
+color:#64748b;
+margin-top:2px;
+line-height:1.35;
+">
+Emitido em {{meta.dataCriacao}}
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+
+<!-- ===================================================== -->
+<!-- SEÇÃO 2 - CLIENTE + VEÍCULO -->
+<!-- ===================================================== -->
+
+<div style="
+margin-bottom:18px;
+border:1px solid #e5e7eb;
+border-radius:10px;
+padding:14px 16px;
+background:#ffffff;
+">
+
+<table style="
+width:100%;
+border-collapse:collapse;
+table-layout:fixed;
+">
+
+<tr>
+
+<!-- CLIENTE -->
+<td style="
+width:40%;
+vertical-align:top;
+padding-right:12px;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#94A3B8;
+text-transform:uppercase;
+letter-spacing:0.5px;
+margin-bottom:6px;
+">
+Cliente
+</div>
+
+<div style="
+font-size:13px;
+font-weight:600;
+color:#0A1F44;
+line-height:1.3;
+word-break:break-word;
+">
+{{#if cliente.nome}}
+{{cliente.nome}}
+{{else}}
+<span style="color:#CBD5E1;">Não informado</span>
+{{/if}}
+</div>
+
+</td>
+
+<!-- CONTATO -->
+<td style="
+width:20%;
+vertical-align:top;
+padding-right:12px;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#94A3B8;
+text-transform:uppercase;
+letter-spacing:0.5px;
+margin-bottom:6px;
+">
+Contato
+</div>
+
+<div style="
+font-size:13px;
+font-weight:600;
+color:#0A1F44;
+line-height:1.3;
+word-break:break-word;
+">
+{{#if cliente.contato}}
+{{cliente.contato}}
+{{else}}
+<span style="color:#CBD5E1;">—</span>
+{{/if}}
+</div>
+
+</td>
+
+<!-- PLACA -->
+<td style="
+width:20%;
+vertical-align:top;
+padding-right:12px;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#94A3B8;
+text-transform:uppercase;
+letter-spacing:0.5px;
+margin-bottom:6px;
+">
+Placa
+</div>
+
+<div style="
+font-size:13px;
+font-weight:600;
+color:#0A1F44;
+line-height:1.3;
+word-break:break-word;
+">
+{{#if veiculo.placa}}
+{{veiculo.placa}}
+{{else}}
+<span style="color:#CBD5E1;">—</span>
+{{/if}}
+</div>
+
+</td>
+
+<!-- VEÍCULO -->
+<td style="
+width:20%;
+vertical-align:top;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#94A3B8;
+text-transform:uppercase;
+letter-spacing:0.5px;
+margin-bottom:6px;
+">
+Veículo
+</div>
+
+<div style="
+font-size:13px;
+font-weight:600;
+color:#0A1F44;
+line-height:1.3;
+word-break:break-word;
+">
+{{#if veiculo.modelo}}
+{{veiculo.modelo}}
+{{else}}
+<span style="color:#CBD5E1;">Não informado</span>
+{{/if}}
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+<!-- ===================================================== -->
+<!-- SEÇÃO 3 - RESUMO TÉCNICO-COMERCIAL -->
+<!-- ===================================================== -->
+
+<div style="
+margin-top:16px;
+border:1px solid #e5e7eb;
+border-radius:10px;
+padding:10px 12px;
+background:#ffffff;
+">
+
+<div style="
+font-size:15px;
+font-weight:700;
+color:#0A1F44;
+margin-bottom:6px;
+letter-spacing:-0.2px;
+">
+Resumo técnico-comercial
+</div>
+
+{{#each diagnosticos}}
+
+<div style="
+border-bottom:1px solid #e2e8f0;
+padding:4px 0;
+page-break-inside:avoid;
+break-inside:avoid;
+">
+
+<table style="
+width:100%;
+border-collapse:collapse;
+table-layout:fixed;
+">
+
+<tr>
+
+<!-- COLUNA ESQUERDA -->
+<td style="
+width:28%;
+vertical-align:top;
+padding:6px 8px;
+background:#f8fafc;
+">
+
+<div style="
+font-size:12px;
+font-weight:700;
+color:#0A1F44;
+line-height:1.2;
+word-break:break-word;
+">
+{{nome}}
+</div>
+
+<div style="
+font-size:10px;
+color:#64748b;
+font-weight:600;
+line-height:1.25;
+margin-top:1px;
+word-break:break-word;
+">
+{{resumo}}
+</div>
+
+
+<div style="
+font-size:10px;
+line-height:1.5;
+color:#64748b;
+">
+
+{{#if totalComponentes}}
+{{#if totalServicos}}
+
+<div>
+Serviços: {{totalServicos}}
+</div>
+
+{{/if}}
+<div>
+Componentes: {{totalComponentes}}
+</div>
+{{else}}
+
+{{#if totalServicos}}
+
+
+{{totalServicos}}
+
+
+{{/if}}
+
+
+
+
+
+{{/if}}
+
+</div>
+
+<!-- COLUNA DIREITA -->
+<td style="
+width:72%;
+vertical-align:top;
+padding-left:10px;
+">
+
+<table style="
+width:100%;
+border-collapse:collapse;
+">
+
+{{#each clusters}}
+
+<tr>
+
+<!-- DESCRIÇÃO -->
+<td style="
+padding:3px 0;
+vertical-align:top;
+font-size:11px;
+line-height:1.3;
+color:#374151;
+">
+
+<span style="
+font-weight:700;
+color:#111827;
+">
+{{nome}}
+</span>
+
+{{#if descricaoTexto}}
+<span style="color:#64748b;">
+:
+{{#each descricaoTexto}}
+{{this}}{{#unless @last}} • {{/unless}}
+{{/each}}
+</span>
+{{/if}}
+
+{{#if itensDetalhados}}
+
+<div style="
+margin-top:4px;
+padding-left:12px;
+font-size:10px;
+color:#64748b;
+line-height:1.5;
+">
+
+{{#each itensDetalhados}}
+
+<div>
+• {{nome}} — {{valorTotal}}
+</div>
+
+{{/each}}
+
+</div>
+
+{{/if}}
+
+</td>
+
+<!-- VALOR -->
+<td style="
+width:90px;
+padding:3px 0 3px 10px;
+text-align:right;
+vertical-align:top;
+white-space:nowrap;
+font-size:12px;
+font-weight:700;
+color:#111827;
+">
+{{valor}}
+</td>
+
+</tr>
+
+{{/each}}
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+{{/each}}
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- SEÇÃO 4 - INVESTIMENTO E CONDIÇÕES -->
+<!-- ===================================================== -->
+
+<div style="
+margin-top:18px;
+border:1px solid #e5e7eb;
+border-radius:10px;
+padding:16px;
+background:#ffffff;
+font-family:Arial,sans-serif;
+page-break-inside:avoid;
+break-inside:avoid;
+">
+
+<!-- HEADER -->
+<div style="
+font-size:15px;
+font-weight:700;
+color:#0A1F44;
+margin-bottom:14px;
+">
+Investimento e condições
+</div>
+
+<table style="
+width:100%;
+border-collapse:collapse;
+table-layout:fixed;
+height:100%;
+">
+
+<tr>
+
+<!-- COLUNA ESQUERDA -->
+<td style="
+width:25%;
+vertical-align:stretch;
+padding-right:14px;
+height:100%;
+">
+
+<div style="
+height:100%;
+display:flex;
+flex-direction:column;
+justify-content:flex-start;
+">
+
+<!-- PRAZO -->
+<div style="
+background:#f3f6fa;
+height:46px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+box-sizing:border-box;
+margin-bottom:6px;
+">
+
+<div style="
+font-size:9px;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.4px;
+font-weight:600;
+margin-bottom:4px;
+">
+Prazo
+</div>
+
+<div style="
+font-size:14px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+{{condicoes.prazo}} dias úteis
+</div>
+
+</div>
+
+
+<!-- DESCONTO -->
+<div style="
+background:#f3f6fa;
+height:46px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+box-sizing:border-box;
+margin-bottom:6px;
+">
+
+<div style="
+font-size:9px;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.4px;
+font-weight:600;
+margin-bottom:4px;
+">
+Desconto
+</div>
+
+<div style="
+font-size:14px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+
+{{#if financeiro.desconto}}
+- {{financeiro.desconto}}
+{{else}}
+—
+{{/if}}
+
+</div>
+
+</div>
+
+
+<!-- GARANTIA -->
+<div style="
+background:#f3f6fa;
+height:46px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+box-sizing:border-box;
+">
+
+<div style="
+font-size:9px;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.4px;
+font-weight:600;
+margin-bottom:4px;
+">
+Garantia
+</div>
+
+<div style="
+font-size:14px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+12 meses
+</div>
+</div>
+</div>
+
+</td>
+
+<!-- COLUNA DIREITA -->
+<td style="
+width:75%;
+vertical-align:top;
+border-left:1px solid #e5e7eb;
+padding-left:18px;
+">
+
+<!-- RESUMO -->
+
+<div style="
+width:100%;
+display:flex;
+align-items:center;
+justify-content:center;
+margin-bottom:16px;
+box-sizing:border-box;
+">
+
+
+<!-- SERVIÇOS -->
+<div style="
+width:30%;
+text-align:center;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.5px;
+margin-bottom:6px;
+">
+Serviços
+</div>
+
+<div style="
+font-size:16px;
+font-weight:900;
+color:#0A1F44;
+line-height:1;
+white-space:nowrap;
+">
+{{financeiro.servicos}}
+</div>
+
+</div>
+
+
+<!-- + -->
+<div style="
+width:32px;
+margin:0 8px;
+text-align:center;
+padding-top:20px;
+font-size:20px;
+font-weight:300;
+color:#CBD5E1;
+">
++
+</div>
+
+
+<!-- COMPONENTES -->
+<div style="
+width:22%;
+text-align:center;
+">
+
+<div style="
+font-size:10px;
+font-weight:800;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.5px;
+margin-bottom:6px;
+">
+Componentes
+</div>
+
+<div style="
+font-size:16px;
+font-weight:700;
+color:#374151;
+line-height:1;
+white-space:nowrap;
+">
+{{financeiro.pecas}}
+</div>
+
+</div>
+
+
+<!-- = -->
+<div style="
+width:32px;
+margin:0 8px;
+text-align:center;
+padding-top:20px;
+font-size:20px;
+font-weight:300;
+color:#CBD5E1;
+">
+=
+</div>
+
+
+<!-- TOTAL -->
+<div style="
+width:30%;
+text-align:center;
+">
+
+<div style="
+font-size:10px;
+font-weight:600;
+color:#64748b;
+text-transform:uppercase;
+letter-spacing:.5px;
+margin-bottom:6px;
+">
+Total
+</div>
+
+<div style="
+font-size:16px;
+font-weight:900;
+color:#0A1F44;
+line-height:1;
+white-space:nowrap;
+">
+{{financeiro.totalVista}}
+</div>
+
+</div>
+
+
+</div>
+
+<!-- PARCELAMENTO -->
+<div style="
+font-size:11px;
+font-weight:600;
+color:#64748b;
+margin-bottom:8px;
+">
+Opções de pagamento
+</div>
+
+<table style="
+width:100%;
+border-collapse:collapse;
+table-layout:fixed;
+">
+
+<tr>
+
+<td style="
+width:25%;
+text-align:center;
+border-right:1px solid #e5e7eb;
+padding:0 6px;
+">
+<div style="
+font-size:10px;
+color:#64748b;
+margin-bottom:3px;
+">
+3x de
+</div>
+
+<div style="
+font-size:15px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+{{parcelamento.tres.valorParcela}}
+</div>
+
+<div style="
+font-size:9px;
+color:#64748b;
+margin-top:4px;
+">
+Total {{parcelamento.tres.total}}
+</div>
+</td>
+
+<td style="
+width:25%;
+text-align:center;
+border-right:1px solid #e5e7eb;
+padding:0 6px;
+">
+<div style="
+font-size:10px;
+color:#64748b;
+margin-bottom:3px;
+">
+6x de
+</div>
+
+<div style="
+font-size:15px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+{{parcelamento.seis.valorParcela}}
+</div>
+
+<div style="
+font-size:9px;
+color:#64748b;
+margin-top:4px;
+">
+Total {{parcelamento.seis.total}}
+</div>
+</td>
+
+<td style="
+width:25%;
+text-align:center;
+border-right:1px solid #e5e7eb;
+padding:0 6px;
+">
+<div style="
+font-size:10px;
+color:#64748b;
+margin-bottom:3px;
+">
+9x de
+</div>
+
+<div style="
+font-size:15px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+{{parcelamento.nove.valorParcela}}
+</div>
+
+<div style="
+font-size:9px;
+color:#64748b;
+margin-top:4px;
+">
+Total {{parcelamento.nove.total}}
+</div>
+</td>
+
+<td style="
+width:25%;
+text-align:center;
+padding:0 6px;
+">
+<div style="
+font-size:10px;
+color:#64748b;
+margin-bottom:3px;
+">
+12x de
+</div>
+
+<div style="
+font-size:15px;
+font-weight:800;
+color:#0A1F44;
+line-height:1;
+">
+{{parcelamento.doze.valorParcela}}
+</div>
+
+<div style="
+font-size:9px;
+color:#64748b;
+margin-top:4px;
+">
+Total {{parcelamento.doze.total}}
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
+
+<!-- SEÇÃO 5 - RODAPÉ / CLÁUSULAS -->
+<div style="
+margin-top:18px;
+padding-top:14px;
+border-top:1px solid #e5e7eb;
+">
+
+<div style="
+font-size:11px;
+font-weight:700;
+color:#0A1F44;
+margin-bottom:8px;
+">
+Sobre este Orçamento
+</div>
+
+<div style="
+font-size:10px;
+line-height:1.55;
+color:#64748b;
+text-align:justify;
+">
+
+Este orçamento foi elaborado com base em uma avaliação inicial do veículo. Como nem todos os danos são visíveis nessa etapa, poderão ser identificadas necessidades adicionais posteriormente, sempre sujeitas à aprovação prévia do responsável. Caso a avaliação exija desmontagem e o reparo não seja autorizado, será cobrado R$ 249,00 pelo diagnóstico realizado. Se os serviços já tiverem sido iniciados, serão cobradas apenas as etapas efetivamente executadas.
+
+</div>
+
+</div>
+
+</div>
+
+
+
+
+<!-- ===================================================== -->
+<!-- FOOTER -->
+<!-- ===================================================== -->
+
+<div style="
+text-align:center;
+padding-top:14px;
+font-family:Arial,sans-serif;
+font-size:9px;
+line-height:1.6;
+color:#94A3B8;
+page-break-inside:avoid;
+break-inside:avoid;
+">
+
+<div style="
+font-weight:700;
+color:#64748b;
+margin-bottom:2px;
+">
+FUNIX Centro de Reparação Automotiva LTDA
+</div>
+
+<div>
+Av. José Faria da Rocha, 5184 • Eldorado • Contagem/MG • CEP 32310-210
+</div>
+
+<div>
+(31) 98370-1648 • contato@funix.com.br • www.funix.com.br • CNPJ 59.739.544/0001-12
+</div>
+
+</div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,411 @@
+Execuções sintéticas sequenciais; relatórios finais individuais consolidados em regressoes-resultados.json. Retomadas após ajustes de expectativas antigas do teste; ver relatório técnico.
+SUITE fase5_gestures
+PASS desktop: no upper X; central X and click outside circular disk close the selector
+PASS desktop: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS desktop: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS desktop: bilateral groups add missing pieces without opening an arbitrary editor
+PASS desktop: drag/cancel do not open quick overlay or perform mutations
+PASS desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile390: no upper X; central X and click outside circular disk close the selector
+PASS mobile390: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile390: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile390: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile390: drag/cancel do not open quick overlay or perform mutations
+PASS mobile390: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile390: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile390: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile390: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile390: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile320: no upper X; central X and click outside circular disk close the selector
+PASS mobile320: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile320: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile320: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile320: drag/cancel do not open quick overlay or perform mutations
+PASS mobile320: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile320: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile320: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile320: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile320: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+SUITE fase4_recommendations
+PASS desktop: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS desktop: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS desktop: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS desktop: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS desktop: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS desktop: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS desktop: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS desktop: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS desktop: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS desktop: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS desktop: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+PASS mobile390: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS mobile390: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS mobile390: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS mobile390: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS mobile390: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS mobile390: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS mobile390: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS mobile390: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS mobile390: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS mobile390: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS mobile390: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+PASS mobile320: only latest persisted transition auto-applies one atomic batch, six ordered rules, two optional disabled, three curator blocks skipped, no pending-source rule, other flags/components preserved
+PASS mobile320: dimension/quantity edits keep source identity; changing diagnosis/intensity preserves all six adjusted lines without automatic replacement
+PASS mobile320: assisted list marks already-present services, hides blocked choices, and re-adds only chosen missing optional disabled without reordering manual adjustments
+PASS mobile320: existing manual painting/null dimension/fraction/disabled flag survives, no automatic insert or duplicate, existing manual row stays first
+PASS mobile320: component-only piece never auto-applies; explicit batch preserves exact manual component cost, fractional quantity and MR
+PASS mobile320: saved empty piece needs explicit apply; lost committed response keeps controls protected, read-first retry reuses key/receipt without duplicates; reload never reapplies
+PASS mobile320: request lost before delivery creates no partial lines; explicit read-first retry with the same key commits one batch
+PASS mobile320: concurrent edit after POST acknowledgement is detected on confirmed workspace read; stale response never overwrites the operator change
+PASS mobile320: actual concurrent manual insertion yields 409 and no partial suggestion; explicit saved-version recovery preserves manual line and quantity
+PASS mobile320: failed read is distinct from uncertain write, retains every manual value and recovers without mutation
+PASS mobile320: API restart/relogin preserves master and provenance, V10 integrity/FKs and historical snapshot/PDF; no overflow, JS errors or external calls
+SUITE fase3_diagnosis
+PASS desktop: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS desktop: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS desktop: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS desktop: shared master intensity is independent of active/inactive scenario flags
+PASS desktop: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS desktop: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS desktop: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS desktop: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS desktop: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow
+PASS mobile390: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS mobile390: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS mobile390: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS mobile390: shared master intensity is independent of active/inactive scenario flags
+PASS mobile390: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS mobile390: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS mobile390: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS mobile390: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS mobile390: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow
+PASS mobile320: approved first row title/annotation and second row toggle/diagnosis/intensity, empty default, four options, keyboard labels and measured non-overlap
+PASS mobile320: each intensity saves once, preserves services, quantities, components, notes, MR, flags and official totals
+PASS mobile320: diagnosis changes retain manual services/components and intensity; annotation and intensity persist after reload
+PASS mobile320: shared master intensity is independent of active/inactive scenario flags
+PASS mobile320: consecutive choices during in-flight save keep the latest intensity without duplicate lines or stale overwrite
+PASS mobile320: committed lost response reconciles by read without replay, preserving the intensity draft
+PASS mobile320: real revision conflict preserves local and newer server values; explicit saved-version loading recovers without silent overwrite
+PASS mobile320: backend returns matching non-default rule, excludes incompatible links and never adds services or suggestion UI
+PASS mobile320: restart/relogin persistence, V9 integrity/FKs, immutable snapshot/PDF and no external calls, JS errors or horizontal overflow
+SUITE fase1_selection
+PASS desktop: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls
+PASS desktop: scenario switch and reload preserve both masters and independent flags
+PASS desktop: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved
+PASS desktop: parent off/on preserves individual service/component masks and shared content without editor redesign
+SUITE fase1_selection
+PASS desktop: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls
+PASS desktop: scenario switch and reload preserve both masters and independent flags
+PASS desktop: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved
+PASS desktop: parent off/on preserves individual service/component masks and shared content without editor redesign
+PASS desktop: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics
+PASS desktop: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate
+PASS desktop: lost committed flag response recovers by GET without replay, DELETE or POST
+PASS desktop: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention
+PASS desktop: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery
+PASS desktop: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state
+PASS desktop: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios
+PASS desktop: even a blank disabled piece requires explicit confirmation for global deletion
+PASS desktop: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors
+PASS mobile390: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls
+PASS mobile390: scenario switch and reload preserve both masters and independent flags
+PASS mobile390: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved
+PASS mobile390: parent off/on preserves individual service/component masks and shared content without editor redesign
+PASS mobile390: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics
+PASS mobile390: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate
+PASS mobile390: lost committed flag response recovers by GET without replay, DELETE or POST
+PASS mobile390: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention
+PASS mobile390: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery
+PASS mobile390: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state
+PASS mobile390: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios
+PASS mobile390: even a blank disabled piece requires explicit confirmation for global deletion
+PASS mobile390: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors
+PASS mobile320: original rows retained, only rightmost trash added; two visible masters with inverse scenario flags and accessible controls
+PASS mobile320: scenario switch and reload preserve both masters and independent flags
+PASS mobile320: list enable/disable sends only scenario PATCH; IDs, diagnosis, notes, services, components and other scenario preserved
+PASS mobile320: parent off/on preserves individual service/component masks and shared content without editor redesign
+PASS mobile320: original circular map reflects active scenario; Ambos adds once and subsequent taps are inert, preserving all identities; explicit editor toggle retains scenario-only semantics
+PASS mobile320: delayed acknowledgements and rapid toggles retain latest intentions with no accidental delete or duplicate
+PASS mobile320: lost committed flag response recovers by GET without replay, DELETE or POST
+PASS mobile320: genuine revision conflict blocks unsafe overwrite; explicit refresh preserves unrelated concurrent change and applies latest intention
+PASS mobile320: another writer after PATCH ACK is detected on GET; no silent overwrite before explicit read-first recovery
+PASS mobile320: explicit trash reuses compact confirmation; Cancel sends zero requests and changes no state
+PASS mobile320: only confirmed trash deletes shared piece/children; lost DELETE response reconciles once across both scenarios
+PASS mobile320: even a blank disabled piece requires explicit confirmation for global deletion
+PASS mobile320: restart/reload persistence, SQLite integrity/FKs and immutable issued snapshot/PDF verified; no overflow, external requests or page errors
+SUITE fase2_financial
+PASS desktop: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS desktop: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS desktop: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS desktop: manual table/FC/FR/MR preserved across reload and API restart
+PASS desktop: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS desktop: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS desktop: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento
+PASS mobile390: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS mobile390: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS mobile390: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS mobile390: manual table/FC/FR/MR preserved across reload and API restart
+PASS mobile390: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS mobile390: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS mobile390: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento
+PASS mobile320: persisted approved defaults, FC/FR names, four equal columns at original 37px, no overflow
+PASS mobile320: free MR20/30/0/25.5, exact official totals and fractional quantities; explicit manual zero remains zero
+PASS mobile320: raw incomplete/invalid MR never writes zero or replaces saved settings; emission blocked until corrected
+PASS mobile320: manual table/FC/FR/MR preserved across reload and API restart
+PASS mobile320: lost committed MR response keeps draft and reconciles by read only without repeat write
+PASS mobile320: concurrent MR retained until explicit read-first recovery and operator confirmation, no silent overwrite
+PASS mobile320: edited FC/FR values retain stable names/IDs; new global MR default applies only to future Atendimento
+SUITE curation_final
+PASS desktop: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS desktop: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS desktop: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS desktop: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS desktop: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS desktop: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS desktop: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS mobile390: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS mobile390: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS mobile390: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS mobile390: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS mobile390: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS mobile390: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS mobile390: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+PASS mobile320: hidden items absent from new selector, 16 diagnoses available, two technical identities shown as one blocked offer without canonical selection
+PASS mobile320: mixed priced/not-billed lines autosave exact fractional quantities, no free unit price, charged total unchanged and technical energy included
+PASS mobile320: explicit confirmation persists on original scenario/line; copying masks does not authorize external execution in the new scenario
+PASS mobile320: scope change revokes approvals; committed lost confirmation response is recovered by GET before retry, without blind PATCH replay or duplicate lines
+PASS mobile320: real API restart/relogin preserves scenario-scoped confirmation and committed service data
+PASS mobile320: only not-billed activities emit approved zero-total budget/PDF with null unit prices, positive real energy and idempotent lost-response recovery
+PASS mobile320: missing technical stages block free-only emission without fake energy; historical snapshot/PDF immutable, SQLite V8 integrity/FKs and no overflow/external calls
+SUITE etapa6_integrated
+PASS desktop: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS desktop: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS desktop: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+PASS mobile390: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS mobile390: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS mobile390: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+PASS mobile320: scenario flag and confirmed autosave preserve shared composition, other scenario and safe Back without dirty prompt
+PASS mobile320: sheet and circular Map preserve active-scenario flags; existing map piece opens editor; explicit trash deletes globally; Cancel is inert and confirmed removal affects draft composition globally
+PASS mobile320: restart/reload preserves committed selection; historical snapshot/PDF unchanged; SQLite integrity/FKs valid and no external requests
+SUITE etapa5_rodape
+PASS desktop: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS desktop: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS desktop: always-visible footer opens simplified document list/direct PDF download and returns to original tab/scenario; historical PDF unchanged
+PASS desktop: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS desktop: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS desktop: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS mobile390: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS mobile390: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS mobile390: always-visible footer opens simplified document list/direct PDF download and returns to original tab/scenario; historical PDF unchanged
+PASS mobile390: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS mobile390: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS mobile390: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+PASS mobile320: three tabs, expanded/collapsed footer and popup; stable base anchor, left history/right emit, total before reserved gutter, no footer overlap or horizontal overflow
+PASS mobile320: synthetic 20px bottom/12px right safe-area respected by fixed launcher and footer actions; no hidden total/buttons
+PASS mobile320: always-visible footer opens simplified document list/direct PDF download and returns to original tab/scenario; historical PDF unchanged
+PASS mobile320: failed technical preview leaves collapsed actions/error visible, creates no budget and allows explicit retry without manual preview control
+PASS mobile320: emit obtains preview/token internally, requires consent, lost committed response retries identical key/token and double click creates exactly one new version
+PASS mobile320: real revision conflict blocks emission; explicit refresh and renewed consent required; immutable snapshot/PDF, SQLite integrity and no external/AI calls
+SUITE etapa4_mapa
+PASS desktop: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS desktop: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS desktop: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS mobile390: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS mobile390: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS mobile390: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+PASS mobile320: every canonical layer stays circular; 13 lateral entries direct, no pagination/search/redundant title; measured labels, >=44px targets and zero collisions
+PASS mobile320: all 23 exact pairs (15 side and 8 axle) add exactly two real identities; repeated taps preserve all flags without removing shared masters; direction geometry, uniqueness and other pieces preserved
+PASS mobile320: configured global removal confirmation/Cancel, keyboard, focus, Escape, immutable snapshot/PDF and SQLite integrity preserved; no external calls/page errors
+SUITE etapa2_persistencia
+PASS desktop: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS desktop: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS desktop: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS desktop: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS desktop: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS desktop: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS desktop: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history
+PASS mobile390: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS mobile390: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS mobile390: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS mobile390: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS mobile390: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS mobile390: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS mobile390: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history
+PASS mobile320: editor changes scenario flags only; disabled master remains visible with false scenario flag; confirmed back has no discard dialog; redundant global trash absent
+PASS mobile320: compact confirmation lists actual scenario positions 1 and 3 and configured content; Cancel sends zero requests and changes no identities/revisions/flags
+PASS mobile320: four explicit confirmed removals preserve remaining IDs/services/fractional components; routine status outside layout
+PASS mobile320: changed component invalidates confirmed removal transaction; explicit refresh reconfirms changed scope; cancellation retains concurrent content
+PASS mobile320: lost committed DELETE reconciles absence without replay; configured children and all draft scenario flags removed only after consent
+PASS mobile320: 503 recovery and re-add use stable unique current identity; SQLite survives restart; immutable budget/PDF and remaining scenarios intact; no external calls or page errors
+PASS mobile320: existing circular map is unchanged; disabled master reflects scenario flag; real Ambos adds exactly two codes and repeated taps preserve flags without removing masters with no duplicates and preserves issued history
+SUITE etapa3_editor
+PASS desktop: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS desktop: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS desktop: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS desktop: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS desktop: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS desktop: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS desktop: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS mobile390: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS mobile390: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS mobile390: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS mobile390: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS mobile390: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS mobile390: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS mobile390: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+PASS mobile320: single toggle/select/notes row, filled/unfilled knob without halo, keyboard toggles, centered back, scenario masks and official values preserved
+PASS mobile320: invalid existing quantity sends no request, summary ends in Incompleto, corrected fraction autosaves and confirmed back has no false discard warning
+PASS mobile320: dashed empty cards add/focus inputs and disappear; blank service/component stops in incomplete state; saved missing dimension/price is explicit, zero stays a real zero
+PASS mobile320: missing table/MR shows configuration reasons without fake zeros/loading; existing explicit selectors resolve it without changing factor or engine rules
+PASS mobile320: delayed save does not claim confirmed, preserves focus/newest typing, normal status stays outside layout and ack establishes actual persistence
+PASS mobile320: bottom sheet anchored to viewport/safe-area, unified search changes active-scenario flags only, configured master retained; Escape/close restore focus
+PASS mobile320: real HTTP error keeps fields/dirty state and explicit retry persists before reopening; immutable snapshot/PDF, SQLite integrity, no overflow/external calls/page errors
+SUITE etapa_b_navigation
+PASS desktop: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS desktop: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS desktop: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS desktop: simplified issued list downloads original stored PDF directly; contextual return preserves scenario, immutable snapshot and original PDF hash
+PASS desktop: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS desktop: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS desktop: explicit discard remount retains the prior diagnosis list scroll position
+PASS desktop: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS desktop: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS desktop: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable
+PASS mobile: piece is a full contextual screen; single header back, native back/forward, list scroll and record identity preserved without Atendimento reload
+PASS mobile: numeric scenarios, accessible plus/matrix, copy of inclusions, selection and deletion preserve existing contracts
+PASS mobile: full comparison preserves differences filter, scenario flags, calculated cells, horizontal mobile scrolling and native return
+PASS mobile: simplified issued list downloads original stored PDF directly; contextual return preserves scenario, immutable snapshot and original PDF hash
+PASS mobile: main tab buttons preserve scenario and data; Copilot opens/closes in all three tabs without covering collapsed or expanded finance
+PASS mobile: directional swipe follows Chat/Diagnósticos/Mapa, ignores vertical/finance/matrix gestures and issues no redundant Atendimento GET
+PASS mobile: Chromium touch input performs horizontal tab swipe while native vertical scroll remains functional
+PASS mobile: explicit discard remount retains the prior diagnosis list scroll position
+PASS mobile: network failure preserves draft; canceling native/header back preserves route and forward history; explicit retry saves once and survives return
+PASS mobile: accepting explicit discard on native back reloads the confirmed version without persisting the discarded draft
+PASS mobile: in-flight write blocks native return until confirmed; final return reaches Funil; budget snapshot remains immutable
+SUITE etapa_d_components
+PASS desktop: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS desktop: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS desktop: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS desktop: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS desktop: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS desktop: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS desktop: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS desktop: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors
+PASS mobile: two compact ordered rows, read-only MR +20%, official unit ceiling before quantity, fractional cents and manual zero, no permanent autosave label
+PASS mobile: MR factors 1/1.35/0.8/1.2 selected only in finance, exact percentages and every component/subtotal match backend; one shared configuration GET
+PASS mobile: pending MR confirmation invalidates every component and finance; old totals are never presented as current
+PASS mobile: absent/null configured MR and absent manual price show pending states; explicit manual zero remains valid and persisted
+PASS mobile: typing name/quantity/price during delayed autosave retains last input, stable IDs and official total; independent SQL confirms persisted values
+PASS mobile: HTTP failure, real revision conflict and lost committed response preserve pending fields; explicit reconcile/reload recovers without duplicate writes
+PASS mobile: toggle changes only active-scenario mask; global trash cancel/confirm affects all scenarios, preserves remaining identities and does not duplicate rows
+PASS mobile: immutable issued snapshot/PDF survive changes/deletion; 390/320 responsive widths have legible inputs and no horizontal overflow; no external requests/page errors
+SUITE pr17_auditoria
+PASS desktop: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers
+PASS desktop: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected
+PASS desktop: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation
+PASS desktop: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined
+PASS mobile: authenticated global settings without Atendimento; CRUD catalogs, history/inactivation and dirty navigation guards reuse existing managers
+PASS mobile: global pricing/factors/MR/energy/capacity/conditions saved and reloaded; no invented runtime defaults; dirty pricing remains protected
+PASS mobile: only changed service says Calculando through debounce/PATCH and post-commit recalculation GET; unaffected row and editing remain available; totals never claim stale confirmation
+PASS mobile: error stops pending indication, keeps inputs and recovers; dimension changes use backend; per-Atendimento selectors and direct issue remain; PDF has manual input plus MR and no FCT/undefined
+SUITE editor_financeiro
+PASS desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS desktop: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+PASS desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF
+PASS desktop: global piece removal uses explicit trash and preserves historical emission
+PASS desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS mobile: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+SUITE editor_financeiro
+PASS desktop: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS desktop: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS desktop: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS desktop: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS desktop: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+PASS desktop: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF
+PASS desktop: global piece removal uses explicit trash and preserves historical emission
+PASS desktop: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS mobile: real autosave, repeated services, fractional quantity, global delete and hidden legacy service fields preserved
+PASS mobile: 503 preserves edits and retries; typing during in-flight save persists the newest text without stale overwrite
+PASS mobile: lost PATCH response reconciled without duplication; conflict preserves local draft and newer saved data until explicit recovery
+PASS mobile: incomplete component remains local; zero accepted, lost POST response retries idempotently; component notes retained; no individual multiplier
+PASS mobile: computed colours, typography, pill controls, identity colours, typography and pill controls match supplied HTML; footer geometry follows F01-F06
+PASS mobile: global MR and cached tabs/scenarios; two negotiation options/zero; direct issue with consent/token/idempotent retry; history reachable, no global configuration on Atendimento; immutable PDF
+PASS mobile: global piece removal uses explicit trash and preserves historical emission
+PASS mobile: temporary file-backed SQLite survives API restart with composition, MR, flags and emitted version intact
+PASS no browser runtime errors or external requests; desktop/mobile no horizontal overflow
+SUITE m1_atendimentos
+PASS desktop: Conversas, Funil and global Configurações navigation; no Veículos
+PASS real empty SQLite database is usable without Coda credentials
+PASS manual creation requires only a minimum phone; optional data stays empty
+PASS optional fields and manual commercial phase persist; header updates to saved record
+PASS search locates actual stored records by name, plate and phone
+PASS detail back preserves list and search context
+PASS switching records never combines another contact or plate in the header
+PASS Chat and global/context IA stay unavailable without simulated integration
+PASS cancelling unsaved navigation keeps the form until explicit discard
+PASS injected save failure retains input and does not alter persisted data
+PASS real revision conflict preserves stale input and refuses silent overwrite
+PASS Rejeitados requires explicit refusal and reason; no automatic loss
+PASS Kanban preserves six approved labels and collapsible lanes
+PASS delayed response from another Atendimento cannot replace the active header
+PASS same SQLite records survive API stop/restart and a completely new browser session
+PASS mobile: no body horizontal overflow
+PASS mobile: editor scrolling/save is usable and edited data survives reload
+PASS legacy vehicle/experience URLs cannot expose operational views
+PASS no external providers, legacy Coda APIs, IA calls or uncaught page errors
+SUITE issue7_scenarios
+PASS duplicate scenario copies only flags; repeated service rows have independent checkboxes; parent restores flags; differences keeps context
+PASS editing master attributes in one scenario changes the same line in the other scenario
+PASS fresh mobile browser after API restart preserves scenarios and masks; matrix scrolls horizontally inside V20
+SUITE issue12_inclusion
+PASS existing file-backed Atendimento after restart accepts sequential additions; GET is no-store; existing fractional service preserved
+PASS second session produces real 409; one GET reconciliation refreshes revision; next explicit attempt succeeds without POST replay or scenario clones
+PASS ordinary mutations and recovery use cached catalogs; failed post-commit GET keeps confirmed rows and resumes after explicit read without POST replay
+PASS POST rejected before delivery is reported as unconfirmed; explicit refresh then retry saves once and does not freeze busy
+PASS lost POST response reconciles the same physical ID without duplicates; deselection disables the same master only in the active scenario
+PASS HTTP200 with unreadable body is uncertain, never falsely confirmed; GET recovers the actual saved row without another POST
+PASS autosave conflict preserves unsaved notes/quantities; only explicit saved-version reload allows a new deliberate edit
+PASS initial GET503 differs from transport/POST errors and offers working manual recovery without resetting data
+PASS full-screen return issues no redundant GET; delayed stale workspace versus second writer reconciles real 409 without losing or duplicating confirmed pieces
+PASS rapid on/off during committed POST remains interactive, one POST without duplicates, final disabled flag with retained master confirmed
+PASS fresh mobile browser after API restart recovers every confirmed row, two scenarios, stable IDs and fractional quantities without duplicates
+SUITE issue22_regressions
+PASS desktop: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions
+PASS desktop: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay
+PASS desktop: unreadable committed component POST is recovered without a duplicate or blind replay
+PASS desktop: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct
+PASS desktop: failed refresh after acknowledged save preserves fields and retries reads without replaying the write
+PASS desktop: content and mask conflicts block replay, preserve drafts and support explicit loading
+PASS desktop: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct
+PASS mobile: mask toggles use 2 requests, no catalog/attribute writes, and keep row revisions
+PASS mobile: malformed JSON acknowledgement preserves inclusion intent and reconciles without replay
+PASS mobile: unreadable committed component POST is recovered without a duplicate or blind replay
+PASS mobile: lost service acknowledgement reconciles IDs; incomplete and fractional repeated services remain distinct
+PASS mobile: failed refresh after acknowledged save preserves fields and retries reads without replaying the write
+PASS mobile: content and mask conflicts block replay, preserve drafts and support explicit loading
+PASS mobile: parameter changes, reload, persisted fractional data and immutable snapshot/PDF remain correct
+SUITE issue18_import
+PASS desktop: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present
+PASS desktop: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; legacy MR record is preserved; new Atendimento has approved MR20%
+PASS desktop: approved MR20% is a per-Atendimento percentage, persists on reload, prices component 100 as 120 and leaves service unchanged
+PASS mobile: imported catalogs and service/dimension/energy editable via existing settings; approved MR Padrão 1.2 is present
+PASS mobile: real UI selects imported diagnosis/service/dimension/table/FC/FR; autosave, exact total, energy, days and reload confirmed; legacy MR record is preserved; new Atendimento has approved MR20%
+PASS mobile: approved MR20% is a per-Atendimento percentage, persists on reload, prices component 100 as 120 and leaves service unchanged
+SUITE issue20_pricing
+PASS desktop: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence
+PASS desktop: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent
+PASS desktop: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged
+PASS mobile: admin saves FC off, discount off and independent billable flag; reload confirms V7 persistence
+PASS mobile: four FV including zero use existing UI; FC only eligible service, FR both, MR component unchanged, energy independent
+PASS mobile: discount above eligible subtotal cannot emit; permitted mixed-service discount emits immutable budget/PDF with protected line and MR unchanged

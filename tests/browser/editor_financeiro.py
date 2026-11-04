@@ -32,7 +32,7 @@ async def run():
     item=await write(path+'/diagnosticos/'+item['id'],{'revision':item['revision'],'diagnosisId':diag['id'],'services':[{'serviceId':s['id'],'dimensionId':d['id'],'quantity':'1','notes':'Nota histórica QA','diagnosisId':diag['id']} for s,d in zip(entries,dimensions)]},'patch')
     part=await write(path+'/componentes',{'pieceId':item['id'],'name':'Capa do retrovisor','quantity':'1','manualPrice':'180','notes':'Legado QA'})
     c=await get('/api/precificacao')
-    config={'tables':[{'id':'table','name':'A','factor':'1'}],'colors':[{'id':'color','name':'FC QA','factor':'1'}],'risks':[{'id':'risk','name':'FR QA','factor':'1'}],'resaleMultipliers':[{'id':'mr','name':'MR QA','factor':'1.2'},{'id':'mr2','name':'MR2 QA','factor':'2'}],'capacity':'4','conditions':'SINTÉTICO — teste local. Não executar serviço.','specialPrices':[],'services':[{'serviceId':s['id'],'colorFactorEnabled':True,'discountable':True,'base':base,'dimensions':[{'dimensionId':d['id'],'fd':'1','stages':[{'id':'step','name':'Etapa QA','dimension':'Técnica','baseEnergy':'2','dimensionEnergy':'3'}]}]} for s,d,base in zip(entries,dimensions,['889','620'])]}
+    config={'tables':[{'id':'table','name':'A','factor':'1'}],'colors':[{'id':'color','name':'FC QA','factor':'1'}],'risks':[{'id':'risk','name':'FR QA','factor':'1'}],'resaleMultipliers':[{'id':'mr','name':'MR QA','factor':'1.2'},{'id':'mr2','name':'MR2 QA','factor':'2'}],'capacity':'4','conditions':'SINTÉTICO — teste local. Não executar serviço.','specialPrices':[],'services':[{'serviceId':s['id'],'colorFactorEnabled':True,'discountable':True,'base':base,'dimensions':[{'dimensionId':d['id'],'fd':'1','stages':[{'id':'step','name':'Etapa QA','dimension':'Técnica','presentation':{'stageId':None,'stageDimensionId':None,'clusterId':None,'cluster':'Preparação técnica','order':None},'baseEnergy':'2','dimensionEnergy':'3'}]}]} for s,d,base in zip(entries,dimensions,['889','620'])]}
     await write('/api/precificacao',{'revision':c['revision'],'config':config},'patch')
     w=await get(path+'/cenarios');await write(path+'/parametros',{'revision':w['revision'],'tableId':'table','colorId':'color','riskId':'risk','mrId':'mr'},'patch')
     await page.goto(ORIGIN+'/atendimentos/'+at['id']+'?aba=diagnosticos')
@@ -189,7 +189,7 @@ async def run():
      else:await route.continue_()
     await page.route('**'+path+'/orcamentos',lost_emit)
     await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('alert')).to_be_visible()
-    await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name='Orçamento A emitido')).to_be_visible();await page.unroute('**'+path+'/orcamentos',lost_emit)
+    await review.get_by_role('button',name='Confirmar emissão',exact=True).click();await expect(review.get_by_role('heading',name=f"Orçamento {(await get(path+'/orcamentos'))[0]['documentNumber']} emitido")).to_be_visible();await page.unroute('**'+path+'/orcamentos',lost_emit)
     versions=await get(path+'/orcamentos');assert len(versions)==1
     v=await get(path+'/orcamentos/'+versions[0]['id']);assert v['snapshot']['calculation']['total']=='2700' and v['snapshot']['calculation']['componentSubtotal']=='450'
     pdf=await ctx.request.get(ORIGIN+path+'/orcamentos/'+v['id']+'/pdf');pdf_hash=hashlib.sha256(await pdf.body()).hexdigest()

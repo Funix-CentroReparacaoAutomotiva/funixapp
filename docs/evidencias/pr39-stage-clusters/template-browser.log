@@ -1,0 +1,10 @@
+PASS normal : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS discount : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS adjust-down : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS adjust-up : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS free : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS mixed : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS components : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS empty-details : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text
+PASS long : local Handlebars + Chromium A4, 4 pages, contract/escaped data/terms/finance/PDF text
+PASS fractional : local Handlebars + Chromium A4, 1 pages, contract/escaped data/terms/finance/PDF text

@@ -10,7 +10,7 @@ import{migrate}from'../migrations.ts'
 import{migrate as migrateV8}from'./fixtures/migrations-v8.ts'
 import{commercialFixture as legacyFixture}from'./fixtures/pre-curation/fixture.ts'
 import{BudgetRepository as LegacyBudgets}from'./fixtures/pre-curation/budgets.ts'
-import{BudgetRepository}from'../budgets.ts'
+import{BudgetRepository}from'./fixtures/budget-renderer.ts'
 import{commercialFixture}from'./fixtures/commercial.ts'
 import{CommercialRepository}from'../commercial.ts'
 import{ComponentRepository}from'../components.ts'
@@ -20,22 +20,22 @@ import{planImport,applyImport}from'../coda-import.ts'
 import{codaFixture}from'./fixtures/coda-import.ts'
 import{pieceDataSignature,pieceSignature}from'../../src/calculation-state.ts'
 const records=(db:DatabaseSync)=>db.prepare('SELECT * FROM diagnosis_recommendations ORDER BY id').all()
-test('Fase3 V8→V9 additive migration preserves IDs, flags, MR, services/components and immutable historical snapshot/PDF; failure rolls back',()=>{
+test('Fase3 V8→V9 additive migration preserves IDs, flags, MR, services/components and immutable historical snapshot/PDF; failure rolls back',async ()=>{
  const dir=mkdtempSync(join(tmpdir(),'funix-fase3-upgrade-')),file=join(dir,'qa.sqlite');let db=new DatabaseSync(file)
  try{
-  db.exec('PRAGMA foreign_keys=ON');migrateV8(db);const f=legacyFixture(db),budgets=new LegacyBudgets(db),req={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=budgets.preview(f.at.id,req),v=budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:'qa-legacy-v8-only'}),pdf=budgets.pdf(f.at.id,v.id)
-  const tables=['atendimentos','catalog_items','commercial_state','pricing_configuration','diagnosis_services','component_items','scenarios','scenario_piece_flags','scenario_service_flags','scenario_component_flags','budget_versions'],before=tables.map(t=>db.prepare(`SELECT ${t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all()),piece={...db.prepare('SELECT * FROM diagnosis_items').get()}
-  db.exec('CREATE VIEW diagnosis_recommendations AS SELECT id FROM atendimentos');assert.throws(()=>migrate(db));assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,8);assert(!db.prepare('PRAGMA table_info(diagnosis_items)').all().some(c=>c.name==='intensity'));tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
-  db.exec('DROP VIEW diagnosis_recommendations');migrate(db);assert.deepEqual({...db.prepare('SELECT * FROM diagnosis_items').get()},{...piece,intensity:null});tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
+  db.exec('PRAGMA foreign_keys=ON');migrateV8(db);const f=legacyFixture(db),budgets=new LegacyBudgets(db),req={scenarioId:f.scenario.id,negotiation:{mode:'none'}},p=budgets.preview(f.at.id,req),v=(await budgets.emit(f.at.id,{...req,previewToken:p.token,idempotencyKey:'qa-legacy-v8-only'})),pdf=budgets.pdf(f.at.id,v.id)
+  const tables=['atendimentos','catalog_items','commercial_state','pricing_configuration','diagnosis_services','component_items','scenarios','scenario_piece_flags','scenario_service_flags','scenario_component_flags','budget_versions'],before=tables.map(t=>db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all()),piece={...db.prepare('SELECT * FROM diagnosis_items').get()}
+  db.exec('CREATE VIEW diagnosis_recommendations AS SELECT id FROM atendimentos');assert.throws(()=>migrate(db));assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,8);assert(!db.prepare('PRAGMA table_info(diagnosis_items)').all().some(c=>c.name==='intensity'));tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
+  db.exec('DROP VIEW diagnosis_recommendations');migrate(db);assert.deepEqual({...db.prepare('SELECT * FROM diagnosis_items').get()},{...piece,intensity:null});tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
   assert.deepEqual(new BudgetRepository(db).get(f.at.id,v.id),v);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
-  db.close();db=openDatabase(file);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,10);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
+  db.close();db=openDatabase(file);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,12);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
-test('Fase3 master intensity persists across scenarios/restart without changing manual composition, parameters, masks or calculations; omitted/null preserved',()=>{
+test('Fase3 master intensity persists across scenarios/restart without changing manual composition, parameters, masks or calculations; omitted/null preserved',async ()=>{
  const dir=mkdtempSync(join(tmpdir(),'funix-fase3-intensity-')),file=join(dir,'qa.sqlite');let db=openDatabase(file)
  try{
   const f=commercialFixture(db),parts=new ComponentRepository(db);parts.save(f.at.id,{pieceId:f.item.id,name:'QA componente',quantity:'0.25',manualPrice:'10.01',notes:'Preservar'})
-  const d=f.commercial.saveCatalog({kind:'diagnostico',name:'Dano sintético'}),s=f.scenarios.list(f.at.id)[0]!,two=f.scenarios.create(f.at.id,{name:'Outro',duplicateFrom:s.id,sourceRevision:s.revision}),b=new BudgetRepository(db),request={scenarioId:s.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,request),version=b.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'qa-fase3-before-snapshot'}),pdf=b.pdf(f.at.id,version.id)
+  const d=f.commercial.saveCatalog({kind:'diagnostico',name:'Dano sintético'}),s=f.scenarios.list(f.at.id)[0]!,two=f.scenarios.create(f.at.id,{name:'Outro',duplicateFrom:s.id,sourceRevision:s.revision}),b=new BudgetRepository(db),request={scenarioId:s.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,request),version=(await b.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'qa-fase3-before-snapshot'})),pdf=b.pdf(f.at.id,version.id)
   const before=f.commercial.list(f.at.id)[0]!,storedParts=parts.list(f.at.id),settings=f.pricing.settings(f.at.id).settings,flags=f.scenarios.list(f.at.id).map(x=>[x.pieceFlags,x.serviceFlags,x.componentFlags])
   assert.equal(before.intensity,null)
   for(const intensity of['leve','moderado','severo',null]as const){const piece=f.commercial.list(f.at.id)[0]!,next=f.commercial.updateDiagnosis(f.at.id,piece.id,{revision:piece.revision,intensity,diagnosisId:d.id})
@@ -83,7 +83,7 @@ test('Fase3 CLI dry-run opens existing V9 read-only, preserves hash/mode, requir
   const applied=run([...args,'--confirm-plan',p.planHash]);assert.equal(applied.status,0,applied.stderr);const repeat=run(args);assert.equal(JSON.parse(repeat.stdout).inserts,0);assert.equal(run([...args,'--confirm-plan',p.planHash]).status,1)
   assert.equal(run(['--source',sourceFile,'--database',join(dir,'absent.sqlite')]).status,1)
   writeFileSync(sourceFile,'synthetic-sensitive-placeholder');const malformed=run(args);assert.equal(malformed.status,1);assert(!malformed.stderr.includes('synthetic-sensitive-placeholder'));writeFileSync(sourceFile,JSON.stringify(f.source))
-  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(11,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=11');db.close()
+  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(13,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=13');db.close()
   const old=join(dir,'v8.sqlite');db=new DatabaseSync(old);migrateV8(db);assert.throws(()=>planRecommendations(db,f.source),/exatamente V9/);db.close()
  }finally{try{db.close()}catch{}rmSync(dir,{recursive:true,force:true})}
 })

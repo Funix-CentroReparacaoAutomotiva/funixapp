@@ -10,7 +10,7 @@ import type{PieceSelectionTransport,SelectionState}from'../../src/piece-selectio
 import type{CommercialWorkspace}from'../../shared/commercial.ts'
 import{removalRequest,removalReview}from'../../shared/piece-removal.ts'
 import{negotiationIsDirty}from'../../src/negotiation.ts'
-import{BudgetRepository}from'../budgets.ts'
+import{BudgetRepository}from'./fixtures/budget-renderer.ts'
 const deferred=()=>{let resolve!:()=>void;const promise=new Promise<void>(r=>{resolve=r});return{promise,resolve}}
 async function until(check:()=>boolean){for(let n=0;n<200&&!check();n++)await setImmediate();assert(check(),'queue did not reach expected state')}
 function fixture(){
@@ -89,8 +89,8 @@ test('Fase1 parent flags preserve IDs, notes, diagnosis and child flags in every
  const t=fixture();try{
   const diagnosis=t.f.commercial.saveCatalog({kind:'diagnostico',name:'QA dano preservado'}),component=t.parts.save(t.f.at.id,{pieceId:t.f.item.id,name:'QA componente',quantity:'0.25',manualPrice:'10',notes:'QA nota do componente'})
   const p=t.f.commercial.updateDiagnosis(t.f.at.id,t.f.item.id,{revision:t.f.item.revision,notes:'QA notas',diagnosisId:diagnosis.id,services:t.f.item.services.map(l=>({...l,enabled:false}))})
-  let scene=t.f.scenarios.list(t.f.at.id)[0]!;scene=t.f.scenarios.update(t.f.at.id,scene.id,{revision:scene.revision,pieceFlags:Object.fromEntries(t.read().items.filter(i=>i.id!==p.id).map(i=>[i.id,false]))})
-  const other=t.f.scenarios.create(t.f.at.id,{name:'Outro',duplicateFrom:scene.id,sourceRevision:scene.revision}),before=t.read(),b=new BudgetRepository(t.db),request={scenarioId:scene.id,negotiation:{mode:'none'}},preview=b.preview(t.f.at.id,request),budget=b.emit(t.f.at.id,{...request,previewToken:preview.token,idempotencyKey:'fase1-frozen-0000000000000000'}),pdf=b.pdf(t.f.at.id,budget.id)
+  let scene=t.f.scenarios.list(t.f.at.id)[0]!;scene=t.f.scenarios.update(t.f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:1},pieceFlags:Object.fromEntries(t.read().items.filter(i=>i.id!==p.id).map(i=>[i.id,false]))})
+  const other=t.f.scenarios.create(t.f.at.id,{name:'Outro',duplicateFrom:scene.id,sourceRevision:scene.revision}),before=t.read(),b=new BudgetRepository(t.db),request={scenarioId:scene.id,negotiation:{mode:'none'}},preview=b.preview(t.f.at.id,request),budget=(await b.emit(t.f.at.id,{...request,previewToken:preview.token,idempotencyKey:'fase1-frozen-0000000000000000'})),pdf=b.pdf(t.f.at.id,budget.id)
   await t.q.enqueue(['capo'],false,before,t.identities);await until(()=>t.q.status==='idle');let w=t.read();assert.equal(w.items.length,before.items.length);assert.equal(w.items.find(i=>i.id===p.id)!.enabled,false);assert(w.scenarios.find(s=>s.id===other.id)!.pieceFlags[p.id]);assert.equal(w.scenarios[0]!.serviceFlags[p.services[0]!.id],false);assert.equal(w.scenarios[0]!.componentFlags[component.id],true);assert.equal(w.calculations[0]!.pieceTotals!.find(i=>i.pieceId===p.id)!.total,'0')
   await t.q.enqueue(['capo'],true,w,t.identities);await until(()=>t.q.status==='idle');w=t.read();assert.deepEqual(w.items,before.items);assert.deepEqual(w.components,before.components);assert.deepEqual(w.scenarios.find(s=>s.id===other.id),before.scenarios.find(s=>s.id===other.id));assert.deepEqual(b.get(t.f.at.id,budget.id),budget);assert.deepEqual(b.pdf(t.f.at.id,budget.id),pdf);assert.equal(t.removes+t.adds+t.confirmations,0)
  }finally{t.db.close()}

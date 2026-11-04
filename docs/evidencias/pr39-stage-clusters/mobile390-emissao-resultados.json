@@ -1,0 +1,52 @@
+{
+  "synthetic": true,
+  "device": "mobile390",
+  "results": [
+    {
+      "name": "mobile390: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+      "pass": true
+    },
+    {
+      "name": "mobile390: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+      "pass": true
+    },
+    {
+      "name": "mobile390: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+      "pass": true
+    },
+    {
+      "name": "mobile390: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+      "pass": true
+    },
+    {
+      "name": "mobile390: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+      "pass": true
+    },
+    {
+      "name": "mobile390: real API→authenticated mock HTTP renderer→atomic SQLite→automatic named download; failed render creates no history and retry keeps reserved OR identity",
+      "pass": true
+    },
+    {
+      "name": "mobile390: lost successful emission response repeats same key/OR/PDF without duplicate renderer call or version",
+      "pass": true
+    },
+    {
+      "name": "mobile390: PDF download failure retains completed document; explicit retry fetches stored file without emission/render repetition",
+      "pass": true
+    },
+    {
+      "name": "mobile390: rates changed after review invalidate token; historical list downloads original frozen PDF directly and never renumbers or regenerates it",
+      "pass": true
+    },
+    {
+      "name": "mobile390: previously stored version links stay accessible with commercial identity and original PDF, including contextual return to list",
+      "pass": true
+    },
+    {
+      "name": "mobile390: restart persists global rates/manual deadlines/documents; SQLite V12 integrity/FKs, immutable snapshots/PDFs and 1440/390/320 layouts verified; no production access or JS errors",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

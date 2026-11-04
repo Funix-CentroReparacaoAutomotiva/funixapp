@@ -1,3 +1,4 @@
+import{syntheticRenderer}from'./fixtures/budget-renderer.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -13,7 +14,7 @@ const password = 'test-only-password-123'
 function start(secret: string | undefined = password, now?: () => number, appOrigin = origin, revision?: string) {
   const db = openDatabase(':memory:')
   const repository = new AtendimentoRepository(db)
-  const handler = createRequestHandler({ atendimentos: repository, password: secret, origin: appOrigin, now, revision })
+  const handler = createRequestHandler({budgetRenderer:syntheticRenderer, atendimentos: repository, password: secret, origin: appOrigin, now, revision })
   const request = async (path: string, init?: RequestInit): Promise<Response> => {
     const req = Object.assign(Readable.from(init?.body ? [String(init.body)] : []), {
       url: path, method: init?.method ?? 'GET', headers: Object.fromEntries(new Headers(init?.headers)), socket: { remoteAddress: '127.0.0.1' },
@@ -404,5 +405,21 @@ test('Fase4 recommendation batch endpoint enforces session/origin/JSON/revisions
   for(const mode of[['automatic'],null,true,'other'])assert.equal((await app.write(path,'POST',{...input,mode},cookie)).status,400)
   const saved=await app.write(path,'POST',input,cookie);assert.equal(saved.status,200);const ack=await saved.json();assert.equal(ack.created.length,6);assert.equal(ack.idempotencyKey,input.idempotencyKey);assert.equal(ack.item.services.length,6)
   const replay=await app.write(path,'POST',input,cookie);assert.equal(replay.status,200);assert.deepEqual(await replay.json(),ack);assert.equal(f.commercial.list(f.at.id)[0]!.services.length,6)
+ }finally{app.close()}
+})
+
+test('PDF configuration API is global, authenticated, validates revision and cannot be written through Atendimento parameters',async()=>{
+ const app=start();try{
+  assert.equal((await app.request('/api/parcelamento')).status,401);const cookie=await authenticate(app)
+  const initial=await(await app.request('/api/parcelamento',{headers:{Cookie:cookie}})).json();assert.equal(initial.rates.tres,'6')
+  assert.equal((await app.write('/api/parcelamento','PATCH',{revision:1,rates:initial.rates},cookie,'https://other.invalid')).status,403)
+  const saved=await app.write('/api/parcelamento','PATCH',{revision:1,rates:{...initial.rates,tres:'7.5'}},cookie);assert.equal(saved.status,200)
+  assert.equal((await app.write('/api/parcelamento','PATCH',{revision:1,rates:initial.rates},cookie)).status,409)
+  assert.equal((await app.write('/api/parcelamento','PATCH',{revision:2,rates:{...initial.rates,tres:'-1'}},cookie)).status,400)
+  const f=commercialFixture(app.db);assert.equal((await app.write(`/api/atendimentos/${f.at.id}/parametros`,'PATCH',{revision:f.pricing.settings(f.at.id).revision,rates:initial.rates},cookie)).status,400)
+  const scene=f.scenarios.list(f.at.id)[0]!,path=`/api/atendimentos/${f.at.id}/cenarios/${scene.id}`
+  assert.equal((await app.write(path,'PATCH',{revision:scene.revision,deadline:{mode:'manual',manualDays:0}},cookie)).status,400)
+  const deadline=await app.write(path,'PATCH',{revision:scene.revision,deadline:{mode:'manual',manualDays:7}},cookie);assert.equal(deadline.status,200);assert.deepEqual((await deadline.json()).deadline,{mode:'manual',manualDays:7})
+  assert.equal((await app.write(path,'PATCH',{revision:scene.revision,deadline:{mode:'automatic',manualDays:null}},cookie)).status,409)
  }finally{app.close()}
 })

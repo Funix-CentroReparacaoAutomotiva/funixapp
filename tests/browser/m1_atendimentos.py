@@ -50,7 +50,7 @@ class Harness:
         print("PASS", name, flush=True)
 
     def check_ports(self):
-        for port in [5173, 8787]:
+        for port in [5173, 8787, 8788]:
             with socket.socket() as sock:
                 if sock.connect_ex(("127.0.0.1", port)) == 0:
                     raise RuntimeError(f"Port {port} is occupied; refusing to stop another process")
@@ -63,6 +63,8 @@ class Harness:
             "NODE_ENV": "development", "FUNIX_API_HOST": "127.0.0.1", "FUNIX_API_PORT": "8787",
             "FUNIX_APP_ORIGIN": ORIGIN, "FUNIX_DATABASE_PATH": str(self.folder / "atendimentos.sqlite"),
             "FUNIX_OPERATOR_PASSWORD": self.password,
+            "FUNIX_JSREPORT_ENDPOINT": "http://127.0.0.1:8788/api/report",
+            "FUNIX_JSREPORT_USERNAME": "synthetic", "FUNIX_JSREPORT_PASSWORD": self.password,
         })
         process = subprocess.Popen(args, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
         self.processes.append(process)
@@ -84,6 +86,9 @@ class Harness:
         raise TimeoutError(f"Local test process did not become ready: {url}")
 
     async def start_api(self):
+        if getattr(self, "jsreport", None) is None:
+            self.jsreport = self.start(["node", "server/tests/fixtures/jsreport-server.ts"], "jsreport-mock")
+            await self.ready("http://127.0.0.1:8788/health", self.jsreport)
         self.api = self.start(["node", "server/index.ts"], "api")
         await self.ready(API + "/api/ready", self.api)
 

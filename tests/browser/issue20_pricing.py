@@ -52,7 +52,7 @@ async def device_case(browser,device,viewport):
   await review.get_by_role('button',name='Fechar conferência',exact=True).click();await amount.fill('100');await amount.blur()
   await finance.get_by_role('button',name='Emitir orçamento',exact=True).click();await expect(review).to_be_visible()
   await review.get_by_label('Conferi o escopo, as condições e o total efetivo.',exact=True).check();await review.get_by_role('button',name='Confirmar emissão',exact=True).click()
-  await expect(review).to_contain_text('Orçamento A emitido')
+  await expect(review).to_contain_text('Orçamento OR-000001 emitido')
   versions=await get(path+'/orcamentos');assert len(versions)==1;v=await get(path+'/orcamentos/'+versions[0]['id']);c=v['snapshot']['calculation']
   assert c['total']=='320' and c['discountEligibleSubtotal']=='300' and c['componentSubtotal']=='20'
   assert [l['total'] for l in c['lines'] if l['kind']=='service']==['300','100']
