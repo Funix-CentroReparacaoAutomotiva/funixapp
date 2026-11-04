@@ -1,5 +1,5 @@
 import type{DatabaseSync}from'node:sqlite'
-import type{ExecutionDeadline,InstallmentConfiguration,InstallmentSnapshot,ScenarioDeadline}from'../shared/budget-terms.ts'
+import type{InstallmentConfiguration,InstallmentSnapshot}from'../shared/budget-terms.ts'
 import{INSTALLMENT_PLANS}from'../shared/budget-terms.ts'
 import{Q}from'./exact.ts'
 import{conflict,inputObject,invalid,transaction}from'./scenarios.ts'
@@ -35,11 +35,7 @@ export function installmentSnapshot(total:string,configuration:InstallmentConfig
  }
  return{revision:configuration.revision,rates:structuredClone(configuration.rates),rounding:'half-up-cent-independent',plans}
 }
-export function executionDeadline(setting:ScenarioDeadline|undefined,technicalDays:string|null):ExecutionDeadline{
- const configured=setting??{mode:'automatic',manualDays:null},suggestion=technicalDays&&/^\d+$/.test(technicalDays)&&Number.isSafeInteger(Number(technicalDays))&&Number(technicalDays)>0?Number(technicalDays):null
- const effectiveDays=configured.mode==='manual'?configured.manualDays:suggestion
- return{...configured,technicalDays,effectiveDays,warning:configured.mode==='manual'&&effectiveDays!==null?(suggestion===null?'Estimativa técnica de prazo indisponível; será utilizado o prazo manual informado.':effectiveDays<suggestion?'Prazo manual menor que a sugestão técnica atual.':null):null}
-}
+export {executionDeadline}from'../shared/budget-terms.ts'
 
 // A manually supplied commercial deadline replaces only the missing capacity-derived
 // suggestion. Prices, energy and every other existing engine error remain blocking.

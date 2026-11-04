@@ -1,0 +1,96 @@
+{
+  "synthetic": true,
+  "device": "desktop",
+  "results": [
+    {
+      "name": "desktop: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls",
+      "pass": true
+    },
+    {
+      "name": "desktop: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic",
+      "pass": true
+    },
+    {
+      "name": "desktop: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay",
+      "pass": true
+    },
+    {
+      "name": "desktop: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server",
+      "pass": true
+    },
+    {
+      "name": "desktop: mobile fallback opens the existing PDF blob without another render or automatic download",
+      "pass": true
+    },
+    {
+      "name": "desktop: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable",
+      "pass": true
+    },
+    {
+      "name": "desktop: preview network failure is explicit and retryable, with no number, download or document",
+      "pass": true
+    },
+    {
+      "name": "desktop: refused renderer and invalid PDF are known not-issued results; Back/Confirm enabled, no history/download, same key and reserved OR retained",
+      "pass": true
+    },
+    {
+      "name": "desktop: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF",
+      "pass": true
+    },
+    {
+      "name": "desktop: generic 502/503, INTERNAL_ERROR and unreadable success stay uncertain and keep the original key without new render/history/download",
+      "pass": true
+    },
+    {
+      "name": "desktop: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked",
+      "pass": true
+    },
+    {
+      "name": "desktop: post-commit download failure retains issued PDF; explicit retry never repeats emission",
+      "pass": true
+    },
+    {
+      "name": "desktop: changed installment revision blocks stale preview before reserving another number",
+      "pass": true
+    },
+    {
+      "name": "desktop: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged",
+      "pass": true
+    },
+    {
+      "name": "desktop: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically",
+      "pass": true
+    },
+    {
+      "name": "desktop: all five summary metrics stay in one row, deadline after total, with no collisions",
+      "pass": true
+    },
+    {
+      "name": "desktop: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions",
+      "pass": true
+    },
+    {
+      "name": "desktop: rapid competing tab requests keep the last route, never applying an old transition callback",
+      "pass": true
+    },
+    {
+      "name": "desktop: Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits",
+      "pass": true
+    },
+    {
+      "name": "desktop: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise",
+      "pass": true
+    },
+    {
+      "name": "desktop: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 1440px",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

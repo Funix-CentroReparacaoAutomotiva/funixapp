@@ -1,0 +1,57 @@
+PASS desktop: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS desktop: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS desktop: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS desktop: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS desktop: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS desktop: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS desktop: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS desktop: preview network failure is explicit and retryable, with no number, download or document
+PASS desktop: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS desktop: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS desktop: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS desktop: changed installment revision blocks stale preview before reserving another number
+PASS desktop: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS desktop: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS desktop: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS desktop: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS desktop: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS desktop: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS desktop: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 1440px
+PASS mobile390: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS mobile390: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS mobile390: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS mobile390: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS mobile390: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS mobile390: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS mobile390: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS mobile390: preview network failure is explicit and retryable, with no number, download or document
+PASS mobile390: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS mobile390: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS mobile390: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS mobile390: changed installment revision blocks stale preview before reserving another number
+PASS mobile390: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS mobile390: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS mobile390: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS mobile390: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS mobile390: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS mobile390: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS mobile390: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 390px
+PASS mobile320: only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls
+PASS mobile320: manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic
+PASS mobile320: returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected
+PASS mobile320: lost committed deadline PATCH preserves draft, read-first recovery confirms without duplicate or blind replay
+PASS mobile320: genuine deadline conflict preserves local draft and concurrent saved value; explicit keep uses fresh revision, load-saved actually reads the server
+PASS mobile320: mobile fallback opens the existing PDF blob without another render or automatic download
+PASS mobile320: actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable
+PASS mobile320: preview network failure is explicit and retryable, with no number, download or document
+PASS mobile320: failed definitive render preserves reserved identity; double confirmation emits once and automatically downloads one stored PDF
+PASS mobile320: lost committed response retains exact idempotency key; retry recovers original OR without second rendering, uncertain close blocked
+PASS mobile320: post-commit download failure retains issued PDF; explicit retry never repeats emission
+PASS mobile320: changed installment revision blocks stale preview before reserving another number
+PASS mobile320: compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged
+PASS mobile320: restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically
+PASS mobile320: all five summary metrics stay in one row, deadline after total, with no collisions
+PASS mobile320: swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions
+PASS mobile320: rapid competing tab requests keep the last route, never applying an old transition callback
+PASS mobile320: an automatic deadline with missing capacity displays an em dash, never zero or a stale promise
+PASS mobile320: V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at 320px

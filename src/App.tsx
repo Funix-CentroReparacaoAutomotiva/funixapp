@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {flushSync}from'react-dom'
 import { ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento, AtendimentoList } from '../shared/contracts'
 import { api } from './api'
@@ -7,7 +8,7 @@ import { AtendimentoForm } from './AtendimentoForm'
 import { ChatRail, Icon, Login, Notice, RecordButton } from './ui'
 import { SettingsPage } from './SettingsPage'
 import { CommercialPanel } from './CommercialPanel'
-import {detailScreen,parentDetail,swipeTab} from './detail-navigation'
+import {detailScreen,parentDetail,swipeTab,isTabSwipe} from './detail-navigation'
 import type {DetailScreen} from './detail-navigation'
 import './App.css'
 import './footer-copilot.css'
@@ -37,6 +38,8 @@ function App() {
   const [contextTitle,setContextTitle]=useState<{key:string;title:string}|null>(null)
   const key = query, routeKey = route.path + route.search
   const onContextTitle=useCallback((title:string)=>setContextTitle({key:routeKey,title}),[routeKey])
+  const mapClickUntil=useRef(0)
+  const tabTransition=useRef<ViewTransition|null>(null)
   const touch=useRef<{x:number;y:number;time:number}|null>(null)
   const [session, setSession] = useState<Session | null>(null), [sessionError, setSessionError] = useState(''), [sessionVersion, setSessionVersion] = useState(0)
   const [storedList, setList] = useState<AtendimentoList | null>(null), [listKey, setListKey] = useState('')
@@ -73,7 +76,18 @@ function App() {
     const nextState={...(state??window.history.state),funixIndex:replace?index:index+1}
     if (replace) window.history.replaceState(nextState, '', href)
     else window.history.pushState(nextState, '', href)
-    historyState.current=nextState;setRoute(readRoute()); setSavedMessage('');return true
+    historyState.current=nextState
+    const nextRoute=readRoute(),nextTab=new URLSearchParams(nextRoute.search).get('aba')??'chat'
+    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
+    const update=()=>{if(window.location.pathname!==nextRoute.path||window.location.search!==nextRoute.search)return;setRoute(nextRoute);setSavedMessage('')}
+    tabTransition.current?.skipTransition()
+    if(animated&&document.startViewTransition){
+      document.documentElement.setAttribute('data-tab-direction',tabs.indexOf(nextTab)>tabs.indexOf(tab)?'forward':'back')
+      const transition=document.startViewTransition(()=>flushSync(update));tabTransition.current=transition
+      void transition.ready.catch(()=>{}) // Superseded navigation intentionally skips the animation.
+      void transition.finished.catch(()=>{}).finally(()=>{if(tabTransition.current===transition)tabTransition.current=null})
+    }else update()
+    return true
   }
   function updateParams(values: Record<string, string>) {
     const next = new URLSearchParams(route.search)
@@ -119,6 +133,7 @@ function App() {
       }
       if(unsaved)setCommercialVersion(value=>value+1)
       if(changedRecord)negotiationDirty.current=false
+      tabTransition.current?.skipTransition()
       dirty.current=false;setEditor(null);historyState.current=window.history.state;setRoute(readRoute());setSavedMessage('')
     }
     const onUnload = (event: BeforeUnloadEvent) => { if (dirty.current || negotiationDirty.current || saving.current) { event.preventDefault(); event.returnValue = '' } }
@@ -187,10 +202,11 @@ function App() {
     measure();return()=>{resize.disconnect();mutations.disconnect();cancelAnimationFrame(frame)}
   },[isDetail,tab,screen])
   function touchStart(event:React.TouchEvent<HTMLDivElement>){
-    touch.current=null
+    touch.current=null;mapClickUntil.current=0
     if(!isDetail||screen||editor||event.touches.length!==1||document.querySelector('dialog[open]')||copilotOpen)return
     const target=event.target as Element
-    if(target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix,[data-row-gesture],.disc-wrap,.interactive-map,[contenteditable=true],[role=slider],[role=switch],[role=checkbox]'))return
+    const onMap=Boolean(target.closest('.interactive-map'))
+    if(!onMap&&target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix,[data-row-gesture],.disc-wrap,.interactive-map,[contenteditable=true],[role=slider],[role=switch],[role=checkbox]'))return
     for(let node:Element|null=target;node&&node!==event.currentTarget;node=node.parentElement){
       if(node.scrollWidth>node.clientWidth+1&&/auto|scroll/.test(getComputedStyle(node).overflowX))return
     }
@@ -199,8 +215,14 @@ function App() {
   function touchEnd(event:React.TouchEvent<HTMLDivElement>){
     const start=touch.current;touch.current=null
     if(!start||screen||editor||event.changedTouches.length!==1)return
-    const t=event.changedTouches[0],next=swipeTab(tab,t.clientX-start.x,t.clientY-start.y,event.timeStamp-start.time)
+    const t=event.changedTouches[0],dx=t.clientX-start.x,dy=t.clientY-start.y,elapsed=event.timeStamp-start.time
+    if(isTabSwipe(dx,dy,elapsed)&&(event.target as Element).closest('.interactive-map')){mapClickUntil.current=event.timeStamp+500;if(event.cancelable)event.preventDefault()}
+    const next=swipeTab(tab,dx,dy,elapsed)
     if(next)updateParams({aba:next})
+  }
+  function mapClickCapture(event:React.MouseEvent<HTMLDivElement>){
+    const pointer=event.nativeEvent as PointerEvent
+    if(event.detail!==0&&pointer.pointerType!=='mouse'&&event.timeStamp<mapClickUntil.current&&(event.target as Element).closest('.interactive-map')){event.preventDefault();event.stopPropagation()}
   }
   async function loadMore() {
     if (list?.nextOffset == null || loadingMore) return
@@ -235,7 +257,7 @@ function App() {
   }
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
   return <div className="app-shell">
-    <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport} inert={Boolean(editor)} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}} onScroll={event => {
+    <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport} inert={Boolean(editor)} onClickCapture={mapClickCapture} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}} onScroll={event => {
       if (!isDetail) positions.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
     }}>
       {!isDetail ? <main className="fh-work">

@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "device": "desktop",
+  "results": [
+    {
+      "name": "desktop: no upper X; central X and click outside circular disk close the selector",
+      "pass": true
+    },
+    {
+      "name": "desktop: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor",
+      "pass": true
+    },
+    {
+      "name": "desktop: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere",
+      "pass": true
+    },
+    {
+      "name": "desktop: bilateral groups add missing pieces without opening an arbitrary editor",
+      "pass": true
+    },
+    {
+      "name": "desktop: drag/cancel do not open quick overlay or perform mutations",
+      "pass": true
+    },
+    {
+      "name": "desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions",
+      "pass": true
+    },
+    {
+      "name": "desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs",
+      "pass": true
+    },
+    {
+      "name": "desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working",
+      "pass": true
+    },
+    {
+      "name": "desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history",
+      "pass": true
+    },
+    {
+      "name": "desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

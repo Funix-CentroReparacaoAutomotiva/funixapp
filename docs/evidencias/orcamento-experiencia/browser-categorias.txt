@@ -1,0 +1,9 @@
+PASS desktop: missing category is explicit before preview, prices remain calculable, rendering/confirmation is blocked and no PDF/identity is reserved
+PASS desktop: operator can explicitly classify a stage in existing Settings; both categories persist after reload without inferred defaults
+PASS desktop: one commercial service is emitted once across two stage categories, original exact total and automatic download preserved; no JS errors or external calls
+PASS mobile390: missing category is explicit before preview, prices remain calculable, rendering/confirmation is blocked and no PDF/identity is reserved
+PASS mobile390: operator can explicitly classify a stage in existing Settings; both categories persist after reload without inferred defaults
+PASS mobile390: one commercial service is emitted once across two stage categories, original exact total and automatic download preserved; no JS errors or external calls
+PASS mobile320: missing category is explicit before preview, prices remain calculable, rendering/confirmation is blocked and no PDF/identity is reserved
+PASS mobile320: operator can explicitly classify a stage in existing Settings; both categories persist after reload without inferred defaults
+PASS mobile320: one commercial service is emitted once across two stage categories, original exact total and automatic download preserved; no JS errors or external calls

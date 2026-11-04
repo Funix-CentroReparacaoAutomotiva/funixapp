@@ -1,3 +1,5 @@
+import{executionDeadline}from'../shared/budget-terms'
+import './budget-experience.css'
 import{DeadlineControl}from'./DeadlineControl'
 import type {Dispatch,SetStateAction} from 'react'
 import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState} from 'react'
@@ -7,27 +9,31 @@ import type {NegotiationState} from './negotiation'
 import {negotiationInput,negotiationSignature} from './negotiation'
 import type {CalculationState} from './calculation-state'
 import {api} from './api'
+import {emissionWasNotIssued} from './emission-error'
 import {percentInput,resolveMR} from '../shared/mr'
 import {Login} from './ui'
 import {money} from './money'
 import {ApprovedIcon as I} from './ApprovedIcon'
-import {CalculationView,downloadIssuedPdf} from './BudgetPanel'
+import {downloadIssuedPdf} from './BudgetPanel'
 import './approved.css'
 
 export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,onDirty,externalBusy,calculationState,parameterState,onParameterState,onConfiguration,onArchive}:{at:string;workspace:CommercialWorkspace;state:NegotiationState;onState:Dispatch<SetStateAction<NegotiationState>>;fresh:boolean;onSync:()=>Promise<CommercialWorkspace|void>;onBusy:(b:boolean)=>void;onDirty:(b:boolean)=>void;externalBusy:boolean;calculationState:CalculationState;parameterState:CalculationState;onParameterState:(v:CalculationState)=>void;onConfiguration:(c:PricingConfiguration)=>void;onArchive:()=>void}){
  const [open,setOpen]=useState(false),[neg,setNeg]=useState(false),[focus,setFocus]=useState(false),[moneyText,setMoneyText]=useState('')
  const [config,setConfig]=useState<PricingConfiguration|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[reauth,setReauth]=useState(false)
- const [review,setReview]=useState<{preview:BudgetPreview;key:string;emit:boolean;deal:ReturnType<typeof negotiationInput>}|null>(null)
- const [acceptedIntent,setAcceptedIntent]=useState(''),[version,setVersion]=useState<BudgetVersion|null>(null)
+ const [review,setReview]=useState<{preview:BudgetPreview;key:string;url:string;deal:ReturnType<typeof negotiationInput>}|null>(null)
+ const [version,setVersion]=useState<BudgetVersion|null>(null),[uncertain,setUncertain]=useState(false)
  const [deadlineDirty,setDeadlineDirty]=useState(false),[deadlineBusy,setDeadlineBusy]=useState(false)
  const [mrText,setMRText]=useState(''),[mrDirty,setMRDirty]=useState(false)
+ const previewAbort=useRef<AbortController|null>(null)
+ useEffect(()=>()=>previewAbort.current?.abort(),[])
  const mrRecovery=useRef(false)
  const running=useRef(false),dialog=useRef<HTMLDialogElement>(null),opener=useRef<HTMLElement|null>(null)
  const intent=negotiationSignature(workspace,state.draft),latest=useRef(intent);useLayoutEffect(()=>{latest.current=intent},[intent])
- const accepted=acceptedIntent===intent,hasReview=Boolean(review)
+ const hasReview=Boolean(review)
  const locked=busy||deadlineBusy||deadlineDirty||externalBusy||calculationState==='pending'||calculationState==='error'||parameterState==='pending'
  useEffect(()=>{let live=true;api<PricingConfiguration>('/api/precificacao').then(c=>{if(live){setConfig(c);onConfiguration(c)}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[workspace.configurationRevision,onConfiguration])
- useEffect(()=>{onDirty(mrDirty||deadlineDirty||Boolean(review?.emit&&!version));return()=>onDirty(false)},[review,version,mrDirty,deadlineDirty,onDirty])
+ useEffect(()=>{onDirty(mrDirty||deadlineDirty||uncertain);return()=>onDirty(false)},[uncertain,mrDirty,deadlineDirty,onDirty])
+ useEffect(()=>()=>{if(review)URL.revokeObjectURL(review.url)},[review])
  useEffect(()=>{if(hasReview){opener.current=document.activeElement as HTMLElement;dialog.current?.showModal()}else opener.current?.focus()},[hasReview])
  async function operation(action:()=>Promise<void>,lock=true){
   if(running.current||deadlineBusy||(lock&&externalBusy))return
@@ -49,7 +55,36 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
   const key=crypto.randomUUID();onState(current=>({...current,preview:p,signature:intent,requestKey:key}))
   return {preview:p,key,deal}
  }
- async function beginEmission(){await operation(async()=>{const p=await obtain();if(!p)return;setVersion(null);setAcceptedIntent('');setReview({...p,emit:true})})}
+ async function beginEmission(){await operation(async()=>{
+  const controller=new AbortController();previewAbort.current=controller
+  const p=await obtain();if(!p||controller.signal.aborted)return
+  if(!p.preview.canEmit)throw new Error([...p.preview.snapshot.calculation.errors,...(p.preview.snapshot.pdfPresentation?.errors??[]),...(p.preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente.']:[])].join(' ')||'Orçamento incompleto. Confira a configuração comercial.')
+  const response=await fetch(`/api/atendimentos/${at}/orcamentos/previa-pdf`,{signal:controller.signal,method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:p.preview.snapshot.scenarioId,negotiation:p.deal,previewToken:p.preview.token})}).catch(e=>{if((e as Error).name==='AbortError')throw e;throw new Error('Não foi possível carregar a prévia PDF. Tente Emitir novamente.')})
+  if(!response.ok){const body=await response.json().catch(()=>null);throw Object.assign(new Error(body?.error?.message??'Não foi possível gerar a prévia PDF.'),{status:response.status})}
+  if(!response.headers.get('Content-Type')?.includes('application/pdf'))throw new Error('A prévia não retornou um PDF válido.')
+  const blob=await response.blob()
+  if(controller.signal.aborted)return
+  if(latest.current!==intent)throw new Error('Os dados mudaram. Gere uma nova prévia.')
+  setVersion(null);setUncertain(false);setReview({...p,url:URL.createObjectURL(blob)})
+ })}
+ async function confirmEmission(){await operation(async()=>{
+  if(!review||version)return
+  setUncertain(true)
+  let issued:BudgetVersion
+  try{issued=await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:review.preview.snapshot.scenarioId,negotiation:review.deal,previewToken:review.preview.token,idempotencyKey:review.key})})}
+  catch(e){
+   if(emissionWasNotIssued(e)){
+    setUncertain(false)
+    const message=`O orçamento não foi emitido. ${(e as Error).message}`
+    throw Object.assign(new Error(message),e,{message})
+   }
+   throw e
+  }
+  setVersion(issued);setUncertain(false)
+  try{await downloadIssuedPdf(at,issued);setReview(null)}catch(e){throw Object.assign(new Error(`Orçamento ${issued.documentNumber??issued.label} emitido, mas não foi possível baixar o PDF. Use Baixar novamente; nenhuma nova emissão será criada.`),{status:(e as{status?:number}).status})}
+ })}
+ const closeReview=()=>{if(!busy&&!uncertain)setReview(null)}
+
  const autoPreview=useEffectEvent(()=>{void operation(async()=>{await obtain()},false)})
  useEffect(()=>{
   if(none||fresh||error||externalBusy||busy||deadlineBusy||deadlineDirty||valueState!=='current')return
@@ -93,12 +128,20 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
  const mrField=<div className="factor"><label htmlFor="factor-mrPercent">MR</label><div className="select-wrap"><input id="factor-mrPercent" className="mr-percent" aria-label="MR" aria-invalid={mrDirty&&percentInput(mrText)===null} aria-description="Percentual de acréscimo sobre o custo dos componentes. Salvo ao sair do campo ou pressionar Enter." inputMode="decimal" autoComplete="off" disabled={busy||deadlineBusy||externalBusy||calculationState==='pending'||calculationState==='error'} value={mrValue} onChange={e=>{setMRText(e.target.value);setMRDirty(true);if(!mrRecovery.current){onParameterState(percentInput(e.target.value)===null?'incomplete':'pending');setError('')}}} onBlur={()=>{void saveMR()}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void saveMR()}}}/><span className="mr-suffix" aria-hidden="true">%</span></div></div>
  const login=reauth&&<div className="commercial-reauth"><p>Entre novamente. Campos e chave de emissão preservados.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>{setReauth(false);setError('')}}/></div>
  const moneyValue=state.draft.value.trim()||'0'
- return <section className="approved-finance" aria-label="Painel financeiro" data-calculation-state={valueState!=='current'?valueState:original?.errors.length?'missing':'current'}><button className="summary" title={valueState==='incomplete'?'Rascunho incompleto — complete os campos do diagnóstico':original?.errors.join(' ')} aria-expanded={open} onClick={()=>setOpen(v=>!v)}><div className="metric"><small>Serviços</small><span>{shown(original?.originalServiceSubtotal)}</span></div><div className="metric"><small>Componentes</small><span>{shown(original?.componentSubtotal)}</span></div><div className="metric"><small>{!adjusted||adjusted.startsWith('-')||adjusted==='0'?'Desconto':'Acréscimo'}</small><span>{amount}</span></div><div className="metric final"><small>Total final</small><span>{(calc?.nonBillableOnly&&valueState==='current'?'Sem cobrança':shown(calc?.total))}</span></div><I name="chevron"/></button>
+ const activeScenario=workspace.scenarios.find(s=>s.id===workspace.selectedId)
+ const effectiveDays=valueState==='current'&&!deadlineDirty&&!deadlineBusy?executionDeadline(activeScenario?.deadline,original?.days??null).effectiveDays:null
+ return <section className="approved-finance" aria-label="Painel financeiro" data-calculation-state={valueState!=='current'?valueState:original?.errors.length?'missing':'current'}><button className="summary" title={valueState==='incomplete'?'Rascunho incompleto — complete os campos do diagnóstico':original?.errors.join(' ')} aria-expanded={open} onClick={()=>setOpen(v=>!v)}><div className="metric"><small>Serviços</small><span>{shown(original?.originalServiceSubtotal)}</span></div><div className="metric"><small>Componentes</small><span>{shown(original?.componentSubtotal)}</span></div><div className="metric"><small>{!adjusted||adjusted.startsWith('-')||adjusted==='0'?'Desconto':'Acréscimo'}</small><span>{amount}</span></div><div className="metric final"><small>Total final</small><span>{(calc?.nonBillableOnly&&valueState==='current'?'Sem cobrança':shown(calc?.total))}</span></div><div className="metric deadline"><small>Prazo</small><span>{effectiveDays!==null&&Number.isSafeInteger(effectiveDays)&&effectiveDays>0?effectiveDays:'—'}</span></div><I name="chevron"/></button>
  <div className="body" hidden={!open}>{valueState==='incomplete'?<p className="notice" role="status">{mrDirty?'MR incompleto — informe um percentual não negativo.':'Rascunho incompleto — complete os campos do diagnóstico.'}</p>:valueState==='current'&&original?.errors.length?<p className="notice" role="status">Configuração pendente: {original.errors[0]}</p>:null}<div className="factors">{field('Tabela','tableId',config?.config.tables??[])}{field('FC','colorId',config?.config.colors??[])}{field('FR','riskId',config?.config.risks??[])}{mrField}</div><div className="rule"/><div className="line"><span>Serviços originais</span><span className="number">{shown(original?.originalServiceSubtotal)}</span></div><button className="neg-head" aria-expanded={neg} onClick={()=>setNeg(v=>!v)}><span className="neg-label"><span className="neg-arrow">{neg?'⌄':'›'}</span>Negociação comercial</span><span className="neg-value">{amount}</span></button>
  <div hidden={!neg}><div className="neg-fields"><div className="segments" role="group" aria-label="Tipo de negociação">{(['discount','adjust'] as const).map((mode,i)=><button key={mode} disabled={locked} aria-pressed={state.draft.mode===mode||(state.draft.mode==='none'&&i===0)} className={state.draft.mode===mode||(state.draft.mode==='none'&&i===0)?'active':''} onClick={()=>onState(current=>({...current,draft:{mode,value:'0',acknowledgeResidual:false},signature:''}))}>{i===0?'Desconto':'Negociação'}</button>)}</div><input className="money" aria-label="Valor em reais" inputMode="decimal" disabled={externalBusy||deadlineBusy} value={focus?moneyText:/^\d+(?:[.,]\d+)?$/.test(moneyValue)?money(moneyValue.replace(',','.')):moneyValue} onFocus={e=>{setMoneyText(e.currentTarget.value);setFocus(true)}} onBlur={()=>setFocus(false)} onChange={e=>{setMoneyText(e.target.value);let value=e.target.value.replace(/R\$\s*/g,'');if(value.includes(','))value=value.replace(/\./g,'');onState(current=>({...current,draft:{...current.draft,mode:current.draft.mode==='none'?'discount':current.draft.mode,value,acknowledgeResidual:false},signature:''}));setError('')}}/></div></div>
+ {neg&&fresh&&state.preview?.snapshot.calculation.residual!=='0'&&!state.draft.acknowledgeResidual&&<button className="residual-ack" onClick={()=>onState(current=>({...current,draft:{...current.draft,acknowledgeResidual:true},signature:''}))}>Reconhecer resíduo de {money(state.preview?.snapshot.calculation.residual)} e recalcular</button>}
  <DeadlineControl key={workspace.selectedId} at={at} scenario={workspace.scenarios.find(s=>s.id===workspace.selectedId)!} technicalDays={original?.days??null} externalBusy={externalBusy||busy} onDirty={setDeadlineDirty} onBusy={v=>{setDeadlineBusy(v);onBusy(v)}} onSync={onSync} onAuthRequired={()=>setReauth(true)}/><div className="line"><span>Serviço</span><span className="number">{shown(calc?.serviceNet)}</span></div><div className="line"><span>Componente</span><span className="number">{shown(calc?.componentSubtotal)}</span></div><div className="rule"/><div className="total"><span>Total final</span><strong>{(calc?.nonBillableOnly&&valueState==='current'?'Sem cobrança':shown(calc?.total))}</strong></div></div>
  {!review&&(error||parameterState==='error'||reauth)&&<div className="finance-feedback">{error&&<p role="alert" className="error">{error}</p>}{parameterState==='error'&&<button onClick={()=>recoverParameters()}>Atualizar valores</button>}{login}</div>}
- <footer className="actions budget-actions" aria-label="Ações do orçamento"><button className="history" disabled={busy||deadlineBusy||externalBusy} onClick={onArchive}>Orçamentos emitidos</button><button className="emit" disabled={locked||valueState!=='current'} onClick={()=>beginEmission()}>Emitir orçamento</button></footer>
- {review&&<dialog ref={dialog} className="finance-review" aria-label="Conferência do orçamento" onCancel={e=>{e.preventDefault();if(!busy)setReview(null)}}><button disabled={busy} onClick={()=>setReview(null)}>Fechar conferência</button>{login}{version?<><h2>Orçamento {version.documentNumber??version.label} emitido</h2><button onClick={()=>operation(()=>downloadIssuedPdf(at,version))}>Baixar PDF</button></>:<><h2>Confirmar emissão de orçamento</h2><CalculationView preview={review.preview}/>{review.preview.snapshot.calculation.residual!=='0'&&<button onClick={()=>{onState(current=>({...current,draft:{...current.draft,acknowledgeResidual:true}}));setReview(null)}}>Reconhecer resíduo e recalcular antes de emitir</button>}{review.emit&&<><label><input type="checkbox" checked={accepted} onChange={e=>setAcceptedIntent(e.target.checked?intent:'')}/> Conferi o escopo, as condições e o total efetivo.</label><button disabled={busy||!accepted||!review.preview.canEmit} onClick={()=>operation(async()=>{const v=await api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:review.preview.snapshot.scenarioId,negotiation:review.deal,previewToken:review.preview.token,idempotencyKey:review.key})});setVersion(v);await downloadIssuedPdf(at,v)})}>Confirmar emissão</button></>}</>}{error&&<p role="alert">{error}</p>}</dialog>}
+ <footer className="actions budget-actions" aria-label="Ações do orçamento"><button className="history" disabled={busy||deadlineBusy||externalBusy} onClick={onArchive}>Orçamentos emitidos</button><button className="emit" disabled={locked||valueState!=='current'} onClick={()=>beginEmission()}>Emitir</button></footer>
+ {review&&<dialog ref={dialog} className="finance-review pdf-review" aria-label="Prévia PDF do orçamento" onCancel={e=>{e.preventDefault();closeReview()}}>
+ <header><h2>{version?`Orçamento ${version.documentNumber??version.label} emitido`:'Prévia do orçamento'}</h2></header>
+ {!version&&<><iframe title="PDF da prévia do orçamento" src={review.url}/><p className="pdf-fallback">Se o PDF não aparecer, <a href={review.url} target="_blank" rel="noopener noreferrer">abrir prévia em outra aba</a>.</p></>}
+ {login}{error&&<p role="alert">{error}</p>}{uncertain&&!busy&&<p role="status">Confirmação pendente. Tente Confirmar novamente para recuperar a mesma emissão com segurança.</p>}
+ <footer><button disabled={busy||uncertain} onClick={closeReview}>Voltar</button>{version?<button disabled={busy} onClick={()=>operation(async()=>{await downloadIssuedPdf(at,version);setReview(null)})}>Baixar novamente</button>:<button disabled={busy} onClick={()=>confirmEmission()}>Confirmar</button>}</footer>
+ </dialog>}
  </section>
 }

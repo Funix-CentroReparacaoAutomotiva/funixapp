@@ -1,0 +1,43 @@
+.approved-finance .metric.deadline{text-align:center}
+.approved-finance dialog.pdf-review{width:min(960px,calc(100vw - 16px));height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);padding:12px;overflow:hidden}
+.approved-finance dialog.pdf-review[open]{display:flex;flex-direction:column;gap:8px}
+.pdf-review h2{font-size:16px;margin:0;color:#14305b}
+.pdf-review iframe{width:100%;flex:1;min-height:100px;border:1px solid #d5dfec;background:#e7ecf3}
+.pdf-review .pdf-fallback{font-size:11px;margin:0;color:#536780}
+.pdf-review a{color:#123769;text-decoration:underline}
+.pdf-review footer{display:flex;justify-content:space-between;gap:12px;padding-bottom:env(safe-area-inset-bottom,0px)}
+.approved-finance .pdf-review footer button{margin:0;min-height:44px;min-width:100px}
+.approved-finance .pdf-review footer button:last-child{background:#142f5b;color:white}
+.pdf-review [role=alert],.pdf-review [role=status]{margin:0;font-size:12px;flex-shrink:0}
+.budget-history-group{margin-bottom:20px;color:#16315a}
+.budget-history-group h2{margin:8px 0 4px;font-size:13px;font-weight:600;color:#5a6e88}
+.budget-history-row{display:flex;align-items:stretch;min-height:60px;border-bottom:1px solid #dee5ee;gap:2px}
+.budget-history-open{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:7px 0;color:inherit;font:inherit}
+.budget-history-letter{font-size:27px;font-weight:700;text-align:center}
+.budget-history-identity{display:flex;flex-direction:column;min-width:0;gap:3px}
+.budget-history-identity strong{font-size:13px;overflow-wrap:anywhere}
+.budget-history-identity time{font-size:10px;color:#62738b}
+.budget-history-total{font-size:13px;text-align:right;white-space:nowrap}
+.budget-history-download{width:44px;min-height:44px;flex-shrink:0;border:0;background:transparent;color:#16315a;display:grid;place-items:center}
+.budget-history-download svg{width:21px;height:21px}
+.tab-surface{view-transition-name:commercial-tab}
+::view-transition-group(commercial-tab){animation-duration:230ms;overflow:clip}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(commercial-tab){animation:tab-exit-left 230ms ease both;mix-blend-mode:normal}
+::view-transition-new(commercial-tab){animation:tab-enter-right 230ms ease both;mix-blend-mode:normal}
+:root[data-tab-direction=back]::view-transition-old(commercial-tab){animation-name:tab-exit-right}
+:root[data-tab-direction=back]::view-transition-new(commercial-tab){animation-name:tab-enter-left}
+@keyframes tab-exit-left{to{transform:translateX(-100%)}}
+@keyframes tab-enter-right{from{transform:translateX(100%)}}
+@keyframes tab-exit-right{to{transform:translateX(100%)}}
+@keyframes tab-enter-left{from{transform:translateX(-100%)}}
+@media(max-width:400px){
+ .approved-finance .metric small{font-size:8px}
+ .budget-history-open{grid-template-columns:24px minmax(0,1fr) auto;gap:5px}.budget-history-total{font-size:11px}.budget-history-identity strong{font-size:12px}.budget-history-identity time{font-size:9px}.budget-history-letter{font-size:25px}
+}
+@media(prefers-reduced-motion:reduce){::view-transition-group(commercial-tab),::view-transition-old(commercial-tab),::view-transition-new(commercial-tab){animation:none}}
+/* Copiloto occupies the action row; the summary remains above its 60px footprint. */
+.commercial-workspace section.approved-finance .summary{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr) 32px 12px;padding-right:calc(12px + var(--funix-safe-right));gap:4px}
+.commercial-workspace section.approved-finance .summary>.metric,.commercial-workspace section.approved-finance .summary>.icon{grid-column:auto;grid-row:auto}
+@media(max-width:400px){.commercial-workspace section.approved-finance .summary{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr) 26px 9px;gap:3px;padding-inline:7px}.commercial-workspace section.approved-finance .summary .metric span{font-size:10px}.commercial-workspace section.approved-finance .summary .metric.final span{font-size:11px}}
+.commercial-workspace section.approved-finance .summary>.metric:nth-child(n){grid-column:auto;grid-row:auto}

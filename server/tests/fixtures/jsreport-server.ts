@@ -3,7 +3,19 @@ import{createServer}from'node:http'
 import{DatabaseSync}from'node:sqlite'
 import{existsSync}from'node:fs'
 import{budgetPdf}from'../../pdf.ts'
+import type{JsreportDocument}from'../../../shared/budget-terms.ts'
 import type{BudgetVersion}from'../../../shared/pricing.ts'
+// Local synthetic PDF only: displays the received adapter data, never a production renderer.
+function previewFixturePdf(data:JsreportDocument){
+ const lines=[data.meta.id,...data.diagnosticos.flatMap(d=>[d.nome,d.resumo,...d.clusters.map(c=>c.nome+': '+c.valor)]),'Servicos '+data.financeiro.servicos,'Componentes '+data.financeiro.pecas,'Total '+data.financeiro.totalVista,'Prazo '+data.condicoes.prazo]
+ const text=lines.map(line=>line.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7e]/g,'').replace(/[()\\]/g,'\\$&')).slice(0,48)
+ const stream='BT /F1 12 Tf 40 800 Td 16 TL '+text.map(line=>'('+line+') Tj T*').join(' ')+' ET'
+ const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Length '+Buffer.byteLength(stream)+' >>\nstream\n'+stream+'\nendstream']
+ let pdf='%PDF-1.4\n';const offsets=[0]
+ objects.forEach((object,i)=>{offsets.push(Buffer.byteLength(pdf));pdf+=(i+1)+' 0 obj\n'+object+'\nendobj\n'})
+ const xref=Buffer.byteLength(pdf);pdf+='xref\n0 6\n0000000000 65535 f \n'+offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+'trailer << /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n'
+ return Buffer.from(pdf)
+}
 const path=process.env.FUNIX_DATABASE_PATH!,password=process.env.FUNIX_JSREPORT_PASSWORD!
 let mode='normal',delay=0,calls=0
 const server=createServer(async(req,res)=>{
@@ -16,6 +28,7 @@ const server=createServer(async(req,res)=>{
   let bytes=0;const chunks:Buffer[]=[]
   for await(const chunk of req){bytes+=chunk.length;if(bytes>4*1024*1024)throw Error('large');chunks.push(Buffer.from(chunk))}
   const request=JSON.parse(Buffer.concat(chunks).toString()),match=/^OR-(\d+)$/.exec(request.data.meta.id)
+  if(request.template.name==='FUNIX - Orcamento'&&request.data.meta.id==='PRÉVIA'){const pdf=previewFixturePdf(request.data);res.writeHead(200,{'Content-Type':'application/pdf','Content-Length':pdf.length});res.end(pdf);return}
   if(request.template.name!=='FUNIX - Orcamento'||!match||!existsSync(path))throw Error('invalid')
   const db=new DatabaseSync(path,{readOnly:true})
   let version:BudgetVersion

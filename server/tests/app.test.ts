@@ -423,3 +423,20 @@ test('PDF configuration API is global, authenticated, validates revision and can
   assert.equal((await app.write(path,'PATCH',{revision:scene.revision,deadline:{mode:'automatic',manualDays:null}},cookie)).status,409)
  }finally{app.close()}
 })
+
+test('real PDF preview endpoint is authenticated, same-origin, inline/no-store and has no durable side effects',async()=>{
+ const app=start()
+ try{
+  const f=commercialFixture(app.db),path='/api/atendimentos/'+f.at.id+'/orcamentos',input={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
+  assert.equal((await app.request(path+'/previa-pdf',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(input)})).status,401)
+  const cookie=await authenticate(app),p=await(await app.write(path+'/previa','POST',input,cookie)).json(),body={...input,previewToken:p.token}
+  assert.equal((await app.write(path+'/previa-pdf','POST',body,cookie,'https://elsewhere.invalid')).status,403)
+  assert.equal((await app.request(path+'/previa-pdf',{method:'POST',headers:{Cookie:cookie,Origin:origin,'Content-Type':'text/plain'},body:'{}'})).status,415)
+  const response=await app.write(path+'/previa-pdf','POST',body,cookie)
+  assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'application/pdf')
+  assert.equal(response.headers.get('cache-control'),'no-store');assert.match(response.headers.get('content-disposition')!,/^inline/)
+  assert.match(Buffer.from(await response.arrayBuffer()).toString('latin1'),/^%PDF/)
+  assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM budget_emission_attempts').get()!.n,0)
+  assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM budget_versions').get()!.n,0)
+ }finally{app.close()}
+})

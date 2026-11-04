@@ -16,11 +16,13 @@ async def device_case(browser,device,viewport):
   async def ws():return await get(base+'/cenarios?scenarioId='+ids['one'])
   async def idle():await expect(page.locator('.scenario-trigger')).to_be_enabled();await expect(page.locator('.form-error')).to_have_count(0)
   async def shot(name):await page.screenshot(path=str(ARTIFACTS/(device+'-'+name+'.png')),animations='disabled')
-  async def main(name):await page.get_by_role('button',name=name,exact=True).click()
+  async def main(name):
+   await page.get_by_role('button',name=name,exact=True).click();await page.evaluate('async()=>{await document.activeViewTransition?.finished}')
   dialog=page.get_by_role('dialog',name='Selecionar peça no mapa');editor=page.get_by_role('region',name='Editor de diagnóstico')
   async def region(name='frente'):
    await page.locator('[data-region="'+name+'"]').click();await expect(dialog).to_be_visible()
   async def touch(locator,dx=0,dy=0,hold=0,cancel=False):
+   await page.evaluate('async()=>{await document.activeViewTransition?.finished}')
    await locator.scroll_into_view_if_needed();box=await locator.bounding_box();x=box['x']+min(box['width']/2,45);y=box['y']+box['height']/2
    await cdp.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[{'x':x,'y':y}]})
    if hold:await asyncio.sleep(hold)
