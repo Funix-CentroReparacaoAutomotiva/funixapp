@@ -113,10 +113,18 @@ export function createRequestHandler(options: AppOptions) {
           }
           return send(200,budgets.get(at,id))
         }
-        if (req.method !== 'POST' || pdf || (id && id !== 'previa')) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (req.method !== 'POST' || pdf || (id && id !== 'previa' && id !== 'previa-pdf')) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if (req.headers.origin !== origin) return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie um corpo JSON.')
         const body = await readJson(req,64*1024)
+        if(id==='previa-pdf'){
+          const data=await budgets.previewPdf(at,body)
+          res.setHeader('Content-Type','application/pdf')
+          res.setHeader('Content-Disposition','inline; filename="FUNIX-previa.pdf"')
+          res.setHeader('Content-Length',data.length)
+          res.setHeader('Cache-Control','no-store')
+          res.writeHead(200);res.end(data);return
+        }
         return send(id === 'previa' ? 200 : 201,id === 'previa' ? budgets.preview(at,body) : await budgets.emit(at,body))
       }
       if(url.pathname==='/api/parcelamento'){

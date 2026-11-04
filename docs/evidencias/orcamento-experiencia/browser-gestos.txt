@@ -1,0 +1,30 @@
+PASS desktop: no upper X; central X and click outside circular disk close the selector
+PASS desktop: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS desktop: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS desktop: bilateral groups add missing pieces without opening an arbitrary editor
+PASS desktop: drag/cancel do not open quick overlay or perform mutations
+PASS desktop: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS desktop: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS desktop: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS desktop: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS desktop: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile390: no upper X; central X and click outside circular disk close the selector
+PASS mobile390: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile390: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile390: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile390: drag/cancel do not open quick overlay or perform mutations
+PASS mobile390: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile390: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile390: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile390: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile390: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors
+PASS mobile320: no upper X; central X and click outside circular disk close the selector
+PASS mobile320: long press edits only diagnosis/intensity; Cancel does not write; regular tap still opens editor
+PASS mobile320: missing master is created once only upon confirmation, and active scenario is unchanged elsewhere
+PASS mobile320: bilateral groups add missing pieces without opening an arbitrary editor
+PASS mobile320: drag/cancel do not open quick overlay or perform mutations
+PASS mobile320: physical right swipe reveals soft-red explicit action only, never navigates or writes; Cancel preserves both scenarios, children, flags and all revisions
+PASS mobile320: reveal closes on Escape, tab/scenario changes and cancellation; slow/short/vertical gestures do not delete or switch tabs
+PASS mobile320: existing ordered tab swipe has no wrap; ignores vertical, radial dialog and row controls while normal buttons/history continue working
+PASS mobile320: explicit revealed action uses official DELETE once, removes master/children in drafts only, and preserves unrelated pieces and issued history
+PASS mobile320: editor layout/fields unchanged, failed autosave draft and guarded back recovered; restart/V10 integrity/FKs/snapshot/PDF stable, no overflow/external calls/JS errors

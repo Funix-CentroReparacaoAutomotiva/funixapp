@@ -16,8 +16,9 @@ import{toJsreportData,frozenTerms}from'./jsreport-adapter.ts'
 import{configuredJsreport,renderJsreportPdf,validatePdf}from'./jsreport-client.ts'
 import {scenarioLabel} from '../shared/commercial.ts'
 
+import{versionLabel}from'../shared/budget-history.ts'
+export{versionLabel}from'../shared/budget-history.ts'
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex')
-export function versionLabel(sequence:number){let n=sequence,label='';while(n>0){n--;label=String.fromCharCode(65+n%26)+label;n=Math.floor(n/26)}return label}
 export function commercialNumber(serial:number){return 'OR-'+String(serial).padStart(6,'0')}
 export function budgetFilename(plate:string,serial:number){
  const normalized=plate.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'')
@@ -66,6 +67,21 @@ export class BudgetRepository {
   if(typeof data.scenarioId!=='string')invalid('Escolha um cenário para a prévia.')
   const id=data.scenarioId,deal=this.requestDeal(data.negotiation)
   return transaction(this.db,()=>this.build(at,id,deal))
+ }
+ // Transient renderer call: no reservation, INSERT, UPDATE or stored document.
+ async previewPdf(at:string,input:unknown):Promise<Buffer>{
+  const data=inputObject(input,['scenarioId','negotiation','previewToken'])
+  const preview=this.preview(at,{scenarioId:data.scenarioId,negotiation:data.negotiation})
+  if(preview.token!==data.previewToken)conflict()
+  if(!preview.canEmit)throw new ServiceError(422,'BUDGET_INCOMPLETE',[...budgetBlockingErrors(preview.snapshot),...(preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente.']:[])].join(' '))
+  const version:BudgetVersion={id:randomUUID(),atendimentoId:at,sequence:0,label:'PRÉVIA',documentNumber:'PRÉVIA',createdAt:new Date((this.options.now??Date.now)()).toISOString(),snapshot:structuredClone(preview.snapshot)}
+  version.snapshot.document={template:'FUNIX - Orcamento',data:toJsreportData(version)}
+  const pdf=await(this.options.render?this.options.render(version):renderJsreportPdf(version,frozenTerms(version.snapshot),configuredJsreport()))
+  validatePdf(pdf)
+  if(pdf.length>15*1024*1024)throw new ServiceError(502,'PDF_TOO_LARGE','O gerador retornou um PDF maior que o permitido.')
+  // Rendering must not hide changes made by another operator during HTTP.
+  if(this.preview(at,{scenarioId:data.scenarioId,negotiation:data.negotiation}).token!==preview.token)conflict()
+  return pdf
  }
  async emit(at:string,input:unknown):Promise<BudgetVersion>{
   const data=inputObject(input,['scenarioId','negotiation','previewToken','idempotencyKey'])
@@ -123,7 +139,7 @@ export class BudgetRepository {
   }
  }
 
- list(at:string){new AtendimentoRepository(this.db).get(at);return this.db.prepare("SELECT b.id,b.atendimento_id AS atendimentoId,b.sequence,b.label,b.created_at AS createdAt,json_extract(b.snapshot,'$.calculation.total') AS total,i.serial,i.filename,json_extract(b.snapshot,'$.scenarioName') AS scenarioName FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? ORDER BY b.sequence DESC").all(at).map(row=>({...row,...(row.serial==null?{}:{documentNumber:commercialNumber(Number(row.serial))})}))}
+ list(at:string){new AtendimentoRepository(this.db).get(at);return this.db.prepare("SELECT b.id,b.atendimento_id AS atendimentoId,b.sequence,b.label,b.created_at AS createdAt,json_extract(b.snapshot,'$.calculation.total') AS total,i.serial,i.filename,json_extract(b.snapshot,'$.scenarioName') AS scenarioName,json_extract(b.snapshot,'$.scenarioId') AS scenarioId FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? ORDER BY b.sequence DESC").all(at).map(row=>({...row,...(row.serial==null?{}:{documentNumber:commercialNumber(Number(row.serial))})}))}
  get(at:string,id:string):BudgetVersion{const row=this.db.prepare('SELECT b.id,b.atendimento_id,b.sequence,b.label,b.created_at,b.snapshot,i.serial,i.filename FROM budget_versions b LEFT JOIN budget_document_identity i ON i.budget_version_id=b.id WHERE b.atendimento_id=? AND b.id=?').get(at,id);if(!row)throw new ServiceError(404,'NOT_FOUND','Versão não encontrada neste Atendimento.');return record(row)}
  pdf(at:string,id:string):Buffer{this.get(at,id);const row=this.db.prepare('SELECT pdf FROM budget_versions WHERE atendimento_id=? AND id=?').get(at,id)!;return Buffer.from(row.pdf as Uint8Array)}
 }

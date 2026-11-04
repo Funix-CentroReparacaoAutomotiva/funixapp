@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "name": "mobile320: missing category is explicit before preview, prices remain calculable, rendering/confirmation is blocked and no PDF/identity is reserved",
+      "pass": true
+    },
+    {
+      "name": "mobile320: operator can explicitly classify a stage in existing Settings; both categories persist after reload without inferred defaults",
+      "pass": true
+    },
+    {
+      "name": "mobile320: one commercial service is emitted once across two stage categories, original exact total and automatic download preserved; no JS errors or external calls",
+      "pass": true
+    }
+  ],
+  "external": [],
+  "pageErrors": []
+}

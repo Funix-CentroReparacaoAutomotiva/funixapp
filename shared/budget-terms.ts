@@ -22,3 +22,9 @@ export interface JsreportDocument{
  parcelamento:JsreportTerms['parcelamento']
  financeiro:{servicos:string;pecas:string;desconto:string;totalVista:string}
 }
+
+export function executionDeadline(setting:ScenarioDeadline|undefined,technicalDays:string|null):ExecutionDeadline{
+ const configured=setting??{mode:'automatic',manualDays:null},suggestion=technicalDays&&/^\d+$/.test(technicalDays)&&Number.isSafeInteger(Number(technicalDays))&&Number(technicalDays)>0?Number(technicalDays):null
+ const effectiveDays=configured.mode==='manual'?configured.manualDays:suggestion
+ return{...configured,technicalDays,effectiveDays,warning:configured.mode==='manual'&&effectiveDays!==null?(suggestion===null?'Estimativa técnica de prazo indisponível; será utilizado o prazo manual informado.':effectiveDays<suggestion?'Prazo manual menor que a sugestão técnica atual.':null):null}
+}
