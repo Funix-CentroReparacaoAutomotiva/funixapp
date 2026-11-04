@@ -1,0 +1,121 @@
+{
+  "synthetic": true,
+  "fixture": "server/tests/fixtures/voice-planner.ts#voiceExampleCases",
+  "input": {
+    "format": "funix-voice-commands-v1",
+    "idempotencyKey": "synthetic-voice-correction",
+    "atendimentoId": "11111111-1111-4111-8111-111111111111",
+    "scenarioId": "22222222-2222-4222-8222-222222222222",
+    "expected": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": [
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "revision": 3
+        }
+      ]
+    },
+    "commands": [
+      {
+        "id": "paint-complete",
+        "intent": "correction",
+        "op": "set_dimension",
+        "piece": {
+          "state": "resolved",
+          "id": "qa:piece:rear"
+        },
+        "line": {
+          "kind": "id",
+          "id": "66666666-6666-4666-8666-666666666666"
+        },
+        "dimension": {
+          "state": "resolved",
+          "id": "qa:dim:paint-complete"
+        }
+      }
+    ]
+  },
+  "plan": {
+    "format": "funix-voice-plan-v1",
+    "idempotencyKey": "synthetic-voice-correction",
+    "requestDigest": "0735039d7330c3d10d09bf06b21fbbc7aac88b6debca583c2c20ca40e3db30aa",
+    "stateDigest": "d45d782834efe2ad42248728039a7c4f977ff08eeb9fb920da35d74973d40ad9",
+    "guards": {
+      "composition": 4,
+      "configuration": 2,
+      "scenarios": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "revision": 8
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "revision": 6
+        }
+      ],
+      "pieces": [
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "revision": 3
+        }
+      ]
+    },
+    "results": [
+      {
+        "index": 0,
+        "commandId": "paint-complete",
+        "status": "valid"
+      }
+    ],
+    "changes": [
+      {
+        "origins": {
+          "dimensionId": {
+            "kind": "explicit",
+            "commandId": "paint-complete",
+            "intent": "correction"
+          }
+        },
+        "impact": {
+          "scope": "shared",
+          "scenarioIds": [
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333"
+          ],
+          "invalidatesExecutionConfirmations": true,
+          "requiresGlobalRemovalConfirmation": false
+        },
+        "op": "update_service",
+        "target": {
+          "kind": "existing",
+          "id": "66666666-6666-4666-8666-666666666666"
+        },
+        "piece": {
+          "kind": "existing",
+          "id": "44444444-4444-4444-8444-444444444444"
+        },
+        "patch": {
+          "dimensionId": "qa:dim:paint-complete"
+        },
+        "before": {
+          "dimensionId": "qa:dim:paint-partial"
+        }
+      }
+    ],
+    "issues": [],
+    "usedRules": [],
+    "replay": false,
+    "requiresCalculation": true
+  }
+}
