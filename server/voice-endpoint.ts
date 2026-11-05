@@ -71,8 +71,8 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
      idempotencyKey:randomUUID(),commands:convertVoiceModelOutput(output)}
     const validated=validateVoiceCommands(batch)
     if(!validated.batch||validated.invalidIndexes.length||validated.issues.length)throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
-    const plan=planVoiceCommands(batch,context)
-    if(plan.changes.length)stageVoiceBatch(db,batch,plan.stateDigest,plan.requestDigest,sessionId)
+    const plan=planVoiceCommands(validated.batch,context)
+    if(plan.changes.length)stageVoiceBatch(db,validated.batch,plan.stateDigest,plan.requestDigest,sessionId)
     return{requestId,transcription,plan,applied:false as const}
    }
    return await Promise.race([work(),abort])
