@@ -1,4 +1,5 @@
 .chat-readonly .chat-history{min-width:0}
+.chat-readonly .at-chat-scroll{overflow-anchor:none;scroll-behavior:auto}
 .chat-read-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#264b78;margin-bottom:12px}
 .chat-read-toolbar button,.chat-more{min-height:36px;font-size:11px;white-space:normal}
 .chat-messages{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}

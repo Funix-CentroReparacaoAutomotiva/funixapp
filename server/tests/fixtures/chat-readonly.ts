@@ -23,12 +23,13 @@ export function chatReadFixture(db: DatabaseSync) {
   const conversationId = chat.pending()[0]!.conversationId
   chat.link({ conversationId, atendimentoId: a.id, revision: 0, requestId: 'test-link-a', actor: 'qa', reason: 'Decisão humana sintética', pendingMessageIds: ['a-0'] })
   for (let index = 1; index < 54; index++) {
+    now = `2026-11-05T13:${String(Math.floor(index / 4)).padStart(2, '0')}:00.000Z`
     const kind = ({ 8: 'image', 10: 'audio', 12: 'video', 14: 'document' } as const)[index as 8 | 10 | 12 | 14]
     ingest('a-' + index, index === 53 ? last : index === 16 ? '<img src=x onerror="window.chatInjection=true">' : index === 18 ? 'QA A | ' + 'texto_sintético_sem_espaço_'.repeat(30) : `QA A | mensagem sintética ${index}`, {
       fromMe: index % 2 === 1, kind: kind ?? 'text', media: kind ? { ref: 'synthetic-media', mime: kind === 'document' ? 'application/pdf' : `${kind}/synthetic`, bytes: 100 } : null,
     })
   }
-  for (const [messageId, status] of [['a-1', 'accepted'], ['a-3', 'delivered'], ['a-5', 'read'], ['a-7', 'failed']]) chat.ingest(JSON.stringify({
+  for (const [messageId, status] of [['a-5', 'accepted'], ['a-7', 'delivered'], ['a-9', 'read'], ['a-11', 'failed']]) chat.ingest(JSON.stringify({
     schemaVersion: 1, instance: 'synthetic-browser', eventId: 'status-' + messageId, occurredAt: now,
     type: 'message.status', message: { remoteJid: 'synthetic-browser@lid', messageId, status },
   }))
@@ -36,5 +37,14 @@ export function chatReadFixture(db: DatabaseSync) {
   chat.link({ conversationId, atendimentoId: b.id, revision: 1, requestId: 'test-link-b', actor: 'qa', reason: 'Novo período sintético', pendingMessageIds: [] })
   ingest('b-0', privateB)
   ingest('pending', 'PENDENTE PRIVADO SINTÉTICO', { remoteJid: 'unlinked-synthetic@lid' })
-  return { a, b, empty, first, last, privateB, count: 54 }
+  const newMessage = 'QA A | novo evento sintético após primeira página'
+  const lateMessage = 'QA A | evento tardio sintético após primeira página'
+  let appended = false
+  function appendEvents() {
+    if (appended) return
+    now = '2026-11-05T13:30:00.000Z'; ingest('a-new', newMessage)
+    now = '2026-11-05T13:00:30.000Z'; ingest('a-late', lateMessage)
+    now = '2026-11-05T14:00:00.000Z'; appended = true
+  }
+  return { a, b, empty, first, last, privateB, newMessage, lateMessage, count: 54, appendEvents }
 }

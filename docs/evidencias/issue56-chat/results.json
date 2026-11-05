@@ -5,7 +5,7 @@
       "pass": true
     },
     {
-      "name": "320px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "name": "320px: latest 50, older prepend preserves reading position, refresh includes new/late events without duplicates",
       "pass": true
     },
     {
@@ -17,7 +17,7 @@
       "pass": true
     },
     {
-      "name": "390px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "name": "390px: latest 50, older prepend preserves reading position, refresh includes new/late events without duplicates",
       "pass": true
     },
     {
@@ -29,7 +29,7 @@
       "pass": true
     },
     {
-      "name": "1440px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "name": "1440px: latest 50, older prepend preserves reading position, refresh includes new/late events without duplicates",
       "pass": true
     },
     {

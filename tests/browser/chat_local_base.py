@@ -49,7 +49,8 @@ createServer(async(req,res)=>{{
   const url=new URL(req.url,'http://127.0.0.1');
   if(url.pathname==='/api/atendimentos/'+fixture.a.id+'/messages'){{
     const mode=()=>readFileSync({json.dumps(str(mode))},'utf8');
-    while(mode()==='delay')await pause(20);
+    if(mode()==='append-delay-more'){{fixture.appendEvents();writeFileSync({json.dumps(str(mode))},'delay-more');}}
+    while(mode()==='delay'||mode()==='delay-more'&&url.searchParams.has('cursor'))await pause(20);
     if(res.destroyed)return;
     if(mode()==='fail-all'||mode()==='fail-more'&&url.searchParams.has('cursor')){{res.writeHead(503,{{'Content-Type':'application/json','Cache-Control':'no-store'}});res.end(JSON.stringify({{error:{{message:'Falha sintética'}}}}));return;}}
   }}
@@ -66,6 +67,13 @@ createServer(async(req,res)=>{{
             browser = await playwright.chromium.launch(executable_path=executable, headless=True, args=['--no-sandbox'])
             for width, height in [(320, 740), (390, 844), (1440, 900)]:
                 clock.write_text(str(initial_clock))
+                mode.write_text('normal')
+                if width != 320:
+                    harness.stop(api)
+                    (harness.folder / 'atendimentos.sqlite').unlink()
+                    api = harness.start(['node', str(runner)], 'chat-synthetic-api')
+                    await harness.ready(API + '/api/ready', api)
+                    records = json.loads(metadata.read_text())
                 context = await browser.new_context(viewport={'width': width, 'height': height})
                 async def block_external(route):
                     harness.external.append(urlparse(route.request.url).hostname)
@@ -90,20 +98,26 @@ createServer(async(req,res)=>{{
 
                 for key in ['a', 'b', 'a']:
                     await harness.goto_record(page, records[key])
-                    expected = records['first'] if key == 'a' else records['privateB']
+                    expected = records['last'] if key == 'a' else records['privateB']
                     await expect(page.get_by_text(expected, exact=True)).to_be_visible()
                     await expect(page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True)).to_have_count(1)
                     await page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True).click()
                     await expect(page.get_by_role('region', name='Copiloto FUNIX', exact=True)).to_be_visible()
                     await page.get_by_role('button', name='Fechar Copiloto', exact=True).click()
                     history = await page.locator('.chat-history').inner_text()
-                    assert (records['privateB'] if key == 'a' else records['first']) not in history
+                    assert (records['privateB'] if key == 'a' else records['last']) not in history
                     assert 'PENDENTE PRIVADO' not in history
                     for tab in ['Diagnósticos', 'Mapa', 'Chat']:
                         await page.get_by_role('button', name=tab, exact=True).click()
                         await expect(page.get_by_role('button', name=tab, exact=True)).to_have_attribute('aria-current', 'page')
                     await expect(page.get_by_text(expected, exact=True)).to_be_visible()
                 await expect(page.locator('.chat-message')).to_have_count(50)
+                assert records['first'] not in await page.locator('.chat-history').inner_text()
+                assert await page.locator('.chat-message').first.get_attribute('data-sequence') == '5'
+                assert await page.locator('.chat-message').last.get_attribute('data-sequence') == '54'
+                bounds = await page.locator('.at-chat-scroll').bounding_box()
+                last = await page.locator('.chat-message').last.bounding_box()
+                assert bounds and last and last['y'] >= bounds['y'] and last['y'] + last['height'] <= bounds['y'] + bounds['height'] + 1
                 assert await page.locator('.chat-incoming').count() > 0
                 assert await page.locator('.chat-outgoing').count() > 0
                 for status in ['Aceita pelo provedor', 'Entregue', 'Lida', 'Falhou']:
@@ -118,22 +132,69 @@ createServer(async(req,res)=>{{
                 assert await page.locator('.chat-rail button:enabled').count() == 0
                 assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 assert await page.locator('.at-chat-scroll').evaluate('el => el.scrollWidth <= el.clientWidth + 1')
-                await page.locator('.at-chat-scroll').evaluate('el => {el.scrollTop=200}')
                 await page.screenshot(path=str(captures / f'chat-{width}.png'))
                 # Cursor pagination failure keeps the current 50 rows; retry is real GET.
                 mode.write_text('fail-more')
-                await page.get_by_role('button', name='Carregar próximas mensagens', exact=True).click()
+                await page.get_by_role('button', name='Carregar mensagens anteriores', exact=True).click()
                 await expect(page.get_by_text('Falha ao carregar mensagens', exact=True)).to_be_visible()
                 await expect(page.locator('.chat-message')).to_have_count(50)
                 if width == 390:
                     await page.get_by_text('Falha ao carregar mensagens', exact=True).scroll_into_view_if_needed()
                     await page.screenshot(path=str(captures / 'chat-error-390.png'))
-                mode.write_text('normal')
+                mode.write_text('append-delay-more')
                 await page.get_by_role('button', name='Tentar novamente', exact=True).click()
+                await expect(page.get_by_text('Carregando mensagens…', exact=True)).to_be_visible()
+                for _ in range(500):
+                    if mode.read_text() == 'delay-more':
+                        break
+                    await asyncio.sleep(0.01)
+                assert mode.read_text() == 'delay-more'
+                # Move while the request is pending: restore the position at the
+                # time the prepend commits, not the position of the click.
+                anchor = await page.locator('.at-chat-scroll').evaluate('''el => {
+                  const target=el.querySelectorAll('.chat-message')[16];
+                  el.scrollTop+=target.getBoundingClientRect().top-el.getBoundingClientRect().top-40;
+                  const top=el.getBoundingClientRect().top;
+                  const first=[...el.querySelectorAll('.chat-message')].find(m=>m.getBoundingClientRect().bottom>top);
+                  return {sequence:first.dataset.sequence,offset:first.getBoundingClientRect().top-top};
+                }''')
+                mode.write_text('normal')
                 await expect(page.locator('.chat-message')).to_have_count(records['count'])
                 await expect(page.get_by_text(records['last'], exact=True)).to_be_visible()
-                assert await page.locator('.chat-message').evaluate_all('els => new Set(els.map(e=>e.textContent)).size === els.length')
-                harness.mark(f'{width}px: content, directions, real statuses, media fallback, safe text and paginated retry')
+                offset = await page.locator(f'.chat-message[data-sequence="{anchor["sequence"]}"]').evaluate('el=>el.getBoundingClientRect().top-document.querySelector(".at-chat-scroll").getBoundingClientRect().top')
+                assert abs(offset - anchor['offset']) < 2, (width, anchor, offset)
+                assert records['newMessage'] not in await page.locator('.chat-history').inner_text()
+                assert records['lateMessage'] not in await page.locator('.chat-history').inner_text()
+                assert await page.locator('.chat-message').evaluate_all('els => new Set(els.map(e=>e.dataset.sequence)).size === els.length')
+                await page.get_by_role('button', name='Atualizar mensagens', exact=True).click()
+                await expect(page.get_by_text(records['newMessage'], exact=True)).to_be_visible()
+                await expect(page.locator('.chat-message')).to_have_count(50)
+                last = await page.locator('.chat-message').last.bounding_box()
+                bounds = await page.locator('.at-chat-scroll').bounding_box()
+                assert last and bounds and last['y'] + last['height'] <= bounds['y'] + bounds['height'] + 1
+                await page.get_by_role('button', name='Carregar mensagens anteriores', exact=True).click()
+                await expect(page.locator('.chat-message')).to_have_count(records['count'] + 2)
+                await expect(page.get_by_text(records['lateMessage'], exact=True)).to_be_visible()
+                keys = await page.locator('.chat-message').evaluate_all('els=>els.map(el=>[el.querySelector("time").dateTime,Number(el.dataset.sequence)])')
+                assert keys == sorted(keys) and len({sequence for _, sequence in keys}) == len(keys)
+                await harness.goto_record(page, records['b'])
+                await expect(page.get_by_text(records['privateB'], exact=True)).to_be_visible()
+                assert records['newMessage'] not in await page.locator('.chat-history').inner_text()
+                await harness.goto_record(page, records['a'])
+                await expect(page.get_by_text(records['newMessage'], exact=True)).to_be_visible()
+                await expect(page.locator('.chat-message')).to_have_count(50)
+                mode.write_text('delay-more')
+                await page.get_by_role('button', name='Carregar mensagens anteriores', exact=True).click()
+                await expect(page.get_by_text('Carregando mensagens…', exact=True)).to_be_visible()
+                await page.evaluate("url => { history.pushState({...history.state,funixIndex:(history.state?.funixIndex??0)+1},'',url); dispatchEvent(new PopStateEvent('popstate',{state:history.state})); }", f"/atendimentos/{records['b']['id']}?aba=chat")
+                await expect(page.get_by_text(records['privateB'], exact=True)).to_be_visible()
+                mode.write_text('normal')
+                await expect(page.locator('.chat-message')).to_have_count(1)
+                assert records['newMessage'] not in await page.locator('.chat-history').inner_text()
+                await harness.goto_record(page, records['a'])
+                await expect(page.get_by_text(records['newMessage'], exact=True)).to_be_visible()
+                await expect(page.locator('.chat-message')).to_have_count(50)
+                harness.mark(f'{width}px: latest 50, older prepend preserves reading position, refresh includes new/late events without duplicates')
                 # Initial load failure has a genuine retry, followed by the empty state.
                 mode.write_text('fail-all')
                 await page.get_by_role('button', name='Atualizar mensagens', exact=True).click()
@@ -141,7 +202,7 @@ createServer(async(req,res)=>{{
                 await expect(page.locator('.chat-message')).to_have_count(0)
                 mode.write_text('normal')
                 await page.get_by_role('button', name='Tentar novamente', exact=True).click()
-                await expect(page.get_by_text(records['first'], exact=True)).to_be_visible()
+                await expect(page.get_by_text(records['newMessage'], exact=True)).to_be_visible()
                 await harness.goto_record(page, records['empty'])
                 await expect(page.get_by_text('Nenhuma mensagem disponível neste Atendimento', exact=True)).to_be_visible()
                 await expect(page.locator('.chat-message')).to_have_count(0)
@@ -150,11 +211,12 @@ createServer(async(req,res)=>{{
                 await expect(page.get_by_text('Recebimento WhatsApp ainda não conectado', exact=True).first).to_be_visible()
                 # Expire the actual server-side session through the test-only clock.
                 await harness.goto_record(page, records['a'])
-                await expect(page.get_by_text(records['first'], exact=True)).to_be_visible()
+                await expect(page.get_by_text(records['newMessage'], exact=True)).to_be_visible()
                 clock.write_text(str(initial_clock + 8 * 60 * 60 * 1000 + 1))
                 await page.get_by_role('button', name='Atualizar mensagens', exact=True).click()
                 await expect(page.get_by_label('Senha de acesso', exact=True)).to_be_visible()
                 assert records['first'] not in await page.locator('body').inner_text()
+                assert records['newMessage'] not in await page.locator('body').inner_text()
                 assert records['privateB'] not in await page.locator('body').inner_text()
                 harness.mark(f'{width}px: loading/error/empty and expired session remove private content')
                 await page.unroute_all(behavior='wait')

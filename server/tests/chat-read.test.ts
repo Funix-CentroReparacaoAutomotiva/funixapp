@@ -67,16 +67,16 @@ test('Chat GET scopes same-phone and same-conversation historical periods by Ate
     const cookie = await f.login(), changes = f.db.prepare('SELECT total_changes() n').get()!.n
     const first = await f.request(path(f.a.id) + '?limit=1', cookie), one = await first.json()
     assert.equal(first.status, 200); assert.equal(first.headers.get('cache-control'), 'no-store')
-    assert.equal(one.items[0].text, 'SINTÉTICO A PRIMEIRO'); assert(one.nextCursor)
+    assert.equal(one.items[0].text, 'SINTÉTICO A SEGUNDO'); assert(one.nextCursor)
     const two = await (await f.request(path(f.a.id) + '?limit=1&cursor=' + one.nextCursor, cookie)).json()
-    assert.equal(two.items[0].text, 'SINTÉTICO A SEGUNDO'); assert.equal(two.nextCursor, null)
+    assert.equal(two.items[0].text, 'SINTÉTICO A PRIMEIRO'); assert.equal(two.nextCursor, null)
     const b = await (await f.request(path(f.b.id), cookie)).json()
     assert.deepEqual(b.items.map((m: { text: string }) => m.text), ['SINTÉTICO B PRIVADO'])
     assert.deepEqual(await (await f.request(path(f.empty.id), cookie)).json(), { items: [], nextCursor: null })
     assert.equal((await f.request(path(f.b.id) + '?cursor=' + one.nextCursor, cookie)).status, 400)
     // A structurally valid cursor is not an authorization token: forged bounds
     // can navigate only A's own rows, never B or pending content.
-    const forged = Buffer.from(JSON.stringify([f.a.id, '2026-11-05T12:00:00.000Z', 0, 999999])).toString('base64url')
+    const forged = Buffer.from(JSON.stringify([2, f.a.id, '2026-11-05T15:00:00.000Z', 999999, 999999])).toString('base64url')
     const scoped = await (await f.request(path(f.a.id) + '?cursor=' + forged, cookie)).json()
     assert.deepEqual(scoped.items.map((m: { messageId: string }) => m.messageId), ['a-one', 'a-two'])
     assert(!JSON.stringify(scoped).includes('remoteJid')); assert(!JSON.stringify(scoped).includes('PRIVADO'))
