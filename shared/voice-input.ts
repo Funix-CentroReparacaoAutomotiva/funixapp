@@ -10,6 +10,6 @@ export interface VoiceCaptureContext{
  atendimentoId:string;scenarioId:string;compositionRevision:number;scenarioRevision:number;configurationRevision:number
 }
 export interface VoiceInterpretation{
- requestId:string;transcription:string;plan:VoicePlan;applied:false
+ requestId:string;transcription:string;plan:VoicePlan;review:string[];applied:false
 }
 export const voiceCaptureKey=(c:VoiceCaptureContext|null)=>c?JSON.stringify(c):''
