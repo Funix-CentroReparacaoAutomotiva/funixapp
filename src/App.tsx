@@ -5,13 +5,14 @@ import type { Atendimento, AtendimentoList } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure, Session } from './api'
 import { AtendimentoForm } from './AtendimentoForm'
-import { ChatRail, Icon, Login, Notice, RecordButton } from './ui'
+import { Icon, Login, Notice, RecordButton } from './ui'
 import { SettingsPage } from './SettingsPage'
 import{VoiceCopilot}from'./VoiceCopilot'
 import type{VoiceCaptureContext}from'../shared/voice-input'
 import { CommercialPanel } from './CommercialPanel'
 import {detailScreen,parentDetail,swipeTab,isTabSwipe} from './detail-navigation'
 import type {DetailScreen} from './detail-navigation'
+import { ChatPanel } from './chat/ChatPanel'
 import './App.css'
 import './footer-copilot.css'
 
@@ -120,10 +121,10 @@ function App() {
     if (window.history.state?.returnTo && historyState.current?.funixIndex>0) window.history.back()
     else navigate('/funil', true)
   }
-  function expireSession() {
+  const expireSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : null)
     cache.current.clear(); setList(null); setRecord(null)
-  }
+  }, [])
   useEffect(() => {
     const onPop = () => {
       if(restoringHistory.current){restoringHistory.current=false;return}
@@ -164,7 +165,7 @@ function App() {
       }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     }, cached ? 0 : 250)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query])
+  }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query, expireSession])
   useEffect(() => {
     if (!session?.authenticated || !isDetail) { setRecord(null); return }
     const controller = new AbortController(); setRecord(null); setFailure(''); setLoading(true)
@@ -176,7 +177,7 @@ function App() {
       setFailure(cause.message)
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [session?.authenticated, isDetail, detailId, reload])
+  }, [session?.authenticated, isDetail, detailId, reload, expireSession])
   useLayoutEffect(() => {
     if (isDetail || loading) return
     const position = positions.get(routeKey)
@@ -292,10 +293,9 @@ function App() {
         {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnósticos' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<div className="detail-page chat-page"><div className="chat-stage"><div className="at-chat-scroll"><div className="chat-channel-state">WhatsApp · indisponível</div>
+          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<ChatPanel key={record.id} atendimentoId={record.id} onUnauthorized={expireSession}>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
-            <Notice title="Chat WhatsApp ainda indisponível">Nenhuma mensagem foi enviada ou recebida por este aplicativo. Os dados acima pertencem ao Atendimento selecionado.</Notice>
-          </div><ChatRail /></div><footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="WhatsApp ainda indisponível" disabled rows={1} /><button className="compose-button" disabled title="Anexos ainda indisponíveis" aria-label="Anexar arquivo indisponível"><Icon name="attach" /></button><button className="compose-button" disabled title="Áudio ainda indisponível" aria-label="Gravar áudio indisponível"><Icon name="mic" /></button><button className="compose-button send" disabled title="WhatsApp ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button></div></footer></div>} />}
+          </ChatPanel>} />}
         </>}
       </>}
     </div>
