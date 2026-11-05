@@ -19,3 +19,5 @@
 .voice-panel .voice-apply:disabled{opacity:.6}
 .voice-panel .voice-apply-error{color:#e6a0aa;font-size:12px}
 @media(max-width:400px){.voice-panel .voice-review{font-size:12px}.voice-panel .voice-review li{padding:8px 0}}
+
+.voice-panel .voice-action-bar{flex:none;padding:8px 10px;border-top:1px solid #dce4ee;background:#fff}
