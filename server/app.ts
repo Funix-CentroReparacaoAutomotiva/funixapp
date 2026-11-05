@@ -15,6 +15,7 @@ import { calculate } from './pricing-engine.ts'
 import { ScenarioRepository, selectedScenario } from './scenarios.ts'
 import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
+import { applyVoiceBatch } from './voice-apply.ts'
 
 export interface AppOptions {
   voiceProvider?:VoiceProvider|null
@@ -97,13 +98,20 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      const voiceApplyRoute=/^\\/api\\/atendimentos\\/([^/]{1,100})\\/copiloto\\/aplicar$/.exec(url.pathname)
+      if(voiceApplyRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para confirmar o plano.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        return send(200,applyVoiceBatch(options.atendimentos.db,voiceApplyRoute[1]!,await readJson(req,4096),cookie))
+      }
       const voiceRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/interpretar$/.exec(url.pathname)
       if(voiceRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para interpretar áudio.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
         const disconnect=()=>{if(!res.writableEnded)req.emit('aborted')}
         res.once('close',disconnect)
-        try{return send(200,await voice(req,voiceRoute[1]!,url,requestId,()=>(sessions.get(cookie)??0)>now()))}
+        try{return send(200,await voice(req,voiceRoute[1]!,url,requestId,()=>(sessions.get(cookie)??0)>now(),cookie))}
         finally{res.off('close',disconnect)}
       }
       if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
