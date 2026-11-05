@@ -33,13 +33,25 @@ mkdirSync(screenshotDir,{recursive:true})
 async function record(page){
  const launcher=page.locator('button[aria-label="Abrir Copiloto FUNIX"]')
  await launcher.waitFor({state:'visible'})
- const box=await launcher.boundingBox()
- assert(box,'voice launcher has geometry')
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2)
- await page.mouse.down()
- await page.waitForTimeout(700)
- await page.mouse.up()
- await page.getByText('Revisão antes de salvar',{exact:false}).waitFor({timeout:20000})
+ await page.locator('.commercial-workspace').waitFor({state:'visible'})
+ // The workspace loads asynchronously after the shell; do not press the microphone
+ // until the selected scenario and commercial context have finished loading.
+ await page.locator('.commercial-workspace .view-tab, .commercial-workspace .diagnosis-row, .commercial-workspace .commercial-content').first().waitFor({state:'attached',timeout:20000}).catch(()=>{})
+ for(let attempt=0;attempt<3;attempt++){
+  const box=await launcher.boundingBox()
+  assert(box,'voice launcher has geometry')
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2)
+  await page.mouse.down()
+  await page.waitForTimeout(750)
+  await page.mouse.up()
+  try{
+   await page.getByText('Revisão antes de salvar',{exact:false}).waitFor({timeout:5500})
+   return
+  }catch(error){
+   if(attempt===2)throw error
+   await page.waitForTimeout(950)
+  }
+ }
 }
 try{
  await new Promise((resolve,reject)=>api.listen(8787,'127.0.0.1',error=>error?reject(error):resolve()))
