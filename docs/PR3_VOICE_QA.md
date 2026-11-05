@@ -25,8 +25,7 @@
 
 - O pipeline `.github/workflows/funix.yml` publica as imagens no GHCR ao integrar na `main`, mas **não implanta** por push: deploy exige `workflow_dispatch` na `main` com `deploy=true` e credenciais do Environment `production` já configuradas. O nome do Environment é histórico; o domínio informado pela direção é de testes.
 - Conferir `/api/ready` e `/release.json` antes e depois; ambas as revisões publicadas precisam ser iguais ao SHA integrado.
-- A primeira inicialização V12 → V13 grava e verifica automaticamente um backup consistente `funix.sqlite.pre-v13-*.sqlite` no volume privado já existente, antes da migração. Se o backup falhar, a API não inicia a migração. **Não apagar os arquivos do banco nem esse backup.** Cópia em outro dispositivo continua desejável para proteção contra falha do próprio host.
-- A migração V13 só acrescenta `voice_apply_receipts`; não muda orçamento/PDF emitido. Rollback de contêiner não desfaz V13 e uma API antiga V12 pode recusar a nova versão do banco; em falha, preservar o banco e seguir procedimento documentado de restauração com serviço parado.
+- A migração V13 é aditiva e cria apenas `voice_apply_receipts`. Como este é o ambiente de testes, não há requisito adicional de backup pré-migração. Não apagar ou recriar o SQLite existente durante o deploy.
 - Verificar login no navegador, microfone com HTTPS e apenas Atendimentos sintéticos. Nunca utilizar clientes reais nesta rodada.
 
 ## Evidências automatizadas
