@@ -6,20 +6,20 @@ import {readVoiceContext} from './voice-context.ts'
 import {planVoiceCommands,voiceContextDigest} from './voice-planner.ts'
 import {touchComposition} from './scenarios.ts'
 
-type Staged={batch:VoiceCommandBatch;stateDigest:string;sessionId:string;expires:number}
+type Staged={batch:VoiceCommandBatch;stateDigest:string;requestDigest:string;sessionId:string;expires:number}
 const staged=new WeakMap<DatabaseSync,Map<string,Staged>>()
 const expired=()=>new ServiceError(409,'VOICE_PLAN_EXPIRED','Plano expirado. Grave novamente antes de confirmar.')
 const stale=()=>new ServiceError(409,'VOICE_CONTEXT_STALE','O Atendimento, cenário ou catálogo mudou. Refaça o ditado.')
 const invalid=()=>new ServiceError(400,'VOICE_APPLY_INVALID','Confirmação de voz inválida.')
 const keyFor=(at:string,key:string)=>at+':'+key
 
-export function stageVoiceBatch(db:DatabaseSync,batch:VoiceCommandBatch,stateDigest:string,sessionId:string){
+export function stageVoiceBatch(db:DatabaseSync,batch:VoiceCommandBatch,stateDigest:string,requestDigest:string,sessionId:string){
  let map=staged.get(db)
  if(!map){map=new Map();staged.set(db,map)}
  const now=Date.now()
  for(const[key,value]of map)if(value.expires<=now)map.delete(key)
  if(map.size>=100)map.delete(map.keys().next().value!)
- map.set(keyFor(batch.atendimentoId,batch.idempotencyKey),{batch:structuredClone(batch),stateDigest,sessionId,expires:now+15*60_000})
+ map.set(keyFor(batch.atendimentoId,batch.idempotencyKey),{batch:structuredClone(batch),stateDigest,requestDigest,sessionId,expires:now+15*60_000})
 }
 
 export interface VoiceApplyResult{applied:true;replay:boolean;idempotencyKey:string;changed:number;handledCommandIds:string[];revision:number}
@@ -33,13 +33,14 @@ export function applyVoiceBatch(db:DatabaseSync,at:string,input:unknown,sessionI
   (body.confirmGlobalRemoval!==undefined&&typeof body.confirmGlobalRemoval!=='boolean'))throw invalid()
  // This ledger is durable across server restarts, unlike the short-lived staged plan.
  const key=body.idempotencyKey,scene=body.scenarioId
- const getReceipt=()=>db.prepare('SELECT scenario_id,result_json FROM voice_apply_receipts WHERE atendimento_id=? AND idempotency_key=?').get(at,key)
+ const getReceipt=()=>db.prepare('SELECT scenario_id,request_digest,result_json FROM voice_apply_receipts WHERE atendimento_id=? AND idempotency_key=?').get(at,key)
  const previous=getReceipt()
+ const pending=staged.get(db)?.get(keyFor(at,key))
  if(previous){
-  if(previous.scenario_id!==scene)throw new ServiceError(409,'VOICE_IDEMPOTENCY_CONFLICT','Esta confirmação pertence a outro cenário.')
+  if(previous.scenario_id!==scene||(pending&&pending.requestDigest!==previous.request_digest))throw new ServiceError(409,'VOICE_IDEMPOTENCY_CONFLICT','Esta confirmação pertence a outro cenário.')
   return {...JSON.parse(String(previous.result_json)) as VoiceApplyResult,replay:true}
  }
- const map=staged.get(db),pending=map?.get(keyFor(at,key))
+ const map=staged.get(db)
  if(!pending||pending.expires<=Date.now()||pending.batch.scenarioId!==scene||pending.sessionId!==sessionId)throw expired()
  let output:VoiceApplyResult
  db.exec('BEGIN IMMEDIATE')
@@ -47,7 +48,7 @@ export function applyVoiceBatch(db:DatabaseSync,at:string,input:unknown,sessionI
   // Re-read inside the writer transaction: no concurrent writer can change these guards.
   const fresh=readVoiceContext(db,at,scene)
   const plan=planVoiceCommands(pending.batch,fresh)
-  if(plan.issues.some(i=>i.code==='REVISION_CONFLICT'||i.code==='CONTEXT_CONFLICT')||voiceContextDigest(fresh)!==pending.stateDigest)throw stale()
+  if(plan.issues.some(i=>i.code==='REVISION_CONFLICT'||i.code==='CONTEXT_CONFLICT')||voiceContextDigest(fresh)!==pending.stateDigest||plan.requestDigest!==pending.requestDigest)throw stale()
   // Changes are generated exclusively by the trusted server-side planner, never from the request body.
   if(plan.replay||plan.issues.some(i=>['INVALID_BATCH','INVALID_CONTEXT','IDEMPOTENCY_CONFLICT'].includes(i.code)))throw stale()
   const removals=plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)
