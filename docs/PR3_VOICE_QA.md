@@ -3,7 +3,7 @@
 ## Ambiente e autorização
 
 - Executar **somente em ambiente local/isolado**, com Atendimento e catálogo sintéticos.
-- Não liberar em produção nem aprovar o merge até a passagem manual em dispositivo real.
+- Autorização da direção em 2026-11-05: integrar PR #44 e publicar no ambiente de testes já existente, https://app.funix.com.br. Não criar outro ambiente nem iniciar operação real com clientes. O deploy permanece manual e deve ser conferido antes/depois.
 - Rodar `npm run check` e verificar CI verde; as confirmações de voz exigem login e a origem autorizada.
 
 ## Matriz de revisão visual — pendente de validação em navegador real
@@ -20,6 +20,14 @@
 | Alteração concorrente antes da confirmação | Pendente | Pendente | Pendente | HTTP 409 e nenhuma gravação parcial |
 | Perda de resposta após commit e repetição | Pendente | Pendente | Pendente | Mesmo recibo, sem duplicação de linha ou quantidade |
 | Acessibilidade com teclado e zoom 200% | Pendente | Pendente | Pendente | Foco alcança revisão, detalhes, confirmar e cancelar; sem texto inacessível |
+
+## Publicação autorizada no ambiente existente — checklist de segurança
+
+- O pipeline `.github/workflows/funix.yml` publica as imagens no GHCR ao integrar na `main`, mas **não implanta** por push: deploy exige `workflow_dispatch` na `main` com `deploy=true` e credenciais do Environment `production` já configuradas. O nome do Environment é histórico; o domínio informado pela direção é de testes.
+- Conferir `/api/ready` e `/release.json` antes e depois; ambas as revisões publicadas precisam ser iguais ao SHA integrado.
+- A primeira inicialização V12 → V13 grava e verifica automaticamente um backup consistente `funix.sqlite.pre-v13-*.sqlite` no volume privado já existente, antes da migração. Se o backup falhar, a API não inicia a migração. **Não apagar os arquivos do banco nem esse backup.** Cópia em outro dispositivo continua desejável para proteção contra falha do próprio host.
+- A migração V13 só acrescenta `voice_apply_receipts`; não muda orçamento/PDF emitido. Rollback de contêiner não desfaz V13 e uma API antiga V12 pode recusar a nova versão do banco; em falha, preservar o banco e seguir procedimento documentado de restauração com serviço parado.
+- Verificar login no navegador, microfone com HTTPS e apenas Atendimentos sintéticos. Nunca utilizar clientes reais nesta rodada.
 
 ## Evidências automatizadas
 
