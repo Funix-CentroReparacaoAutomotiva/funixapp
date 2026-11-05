@@ -233,7 +233,7 @@ test('HTTP confirmation enforces trusted staged plan, same-origin and durable id
   const post=(extra:Record<string,string>={},payload=body)=>fetch(route,{method:'POST',headers:{...headers,...extra},body:payload})
   assert.equal(await errorCode(await post({Origin:'https://unauthorized.invalid'})),'ORIGIN_REJECTED')
   assert.equal(await errorCode(await post({Cookie:''})),'AUTH_REQUIRED')
-  assert.equal(await errorCode(await post({},JSON.stringify({...JSON.parse(body),commands:[{op:'remove_piece'}]})),'VOICE_APPLY_INVALID')
+  assert.equal(await errorCode(await post({},JSON.stringify({...JSON.parse(body),commands:[{op:'remove_piece'}]}))),'VOICE_APPLY_INVALID')
   const applied=await post();assert.equal(applied.status,200);assert.equal((await applied.json()).replay,false)
   const replay=await post();assert.equal(replay.status,200);assert.equal((await replay.json()).replay,true)
   assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'4')
