@@ -18,6 +18,29 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --no-save --no-audit --no-fund playwright@1.56.1
       - run: node scripts/voice-browser-review.mjs
+      - name: Check existing app.funix.com.br (GET only; no credentials)
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://app.funix.com.br';
+          for(const path of ['/', '/api/health', '/api/ready', '/release.json']){
+            try {
+              const response=await fetch(base+path,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(12000)});
+              let revision='unknown';
+              if(path==='/api/ready'||path==='/release.json'){
+                const raw=await response.text();
+                try {
+                  const payload=JSON.parse(raw);
+                  const r=payload.revision??payload.sha??payload.commit??payload.gitSha;
+                  if(typeof r==='string'&&/^[a-f0-9]{7,40}$/i.test(r)) revision=r;
+                }catch{}
+              }else{await response.body?.cancel()}
+              console.log(path+': HTTP '+response.status+'; deployed revision: '+revision);
+            }catch(error){
+              console.log(path+': unreachable ('+(error?.name??'network error')+')');
+            }
+          }
+          NODE
       - if: always()
         uses: actions/upload-artifact@v4
         with:
