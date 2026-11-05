@@ -5,6 +5,9 @@ export interface VoiceReviewEntry {
  label:string
  scope:'shared'|'scenario'|'global'
  fields:VoiceReviewField[]
+ commandId?:string
+ pendingId?:string
+ options?:import('./voice-resolution.ts').VoiceResolutionOption[]
  warning?:string
 }
 export interface VoiceReviewGroup {id:string;piece:string;entries:VoiceReviewEntry[]}
