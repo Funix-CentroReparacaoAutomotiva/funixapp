@@ -12,7 +12,7 @@ test('V12 SQLite backup preserves existing Atendimento and is created before add
  const dir=mkdtempSync(join(tmpdir(),'funix-v13-backup-')),file=join(dir,'funix.sqlite')
  try{
   let db=openDatabase(file)
-  const at=new AtendimentoRepository(db).create({phone:'synthetic-phone',name:'Synthetic Operator QA'})
+  const at=new AtendimentoRepository(db).create({phone:'1234567890',name:'Synthetic Operator QA'})
   db.exec('DROP TABLE voice_apply_receipts;DELETE FROM schema_migrations WHERE version=13;')
   db.close()
   const before=readFileSync(file)
