@@ -13,6 +13,8 @@
 !shared/**
 !server/
 !server/*.ts
+!server/chat/
+!server/chat/*.ts
 !server/data/
 !server/data/**
 !deploy/

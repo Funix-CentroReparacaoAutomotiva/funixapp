@@ -28,7 +28,7 @@ test('Fase3 V8→V9 additive migration preserves IDs, flags, MR, services/compon
   db.exec('CREATE VIEW diagnosis_recommendations AS SELECT id FROM atendimentos');assert.throws(()=>migrate(db));assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,8);assert(!db.prepare('PRAGMA table_info(diagnosis_items)').all().some(c=>c.name==='intensity'));tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
   db.exec('DROP VIEW diagnosis_recommendations');migrate(db);assert.deepEqual({...db.prepare('SELECT * FROM diagnosis_items').get()},{...piece,intensity:null});tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
   assert.deepEqual(new BudgetRepository(db).get(f.at.id,v.id),v);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
-  db.close();db=openDatabase(file);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,13);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
+  db.close();db=openDatabase(file);assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,14);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf)
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
 test('Fase3 master intensity persists across scenarios/restart without changing manual composition, parameters, masks or calculations; omitted/null preserved',async ()=>{
@@ -83,7 +83,7 @@ test('Fase3 CLI dry-run opens existing V9 read-only, preserves hash/mode, requir
   const applied=run([...args,'--confirm-plan',p.planHash]);assert.equal(applied.status,0,applied.stderr);const repeat=run(args);assert.equal(JSON.parse(repeat.stdout).inserts,0);assert.equal(run([...args,'--confirm-plan',p.planHash]).status,1)
   assert.equal(run(['--source',sourceFile,'--database',join(dir,'absent.sqlite')]).status,1)
   writeFileSync(sourceFile,'synthetic-sensitive-placeholder');const malformed=run(args);assert.equal(malformed.status,1);assert(!malformed.stderr.includes('synthetic-sensitive-placeholder'));writeFileSync(sourceFile,JSON.stringify(f.source))
-  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(14,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=13');db.close()
+  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(15,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=13');db.close()
   const old=join(dir,'v8.sqlite');db=new DatabaseSync(old);migrateV8(db);assert.throws(()=>planRecommendations(db,f.source),/exatamente V9/);db.close()
  }finally{try{db.close()}catch{}rmSync(dir,{recursive:true,force:true})}
 })

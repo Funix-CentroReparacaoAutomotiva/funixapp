@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { hierarchyPieces } from './hierarchy.ts'
+import { createChatSchema } from './chat/schema.ts'
 
 const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   { version: 1, apply: db => db.exec(`
@@ -246,7 +247,8 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       request_digest TEXT NOT NULL,result_json TEXT NOT NULL,
       PRIMARY KEY(atendimento_id,idempotency_key)
     );
-  `)}
+  `)},
+  {version:14,apply:createChatSchema}
 ]
 
 export function migrate(db: DatabaseSync) {
