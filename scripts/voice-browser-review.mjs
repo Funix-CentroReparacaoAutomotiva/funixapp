@@ -28,7 +28,7 @@ const wait=async(url)=>{
  }
  throw Error('Local Vite did not start')
 }
-const screenshotDir='artifacts/voice-review'
+const screenshotDir=process.env.FUNIX_VOICE_ARTIFACTS??'artifacts/voice-review'
 mkdirSync(screenshotDir,{recursive:true})
 async function record(page){
  const launcher=page.locator('button[aria-label="Abrir Copiloto FUNIX"]')
@@ -69,6 +69,12 @@ try{
   await page.goto(origin+'/atendimentos/'+f.at.id+'?aba=diagnosticos')
   await page.locator('.commercial-workspace').waitFor({timeout:20000})
   await page.waitForTimeout(450)
+  if(width===390){
+   await page.locator('.approved-finance .summary').click()
+   await page.locator('.neg-head').click()
+   await page.getByRole('textbox',{name:'Valor em reais',exact:true}).fill('123,45')
+   await page.getByRole('textbox',{name:'Valor em reais',exact:true}).blur()
+  }
   await record(page)
   const panel=page.locator('.voice-panel')
   const review=panel.locator('.voice-review')
@@ -84,10 +90,32 @@ try{
   await panel.screenshot({path:screenshotDir+'/review-'+width+'.png'})
   assert.deepEqual(errors,[],'no browser runtime exceptions')
   if(width===390){
+   // The draft already existed during interpretation; change its mode AFTER planning.
+   await page.getByRole('button',{name:'Negociação',exact:true}).click()
+   const money=page.getByRole('textbox',{name:'Valor em reais',exact:true})
+   await money.fill('123,45');await money.blur()
+   const originalPanel=await page.locator('.commercial-workspace').elementHandle()
+   const applyResponse=page.waitForResponse(r=>r.url().endsWith('/copiloto/aplicar')&&r.request().method()==='POST')
    await button.click()
+   assert.equal((await applyResponse).status(),200)
    await page.getByText('Plano de voz aplicado ao Atendimento.').waitFor({timeout:15000})
    assert.equal(f.commercial.list(f.at.id,f.scenario.id)[0].services[0].quantity,'4')
-   await page.waitForTimeout(350)
+   await page.waitForFunction(()=>document.querySelector('.voice-apply')===null)
+   assert(await originalPanel.evaluate(el=>el.isConnected),'voice refresh must preserve CommercialPanel')
+   assert.match(await money.inputValue(),/123,45/,'R$ 123,45 draft must survive voice refresh')
+   assert.equal(await page.getByRole('button',{name:'Negociação',exact:true}).getAttribute('aria-pressed'),'true')
+   const previewResponse=page.waitForResponse(r=>r.url().endsWith('/orcamentos/previa')&&r.request().method()==='POST')
+   await page.getByRole('button',{name:'Emitir',exact:true}).click()
+   const preview=await previewResponse
+   assert.equal(preview.request().postDataJSON().negotiation.value,'123.45')
+   assert.equal(preview.request().postDataJSON().negotiation.mode,'adjust')
+   const previewBody=await preview.json()
+   assert.equal(previewBody.snapshot.compositionRevision,f.pricing.settings(f.at.id).revision,'preview must use refreshed revisions')
+   // No real renderer is configured: the PDF request may fail, but this must not reset the draft.
+   await page.waitForFunction(()=>!document.querySelector('.approved-finance button.emit')?.disabled)
+   assert.match(await money.inputValue(),/123,45/)
+   await panel.screenshot({path:screenshotDir+'/negotiation-preserved-390.png'})
+   console.log('PASS R$ 123,45 draft before interpretation and changed after planning preserved; fresh preview uses adjust 123.45')
    mode='remove'
    await record(page)
    assert.match(await panel.locator('.voice-review').innerText(),/EXCLUIR peça/)

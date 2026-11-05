@@ -247,6 +247,12 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
     if(newServiceSelectionIssue(service.id)){issue('CURATION_BLOCKED','Regra retida pela curadoria vigente.',false,[r.id,service.id]);return false}
     return true
    })
+   // Match applySuggestedServices: capacity is checked for the entire operation,
+   // before any candidate can alter the working composition.
+   const planned=eligible.filter(r=>!removedServices.has(p.pieceId+':'+r.serviceId)&&
+    !p.services.some(l=>l.serviceId===r.serviceId)&&!explicitServices.has(p.pieceId+':'+r.serviceId)&&
+    eligible.filter(v=>v.serviceId===r.serviceId).length===1)
+   if(p.services.length+planned.length>50){issue('SERVICE_LIMIT','As recomendações ultrapassariam 50 serviços. Nenhuma linha desta operação será incluída.');return}
    for(const r of eligible){
     const service=catalog.get(r.serviceId)!,dimension=catalog.get(r.dimensionId)!
     if(removedServices.has(p.pieceId+':'+service.id)){issue('EXPLICIT_REMOVAL_PRESERVED','Regra não desfaz exclusão explícita.',false,[r.id]);continue}
