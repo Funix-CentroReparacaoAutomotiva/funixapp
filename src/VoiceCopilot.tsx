@@ -30,9 +30,10 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  useLayoutEffect(()=>{clearGesture();capture.setContext(available?context:null);setApplyError('')},[key,available,capture,context])
  useEffect(()=>{
   const cancel=()=>{clearGesture();capture.cancel()}
-  const hidden=()=>{if(document.visibilityState==='hidden')cancel()}
-  document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',cancel);window.addEventListener('blur',cancel)
-  return()=>{document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',cancel);window.removeEventListener('blur',cancel);cancel()}
+  const hidden=()=>{if(document.visibilityState==='hidden'&&['preparing','recording','processing'].includes(capture.snapshot.phase))cancel()}
+  const blur=()=>{if(['preparing','recording','processing'].includes(capture.snapshot.phase))cancel()}
+  document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',cancel);window.addEventListener('blur',blur)
+  return()=>{document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',cancel);window.removeEventListener('blur',blur);cancel()}
  },[capture])
  async function apply(){
   const result=state.result,active=context
