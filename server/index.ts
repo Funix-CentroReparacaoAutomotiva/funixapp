@@ -1,6 +1,7 @@
 import { createApp } from './app.ts'
 import { openDatabase } from './database.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
+import { backupBeforeVoiceMigration } from './pre-migration-backup.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('FUNIX_API_PORT inválida.')
@@ -14,6 +15,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 const databasePath = process.env.FUNIX_DATABASE_PATH ?? (process.env.NODE_ENV === 'production' ? '' : '.runtime/funix.sqlite')
 if (!databasePath || (process.env.NODE_ENV === 'production' && databasePath === ':memory:')) throw new Error('Configure FUNIX_DATABASE_PATH para um arquivo em armazenamento persistente autorizado.')
+const preMigrationBackup = await backupBeforeVoiceMigration(databasePath)
+if (preMigrationBackup) process.stdout.write('Backup SQLite pré-V13 verificado e preservado no volume FUNIX.\n')
 const db = openDatabase(databasePath)
 const atendimentos = new AtendimentoRepository(db)
 const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION })
