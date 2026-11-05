@@ -19,6 +19,9 @@ jobs:
       - run: npm install --no-save --no-audit --no-fund playwright@1.56.1
       - run: node scripts/voice-browser-review.mjs
       - run: node scripts/voice-resolution-browser.mjs
+        env:
+          # Longer than the old 800ms minus 350ms gesture budget.
+          FUNIX_TEST_MIC_STARTUP_MS: "700"
       - name: Check existing app.funix.com.br (GET only; no credentials)
         if: always()
         run: |

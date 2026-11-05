@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {existsSync,mkdirSync} from 'node:fs'
 import {spawn} from 'node:child_process'
 import {chromium} from 'playwright'
+import {createVoiceBrowserAudio,recordVoice} from './browser/voice-audio.mjs'
 import {openDatabase} from '../server/database.ts'
 import {createApp} from '../server/app.ts'
 import {commercialFixture} from '../server/tests/fixtures/commercial.ts'
@@ -22,7 +23,7 @@ const diagnosis=f.commercial.saveCatalog({kind:'diagnostico',name:'Amassado QA'}
 const paint=f.commercial.saveCatalog({kind:'servico',name:'Pintura parcial QA'})
 const initialPieceCount=f.commercial.list(f.at.id).length
 const provider={
- transcribe:async()=>mode==='remove'?'Exclua a peça do atendimento.':'Acrescente uma unidade no serviço.',
+ transcribe:async(bytes,mime)=>{audio.observeUpload(bytes,mime);return mode==='remove'?'Exclua a peça do atendimento.':'Acrescente uma unidade no serviço.'},
  interpret:async()=>({commands:mode==='remove'
   ?[{id:'delete',op:'remove_piece',intent:'instruction',piece:ref(f.item.pieceId)}]
   :mode==='pending'?[{id:'pending',op:'add_service',intent:'instruction',piece:ref(f.item.pieceId),service:{state:'unresolved',text:'Pintura ambígua — conferir',candidates:[]},dimension:null,preserveDimension:false,quantity:null}]
@@ -39,6 +40,7 @@ const provider={
 const api=createApp({atendimentos:f.atendimentos,origin,password,voiceProvider:provider})
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5173'],{stdio:'pipe'})
 let browser
+const audio=createVoiceBrowserAudio()
 const wait=async(url)=>{
  for(let i=0;i<80;i++){
   try{if((await fetch(url)).ok)return}catch{}
@@ -48,37 +50,17 @@ const wait=async(url)=>{
 }
 const screenshotDir=process.env.FUNIX_VOICE_ARTIFACTS??'artifacts/voice-review'
 mkdirSync(screenshotDir,{recursive:true})
-async function record(page){
- const launcher=page.locator('button[aria-label="Abrir Copiloto FUNIX"]')
- await launcher.waitFor({state:'visible'})
- await page.locator('.commercial-workspace').waitFor({state:'visible'})
- // The workspace loads asynchronously after the shell; do not press the microphone
- // until the selected scenario and commercial context have finished loading.
- await page.locator('.commercial-workspace .view-tab, .commercial-workspace .diagnosis-row, .commercial-workspace .commercial-content').first().waitFor({state:'attached',timeout:20000}).catch(()=>{})
- for(let attempt=0;attempt<3;attempt++){
-  const box=await launcher.boundingBox()
-  assert(box,'voice launcher has geometry')
-  await page.mouse.move(box.x+box.width/2,box.y+box.height/2)
-  await page.mouse.down()
-  await page.waitForTimeout(750)
-  await page.mouse.up()
-  try{
-   await page.locator('.voice-review .voice-entry').first().waitFor({timeout:5500})
-   return
-  }catch(error){
-   if(attempt===2){console.log('RECORD FAILURE',await page.locator('.voice-panel').innerText());await page.screenshot({path:screenshotDir+'/failure.png'});throw error}
-   await page.waitForTimeout(950)
-  }
- }
-}
+async function record(page){await recordVoice(page,audio);await page.locator('.voice-panel .voice-entry').first().waitFor({timeout:15000})}
+
 try{
  await new Promise((resolve,reject)=>api.listen(8787,'127.0.0.1',error=>error?reject(error):resolve()))
  await wait(origin)
  const chrome=process.env.CHROME_PATH??(existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined)
  if(!chrome)throw Error('No Chrome installed on CI runner')
- browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox','--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']})
+ browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox',...audio.args]})
  for(const [width,height] of [[1440,900],[320,700],[390,844]]){
   const context=await browser.newContext({viewport:{width,height},permissions:['microphone']})
+  await audio.install(context)
   const auth=await context.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})
   assert.equal(auth.status(),200,'synthetic browser login')
   const page=await context.newPage()
@@ -217,6 +199,7 @@ try{
  console.log('Voice browser review: 320/390 visual, confirmation/cancel/global removal and 1440 desktop shell passed.')
 }finally{
  await browser?.close().catch(()=>{})
+ audio.dispose()
  vite.kill('SIGTERM')
  api.closeAllConnections()
  await new Promise(resolve=>api.close(()=>resolve()))

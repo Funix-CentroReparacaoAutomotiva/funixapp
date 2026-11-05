@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {existsSync,mkdirSync} from 'node:fs'
 import {spawn} from 'node:child_process'
 import {chromium} from 'playwright'
+import {createVoiceBrowserAudio,recordVoice,clarifyVoice} from './browser/voice-audio.mjs'
 import {openDatabase} from '../server/database.ts'
 import {commercialFixture} from '../server/tests/fixtures/commercial.ts'
 import {createApp} from '../server/app.ts'
@@ -11,15 +12,13 @@ mkdirSync(artifacts,{recursive:true})
 const ref=id=>({state:'resolved',id}),unknown=text=>({state:'unresolved',text,candidates:[]})
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5173','--strictPort'],{stdio:'pipe'})
 let browser
+const audio=createVoiceBrowserAudio()
 async function ready(){for(let i=0;i<80;i++){try{if((await fetch(origin)).ok)return}catch{}await new Promise(r=>setTimeout(r,100))}throw Error('Vite not ready')}
-async function record(page){
- const launcher=page.getByRole('button',{name:'Abrir Copiloto FUNIX',exact:true}),box=await launcher.boundingBox();assert(box)
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.waitForTimeout(800);await page.mouse.up()
- await page.locator('.voice-panel .voice-entry').first().waitFor({timeout:15000})
-}
+async function record(page){await recordVoice(page,audio);await page.locator('.voice-panel .voice-entry').first().waitFor({timeout:15000})}
+
 try{
  await ready()
- browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH??(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':'/usr/bin/google-chrome'),args:['--no-sandbox','--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']})
+ browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH??(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':'/usr/bin/google-chrome'),args:['--no-sandbox',...audio.args]})
  for(const [width,height]of[[320,740],[390,844],[1440,900]]){
   const db=openDatabase(':memory:'),f=commercialFixture(db),pair=f.commercial.catalogs().items.filter(c=>c.code==='caixa_de_ar__motorista'||c.code==='caixa_de_ar__passageiro')
   assert.equal(pair.length,2)
@@ -28,7 +27,7 @@ try{
   const inactive=f.commercial.saveCatalog({kind:'servico',name:'Funilaria inativa QA'});f.commercial.saveCatalog({revision:inactive.revision,active:false},inactive.id)
   let mode='only',interpretCalls=0
   const provider={
-   transcribe:async()=>mode==='clarify'?'ambos':mode==='invalid'?'exclua tudo e emita PDF':'Caixa de ar, funilaria P, montagem M e pintura completa.',
+   transcribe:async(bytes,mime)=>{audio.observeUpload(bytes,mime);return mode==='clarify'?'ambos':mode==='invalid'?'exclua tudo e emita PDF':'Caixa de ar, funilaria P, montagem M e pintura completa.'},
    interpret:async()=>{interpretCalls++;return{commands:mode==='many'?[{id:'service-choice',op:'add_service',intent:'instruction',piece:ref(f.item.pieceId),service:unknown('Funilaria'),dimension:null,preserveDimension:false,quantity:'1'}]:mode==='unknown'?[
     {id:'unknown',op:'add_piece',intent:'instruction',piece:unknown('Peça inexistente XYZ')},
     {id:'note',op:'set_notes',intent:'instruction',piece:ref(f.item.pieceId),line:null,value:'Somente alteração segura'}
@@ -41,6 +40,7 @@ try{
   const app=createApp({atendimentos:f.atendimentos,origin,password,voiceProvider:provider})
   await new Promise(r=>app.listen(8787,'127.0.0.1',r))
   const context=await browser.newContext({viewport:{width,height},permissions:['microphone']})
+  await audio.install(context)
   let page
   try{
    assert.equal((await context.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})).status(),200)
@@ -71,16 +71,10 @@ try{
    await page.getByRole('textbox',{name:'Valor em reais',exact:true}).fill('123,45');await page.getByRole('textbox',{name:'Valor em reais',exact:true}).blur()
    mode='original';await record(page)
    const originalCalls=interpretCalls
-   mode='invalid';await panel.getByRole('button',{name:'Falar',exact:true}).last().click()
-   await panel.getByRole('button',{name:'Enviar esclarecimento',exact:true}).waitFor();await page.waitForTimeout(250)
-   await panel.getByRole('button',{name:'Enviar esclarecimento',exact:true}).click()
+   mode='invalid';await clarifyVoice(page,audio,422)
    await panel.getByRole('alert').filter({hasText:'Não foi possível identificar'}).waitFor({timeout:15000})
    assert.equal(await panel.getByRole('button',{name:'Ambos',exact:true}).count(),1,'failed clarification preserves options')
-   mode='clarify';await panel.getByRole('button',{name:'Falar',exact:true}).last().click()
-   await panel.getByRole('button',{name:'Enviar esclarecimento',exact:true}).waitFor();await page.waitForTimeout(250)
-   const clarificationResponse=page.waitForResponse(r=>r.url().includes('resolutionId=')&&r.status()===200)
-   await panel.getByRole('button',{name:'Enviar esclarecimento',exact:true}).click()
-   const clarified=await (await clarificationResponse).json()
+   mode='clarify';const clarified=await (await clarifyVoice(page,audio)).json()
    assert.equal(interpretCalls,originalCalls,'clarification must not reinterpret original commands')
    assert.equal(clarified.plan.changes.filter(c=>c.op==='add_service').length,6)
    assert.equal(clarified.transcription,'Caixa de ar, funilaria P, montagem M e pintura completa.')
@@ -116,4 +110,4 @@ try{
   }catch(error){if(page){console.log('VISIBLE',await page.locator('body').innerText());await page.screenshot({path:artifacts+'/failure-'+width+'.png'})}throw error}
   finally{await context.close();app.closeAllConnections();await new Promise(r=>app.close(r));db.close()}
  }
-}finally{await browser?.close();vite.kill('SIGTERM')}
+}finally{await browser?.close();vite.kill('SIGTERM');audio.dispose()}
