@@ -47,7 +47,7 @@ try{
  const chrome=process.env.CHROME_PATH??(existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined)
  if(!chrome)throw Error('No Chrome installed on CI runner')
  browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox','--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']})
- for(const [width,height] of [[320,700],[390,844],[1440,900]]){
+ for(const [width,height] of [[1440,900],[320,700],[390,844]]){
   const context=await browser.newContext({viewport:{width,height},permissions:['microphone']})
   const auth=await context.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})
   assert.equal(auth.status(),200,'synthetic browser login')
@@ -90,7 +90,7 @@ try{
    mode='quantity'
   }
   await context.close()
-  if(width===390)break // removal finished; desktop visual uses new record below
+  if(width===390)break // destructive confirmation is the final synthetic scenario
  }
  // Desktop geometry is checked separately in its own synthetic session after removal,
  // using the empty state; no mutable fixture is resurrected to simulate production.
