@@ -5,12 +5,14 @@ import{VOICE_PROCESSING_MS,VOICE_UPLOAD_MS,voiceCaptureKey}from'../shared/voice-
 import type{VoiceCaptureContext,VoiceInterpretation}from'../shared/voice-input'
 import{api}from'./api'
 import{Icon}from'./ui'
+import{VoiceReview}from'./VoiceReview'
 import'./voice-copilot.css'
 
-export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied}:{navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void}){
- const[state,setState]=useState<CaptureState>({phase:'idle',message:'Segure o Copiloto para ditar. Nenhuma alteração será salva nesta etapa.'})
+export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied,onClose}:{navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void;onClose:()=>void}){
+ const[state,setState]=useState<CaptureState>({phase:'idle',message:'Segure o Copiloto para ditar.'})
  const[applying,setApplying]=useState(false)
  const[applyError,setApplyError]=useState('')
+ const[transcriptionOpen,setTranscriptionOpen]=useState(false)
  const[appliedKey,setAppliedKey]=useState<string|null>(null)
  const[capture]=useState(()=>new VoiceCapture({
   getMedia:()=>navigator.mediaDevices.getUserMedia({audio:true}),
@@ -26,7 +28,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const gesture=useRef<{timer:ReturnType<typeof setTimeout>;long:boolean;pointer?:number;key?:string}|null>(null)
  const clearGesture=()=>{if(gesture.current)clearTimeout(gesture.current.timer);gesture.current=null}
  const key=voiceCaptureKey(context),available=visible&&!disabled
- useLayoutEffect(()=>{clearGesture();capture.cancel();setApplyError('');setAppliedKey(null)},[navigationKey,capture])
+ useLayoutEffect(()=>{clearGesture();capture.cancel();setApplyError('');setAppliedKey(null);setTranscriptionOpen(false)},[navigationKey,capture])
  useLayoutEffect(()=>{clearGesture();capture.setContext(available?context:null);setApplyError('')},[key,available,capture,context])
  useEffect(()=>{
   const cancel=()=>{clearGesture();capture.cancel()}
@@ -50,7 +52,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({scenarioId:active.scenarioId,idempotencyKey:result.plan.idempotencyKey,confirmGlobalRemoval:removes})
    })
-   if(applied.applied){setAppliedKey(result.plan.idempotencyKey);onApplied()}
+   if(applied.applied){setAppliedKey(result.plan.idempotencyKey);capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
   }catch(error){setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
  }
@@ -66,31 +68,27 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  }
  return <>
  {open&&visible&&!disabled&&<section className="copilot-panel voice-panel" aria-label="Copiloto FUNIX">
-  <header><div><strong>Copiloto FUNIX</strong><small>Voz · revisão e confirmação manual</small></div><button aria-label="Recolher Copiloto" onClick={onToggle}>⌄</button></header>
+  <header><strong>Copiloto</strong><div className="voice-header-actions">
+   {state.result&&<button aria-label="Mostrar transcrição" aria-expanded={transcriptionOpen} aria-controls="voice-transcript" onClick={()=>setTranscriptionOpen(value=>!value)}><Icon name="text"/></button>}
+   <button aria-label="Fechar Copiloto" onClick={onClose}>×</button>
+  </div></header>
   <div className="copilot-feed">
    {!context&&<p>Abra um Atendimento e aguarde o cenário carregar para usar a voz.</p>}
-   {state.result&&<><details><summary>Transcrição desta tentativa</summary><p className="voice-transcript">{state.result.transcription}</p></details>
-    <section className="voice-review" aria-label="Alterações previstas">
-     <strong>Revisão antes de salvar — {state.result.review.length} alteração(ões)</strong>
-     {state.result.review.length>0?<ol>{state.result.review.map((entry,i)=><li key={i} className={entry.startsWith('EXCLUIR')?'voice-removal':''}>{entry}</li>)}</ol>:<p>Não há alterações válidas a aplicar.</p>}
-     {state.result.plan.results.some(r=>r.status==='pending'||r.status==='conflict')&&<p role="status">{state.result.plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length} comando(s) pendente(s) ou conflitante(s) não serão aplicados.</p>}
-     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal">ATENÇÃO: a exclusão é definitiva na composição atual e atinge todos os cenários, incluindo os serviços e componentes relacionados.</p>}
-    </section>
-    <details><summary>Detalhes técnicos do plano</summary><pre>{JSON.stringify(state.result.plan,null,2)}</pre></details>
-
-    {state.result.plan.changes.length===0&&<p>Não há alterações válidas a aplicar.</p>}
+   {state.result&&<>
+    {transcriptionOpen&&<p id="voice-transcript" className="voice-transcript">{state.result.transcription}</p>}
+    <VoiceReview groups={state.result.reviewGroups}/>
+    {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal" role="alert">Exclusão definitiva em todos os cenários. Serviços e componentes vinculados também podem ser removidos.</p>}
    </>}
    {applyError&&<p role="alert" className="voice-apply-error">{applyError}</p>}
-   {appliedKey&&<p role="status">Aplicação confirmada. O Atendimento será atualizado.</p>}
    {state.recoveryAudio&&<RecoveryAudio blob={state.recoveryAudio}/>}
    {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();capture.cancel()}}>Cancelar</button>}
   </div>
   {state.result&&state.result.plan.changes.length>0&&<div className="voice-action-bar">
-   <button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Confirmar e aplicar alterações'}</button>
+   <button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Aplicar alterações'}</button>
   </div>}
-  <div className={'copilot-status voice-status '+state.phase} role={state.phase==='error'?'alert':'status'}>{state.message}</div>
+  {state.phase!=='done'&&<div className={'copilot-status voice-status '+state.phase} role={state.phase==='error'?'alert':'status'}>{state.message}</div>}
  </section>}
- {visible&&<button className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled}
+ {visible&&<button className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled||applying}
   onPointerDown={e=>{if(e.button!==0)return;e.currentTarget.setPointerCapture(e.pointerId);start(e.pointerId)}}
   onPointerUp={e=>{if(gesture.current?.pointer===e.pointerId)end()}}
   onPointerCancel={()=>end(true)} onLostPointerCapture={()=>{if(gesture.current?.pointer!==undefined)end(true)}}
