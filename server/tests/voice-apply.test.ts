@@ -18,7 +18,7 @@ function fixture(){
   const ctx=context(),batch:VoiceCommandBatch={format:'funix-voice-commands-v1',atendimentoId:f.at.id,scenarioId:f.scenario.id,
    expected:voiceRevisions(ctx),idempotencyKey:'synthetic-voice-apply-'+(++sequence),commands}
   const plan=planVoiceCommands(batch,ctx)
-  stageVoiceBatch(db,batch,plan.stateDigest,session)
+  stageVoiceBatch(db,batch,plan.stateDigest,plan.requestDigest,session)
   const body={scenarioId:f.scenario.id,idempotencyKey:batch.idempotencyKey}
   return{batch,plan,body,apply:(extra:Record<string,unknown>={})=>applyVoiceBatch(db,f.at.id,{...body,...extra},session)}
  }
