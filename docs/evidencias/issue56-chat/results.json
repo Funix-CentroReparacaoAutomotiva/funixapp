@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "name": "320px: late A response cannot overwrite B",
+      "pass": true
+    },
+    {
+      "name": "320px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "pass": true
+    },
+    {
+      "name": "320px: loading/error/empty and expired session remove private content",
+      "pass": true
+    },
+    {
+      "name": "390px: late A response cannot overwrite B",
+      "pass": true
+    },
+    {
+      "name": "390px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "pass": true
+    },
+    {
+      "name": "390px: loading/error/empty and expired session remove private content",
+      "pass": true
+    },
+    {
+      "name": "1440px: late A response cannot overwrite B",
+      "pass": true
+    },
+    {
+      "name": "1440px: content, directions, real statuses, media fallback, safe text and paginated retry",
+      "pass": true
+    },
+    {
+      "name": "1440px: loading/error/empty and expired session remove private content",
+      "pass": true
+    }
+  ],
+  "externalRequests": 0,
+  "pageErrors": 0,
+  "synthetic": true
+}
