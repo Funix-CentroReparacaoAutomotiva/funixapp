@@ -35,8 +35,8 @@ const kindNames: Record<CatalogKind, string> = { peca: 'Peças', diagnostico: 'D
 function stateLabel(item?: CatalogItem) { return !item || (item.kind === 'peca' && !item.code?.trim()) ? 'Sem código · indisponível' : item.active ? 'Ativo' : 'Inativo' }
 const fold = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
-export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext }: {
-  onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
+export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext, refreshVersion }: {
+  refreshVersion:number;onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
 }) {
   const [dealState,setDealState] = useState<NegotiationState>(emptyNegotiationState)
   const [scenarioGone,setScenarioGone] = useState(false)
@@ -141,11 +141,14 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     setFailure(message ?? (cause as Error).message); setFailureDetails(cause as RequestFailure)
     if ((cause as RequestFailure).status === 401) setReauth(true)
   }
+  // Refresh after voice without remounting: keep the operator's negotiation draft.
+  // Block stale calculations until acceptWorkspace invalidates the old preview.
+  useLayoutEffect(()=>{if(refreshVersion>0)setRefreshNeeded(true)},[refreshVersion])
   useEffect(() => {
     const controller = new AbortController()
-    Promise.resolve().then(() => load(controller.signal)).catch(cause => { if (!controller.signal.aborted) {setRefreshNeeded(true);failed(cause)} })
+    Promise.resolve().then(() => load(controller.signal)).then(result=>{if(result&&!controller.signal.aborted)setRefreshNeeded(false)}).catch(cause => { if (!controller.signal.aborted) {setRefreshNeeded(true);failed(cause)} })
     return () => controller.abort()
-  }, [load])
+  }, [load,refreshVersion])
   async function mutate(operation: () => Promise<void>, keepMessage = false) {
     if (busy || mutationInFlight.current || selectionQueue.status!=='idle') return false
     mutationInFlight.current = true

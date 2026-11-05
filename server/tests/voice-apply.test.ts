@@ -156,3 +156,41 @@ test('voice application does not mutate an immutable already-issued budget/PDF',
   assert.deepEqual(repo.pdf(h.f.at.id,version.id),pdf)
  }finally{h.close()}
 })
+
+test('49 existing services plus two recommendations reject the whole recommendation operation, preserving independent notes',async()=>{
+ const {fase4Fixture}=await import('./fixtures/fase4.ts')
+ const {applySuggestedServices}=await import('../apply-recommendations.ts')
+ const db=openDatabase(':memory:')
+ try{
+  const f=fase4Fixture(db,false)
+  const item=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,diagnosisId:f.diagnosis.id,intensity:'leve',services:Array.from({length:49},()=>({serviceId:f.service.id,dimensionId:f.dimension.id,quantity:'1'}))})
+  const ctx=readVoiceContext(db,f.at.id,f.scenario.id),scene=ctx.workspace.scenarios.find(s=>s.id===f.scenario.id)!
+  const rules=ctx.recommendations.find(r=>r.diagnosisId===f.diagnosis.id&&r.intensity==='leve')!.rules.slice(0,2)
+  assert.equal(rules.length,2)
+  assert.throws(()=>applySuggestedServices(db,f.at.id,item.id,{revision:item.revision,scenarioId:scene.id,scenarioRevision:scene.revision,diagnosisId:f.diagnosis.id,intensity:'leve',mode:'assisted',ruleIds:rules.map(r=>r.id),idempotencyKey:'normal-recommendation-capacity'}),(e:unknown)=>e instanceof Error&&'code'in e&&e.code==='RECOMMENDATION_LIMIT')
+  const batch:VoiceCommandBatch={format:'funix-voice-commands-v1',atendimentoId:f.at.id,scenarioId:scene.id,expected:voiceRevisions(ctx),idempotencyKey:'voice-recommendation-capacity',commands:[
+   {id:'suggest',op:'recommend_services',intent:'instruction',piece:ref(item.pieceId),mode:'assisted',ruleIds:rules.map(r=>r.id)},
+   {id:'notes',op:'set_notes',intent:'instruction',piece:ref(item.pieceId),value:'Independente preservado'}
+  ]}
+  const plan=planVoiceCommands(batch,ctx)
+  assert.equal(plan.results[0]!.status,'pending');assert.equal(plan.results[1]!.status,'valid')
+  assert.equal(plan.changes.filter(c=>c.op==='add_service').length,0)
+  stageVoiceBatch(db,batch,plan.stateDigest,plan.requestDigest,session)
+  const body={scenarioId:scene.id,idempotencyKey:batch.idempotencyKey}
+  const applied=applyVoiceBatch(db,f.at.id,body,session)
+  assert.deepEqual(applied.handledCommandIds,['notes'])
+  const saved=f.commercial.list(f.at.id)[0]!
+  assert.equal(saved.services.length,49);assert.deepEqual(saved.services,item.services);assert.equal(saved.notes,'Independente preservado')
+  assert.equal(applyVoiceBatch(db,f.at.id,body,session).replay,true)
+  assert.equal(f.commercial.list(f.at.id)[0]!.services.length,49)
+  const fresh=readVoiceContext(db,f.at.id,scene.id)
+  const exact:VoiceCommandBatch={...batch,idempotencyKey:'voice-recommendation-exact-capacity',expected:voiceRevisions(fresh),commands:[
+   {id:'one-suggest',op:'recommend_services',intent:'instruction',piece:ref(item.pieceId),mode:'assisted',ruleIds:[rules[0]!.id]}
+  ]}
+  const exactPlan=planVoiceCommands(exact,fresh)
+  assert.equal(exactPlan.results[0]!.status,'valid');assert.equal(exactPlan.changes.length,1)
+  stageVoiceBatch(db,exact,exactPlan.stateDigest,exactPlan.requestDigest,session)
+  applyVoiceBatch(db,f.at.id,{scenarioId:scene.id,idempotencyKey:exact.idempotencyKey},session)
+  assert.equal(f.commercial.list(f.at.id)[0]!.services.length,50)
+ }finally{db.close()}
+})
