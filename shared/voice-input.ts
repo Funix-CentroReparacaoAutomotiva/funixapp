@@ -1,3 +1,4 @@
+import type {VoiceResolution} from './voice-resolution.ts'
 import type {VoiceReviewGroup} from './voice-review.ts'
 import type {VoicePlan} from './voice-commands.ts'
 
@@ -11,6 +12,6 @@ export interface VoiceCaptureContext{
  atendimentoId:string;scenarioId:string;compositionRevision:number;scenarioRevision:number;configurationRevision:number
 }
 export interface VoiceInterpretation{
- requestId:string;transcription:string;plan:VoicePlan;review:string[];reviewGroups:VoiceReviewGroup[];applied:false
+ resolution?:VoiceResolution;requestId:string;transcription:string;plan:VoicePlan;review:string[];reviewGroups:VoiceReviewGroup[];applied:false
 }
 export const voiceCaptureKey=(c:VoiceCaptureContext|null)=>c?JSON.stringify(c):''

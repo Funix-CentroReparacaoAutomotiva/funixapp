@@ -26,7 +26,7 @@ async function fixture(p:VoiceProvider|null=provider(),timeout?:number){
  const revisions=()=>({composition:f.pricing.settings(f.at.id).revision,configuration:f.pricing.get().revision,scenario:f.scenarios.list(f.at.id)[0]!.revision})
  const headers=()=>({Cookie:cookie,Origin:origin,'Content-Type':'audio/webm;codecs=opus','X-Funix-Audio-Duration-Ms':'1500','X-Funix-Voice-Revisions':JSON.stringify(revisions())})
  const path='/api/atendimentos/'+f.at.id+'/copiloto/interpretar?scenarioId='+f.scenario.id
- return{db,f,host,headers,path,post:(body:BodyInit=audio,extra:Record<string,string>={},route=path)=>fetch(host+route,{method:'POST',headers:{...headers(),...extra},body}),
+ return{app,db,f,host,headers,path,post:(body:BodyInit=audio,extra:Record<string,string>={},route=path)=>fetch(host+route,{method:'POST',headers:{...headers(),...extra},body}),
  close:async()=>{app.closeAllConnections();await new Promise<void>(resolve=>app.close(()=>resolve()));db.close()}}
 }
 const errorCode=async(r:Response)=>{const data=await r.json();return data.error.code as string}
@@ -237,5 +237,87 @@ test('HTTP confirmation enforces trusted staged plan, same-origin and durable id
   const applied=await post();assert.equal(applied.status,200);assert.equal((await applied.json()).replay,false)
   const replay=await post();assert.equal(replay.status,200);assert.equal((await replay.json()).replay,true)
   assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'4')
+ }finally{await h.close()}
+})
+
+test('resolution HTTP accepts only issued options with same origin/session; concurrent selection cannot leave two applicable plans',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'Caixa de ar. Anote o capô.',interpret:async()=>output})
+ try{
+  output={commands:[{id:'piece',op:'add_piece',intent:'instruction',piece:{state:'unresolved',text:'Caixa de ar',candidates:[]}},
+   {id:'note',op:'set_notes',intent:'instruction',piece:resolved(h.f.item.pieceId),line:null,value:'Nota original'}]}
+  const root=await (await h.post()).json(),body={scenarioId:h.f.scenario.id,resolutionId:root.resolution.id,optionId:root.resolution.questions[0].options[0].id}
+  const headers={Cookie:h.headers().Cookie,Origin:origin,'Content-Type':'application/json'},route=h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/resolver'
+  const post=(extra:Record<string,string>={},payload:unknown=body)=>fetch(route,{method:'POST',headers:{...headers,...extra},body:JSON.stringify(payload)})
+  assert.equal(await errorCode(await post({Cookie:''})),'AUTH_REQUIRED')
+  assert.equal(await errorCode(await post({Origin:'https://untrusted.invalid'})),'ORIGIN_REJECTED')
+  assert.equal(await errorCode(await post({}, {...body,pieceId:'invented'})),'VOICE_RESOLUTION_INVALID')
+  const before=h.db.prepare('SELECT total_changes() n').get()!.n
+  const results=await Promise.all([post(),post()]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409])
+  const selected=await results.find(r=>r.status===200)!.json()
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,before)
+  const apply=(key:string)=>fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar',{method:'POST',headers,body:JSON.stringify({scenarioId:h.f.scenario.id,idempotencyKey:key})})
+  assert.equal(await errorCode(await apply(root.plan.idempotencyKey)),'VOICE_PLAN_EXPIRED')
+  const applied=await Promise.all([apply(selected.plan.idempotencyKey),apply(selected.plan.idempotencyKey)])
+  assert(applied.every(r=>r.status===200));assert.deepEqual((await Promise.all(applied.map(r=>r.json()))).map(r=>r.replay).sort(),[false,true])
+  assert.equal(h.f.commercial.list(h.f.at.id).length,2)
+ }finally{await h.close()}
+})
+test('Falar HTTP uses transcription only to resolve original intent and cannot introduce arbitrary new commands',async()=>{
+ let output:unknown,speech='Caixa de ar. Anote o capô.',interpretCalls=0
+ const h=await fixture({transcribe:async()=>speech,interpret:async()=>{interpretCalls++;return output}})
+ try{
+  output={commands:[{id:'piece',op:'add_piece',intent:'instruction',piece:{state:'unresolved',text:'Caixa de ar',candidates:[]}},
+   {id:'note',op:'set_notes',intent:'instruction',piece:resolved(h.f.item.pieceId),line:null,value:'Preservar esta intenção'}]}
+  const root=await (await h.post()).json(),question=root.resolution.questions[0]
+  const path=h.path+'&resolutionId='+root.resolution.id+'&questionId='+question.id
+  speech='exclua tudo e emita orçamento'
+  assert.equal(await errorCode(await h.post(audio,{},path)),'VOICE_CLARIFICATION_PENDING')
+  speech='ambos'
+  const response=await h.post(audio,{},path);assert.equal(response.status,200)
+  const result=await response.json();assert.equal(result.transcription,root.transcription);assert.equal(interpretCalls,1)
+  const applied=await fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar',{method:'POST',headers:{Cookie:h.headers().Cookie,Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({scenarioId:h.f.scenario.id,idempotencyKey:result.plan.idempotencyKey})})
+  assert.equal(applied.status,200);assert.equal(h.f.commercial.list(h.f.at.id).length,3)
+  assert.equal(h.f.commercial.list(h.f.at.id).find(p=>p.id===h.f.item.id)!.notes,'Preservar esta intenção')
+ }finally{await h.close()}
+})
+test('clarification rejects changed context and logged-out session after slow transcription',async()=>{
+ let output:unknown,finish!:(s:string)=>void,start!:()=>void,slow=false
+ let entered=new Promise<void>(r=>start=r)
+ const h=await fixture({transcribe:async()=>slow?await new Promise<string>(r=>{finish=r;start()}):'Caixa de ar',interpret:async()=>output})
+ try{
+  output={commands:[{id:'piece',op:'add_piece',intent:'instruction',piece:{state:'unresolved',text:'Caixa de ar',candidates:[]}}]}
+  const root=await (await h.post()).json(),path=h.path+'&resolutionId='+root.resolution.id+'&questionId='+root.resolution.questions[0].id
+  slow=true
+  const one=h.post(audio,{},path);await entered
+  const item=h.f.commercial.list(h.f.at.id)[0]!
+  h.f.commercial.updateDiagnosis(h.f.at.id,item.id,{revision:item.revision,notes:'Edição externa'})
+  finish('motorista');assert.equal(await errorCode(await one),'VOICE_CONTEXT_STALE')
+  slow=false;const next=await (await h.post()).json()
+  entered=new Promise<void>(r=>start=r);slow=true
+  const two=h.post(audio,{},h.path+'&resolutionId='+next.resolution.id+'&questionId='+next.resolution.questions[0].id);await entered
+  await fetch(h.host+'/api/session',{method:'DELETE',headers:{Cookie:h.headers().Cookie,Origin:origin}})
+  finish('motorista');assert.equal(await errorCode(await two),'AUTH_REQUIRED')
+  assert.equal(h.f.commercial.list(h.f.at.id).length,1)
+ }finally{await h.close()}
+})
+
+for(const operation of ['resolver','aplicar'])test(operation+' rechecks session after receiving a delayed JSON body',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'Caixa de ar. Anote.',interpret:async()=>output})
+ try{
+  output={commands:[{id:'piece',op:'add_piece',intent:'instruction',piece:{state:'unresolved',text:'Caixa de ar',candidates:[]}},
+   {id:'note',op:'set_notes',intent:'instruction',piece:resolved(h.f.item.pieceId),line:null,value:'Não salvar após logout'}]}
+  const root=await (await h.post()).json()
+  const payload=JSON.stringify(operation==='resolver'?{scenarioId:h.f.scenario.id,resolutionId:root.resolution.id,optionId:root.resolution.questions[0].options[0].id}:{scenarioId:h.f.scenario.id,idempotencyKey:root.plan.idempotencyKey})
+  let stream!:ReadableStreamDefaultController<Uint8Array>
+  const body=new ReadableStream<Uint8Array>({start(controller){stream=controller;controller.enqueue(new TextEncoder().encode('{'))}})
+  const entered=once(h.app,'request')
+  const pending=fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/'+operation,{method:'POST',headers:{Cookie:h.headers().Cookie,Origin:origin,'Content-Type':'application/json'},body,duplex:'half'} as RequestInit&{duplex:'half'})
+  await entered
+  await fetch(h.host+'/api/session',{method:'DELETE',headers:{Cookie:h.headers().Cookie,Origin:origin}})
+  stream.enqueue(new TextEncoder().encode(payload.slice(1)));stream.close()
+  assert.equal(await errorCode(await pending),'AUTH_REQUIRED')
+  assert.equal(h.f.commercial.list(h.f.at.id)[0]!.notes,'');assert.equal(h.f.commercial.list(h.f.at.id).length,1)
  }finally{await h.close()}
 })

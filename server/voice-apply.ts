@@ -13,14 +13,16 @@ const stale=()=>new ServiceError(409,'VOICE_CONTEXT_STALE','O Atendimento, cená
 const invalid=()=>new ServiceError(400,'VOICE_APPLY_INVALID','Confirmação de voz inválida.')
 const keyFor=(at:string,key:string)=>at+':'+key
 
-export function stageVoiceBatch(db:DatabaseSync,batch:VoiceCommandBatch,stateDigest:string,requestDigest:string,sessionId:string){
+export function stageVoiceBatch(db:DatabaseSync,batch:VoiceCommandBatch,stateDigest:string,requestDigest:string,sessionId:string,expires=Date.now()+15*60_000){
  let map=staged.get(db)
  if(!map){map=new Map();staged.set(db,map)}
  const now=Date.now()
  for(const[key,value]of map)if(value.expires<=now)map.delete(key)
  if(map.size>=100)map.delete(map.keys().next().value!)
- map.set(keyFor(batch.atendimentoId,batch.idempotencyKey),{batch:structuredClone(batch),stateDigest,requestDigest,sessionId,expires:now+15*60_000})
+ map.set(keyFor(batch.atendimentoId,batch.idempotencyKey),{batch:structuredClone(batch),stateDigest,requestDigest,sessionId,expires:Math.min(expires,now+15*60_000)})
 }
+
+export function discardVoiceBatch(db:DatabaseSync,at:string,key:string){staged.get(db)?.delete(keyFor(at,key))}
 
 export interface VoiceApplyResult{applied:true;replay:boolean;idempotencyKey:string;changed:number;handledCommandIds:string[];revision:number}
 
@@ -51,6 +53,7 @@ export function applyVoiceBatch(db:DatabaseSync,at:string,input:unknown,sessionI
   if(plan.issues.some(i=>i.code==='REVISION_CONFLICT'||i.code==='CONTEXT_CONFLICT')||voiceContextDigest(fresh)!==pending.stateDigest||plan.requestDigest!==pending.requestDigest)throw stale()
   // Changes are generated exclusively by the trusted server-side planner, never from the request body.
   if(plan.replay||plan.issues.some(i=>['INVALID_BATCH','INVALID_CONTEXT','IDEMPOTENCY_CONFLICT'].includes(i.code)))throw stale()
+  if(!plan.changes.length)throw new ServiceError(409,'VOICE_NO_SAFE_CHANGES','Não há alterações seguras para aplicar.')
   const removals=plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)
   if(removals&&body.confirmGlobalRemoval!==true)throw new ServiceError(409,'VOICE_REMOVAL_CONFIRMATION_REQUIRED','Confirme explicitamente a exclusão compartilhada entre cenários.')
   const ids=new Map<string,string>()

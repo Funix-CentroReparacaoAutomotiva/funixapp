@@ -18,6 +18,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --no-save --no-audit --no-fund playwright@1.56.1
       - run: node scripts/voice-browser-review.mjs
+      - run: node scripts/voice-resolution-browser.mjs
       - name: Check existing app.funix.com.br (GET only; no credentials)
         if: always()
         run: |
@@ -45,5 +46,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pr3-voice-browser-review
-          path: artifacts/voice-review/
+          path: artifacts/
           if-no-files-found: ignore

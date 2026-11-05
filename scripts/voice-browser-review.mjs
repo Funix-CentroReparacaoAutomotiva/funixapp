@@ -113,7 +113,7 @@ try{
   assert.equal(f.commercial.list(f.at.id)[0].services[0].quantity,'3','review is read-only')
   mode='pending'
   await record(page)
-  assert.equal(await compact.locator('.voice-apply').count(),0,'pending-only review cannot apply')
+  assert(await compact.locator('.voice-apply').isDisabled(),'pending-only review cannot apply')
   assert.match(await compact.innerText(),/Pintura ambígua/)
   await compact.screenshot({path:screenshotDir+'/pending-'+width+'.png'})
   mode='quantity'

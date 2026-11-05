@@ -18,3 +18,11 @@ export function hierarchyPieces() {
   visit(hierarchy.acesso_geral)
   return [...pieces.values()]
 }
+
+// Pair membership comes from the supplied hierarchy, never from inferred names/suffixes.
+export function hierarchyPiecePairs():string[][]{
+  const pairs:string[][]=[]
+  const visit=(node:HierarchyNode)=>{if(node.tipo==='acao_ambos'&&node.gera_codigos_peca?.length===2)pairs.push([...node.gera_codigos_peca]);node.itens?.forEach(visit)}
+  Object.values(hierarchy.regioes).forEach(visit);visit(hierarchy.acesso_geral)
+  return pairs
+}
