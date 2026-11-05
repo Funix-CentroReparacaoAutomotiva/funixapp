@@ -4,6 +4,7 @@ import{randomUUID}from'node:crypto'
 import{ServiceError}from'./errors.ts'
 import{VOICE_MAX_BYTES,VOICE_MAX_DURATION_MS,VOICE_MIMES,VOICE_PROCESSING_MS,VOICE_UPLOAD_MS}from'../shared/voice-input.ts'
 import{stageVoiceBatch}from'./voice-apply.ts'
+import{voiceReview}from'./voice-review.ts'
 import{readVoiceContext,modelVoiceContext}from'./voice-context.ts'
 import{planVoiceCommands,voiceContextDigest,voiceRevisions}from'./voice-planner.ts'
 import{validateVoiceCommands}from'./voice-command-validation.ts'
@@ -73,7 +74,7 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
     if(!validated.batch||validated.invalidIndexes.length||validated.issues.length)throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
     const plan=planVoiceCommands(validated.batch,context)
     if(plan.changes.length)stageVoiceBatch(db,validated.batch,plan.stateDigest,plan.requestDigest,sessionId)
-    return{requestId,transcription,plan,applied:false as const}
+    return{requestId,transcription,plan,review:voiceReview(plan,context),applied:false as const}
    }
    return await Promise.race([work(),abort])
   }catch(error){
