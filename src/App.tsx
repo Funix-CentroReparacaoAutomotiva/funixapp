@@ -299,7 +299,7 @@ function App() {
         </>}
       </>}
     </div>
-    <VoiceCopilot navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1);setSavedMessage('Plano de voz aplicado ao Atendimento.')}}/>
+    <VoiceCopilot onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {
