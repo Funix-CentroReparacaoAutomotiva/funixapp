@@ -238,6 +238,14 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       UNIQUE(atendimento_id,idempotency_key)
     );
     INSERT INTO sqlite_sequence(name,seq) VALUES('budget_emission_attempts',(SELECT COALESCE(MAX(serial),0) FROM budget_document_identity));
+  `)},
+  {version:13,apply:db=>db.exec(`
+    CREATE TABLE voice_apply_receipts (
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL,scenario_id TEXT NOT NULL,
+      request_digest TEXT NOT NULL,result_json TEXT NOT NULL,
+      PRIMARY KEY(atendimento_id,idempotency_key)
+    );
   `)}
 ]
 

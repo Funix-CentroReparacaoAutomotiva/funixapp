@@ -68,7 +68,7 @@ test('structured interpretation yields transcription and read-only plan; snapsho
   output={commands:[{id:'increment',op:'set_quantity',intent:'instruction',piece:resolved(h.f.item.pieceId),line:{kind:'id',id:h.f.item.services[0]!.id},mode:'increment',value:'1'}]}
   const before=h.db.prepare('SELECT total_changes() AS n').get()!.n
   const r=await h.post();assert.equal(r.status,200);const result=await r.json()
-  assert.equal(result.transcription,'No capô, acrescente mais uma unidade.');assert.equal(result.applied,false);assert.equal(result.plan.changes[0].patch.quantity,'4')
+  assert.equal(result.transcription,'No capô, acrescente mais uma unidade.');assert.equal(result.applied,false);assert(result.review.some((entry:string)=>entry.includes('quantidade: 4')));assert.equal(result.plan.changes[0].patch.quantity,'4')
   assert.equal(h.db.prepare('SELECT total_changes() AS n').get()!.n,before)
   assert.deepEqual(b.get(h.f.at.id,issued.id),snapshot);assert.deepEqual(b.pdf(h.f.at.id,issued.id),pdf)
   assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'3')
@@ -202,5 +202,40 @@ test('capture revision JSON key order is irrelevant',async()=>{
  try{
   const original=JSON.parse(h.headers()['X-Funix-Voice-Revisions'])
   assert.equal((await h.post(audio,{'X-Funix-Voice-Revisions':JSON.stringify({scenario:original.scenario,composition:original.composition,configuration:original.configuration})})).status,200)
+ }finally{await h.close()}
+})
+
+test('voice confirmation applies server-staged plan once, requires origin/session, and reloads SQLite state',async()=>{
+ const h=await fixture(provider({commands:[{id:'increment',op:'set_quantity',intent:'instruction',
+  piece:resolved('placeholder'),line:{kind:'id',id:'placeholder'},mode:'increment',value:'1'}]}))
+ try{
+  // Replace the fixture provider via a fresh application with identifiers bound to this Atendimento.
+  // The production endpoint must not accept a plan or SQL from the confirmation body.
+  assert.equal(await errorCode(await fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar',{
+   method:'POST',headers:{...h.headers(),'Content-Type':'application/json'},
+   body:JSON.stringify({scenarioId:h.f.scenario.id,idempotencyKey:'not-staged-voice-request'})
+  })),'VOICE_PLAN_EXPIRED')
+  assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'3')
+ }finally{await h.close()}
+})
+test('HTTP confirmation enforces trusted staged plan, same-origin and durable idempotency',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'Aumente a quantidade.',interpret:async()=>output})
+ try{
+  output={commands:[{id:'increment',op:'set_quantity',intent:'instruction',piece:resolved(h.f.item.pieceId),
+   line:{kind:'id',id:h.f.item.services[0]!.id},mode:'increment',value:'1'}]}
+  const interpretation=await h.post()
+  assert.equal(interpretation.status,200)
+  const {plan}=await interpretation.json()
+  const route=h.host+'/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar'
+  const body=JSON.stringify({scenarioId:h.f.scenario.id,idempotencyKey:plan.idempotencyKey})
+  const headers={Cookie:h.headers().Cookie,Origin:origin,'Content-Type':'application/json'}
+  const post=(extra:Record<string,string>={},payload=body)=>fetch(route,{method:'POST',headers:{...headers,...extra},body:payload})
+  assert.equal(await errorCode(await post({Origin:'https://unauthorized.invalid'})),'ORIGIN_REJECTED')
+  assert.equal(await errorCode(await post({Cookie:''})),'AUTH_REQUIRED')
+  assert.equal(await errorCode(await post({},JSON.stringify({...JSON.parse(body),commands:[{op:'remove_piece'}]}))),'VOICE_APPLY_INVALID')
+  const applied=await post();assert.equal(applied.status,200);assert.equal((await applied.json()).replay,false)
+  const replay=await post();assert.equal(replay.status,200);assert.equal((await replay.json()).replay,true)
+  assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'4')
  }finally{await h.close()}
 })

@@ -6,7 +6,7 @@ import type{VoiceCaptureContext,VoiceInterpretation}from'../../shared/voice-inpu
 import{planVoiceCommands}from'../voice-planner.ts'
 import{voiceFixture}from'./fixtures/voice-planner.ts'
 const context:VoiceCaptureContext={atendimentoId:'synthetic-at',scenarioId:'synthetic-scenario',compositionRevision:1,configurationRevision:1,scenarioRevision:1}
-const result:VoiceInterpretation={requestId:'synthetic-request',transcription:'Texto sintético',applied:false,plan:planVoiceCommands({},voiceFixture())}
+const result:VoiceInterpretation={requestId:'synthetic-request',transcription:'Texto sintético',review:[],applied:false,plan:planVoiceCommands({},voiceFixture())}
 const tick=()=>new Promise(r=>setTimeout(r,0))
 function setup(overrides:Partial<CaptureDependencies>={}){
  let stopped=0,calls=0,created=0,recorder:FakeRecorder,submitted:Blob|null=null,signal:AbortSignal|undefined

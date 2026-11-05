@@ -3,6 +3,8 @@ import type{IncomingMessage}from'node:http'
 import{randomUUID}from'node:crypto'
 import{ServiceError}from'./errors.ts'
 import{VOICE_MAX_BYTES,VOICE_MAX_DURATION_MS,VOICE_MIMES,VOICE_PROCESSING_MS,VOICE_UPLOAD_MS}from'../shared/voice-input.ts'
+import{stageVoiceBatch}from'./voice-apply.ts'
+import{voiceReview}from'./voice-review.ts'
 import{readVoiceContext,modelVoiceContext}from'./voice-context.ts'
 import{planVoiceCommands,voiceContextDigest,voiceRevisions}from'./voice-planner.ts'
 import{validateVoiceCommands}from'./voice-command-validation.ts'
@@ -12,7 +14,7 @@ const invalid=(message:string):never=>{throw new ServiceError(400,'VOICE_INVALID
 const stale=()=>new ServiceError(409,'VOICE_CONTEXT_STALE','O Atendimento ou cenário mudou. Grave novamente no contexto atual.')
 export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undefined,processingMs=VOICE_PROCESSING_MS){
  let busy=false,windowStart=0,attempts=0
- return async(req:IncomingMessage,at:string,url:URL,requestId:string,sessionValid:()=>boolean)=>{
+ return async(req:IncomingMessage,at:string,url:URL,requestId:string,sessionValid:()=>boolean,sessionId:string)=>{
   if(!provider)throw new ServiceError(503,'VOICE_UNAVAILABLE','Copiloto de voz não configurado no backend.')
   if(busy)throw new ServiceError(429,'VOICE_BUSY','Já existe um áudio em processamento. Aguarde sua conclusão.')
   if(Date.now()-windowStart>=60000){windowStart=Date.now();attempts=0}
@@ -70,7 +72,9 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
      idempotencyKey:randomUUID(),commands:convertVoiceModelOutput(output)}
     const validated=validateVoiceCommands(batch)
     if(!validated.batch||validated.invalidIndexes.length||validated.issues.length)throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
-    return{requestId,transcription,plan:planVoiceCommands(batch,context),applied:false as const}
+    const plan=planVoiceCommands(validated.batch,context)
+    if(plan.changes.length)stageVoiceBatch(db,validated.batch,plan.stateDigest,plan.requestDigest,sessionId)
+    return{requestId,transcription,plan,review:voiceReview(plan,context),applied:false as const}
    }
    return await Promise.race([work(),abort])
   }catch(error){
