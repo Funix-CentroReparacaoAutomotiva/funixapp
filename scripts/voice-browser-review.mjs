@@ -79,6 +79,10 @@ try{
    mode='remove'
    await record(page)
    assert.match(await panel.locator('.voice-review').innerText(),/EXCLUIR peça/)
+   const action=await panel.locator('.voice-apply').boundingBox()
+   const bounds=await panel.boundingBox()
+   assert(action&&bounds&&action.y>=bounds.y&&action.y+action.height<=bounds.y+bounds.height+2,
+    'global removal confirmation must be visible without scrolling the review')
    await panel.screenshot({path:screenshotDir+'/global-removal-390.png'})
    page.once('dialog',dialog=>dialog.dismiss())
    await panel.locator('.voice-apply').click()
