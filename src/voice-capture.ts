@@ -16,7 +16,7 @@ export class VoiceCapture{
  private timer:ReturnType<typeof setTimeout>|undefined
  private request:AbortController|null=null
  private context:VoiceCaptureContext|null=null
- private state:CaptureState={phase:'idle',message:'Segure o Copiloto para ditar. Nenhuma alteração será salva nesta etapa.'}
+ private state:CaptureState={phase:'idle',message:'Segure o Copiloto para ditar. Revise o plano antes de salvar.'}
  private dependencies:CaptureDependencies
  private changed:(state:CaptureState)=>void
  constructor(dependencies:CaptureDependencies,changed:(state:CaptureState)=>void){this.dependencies=dependencies;this.changed=changed}
@@ -61,7 +61,7 @@ export class VoiceCapture{
     this.request=new AbortController()
     this.publish({phase:'processing',message:limited?'Limite atingido. Processando o áudio capturado e interpretando…':'Processando áudio e interpretando…'})
     void this.dependencies.process(blob,context,duration,this.request.signal).then(result=>{
-     if(generation===this.generation&&voiceCaptureKey(context)===voiceCaptureKey(this.context))this.publish({phase:'done',message:'Interpretação concluída. Plano de teste; nenhuma alteração aplicada.',result})
+     if(generation===this.generation&&voiceCaptureKey(context)===voiceCaptureKey(this.context))this.publish({phase:'done',message:'Plano pronto para revisão. Nenhuma alteração foi salva.',result})
     }).catch(error=>{if(generation===this.generation&&(error as Error).name!=='AbortError')this.publish({phase:'error',message:(error as Error).message||'Não foi possível concluir. Grave novamente.'})}).finally(()=>{if(generation===this.generation)this.request=null})
    }
    recorder.start(1000)
@@ -82,6 +82,6 @@ export class VoiceCapture{
   ++this.generation;this.held=false;this.request?.abort();this.request=null
   const recorder=this.recorder;this.recorder=null
   if(recorder&&recorder.state!=='inactive')recorder.stop()
-  this.releaseTracks();this.publish({phase:'idle',message:'Segure o Copiloto para ditar. Nenhuma alteração será salva nesta etapa.'})
+  this.releaseTracks();this.publish({phase:'idle',message:'Segure o Copiloto para ditar. Revise o plano antes de salvar.'})
  }
 }
