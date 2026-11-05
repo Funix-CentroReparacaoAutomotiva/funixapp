@@ -25,14 +25,16 @@ try{
   const services=[['Funilaria QA','P'],['Montagem QA','M'],['Pintura completa QA','Completa']].map(([name,dimension])=>{const s=f.commercial.saveCatalog({kind:'servico',name});return{s,d:f.commercial.saveCatalog({kind:'dimensao',name:dimension,serviceId:s.id})}})
   for(const name of ['Funilaria alternativa A','Funilaria alternativa B','Funilaria alternativa C'])f.commercial.saveCatalog({kind:'servico',name})
   const inactive=f.commercial.saveCatalog({kind:'servico',name:'Funilaria inativa QA'});f.commercial.saveCatalog({revision:inactive.revision,active:false},inactive.id)
+  const passenger=pair.find(p=>p.side==='passageiro')
+  const existing=f.commercial.add(f.at.id,{pieceCodes:[passenger.code]}).find(p=>p.pieceId===passenger.id)
+  const savedPassenger=f.commercial.updateDiagnosis(f.at.id,existing.id,{revision:existing.revision,services:[{serviceId:services[0].s.id,dimensionId:services[0].d.id,quantity:'1'}]})
   let mode='only',interpretCalls=0
   const provider={
-   transcribe:async(bytes,mime)=>{audio.observeUpload(bytes,mime);return mode==='clarify'?'ambos':mode==='invalid'?'exclua tudo e emita PDF':'Caixa de ar, funilaria P, montagem M e pintura completa.'},
+   transcribe:async(bytes,mime)=>{audio.observeUpload(bytes,mime);return mode==='clarify'?'ambos':mode==='invalid'?'exclua tudo e emita PDF':'Na caixa de ar pode colocar funilaria P, montagem M e pintura completa.'},
    interpret:async()=>{interpretCalls++;return{commands:mode==='many'?[{id:'service-choice',op:'add_service',intent:'instruction',piece:ref(f.item.pieceId),service:unknown('Funilaria'),dimension:null,preserveDimension:false,quantity:'1'}]:mode==='unknown'?[
     {id:'unknown',op:'add_piece',intent:'instruction',piece:unknown('Peça inexistente XYZ')},
     {id:'note',op:'set_notes',intent:'instruction',piece:ref(f.item.pieceId),line:null,value:'Somente alteração segura'}
    ]:[
-    {id:'piece',op:'add_piece',intent:'instruction',piece:unknown('Caixa de ar')},
     ...services.map(({s,d},i)=>({id:'service-'+i,op:'add_service',intent:'instruction',piece:unknown('Caixa de ar'),service:ref(s.id),dimension:ref(d.id),preserveDimension:false,quantity:'1'})),
     ...(mode==='only'?[]:[{id:'note',op:'set_notes',intent:'instruction',piece:ref(f.item.pieceId),line:null,value:'Ditado original preservado'}])
    ]}}
@@ -48,7 +50,7 @@ try{
    await page.goto(origin+'/atendimentos/'+f.at.id+'?aba=diagnosticos');await page.locator('.commercial-workspace').waitFor();await page.waitForTimeout(500)
    const panel=page.locator('.voice-panel')
    await record(page)
-   assert.equal(await panel.locator('.voice-entry.pending').count(),1,'four dependent commands produce one question')
+   assert.equal(await panel.locator('.voice-entry.pending').count(),1,'three services without add_piece produce one question')
    assert.match(await panel.innerText(),/Não será aplicado sem resolver/)
    assert.equal(await panel.locator('.voice-options button').filter({hasText:/^(Motorista|Passageiro|Ambos)$/}).count(),3)
    assert(await panel.locator('.voice-apply').isDisabled(),'zero changes cannot apply')
@@ -61,10 +63,13 @@ try{
     const response=page.waitForResponse(r=>r.url().endsWith('/copiloto/resolver'))
     const button=panel.getByRole('button',{name:side,exact:true});await button.focus();await page.keyboard.press('Enter')
     const result=await (await response).json()
-    assert.equal(result.plan.changes.filter(c=>c.op==='add_service').length,3)
+    assert(!result.plan.issues.some(i=>i.code==='PIECE_NOT_PRESENT'))
+    assert.equal(result.plan.changes.filter(c=>c.op==='add_piece').length,side==='Motorista'?1:0)
+    assert.equal(result.plan.changes.filter(c=>c.op==='add_service').length,side==='Motorista'?3:2)
     await panel.locator('.voice-options').waitFor({state:'hidden'})
+    assert.equal(await panel.locator('.voice-entry.add .voice-entry-label').filter({hasText:/^Peça$/}).count(),side==='Motorista'?1:0,'review must expose the physical prerequisite')
     assert.match(await panel.innerText(),new RegExp(side,'i'))
-    assert.equal(f.commercial.list(f.at.id).length,1,'selection is read-only')
+    assert.equal(f.commercial.list(f.at.id).length,2,'selection is read-only')
    }
    // The negotiation predates the clarification and must survive subsequent application.
    await page.locator('.approved-finance .summary').click();await page.locator('.neg-head').click()
@@ -76,13 +81,19 @@ try{
    assert.equal(await panel.getByRole('button',{name:'Ambos',exact:true}).count(),1,'failed clarification preserves options')
    mode='clarify';const clarified=await (await clarifyVoice(page,audio)).json()
    assert.equal(interpretCalls,originalCalls,'clarification must not reinterpret original commands')
-   assert.equal(clarified.plan.changes.filter(c=>c.op==='add_service').length,6)
-   assert.equal(clarified.transcription,'Caixa de ar, funilaria P, montagem M e pintura completa.')
+   assert(!clarified.plan.issues.some(i=>i.code==='PIECE_NOT_PRESENT'))
+   assert.equal(clarified.plan.changes.filter(c=>c.op==='add_piece').length,1)
+   assert.equal(clarified.plan.changes.filter(c=>c.op==='add_service').length,5)
+   assert.equal(clarified.transcription,'Na caixa de ar pode colocar funilaria P, montagem M e pintura completa.')
    await panel.locator('.voice-options').waitFor({state:'hidden'})
+   const prerequisite=panel.locator('.voice-entry.add').filter({has:page.locator('.voice-entry-label').filter({hasText:/^Peça$/})})
+   assert.equal(await prerequisite.count(),1,'Ambos must visibly propose only the absent physical piece')
+   await prerequisite.scrollIntoViewIfNeeded()
    await panel.screenshot({path:artifacts+'/both-review-'+width+'.png'})
    const applied=page.waitForResponse(r=>r.url().endsWith('/copiloto/aplicar')&&r.status()===200)
    await panel.locator('.voice-apply').click();await applied;await panel.waitFor({state:'hidden'})
    assert.equal(f.commercial.list(f.at.id).length,3)
+   assert.equal(f.commercial.list(f.at.id).find(p=>p.id===savedPassenger.id).services[0].id,savedPassenger.services[0].id)
    for(const item of f.commercial.list(f.at.id).filter(p=>pair.some(c=>c.id===p.pieceId)))assert.equal(item.services.length,3)
    assert.equal(f.commercial.list(f.at.id).find(p=>p.id===f.item.id).notes,'Ditado original preservado')
    assert.match(await page.getByRole('textbox',{name:'Valor em reais',exact:true}).inputValue(),/123,45/)
