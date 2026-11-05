@@ -9,3 +9,13 @@
 .voice-panel .voice-status{white-space:normal;line-height:1.4;font-size:11px}
 .voice-status.error{color:#a12132}
 .voice-cancel{min-height:36px}
+
+.voice-panel .voice-review{font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.voice-panel .voice-review strong{display:block;margin:8px 0}
+.voice-panel .voice-review ol{padding-left:22px;margin:6px 0 10px}
+.voice-panel .voice-review li{padding:6px 0;border-bottom:1px solid var(--border)}
+.voice-panel .voice-removal{font-weight:650;color:#e6a0aa}
+.voice-panel .voice-apply{width:100%;min-height:48px;padding:10px 12px;font-size:13px;white-space:normal;overflow-wrap:anywhere}
+.voice-panel .voice-apply:disabled{opacity:.6}
+.voice-panel .voice-apply-error{color:#e6a0aa;font-size:12px}
+@media(max-width:400px){.voice-panel .voice-review{font-size:12px}.voice-panel .voice-review li{padding:8px 0}}
