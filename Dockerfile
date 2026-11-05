@@ -32,6 +32,7 @@ WORKDIR /app
 # Node 24 runs the erasable TypeScript directly; no runtime npm dependencies.
 COPY --chown=node:node package.json ./
 COPY --chown=node:node server/*.ts ./server/
+COPY --chown=node:node server/chat/*.ts ./server/chat/
 COPY --chown=node:node server/data ./server/data
 COPY --chown=node:node shared ./shared
 USER node
