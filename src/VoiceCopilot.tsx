@@ -77,7 +77,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
      {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal">ATENÇÃO: a exclusão é definitiva na composição atual e atinge todos os cenários, incluindo os serviços e componentes relacionados.</p>}
     </section>
     <details><summary>Detalhes técnicos do plano</summary><pre>{JSON.stringify(state.result.plan,null,2)}</pre></details>
-    {state.result.plan.changes.length>0&&<button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Confirmar e aplicar alterações'}</button>}
+
     {state.result.plan.changes.length===0&&<p>Não há alterações válidas a aplicar.</p>}
    </>}
    {applyError&&<p role="alert" className="voice-apply-error">{applyError}</p>}
@@ -85,6 +85,9 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    {state.recoveryAudio&&<RecoveryAudio blob={state.recoveryAudio}/>}
    {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();capture.cancel()}}>Cancelar</button>}
   </div>
+  {state.result&&state.result.plan.changes.length>0&&<div className="voice-action-bar">
+   <button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Confirmar e aplicar alterações'}</button>
+  </div>}
   <div className={'copilot-status voice-status '+state.phase} role={state.phase==='error'?'alert':'status'}>{state.message}</div>
  </section>}
  {visible&&<button className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled}
