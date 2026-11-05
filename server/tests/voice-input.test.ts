@@ -68,7 +68,7 @@ test('structured interpretation yields transcription and read-only plan; snapsho
   output={commands:[{id:'increment',op:'set_quantity',intent:'instruction',piece:resolved(h.f.item.pieceId),line:{kind:'id',id:h.f.item.services[0]!.id},mode:'increment',value:'1'}]}
   const before=h.db.prepare('SELECT total_changes() AS n').get()!.n
   const r=await h.post();assert.equal(r.status,200);const result=await r.json()
-  assert.equal(result.transcription,'No capô, acrescente mais uma unidade.');assert.equal(result.applied,false);assert.equal(result.plan.changes[0].patch.quantity,'4')
+  assert.equal(result.transcription,'No capô, acrescente mais uma unidade.');assert.equal(result.applied,false);assert(result.review.some((entry:string)=>entry.includes('quantidade: 4')));assert.equal(result.plan.changes[0].patch.quantity,'4')
   assert.equal(h.db.prepare('SELECT total_changes() AS n').get()!.n,before)
   assert.deepEqual(b.get(h.f.at.id,issued.id),snapshot);assert.deepEqual(b.pdf(h.f.at.id,issued.id),pdf)
   assert.equal(h.f.commercial.list(h.f.at.id)[0]!.services[0]!.quantity,'3')
