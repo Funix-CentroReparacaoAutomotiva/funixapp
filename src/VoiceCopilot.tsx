@@ -14,22 +14,25 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const[applyError,setApplyError]=useState('')
  const[transcriptionOpen,setTranscriptionOpen]=useState(false)
  const[appliedKey,setAppliedKey]=useState<string|null>(null)
+ const clarification=useRef<{resolutionId:string;questionId:string}|null>(null)
+ const reviewEpoch=useRef(0)
+ const[resolving,setResolving]=useState(false)
  const[capture]=useState(()=>new VoiceCapture({
   getMedia:()=>navigator.mediaDevices.getUserMedia({audio:true}),
   supported:()=>typeof navigator.mediaDevices?.getUserMedia==='function'&&typeof window.MediaRecorder==='function',
   supportsMime:m=>typeof MediaRecorder.isTypeSupported==='function'&&MediaRecorder.isTypeSupported(m),
   recorder:(stream,mime)=>new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:64000}),
   now:()=>performance.now(),
-  process:async(audio,context,duration,signal)=>api<VoiceInterpretation>(`/api/atendimentos/${context.atendimentoId}/copiloto/interpretar?scenarioId=${encodeURIComponent(context.scenarioId)}`,{
+  process:async(audio,context,duration,signal)=>api<VoiceInterpretation>(`/api/atendimentos/${context.atendimentoId}/copiloto/interpretar?scenarioId=${encodeURIComponent(context.scenarioId)}${clarification.current?'&resolutionId='+encodeURIComponent(clarification.current.resolutionId)+'&questionId='+encodeURIComponent(clarification.current.questionId):''}`,{
    method:'POST',headers:{'Content-Type':audio.type,'X-Funix-Audio-Duration-Ms':String(Math.ceil(duration)),
     'X-Funix-Voice-Revisions':JSON.stringify({composition:context.compositionRevision,configuration:context.configurationRevision,scenario:context.scenarioRevision})},
    body:audio,signal:AbortSignal.any([signal,AbortSignal.timeout(VOICE_PROCESSING_MS+VOICE_UPLOAD_MS+5000)])})
- },setState))
+ },next=>{const keep=Boolean(clarification.current&&!next.result);if(next.result)clarification.current=null;setState(previous=>keep?{...next,result:previous.result}:next)}))
  const gesture=useRef<{timer:ReturnType<typeof setTimeout>;long:boolean;pointer?:number;key?:string}|null>(null)
  const clearGesture=()=>{if(gesture.current)clearTimeout(gesture.current.timer);gesture.current=null}
  const key=voiceCaptureKey(context),available=visible&&!disabled
- useLayoutEffect(()=>{clearGesture();capture.cancel();setApplyError('');setAppliedKey(null);setTranscriptionOpen(false)},[navigationKey,capture])
- useLayoutEffect(()=>{clearGesture();capture.setContext(available?context:null);setApplyError('')},[key,available,capture,context])
+ useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.cancel();setApplyError('');setAppliedKey(null);setTranscriptionOpen(false)},[navigationKey,capture])
+ useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.setContext(available?context:null);setApplyError('')},[key,available,capture,context])
  useEffect(()=>{
   const cancel=()=>{clearGesture();capture.cancel()}
   const hidden=()=>{if(document.visibilityState==='hidden'&&['preparing','recording','processing'].includes(capture.snapshot.phase))cancel()}
@@ -37,9 +40,27 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',cancel);window.addEventListener('blur',blur)
   return()=>{document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',cancel);window.removeEventListener('blur',blur);cancel()}
  },[capture])
+ const capturing=['preparing','recording','processing'].includes(state.phase)
+ const busy=applying||resolving||capturing
+ async function resolve(optionId:string){
+  const resolution=state.result?.resolution,active=context,epoch=reviewEpoch.current
+  if(!resolution||!active||busy)return
+  setResolving(true);setApplyError('');clarification.current=null
+  try{
+   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/resolver`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,optionId})})
+   if(epoch===reviewEpoch.current)setState({phase:'done',message:'',result})
+  }catch(error){if(epoch===reviewEpoch.current)setApplyError((error as Error).message)}finally{setResolving(false)}
+ }
+ function talk(questionId=clarification.current?.questionId??state.result?.resolution?.questions[0]?.id){
+  if(state.phase==='recording'){capture.release();return}
+  const resolution=state.result?.resolution
+  if(!resolution||busy||!context)return
+  if(!questionId){setApplyError('Esta pendência exige um novo ditado. As alterações seguras do plano atual continuam disponíveis.');return}
+  clarification.current={resolutionId:resolution.id,questionId};setApplyError('');setTranscriptionOpen(false);onOpen();void capture.hold()
+ }
  async function apply(){
   const result=state.result,active=context
-  if(applying||!result||!active||!result.plan.idempotencyKey||result.plan.changes.length===0||appliedKey===result.plan.idempotencyKey)return
+  if(busy||!result||!active||!result.plan.idempotencyKey||result.plan.changes.length===0||appliedKey===result.plan.idempotencyKey)return
   if(result.plan.guards.composition!==active.compositionRevision||result.plan.guards.configuration!==active.configurationRevision||
    result.plan.guards.scenarios.find(s=>s.id===active.scenarioId)?.revision!==active.scenarioRevision){
    setApplyError('O contexto foi atualizado. Dite novamente antes de confirmar.');return
@@ -52,12 +73,13 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({scenarioId:active.scenarioId,idempotencyKey:result.plan.idempotencyKey,confirmGlobalRemoval:removes})
    })
-   if(applied.applied){setAppliedKey(result.plan.idempotencyKey);capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
+   if(applied.applied){setAppliedKey(result.plan.idempotencyKey);clarification.current=null;capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
   }catch(error){setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
  }
  function start(pointer?:number,key?:string){
-  if(gesture.current)return
+  if(gesture.current||busy)return
+  clarification.current=null;reviewEpoch.current++
   const current={timer:setTimeout(()=>{current.long=true;onOpen();void capture.hold()},350),long:false,pointer,key}
   gesture.current=current
  }
@@ -76,19 +98,21 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    {!context&&<p>Abra um Atendimento e aguarde o cenário carregar para usar a voz.</p>}
    {state.result&&<>
     {transcriptionOpen&&<p id="voice-transcript" className="voice-transcript">{state.result.transcription}</p>}
-    <VoiceReview groups={state.result.reviewGroups}/>
+    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy}/>
     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal" role="alert">Exclusão definitiva em todos os cenários. Serviços e componentes vinculados também podem ser removidos.</p>}
    </>}
    {applyError&&<p role="alert" className="voice-apply-error">{applyError}</p>}
    {state.recoveryAudio&&<RecoveryAudio blob={state.recoveryAudio}/>}
    {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();capture.cancel()}}>Cancelar</button>}
   </div>
-  {state.result&&state.result.plan.changes.length>0&&<div className="voice-action-bar">
-   <button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Aplicar alterações'}</button>
+  {state.result&&<div className="voice-action-bar">
+   {state.result.resolution&&(state.result.resolution.questions.length>0||state.result.plan.results.some(r=>r.status==='pending'||r.status==='conflict'))&&<button className="voice-talk" disabled={applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}
+   <button className="voice-apply" disabled={busy||!context||state.result.plan.changes.length===0||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':state.result.reviewGroups.some(g=>g.entries.some(e=>e.kind==='pending'||e.kind==='warning'))?'Aplicar assim mesmo':'Aplicar alterações'}</button>
   </div>}
+  {state.result?.resolution&&state.phase==='recording'&&<p className="voice-clarification-hint">Diga apenas a opção ou o nome exato do cadastro. O ditado original será preservado.</p>}
   {state.phase!=='done'&&<div className={'copilot-status voice-status '+state.phase} role={state.phase==='error'?'alert':'status'}>{state.message}</div>}
  </section>}
- {visible&&<button className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled||applying}
+ {visible&&<button className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled||applying||resolving}
   onPointerDown={e=>{if(e.button!==0)return;e.currentTarget.setPointerCapture(e.pointerId);start(e.pointerId)}}
   onPointerUp={e=>{if(gesture.current?.pointer===e.pointerId)end()}}
   onPointerCancel={()=>end(true)} onLostPointerCapture={()=>{if(gesture.current?.pointer!==undefined)end(true)}}

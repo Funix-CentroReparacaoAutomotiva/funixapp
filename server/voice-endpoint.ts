@@ -3,11 +3,9 @@ import type{IncomingMessage}from'node:http'
 import{randomUUID}from'node:crypto'
 import{ServiceError}from'./errors.ts'
 import{VOICE_MAX_BYTES,VOICE_MAX_DURATION_MS,VOICE_MIMES,VOICE_PROCESSING_MS,VOICE_UPLOAD_MS}from'../shared/voice-input.ts'
-import{stageVoiceBatch}from'./voice-apply.ts'
-import{compactVoiceReview}from'./voice-review-summary.ts'
-import{voiceReview}from'./voice-review.ts'
+import{stageVoiceResolution,readVoiceResolution,clarifyVoiceResolution}from'./voice-resolution.ts'
 import{readVoiceContext,modelVoiceContext}from'./voice-context.ts'
-import{planVoiceCommands,voiceContextDigest,voiceRevisions}from'./voice-planner.ts'
+import{voiceContextDigest,voiceRevisions}from'./voice-planner.ts'
 import{validateVoiceCommands}from'./voice-command-validation.ts'
 import{convertVoiceModelOutput}from'./voice-model-contract.ts'
 import type{VoiceProvider}from'./voice-provider.ts'
@@ -26,9 +24,12 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
   if(length!==undefined&&(!/^\d+$/.test(length)||Number(length)>VOICE_MAX_BYTES))throw new ServiceError(413,'VOICE_AUDIO_TOO_LARGE','Áudio excede 12 MiB.')
   const duration=Number(req.headers['x-funix-audio-duration-ms'])
   if(!Number.isFinite(duration)||duration<=0||duration>VOICE_MAX_DURATION_MS)invalid('Duração declarada deve ser maior que zero e até três minutos.')
-  if([...url.searchParams.keys()].some(k=>k!=='scenarioId')||url.searchParams.getAll('scenarioId').length!==1)invalid('Informe somente o cenário aberto.')
+  const resolutionId=url.searchParams.get('resolutionId'),questionId=url.searchParams.get('questionId')
+  if((resolutionId!==null||questionId!==null)&&(!resolutionId||!questionId)||[resolutionId,questionId].some(v=>v!==null&&v.length>100))invalid('Esclarecimento inválido.')
+  if([...url.searchParams.keys()].some(k=>!['scenarioId','resolutionId','questionId'].includes(k))||['scenarioId','resolutionId','questionId'].some(k=>url.searchParams.getAll(k).length>1)||url.searchParams.getAll('scenarioId').length!==1)invalid('Informe somente o cenário aberto.')
   const scene=url.searchParams.get('scenarioId')!
   if(!scene||scene.length>100)invalid('Cenário inválido.')
+  if(resolutionId&&!readVoiceResolution(db,at,scene,resolutionId,sessionId).stored.targets.some(t=>t.id===questionId))invalid('Pendência não pertence à revisão.')
   const context=readVoiceContext(db,at,scene),scenario=context.workspace.scenarios.find(s=>s.id===scene)!
   let expected:unknown
   try{expected=JSON.parse(String(req.headers['x-funix-voice-revisions']??''))}catch{invalid('Revisões de captura ausentes.')}
@@ -63,6 +64,10 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
     const transcription=await provider.transcribe(audio,mime,controller.signal)
     if(typeof transcription!=='string'||!transcription.trim()||transcription.length>20000)throw new ServiceError(502,'VOICE_TRANSCRIPTION_FAILED','Transcrição vazia ou inválida.')
     controller.signal.throwIfAborted()
+    if(resolutionId&&questionId){
+     if(!sessionValid())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada durante o esclarecimento.')
+     return clarifyVoiceResolution(db,at,scene,resolutionId,questionId,transcription,sessionId,requestId)
+    }
     const output=await provider.interpret(transcription,modelVoiceContext(context),controller.signal)
     controller.signal.throwIfAborted()
     if(!sessionValid())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada durante o processamento.')
@@ -73,9 +78,7 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
      idempotencyKey:randomUUID(),commands:convertVoiceModelOutput(output)}
     const validated=validateVoiceCommands(batch)
     if(!validated.batch||validated.invalidIndexes.length||validated.issues.length)throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
-    const plan=planVoiceCommands(validated.batch,context)
-    if(plan.changes.length)stageVoiceBatch(db,validated.batch,plan.stateDigest,plan.requestDigest,sessionId)
-    return{requestId,transcription,plan,review:voiceReview(plan,context),reviewGroups:compactVoiceReview(plan,context,validated.batch.commands),applied:false as const}
+    return stageVoiceResolution(db,validated.batch,transcription,context,sessionId,requestId)
    }
    return await Promise.race([work(),abort])
   }catch(error){

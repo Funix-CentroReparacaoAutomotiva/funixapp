@@ -75,13 +75,13 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
   const issues=plan.issues.filter(i=>i.commandId===result.commandId)
   const command=commands.find(c=>c.id===result.commandId)
   const entity=command&&'service'in command?(command.service.state==='resolved'?name(command.service.id):command.service.text):command&&'line'in command&&command.line?.kind==='id'?lineLabel(command.line.id):command&&'line'in command&&command.line?.kind==='service'?(command.line.service.state==='resolved'?name(command.line.service.id):command.line.service.text):undefined
-  commandGroup(result.commandId).entries.push({kind:'pending',scope:'shared',label:entity||'Conferir comando',fields:issues.flatMap(i=>(i.references??[]).flatMap(id=>lines.has(id)?[{label:'Opção',after:lineLabel(id)}]:[])),warning:[...new Set(issues.map(message))].join(' ')||concise[result.reason??'']||'Contexto alterado ou referência ambígua. Refaça o ditado.'})
+  commandGroup(result.commandId).entries.push({commandId:result.commandId,kind:'pending',scope:'shared',label:entity||'Conferir comando',fields:issues.flatMap(i=>(i.references??[]).flatMap(id=>lines.has(id)?[{label:'Opção',after:lineLabel(id)}]:[])),warning:[...new Set(issues.map(message))].join(' ')||concise[result.reason??'']||'Contexto alterado ou referência ambígua. Refaça o ditado.'})
  }
  for(const issue of plan.issues){
   if(issue.code==='GLOBAL_REMOVAL_CONFIRMATION_REQUIRED'||issue.code==='CURRENT_CALCULATION_PENDING'||issue.commandId&&pending.has(issue.commandId))continue
   if(!issue.commandId&&plan.results.some(r=>(r.status==='pending'||r.status==='conflict')&&r.reason===issue.code))continue
   // Keep operational warnings, including missing dimensions and third-party authorization.
-  commandGroup(issue.commandId).entries.push({kind:'warning',scope:'shared',label:'Atenção',fields:[],warning:message(issue)})
+  commandGroup(issue.commandId).entries.push({commandId:issue.commandId,kind:'warning',scope:'shared',label:'Atenção',fields:[],warning:message(issue)})
  }
  return [...groups.values()]
 }
