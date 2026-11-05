@@ -42,7 +42,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    setApplyError('O contexto foi atualizado. Dite novamente antes de confirmar.');return
   }
   const removes=result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)
-  if(removes&&!window.confirm('Esta exclusão altera todos os cenários do Atendimento. Deseja realmente excluir os itens indicados?'))return
+  if(removes&&!window.confirm('ATENÇÃO: a exclusão remove as peças/serviços indicados de TODOS os cenários e pode apagar componentes vinculados. Essa ação não pode ser desfeita. Confirma a exclusão?'))return
   setApplying(true);setApplyError('')
   try{
    const applied=await api<{applied:true;changed:number;replay:boolean}>(`/api/atendimentos/${active.atendimentoId}/copiloto/aplicar`,{
@@ -69,8 +69,13 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   <div className="copilot-feed">
    {!context&&<p>Abra um Atendimento e aguarde o cenário carregar para usar a voz.</p>}
    {state.result&&<><details><summary>Transcrição desta tentativa</summary><p className="voice-transcript">{state.result.transcription}</p></details>
-    <details><summary>Plano: {state.result.plan.changes.length} alterações propostas · {state.result.plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length} pendências</summary><pre>{JSON.stringify(state.result.plan,null,2)}</pre></details>
-    {state.result.plan.changes.length>0&&<p>Confira o plano antes de confirmar. Comandos pendentes ou conflitantes não serão gravados. Alterações compartilhadas atingem todos os cenários.</p>}
+    <section className="voice-review" aria-label="Alterações previstas">
+     <strong>Revisão antes de salvar — {state.result.review.length} alteração(ões)</strong>
+     {state.result.review.length>0?<ol>{state.result.review.map((entry,i)=><li key={i} className={entry.startsWith('EXCLUIR')?'voice-removal':''}>{entry}</li>)}</ol>:<p>Não há alterações válidas a aplicar.</p>}
+     {state.result.plan.results.some(r=>r.status==='pending'||r.status==='conflict')&&<p role="status">{state.result.plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length} comando(s) pendente(s) ou conflitante(s) não serão aplicados.</p>}
+     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal">ATENÇÃO: a exclusão é definitiva na composição atual e atinge todos os cenários, incluindo os serviços e componentes relacionados.</p>}
+    </section>
+    <details><summary>Detalhes técnicos do plano</summary><pre>{JSON.stringify(state.result.plan,null,2)}</pre></details>
     {state.result.plan.changes.length>0&&<button className="voice-apply" disabled={applying||!context||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':'Confirmar e aplicar alterações'}</button>}
     {state.result.plan.changes.length===0&&<p>Não há alterações válidas a aplicar.</p>}
    </>}
