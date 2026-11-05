@@ -1,4 +1,4 @@
-import {randomUUID} from 'node:crypto'
+import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import type {CatalogItem} from '../shared/commercial.ts'
 import {catalogItemUsable} from '../shared/commercial.ts'
@@ -16,7 +16,7 @@ import {voiceReview} from './voice-review.ts'
 type Slot='piece'|'service'|'lineService'|'dimension'|'diagnosis'|'line'
 type Target={id:string;key:string;label:string;text:string;kind:CatalogItem['kind']|'line';slots:{index:number;slot:Slot}[]}
 type Choice={id:string;label:string;values:string[];speech:string[];target:Target}
-type Stored={id:string;batch:VoiceCommandBatch;transcription:string;digest:string;session:string;expires:number;targets:Target[];choices:Choice[]}
+type Stored={id:string;batch:VoiceCommandBatch;transcription:string;digest:string;session:string;expires:number;dependencyIds:string[];targets:Target[];choices:Choice[]}
 const stores=new WeakMap<DatabaseSync,Map<string,Stored>>()
 const normalize=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
 const expired=()=>new ServiceError(409,'VOICE_PLAN_EXPIRED','Revisão expirada ou substituída. Refaça o ditado.')
@@ -125,11 +125,46 @@ function present(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,requestI
  return {requestId,transcription:stored.transcription,plan,review:voiceReview(plan,ctx),reviewGroups:groups,applied:false,
   resolution:{id:stored.id,questions:stored.targets.map(t=>({id:t.id,label:t.label,options:stored.choices.filter(c=>c.target===t).map(c=>({id:c.id,label:c.label}))}))}}
 }
-function build(db:DatabaseSync,batch:VoiceCommandBatch,transcription:string,ctx:VoicePlanningContext,session:string,requestId:string,expires=Date.now()+15*60_000):VoiceInterpretation{
+// Add only the physical prerequisite of a validated, effective service inclusion.
+// Existing explicit add/remove intentions and original command order remain authoritative.
+function servicePieceDependencies(batch:VoiceCommandBatch,ctx:VoicePlanningContext,previousIds:string[]){
+ const previous=new Set(previousIds),commands=batch.commands.filter(c=>!previous.has(c.id))
+ const catalog=new Map(ctx.catalog.map(c=>[c.id,c])),present=new Set(ctx.workspace.items.map(p=>p.pieceId))
+ const explicit=new Set(commands.flatMap(c=>(c.op==='add_piece'||c.op==='remove_piece')&&c.piece.state==='resolved'?[c.piece.id]:[]))
+ const candidates=new Map<string,{index:number;command:VoiceCommand}>(),servicePieces=new Map<string,string>()
+ for(const [index,c]of commands.entries()){
+  if(c.op!=='add_service'||c.piece.state!=='resolved'||c.service.state!=='resolved'||present.has(c.piece.id)||explicit.has(c.piece.id))continue
+  const piece=catalog.get(c.piece.id),service=catalog.get(c.service.id)
+  if(!piece||piece.kind!=='peca'||!catalogItemUsable(piece)||!service||service.kind!=='servico'||!catalogItemUsable(service)||newServiceSelectionIssue(service.id))continue
+  if(c.dimension!==null){
+   if(c.dimension?.state!=='resolved')continue
+   const dimension=catalog.get(c.dimension.id)
+   if(!dimension||dimension.kind!=='dimensao'||!catalogItemUsable(dimension)||dimension.serviceId!==service.id)continue
+  }
+  servicePieces.set(c.id,piece.id)
+  if(candidates.has(piece.id))continue
+  let counter=0,id:string
+  do{id='service-piece:'+createHash('sha256').update(JSON.stringify([batch.idempotencyKey,piece.id,counter++])).digest('hex')}while(commands.some(c=>c.id===id))
+  candidates.set(piece.id,{index,command:{id,op:'add_piece',intent:'instruction',piece:resolved(piece.id)}})
+ }
+ const base={...batch,commands}
+ if(!candidates.size||commands.length+candidates.size>100)return {batch:base,dependencyIds:[]}
+ const inject=(allowed:Set<string>)=>commands.flatMap((c,index)=>[...Array.from(candidates).filter(([piece,value])=>allowed.has(piece)&&value.index===index).map(([,value])=>value.command),c])
+ const probe=planVoiceCommands({...base,commands:inject(new Set(candidates.keys()))},ctx)
+ const valid=new Set(probe.results.filter(r=>r.status==='valid').map(r=>r.commandId)),supported=new Set<string>()
+ for(const change of probe.changes){
+  const origin=change.origins.presence
+  if(change.op==='add_service'&&origin?.kind==='explicit'&&valid.has(origin.commandId)&&servicePieces.has(origin.commandId))supported.add(servicePieces.get(origin.commandId)!)
+ }
+ // No empty piece for an invalid, cancelled or conflicting service instruction.
+ return {batch:{...base,commands:inject(supported)},dependencyIds:[...candidates].filter(([piece])=>supported.has(piece)).map(([,value])=>value.command.id)}
+}
+function build(db:DatabaseSync,batch:VoiceCommandBatch,transcription:string,ctx:VoicePlanningContext,session:string,requestId:string,expires=Date.now()+15*60_000,previousDependencyIds:string[]=[]):VoiceInterpretation{
+ const prepared=servicePieceDependencies(batch,ctx,previousDependencyIds);batch=prepared.batch
  const map=mapFor(db);if(map.size>=100)map.delete(map.keys().next().value!)
  const plan=planVoiceCommands(batch,ctx),pending=new Set(plan.results.filter(r=>r.status==='pending'||r.status==='conflict').map(r=>r.index))
  for(const issue of plan.issues)if(issue.code==='DIMENSION_PENDING')batch.commands.forEach((c,index)=>{if(c.id===issue.commandId)pending.add(index)})
- const targets=targetsFor(batch,ctx).map(t=>({...t,slots:t.slots.filter(s=>pending.has(s.index))})).filter(t=>t.slots.length),stored:Stored={id:randomUUID(),batch:structuredClone(batch),transcription,digest:voiceContextDigest(ctx),session,expires,targets,choices:[]}
+ const targets=targetsFor(batch,ctx).map(t=>({...t,slots:t.slots.filter(s=>pending.has(s.index))})).filter(t=>t.slots.length),stored:Stored={id:randomUUID(),batch:structuredClone(batch),transcription,digest:voiceContextDigest(ctx),session,expires,dependencyIds:prepared.dependencyIds,targets,choices:[]}
  stored.choices=targets.flatMap(t=>choicesFor(t,stored.batch,ctx));map.set(stored.id,stored)
  return present(db,stored,ctx,requestId)
 }
@@ -166,7 +201,7 @@ function select(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,choice:Ch
  }
  const batch={...stored.batch,idempotencyKey:randomUUID(),commands}
  // A selection supersedes the old staged plan. Old HTTP requests cannot apply another version.
- const result=build(db,batch,stored.transcription,ctx,stored.session,requestId,stored.expires)
+ const result=build(db,batch,stored.transcription,ctx,stored.session,requestId,stored.expires,stored.dependencyIds)
  discardVoiceBatch(db,stored.batch.atendimentoId,stored.batch.idempotencyKey)
  mapFor(db).delete(stored.id)
  return result
