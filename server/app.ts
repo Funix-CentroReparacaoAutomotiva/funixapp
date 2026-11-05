@@ -98,7 +98,7 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      const voiceApplyRoute=/^\\/api\\/atendimentos\\/([^/]{1,100})\\/copiloto\\/aplicar$/.exec(url.pathname)
+      const voiceApplyRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/aplicar$/.exec(url.pathname)
       if(voiceApplyRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para confirmar o plano.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
