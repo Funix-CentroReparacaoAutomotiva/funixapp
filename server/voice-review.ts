@@ -13,6 +13,7 @@ export function voiceReview(plan:VoicePlan,context:VoicePlanningContext):string[
   if(change.op==='add_piece')return pieceLabel(change.pieceId)
   if(change.op==='add_service')return generated.get(change.piece.id)??pieceLabel(pieces.get(change.piece.id)?.pieceId??'')
   if(change.op==='remove_piece'||change.op==='update_piece'||change.op==='set_piece_enabled')return generated.get(change.target.id)??pieceLabel(pieces.get(change.target.id)?.pieceId??'')
+  if(change.op==='set_service_enabled')return pieceLabel(services.get(change.target.id)?.piece.pieceId??'')
   return generated.get(change.piece.id)??pieceLabel(pieces.get(change.piece.id)?.pieceId??'')
  }
  const dimension=(id:string|null|undefined)=>id?catalog.get(id)??'dimensão cadastrada':'sem dimensão'
