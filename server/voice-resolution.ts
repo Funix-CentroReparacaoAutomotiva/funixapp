@@ -201,6 +201,8 @@ function build(db:DatabaseSync,source:VoiceCommandBatch,transcription:string,ctx
  const targets=targetsFor(source,ctx,bindings).map(t=>({...t,slots:t.slots.filter(s=>{
   const c=source.commands[s.index]!
   if(reconciled.limited||reconciled.extra.has(c.id))return false
+  const results=plan.results.filter(r=>(reconciled.owners.get(r.commandId)??r.commandId)===c.id)
+  if(results.some(r=>r.reason==='MULTIPLE_DAMAGE_UNSUPPORTED'||r.reason==='PIECE_NOT_PRESENT'&&c.op!=='add_service'&&t.kind!=='peca'))return false
   if(source.commands.some(other=>other.piece.state==='resolved'&&c.piece.state==='resolved'&&other.piece.id===c.piece.id&&(other.op==='remove_piece'||other.op==='remove_service'))&&c.op!=='remove_piece'&&c.op!=='remove_service')return false
   if(t.kind==='adjustment'||t.kind==='quantity')return !plan.results.some(r=>(reconciled.owners.get(r.commandId)??r.commandId)===c.id&&(r.status==='conflict'||['PIECE_NOT_PRESENT','EXPLICIT_REMOVAL_PRESERVED','RESTORATION_UNRESOLVED','LINE_NOT_FOUND'].includes(r.reason??'')))
   return pending.has(c.id)

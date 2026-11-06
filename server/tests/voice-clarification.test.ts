@@ -237,3 +237,19 @@ test('Issue58 commands dependent on a reconciled service keep the same existing 
   assert.equal(saved.id,before.services[0]!.id);assert.equal(saved.quantity,'4');assert.equal(saved.dimensionId,h.m.id)
  }finally{h.db.close()}
 })
+
+test('Issue58 a catalog answer must not be offered for a blocking operation it cannot repair',()=>{
+ const h=fixture()
+ try{
+  const missing=h.pair.find(p=>p.side==='motorista')!,diagnosis=h.f.commercial.saveCatalog({kind:'diagnostico',name:'Amassado QA'})
+  for(const command of [
+   {id:'unsupported',op:'set_diagnosis',intent:'instruction',piece:ref(h.f.item.pieceId),diagnosis:unknown(diagnosis.name),additionalDamage:true},
+   {id:'missing-parent',op:'set_diagnosis',intent:'instruction',piece:ref(missing.id),diagnosis:unknown(diagnosis.name)}
+  ] as VoiceCommand[]){
+   const result=h.stage([command])
+   assert.equal(result.plan.changes.length,0);assert.equal(result.resolution!.questions.length,0)
+   assert(result.reviewGroups.flatMap(g=>g.entries).every(e=>!e.pendingId&&e.warning?.includes('Novo ditado')))
+   assert.throws(()=>h.apply(result))
+  }
+ }finally{h.db.close()}
+})
