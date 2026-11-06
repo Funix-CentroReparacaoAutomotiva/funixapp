@@ -1,7 +1,7 @@
 {
   "results": [
     {
-      "name": "320px: late A response cannot overwrite B",
+      "name": "320px: signed HTTP replay stays private; late A response cannot overwrite B",
       "pass": true
     },
     {
@@ -13,7 +13,7 @@
       "pass": true
     },
     {
-      "name": "390px: late A response cannot overwrite B",
+      "name": "390px: signed HTTP replay stays private; late A response cannot overwrite B",
       "pass": true
     },
     {
@@ -25,7 +25,7 @@
       "pass": true
     },
     {
-      "name": "1440px: late A response cannot overwrite B",
+      "name": "1440px: signed HTTP replay stays private; late A response cannot overwrite B",
       "pass": true
     },
     {

@@ -4,9 +4,13 @@ python tests/browser/chat_local_base.py
 Supersedes the first increment's smoke that expected Chat to be unavailable.
 """
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright, expect
@@ -28,10 +32,15 @@ async def run():
         mode = harness.folder / 'mode.txt'
         clock.write_text(str(initial_clock))
         mode.write_text('normal')
+        relay_key = secrets.token_bytes(32)
+        relay_config = harness.folder / 'relay-keys.json'
+        relay_config.write_text(json.dumps({'version': 1, 'keys': [{'keyId': 'synthetic-browser-relay', 'secretBase64': base64.b64encode(relay_key).decode(), 'instances': ['synthetic-browser']}]}))
+        relay_config.chmod(0o600)
         runner = harness.folder / 'chat-fixture.mjs'
         modules = {name: (ROOT / path).as_uri() for name, path in {
             'database': 'server/database.ts', 'atendimentos': 'server/atendimentos.ts',
             'fixture': 'server/tests/fixtures/chat-readonly.ts', 'app': 'server/app.ts',
+            'ingest_config': 'server/chat/ingest-config.ts',
         }.items()}
         runner.write_text(f"""
 import {{writeFileSync,readFileSync}} from 'node:fs';
@@ -41,10 +50,11 @@ import {{openDatabase}} from {json.dumps(modules['database'])};
 import {{AtendimentoRepository}} from {json.dumps(modules['atendimentos'])};
 import {{chatReadFixture}} from {json.dumps(modules['fixture'])};
 import {{createRequestHandler}} from {json.dumps(modules['app'])};
+import {{loadIngestOptions}} from {json.dumps(modules['ingest_config'])};
 const db=openDatabase(process.env.FUNIX_DATABASE_PATH);
 const fixture=chatReadFixture(db);
 writeFileSync({json.dumps(str(metadata))},JSON.stringify(fixture));
-const handle=createRequestHandler({{atendimentos:new AtendimentoRepository(db),origin:process.env.FUNIX_APP_ORIGIN,password:process.env.FUNIX_OPERATOR_PASSWORD,voiceProvider:null,now:()=>Number(readFileSync({json.dumps(str(clock))},'utf8'))}});
+const handle=createRequestHandler({{atendimentos:new AtendimentoRepository(db),origin:process.env.FUNIX_APP_ORIGIN,password:process.env.FUNIX_OPERATOR_PASSWORD,voiceProvider:null,now:()=>Number(readFileSync({json.dumps(str(clock))},'utf8')),whatsappIngest:loadIngestOptions({{FUNIX_WHATSAPP_INGEST_ENABLED:'true',FUNIX_WHATSAPP_INGEST_CONFIG_FILE:{json.dumps(str(relay_config))}}})}});
 createServer(async(req,res)=>{{
   const url=new URL(req.url,'http://127.0.0.1');
   if(url.pathname==='/api/atendimentos/'+fixture.a.id+'/messages'){{
@@ -83,6 +93,20 @@ createServer(async(req,res)=>{{
                 assert (await context.request.get(a_url)).status == 401
                 assert (await context.request.post(ORIGIN + '/api/session', headers={'Origin': ORIGIN}, data={'password': harness.password})).status == 200
                 assert (await (await context.request.get(ORIGIN + '/api/health')).json())['capabilities']['messages'] is False
+                ingest_url = ORIGIN + '/api/integrations/whatsapp/events'
+                marker = 'EVENTO HTTP SINTÉTICO PENDENTE PRIVADO'
+                event = {'schemaVersion': 1, 'instance': 'synthetic-browser', 'eventId': 'synthetic-http-event', 'occurredAt': '2026-11-05T13:45:00.000Z', 'type': 'message.upsert',
+                         'message': {'remoteJid': 'http-unlinked-synthetic@lid', 'messageId': 'synthetic-http-message', 'fromMe': False, 'origin': 'unknown', 'kind': 'text', 'text': marker, 'media': None}}
+                body = json.dumps(event, ensure_ascii=False).encode('utf-8')
+                assert (await context.request.post(ingest_url, data=body, headers={'Content-Type': 'application/json'})).status == 401
+                timestamp = str(initial_clock // 1000)
+                signature = hmac.new(relay_key, ('v1\nsynthetic-browser-relay\n' + timestamp + '\n').encode() + body, hashlib.sha256).hexdigest()
+                relay_headers = {'Content-Type': 'application/json', 'X-Funix-Key-Id': 'synthetic-browser-relay', 'X-Funix-Timestamp': timestamp, 'X-Funix-Signature': 'sha256=' + signature}
+                received = await context.request.post(ingest_url, data=body, headers=relay_headers)
+                assert received.status == 202
+                receipt = await received.json()
+                assert receipt['disposition'] == 'pending'
+                assert (await (await context.request.post(ingest_url, data=body, headers=relay_headers)).json()) == receipt
                 page = await context.new_page()
                 await harness.attach(page)
                 # Hold the first A response, then navigate through history to B.
@@ -94,7 +118,7 @@ createServer(async(req,res)=>{{
                 await expect(page.get_by_text(records['privateB'], exact=True)).to_be_visible()
                 mode.write_text('normal')
                 assert records['first'] not in await page.locator('.chat-history').inner_text()
-                harness.mark(f'{width}px: late A response cannot overwrite B')
+                harness.mark(f'{width}px: signed HTTP replay stays private; late A response cannot overwrite B')
 
                 for key in ['a', 'b', 'a']:
                     await harness.goto_record(page, records[key])
@@ -107,6 +131,7 @@ createServer(async(req,res)=>{{
                     history = await page.locator('.chat-history').inner_text()
                     assert (records['privateB'] if key == 'a' else records['last']) not in history
                     assert 'PENDENTE PRIVADO' not in history
+                    assert marker not in history
                     for tab in ['Diagnósticos', 'Mapa', 'Chat']:
                         await page.get_by_role('button', name=tab, exact=True).click()
                         await expect(page.get_by_role('button', name=tab, exact=True)).to_have_attribute('aria-current', 'page')
@@ -128,6 +153,7 @@ createServer(async(req,res)=>{{
                 assert await page.locator('.chat-message-status').count() == 4
                 assert await page.locator('.chat-message time').count() == 50
                 await expect(page.get_by_label('Mensagem ao cliente', exact=True)).to_be_disabled()
+                assert await page.evaluate("async()=>{const r=await fetch('/api/integrations/whatsapp/events',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});return r.status}") == 403
                 await expect(page.get_by_label('Enviar mensagem indisponível', exact=True)).to_be_disabled()
                 assert await page.locator('.chat-rail button:enabled').count() == 0
                 assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')

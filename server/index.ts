@@ -1,6 +1,7 @@
 import { createApp } from './app.ts'
 import { openDatabase } from './database.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
+import { loadIngestOptions } from './chat/ingest-config.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('FUNIX_API_PORT inválida.')
@@ -16,7 +17,7 @@ const databasePath = process.env.FUNIX_DATABASE_PATH ?? (process.env.NODE_ENV ==
 if (!databasePath || (process.env.NODE_ENV === 'production' && databasePath === ':memory:')) throw new Error('Configure FUNIX_DATABASE_PATH para um arquivo em armazenamento persistente autorizado.')
 const db = openDatabase(databasePath)
 const atendimentos = new AtendimentoRepository(db)
-const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION })
+const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env) })
 app.requestTimeout = 15_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })

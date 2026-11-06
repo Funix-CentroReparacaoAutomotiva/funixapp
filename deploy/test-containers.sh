@@ -40,6 +40,11 @@ const login=await fetch(base+"/api/session",{method:"POST",headers:{Origin:"http
 assert.equal(login.status,200); assert.match(login.headers.get("set-cookie"),/; Secure/);
 const cookie=login.headers.get("set-cookie").split(";")[0];
 assert.equal((await (await fetch(base+"/api/health")).json()).capabilities.messages,false);
+for(const method of ["GET","POST","OPTIONS"]){
+ const disabled=await fetch(base+"/api/integrations/whatsapp/events",{method,headers:{Cookie:cookie}});
+ assert.equal(disabled.status,404); assert.equal(disabled.headers.get("cache-control"),"no-store");
+ assert.equal(disabled.headers.get("access-control-allow-origin"),null);
+}
 const list=await fetch(base+"/api/atendimentos",{headers:{Cookie:cookie}});
 assert.equal(list.status,200); assert.equal((await list.json()).total,0);
 const created=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"+5511999990000"})});
