@@ -25,7 +25,7 @@ function revisions(v:unknown):boolean{
  return ['scenarios','pieces'].every(key=>Array.isArray(v[key])&&v[key].length<=1000&&v[key].every(r=>object(r)&&keys(r,['id','revision'])&&id(r.id)&&integer(r.revision))&&new Set(v[key].map(r=>(r as Record<string,unknown>).id)).size===v[key].length)
 }
 const fields:Record<string,string[]>={
- add_component:['name','quantity','manualPrice','duplicateDecision'],add_piece:[],remove_piece:[],set_piece_enabled:['enabled'],set_diagnosis:['diagnosis','intensity','additionalDamage'],
+ add_component:['name','quantity','manualPrice','enabled','duplicateDecision'],add_piece:[],remove_piece:[],set_piece_enabled:['enabled'],set_diagnosis:['diagnosis','intensity','additionalDamage'],
  add_service:['service','dimension','quantity'],set_dimension:['line','dimension'],set_quantity:['line','mode','value'],
  set_service_enabled:['line','enabled'],remove_service:['line'],set_notes:['line','value'],recommend_services:['mode','ruleIds'],
 }
@@ -33,7 +33,7 @@ function command(v:unknown):v is VoiceCommand{
  if(!object(v)||!id(v.id)||(v.intent!=='instruction'&&v.intent!=='correction')||!reference(v.piece)||typeof v.op!=='string'||!Object.hasOwn(fields,v.op)||!keys(v,['id','intent','piece','sourceText','op',...fields[v.op]!]))return false
  if(v.sourceText!==undefined&&(typeof v.sourceText!=='string'||v.sourceText.length>4000))return false
  switch(v.op){
-  case'add_component':return componentName(v.name)&&(v.quantity===undefined||componentDecimal(v.quantity,true))&&(v.manualPrice===undefined||componentDecimal(v.manualPrice))&&(v.duplicateDecision===undefined||object(v.duplicateDecision)&&keys(v.duplicateDecision,['mode','references'])&&(v.duplicateDecision.mode==='keep'||v.duplicateDecision.mode==='new')&&Array.isArray(v.duplicateDecision.references)&&v.duplicateDecision.references.length>0&&v.duplicateDecision.references.length<=200&&v.duplicateDecision.references.every(r=>typeof r==='string'&&r.length>0&&r.length<=200)&&new Set(v.duplicateDecision.references).size===v.duplicateDecision.references.length)
+  case'add_component':return (v.enabled===undefined||typeof v.enabled==='boolean')&&componentName(v.name)&&(v.quantity===undefined||componentDecimal(v.quantity,true))&&(v.manualPrice===undefined||componentDecimal(v.manualPrice))&&(v.duplicateDecision===undefined||object(v.duplicateDecision)&&keys(v.duplicateDecision,['mode','references'])&&(v.duplicateDecision.mode==='keep'||v.duplicateDecision.mode==='new')&&Array.isArray(v.duplicateDecision.references)&&v.duplicateDecision.references.length>0&&v.duplicateDecision.references.length<=200&&v.duplicateDecision.references.every(r=>typeof r==='string'&&r.length>0&&r.length<=200)&&new Set(v.duplicateDecision.references).size===v.duplicateDecision.references.length)
   case'add_piece':case'remove_piece':return true
   case'set_piece_enabled':return typeof v.enabled==='boolean'
   case'set_diagnosis':return ('diagnosis'in v||'intensity'in v)&&(v.diagnosis===undefined||v.diagnosis===null||reference(v.diagnosis))&&(v.intensity===undefined||v.intensity===null||DIAGNOSIS_INTENSITIES.includes(v.intensity as typeof DIAGNOSIS_INTENSITIES[number]))&&(v.additionalDamage===undefined||typeof v.additionalDamage==='boolean')

@@ -73,7 +73,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
   const w=context.workspace,sceneIds=w.scenarios.map(s=>s.id),selected=batch!.scenarioId,catalog=new Map(context.catalog.map(c=>[c.id,c]))
   const pieces=new Map<string,WorkingPiece>(w.items.map(p=>[p.pieceId,{id:p.id,pieceId:p.pieceId,diagnosisId:p.diagnosisId,intensity:p.intensity??null,notes:p.notes,services:structuredClone(p.services)}]))
   const components=context.workspace.components.map(c=>({...c,token:c.id,physical:context.workspace.items.find(p=>p.id===c.pieceId)?.pieceId}))
-  const addedComponents:{id:string;token:string;physical:string;pieceId:string;name:string;quantity:string;manualPrice:string;notes:string}[]=[]
+  const addedComponents:{id:string;token:string;physical:string;pieceId:string;name:string;quantity:string;manualPrice:string;notes:string;enabled:boolean}[]=[]
   const refs=new Map<string,VoiceEntityReference>(w.items.flatMap(p=>[[p.id,{kind:'existing' as const,id:p.id}]as const,...p.services.map(l=>[l.id,{kind:'existing' as const,id:l.id}]as const)]))
   const plannedRef=(kind:'piece'|'service'|'component',command:string,ruleId?:string):VoiceEntityReference=>({kind:'planned',id:kind+':'+digest([requestDigest,command,ruleId??null])})
   const flags=new Map(w.scenarios.map(s=>[s.id,{piece:{...s.pieceFlags},service:{...s.serviceFlags}}]))
@@ -166,7 +166,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
      }else if(decision){issue('COMPONENT_DECISION_STALE','A decisão de duplicação não corresponde ao estado atual.');break}
      const reference=plannedRef('component',cmd.id),id='@voice:'+reference.id
      refs.set(id,reference)
-     addedComponents.push({id,token:'command:'+cmd.id,physical:p.pieceId,pieceId:p.id,name:cmd.name.trim(),quantity:normalizedComponentDecimal(cmd.quantity??'1'),manualPrice:normalizedComponentDecimal(cmd.manualPrice??'0'),notes:''})
+     addedComponents.push({id,token:'command:'+cmd.id,physical:p.pieceId,pieceId:p.id,name:cmd.name.trim(),quantity:normalizedComponentDecimal(cmd.quantity??'1'),manualPrice:normalizedComponentDecimal(cmd.manualPrice??'0'),notes:'',enabled:cmd.enabled??true})
      mark(id,'presence',explicit(cmd));mark(id,'quantity',explicit(cmd));results[index]!.status='valid';break
     }
     case'set_piece_enabled':write(p.id,'enabled',cmd.enabled,Boolean(flags.get(selected)!.piece[p.id]));flags.get(selected)!.piece[p.id]=cmd.enabled;break
@@ -313,7 +313,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    }
   }
   for(const c of addedComponents)if(pieces.get(c.physical)?.id===c.pieceId){
-   changes.push({...base(c.id,'shared'),op:'add_component',target:ref(c.id),piece:ref(c.pieceId),values:{name:c.name,quantity:c.quantity,manualPrice:c.manualPrice,notes:c.notes},flags:Object.fromEntries(sceneIds.map(id=>[id,id===selected]))})
+   changes.push({...base(c.id,'shared'),op:'add_component',target:ref(c.id),piece:ref(c.pieceId),values:{name:c.name,quantity:c.quantity,manualPrice:c.manualPrice,notes:c.notes},flags:Object.fromEntries(sceneIds.map(id=>[id,id===selected&&c.enabled]))})
    if(!flags.get(selected)!.piece[c.pieceId])issues.push({commandId:origins.get(c.id)?.presence?.commandId,code:'COMPONENT_PARENT_DISABLED',message:'A peça está desabilitada neste cenário; o componente ficará fora do cálculo até habilitar a peça.',blocking:false})
   }
   for(const change of changes){

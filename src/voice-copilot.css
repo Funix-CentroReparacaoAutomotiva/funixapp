@@ -52,8 +52,16 @@
 .voice-diagnostic-privacy,.voice-outcome{font-size:11px;color:#52637b}
 .voice-panel .voice-action-bar{flex-wrap:wrap}
 .voice-panel .voice-action-bar .voice-apply{flex:1;min-width:120px;width:auto}
-.voice-component-values{display:flex;flex-wrap:wrap;gap:5px;align-items:end;margin:5px 0}
-.voice-component-values label{font-size:10px;min-width:0;flex:1}
-.voice-component-values label:first-child{flex:0 1 65px}
+ .voice-component-values{margin:5px 0}
+.voice-component-line{display:grid;grid-template-columns:44px minmax(0,.7fr) minmax(0,1.3fr) 44px;gap:4px;align-items:end}
+.voice-component-line label{font-size:10px;min-width:0}
 .voice-component-values input{display:block;width:100%;box-sizing:border-box;min-height:44px;border:1px solid #cad4e3;border-radius:6px;padding:5px;font:inherit;font-size:12px}
+.voice-component-switch,.voice-component-quote{width:44px;height:44px;min-width:44px;padding:0;border:0;border-radius:6px;display:grid;place-items:center;background:transparent}
+.voice-component-switch span{width:34px;height:20px;border-radius:12px;background:#738093;position:relative}
+.voice-component-switch span:after{content:'';position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:white}
+.voice-component-switch[aria-checked=true] span{background:#167044}
+.voice-component-switch[aria-checked=true] span:after{left:17px}
+.voice-component-switch:disabled{opacity:.55}
+.voice-component-quote:disabled{color:#738093;opacity:.65;cursor:not-allowed}
+.voice-component-quote svg{width:22px;height:22px}
 .voice-component-revise{min-height:44px;max-width:90px;border:1px solid #12347c;border-radius:6px;background:#fff;color:#12347c;padding:4px;font-size:10px}

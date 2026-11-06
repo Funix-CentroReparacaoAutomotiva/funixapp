@@ -1,5 +1,5 @@
 // Presentation metadata only. Never accepted by the application endpoint.
-export interface VoiceReviewField {label:string;before?:string;after:string}
+export interface VoiceReviewField {label:string;before?:string;after:string;namePrefix?:string}
 export interface VoiceReviewEntry {
  kind:'add'|'remove'|'change'|'pending'|'warning'|'noop'
  label:string
@@ -8,7 +8,8 @@ export interface VoiceReviewEntry {
  commandId?:string
  pendingId?:string
  options?:import('./voice-resolution.ts').VoiceResolutionOption[]
- component?:{commandId:string;quantity:string;manualPrice:string}
+ nameKind?:'component'
+ component?:{commandId:string;quantity:string;manualPrice:string;enabled?:boolean;parentEnabled?:boolean}
  warning?:string
 }
 export interface VoiceReviewGroup {id:string;piece:string;entries:VoiceReviewEntry[]}

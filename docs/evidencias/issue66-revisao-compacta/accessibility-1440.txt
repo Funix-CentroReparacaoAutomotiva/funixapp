@@ -1,0 +1,6 @@
+- switch "Habilitar componente neste cenário" [checked]
+- text: Qtd.
+- textbox "Quantidade do componente": "1"
+- text: Preço base (R$)
+- textbox "Preço unitário do componente": 0,00
+- button "Cotar componente" [disabled]
