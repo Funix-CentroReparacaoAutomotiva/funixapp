@@ -198,7 +198,7 @@ test('scoped cursor pagination excludes interleaved Atendimento, new arrivals an
     f.repo.ingest(raw(event('after-page')))
     const all = [...first.items]
     let cursor: string | null = first.nextCursor
-    while (cursor) { const page = f.repo.messages(f.a.id, { limit: 2, cursor }); all.push(...page.items); cursor = page.nextCursor }
+    while (cursor) { const page = f.repo.messages(f.a.id, { limit: 2, cursor }); all.unshift(...page.items); cursor = page.nextCursor }
     assert.equal(all.length, 6)
     assert.equal(new Set(all.map(m => m.sequence)).size, 6)
     assert.equal(all[1]!.mediaState, 'unavailable')
@@ -231,8 +231,8 @@ test('chronological pagination uses provider time with durable sequence tie-brea
     f.repo.ingest(raw({ ...event('later'), occurredAt: later }))
     f.repo.ingest(raw(event('late')))
     const first = f.repo.messages(f.a.id, { limit: 2 })
-    assert.deepEqual(first.items.map(m => m.messageId), ['message-one', 'message-late'])
-    assert.deepEqual(f.repo.messages(f.a.id, { cursor: first.nextCursor! }).items.map(m => m.messageId), ['message-later'])
+    assert.deepEqual(first.items.map(m => m.messageId), ['message-late', 'message-later'])
+    assert.deepEqual(f.repo.messages(f.a.id, { cursor: first.nextCursor! }).items.map(m => m.messageId), ['message-one'])
   } finally { f.db.close() }
 })
 
