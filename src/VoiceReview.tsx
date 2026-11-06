@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import type {VoiceReviewGroup} from '../shared/voice-review'
-const symbols={add:'+',remove:'−',change:'↔',pending:'!',warning:'!'}
-const labels={add:'Inclusão ou habilitação',remove:'Remoção ou desabilitação',change:'Alteração',pending:'Pendência — não será aplicada',warning:'Atenção operacional'}
+const symbols={add:'+',remove:'−',change:'↔',pending:'!',warning:'!',noop:'✓'}
+const labels={add:'Inclusão ou habilitação',remove:'Remoção ou desabilitação',change:'Alteração',pending:'Pendência — não será aplicada',warning:'Atenção operacional',noop:'Já está assim'}
 export function VoiceReview({groups,onResolve,onClarify,busy=false}:{groups:VoiceReviewGroup[];onResolve?:(id:string)=>void;onClarify?:(id:string)=>void;busy?:boolean}){
  const[expanded,setExpanded]=useState<Record<string,number>>({})
  return <section className="voice-review" aria-label="Alterações previstas">

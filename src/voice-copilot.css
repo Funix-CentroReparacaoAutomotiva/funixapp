@@ -43,3 +43,12 @@
 .voice-panel .voice-action-bar{display:flex;gap:6px}
 .voice-talk{flex:none;background:#fff9e7;min-width:55px}
 .voice-clarification-hint{font-size:11px;margin:4px 10px;color:#775100}
+.voice-entry.noop .voice-symbol{color:#52637b}
+.voice-diagnostic{border:1px solid #dce4ee;border-radius:8px;padding:8px;margin:4px 0;font-size:11px;background:#f8fafc}
+.voice-diagnostic h3{font-size:12px;margin:4px 0}
+.voice-diagnostic ol{padding-left:23px;margin:5px 0;user-select:text}
+.voice-diagnostic li{margin:3px 0}
+.voice-diagnostic button,.voice-new,.voice-send{min-height:44px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#12347c;padding:5px 8px;font-size:11px}
+.voice-diagnostic-privacy,.voice-outcome{font-size:11px;color:#52637b}
+.voice-panel .voice-action-bar{flex-wrap:wrap}
+.voice-panel .voice-action-bar .voice-apply{flex:1;min-width:120px;width:auto}
