@@ -12,11 +12,14 @@ import {planVoiceCommands,voiceContextDigest} from './voice-planner.ts'
 import {stageVoiceBatch,discardVoiceBatch} from './voice-apply.ts'
 import {compactVoiceReview} from './voice-review-summary.ts'
 import {voiceReview} from './voice-review.ts'
+import {reconcileVoiceServices} from './voice-reconciliation.ts'
+import {voiceDiagnostic} from './voice-diagnostic.ts'
+import {voiceQuantity,normalizedQuantity} from './voice-command-validation.ts'
 
-type Slot='piece'|'service'|'lineService'|'dimension'|'diagnosis'|'line'
-type Target={id:string;key:string;label:string;text:string;kind:CatalogItem['kind']|'line';slots:{index:number;slot:Slot}[]}
-type Choice={id:string;label:string;values:string[];speech:string[];target:Target}
-type Stored={id:string;batch:VoiceCommandBatch;transcription:string;digest:string;session:string;expires:number;dependencyIds:string[];targets:Target[];choices:Choice[]}
+type Slot='piece'|'service'|'lineService'|'dimension'|'diagnosis'|'line'|'serviceLine'|'adjustment'|'quantity'
+type Target={id:string;key:string;label:string;text:string;kind:CatalogItem['kind']|'line'|'adjustment'|'quantity';slots:{index:number;slot:Slot}[]}
+type Choice={id:string;label:string;values:string[];speech:string[];target:Target;quantity?:string}
+type Stored={id:string;batch:VoiceCommandBatch;source:VoiceCommandBatch;interpreted:VoiceCommand[];bindings:Record<string,string>;owners:Map<string,string>;additionalIds:string[];limited:boolean;transcription:string;digest:string;session:string;expires:number;dependencyIds:string[];targets:Target[];choices:Choice[]}
 const stores=new WeakMap<DatabaseSync,Map<string,Stored>>()
 const normalize=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
 const expired=()=>new ServiceError(409,'VOICE_PLAN_EXPIRED','Revisão expirada ou substituída. Refaça o ditado.')
@@ -26,14 +29,14 @@ const resolved=(id:string)=>({state:'resolved' as const,id})
 const pairCodes=hierarchyPiecePairs()
 function mapFor(db:DatabaseSync){let map=stores.get(db);if(!map){map=new Map();stores.set(db,map)}for(const [id,s]of map)if(s.expires<=Date.now())map.delete(id);return map}
 
-function targetsFor(batch:VoiceCommandBatch,ctx:VoicePlanningContext):Target[]{
+function targetsFor(batch:VoiceCommandBatch,ctx:VoicePlanningContext,bindings:Record<string,string>):Target[]{
  const targets=new Map<string,Target>()
  const needsChoice=(ref:VoiceReference,kind:CatalogItem['kind'])=>ref.state==='unresolved'||!ctx.catalog.some(c=>c.id===ref.id&&c.kind===kind&&catalogItemUsable(c))
  const textFor=(ref:VoiceReference)=>ref.state==='unresolved'?ref.text:ctx.catalog.find(c=>c.id===ref.id)?.name??''
  const add=(index:number,slot:Slot,kind:Target['kind'],text:string,scope:string)=>{
   const key=slot+':'+scope+':'+normalize(text),old=targets.get(key)
   if(old){old.slots.push({index,slot});return}
-  targets.set(key,{id:randomUUID(),key,label:kind==='peca'?'Peça':kind==='servico'?'Serviço':kind==='dimensao'?'Dimensão':kind==='diagnostico'?'Diagnóstico':'Linha',kind,text,slots:[{index,slot}]})
+  targets.set(key,{id:randomUUID(),key,label:kind==='peca'?'Peça':kind==='servico'?'Serviço':kind==='dimensao'?'Dimensão':kind==='diagnostico'?'Diagnóstico':kind==='adjustment'?'Corrigir serviço':kind==='quantity'?'Quantidade':'Linha',kind,text,slots:[{index,slot}]})
  }
  batch.commands.forEach((c,index)=>{
   const existingPiece=c.piece.state==='resolved'&&ctx.catalog.some(item=>item.id===(c.piece as {id:string}).id&&item.kind==='peca')&&ctx.workspace.items.some(item=>item.pieceId===(c.piece as {id:string}).id)
@@ -43,9 +46,12 @@ function targetsFor(batch:VoiceCommandBatch,ctx:VoicePlanningContext):Target[]{
   if(c.op==='add_service'){
    if(needsChoice(c.service,'servico')){add(index,'service','servico',textFor(c.service),piece);return}
    if(c.service.state!=='resolved')return
+   const rows=ctx.workspace.items.find(p=>p.pieceId===piece)?.services.filter(l=>l.serviceId===(c.service as {id:string}).id)??[]
+   if(rows.length>1&&!bindings[c.id]){add(index,'serviceLine','line',c.service.id,piece);return}
    if(c.dimension&&needsChoice(c.dimension,'dimensao'))add(index,'dimension','dimensao',textFor(c.dimension),piece+':'+c.service.id)
+   else if(c.dimension!==null&&(rows.length||c.dimension?.state==='resolved'&&ctx.catalog.find(d=>d.id===(c.dimension as {id:string}).id)?.serviceId!==c.service.id))add(index,'adjustment','adjustment','',piece+':'+c.service.id)
    // A null dimension is a legal incomplete draft, not an invented reference.
-   if(c.dimension===null)add(index,'dimension','dimensao','',piece+':'+c.service.id)
+   if(c.dimension===null)add(index,rows.length?'adjustment':'dimension',rows.length?'adjustment':'dimensao','',piece+':'+c.service.id)
   }
   if(c.op==='set_diagnosis'&&c.diagnosis&&needsChoice(c.diagnosis,'diagnostico'))add(index,'diagnosis','diagnostico',textFor(c.diagnosis),piece)
   if('line'in c&&c.line){
@@ -59,7 +65,8 @@ function targetsFor(batch:VoiceCommandBatch,ctx:VoicePlanningContext):Target[]{
     add(index,'line','line','',piece);return
    }
    if(c.line.kind==='command'&&!batch.commands.some(previous=>previous.id===(c.line as {commandId:string}).commandId&&previous.op==='add_service'&&previous.piece.state==='resolved'&&previous.piece.id===piece)){add(index,'line','line','',piece);return}
-   if(c.op==='set_dimension'&&c.dimension&&needsChoice(c.dimension,'dimensao'))add(index,'dimension','dimensao',textFor(c.dimension),piece+':'+JSON.stringify(c.line))
+   if(c.op==='set_quantity')add(index,'quantity','quantity','',piece+':'+JSON.stringify(c.line))
+   if(c.op==='set_dimension')add(index,'dimension','dimensao',c.dimension&&needsChoice(c.dimension,'dimensao')?textFor(c.dimension):'',piece+':'+JSON.stringify(c.line))
   }
  })
  return [...targets.values()]
@@ -77,6 +84,7 @@ function choicesFor(target:Target,batch:VoiceCommandBatch,ctx:VoicePlanningConte
  const commands=target.slots.map(s=>batch.commands[s.index]!)
  const catalog=new Map(ctx.catalog.map(c=>[c.id,c]))
  const make=(label:string,values:string[],speech:string[]=[label]):Choice=>({id:randomUUID(),label,values,speech,target})
+ if(target.kind==='quantity')return[]
  if(target.kind==='line'){
   const c=commands[0]!,pieceId=c.piece.state==='resolved'?c.piece.id:'',piece=ctx.workspace.items.find(p=>p.pieceId===pieceId)
   return (piece?.services??[]).flatMap((line,index)=>{
@@ -86,8 +94,9 @@ function choicesFor(target:Target,batch:VoiceCommandBatch,ctx:VoicePlanningConte
    return [make(label,[line.id],['linha '+(index+1),label])]
   })
  }
+ const kind=target.kind==='adjustment'?'dimensao':target.kind
  const lookup=target.kind==='peca'?normalize(query).replace(/\b(ambos|os dois)( os)?( lados)?\b/g,'').trim():query
- const candidates=ctx.catalog.filter(item=>item.kind===target.kind&&catalogItemUsable(item)&&(lookup.trim()?matches(lookup,item):target.kind==='dimensao')&&
+ const candidates=ctx.catalog.filter(item=>item.kind===kind&&catalogItemUsable(item)&&(lookup.trim()?matches(lookup,item):kind==='dimensao')&&
   (item.kind!=='servico'||!newServiceSelectionIssue(item.id))&&commands.every(c=>{
    if(item.kind==='dimensao')return item.serviceId===serviceFor(c,ctx,batch)
    if(item.kind==='servico'){
@@ -108,21 +117,45 @@ function choicesFor(target:Target,batch:VoiceCommandBatch,ctx:VoicePlanningConte
 }
 function present(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,requestId:string):VoiceInterpretation{
  const plan=planVoiceCommands(stored.batch,ctx),groups=compactVoiceReview(plan,ctx,stored.batch.commands)
- // Collapse dependent failures for the same ambiguous piece into one actionable row.
+ for(const group of groups)for(const entry of group.entries)if(entry.commandId)entry.commandId=stored.owners.get(entry.commandId)??entry.commandId
  for(const target of stored.targets){
-  const ids=new Set(target.slots.map(s=>stored.batch.commands[s.index]!.id)),options=stored.choices.filter(c=>c.target===target).map(c=>({id:c.id,label:c.label}))
+  const ids=new Set(target.slots.map(s=>stored.source.commands[s.index]!.id)),options=stored.choices.filter(c=>c.target===target).map(c=>({id:c.id,label:c.label}))
   let attached=false
   for(const group of groups){
    group.entries=group.entries.filter(entry=>{
-    if(!entry.commandId||!ids.has(entry.commandId)||entry.kind!=='pending'&&entry.kind!=='warning')return true
+    if(!entry.commandId||!ids.has(entry.commandId))return true
+    if(target.kind!=='adjustment'&&target.kind!=='quantity'&&entry.kind!=='pending'&&entry.kind!=='warning')return true
     if(attached&&target.kind==='peca')return false
-    if(!attached){entry.pendingId=target.id;entry.options=options;entry.label=target.label;entry.warning=target.kind==='peca'?(options.length?'Escolha a peça para continuar.':'Sem correspondência confiável. Fale o nome exato do cadastro.'):(target.text?target.text+' — conferir.':'Escolha uma dimensão ou mantenha o rascunho incompleto.');attached=true}
+    if(!attached){
+     entry.pendingId=target.id;entry.options=options
+     if(target.kind!=='adjustment'&&target.kind!=='quantity')entry.label=target.label
+     entry.warning=target.kind==='peca'?(options.length?'Escolha a peça para continuar.':'Sem correspondência confiável. Fale o nome exato do cadastro.'):target.kind==='adjustment'?'Para corrigir, escolha a dimensão ou diga serviço e dimensão; para quantidade, diga “quantidade 2”.':target.kind==='quantity'?'Diga “quantidade 2” para informar o total desejado.':target.kind==='line'?'Escolha a linha já cadastrada.':(target.text?target.text+' — conferir.':'Escolha uma dimensão ou mantenha o rascunho incompleto.')
+     attached=true
+    }
     return true
    })
   }
+  if(!attached&&(target.kind==='adjustment'||target.kind==='quantity')){
+   const command=stored.source.commands[target.slots[0]!.index]!,piece=command.piece.state==='resolved'?ctx.catalog.find(c=>c.id===(command.piece as {id:string}).id):undefined
+   const serviceId=serviceFor(command,ctx,stored.source),service=ctx.catalog.find(c=>c.id===serviceId)
+   let group=groups.find(g=>g.id===piece?.id)
+   if(!group){group={id:piece?.id??'review',piece:piece?.name??'Conferir',entries:[]};groups.push(group)}
+   const rows=ctx.workspace.items.find(p=>p.pieceId===piece?.id)?.services.filter(l=>l.serviceId===serviceId)??[]
+   const row=stored.bindings[command.id]?rows.find(l=>l.id===stored.bindings[command.id]):rows.length===1?rows[0]:undefined
+   const fields=row?[{label:'Dimensão',after:ctx.catalog.find(c=>c.id===row.dimensionId)?.name??'Não informada'},{label:'Qtd.',after:row.quantity}]:[]
+   group.entries.push({commandId:command.id,kind:'noop',scope:'shared',label:service?.name??'Quantidade',fields,warning:'Já está assim. Você pode corrigir a dimensão ou quantidade.',pendingId:target.id,options})
+  }
  }
+ for(const group of groups)for(const entry of group.entries)if(entry.kind==='pending'&&!entry.pendingId){if(stored.limited)entry.warning='Pedido grande demais para uma revisão segura. Divida em ditados menores.';else if(stored.additionalIds.includes(entry.commandId??''))entry.warning='Linha adicional não confirmada. Use o editor de serviços para adicionar um lançamento repetido; a linha existente foi preservada.';entry.warning=(entry.warning??'Confira o pedido.')+' Use Novo ditado para continuar.'}
  if(plan.changes.length)stageVoiceBatch(db,stored.batch,plan.stateDigest,plan.requestDigest,stored.session,stored.expires)
+ const pending=plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length
  return {requestId,transcription:stored.transcription,plan,review:voiceReview(plan,ctx),reviewGroups:groups,applied:false,
+  diagnostic:{...voiceDiagnostic(stored.interpreted,stored.source.commands,plan,ctx,stored.owners),decisions:[
+   ...stored.source.commands.flatMap((c,index)=>stored.batch.commands.some(e=>e.id===c.id&&c.op==='add_service'&&e.op==='set_dimension')?['EXISTING_LINE_RECONCILED · comando #'+(index+1)]:[]),
+   ...stored.additionalIds.map(id=>'ADDITIONAL_LINE_REQUIRES_EDITOR · comando #'+(stored.source.commands.findIndex(c=>c.id===id)+1)),
+   ...(stored.limited?['NATIVE_OPERATION_LIMIT · dividir o ditado']:[])
+  ]},
+  outcome:{kind:plan.changes.length?'review':!stored.source.commands.length?'empty':pending?'pending':'unchanged',pending,changes:plan.changes.length,message:plan.changes.length?pending?'Somente as alterações listadas serão aplicadas. Pendências ficam de fora.':'Confira as alterações antes de aplicar.':!stored.source.commands.length?'Nenhum comando reconhecido. Use Novo ditado.':pending?'Nenhuma alteração segura. Resolva as pendências ou use Novo ditado.':'Já está assim. Nenhuma alteração para aplicar.'},
   resolution:{id:stored.id,questions:stored.targets.map(t=>({id:t.id,label:t.label,options:stored.choices.filter(c=>c.target===t).map(c=>({id:c.id,label:c.label}))}))}}
 }
 // Add only the physical prerequisite of a validated, effective service inclusion.
@@ -159,13 +192,25 @@ function servicePieceDependencies(batch:VoiceCommandBatch,ctx:VoicePlanningConte
  // No empty piece for an invalid, cancelled or conflicting service instruction.
  return {batch:{...base,commands:inject(supported)},dependencyIds:[...candidates].filter(([piece])=>supported.has(piece)).map(([,value])=>value.command.id)}
 }
-function build(db:DatabaseSync,batch:VoiceCommandBatch,transcription:string,ctx:VoicePlanningContext,session:string,requestId:string,expires=Date.now()+15*60_000,previousDependencyIds:string[]=[]):VoiceInterpretation{
- const prepared=servicePieceDependencies(batch,ctx,previousDependencyIds);batch=prepared.batch
+function build(db:DatabaseSync,source:VoiceCommandBatch,transcription:string,ctx:VoicePlanningContext,session:string,requestId:string,expires=Date.now()+15*60_000,bindings:Record<string,string>={},interpreted:VoiceCommand[]=source.commands):VoiceInterpretation{
+ const reconciled=reconcileVoiceServices(source,ctx,bindings,transcription)
+ const prepared=servicePieceDependencies(reconciled.batch,ctx,[]),batch=prepared.batch
  const map=mapFor(db);if(map.size>=100)map.delete(map.keys().next().value!)
- const plan=planVoiceCommands(batch,ctx),pending=new Set(plan.results.filter(r=>r.status==='pending'||r.status==='conflict').map(r=>r.index))
- for(const issue of plan.issues)if(issue.code==='DIMENSION_PENDING')batch.commands.forEach((c,index)=>{if(c.id===issue.commandId)pending.add(index)})
- const targets=targetsFor(batch,ctx).map(t=>({...t,slots:t.slots.filter(s=>pending.has(s.index))})).filter(t=>t.slots.length),stored:Stored={id:randomUUID(),batch:structuredClone(batch),transcription,digest:voiceContextDigest(ctx),session,expires,dependencyIds:prepared.dependencyIds,targets,choices:[]}
- stored.choices=targets.flatMap(t=>choicesFor(t,stored.batch,ctx));map.set(stored.id,stored)
+ const plan=planVoiceCommands(batch,ctx),pending=new Set(plan.results.filter(r=>r.status==='pending'||r.status==='conflict').map(r=>reconciled.owners.get(r.commandId)??r.commandId))
+ for(const issue of plan.issues)if(issue.code==='DIMENSION_PENDING')pending.add(reconciled.owners.get(issue.commandId??'')??issue.commandId??'')
+ const targets=targetsFor(source,ctx,bindings).map(t=>({...t,slots:t.slots.filter(s=>{
+  const c=source.commands[s.index]!
+  if(reconciled.limited||reconciled.extra.has(c.id))return false
+  if(source.commands.some(other=>other.piece.state==='resolved'&&c.piece.state==='resolved'&&other.piece.id===c.piece.id&&(other.op==='remove_piece'||other.op==='remove_service'))&&c.op!=='remove_piece'&&c.op!=='remove_service')return false
+  if(t.kind==='adjustment'||t.kind==='quantity')return !plan.results.some(r=>(reconciled.owners.get(r.commandId)??r.commandId)===c.id&&(r.status==='conflict'||['PIECE_NOT_PRESENT','EXPLICIT_REMOVAL_PRESERVED','RESTORATION_UNRESOLVED','LINE_NOT_FOUND'].includes(r.reason??'')))
+  return pending.has(c.id)
+ })})).filter(t=>t.slots.length).sort((a,b)=>Number(b.slots.some(s=>pending.has(source.commands[s.index]!.id)))-Number(a.slots.some(s=>pending.has(source.commands[s.index]!.id))))
+ const stored:Stored={id:randomUUID(),batch:structuredClone(batch),source:structuredClone(source),interpreted:structuredClone(interpreted),bindings,owners:reconciled.owners,additionalIds:[...reconciled.extra],limited:reconciled.limited,transcription,digest:voiceContextDigest(ctx),session,expires,dependencyIds:prepared.dependencyIds,targets,choices:[]}
+ stored.choices=targets.flatMap(t=>choicesFor(t,stored.source,ctx))
+ // A line with no real options cannot accept speech. Unknown catalog names can
+ // still be clarified by an exact active name; dimensions stay service-bound.
+ stored.targets=targets.filter(t=>t.kind==='line'?stored.choices.some(c=>c.target===t):t.kind==='dimensao'?choicesFor(t,stored.source,ctx,'').length>0:true)
+ stored.choices=stored.choices.filter(c=>stored.targets.includes(c.target));map.set(stored.id,stored)
  return present(db,stored,ctx,requestId)
 }
 export function stageVoiceResolution(db:DatabaseSync,batch:VoiceCommandBatch,transcription:string,ctx:VoicePlanningContext,session:string,requestId:string){return build(db,batch,transcription,ctx,session,requestId)}
@@ -177,15 +222,21 @@ export function readVoiceResolution(db:DatabaseSync,at:string,scene:string,id:st
  return {stored,ctx}
 }
 function select(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,choice:Choice,requestId:string){
- const commands=structuredClone(stored.batch.commands),target=choice.target
+ const commands=structuredClone(stored.source.commands),bindings={...stored.bindings},target=choice.target
  if(choice.values.length===1){
   for(const {index,slot}of target.slots){
    const c=commands[index]!,id=choice.values[0]!
-   if(slot==='line'&&'line'in c)c.line={kind:'id',id}
+   if(choice.quantity!==undefined){
+    if(c.op==='add_service')c.quantity=choice.quantity
+    else if(c.op==='set_quantity'){c.value=choice.quantity;c.mode='absolute'}
+    else throw invalid()
+   }
+   else if(slot==='serviceLine'&&c.op==='add_service')bindings[c.id]=id
+   else if(slot==='line'&&'line'in c)c.line={kind:'id',id}
    else if(slot==='piece')c.piece=resolved(id)
    else if(slot==='service'&&c.op==='add_service')c.service=resolved(id)
    else if(slot==='lineService'&&'line'in c)c.line={kind:'service',service:resolved(id)}
-   else if(slot==='dimension'&&(c.op==='add_service'||c.op==='set_dimension'))c.dimension=resolved(id)
+   else if((slot==='dimension'||slot==='adjustment')&&(c.op==='add_service'||c.op==='set_dimension'))c.dimension=resolved(id)
    else if(slot==='diagnosis'&&c.op==='set_diagnosis')c.diagnosis=resolved(id)
    else throw invalid()
   }
@@ -199,9 +250,9 @@ function select(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,choice:Ch
    return copy
   }));commands.splice(0,commands.length,...expanded)
  }
- const batch={...stored.batch,idempotencyKey:randomUUID(),commands}
+ const batch={...stored.source,idempotencyKey:randomUUID(),commands}
  // A selection supersedes the old staged plan. Old HTTP requests cannot apply another version.
- const result=build(db,batch,stored.transcription,ctx,stored.session,requestId,stored.expires,stored.dependencyIds)
+ const result=build(db,batch,stored.transcription,ctx,stored.session,requestId,stored.expires,bindings,stored.interpreted)
  discardVoiceBatch(db,stored.batch.atendimentoId,stored.batch.idempotencyKey)
  mapFor(db).delete(stored.id)
  return result
@@ -218,9 +269,22 @@ export function resolveVoiceOption(db:DatabaseSync,at:string,input:unknown,sessi
 export function clarifyVoiceResolution(db:DatabaseSync,at:string,scene:string,id:string,questionId:string,speech:string,session:string,requestId:string){
  const {stored,ctx}=readVoiceResolution(db,at,scene,id,session),target=stored.targets.find(t=>t.id===questionId)
  if(!target)throw invalid()
+ if(/[-−+]\s*\d/.test(speech))throw new ServiceError(422,'VOICE_CLARIFICATION_PENDING','Informe somente uma dimensão ou quantidade positiva verificada.')
  const text=normalize(speech)
+ if(target.kind==='adjustment'||target.kind==='quantity'||target.kind==='dimensao'){
+  const commands=target.slots.map(s=>stored.source.commands[s.index]!),service=serviceFor(commands[0]!,ctx,stored.source)
+  const name=normalize(ctx.catalog.find(c=>c.id===service)?.name??'')
+  const prefixes=['',...(name?[name+' ','corrige '+name+' para ','corrigir '+name+' para ']:[])]
+  const numbers:Record<string,string>={um:'1',uma:'1',dois:'2',duas:'2',tres:'3',quatro:'4',cinco:'5',seis:'6',sete:'7',oito:'8',nove:'9',dez:'10'}
+  const quantity=prefixes.flatMap(prefix=>text.startsWith(prefix)?[text.slice(prefix.length).match(/^(?:quantidade|qtd)(?: para)? (\d+(?: [0-9]+)?|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)(?: unidades?)?$/)?.[1]]:[]).filter((v):v is string=>Boolean(v)).map(v=>numbers[v]??v.replace(' ','.'))
+  if(target.kind!=='dimensao'&&quantity.length===1&&voiceQuantity(quantity[0]))return select(db,stored,ctx,{id:randomUUID(),label:'Quantidade',values:['quantity'],speech:[],target,quantity:normalizedQuantity(quantity[0])},requestId)
+  if(target.kind==='adjustment'||target.kind==='dimensao'){
+   const choices=choicesFor(target,stored.source,ctx,'').filter(c=>prefixes.some(prefix=>text===prefix+normalize(c.label)))
+   if(choices.length===1)return select(db,stored,ctx,choices[0]!,requestId)
+  }
+ }
  let choices=stored.choices.filter(c=>c.target===target&&[c.label,...c.speech].some(s=>normalize(s)===text))
- if(!choices.length&&target.kind!=='line')choices=choicesFor(target,stored.batch,ctx,speech).filter(c=>c.values.length===1&&ctx.catalog.some(item=>item.id===c.values[0]&&normalize(item.name)===text))
+ if(!choices.length&&target.kind!=='line'&&target.kind!=='quantity'&&target.kind!=='adjustment')choices=choicesFor(target,stored.source,ctx,speech).filter(c=>c.values.length===1&&ctx.catalog.some(item=>item.id===c.values[0]&&normalize(item.name)===text))
  if(choices.length!==1)throw new ServiceError(422,'VOICE_CLARIFICATION_PENDING','Não foi possível identificar uma única opção. Diga somente uma opção ou o nome exato do cadastro; o plano anterior foi preservado.')
  return select(db,stored,ctx,choices[0]!,requestId)
 }

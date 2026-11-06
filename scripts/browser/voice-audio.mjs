@@ -97,6 +97,9 @@ async function capture(page,audio,start,stop,status){
 }
 export async function recordVoice(page,audio){
  await page.locator('.approved-finance').waitFor({state:'attached'})
+ // A confirmed Apply reloads the workspace. Start only with the new context,
+ // while still verifying actual MediaRecorder data and the uploaded audio.
+ await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='true')
  const launcher=page.getByRole('button',{name:'Abrir Copiloto FUNIX',exact:true}),box=await launcher.boundingBox()
  assert(box,'voice launcher must have geometry')
  return capture(page,audio,async()=>{await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down()},()=>page.mouse.up(),200)
@@ -104,4 +107,8 @@ export async function recordVoice(page,audio){
 export async function clarifyVoice(page,audio,status=200){
  const panel=page.locator('.voice-panel')
  return capture(page,audio,()=>panel.getByRole('button',{name:'Falar',exact:true}).last().click(),()=>panel.getByRole('button',{name:'Enviar esclarecimento',exact:true}).click(),status)
+}
+export async function recordNewDictation(page,audio){
+ const panel=page.locator('.voice-panel')
+ return capture(page,audio,()=>panel.getByRole('button',{name:'Novo ditado',exact:true}).click(),()=>panel.getByRole('button',{name:'Enviar ditado',exact:true}).click(),200)
 }

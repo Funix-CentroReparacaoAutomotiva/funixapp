@@ -12,6 +12,6 @@ export interface VoiceCaptureContext{
  atendimentoId:string;scenarioId:string;compositionRevision:number;scenarioRevision:number;configurationRevision:number
 }
 export interface VoiceInterpretation{
- resolution?:VoiceResolution;requestId:string;transcription:string;plan:VoicePlan;review:string[];reviewGroups:VoiceReviewGroup[];applied:false
+ diagnostic?:import('./voice-diagnostic.ts').VoiceDiagnostic;outcome?:{kind:'review'|'pending'|'unchanged'|'empty';pending:number;changes:number;message:string};resolution?:VoiceResolution;requestId:string;transcription:string;plan:VoicePlan;review:string[];reviewGroups:VoiceReviewGroup[];applied:false
 }
 export const voiceCaptureKey=(c:VoiceCaptureContext|null)=>c?JSON.stringify(c):''

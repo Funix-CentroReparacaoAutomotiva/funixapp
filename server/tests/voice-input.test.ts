@@ -321,3 +321,36 @@ for(const operation of ['resolver','aplicar'])test(operation+' rechecks session 
   assert.equal(h.f.commercial.list(h.f.at.id)[0]!.notes,'');assert.equal(h.f.commercial.list(h.f.at.id).length,1)
  }finally{await h.close()}
 })
+
+test('Issue58 HTTP closes piece → existing-service correction → directed speech → confirmed idempotent application',async()=>{
+ let output:unknown,transcript='Para-lama dianteiro, funilaria M e pintura completa.',interpretations=0
+ const h=await fixture({transcribe:async()=>transcript,interpret:async()=>{interpretations++;return output}})
+ try{
+  const physical=h.f.commercial.catalogs().items.find(p=>p.code==='para_lama_dianteiro__passageiro')!
+  const service=h.f.commercial.saveCatalog({kind:'servico',name:'Funilaria HTTP QA'}),p=h.f.commercial.saveCatalog({kind:'dimensao',name:'P',serviceId:service.id}),m=h.f.commercial.saveCatalog({kind:'dimensao',name:'M',serviceId:service.id})
+  const paint=h.f.commercial.saveCatalog({kind:'servico',name:'Pintura HTTP QA'}),complete=h.f.commercial.saveCatalog({kind:'dimensao',name:'Completa',serviceId:paint.id})
+  const piece=h.f.commercial.add(h.f.at.id,{pieceCodes:[physical.code]}).find(p=>p.pieceId===physical.id)!
+  const before=h.f.commercial.updateDiagnosis(h.f.at.id,piece.id,{revision:piece.revision,services:[{serviceId:service.id,dimensionId:p.id,quantity:'3',notes:'Nota privada QA'}]})
+  output={commands:[
+   {id:'body',op:'add_service',intent:'instruction',piece:{state:'unresolved',text:'Para-lama dianteiro',candidates:[]},service:resolved(service.id),dimension:resolved(m.id),preserveDimension:false,quantity:null},
+   {id:'paint',op:'add_service',intent:'instruction',piece:{state:'unresolved',text:'Para-lama dianteiro',candidates:[]},service:resolved(paint.id),dimension:resolved(complete.id),preserveDimension:false,quantity:null}
+  ]}
+  const writes=h.db.prepare('SELECT total_changes() n').get()!.n
+  const initial=await (await h.post()).json(),option=initial.resolution.questions.flatMap((q:{options:{id:string;label:string}[]})=>q.options).find((o:{label:string})=>o.label==='Passageiro')!
+  const json=(body:unknown,route:string)=>h.post(JSON.stringify(body),{'Content-Type':'application/json'},'/api/atendimentos/'+h.f.at.id+'/copiloto/'+route)
+  const selectedResponse=await json({scenarioId:h.f.scenario.id,resolutionId:initial.resolution.id,optionId:option.id},'resolver');assert.equal(selectedResponse.status,200)
+  const selected=await selectedResponse.json();assert(selected.plan.changes.some((c:{op:string})=>c.op==='update_service'))
+  transcript='corrige funilaria http QA para P'
+  const question=selected.resolution.questions.find((q:{label:string})=>q.label==='Corrigir serviço')!
+  const correctedResponse=await h.post(audio,{},h.path+'&resolutionId='+selected.resolution.id+'&questionId='+question.id);assert.equal(correctedResponse.status,200)
+  const corrected=await correctedResponse.json();assert.equal(interpretations,1)
+  assert.equal(corrected.plan.changes.length,1);assert.equal(corrected.plan.changes[0].op,'add_service')
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,writes)
+  assert(!JSON.stringify(corrected.diagnostic).includes('Nota privada'))
+  const receiptBody={scenarioId:h.f.scenario.id,idempotencyKey:corrected.plan.idempotencyKey,confirmGlobalRemoval:false}
+  const responses=await Promise.all([json(receiptBody,'aplicar'),json(receiptBody,'aplicar')]);assert(responses.every(r=>r.status===200))
+  const receipts=await Promise.all(responses.map(r=>r.json()));assert.equal(receipts.filter(r=>r.replay).length,1)
+  const saved=h.f.commercial.list(h.f.at.id).find(p=>p.id===before.id)!
+  assert.equal(saved.services.length,2);assert.equal(saved.services[0]!.id,before.services[0]!.id);assert.equal(saved.services[0]!.quantity,'3');assert.equal(saved.services[0]!.dimensionId,p.id)
+ }finally{await h.close()}
+})

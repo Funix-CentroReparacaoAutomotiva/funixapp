@@ -38,7 +38,8 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
   return name(line.serviceId)+(line.dimensionId?' · '+name(line.dimensionId):'')+(repeated?' · linha '+(index+1)+' · qtd. '+line.quantity:'')
  }
  for(const change of plan.changes){
-  const entry:VoiceReviewEntry={kind:'change',label:'Peça',scope:change.impact.scope==='shared'?'shared':'scenario',fields:[]}
+  const origin=change.origins.dimensionId??change.origins.quantity??change.origins.presence??Object.values(change.origins)[0]
+  const entry:VoiceReviewEntry={commandId:origin?.commandId,kind:'change',label:'Peça',scope:change.impact.scope==='shared'?'shared':'scenario',fields:[]}
   const affectedLines=lines.has(change.target.id)?[change.target.id]:pieces.get(change.target.id)?.services.map(l=>l.id)??[]
   if(change.impact.invalidatesExecutionConfirmations&&context.workspace.scenarios.some(s=>affectedLines.some(id=>s.serviceConfirmations?.[id])))entry.warning='Confirmações de execução serão invalidadas.'
   switch(change.op){
@@ -75,7 +76,7 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
   const issues=plan.issues.filter(i=>i.commandId===result.commandId)
   const command=commands.find(c=>c.id===result.commandId)
   const entity=command&&'service'in command?(command.service.state==='resolved'?name(command.service.id):command.service.text):command&&'line'in command&&command.line?.kind==='id'?lineLabel(command.line.id):command&&'line'in command&&command.line?.kind==='service'?(command.line.service.state==='resolved'?name(command.line.service.id):command.line.service.text):undefined
-  commandGroup(result.commandId).entries.push({commandId:result.commandId,kind:'pending',scope:'shared',label:entity||'Conferir comando',fields:issues.flatMap(i=>(i.references??[]).flatMap(id=>lines.has(id)?[{label:'Opção',after:lineLabel(id)}]:[])),warning:[...new Set(issues.map(message))].join(' ')||concise[result.reason??'']||'Contexto alterado ou referência ambígua. Refaça o ditado.'})
+  commandGroup(result.commandId).entries.push({commandId:result.commandId,kind:'pending',scope:'shared',label:entity||'Conferir comando',fields:issues.flatMap(i=>(i.references??[]).flatMap(id=>lines.has(id)?[{label:'Já cadastrado',after:lineLabel(id)}]:[])),warning:[...new Set(issues.map(message))].join(' ')||concise[result.reason??'']||'Contexto alterado ou referência ambígua. Refaça o ditado.'})
  }
  for(const issue of plan.issues){
   if(issue.code==='GLOBAL_REMOVAL_CONFIRMATION_REQUIRED'||issue.code==='CURRENT_CALCULATION_PENDING'||issue.commandId&&pending.has(issue.commandId))continue
