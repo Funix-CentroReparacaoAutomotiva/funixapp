@@ -1,0 +1,1064 @@
+{
+  "date": "2026-11-06",
+  "synthetic_queries": 34,
+  "unique_vehicle_component_pairs": 30,
+  "documentation_searches": 6,
+  "total_search_queries": 40,
+  "limit": 50,
+  "records": [
+    {
+      "id": "Q01",
+      "brand": "Volkswagen",
+      "vehicle": "Gol 1.0 2019",
+      "part": "farol dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Volkswagen loja oficial Gol 1.0 2019 farol dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:30:58.732Z",
+      "duration_ms": 414,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "a0d3067390a82d7040a8256c99f30358d4fc4ab3e969d193748aaa9eae8c5ab9",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Volkswagen | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/volkswagen?category_id=MLB5672&client=recoview-selleritems&item_id=MLB5955263122&official_store_id=1038&recos_listing=true"
+        },
+        {
+          "title": "Farol Lado Esquerdo Gol/saveiro G5 Original 5u0941005 Esquerdo | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-2676949813-farol-lado-esquerdo-golsaveiro-g5-original-5u0941005-esquerdo-_JM"
+        },
+        {
+          "title": "Volkswagen | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios"
+        }
+      ],
+      "assessment": "Vitrine; anúncio de Gol G5 2009–2011 entre os resultados não atende Gol 2019.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q02",
+      "brand": "Volkswagen",
+      "vehicle": "Polo 1.0 TSI 2020",
+      "part": "para-choque dianteiro",
+      "query": "site:mercadolivre.com.br Volkswagen loja oficial Polo 1.0 TSI 2020 para-choque dianteiro original novo",
+      "started_utc": "2026-11-06T18:30:59.876Z",
+      "duration_ms": 990,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "ccb9af1a3c0276d06ba19b67ec457090dd4a79c390ebed708edcb1664c9e9dee",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Travessa Parachoque Dianteiro Novo Polo Original Volkswagen | Parcelamento sem juros",
+          "url": "https://www.mercadolivre.com.br/travessa-parachoque-dianteiro-novo-polo-original-volkswagen/up/MLBU768468429"
+        },
+        {
+          "title": "Volkswagen | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/volkswagen?category_id=MLB194703&client=recoview-selleritems&item_id=MLB3741024091&official_store_id=1038&recos_listing=true"
+        },
+        {
+          "title": "Volkswagen | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/volkswagen?category_id=MLB60608&client=recoview-selleritems&item_id=MLB3313564811&official_store_id=1038&recos_listing=true"
+        }
+      ],
+      "assessment": "Primeiro resultado é travessa, não cobertura do para-choque.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q03",
+      "brand": "Volkswagen",
+      "vehicle": "Fox 1.6 2015",
+      "part": "maçaneta externa porta dianteira direita",
+      "query": "site:mercadolivre.com.br Volkswagen loja oficial Fox 1.6 2015 maçaneta externa porta dianteira direita original novo",
+      "started_utc": "2026-11-06T18:31:01.602Z",
+      "duration_ms": 544,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "0aec530acbd635330a7f6d990683db851f1d8934d27a369dfef9b431e310d0af",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Macaneta Externa Traseiro Direito Porta Vw Fox 2010 A 2015 | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-4926007447-macaneta-externa-traseiro-direito-porta-vw-fox-2010-a-2015-_JM"
+        },
+        {
+          "title": "Carroceria Maçanetas de Carros Maçanetas para Portas Novo Direito Volkswagen | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/carroceria-macanetas-carros-portas/novo/_BRAND_60249_SIDE%2APOSITION_364127"
+        },
+        {
+          "title": "Carroceria Maçanetas de Carros | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/macanetas-carros/novo/_OfficialStoreId_all_BRAND_60249"
+        }
+      ],
+      "assessment": "Primeiro anúncio é maçaneta traseira; consulta pede dianteira.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q04",
+      "brand": "Volkswagen",
+      "vehicle": "Saveiro 1.6 2021",
+      "part": "guia para-choque dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Volkswagen loja oficial Saveiro 1.6 2021 guia para-choque dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:31:02.876Z",
+      "duration_ms": 646,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "f6f2183d0bc796e23b4a16d5f5c479037940b2cd53cb11387e19c2b36685f1b3",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Para-choque Vw 5u0807221qkz3 Saveiro | Parcelamento sem juros",
+          "url": "https://www.mercadolivre.com.br/parachoque-vw-5u0807221qkz3-saveiro/up/MLBU1441570237"
+        },
+        {
+          "title": "Volkswagen | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/volkswagen"
+        },
+        {
+          "title": "Guia Parachoque Dianteiro Original Gol Voyage Saveiro G8 | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-3633575667-guia-parachoque-dianteiro-original-gol-voyage-saveiro-g8-_JM"
+        }
+      ],
+      "assessment": "Primeiro resultado é para-choque inteiro; guia apareceu sem preço validado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q05",
+      "brand": "Chevrolet",
+      "vehicle": "Onix LT 1.0 2020",
+      "part": "farol dianteiro direito",
+      "query": "site:mercadolivre.com.br Chevrolet loja oficial Onix LT 1.0 2020 farol dianteiro direito original novo",
+      "started_utc": "2026-11-06T18:31:04.240Z",
+      "duration_ms": 450,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "b81c14e0a6e56a6065e2ca39e4ed84f7033c6a38b1d3e486a46c5ddb018063ea",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Chevrolet | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/chevrolet?category_id=MLB7863&client=recoview-selleritems&item_id=MLB3647373194&official_store_id=833&recos_listing=true"
+        },
+        {
+          "title": "Chevrolet | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/chevrolet?category_id=MLB7863&client=recoview-selleritems&item_id=MLB5384573356&official_store_id=833&recos_listing=true"
+        },
+        {
+          "title": "Farol Dianteiro Chevrolet Onix Lt Ltz 2020 A 2025 | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-4201192897-farol-dianteiro-chevrolet-onix-lt-ltz-2020-a-2025-_JM?attributes=SIDE_POSITION%3ARGlyZWl0by9QYXNzYWdlaXJv&picker=true"
+        }
+      ],
+      "assessment": "Vitrine mistura LED/sem LED, gerações, cupom e preço sem cupom; link individual da montadora não confirmado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q06",
+      "brand": "Chevrolet",
+      "vehicle": "Prisma LT 1.4 2018",
+      "part": "para-choque traseiro",
+      "query": "site:mercadolivre.com.br Chevrolet loja oficial Prisma LT 1.4 2018 para-choque traseiro original novo",
+      "started_utc": "2026-11-06T18:31:05.403Z",
+      "duration_ms": 488,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "baafaee748458d23eb2fe6e4eb438e3160ad2b591bc9c3cea374007a7a1443aa",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Chevrolet | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/chevrolet?category_id=MLB194773&client=recoview-selleritems&item_id=MLB5259555276&official_store_id=833&recos_listing=true"
+        },
+        {
+          "title": "Carroceria Pára-choques Traseiros GM em São José | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/para-choques/para-choques-traseiros/gm-em-sao-jose-santa-catarina/_Loja_all"
+        },
+        {
+          "title": "Parachoque Traseiro Chevrolet Prisma Original | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/parachoque-traseiro-chevrolet-prisma-original"
+        }
+      ],
+      "assessment": "Vitrine retorna guia em vez da cobertura; listagens incluem cobertura 2018–2019 sem oferta individual validada.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q07",
+      "brand": "Chevrolet",
+      "vehicle": "Cobalt LT 1.8 2016",
+      "part": "vidro porta dianteira esquerda",
+      "query": "site:mercadolivre.com.br Chevrolet loja oficial Cobalt LT 1.8 2016 vidro porta dianteira esquerda original novo",
+      "started_utc": "2026-11-06T18:31:06.618Z",
+      "duration_ms": 458,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "f1d007a1d44e375301460b6697621dab2776b6349d870c3a02e94e1d97edb709",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Vidro Lateral Cobalt | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/vidro-lateral-cobalt"
+        },
+        {
+          "title": "Interface Cobalt Ltz Vidros Veiculos | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/interface-cobalt-ltz-vidros-veiculos"
+        },
+        {
+          "title": "Vidro Porta Cobalt | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/vidro-porta-cobalt"
+        }
+      ],
+      "assessment": "Listagem mistura vidros dianteiros/traseiros e novos/usados; falta fornecedor autorizado confirmado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q08",
+      "brand": "Chevrolet",
+      "vehicle": "S10 LT 2.8 2021",
+      "part": "suporte para-choque dianteiro direito",
+      "query": "site:mercadolivre.com.br Chevrolet loja oficial S10 LT 2.8 2021 suporte para-choque dianteiro direito original novo",
+      "started_utc": "2026-11-06T18:31:07.802Z",
+      "duration_ms": 1194,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "044f5fb56c8f1ce1d52de277c4fcf3a9ce9ddf4f2c5dd43baae5afbab7ac36fc",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "52085665 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/52085665"
+        },
+        {
+          "title": "52074804 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/52074804"
+        },
+        {
+          "title": "52074803 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/52074803"
+        }
+      ],
+      "assessment": "Listagem mistura guia plástica e braço metálico, lado e anos; especificar subcomponente/OEM.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q09",
+      "brand": "Fiat",
+      "vehicle": "Argo Drive 1.0 2021",
+      "part": "farol dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Fiat loja oficial Argo Drive 1.0 2021 farol dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:31:09.744Z",
+      "duration_ms": 585,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "4aaf8bbe4aa160a950671aa9714767664ebcbdb2d0e1b0e03b8906853270736e",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "FIAT | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/fiat?category_id=MLB7863&client=recoview-selleritems&item_id=MLB4074129243&official_store_id=4637&recos_listing=true"
+        },
+        {
+          "title": "Farol Dianteiro Esquerdo Com Led Argo Cronos 18 24 Original Esquerdo | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-4541012292-farol-dianteiro-esquerdo-com-led-argo-cronos-18-24-original-esquerdo-_JM"
+        },
+        {
+          "title": "FIAT | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/fiat?category_id=MLB7863&client=recoview-selleritems&item_id=MLB5087934868&official_store_id=4637&recos_listing=true"
+        }
+      ],
+      "assessment": "Vitrine e anúncios misturam LED e halógeno; versão/tecnologia ainda não comprovadas.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q10",
+      "brand": "Fiat",
+      "vehicle": "Strada Endurance 1.4 2021",
+      "part": "para-choque dianteiro",
+      "query": "site:mercadolivre.com.br Fiat loja oficial Strada Endurance 1.4 2021 para-choque dianteiro original novo",
+      "started_utc": "2026-11-06T18:31:11.050Z",
+      "duration_ms": 570,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "24f7347ab8bf9d1fb2cea12b6fb05403c4a921f872081c9bd0998734ef228803",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "FIAT | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/fiat?category_id=MLB63801&client=recoview-selleritems&item_id=MLB5378887904&official_store_id=4637&recos_listing=true"
+        },
+        {
+          "title": "100256495 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/100256495"
+        },
+        {
+          "title": "100256526 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/100256526"
+        }
+      ],
+      "assessment": "Vitrine mistura para-choque completo e inferior; confirmar acabamento/furos e geração.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q11",
+      "brand": "Fiat",
+      "vehicle": "Uno Vivace 1.0 2014",
+      "part": "maçaneta externa porta dianteira direita",
+      "query": "site:mercadolivre.com.br Fiat loja oficial Uno Vivace 1.0 2014 maçaneta externa porta dianteira direita original novo",
+      "started_utc": "2026-11-06T18:31:12.343Z",
+      "duration_ms": 578,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "5a2e05bd2b4c6286a71b1ed1ae324f786edc5766d48268ab6257055d6f6ca2fe",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Maçaneta Externa Esquerda Fiat Novo Uno 2011/2014 Mopar Preto Dianteira | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-5316644916-macaneta-externa-esquerda-fiat-novo-uno-20112014-mopar-preto-dianteira-_JM"
+        },
+        {
+          "title": "Maçaneta Externa Porta Novo Uno Vivace 10 11 12 13 14 Fiat | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-1791020770-macaneta-externa-porta-novo-uno-vivace-10-11-12-13-14-fiat-_JM"
+        },
+        {
+          "title": "Maçaneta Externa Porta Novo Uno Vivace 10 11 12 13 14 Fiat | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-1791020549-macaneta-externa-porta-novo-uno-vivace-10-11-12-13-14-fiat-_JM"
+        }
+      ],
+      "assessment": "Primeiro anúncio é lado esquerdo; solicitado direito.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q12",
+      "brand": "Fiat",
+      "vehicle": "Mobi Like 1.0 2020",
+      "part": "presilha fixação para-barro",
+      "query": "site:mercadolivre.com.br Fiat loja oficial Mobi Like 1.0 2020 presilha fixação para-barro original novo",
+      "started_utc": "2026-11-06T18:31:13.645Z",
+      "duration_ms": 548,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "99c91473bee29d04b408aa2ea26f6d9b7480fa94e4a711c96e88b73e87a22166",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Suporte Presilha Do Quebra Sol Original Fiat - Unidade | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-2126892538-suporte-presilha-do-quebra-sol-original-fiat-unidade-_JM"
+        },
+        {
+          "title": "Suporte Presilha Do Quebra Sol Original Fiat - Unidade | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-2127378641-suporte-presilha-do-quebra-sol-original-fiat-unidade-_JM"
+        },
+        {
+          "title": "Par De Suportes Presilha Do Quebra Sol Original Fiat | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-2127378777-par-de-suportes-presilha-do-quebra-sol-original-fiat-_JM"
+        }
+      ],
+      "assessment": "Primeiro anúncio é presilha de quebra-sol, não de para-barro; descrição contradiz alegação de genuína.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q13",
+      "brand": "Hyundai Mobis",
+      "vehicle": "HB20 Comfort 1.0 2019",
+      "part": "farol dianteiro direito",
+      "query": "site:mercadolivre.com.br Hyundai Mobis loja oficial HB20 Comfort 1.0 2019 farol dianteiro direito original novo",
+      "started_utc": "2026-11-06T18:31:14.933Z",
+      "duration_ms": 584,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "be5dc07f3663bd39528013003420bd73d7c6e09ef568551627b3657a92d879cb",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Farol Mobi Lado Direito | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/farol-mobi-lado-direito"
+        },
+        {
+          "title": "92102r1000 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/92102r1000"
+        },
+        {
+          "title": "Farol Diereito Hb20 20 22 92102r1000 Original | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/farol-diereito-hb20-20-22-92102r1000-original"
+        }
+      ],
+      "assessment": "Primeira listagem é de farol Mobi, não HB20; resultados seguintes misturam gerações HB20.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q14",
+      "brand": "Hyundai Mobis",
+      "vehicle": "HB20S Vision 1.0 2021",
+      "part": "para-choque traseiro",
+      "query": "site:mercadolivre.com.br Hyundai Mobis loja oficial HB20S Vision 1.0 2021 para-choque traseiro original novo",
+      "started_utc": "2026-11-06T18:31:16.250Z",
+      "duration_ms": 604,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "41174101dab92e067434d92da97dc6dd599cef534fa909a84b4faf2a79784437",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Carroceria Pára-choques Traseiros Hyundai | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/para-choques/para-choques-traseiros/hyundai/_Loja_all"
+        },
+        {
+          "title": "Hyundai Mobis | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/hyundai-mobis?category_id=MLB5672&client=recoview-selleritems&item_id=MLB3193686597&official_store_id=260026&recos_listing=true"
+        },
+        {
+          "title": "Hyundai Mobis | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/hyundai-mobis?category_id=MLB430675&client=recoview-selleritems&item_id=MLB5933422124&official_store_id=260026&recos_listing=true"
+        }
+      ],
+      "assessment": "Listagem contém candidato HB20S 2020–2021, mas sem URL individual validada e compatibilidade de versão.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q15",
+      "brand": "Hyundai Mobis",
+      "vehicle": "Creta Action 1.6 2021",
+      "part": "vidro porta dianteira esquerda",
+      "query": "site:mercadolivre.com.br Hyundai Mobis loja oficial Creta Action 1.6 2021 vidro porta dianteira esquerda original novo",
+      "started_utc": "2026-11-06T18:31:17.617Z",
+      "duration_ms": 1071,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "1d96768d3146447ed645683805f63808843da87d5996a215a33f0418a2bb9720",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Janelas e Vedações Sistemas de Elevação Elétrico Novo Hyundai | MercadoLivre.com.br",
+          "url": "https://carros.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/vidros/sistemas-elevacao/eletrico/novo/_Loja_all_BRAND_1089_pickup%2Astate_TUxCUFNBT085N2E4"
+        },
+        {
+          "title": "Carroceria Portas Hyundai | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/portas-paineis/portas/marca-hyundai/_Loja_all_pickup%2Astate_TUxCUEdPSVMxNzVmMw"
+        },
+        {
+          "title": "Lateral Traseira Esquerda Creta | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/lateral-traseira-esquerda-creta"
+        }
+      ],
+      "assessment": "Listagens misturam elevadores e vidros fixos/traseiros; não validado vidro dianteiro solicitado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q16",
+      "brand": "Hyundai Mobis",
+      "vehicle": "HB20 Comfort 1.0 2017",
+      "part": "guia para-choque dianteiro direito",
+      "query": "site:mercadolivre.com.br Hyundai Mobis loja oficial HB20 Comfort 1.0 2017 guia para-choque dianteiro direito original novo",
+      "started_utc": "2026-11-06T18:31:19.433Z",
+      "duration_ms": 439,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "db729e3b11b6b719295d98e4bd98420f1c1e311098bc3e0af095de60057d573c",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Hyundai Mobis | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/hyundai-mobis?category_id=MLB5672&client=recoview-selleritems&item_id=MLB3193686597&official_store_id=260026&recos_listing=true"
+        },
+        {
+          "title": "Hyundai Mobis | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/hyundai-mobis?category_id=MLB115598&client=recoview-selleritems&item_id=MLB1520324310&official_store_id=260026&recos_listing=true"
+        },
+        {
+          "title": "Hyundai Mobis | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/hyundai-mobis?category_id=MLB5672&client=recoview-selleritems&item_id=MLB1520101243&official_store_id=260026&recos_listing=true"
+        }
+      ],
+      "assessment": "Vitrine contém guia direita e par; falta prova de unidade, ano e anúncio individual.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q17",
+      "brand": "Ford",
+      "vehicle": "Ka SE 1.0 2018",
+      "part": "farol dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Ford loja oficial Ka SE 1.0 2018 farol dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:31:20.628Z",
+      "duration_ms": 726,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "1d574b0b280fc11919609e8e87a1a80128419d744d33cec67983502b80910706",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "ford | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/ford?category_id=MLB5672&client=recoview-selleritems&item_id=MLB5661537974&official_store_id=2064&recos_listing=true"
+        },
+        {
+          "title": "Farol Ford Ka Arteb | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/farol-ford-ka-arteb"
+        },
+        {
+          "title": "Farol Ford Ka 2015-2016-2017-2018 Cromado Manual Esq. Dir. | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-4404764031-farol-ford-ka-2015-2016-2017-2018-cromado-manual-esq-dir-_JM"
+        }
+      ],
+      "assessment": "Vitrine Ford alternativa /loja/ford descoberta; vínculo técnico com URL fornecida não comprovado por API.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q18",
+      "brand": "Ford",
+      "vehicle": "Fiesta SE 1.6 2015",
+      "part": "para-choque dianteiro",
+      "query": "site:mercadolivre.com.br Ford loja oficial Fiesta SE 1.6 2015 para-choque dianteiro original novo",
+      "started_utc": "2026-11-06T18:31:22.101Z",
+      "duration_ms": 476,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "e328eeacf7739833093c243348070b3422b7798b9171a7e75ca229a239db2297",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Parachoque Dianteiro Ford New Fiesta Original | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/parachoque-dianteiro-ford-new-fiesta-original"
+        },
+        {
+          "title": "Parachoque New Fiesta 2015 Original | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/parachoque-new-fiesta-2015-original"
+        },
+        {
+          "title": "Para Choque Dianteiro Ford New Fiesta 2014 | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/para-choque-dianteiro-ford-new-fiesta-2014"
+        }
+      ],
+      "assessment": "Listagem mistura hatch/sedan e gerações; carroceria não informada, requer pergunta.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q19",
+      "brand": "Ford",
+      "vehicle": "EcoSport SE 1.5 2019",
+      "part": "maçaneta externa porta dianteira direita",
+      "query": "site:mercadolivre.com.br Ford loja oficial EcoSport SE 1.5 2019 maçaneta externa porta dianteira direita original novo",
+      "started_utc": "2026-11-06T18:31:23.340Z",
+      "duration_ms": 898,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "07367eb564d22dae93c49be05a10182fe9038d061d74e3f19b3a6eb35e84ed85",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Maçaneta Externa New Fiesta/ecosport/ka Branca Com Detalhe Dianteira/traseira | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-3434947911-macaneta-externa-new-fiestaecosportka-branca-com-detalhe-dianteiratraseira-_JM"
+        },
+        {
+          "title": "Maçaneta Externa Traseira Direita Ecosport 2015 2019 Ford | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-7597626608-macaneta-externa-traseira-direita-ecosport-2015-2019-ford-_JM"
+        },
+        {
+          "title": "Maçaneta Externa Dianteira Direita Ford Ecosport | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/ma%C3%A7aneta-externa-dianteira-direita-ford-ecosport"
+        }
+      ],
+      "assessment": "Primeiro candidato declara peça nova com detalhes de armazenamento, de outra loja oficial; não comprova canal Ford.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q20",
+      "brand": "Ford",
+      "vehicle": "Ranger XLS 2.2 2020",
+      "part": "suporte para-choque dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Ford loja oficial Ranger XLS 2.2 2020 suporte para-choque dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:31:24.990Z",
+      "duration_ms": 1211,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "d765b224b6d399bc12eff6cac18a22c6576a49b1d1ee5b9852bd4cb7c2e5f420",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Parachoque Ranger Usado | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/parachoque-ranger-usado"
+        },
+        {
+          "title": "Carroceria Suportes de Para-choques Usado Ford em Goiás | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/choques/suportes-choques/usado-em-goias/_BRAND_66432"
+        },
+        {
+          "title": "Carroceria Para-choques em Mato Grosso | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/para-choques/novo-em-mato-grosso/_BRAND_66432"
+        }
+      ],
+      "assessment": "Primeiro resultado é para-choque usado completo, não suporte esquerdo.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q21",
+      "brand": "Jeep",
+      "vehicle": "Renegade Sport 1.8 2019",
+      "part": "farol dianteiro direito",
+      "query": "site:mercadolivre.com.br Jeep loja oficial Renegade Sport 1.8 2019 farol dianteiro direito original novo",
+      "started_utc": "2026-11-06T18:31:26.951Z",
+      "duration_ms": 449,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "c9965c1131be83a25365140c27e9c9af4d78a9de108845c6a0d9bcc90438e67e",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Jeep | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/jeep?category_id=MLB5672&client=recoview-selleritems&item_id=MLB4898671379&official_store_id=2405&recos_listing=true"
+        },
+        {
+          "title": "Jeep | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/jeep?category_id=MLB63737&client=recoview-selleritems&item_id=MLB2719081417&official_store_id=2405&recos_listing=true"
+        },
+        {
+          "title": "Farol Dianteiro Lado Direito Renegade Jeep 52178955 | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-5068629193-farol-dianteiro-lado-direito-renegade-jeep-52178955-_JM"
+        }
+      ],
+      "assessment": "Vitrine retorna full LED; tecnologia da versão Sport não confirmada.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q22",
+      "brand": "Jeep",
+      "vehicle": "Compass Longitude 2.0 2020",
+      "part": "para-choque dianteiro",
+      "query": "site:mercadolivre.com.br Jeep loja oficial Compass Longitude 2.0 2020 para-choque dianteiro original novo",
+      "started_utc": "2026-11-06T18:31:28.129Z",
+      "duration_ms": 825,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "3168edcf8c8522e0009f9d25da248ffd647584a82cf115e08ba6d9c6aaae067e",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Parachoque Jeep Compass | Mercado Livre",
+          "url": "https://lista.mercadolivre.com.br/parachoque-jeep-compass"
+        },
+        {
+          "title": "Carroceria Pára-choques Dianteiros Jeep Novo | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/para-choques/para-choques-dianteiros/jeep/novo/_pickup%2Astate_TUxCUEdPSVMxNzVmMw"
+        },
+        {
+          "title": "Carroceria Pára-choques Dianteiros Jeep Novo | MercadoLivre.com.br",
+          "url": "https://lista.mercadolivre.com.br/acessorios-veiculos/pecas-carros-caminhonetes/carroceria/para-choques/para-choques-dianteiros/jeep/novo/_Cor-Principal_Cinza-claro"
+        }
+      ],
+      "assessment": "Listagem mistura flex/diesel e coberturas superior/inferior; motor 2.0 sem combustível é insuficiente.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q23",
+      "brand": "Jeep",
+      "vehicle": "Renegade Sport 1.8 2021",
+      "part": "moldura para-lama dianteiro esquerdo",
+      "query": "site:mercadolivre.com.br Jeep loja oficial Renegade Sport 1.8 2021 moldura para-lama dianteiro esquerdo original novo",
+      "started_utc": "2026-11-06T18:31:29.678Z",
+      "duration_ms": 588,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "f2ccd8c9e0d44ec54d6ff2abbe85d8cc811ef77aa8ba9d9d81e6a753d00d86ff",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Moldura Para-lama Dianteiro Esquerdo Jeep Renegade 2015-2025 | Parcelamento sem juros",
+          "url": "https://www.mercadolivre.com.br/moldura-paralama-dianteiro-esquerdo-jeep-renegade-20152025/up/MLBU1469349607"
+        },
+        {
+          "title": "Jeep | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/jeep?category_id=MLB63737&client=recoview-selleritems&item_id=MLB5328687598&official_store_id=2405&recos_listing=true"
+        },
+        {
+          "title": "Moldura Paralama Dianteiro Renegade 2019 2020 2021 Original | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-2835178908-moldura-paralama-dianteiro-renegade-2019-2020-2021-original-_JM"
+        }
+      ],
+      "assessment": "Candidato novo em loja Jeep, mas divergência entre códigos OEM/MPN e URL bloqueada na abertura.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q24",
+      "brand": "Jeep",
+      "vehicle": "Compass Longitude 2.0 2018",
+      "part": "presilha fixação para-barro",
+      "query": "site:mercadolivre.com.br Jeep loja oficial Compass Longitude 2.0 2018 presilha fixação para-barro original novo",
+      "started_utc": "2026-11-06T18:31:30.992Z",
+      "duration_ms": 720,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "a238b5fc1256f03031d6ef8ec21f726149e5c17bf8fa42d386e58c4599242aae",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Presilha Fixação Para-barro Para-choque Jeep 51877375 | MercadoLivre",
+          "url": "https://produto.mercadolivre.com.br/MLB-5348766071-presilha-fixaco-para-barro-para-choque-jeep-51877375-_JM"
+        },
+        {
+          "title": "Presilhas Fixação Forro Porta Jeep Compass Renegade Toro | Parcelamento sem juros",
+          "url": "https://produto.mercadolivre.com.br/MLB-7304516084-presilhas-fixaco-forro-porta-jeep-compass-renegade-toro-_JM"
+        },
+        {
+          "title": "Jeep | Loja Oficial",
+          "url": "https://www.mercadolivre.com.br/loja/jeep?category_id=MLB194789&client=recoview-selleritems&item_id=MLB3967244661&official_store_id=2405&recos_listing=true"
+        }
+      ],
+      "assessment": "Candidato Jeep novo com código 51877375 e preço total; aplicação Compass 2018 e URL atual não confirmadas.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q25",
+      "brand": "VW portal",
+      "vehicle": "Gol 1.0 2019",
+      "part": "farol dianteiro esquerdo",
+      "query": "site:pecas.vw.com.br Gol 1.0 2019 farol dianteiro esquerdo",
+      "started_utc": "2026-11-06T18:31:32.471Z",
+      "duration_ms": 438,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "194b03f0e5b1610e633422f0710849f5c95d8f3ed973c5bc4038625a314afc3d",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Farol 5U7941007D | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/farol-mascara-negra-esquerdo-motorista-vw-5u7941007d/52312"
+        },
+        {
+          "title": "Farol 5GM941005F | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/farol-mascara-negra-esquerdo-motorista-vw-5gm941005f/20945"
+        },
+        {
+          "title": "Faróis | Peças Originais Volkswagen",
+          "url": "https://pecas.vw.com.br/pecas-vw/iluminacao-e-sinalizacao/farois?amp=&veiculo=gol"
+        }
+      ],
+      "assessment": "Candidato oficial 5U7941007D; faixa por vendedores e aplicação genérica Gol 2017–2023, sem oferta unitária final.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q26",
+      "brand": "VW portal",
+      "vehicle": "Polo 1.0 TSI 2020",
+      "part": "para-choque dianteiro",
+      "query": "site:pecas.vw.com.br Polo 1.0 TSI 2020 para-choque dianteiro",
+      "started_utc": "2026-11-06T18:31:33.655Z",
+      "duration_ms": 879,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "babb9386974cdbc65c204fe83933098eebbaf3797a924e407f9025cd0399315e",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Para-choque 6EA807217FGRU | Loja Virtual Volkswagen",
+          "url": "https://www.pecas.vw.com.br/produto/para-choque-dianteiro-vw-6ea807217fgru/3856"
+        },
+        {
+          "title": "Para-choque 6EA807217HGRU | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/para-choque-dianteiro-vw-6ea807217hgru/52300"
+        },
+        {
+          "title": "Para-choque 6EA807217HGRU | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/para-choque-/52300"
+        }
+      ],
+      "assessment": "Candidato oficial 6EA807217FGRU; faixa por vendedores, máximo mudou entre índice e abertura.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q27",
+      "brand": "VW portal",
+      "vehicle": "Fox 1.6 2015",
+      "part": "maçaneta externa porta dianteira direita",
+      "query": "site:pecas.vw.com.br Fox 1.6 2015 maçaneta externa porta dianteira direita",
+      "started_utc": "2026-11-06T18:31:35.276Z",
+      "duration_ms": 868,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "de44febe252719e1b02cac858627b79b9239a4b50694fc90ab945c6e0206aaff",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Adesivo de Porta 5Z4853414R60U | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/adesivo-de-porta-dianteiro-direito-passageiro-cinza-vw-5z4853414r60u/20791"
+        },
+        {
+          "title": "Porta 5Z4833056HGRU | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/porta-vw-5z4833056hgru/3894"
+        },
+        {
+          "title": "Revestimento de Porta 5Z4867011BHMDH | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/revestimento-de-porta-vw-5z4867011bhmdh/39275"
+        }
+      ],
+      "assessment": "Primeiro resultado é adesivo de porta, não maçaneta; demais portas/revestimentos também não equivalem.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q28",
+      "brand": "VW portal",
+      "vehicle": "Saveiro 1.6 2021",
+      "part": "guia para-choque dianteiro esquerdo",
+      "query": "site:pecas.vw.com.br Saveiro 1.6 2021 guia para-choque dianteiro esquerdo",
+      "started_utc": "2026-11-06T18:31:36.906Z",
+      "duration_ms": 437,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "523d128484e19ba0e5fe343414e8ad0e91b5a40db2fced97fb91606a910563ed",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Para-choque 5U0807221QGRU | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/para-choque-dianteiro-vw-5u0807221qgru/16492"
+        },
+        {
+          "title": "Para-choque 5U0807221RGRU | Loja Virtual Volkswagen",
+          "url": "https://www.pecas.vw.com.br/produto/para-choque-dianteiro-vw-5u0807221rgru/16493"
+        },
+        {
+          "title": "Para-choque 5U0807221SGRU | Loja Virtual Volkswagen",
+          "url": "https://pecas.vw.com.br/produto/para-choque-dianteiro-vw-5u0807221sgru/2346"
+        }
+      ],
+      "assessment": "Guia 5U0807183B encontrada; índice indicava zero/sem estoque, abertura mostrou faixa positiva; lado não explicitado na página aberta.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q29",
+      "brand": "VW portal",
+      "vehicle": "Gol 1.0 2019",
+      "part": "vidro porta dianteira direita",
+      "query": "site:pecas.vw.com.br Gol 1.0 2019 vidro porta dianteira direita",
+      "started_utc": "2026-11-06T18:31:38.091Z",
+      "duration_ms": 954,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "0a6f359af634925ef95b44320d1a09c31d5646d61ac64777ecaa45f76f92b3d4",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Vidros | Peças Originais Volkswagen",
+          "url": "https://pecas.vw.com.br/pecas-vw/vidros-e-carroceria/vidros"
+        },
+        {
+          "title": "Revestimentos de Porta | Peças Originais Volkswagen",
+          "url": "https://pecas.vw.com.br/pecas-vw/interior/revestimentos-de-porta?q=gol"
+        },
+        {
+          "title": "Revestimentos de Porta | Peças Originais Volkswagen",
+          "url": "https://pecas.vw.com.br/pecas-vw/interior/revestimentos-de-porta?amp=&veiculo=gol"
+        }
+      ],
+      "assessment": "Listagem de vidros não prova geração/lado; candidato 5W4845202 precisa verificação de aplicação.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q30",
+      "brand": "VW portal",
+      "vehicle": "Polo 1.0 TSI 2020",
+      "part": "presilha fixação para-barro",
+      "query": "site:pecas.vw.com.br Polo 1.0 TSI 2020 presilha fixação para-barro",
+      "started_utc": "2026-11-06T18:31:39.835Z",
+      "duration_ms": 889,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "28124c174f6c14132b5d7b8a15b60993191476fb8e115e856355d4ed720393ab",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Presilhas | Peças Originais Volkswagen",
+          "url": "https://pecas.vw.com.br/pecas-vw/componentes-de-fixacao/presilhas?veiculo=polo"
+        },
+        {
+          "title": "Presilha de Fixação de Revestimento de Teto 7M0868563 | Loja Virtual Volkswagen",
+          "url": "https://www.pecas.vw.com.br/produto/presilha-de-fixacao-de-revestimento-de-teto-vw-7m0868563/14796"
+        },
+        {
+          "title": "Presilha de Fixação de Mangueira de Combustível 3Q0201449F | Loja Virtual Volkswagen",
+          "url": "https://www.pecas.vw.com.br/produto/presilha-de-fixacao-de-mangueira-de-combustivel-vw-3q0201449f/22835"
+        }
+      ],
+      "assessment": "Categoria presilhas; candidatos de teto e mangueira não equivalem ao fixador de para-barro.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q31",
+      "brand": "Renault portal",
+      "vehicle": "Sandero Expression 1.0 2018",
+      "part": "farol dianteiro esquerdo",
+      "query": "site:mecanico.renault.com.br Sandero Expression 1.0 2018 farol dianteiro esquerdo",
+      "started_utc": "2026-11-06T18:32:17.058Z",
+      "duration_ms": 1071,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "3bec8b3a7c2bc68909ef0dd4c44bb52c4f406792d5e8e67540412f32b151be0c",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "RPA003524A _Catálogo_Motrio_v2",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2024.pdf"
+        },
+        {
+          "title": "Filtros de cabine",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2022.pdf"
+        },
+        {
+          "title": "Mecânico Renault - Loja Online - Todas as peças com preços exclusivos | Renault",
+          "url": "https://www.mecanico.renault.com.br/loja-online"
+        }
+      ],
+      "assessment": "Catálogos e páginas gerais Renault/Motrio; nenhum farol solicitado com preço e link individual comprovados.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q32",
+      "brand": "Renault portal",
+      "vehicle": "Logan Authentique 1.0 2017",
+      "part": "para-choque traseiro",
+      "query": "site:mecanico.renault.com.br Logan Authentique 1.0 2017 para-choque traseiro",
+      "started_utc": "2026-11-06T18:32:18.839Z",
+      "duration_ms": 477,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "2eb33ea23930ab3a8bd6389e9ff65deebc172284e4ad8ea6d3839f1648ef8e50",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Mecânico Renault - Dicas, manuais, peças, tudo para o seu Renault | Renault",
+          "url": "https://www.mecanico.renault.com.br/"
+        },
+        {
+          "title": "Lubrificantes",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2022.pdf"
+        },
+        {
+          "title": "Mecânico Renault - Loja Online - Todas as peças com preços exclusivos | Renault",
+          "url": "https://www.mecanico.renault.com.br/loja-online?nocache=64"
+        }
+      ],
+      "assessment": "Páginas gerais e ofertas Renault; nenhum para-choque solicitado confirmado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q33",
+      "brand": "Renault portal",
+      "vehicle": "Kwid Zen 1.0 2020",
+      "part": "maçaneta externa porta dianteira direita",
+      "query": "site:mecanico.renault.com.br Kwid Zen 1.0 2020 maçaneta externa porta dianteira direita",
+      "started_utc": "2026-11-06T18:32:20.032Z",
+      "duration_ms": 917,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "b6117a2d86c26371dcbf533f17184b3bafed3195b2b321edffd7cf4f2a0232d0",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "Lubrificantes",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2022.pdf"
+        },
+        {
+          "title": "Mecânico Renault - Dicas, manuais, peças, tudo para o seu Renault | Renault",
+          "url": "https://www.mecanico.renault.com.br/"
+        },
+        {
+          "title": "Mecânico Renault - Dicas, manuais, peças, tudo para o seu Renault | Renault",
+          "url": "https://mecanico.renault.com.br/"
+        }
+      ],
+      "assessment": "Primeiro resultado é catálogo de lubrificantes; nenhum anúncio da maçaneta solicitado confirmado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    },
+    {
+      "id": "Q34",
+      "brand": "Renault portal",
+      "vehicle": "Duster Dynamique 1.6 2016",
+      "part": "guia para-choque dianteiro esquerdo",
+      "query": "site:mecanico.renault.com.br Duster Dynamique 1.6 2016 guia para-choque dianteiro esquerdo",
+      "started_utc": "2026-11-06T18:32:21.675Z",
+      "duration_ms": 656,
+      "method": "public_web_search_tool_not_provider_API",
+      "response_sha256": "93928ad6e29c0d091c5fb0e0303a75f49cf85477e05c8039bd4de1225bfc3196",
+      "any_brl_token_in_response": true,
+      "first_three_results": [
+        {
+          "title": "RPA003524A _Catálogo_Motrio_v2",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2024.pdf"
+        },
+        {
+          "title": "Filtros de cabine",
+          "url": "https://mecanico.renault.com.br/stale/files/CatalogoMotrio_2022.pdf"
+        },
+        {
+          "title": "Mecânico Renault - Loja Online - Todas as peças com preços exclusivos | Renault",
+          "url": "https://www.mecanico.renault.com.br/loja-online?nocache=64"
+        }
+      ],
+      "assessment": "Catálogos e ofertas gerais Renault; nenhum guia solicitado confirmado.",
+      "accepted_categories": [],
+      "confirmed_unit_price_brl": null,
+      "classification": "unverified_or_rejected",
+      "provider_api_executed": false
+    }
+  ]
+}
