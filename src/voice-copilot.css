@@ -52,3 +52,8 @@
 .voice-diagnostic-privacy,.voice-outcome{font-size:11px;color:#52637b}
 .voice-panel .voice-action-bar{flex-wrap:wrap}
 .voice-panel .voice-action-bar .voice-apply{flex:1;min-width:120px;width:auto}
+.voice-component-values{display:flex;flex-wrap:wrap;gap:5px;align-items:end;margin:5px 0}
+.voice-component-values label{font-size:10px;min-width:0;flex:1}
+.voice-component-values label:first-child{flex:0 1 65px}
+.voice-component-values input{display:block;width:100%;box-sizing:border-box;min-height:44px;border:1px solid #cad4e3;border-radius:6px;padding:5px;font:inherit;font-size:12px}
+.voice-component-revise{min-height:44px;max-width:90px;border:1px solid #12347c;border-radius:6px;background:#fff;color:#12347c;padding:4px;font-size:10px}

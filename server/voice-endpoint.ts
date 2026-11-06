@@ -77,7 +77,8 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
     const batch={format:'funix-voice-commands-v1',atendimentoId:at,scenarioId:scene,expected:voiceRevisions(context),
      idempotencyKey:randomUUID(),commands:convertVoiceModelOutput(output)}
     const validated=validateVoiceCommands(batch)
-    if(!validated.batch||validated.invalidIndexes.length||validated.issues.length)throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
+    const numericPending=validated.batch&&validated.invalidIndexes.every(index=>{const c=validated.batch!.commands[index]!;if(c.op!=='add_component')return false;const probe={...validated.batch!,commands:[{...c,quantity:'1',manualPrice:'0'}]};return validateVoiceCommands(probe).invalidIndexes.length===0})
+    if(!validated.batch||validated.invalidIndexes.length&&!numericPending||validated.issues.some(i=>i.code!=='INVALID_COMMAND'))throw new ServiceError(502,'VOICE_MODEL_INVALID','A IA retornou comandos inválidos; nenhuma alteração foi aplicada.')
     return stageVoiceResolution(db,validated.batch,transcription,context,sessionId,requestId)
    }
    return await Promise.race([work(),abort])

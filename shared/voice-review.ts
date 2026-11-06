@@ -8,6 +8,7 @@ export interface VoiceReviewEntry {
  commandId?:string
  pendingId?:string
  options?:import('./voice-resolution.ts').VoiceResolutionOption[]
+ component?:{commandId:string;quantity:string;manualPrice:string}
  warning?:string
 }
 export interface VoiceReviewGroup {id:string;piece:string;entries:VoiceReviewEntry[]}

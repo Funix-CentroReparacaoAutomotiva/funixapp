@@ -6,6 +6,7 @@ export type VoiceReference={state:'resolved';id:string}|{state:'unresolved';text
 export type VoiceLineReference={kind:'id';id:string}|{kind:'service';service:VoiceReference}|{kind:'command';commandId:string}
 type CommandBase={id:string;intent:'instruction'|'correction';piece:VoiceReference;sourceText?:string}
 export type VoiceCommand=CommandBase&(
+ |{op:'add_component';name:string;quantity?:string;manualPrice?:string;duplicateDecision?:{mode:'keep'|'new';references:string[]}}
  |{op:'add_piece'}
  |{op:'remove_piece'}
  |{op:'set_piece_enabled';enabled:boolean}
@@ -33,7 +34,7 @@ export interface VoiceRecommendationSet{
 }
 export interface VoiceReceipt{atendimentoId:string;scenarioId:string;idempotencyKey:string;requestDigest:string;handledCommandIds:string[]}
 export interface VoicePlanningContext{
- atendimentoId:string;workspace:Pick<CommercialWorkspace,'selectedId'|'revision'|'configurationRevision'|'items'|'scenarios'> & {components:Pick<CommercialWorkspace['components'][number],'id'|'pieceId'>[];calculations?:Pick<CommercialWorkspace['calculations'][number],'scenarioId'|'errors'>[]}
+ atendimentoId:string;workspace:Pick<CommercialWorkspace,'selectedId'|'revision'|'configurationRevision'|'items'|'scenarios'> & {components:Pick<CommercialWorkspace['components'][number],'id'|'pieceId'|'name'|'quantity'|'manualPrice'|'revision'>[];calculations?:Pick<CommercialWorkspace['calculations'][number],'scenarioId'|'errors'>[]}
  catalog:CatalogItem[];recommendations:VoiceRecommendationSet[];receipts?:VoiceReceipt[]
 }
 export type VoiceOrigin={kind:'explicit';commandId:string;intent:'instruction'|'correction'}|{kind:'rule';commandId:string;ruleId:string}|{kind:'existing-default';commandId:string;rule:'initial-quantity-one'|'new-item-flags'}
@@ -47,6 +48,7 @@ export type VoiceChange=ChangeBase&(
  |{op:'add_piece';target:VoiceEntityReference;pieceId:string;values:PieceValues;flags:Record<string,boolean>}
  |{op:'update_piece';target:VoiceEntityReference;before:Partial<PieceValues>;patch:Partial<PieceValues>}
  |{op:'remove_piece';target:VoiceEntityReference}
+ |{op:'add_component';target:VoiceEntityReference;piece:VoiceEntityReference;values:{name:string;quantity:string;manualPrice:string;notes:string};flags:Record<string,boolean>}
  |{op:'add_service';target:VoiceEntityReference;piece:VoiceEntityReference;values:ServiceValues;flags:Record<string,boolean>}
  |{op:'update_service';target:VoiceEntityReference;piece:VoiceEntityReference;before:Partial<ServiceValues>;patch:Partial<ServiceValues>}
  |{op:'remove_service';target:VoiceEntityReference;piece:VoiceEntityReference}

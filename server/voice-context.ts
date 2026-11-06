@@ -15,7 +15,7 @@ export function readVoiceContext(db:DatabaseSync,at:string,scenarioId:string):Vo
  const selected=selectedScenario(db,at,scenarioId),all=scenarios.list(at),catalog=commercial.catalogs().items,state=pricing.settings(at)
  return{atendimentoId:at,catalog,workspace:{selectedId:selected,scenarios:all,items:commercial.list(at,selected),
   revision:state.revision,configurationRevision:pricing.get().revision,
-  components:new ComponentRepository(db).list(at).map(p=>({id:p.id,pieceId:p.pieceId}))},
+  components:new ComponentRepository(db).list(at).map(p=>({id:p.id,pieceId:p.pieceId,name:p.name,quantity:p.quantity,manualPrice:p.manualPrice,revision:p.revision}))},
  recommendations:catalog.filter(c=>c.kind==='diagnostico').flatMap(d=>DIAGNOSIS_INTENSITIES.map(intensity=>({
   diagnosisId:d.id,intensity,availability:'available' as const,rules:recommendations(db,d.id,intensity),
   pending:db.prepare("SELECT id AS ruleId,reason FROM diagnosis_recommendations WHERE diagnosis_id=? AND intensity=? AND status='pending' ORDER BY id").all(d.id,intensity).map(r=>({ruleId:String(r.ruleId),reason:String(r.reason)}))

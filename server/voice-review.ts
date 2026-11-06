@@ -44,6 +44,7 @@ export function voiceReview(plan:VoicePlan,context:VoicePlanningContext):string[
     if('notes'in change.patch)changes.push('observações da peça: '+notes(change.patch.notes))
     return piece+': alterar '+changes.join(', ')+' (dados compartilhados)'
    }
+   case'add_component':return piece+': incluir componente '+change.values.name+', quantidade '+change.values.quantity+', preço unitário R$ '+change.values.manualPrice.replace('.',',')+' (dados compartilhados); componente '+flags(change.flags)
    case'add_service':return piece+': incluir serviço '+serviceLabel(change.values.serviceId)+', '+dimension(change.values.dimensionId)+
     ', quantidade '+change.values.quantity+'; diagnóstico da linha: '+diagnosis(change.values.diagnosisId)+
     '; observações da linha: '+notes(change.values.notes)+(change.values.recommendationRuleId?'; origem: recomendação cadastrada':'')+

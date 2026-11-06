@@ -126,7 +126,7 @@ test('manual content or components prevent automatic reconstruction; assisted se
  const ctx=voiceFixture(),p=plan([cmd('damage','set_diagnosis',{intensity:'severo'})],ctx)
  assert.equal(p.changes.length,1);assert(p.issues.some(i=>i.code==='RECOMMENDATIONS_UNAVAILABLE'))
  const assisted=plan([cmd('rec','recommend_services',{mode:'assisted',ruleIds:['qa-rule-body','qa-rule-paint','qa-rule-montage']})]);assert.equal(assisted.changes.length,1);assert.equal(assisted.changes[0]!.op,'add_service')
- const withParts=voiceFixture();withParts.workspace.items[0]!.services=[];withParts.workspace.components=[{id:'qa-part',pieceId:V.piece}]
+ const withParts=voiceFixture();withParts.workspace.items[0]!.services=[];withParts.workspace.components=[{id:'qa-part',pieceId:V.piece,name:'Componente QA',quantity:'1',manualPrice:'0',revision:1}]
  const protectedPlan=plan([cmd('rec','recommend_services',{mode:'automatic'})],withParts);assert.equal(protectedPlan.changes.length,0);assert(protectedPlan.issues.some(i=>i.code==='ASSISTED_RECOMMENDATIONS_REQUIRED'))
 })
 

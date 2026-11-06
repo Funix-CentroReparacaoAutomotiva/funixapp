@@ -11,7 +11,7 @@ const line={anyOf:[object({kind:enumeration(['id']),id:str}),object({kind:enumer
 const base={id:str,intent:enumeration(['instruction','correction']),piece:reference}
 const operation=(op:string,fields:Record<string,unknown>={})=>object({...base,op:enumeration([op]),...fields})
 export const voiceModelSchema=object({commands:{type:'array',items:{anyOf:[
- operation('add_piece'),operation('remove_piece'),operation('set_piece_enabled',{enabled:bool}),
+ operation('add_component',{name:str,quantity:str,manualPrice:str}),operation('add_piece'),operation('remove_piece'),operation('set_piece_enabled',{enabled:bool}),
  operation('set_diagnosis',{setDiagnosis:bool,diagnosis:nullable(reference),setIntensity:bool,intensity:nullable(enumeration(['leve','moderado','severo'])),additionalDamage:bool}),
  operation('add_service',{service:reference,dimension:nullable(reference),preserveDimension:bool,quantity:nullable(str)}),
  operation('set_dimension',{line,dimension:nullable(reference)}),
