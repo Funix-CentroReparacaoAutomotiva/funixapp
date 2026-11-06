@@ -4,7 +4,8 @@ import type{CaptureState}from'./voice-capture'
 import{VOICE_PROCESSING_MS,VOICE_UPLOAD_MS,voiceCaptureKey}from'../shared/voice-input'
 import type{VoiceCaptureContext,VoiceInterpretation}from'../shared/voice-input'
 import{api}from'./api'
-import{diagnosticLines,diagnosticError,copiedVoiceDiagnostic}from'../shared/voice-diagnostic'
+import{diagnosticHistory,diagnosticQuestions,diagnosticError,diagnosticFailure,copiedVoiceDiagnostic}from'../shared/voice-diagnostic'
+import type{VoiceHistoryEvent,VoiceTechnicalEvent}from'../shared/voice-diagnostic-export'
 import{Icon}from'./ui'
 import{VoiceReview}from'./VoiceReview'
 import'./voice-copilot.css'
@@ -15,11 +16,15 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const[applyError,setApplyError]=useState('')
  const[transcriptionOpen,setTranscriptionOpen]=useState(false)
  const[appliedKey,setAppliedKey]=useState<string|null>(null)
- const[events,setEvents]=useState<{text:string}[]>([])
+ const[events,setEvents]=useState<VoiceHistoryEvent[]>([])
  const[lastTranscription,setLastTranscription]=useState('')
  const[copyStatus,setCopyStatus]=useState('')
  const capturePhase=useRef('idle')
- const addEvents=(texts:string[])=>setEvents(old=>[...old,...texts.map(text=>({text}))].slice(-180))
+ const addEvents=(values:(string|VoiceHistoryEvent)[],technical?:VoiceTechnicalEvent)=>{
+  const next=values.map(value=>typeof value==='string'?{text:value}:value)
+  if(technical&&next.length)next[next.length-1]={...next[next.length-1]!,technical}
+  setEvents(old=>[...old,...next].slice(-180))
+ }
  const clarification=useRef<{resolutionId:string;questionId:string}|null>(null)
  const reviewEpoch=useRef(0)
  const[resolving,setResolving]=useState(false)
@@ -31,22 +36,22 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   now:()=>performance.now(),
   process:async(audio,context,duration,signal)=>{
    const clarifying=Boolean(clarification.current),epoch=reviewEpoch.current
-   addEvents(['Captura concluída; áudio enviado para '+(clarifying?'esclarecimento dirigido.':'transcrição e interpretação.')])
+   addEvents(['Captura concluída; áudio enviado para '+(clarifying?'esclarecimento dirigido.':'transcrição e interpretação.')],{type:'capture_uploaded'})
    try{
     const result=await api<VoiceInterpretation>(`/api/atendimentos/${context.atendimentoId}/copiloto/interpretar?scenarioId=${encodeURIComponent(context.scenarioId)}${clarification.current?'&resolutionId='+encodeURIComponent(clarification.current.resolutionId)+'&questionId='+encodeURIComponent(clarification.current.questionId):''}`,{
      method:'POST',headers:{'Content-Type':audio.type,'X-Funix-Audio-Duration-Ms':String(Math.ceil(duration)),
       'X-Funix-Voice-Revisions':JSON.stringify({composition:context.compositionRevision,configuration:context.configurationRevision,scenario:context.scenarioRevision})},
      body:audio,signal:AbortSignal.any([signal,AbortSignal.timeout(VOICE_PROCESSING_MS+VOICE_UPLOAD_MS+5000)])})
-    if(epoch===reviewEpoch.current){setLastTranscription(result.transcription);addEvents([...(clarifying?['Esclarecimento transcrito e validado pelo servidor; pedido original preservado.']:[]),...(result.diagnostic?diagnosticLines(result.diagnostic,!clarifying):[]),...(result.resolution?.questions.map(q=>'Pergunta: '+q.label+' · '+q.options.length+' opção(ões) verificada(s)'+(q.options.length?' · '+q.options.map(o=>o.label).join(', '):'.'))??[])])}
+    if(epoch===reviewEpoch.current){setLastTranscription(result.transcription);addEvents([...(clarifying?[{text:'Esclarecimento transcrito e validado pelo servidor; pedido original preservado.',technical:{type:'clarification_received' as const}}]:[]),...(result.diagnostic?diagnosticHistory(result.diagnostic,!clarifying):[]),...diagnosticQuestions(result.resolution)])}
     return result
-   }catch(error){if(epoch===reviewEpoch.current)addEvents(['Falha no processamento · '+diagnosticError(error)]);throw error}
+   }catch(error){if(epoch===reviewEpoch.current)addEvents(['Falha no processamento · '+diagnosticError(error)],diagnosticFailure('processing',error));throw error}
   }
  },next=>{
   if(next.phase==='preparing'&&capturePhase.current!=='preparing'){
-   if(!clarification.current){setEvents([{text:'Captura iniciada.'}]);setLastTranscription('');setCopyStatus('')}
-   else addEvents(['Captura de esclarecimento iniciada.'])
+   if(!clarification.current){setEvents([{text:'Captura iniciada.',technical:{type:'capture_started'}}]);setLastTranscription('');setCopyStatus('')}
+   else addEvents(['Captura de esclarecimento iniciada.'],{type:'clarification_started'})
   }
-  if(next.phase==='error'&&['preparing','recording'].includes(capturePhase.current))addEvents(['Captura não concluída · VOICE_CAPTURE_FAILED'])
+  if(next.phase==='error'&&['preparing','recording'].includes(capturePhase.current))addEvents(['Captura não concluída · VOICE_CAPTURE_FAILED'],{type:'capture_failed'})
   capturePhase.current=next.phase
   const keep=Boolean(clarification.current&&!next.result);if(next.result)clarification.current=null
   setState(previous=>keep?{...next,result:previous.result}:next)
@@ -70,18 +75,18 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   if(!resolution||!active||busy)return
   setResolving(true);setApplyError('');clarification.current=null
   const option=resolution.questions.flatMap(q=>q.options).find(o=>o.id===optionId)
-  if(option)addEvents(['Opção escolhida: '+option.label])
+  if(option){const question=resolution.questions.findIndex(q=>q.options.some(o=>o.id===optionId));addEvents(['Opção escolhida: '+option.label],{type:'option_selected',question:question+1,option:resolution.questions[question]!.options.findIndex(o=>o.id===optionId)+1})}
   try{
    const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/resolver`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,optionId})})
-   if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});if(result.diagnostic)addEvents([...diagnosticLines(result.diagnostic),...(result.resolution?.questions.map(q=>'Pergunta: '+q.label+' · '+q.options.length+' opção(ões) verificada(s)'+(q.options.length?' · '+q.options.map(o=>o.label).join(', '):'.'))??[])])}
-  }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao resolver · '+diagnosticError(error)])}}finally{setResolving(false)}
+   if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});if(result.diagnostic)addEvents([...diagnosticHistory(result.diagnostic),...diagnosticQuestions(result.resolution)])}
+  }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao resolver · '+diagnosticError(error)],diagnosticFailure('resolution',error))}}finally{setResolving(false)}
  }
  function talk(questionId=clarification.current?.questionId??state.result?.resolution?.questions[0]?.id){
   if(state.phase==='recording'){capture.release();return}
   const resolution=state.result?.resolution
   if(!resolution||busy||!context)return
   if(!questionId||!resolution.questions.some(q=>q.id===questionId))return
-  addEvents(['Esclarecimento solicitado: '+resolution.questions.find(q=>q.id===questionId)!.label]);clarification.current={resolutionId:resolution.id,questionId};setApplyError('');setTranscriptionOpen(false);onOpen();void capture.hold()
+  addEvents(['Esclarecimento solicitado: '+resolution.questions.find(q=>q.id===questionId)!.label],{type:'clarification_requested',question:resolution.questions.findIndex(q=>q.id===questionId)+1});clarification.current={resolutionId:resolution.id,questionId};setApplyError('');setTranscriptionOpen(false);onOpen();void capture.hold()
  }
  async function apply(){
   const result=state.result,active=context
@@ -92,19 +97,19 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   }
   const removes=result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)
   if(removes&&!window.confirm('ATENÇÃO: a exclusão remove as peças/serviços indicados de TODOS os cenários e pode apagar componentes vinculados. Essa ação não pode ser desfeita. Confirma a exclusão?'))return
-  setApplying(true);setApplyError('');addEvents(['Confirmação humana: aplicação solicitada.'])
+  setApplying(true);setApplyError('');addEvents(['Confirmação humana: aplicação solicitada.'],{type:'apply_requested'})
   try{
    const applied=await api<{applied:true;changed:number;replay:boolean}>(`/api/atendimentos/${active.atendimentoId}/copiloto/aplicar`,{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({scenarioId:active.scenarioId,idempotencyKey:result.plan.idempotencyKey,confirmGlobalRemoval:removes})
    })
-   if(applied.applied){addEvents(['Apply confirmado pelo servidor · '+applied.changed+' alteração(ões)'+(applied.replay?' · recibo reutilizado.':'.')]);setAppliedKey(result.plan.idempotencyKey);clarification.current=null;capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
-  }catch(error){addEvents(['Falha ao aplicar · '+diagnosticError(error)]);setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
+   if(applied.applied){addEvents(['Apply confirmado pelo servidor · '+applied.changed+' alteração(ões)'+(applied.replay?' · recibo reutilizado.':'.')],{type:'apply_confirmed',changes:applied.changed,replay:applied.replay});setAppliedKey(result.plan.idempotencyKey);clarification.current=null;capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
+  }catch(error){addEvents(['Falha ao aplicar · '+diagnosticError(error)],diagnosticFailure('apply',error));setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
  }
  async function copyDiagnostic(){
   try{await navigator.clipboard.writeText(copiedVoiceDiagnostic(events));setCopyStatus('Diagnóstico copiado sem transcrição ou dados pessoais.')}
-  catch{setCopyStatus('Não foi possível copiar. Selecione o texto do diagnóstico abaixo.')}
+  catch{setCopyStatus('Não foi possível copiar. Tente novamente; o histórico detalhado permanece visível.')}
  }
  function newDictation(){
   if(busy)return
@@ -132,7 +137,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    {transcriptionOpen&&<section id="voice-transcript" className="voice-diagnostic" aria-label="Diagnóstico desta tentativa">
     <h3>O que foi dito</h3><p className="voice-transcript">{lastTranscription||'Transcrição ainda não disponível.'}</p>
     <h3>O que aconteceu</h3><ol>{events.map((event,index)=><li key={index}>{event.text}</li>)}</ol>
-    <p className="voice-diagnostic-privacy">Somente esta tentativa. A cópia exclui transcrição, observações e dados pessoais.</p>
+    <p className="voice-diagnostic-privacy">Histórico local detalhado. A cópia usa aliases e exclui nomes, rótulos, transcrição e observações.</p>
     <button onClick={()=>void copyDiagnostic()}>Copiar diagnóstico</button><p role="status">{copyStatus}</p>
    </section>}
    {state.result&&<>
@@ -142,7 +147,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    </>}
    {applyError&&<p role="alert" className="voice-apply-error">{applyError}</p>}
    {state.recoveryAudio&&<RecoveryAudio blob={state.recoveryAudio}/>}
-   {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();addEvents(['Captura cancelada.']);capture.cancel()}}>Cancelar</button>}
+   {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();addEvents(['Captura cancelada.'],{type:'capture_cancelled'});capture.cancel()}}>Cancelar</button>}
   </div>
   {state.result&&<div className="voice-action-bar">
    {state.result.resolution&&state.result.resolution.questions.length>0&&<button className="voice-talk" disabled={applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}

@@ -7,7 +7,7 @@ import {voiceRevisions} from '../voice-planner.ts'
 import {stageVoiceResolution,resolveVoiceOption,clarifyVoiceResolution} from '../voice-resolution.ts'
 import {applyVoiceBatch} from '../voice-apply.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
-import {copiedVoiceDiagnostic,diagnosticLines,diagnosticError} from '../../shared/voice-diagnostic.ts'
+import {copiedVoiceDiagnostic,diagnosticHistory,diagnosticQuestions,diagnosticError} from '../../shared/voice-diagnostic.ts'
 import type {VoiceInterpretation} from '../../shared/voice-input.ts'
 import type {VoiceCommand} from '../../shared/voice-commands.ts'
 const ref=(id:string)=>({state:'resolved' as const,id}),unknown=(text:string)=>({state:'unresolved' as const,text,candidates:[]})
@@ -174,8 +174,9 @@ test('Issue58 diagnostic copy uses a safe projection, not raw transcript, notes,
  try{
   h.add()
   const result=h.choose(h.stage(h.commands(),'PII Nome QA 11999999999 ABC1D23 token=secret'),'Passageiro')
-  const text=copiedVoiceDiagnostic(diagnosticLines(result.diagnostic!,true).map(text=>({text})))
-  assert.match(text,/IA interpretou.*M/);assert.match(text,/Já cadastrado.*P/);assert.match(text,/Replanejamento/)
+  const history=diagnosticHistory(result.diagnostic!,true),text=copiedVoiceDiagnostic(history)
+  assert.match(history.map(e=>e.text).join('\n'),/IA interpretou.*M/)
+  assert.match(text,/add_service/);assert.match(text,/EXISTING_LINE_RECONCILED/);assert.match(text,/update_service/)
   for(const privateValue of ['PII','11999999999','ABC1D23','secret',h.f.at.id,'nota privada',h.f.at.phone])assert(!text.includes(privateValue),privateValue)
   assert.equal(diagnosticError({code:'VOICE_CLARIFICATION_PENDING',status:422,message:'secret'}),'VOICE_CLARIFICATION_PENDING · HTTP 422')
   assert.equal(diagnosticError({code:'token=secret',status:401}),'VOICE_REQUEST_FAILED · HTTP 401')
@@ -251,5 +252,26 @@ test('Issue58 a catalog answer must not be offered for a blocking operation it c
    assert(result.reviewGroups.flatMap(g=>g.entries).every(e=>!e.pendingId&&e.warning?.includes('Novo ditado')))
    assert.throws(()=>h.apply(result))
   }
+ }finally{h.db.close()}
+})
+
+
+test('PR59 privacy: catalog and option labels containing synthetic PII remain local and never enter the exported diagnostic',()=>{
+ const h=fixture()
+ try{
+  const piece=h.add(),catalog=h.f.commercial.catalogs().items
+  const privateValues=['ANA_SINTETICA_PECA 11988776655 ABC1D23 TOKEN_PECA_QA','BRUNO_SINTETICO_SERVICO 21977665544 DEF4G56 TOKEN_SERVICO_QA','CARLA_SINTETICA_DIMENSAO 31966554433 GHI7J89 TOKEN_DIMENSAO_QA']
+  for(const [id,privateValue] of [[piece.pieceId,privateValues[0]],[h.service.id,privateValues[1]],[h.m.id,privateValues[2]]] as [string,string][]){
+   const item=catalog.find(c=>c.id===id)!;h.f.commercial.saveCatalog({revision:item.revision,name:item.name+' '+privateValue},id)
+  }
+  const result=h.choose(h.stage(),'Passageiro'),question=result.resolution!.questions.find(q=>q.label==='Corrigir serviço')!
+  assert(question.options.some(o=>o.label.includes('CARLA_SINTETICA_DIMENSAO')))
+  const history=[...diagnosticHistory(result.diagnostic!,true),...diagnosticQuestions(result.resolution),{text:'Opção escolhida: '+question.options[0]!.label,technical:{type:'option_selected' as const,question:1,option:1}}]
+  const visible=history.map(e=>e.text).join('\n'),copied=copiedVoiceDiagnostic(history)
+  for(const value of privateValues){assert(visible.includes(value));for(const fragment of value.split(' '))assert(!copied.includes(fragment),fragment)}
+  for(const value of [h.f.at.id,piece.id,h.service.id,h.m.id])assert(!copied.includes(value))
+  assert(!copied.includes('Funilaria'));assert(!copied.includes('Para-lama'));assert(!copied.includes(question.options[0]!.label))
+  assert.match(copied,/option_selected/);assert.match(copied,/EXISTING_LINE_RECONCILED/)
+  assert.match(copied,/"dimension":\{"before":\d+,"after":\d+\}/);assert.match(copied,/"quantity":"3"/)
  }finally{h.db.close()}
 })

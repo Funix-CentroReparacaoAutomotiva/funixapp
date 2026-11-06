@@ -149,12 +149,16 @@ function present(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,requestI
  for(const group of groups)for(const entry of group.entries)if(entry.kind==='pending'&&!entry.pendingId){if(stored.limited)entry.warning='Pedido grande demais para uma revisão segura. Divida em ditados menores.';else if(stored.additionalIds.includes(entry.commandId??''))entry.warning='Linha adicional não confirmada. Use o editor de serviços para adicionar um lançamento repetido; a linha existente foi preservada.';entry.warning=(entry.warning??'Confira o pedido.')+' Use Novo ditado para continuar.'}
  if(plan.changes.length)stageVoiceBatch(db,stored.batch,plan.stateDigest,plan.requestDigest,stored.session,stored.expires)
  const pending=plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length
+ const diagnostic=voiceDiagnostic(stored.interpreted,stored.source.commands,plan,ctx,stored.owners)
+ const decisions=[
+  ...stored.source.commands.flatMap((c,index)=>stored.batch.commands.some(e=>e.id===c.id&&c.op==='add_service'&&e.op==='set_dimension')?[{code:'EXISTING_LINE_RECONCILED',command:index+1}]:[]),
+  ...stored.additionalIds.map(id=>({code:'ADDITIONAL_LINE_REQUIRES_EDITOR',command:stored.source.commands.findIndex(c=>c.id===id)+1})),
+  ...(stored.limited?[{code:'NATIVE_OPERATION_LIMIT'}]:[])
+ ]
+ diagnostic.decisions=decisions.map(d=>d.code+('command'in d?' · comando #'+d.command:' · dividir o ditado'))
+ diagnostic.technical!.decisions=decisions
  return {requestId,transcription:stored.transcription,plan,review:voiceReview(plan,ctx),reviewGroups:groups,applied:false,
-  diagnostic:{...voiceDiagnostic(stored.interpreted,stored.source.commands,plan,ctx,stored.owners),decisions:[
-   ...stored.source.commands.flatMap((c,index)=>stored.batch.commands.some(e=>e.id===c.id&&c.op==='add_service'&&e.op==='set_dimension')?['EXISTING_LINE_RECONCILED · comando #'+(index+1)]:[]),
-   ...stored.additionalIds.map(id=>'ADDITIONAL_LINE_REQUIRES_EDITOR · comando #'+(stored.source.commands.findIndex(c=>c.id===id)+1)),
-   ...(stored.limited?['NATIVE_OPERATION_LIMIT · dividir o ditado']:[])
-  ]},
+  diagnostic:diagnostic,
   outcome:{kind:plan.changes.length?'review':!stored.source.commands.length?'empty':pending?'pending':'unchanged',pending,changes:plan.changes.length,message:plan.changes.length?pending?'Somente as alterações listadas serão aplicadas. Pendências ficam de fora.':'Confira as alterações antes de aplicar.':!stored.source.commands.length?'Nenhum comando reconhecido. Use Novo ditado.':pending?'Nenhuma alteração segura. Resolva as pendências ou use Novo ditado.':'Já está assim. Nenhuma alteração para aplicar.'},
   resolution:{id:stored.id,questions:stored.targets.map(t=>({id:t.id,label:t.label,options:stored.choices.filter(c=>c.target===t).map(c=>({id:c.id,label:c.label}))}))}}
 }

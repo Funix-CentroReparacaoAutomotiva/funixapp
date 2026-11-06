@@ -20,7 +20,7 @@ A revisão mostra mudanças efetivas, valores anteriores/novos, noop **Já está
 
 O ícone de transcrição abre **O que foi dito** e **O que aconteceu**, com Copiar diagnóstico. A transcrição original é visível em texto separado. O histórico cronológico registra captura, interpretação por comando, referências/opções, seleção, pedido revisado, estado já cadastrado, resultados `valid/noop/pending/conflict`, códigos, contagem de mudanças e resultado do Apply. O resultado do Apply pode ser consultado reabrindo o painel. Uma nova tentativa inicia novo histórico; a navegação descarta o anterior. Há um limite de 180 eventos em memória.
 
-A cópia contém uma projeção de campos permitidos: nomes de catálogo, operações, números ordinais dos comandos, dimensões/quantidades operacionais, status/códigos e contagens. **Não copia transcrição bruta, nomes/telefone/placa do Atendimento, observações, valores monetários, IDs do Atendimento, cookies, tokens, prompts, áudio ou JSON bruto.** Falhas copiam código/status, não a mensagem/payload arbitrário. A transcrição não é incluída automaticamente nem existe um botão de consentimento adicional que a exporte por engano. Se o clipboard estiver indisponível, o texto visível pode ser selecionado manualmente.
+Após a revisão de privacidade da PR59, a cópia usa uma projeção técnica independente do texto visível: operações, números ordinais dos comandos, aliases numéricos de referências, dimensões antes/depois por alias, quantidades operacionais validadas, estados, decisões, códigos conhecidos e contagens. Nomes livres de catálogo e rótulos de perguntas/opções ficam somente na visualização local. O exportador reconstrói os campos permitidos; nunca serializa `event.text`. **Não copia transcrição bruta, nomes/telefone/placa do Atendimento, observações, valores monetários, IDs do Atendimento, cookies, tokens, prompts, áudio ou JSON bruto.** Falhas copiam status HTTP e somente códigos de uma lista explícita; códigos desconhecidos viram `UNKNOWN_CODE`, sem ecoar strings arbitrárias. A transcrição não é incluída automaticamente nem existe um botão de consentimento adicional que a exporte por engano. Se o clipboard estiver indisponível, orienta tentar novamente, sem sugerir copiar o histórico local como se fosse uma exportação sanitizada.
 
 Nada é gravado automaticamente em SQLite, analytics ou serviço externo para esse histórico. Não há migração, arquivo de áudio produtivo ou infraestrutura nova. O cache de revisão existente continua efêmero, limitado e sujeito à sessão, expiração e digest do contexto.
 
@@ -28,8 +28,8 @@ Nada é gravado automaticamente em SQLite, analytics ou serviço externo para es
 
 Comandos locais, somente SQLite sintético e provedores simulados:
 
-- `npm run check`: **500 testes aprovados**, zero falhas/ignorados; build, tipos e lint aprovados. Avisos de lint existentes permanecem.
-- `node --test --test-isolation=none server/tests/voice-clarification.test.ts`: 17 regressões SQLite/diagnóstico: para-lama, caixa de ar, voz dirigida em duas formas, Ambos misto, noop/omissão, linhas repetidas, quantidades exatas e repetição, falas inseguras, dimensão/quantidade inválidas, escolha falsa, sessão/stale/expiração, conflito, rollback na última operação, snapshots/PDF imutáveis, exclusão global, privacidade, quantidade atômica com dimensão incerta, alvo inexistente, bloqueio que uma referência não pode reparar, limite de lote e comandos dependentes sem incremento duplicado.
+- `npm run check`: **509 testes aprovados**, zero falhas/ignorados; build, tipos e lint aprovados. Avisos de lint existentes permanecem.
+- `node --test --test-isolation=none server/tests/voice-clarification.test.ts`: 18 regressões SQLite/diagnóstico: para-lama, caixa de ar, voz dirigida em duas formas, Ambos misto, noop/omissão, linhas repetidas, quantidades exatas e repetição, falas inseguras, dimensão/quantidade inválidas, escolha falsa, sessão/stale/expiração, conflito, rollback na última operação, snapshots/PDF imutáveis, exclusão global, privacidade, quantidade atômica com dimensão incerta, alvo inexistente, bloqueio que uma referência não pode reparar, limite de lote e comandos dependentes sem incremento duplicado.
 - Teste HTTP novo em `voice-input.test.ts`: captura → seleção de Passageiro → correção dirigida → confirmação simultânea. Uma interpretação original, nenhuma escrita na resolução, uma gravação efetiva e replay idempotente; linha/quantidade preservadas.
 - `node scripts/voice-browser-review.mjs`: regressão anterior 320/390/1440, negociação **R$ 123,45**, prévia atualizada, erro HTTP e exclusão global com cancelamento/confirmação.
 - `FUNIX_TEST_MIC_STARTUP_MS=700 node scripts/voice-resolution-browser.mjs`: resolvedor anterior 320/390/1440, peça ausente, serviço existente, Ambos, Falar e aplicação parcial segura. As esperas de opções pendentes agora distinguem os controles de correção de uma revisão já válida.
@@ -37,7 +37,7 @@ Comandos locais, somente SQLite sintético e provedores simulados:
 
 Os roteiros usam getUserMedia/MediaRecorder nativos, WAV sintético, decodificação não silenciosa e hash igual ao áudio recebido no backend, inclusive no Novo ditado. O roteiro antigo expôs uma corrida ao iniciar o próximo gesto antes da recarga do contexto comercial após Apply. O helper agora aguarda o marcador de contexto pronto da interface; não aumenta sleeps, não repete a gravação e não remove verificações de áudio. O workflow Chromium executa os três roteiros.
 
-Evidências sintéticas: `docs/evidencias/issue58-esclarecimento/`.
+Evidências sintéticas: `docs/evidencias/issue58-esclarecimento/`. Complemento da revisão: [PR59_PRIVACIDADE_DIAGNOSTICO.md](PR59_PRIVACIDADE_DIAGNOSTICO.md).
 
 ## Limites e recomendação
 
