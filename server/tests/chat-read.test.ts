@@ -101,7 +101,7 @@ test('Chat GET validates UUID/query/cursor, rejects writes and never exposes ing
     for (const method of ['POST', 'PATCH', 'DELETE']) assert.equal((await f.request(path(f.a.id), cookie, method, { synthetic: true })).status, 405)
     for (const route of ['/api/integrations/whatsapp/events', '/api/chat/conversations', '/api/chat/conversations/synthetic/link']) {
       assert.equal((await f.request(route, cookie)).status, 404)
-      assert.equal((await f.request(route, cookie, 'POST', {})).status, 405)
+      assert.equal((await f.request(route, cookie, 'POST', {})).status, route === '/api/integrations/whatsapp/events' ? 404 : 405)
     }
     assert.equal(f.db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 14)
   } finally { f.db.close() }

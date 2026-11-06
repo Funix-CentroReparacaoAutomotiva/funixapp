@@ -19,8 +19,11 @@ import {resolveVoiceOption} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
+import { createIngestEndpoint } from './chat/ingest.ts'
+import type { IngestOptions } from './chat/ingest-config.ts'
 
 export interface AppOptions {
+  whatsappIngest?: IngestOptions
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
   budgetRenderer?:BudgetOptions['render']
@@ -40,6 +43,7 @@ export function createRequestHandler(options: AppOptions) {
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs)
   const now = options.now ?? Date.now
+  const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
   const cookieName = 'funix_session'
@@ -62,6 +66,7 @@ export function createRequestHandler(options: AppOptions) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+      if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
