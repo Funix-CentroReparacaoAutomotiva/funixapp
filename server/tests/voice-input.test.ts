@@ -354,3 +354,46 @@ test('Issue58 HTTP closes piece → existing-service correction → directed spe
   assert.equal(saved.services.length,2);assert.equal(saved.services[0]!.id,before.services[0]!.id);assert.equal(saved.services[0]!.quantity,'3');assert.equal(saved.services[0]!.dimensionId,p.id)
  }finally{await h.close()}
 })
+
+test('Issue64 HTTP revision is authenticated/read-only, bound to source component and session; concurrent edit/apply stays idempotent',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'No capô adiciona guia dianteiro esquerdo.',interpret:async()=>output})
+ try{
+  output={commands:[{id:'part',op:'add_component',intent:'instruction',piece:resolved(h.f.item.pieceId),name:'Guia dianteiro esquerdo',quantity:'1',manualPrice:'0'}]}
+  const rootResponse=await h.post();assert.equal(rootResponse.status,200);const root=await rootResponse.json()
+  const initial=h.db.prepare('SELECT total_changes() n').get()!.n
+  const route='/api/atendimentos/'+h.f.at.id+'/copiloto/revisar',body={scenarioId:h.f.scenario.id,resolutionId:root.resolution.id,commandId:'part',quantity:'2',manualPrice:'35.90'}
+  const json=(payload:unknown,extra:Record<string,string>={},path=route)=>h.post(JSON.stringify(payload),{'Content-Type':'application/json',...extra},path)
+  assert.equal((await json(body,{Cookie:''})).status,401);assert.equal((await json(body,{Origin:'https://foreign.invalid'})).status,403)
+  for(const payload of [{...body,pieceId:h.f.item.id},{...body,commandId:h.f.item.id},{...body,quantity:'0'},{...body,manualPrice:null},{...body,commands:[]},{...body,scenarioId:'foreign'}])assert((await json(payload)).status>=400)
+  const revisions=await Promise.all([json(body),json(body)]);assert.deepEqual(revisions.map(r=>r.status).sort(),[200,409])
+  const revised=await revisions.find(r=>r.status===200)!.json()
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,initial)
+  assert.equal(revised.plan.changes[0].values.quantity,'2');assert.equal(revised.plan.changes[0].values.manualPrice,'35.9')
+  const applyRoute='/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar',old={scenarioId:h.f.scenario.id,idempotencyKey:root.plan.idempotencyKey}
+  assert.equal((await json(old,{},applyRoute)).status,409)
+  const apply={scenarioId:h.f.scenario.id,idempotencyKey:revised.plan.idempotencyKey}
+  const responses=await Promise.all([json(apply,{},applyRoute),json(apply,{},applyRoute)]);assert(responses.every(r=>r.status===200))
+  const receipts=await Promise.all(responses.map(r=>r.json()));assert.equal(receipts.filter(r=>r.replay).length,1)
+  const saved=h.db.prepare('SELECT * FROM component_items WHERE atendimento_id=?').all(h.f.at.id)
+  assert.equal(saved.length,1);assert.equal(saved[0]!.piece_id,h.f.item.id);assert.equal(saved[0]!.manual_price,'35.9')
+  assert(!JSON.stringify(revised.diagnostic.technical).includes('35.9'))
+ }finally{await h.close()}
+})
+test('Issue64 model numeric errors are editable pending component intentions; unsafe model fields still rejected',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'Componente com valores a conferir e nota independente.',interpret:async()=>output})
+ try{
+  const part={id:'part',op:'add_component',intent:'instruction',piece:resolved(h.f.item.pieceId),name:'Guia QA',quantity:'0',manualPrice:'-1'}
+  output={commands:[part,{id:'note',op:'set_notes',intent:'instruction',piece:resolved(h.f.item.pieceId),line:null,value:'Independente QA'}]}
+  const response=await h.post();assert.equal(response.status,200);const root=await response.json()
+  assert.equal(root.plan.changes.length,1);assert(root.reviewGroups.flatMap((g:{entries:{component?:unknown}[]})=>g.entries).some((e:{component?:unknown})=>e.component))
+  const before=h.db.prepare('SELECT total_changes() n').get()!.n
+  const revisedResponse=await h.post(JSON.stringify({scenarioId:h.f.scenario.id,resolutionId:root.resolution.id,commandId:'part',quantity:'1',manualPrice:'0'}),{'Content-Type':'application/json'},'/api/atendimentos/'+h.f.at.id+'/copiloto/revisar')
+  assert.equal(revisedResponse.status,200);const revised=await revisedResponse.json();assert.equal(revised.plan.changes.length,2)
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,before)
+  output={commands:[{...part,quantity:'1',manualPrice:'0',duplicateDecision:{mode:'new',references:['arbitrary']}}]}
+  assert.equal(await errorCode(await h.post()),'VOICE_MODEL_INVALID')
+  output={commands:[{...part,quantity:'1',manualPrice:null}]};assert.equal(await errorCode(await h.post()),'VOICE_MODEL_INVALID')
+ }finally{await h.close()}
+})

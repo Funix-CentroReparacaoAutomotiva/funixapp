@@ -1,4 +1,5 @@
 // Pure planning only. No SQLite/repository/HTTP imports, clocks, UUIDs or execution.
+import{possibleSameComponent,normalizedComponentDecimal}from'../shared/voice-components.ts'
 import{createHash}from'node:crypto'
 import{catalogItemUsable}from'../shared/commercial.ts'
 import type{CatalogItem,DiagnosisItem,DiagnosisService}from'../shared/commercial.ts'
@@ -55,6 +56,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
  }
  if(!sameRevisions(batch.expected,guards))return failAll('REVISION_CONFLICT','Composição, cenário, configuração ou peça mudou. Replaneje com estado confirmado.')
  const ids=context.catalog.map(c=>c.id),physical=context.workspace.items.map(p=>p.pieceId),lineIds=context.workspace.items.flatMap(p=>p.services.map(l=>l.id))
+ if(context.workspace.components.some(c=>!context.workspace.items.some(p=>p.id===c.pieceId)))return failAll('INVALID_CONTEXT','Componente sem peça do Atendimento.')
  if(new Set(ids).size!==ids.length||new Set(physical).size!==physical.length||new Set(lineIds).size!==lineIds.length)return failAll('INVALID_CONTEXT','Identidades duplicadas no estado; nenhuma correspondência arbitrária.')
  // A conflicting field invalidates both intentions; rebuild independent changes from the original.
  for(let pass=0;pass<=batch.commands.length;pass++){
@@ -70,8 +72,10 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
   })
   const w=context.workspace,sceneIds=w.scenarios.map(s=>s.id),selected=batch!.scenarioId,catalog=new Map(context.catalog.map(c=>[c.id,c]))
   const pieces=new Map<string,WorkingPiece>(w.items.map(p=>[p.pieceId,{id:p.id,pieceId:p.pieceId,diagnosisId:p.diagnosisId,intensity:p.intensity??null,notes:p.notes,services:structuredClone(p.services)}]))
+  const components=context.workspace.components.map(c=>({...c,token:c.id,physical:context.workspace.items.find(p=>p.id===c.pieceId)?.pieceId}))
+  const addedComponents:{id:string;token:string;physical:string;pieceId:string;name:string;quantity:string;manualPrice:string;notes:string}[]=[]
   const refs=new Map<string,VoiceEntityReference>(w.items.flatMap(p=>[[p.id,{kind:'existing' as const,id:p.id}]as const,...p.services.map(l=>[l.id,{kind:'existing' as const,id:l.id}]as const)]))
-  const plannedRef=(kind:'piece'|'service',command:string,ruleId?:string):VoiceEntityReference=>({kind:'planned',id:kind+':'+digest([requestDigest,command,ruleId??null])})
+  const plannedRef=(kind:'piece'|'service'|'component',command:string,ruleId?:string):VoiceEntityReference=>({kind:'planned',id:kind+':'+digest([requestDigest,command,ruleId??null])})
   const flags=new Map(w.scenarios.map(s=>[s.id,{piece:{...s.pieceFlags},service:{...s.serviceFlags}}]))
   const origins=new Map<string,VoiceChange['origins']>(),commandLines=new Map<string,{pieceId:string;id:string}>(),removedPieces=new Set<string>(),removedServices=new Set<string>(),removedLines=new Set<string>(),explicitServices=new Set<string>()
   // Removal snapshots retain identity, manual attributes and all scenario masks.
@@ -153,6 +157,18 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    }
    if(!p){issue('PIECE_NOT_PRESENT','Inclua explicitamente a peça antes de alterar seu diagnóstico.');continue}
    switch(cmd.op){
+    case'add_component':{
+     const candidates=[...components,...addedComponents].filter(c=>c.physical===p.pieceId&&possibleSameComponent(c.name,cmd.name))
+     const tokens=candidates.map(c=>c.token).sort(),decision=cmd.duplicateDecision
+     if(tokens.length){
+      if(!decision||!equal([...decision.references].sort(),tokens)){issue('DUPLICATE_COMPONENT','Componente igual ou semelhante nesta peça. Escolha manter o existente ou incluir outro lançamento.',true,tokens);break}
+      if(decision.mode==='keep'){results[index]!.reason='COMPONENT_KEPT';break}
+     }else if(decision){issue('COMPONENT_DECISION_STALE','A decisão de duplicação não corresponde ao estado atual.');break}
+     const reference=plannedRef('component',cmd.id),id='@voice:'+reference.id
+     refs.set(id,reference)
+     addedComponents.push({id,token:'command:'+cmd.id,physical:p.pieceId,pieceId:p.id,name:cmd.name.trim(),quantity:normalizedComponentDecimal(cmd.quantity??'1'),manualPrice:normalizedComponentDecimal(cmd.manualPrice??'0'),notes:''})
+     mark(id,'presence',explicit(cmd));mark(id,'quantity',explicit(cmd));results[index]!.status='valid';break
+    }
     case'set_piece_enabled':write(p.id,'enabled',cmd.enabled,Boolean(flags.get(selected)!.piece[p.id]));flags.get(selected)!.piece[p.id]=cmd.enabled;break
     case'set_diagnosis':{
      if(cmd.additionalDamage){issue('MULTIPLE_DAMAGE_UNSUPPORTED','O modelo tem um diagnóstico/intensidade principal; não sobrescrever múltiplos danos.');break}
@@ -235,7 +251,7 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
    const set=sets[0]!
    if(set.pending?.length)issue('PENDING_RULES','Relações pendentes não serão utilizadas.',false,set.pending.map(r=>r.ruleId))
    if(!set.rules.length){issue('RECOMMENDATION_GAP','Nenhuma relação cadastrada para a combinação; não inventar serviços.',false);return}
-   if(mode==='automatic'&&(p.services.length||w.components.some(part=>part.pieceId===p.id))){issue('ASSISTED_RECOMMENDATIONS_REQUIRED','Conteúdo existente preservado; inclusão assistida precisa de IDs de regras explícitos.',false,set.rules.map(r=>r.id));return}
+   if(mode==='automatic'&&(p.services.length||[...components,...addedComponents].some(part=>part.pieceId===p.id))){issue('ASSISTED_RECOMMENDATIONS_REQUIRED','Conteúdo existente preservado; inclusão assistida precisa de IDs de regras explícitos.',false,set.rules.map(r=>r.id));return}
    const chosen=mode==='assisted'?new Set(ruleIds):null
    if(chosen)for(const id of chosen)if(!set.rules.some(r=>r.id===id))issue('RULE_NOT_AVAILABLE','Regra solicitada não está disponível.',false,[id])
    const candidates=set.rules.filter(r=>!chosen||chosen.has(r.id)).sort(compareRecommendations)
@@ -295,6 +311,10 @@ export function planVoiceCommands(input:unknown,context:VoicePlanningContext):Vo
      const before=Boolean(w.scenarios.find(s=>s.id===selected)!.serviceFlags[l.id]),enabled=Boolean(flags.get(selected)!.service[l.id]);if(before!==enabled)changes.push({...base(l.id,'active-scenario',!enabled),op:'set_service_enabled',target:ref(l.id),scenarioId:selected,before,enabled})
     }
    }
+  }
+  for(const c of addedComponents)if(pieces.get(c.physical)?.id===c.pieceId){
+   changes.push({...base(c.id,'shared'),op:'add_component',target:ref(c.id),piece:ref(c.pieceId),values:{name:c.name,quantity:c.quantity,manualPrice:c.manualPrice,notes:c.notes},flags:Object.fromEntries(sceneIds.map(id=>[id,id===selected]))})
+   if(!flags.get(selected)!.piece[c.pieceId])issues.push({commandId:origins.get(c.id)?.presence?.commandId,code:'COMPONENT_PARENT_DISABLED',message:'A peça está desabilitada neste cenário; o componente ficará fora do cálculo até habilitar a peça.',blocking:false})
   }
   for(const change of changes){
    const fields=change.op==='update_piece'||change.op==='update_service'?Object.keys(change.patch):change.op.startsWith('set_')?['enabled']:change.op.startsWith('remove_')?['presence']:Object.keys(change.origins)

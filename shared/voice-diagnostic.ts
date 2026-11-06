@@ -1,6 +1,6 @@
 // Ephemeral support projection. Never accepts raw audio, payloads, notes or contacts.
 export interface VoiceDiagnosticCommand {
- command:number;operation:string;piece?:string;service?:string;dimension?:string;quantity?:string
+ command:number;operation:string;piece?:string;service?:string;component?:string;dimension?:string;quantity?:string
 }
 export interface VoiceDiagnostic {
  technical?:import('./voice-diagnostic-export.ts').VoiceTechnicalDiagnostic;
@@ -10,7 +10,7 @@ export interface VoiceDiagnostic {
 }
 const clean=(s:string)=>Array.from(s).map(c=>c.charCodeAt(0)<32?' ':c).join('').slice(0,160)
 export function diagnosticLines(d:VoiceDiagnostic,initial=false):string[]{
- const describe=(c:VoiceDiagnosticCommand)=>'#'+c.command+' '+clean(c.operation)+[c.piece,c.service,c.dimension,c.quantity?'quantidade '+c.quantity:undefined].filter(Boolean).map(s=>' · '+clean(s!)).join('')
+ const describe=(c:VoiceDiagnosticCommand)=>'#'+c.command+' '+clean(c.operation)+[c.piece,c.service,c.component,c.dimension,c.quantity?'quantidade '+c.quantity:undefined].filter(Boolean).map(s=>' · '+clean(s!)).join('')
  return [
   ...(initial?['Transcrição concluída (texto separado do diagnóstico).',...d.interpreted.map(c=>'IA interpretou '+describe(c))]:[]),
   ...(d.decisions??[]).map(clean),

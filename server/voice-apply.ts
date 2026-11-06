@@ -78,6 +78,13 @@ export function applyVoiceBatch(db:DatabaseSync,at:string,input:unknown,sessionI
      break
     }
     case 'remove_piece':db.prepare('DELETE FROM diagnosis_items WHERE id=? AND atendimento_id=?').run(resolve(change.target),at);break
+    case 'add_component':{
+     const id=randomUUID();ids.set(change.target.id,id)
+     const v=change.values
+     db.prepare('INSERT INTO component_items(id,atendimento_id,piece_id,name,quantity,manual_price,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').run(id,at,resolve(change.piece),v.name,v.quantity,v.manualPrice,v.notes,now,now)
+     for(const [scenarioId,enabled]of Object.entries(change.flags))setFlag('scenario_component_flags','component_id',scenarioId,id,enabled)
+     break
+    }
     case 'add_service':{
      const id=randomUUID();ids.set(change.target.id,id)
      const values=change.values

@@ -25,6 +25,9 @@ jobs:
       - run: node scripts/voice-clarification-browser.mjs
         env:
           FUNIX_TEST_MIC_STARTUP_MS: "700"
+      - run: node scripts/voice-components-browser.mjs
+        env:
+          FUNIX_TEST_MIC_STARTUP_MS: "700"
       - name: Check existing app.funix.com.br (GET only; no credentials)
         if: always()
         run: |

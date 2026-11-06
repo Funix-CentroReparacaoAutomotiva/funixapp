@@ -15,7 +15,7 @@ import { calculate } from './pricing-engine.ts'
 import { ScenarioRepository, selectedScenario } from './scenarios.ts'
 import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
-import {resolveVoiceOption} from './voice-resolution.ts'
+import {resolveVoiceOption,reviseVoiceComponent} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
@@ -120,6 +120,15 @@ export function createRequestHandler(options: AppOptions) {
         const body=await readJson(req,4096)
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
         return send(200,resolveVoiceOption(options.atendimentos.db,voiceResolveRoute[1]!,body,cookie,requestId))
+      }
+      const voiceReviseRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/revisar$/.exec(url.pathname)
+      if(voiceReviseRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para revisar o plano.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,4096)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a revisão.')
+        return send(200,reviseVoiceComponent(options.atendimentos.db,voiceReviseRoute[1]!,body,cookie,requestId))
       }
       const voiceApplyRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/aplicar$/.exec(url.pathname)
       if(voiceApplyRoute){

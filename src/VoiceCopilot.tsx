@@ -13,6 +13,8 @@ import'./voice-copilot.css'
 export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied,onClose}:{navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void;onClose:()=>void}){
  const[state,setState]=useState<CaptureState>({phase:'idle',message:'Segure o Copiloto para ditar.'})
  const[applying,setApplying]=useState(false)
+ const[componentDrafts,setComponentDrafts]=useState<Record<string,{quantity:string;manualPrice:string}>>({})
+ const hasComponentEdits=Object.keys(componentDrafts).length>0
  const[applyError,setApplyError]=useState('')
  const[transcriptionOpen,setTranscriptionOpen]=useState(false)
  const[appliedKey,setAppliedKey]=useState<string|null>(null)
@@ -48,7 +50,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   }
  },next=>{
   if(next.phase==='preparing'&&capturePhase.current!=='preparing'){
-   if(!clarification.current){setEvents([{text:'Captura iniciada.',technical:{type:'capture_started'}}]);setLastTranscription('');setCopyStatus('')}
+   if(!clarification.current){setComponentDrafts({});setEvents([{text:'Captura iniciada.',technical:{type:'capture_started'}}]);setLastTranscription('');setCopyStatus('')}
    else addEvents(['Captura de esclarecimento iniciada.'],{type:'clarification_started'})
   }
   if(next.phase==='error'&&['preparing','recording'].includes(capturePhase.current))addEvents(['Captura não concluída · VOICE_CAPTURE_FAILED'],{type:'capture_failed'})
@@ -59,8 +61,8 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const gesture=useRef<{timer:ReturnType<typeof setTimeout>;long:boolean;pointer?:number;key?:string}|null>(null)
  const clearGesture=()=>{if(gesture.current)clearTimeout(gesture.current.timer);gesture.current=null}
  const key=voiceCaptureKey(context),available=visible&&!disabled
- useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.cancel();setApplyError('');setAppliedKey(null);setTranscriptionOpen(false);setEvents([]);setLastTranscription('');setCopyStatus('')},[navigationKey,capture])
- useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.setContext(available?context:null);setApplyError('')},[key,available,capture,context])
+ useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.cancel();setApplyError('');setComponentDrafts({});setAppliedKey(null);setTranscriptionOpen(false);setEvents([]);setLastTranscription('');setCopyStatus('')},[navigationKey,capture])
+ useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.setContext(available?context:null);setComponentDrafts({});setApplyError('')},[key,available,capture,context])
  useEffect(()=>{
   const cancel=()=>{clearGesture();capture.cancel()}
   const hidden=()=>{if(document.visibilityState==='hidden'&&['preparing','recording','processing'].includes(capture.snapshot.phase))cancel()}
@@ -72,7 +74,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const busy=applying||resolving||capturing
  async function resolve(optionId:string){
   const resolution=state.result?.resolution,active=context,epoch=reviewEpoch.current
-  if(!resolution||!active||busy)return
+  if(!resolution||!active||busy||hasComponentEdits)return
   setResolving(true);setApplyError('');clarification.current=null
   const option=resolution.questions.flatMap(q=>q.options).find(o=>o.id===optionId)
   if(option){const question=resolution.questions.findIndex(q=>q.options.some(o=>o.id===optionId));addEvents(['Opção escolhida: '+option.label],{type:'option_selected',question:question+1,option:resolution.questions[question]!.options.findIndex(o=>o.id===optionId)+1})}
@@ -84,13 +86,13 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  function talk(questionId=clarification.current?.questionId??state.result?.resolution?.questions[0]?.id){
   if(state.phase==='recording'){capture.release();return}
   const resolution=state.result?.resolution
-  if(!resolution||busy||!context)return
+  if(!resolution||busy||hasComponentEdits||!context)return
   if(!questionId||!resolution.questions.some(q=>q.id===questionId))return
   addEvents(['Esclarecimento solicitado: '+resolution.questions.find(q=>q.id===questionId)!.label],{type:'clarification_requested',question:resolution.questions.findIndex(q=>q.id===questionId)+1});clarification.current={resolutionId:resolution.id,questionId};setApplyError('');setTranscriptionOpen(false);onOpen();void capture.hold()
  }
  async function apply(){
   const result=state.result,active=context
-  if(busy||!result||!active||!result.plan.idempotencyKey||result.plan.changes.length===0||appliedKey===result.plan.idempotencyKey)return
+  if(busy||hasComponentEdits||!result||!active||!result.plan.idempotencyKey||result.plan.changes.length===0||appliedKey===result.plan.idempotencyKey)return
   if(result.plan.guards.composition!==active.compositionRevision||result.plan.guards.configuration!==active.configurationRevision||
    result.plan.guards.scenarios.find(s=>s.id===active.scenarioId)?.revision!==active.scenarioRevision){
    setApplyError('O contexto foi atualizado. Dite novamente antes de confirmar.');return
@@ -106,6 +108,15 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    if(applied.applied){addEvents(['Apply confirmado pelo servidor · '+applied.changed+' alteração(ões)'+(applied.replay?' · recibo reutilizado.':'.')],{type:'apply_confirmed',changes:applied.changed,replay:applied.replay});setAppliedKey(result.plan.idempotencyKey);clarification.current=null;capture.cancel();setTranscriptionOpen(false);onApplied();onClose()}
   }catch(error){addEvents(['Falha ao aplicar · '+diagnosticError(error)],diagnosticFailure('apply',error));setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
+ }
+ async function reviseComponent(commandId:string){
+  const active=context,resolution=state.result?.resolution,value=componentDrafts[commandId],epoch=reviewEpoch.current
+  if(!active||!resolution||!value||busy)return
+  setResolving(true);setApplyError('')
+  try{
+   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/revisar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,commandId,quantity:value.quantity.trim().replace(',','.'),manualPrice:value.manualPrice.trim().replace(',','.')})})
+   if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});setComponentDrafts(old=>{const next={...old};delete next[commandId];return next});if(result.diagnostic)addEvents([...diagnosticHistory(result.diagnostic),...diagnosticQuestions(result.resolution)])}
+  }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao revisar componente · '+diagnosticError(error)],diagnosticFailure('resolution',error))}}finally{setResolving(false)}
  }
  async function copyDiagnostic(){
   try{await navigator.clipboard.writeText(copiedVoiceDiagnostic(events));setCopyStatus('Diagnóstico copiado sem transcrição ou dados pessoais.')}
@@ -141,7 +152,8 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
     <button onClick={()=>void copyDiagnostic()}>Copiar diagnóstico</button><p role="status">{copyStatus}</p>
    </section>}
    {state.result&&<>
-    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy}/>
+    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy} decisionsDisabled={hasComponentEdits} componentDrafts={componentDrafts} onComponentChange={(id,value)=>setComponentDrafts(old=>({...old,[id]:value}))} onComponentRevise={id=>void reviseComponent(id)}/>
+    {hasComponentEdits&&<p className="voice-outcome" role="status">Use Revisar valores para validar as edições antes de aplicar. Nada foi salvo.</p>}
     {state.result.outcome&&<p className="voice-outcome" role="status">{state.result.outcome.message}</p>}
     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal" role="alert">Exclusão definitiva em todos os cenários. Serviços e componentes vinculados também podem ser removidos.</p>}
    </>}
@@ -150,9 +162,9 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();addEvents(['Captura cancelada.'],{type:'capture_cancelled'});capture.cancel()}}>Cancelar</button>}
   </div>
   {state.result&&<div className="voice-action-bar">
-   {state.result.resolution&&state.result.resolution.questions.length>0&&<button className="voice-talk" disabled={applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}
+   {state.result.resolution&&state.result.resolution.questions.length>0&&<button className="voice-talk" disabled={hasComponentEdits||applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}
    <button className="voice-new" disabled={busy||!context} onClick={newDictation}>Novo ditado</button>
-   <button className="voice-apply" disabled={busy||!context||state.result.plan.changes.length===0||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':state.result.plan.changes.length===0?(state.result.outcome?.kind==='unchanged'?'Já está assim':state.result.outcome?.pending?'Resolver pendências':'Nenhuma alteração'):state.result.reviewGroups.some(g=>g.entries.some(e=>e.kind==='pending'||e.kind==='warning'))?'Aplicar assim mesmo':'Aplicar alterações'}</button>
+   <button className="voice-apply" disabled={hasComponentEdits||busy||!context||state.result.plan.changes.length===0||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':state.result.plan.changes.length===0?(state.result.outcome?.kind==='unchanged'?(state.result.plan.results.some(r=>r.reason==='COMPONENT_KEPT')?'Existente mantido':'Já está assim'):state.result.outcome?.pending?'Resolver pendências':'Nenhuma alteração'):state.result.reviewGroups.some(g=>g.entries.some(e=>e.kind==='pending'||e.kind==='warning'))?'Aplicar assim mesmo':'Aplicar alterações'}</button>
   </div>}
   {!state.result&&state.phase==='error'&&context&&<button className="voice-new" onClick={newDictation}>Novo ditado</button>}
   {!state.result&&state.phase==='recording'&&<button className="voice-send" onClick={()=>capture.release()}>Enviar ditado</button>}

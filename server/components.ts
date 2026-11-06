@@ -8,7 +8,7 @@ import { decimal,optionalDecimal } from './pricing-config.ts'
 export class ComponentRepository {
  readonly db:DatabaseSync
  constructor(db:DatabaseSync){this.db=db}
- list(at:string):ComponentItem[]{return this.db.prepare('SELECT * FROM component_items WHERE atendimento_id=? ORDER BY created_at,id').all(at).map(r=>({id:String(r.id),atendimentoId:at,pieceId:String(r.piece_id),name:String(r.name),quantity:String(r.quantity),manualPrice:r.manual_price===null?null:String(r.manual_price),notes:String(r.notes),revision:Number(r.revision)}))}
+ list(at:string):ComponentItem[]{return this.db.prepare('SELECT * FROM component_items WHERE atendimento_id=? ORDER BY created_at,rowid').all(at).map(r=>({id:String(r.id),atendimentoId:at,pieceId:String(r.piece_id),name:String(r.name),quantity:String(r.quantity),manualPrice:r.manual_price===null?null:String(r.manual_price),notes:String(r.notes),revision:Number(r.revision)}))}
  save(at:string,input:unknown,id?:string):ComponentItem
  save(at:string,input:unknown,id:string|undefined,withRevision:true):CommercialSave<ComponentItem>
  save(at:string,input:unknown,id?:string,withRevision=false):ComponentItem|CommercialSave<ComponentItem>{
