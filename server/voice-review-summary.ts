@@ -37,6 +37,13 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
   const repeated=piece.services.filter(l=>name(l.serviceId)===name(line.serviceId)).length>1
   return name(line.serviceId)+(line.dimensionId?' · '+name(line.dimensionId):'')+(repeated?' · linha '+(index+1)+' · qtd. '+line.quantity:'')
  }
+ const parentEnabled=(id:string)=>{
+  const added=plan.changes.find(c=>c.op==='add_piece'&&c.target.id===id)
+  const toggled=plan.changes.find(c=>c.op==='set_piece_enabled'&&c.target.id===id)
+  if(toggled?.op==='set_piece_enabled')return toggled.enabled
+  if(added?.op==='add_piece')return added.flags[context.workspace.selectedId]??false
+  return context.workspace.scenarios.find(s=>s.id===context.workspace.selectedId)?.pieceFlags[id]??false
+ }
  for(const change of plan.changes){
   const origin=change.origins.dimensionId??change.origins.quantity??change.origins.presence??Object.values(change.origins)[0]
   const entry:VoiceReviewEntry={commandId:origin?.commandId,kind:'change',label:'Peça',scope:change.impact.scope==='shared'?'shared':'scenario',fields:[]}
@@ -50,7 +57,7 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
    case'update_piece':entry.fields=fields(change.patch,change.before);break
    case'remove_piece':entry.kind='remove';entry.scope='global';entry.label='Excluir peça, serviços e componentes';break
    case'add_component':
-    entry.kind='add';entry.label=change.values.name;entry.component={commandId:entry.commandId!,quantity:change.values.quantity,manualPrice:change.values.manualPrice};entry.fields=[{label:'Cenário atual',after:fieldValue('enabled',change.flags[context.workspace.selectedId])}];break
+    entry.kind='add';entry.label=change.values.name;entry.component={commandId:entry.commandId!,quantity:change.values.quantity,manualPrice:change.values.manualPrice,enabled:change.flags[context.workspace.selectedId],parentEnabled:parentEnabled(change.piece.id)};entry.fields=[];break
    case'add_service':
     entry.kind='add';entry.label=name(change.values.serviceId)+(change.values.dimensionId?' · '+name(change.values.dimensionId):'')
     entry.fields=fields(Object.fromEntries(Object.entries(change.values).filter(([key,value])=>key!=='serviceId'&&key!=='dimensionId'&&value!==null&&value!=='')))
@@ -86,6 +93,13 @@ export function compactVoiceReview(plan:VoicePlan,context:VoicePlanningContext,c
   // Keep operational warnings, including missing dimensions and third-party authorization.
   commandGroup(issue.commandId).entries.push({commandId:issue.commandId,kind:'warning',scope:'shared',label:'Atenção',fields:[],warning:message(issue)})
  }
- for(const g of groups.values())for(const e of g.entries)if(e.kind==='pending'){const c=commands.find(c=>c.id===e.commandId);if(c?.op==='add_component')e.component={commandId:c.id,quantity:c.quantity??'1',manualPrice:c.manualPrice??'0'}}
+ for(const g of groups.values())for(const e of g.entries)if(e.kind==='pending'){
+  const c=commands.find(c=>c.id===e.commandId)
+  if(c?.op==='add_component'){
+   const physical=c.piece.state==='resolved'?c.piece.id:null
+   const parent=context.workspace.items.find(p=>p.pieceId===physical)?.id??[...plannedPieces].find(([,id])=>id===physical)?.[0]
+   e.component={commandId:c.id,quantity:c.quantity??'1',manualPrice:c.manualPrice??'0',enabled:c.enabled??true,parentEnabled:parent!==undefined&&parentEnabled(parent)}
+  }
+ }
  return [...groups.values()]
 }

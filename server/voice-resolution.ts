@@ -139,8 +139,8 @@ function present(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,requestI
       const references=stored.choices.find(c=>c.target===target)?.componentDecision?.references??[]
       entry.fields=references.slice(0,3).flatMap(reference=>{
        const existing=ctx.workspace.components.find(c=>c.id===reference),prior=stored.source.commands.find(c=>'command:'+c.id===reference)
-       if(existing)return [{label:'Já cadastrado',after:existing.name+' · qtd. '+existing.quantity+' · preço unitário '+(existing.manualPrice===null?'não informado':'R$ '+existing.manualPrice.replace('.',','))}]
-       if(prior?.op==='add_component')return [{label:'Neste ditado',after:prior.name+' · qtd. '+(prior.quantity??'1')+' · R$ '+(prior.manualPrice??'0').replace('.',',')}]
+       if(existing)return [{label:'Já cadastrado',namePrefix:existing.name,after:existing.name+' · qtd. '+existing.quantity+' · preço unitário '+(existing.manualPrice===null?'não informado':'R$ '+existing.manualPrice.replace('.',','))}]
+       if(prior?.op==='add_component')return [{label:'Neste ditado',namePrefix:prior.name,after:prior.name+' · qtd. '+(prior.quantity??'1')+' · R$ '+(prior.manualPrice??'0').replace('.',',')}]
        return[]
       })
       if(references.length>3)entry.fields.push({label:'Semelhantes',after:String(references.length)})
@@ -165,7 +165,7 @@ function present(db:DatabaseSync,stored:Stored,ctx:VoicePlanningContext,requestI
  }
  for(const group of groups)for(const entry of group.entries)if(entry.kind==='pending'&&!entry.pendingId){if(stored.limited)entry.warning='Pedido grande demais para uma revisão segura. Divida em ditados menores.';else if(stored.additionalIds.includes(entry.commandId??''))entry.warning='Linha adicional não confirmada. Use o editor de serviços para adicionar um lançamento repetido; a linha existente foi preservada.';entry.warning=(entry.warning??'Confira o pedido.')+' Use Novo ditado para continuar.'}
  if(plan.changes.length)stageVoiceBatch(db,stored.batch,plan.stateDigest,plan.requestDigest,stored.session,stored.expires)
- for(const result of plan.results)if(result.reason==='COMPONENT_KEPT'){const c=stored.source.commands.find(c=>c.id===result.commandId);if(c?.op==='add_component'&&c.piece.state==='resolved'){const pieceId=c.piece.id;let group=groups.find(g=>g.id===pieceId);if(!group){group={id:pieceId,piece:ctx.catalog.find(p=>p.id===pieceId)?.name??'Peça',entries:[]};groups.push(group)}group.entries.push({kind:'noop',scope:'shared',label:c.name,fields:[],warning:'Componente existente mantido; quantidade e preço não foram alterados.'})}}
+ for(const result of plan.results)if(result.reason==='COMPONENT_KEPT'){const c=stored.source.commands.find(c=>c.id===result.commandId);if(c?.op==='add_component'&&c.piece.state==='resolved'){const pieceId=c.piece.id;let group=groups.find(g=>g.id===pieceId);if(!group){group={id:pieceId,piece:ctx.catalog.find(p=>p.id===pieceId)?.name??'Peça',entries:[]};groups.push(group)}group.entries.push({kind:'noop',scope:'shared',nameKind:'component',label:c.name,fields:[],warning:'Componente existente mantido; quantidade e preço não foram alterados.'})}}
  const pending=plan.results.filter(r=>r.status==='pending'||r.status==='conflict').length
  const diagnostic=voiceDiagnostic(stored.interpreted,stored.source.commands,plan,ctx,stored.owners)
  const decisions=[
@@ -329,11 +329,11 @@ export function clarifyVoiceResolution(db:DatabaseSync,at:string,scene:string,id
 export function reviseVoiceComponent(db:DatabaseSync,at:string,input:unknown,session:string,requestId:string){
  if(!input||typeof input!=='object'||Array.isArray(input))throw invalid()
  const body=input as Record<string,unknown>
- if(Object.keys(body).some(k=>!['scenarioId','resolutionId','commandId','quantity','manualPrice'].includes(k))||!['scenarioId','resolutionId','commandId'].every(k=>typeof body[k]==='string'&&(body[k] as string).length>0&&(body[k] as string).length<=100)||!componentDecimal(body.quantity,true)||!componentDecimal(body.manualPrice))throw new ServiceError(400,'VOICE_COMPONENT_VALUES_INVALID','Use quantidade positiva e preço não negativo, com até 12 dígitos e 6 casas decimais.')
+ if(Object.keys(body).some(k=>!['scenarioId','resolutionId','commandId','quantity','manualPrice','enabled'].includes(k))||!['scenarioId','resolutionId','commandId'].every(k=>typeof body[k]==='string'&&(body[k] as string).length>0&&(body[k] as string).length<=100)||(body.enabled!==undefined&&typeof body.enabled!=='boolean')||!componentDecimal(body.quantity,true)||!componentDecimal(body.manualPrice))throw new ServiceError(400,'VOICE_COMPONENT_VALUES_INVALID','Use quantidade positiva e preço não negativo, com até 12 dígitos e 6 casas decimais.')
  const {stored,ctx}=readVoiceResolution(db,at,body.scenarioId as string,body.resolutionId as string,session)
  const source=structuredClone(stored.source),command=source.commands.find(c=>c.id===body.commandId)
  if(!command||command.op!=='add_component')throw invalid()
- command.quantity=body.quantity;command.manualPrice=body.manualPrice;source.idempotencyKey=randomUUID()
+ command.quantity=body.quantity;command.manualPrice=body.manualPrice;if(typeof body.enabled==='boolean')command.enabled=body.enabled;source.idempotencyKey=randomUUID()
  const result=build(db,source,stored.transcription,ctx,stored.session,requestId,stored.expires,stored.bindings,stored.interpreted)
  discardVoiceBatch(db,at,stored.batch.idempotencyKey);mapFor(db).delete(stored.id)
  return result

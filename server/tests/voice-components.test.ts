@@ -156,7 +156,7 @@ test('Issue64 failure on last component rolls back pieces, services, earlier com
  try{
   const b=new BudgetRepository(h.db),request={scenarioId:h.f.scenario.id,negotiation:{mode:'none' as const}},preview=b.preview(h.f.at.id,request)
   const issued=await b.emit(h.f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-components-budget'}),snapshot=b.get(h.f.at.id,issued.id),pdf=b.pdf(h.f.at.id,issued.id)
-  const source=ref(h.front.id),r=h.stage([h.component('one',source),{id:'service',op:'add_service',intent:'instruction',piece:source,service:ref(h.f.service.id),dimension:ref(h.f.dimension.id)},h.component('last',source,{name:'Falha final QA'})]),before=h.context()
+  const source=ref(h.front.id),r=h.stage([h.component('one',source,{enabled:false}),{id:'service',op:'add_service',intent:'instruction',piece:source,service:ref(h.f.service.id),dimension:ref(h.f.dimension.id)},h.component('last',source,{name:'Falha final QA'})]),before=h.context()
   h.db.exec("CREATE TRIGGER component_failure BEFORE INSERT ON component_items WHEN NEW.name='Falha final QA' BEGIN SELECT RAISE(ABORT,'synthetic failure');END;")
   assert.throws(()=>h.apply(r));assert.deepEqual(h.context(),before);assert.equal(h.components.list(h.f.at.id).length,0);assert.equal(h.db.prepare('SELECT count(*) n FROM voice_apply_receipts').get()!.n,0)
   h.db.exec('DROP TRIGGER component_failure');h.apply(r);assert.equal(h.apply(r).replay,true)
@@ -202,4 +202,54 @@ test('Issue64 a newly dictated component counts as content for the existing auto
  const plan=planVoiceCommands(batch,ctx)
  assert.equal(plan.changes.filter(c=>c.op==='add_component').length,1);assert.equal(plan.changes.filter(c=>c.op==='add_service').length,0)
  assert(plan.issues.some(i=>i.code==='ASSISTED_RECOMMENDATIONS_REQUIRED'))
+})
+
+// Issue66: scenario flags are draft intentions, carried through the existing guarded batch.
+test('Issue66 switch replans without writes; quantity/price edits preserve off; Apply excludes MR total and replays once',()=>{
+ const h=fixture()
+ try{
+  const existing=h.existing('Componente anterior','7'),other=h.f.scenarios.create(h.f.at.id,{name:'Outro sintético'}),before=h.db.prepare('SELECT total_changes() n').get()!.n
+  const initial=h.stage(),revise=(r:VoiceInterpretation,enabled:boolean)=>reviseVoiceComponent(h.db,h.f.at.id,{scenarioId:h.f.scenario.id,resolutionId:r.resolution!.id,commandId:'component',quantity:'2.5',manualPrice:'35.90',enabled},session,'switch')
+  const off=revise(initial,false),on=revise(off,true),offAgain=revise(on,false),final=h.edit(offAgain,'3.25','12.34')
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,before)
+  const change=final.plan.changes.find(c=>c.op==='add_component')!;assert(change.op==='add_component')
+  assert.deepEqual(change.flags,{[h.f.scenario.id]:false,[other.id]:false});assert.equal(change.values.quantity,'3.25');assert.equal(change.values.manualPrice,'12.34')
+  const entry=final.reviewGroups.flatMap(g=>g.entries).find(e=>e.component)!
+  assert.equal(entry.component!.enabled,false);assert.equal(entry.component!.parentEnabled,true);assert.deepEqual(entry.fields,[])
+  assert.throws(()=>h.apply(initial));h.apply(final);assert.equal(h.apply(final).replay,true)
+  assert.equal(h.components.list(h.f.at.id).length,2);assert.deepEqual(h.components.list(h.f.at.id).find(c=>c.id===existing.id),existing)
+  const saved=h.components.list(h.f.at.id).find(c=>c.id!==existing.id)!,scene=h.f.scenarios.list(h.f.at.id).find(s=>s.id===h.f.scenario.id)!
+  assert.equal(scene.componentFlags[saved.id],false);assert.equal(scene.componentFlags[existing.id],true)
+  const calc=calculate(h.f.commercial.list(h.f.at.id),[saved],h.f.commercial.catalogs().items,scene,h.f.pricing.get().config,h.f.pricing.settings(h.f.at.id).settings)
+  assert.equal(calc.componentSubtotal,'0');assert.deepEqual(h.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{h.db.close()}
+})
+test('Issue66 Both creates independent switches and preserves the other scenario and disabled parent mask',()=>{
+ const h=fixture()
+ try{
+  const other=h.f.scenarios.create(h.f.at.id,{name:'Outro sintético'}),both=h.choose(h.stage([h.component('component',unknown('Caixa de ar'))]),'Ambos')
+  const entries=both.reviewGroups.flatMap(g=>g.entries).filter(e=>e.component);assert.equal(entries.length,2)
+  assert(entries.every(e=>e.component!.enabled&&e.component!.parentEnabled))
+  const id=entries[0]!.component!.commandId
+  const revised=reviseVoiceComponent(h.db,h.f.at.id,{scenarioId:h.f.scenario.id,resolutionId:both.resolution!.id,commandId:id,quantity:'2',manualPrice:'4.5',enabled:false},session,'both-switch')
+  const additions=revised.plan.changes.filter(c=>c.op==='add_component');assert.equal(additions.filter(c=>c.flags[h.f.scenario.id]).length,1)
+  h.apply(revised);for(const c of h.components.list(h.f.at.id))assert.equal(h.f.scenarios.list(h.f.at.id).find(s=>s.id===other.id)!.componentFlags[c.id],false)
+  const scene=h.f.scenarios.list(h.f.at.id).find(s=>s.id===h.f.scenario.id)!
+  h.f.scenarios.update(h.f.at.id,scene.id,{revision:scene.revision,pieceFlags:{...scene.pieceFlags,[h.f.item.id]:false}})
+  const parentOff=h.stage();assert.equal(parentOff.reviewGroups.flatMap(g=>g.entries).find(e=>e.component)!.component!.parentEnabled,false)
+  assert(parentOff.plan.issues.some(i=>i.code==='COMPONENT_PARENT_DISABLED'));h.apply(parentOff)
+  assert.equal(h.f.scenarios.list(h.f.at.id).find(s=>s.id===h.f.scenario.id)!.pieceFlags[h.f.item.id],false)
+ }finally{h.db.close()}
+})
+test('Issue66 switch rejects nonboolean values and stale revisions, never updates existing components',()=>{
+ const h=fixture()
+ try{
+  const r=h.stage(),body={scenarioId:h.f.scenario.id,resolutionId:r.resolution!.id,commandId:'component',quantity:'1',manualPrice:'0'}
+  for(const enabled of ['false',0,null,{},[]])assert.throws(()=>reviseVoiceComponent(h.db,h.f.at.id,{...body,enabled},session,'bad-switch'))
+  assert.throws(()=>reviseVoiceComponent(h.db,h.f.at.id,{...body,enabled:false},'other-session','bad-session'))
+  const scene=h.f.scenarios.list(h.f.at.id)[0]!
+  h.f.scenarios.update(h.f.at.id,scene.id,{revision:scene.revision,pieceFlags:{...scene.pieceFlags,[h.f.item.id]:false}})
+  assert.throws(()=>reviseVoiceComponent(h.db,h.f.at.id,{...body,enabled:false},session,'stale-switch'))
+  assert.equal(h.components.list(h.f.at.id).length,0)
+ }finally{h.db.close()}
 })

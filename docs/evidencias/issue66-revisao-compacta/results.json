@@ -1,0 +1,52 @@
+{
+  "base": "b3244d1e9638cb683ff727099975a8b370bd81c3",
+  "data": "synthetic only; SQLite memory, mocked provider, native MediaRecorder",
+  "widths": [
+    320,
+    390,
+    1440
+  ],
+  "check": {
+    "command": "npm run check",
+    "tests": 550,
+    "passed": 550,
+    "failed": 0,
+    "skipped": 0,
+    "lint": "no errors; pre-existing warnings"
+  },
+  "browser": {
+    "review": {
+      "passed": [
+        "PASS R$ 123,45 draft before interpretation and changed after planning preserved; fresh preview uses adjust 123.45",
+        "Voice browser review: 320/390 visual, confirmation/cancel/global removal and 1440 desktop shell passed."
+      ],
+      "verifiedAudioUploads": 10
+    },
+    "resolution": {
+      "passed": [
+        "PASS 320: sides, one question, readonly replan, keyboard, safe Falar, original intent, both, R$ 123,45 and apply anyway",
+        "PASS 390: sides, one question, readonly replan, keyboard, safe Falar, original intent, both, R$ 123,45 and apply anyway",
+        "PASS 1440: sides, one question, readonly replan, keyboard, safe Falar, original intent, both, R$ 123,45 and apply anyway"
+      ],
+      "verifiedAudioUploads": 24
+    },
+    "clarification": {
+      "passed": [
+        "PASS Issue58 320: existing line correction, directed speech, read-only replan, sanitized clipboard, Apply, Ambos and working new dictation",
+        "PASS Issue58 390: existing line correction, directed speech, read-only replan, sanitized clipboard, Apply, Ambos and working new dictation",
+        "PASS Issue58 1440: existing line correction, directed speech, read-only replan, sanitized clipboard, Apply, Ambos and working new dictation"
+      ],
+      "verifiedAudioUploads": 18
+    },
+    "components": {
+      "passed": [
+        "PASS Issue66 320 compact four controls, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard",
+        "PASS Issue66 390 compact four controls, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard",
+        "PASS Issue66 1440 compact four controls, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard"
+      ],
+      "verifiedAudioUploads": 30
+    }
+  },
+  "accessibility": "Chromium roles/states/names, 44px targets and keyboard; no physical Android/TalkBack validation",
+  "pricingResearch": "not implemented; quote button disabled with explicit unavailable semantics"
+}

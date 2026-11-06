@@ -397,3 +397,26 @@ test('Issue64 model numeric errors are editable pending component intentions; un
   output={commands:[{...part,quantity:'1',manualPrice:null}]};assert.equal(await errorCode(await h.post()),'VOICE_MODEL_INVALID')
  }finally{await h.close()}
 })
+
+
+test('Issue66 HTTP switch uses the existing authenticated revision route and loses concurrent revisions safely',async()=>{
+ let output:unknown
+ const h=await fixture({transcribe:async()=>'Componente sintético.',interpret:async()=>output})
+ try{
+  output={commands:[{id:'part',op:'add_component',intent:'instruction',piece:resolved(h.f.item.pieceId),name:'Guia QA',quantity:'1',manualPrice:'0'}]}
+  const root=await (await h.post()).json(),before=h.db.prepare('SELECT total_changes() n').get()!.n
+  const route='/api/atendimentos/'+h.f.at.id+'/copiloto/revisar',body={scenarioId:h.f.scenario.id,resolutionId:root.resolution.id,commandId:'part',quantity:'2.5',manualPrice:'12.34',enabled:false}
+  const json=(payload:unknown,extra:Record<string,string>={},path=route)=>h.post(JSON.stringify(payload),{'Content-Type':'application/json',...extra},path)
+  assert.equal((await json(body,{Cookie:''})).status,401);assert.equal((await json(body,{Origin:'https://foreign.invalid'})).status,403)
+  for(const enabled of ['false',0,null])assert.equal((await json({...body,enabled})).status,400)
+  const responses=await Promise.all([json(body),json(body)]);assert.deepEqual(responses.map(r=>r.status).sort(),[200,409])
+  const revised=await responses.find(r=>r.status===200)!.json();assert.equal(revised.plan.changes[0].flags[h.f.scenario.id],false)
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,before)
+  const payload={scenarioId:h.f.scenario.id,idempotencyKey:revised.plan.idempotencyKey},applyRoute='/api/atendimentos/'+h.f.at.id+'/copiloto/aplicar'
+  const applied=await Promise.all([json(payload,{},applyRoute),json(payload,{},applyRoute)]);assert(applied.every(r=>r.status===200))
+  const receipts=await Promise.all(applied.map(r=>r.json()));assert.equal(receipts.filter(r=>r.replay).length,1)
+  const component=h.db.prepare('SELECT * FROM component_items WHERE atendimento_id=?').get(h.f.at.id)!
+  assert.equal(component.quantity,'2.5');assert.equal(component.manual_price,'12.34')
+  assert.equal(h.f.scenarios.list(h.f.at.id).find(s=>s.id===h.f.scenario.id)!.componentFlags[component.id as string],false)
+ }finally{await h.close()}
+})

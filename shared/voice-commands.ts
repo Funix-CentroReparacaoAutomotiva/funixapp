@@ -6,7 +6,7 @@ export type VoiceReference={state:'resolved';id:string}|{state:'unresolved';text
 export type VoiceLineReference={kind:'id';id:string}|{kind:'service';service:VoiceReference}|{kind:'command';commandId:string}
 type CommandBase={id:string;intent:'instruction'|'correction';piece:VoiceReference;sourceText?:string}
 export type VoiceCommand=CommandBase&(
- |{op:'add_component';name:string;quantity?:string;manualPrice?:string;duplicateDecision?:{mode:'keep'|'new';references:string[]}}
+ |{op:'add_component';name:string;quantity?:string;manualPrice?:string;enabled?:boolean;duplicateDecision?:{mode:'keep'|'new';references:string[]}}
  |{op:'add_piece'}
  |{op:'remove_piece'}
  |{op:'set_piece_enabled';enabled:boolean}

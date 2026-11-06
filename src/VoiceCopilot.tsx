@@ -109,12 +109,12 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   }catch(error){addEvents(['Falha ao aplicar · '+diagnosticError(error)],diagnosticFailure('apply',error));setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
  }
- async function reviseComponent(commandId:string){
-  const active=context,resolution=state.result?.resolution,value=componentDrafts[commandId],epoch=reviewEpoch.current
+ async function reviseComponent(commandId:string,enabled?:boolean){
+  const active=context,resolution=state.result?.resolution,value=componentDrafts[commandId]??state.result?.reviewGroups.flatMap(g=>g.entries).find(e=>e.component?.commandId===commandId)?.component,epoch=reviewEpoch.current
   if(!active||!resolution||!value||busy)return
   setResolving(true);setApplyError('')
   try{
-   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/revisar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,commandId,quantity:value.quantity.trim().replace(',','.'),manualPrice:value.manualPrice.trim().replace(',','.')})})
+   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/revisar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,commandId,quantity:value.quantity.trim().replace(',','.'),manualPrice:value.manualPrice.trim().replace(',','.'),...(enabled===undefined?{}:{enabled})})})
    if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});setComponentDrafts(old=>{const next={...old};delete next[commandId];return next});if(result.diagnostic)addEvents([...diagnosticHistory(result.diagnostic),...diagnosticQuestions(result.resolution)])}
   }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao revisar componente · '+diagnosticError(error)],diagnosticFailure('resolution',error))}}finally{setResolving(false)}
  }
@@ -152,9 +152,9 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
     <button onClick={()=>void copyDiagnostic()}>Copiar diagnóstico</button><p role="status">{copyStatus}</p>
    </section>}
    {state.result&&<>
-    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy} decisionsDisabled={hasComponentEdits} componentDrafts={componentDrafts} onComponentChange={(id,value)=>setComponentDrafts(old=>({...old,[id]:value}))} onComponentRevise={id=>void reviseComponent(id)}/>
+    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy} decisionsDisabled={hasComponentEdits} componentDrafts={componentDrafts} onComponentChange={(id,value)=>setComponentDrafts(old=>({...old,[id]:value}))} onComponentRevise={id=>void reviseComponent(id)} onComponentToggle={(id,enabled)=>void reviseComponent(id,enabled)}/>
     {hasComponentEdits&&<p className="voice-outcome" role="status">Use Revisar valores para validar as edições antes de aplicar. Nada foi salvo.</p>}
-    {state.result.outcome&&<p className="voice-outcome" role="status">{state.result.outcome.message}</p>}
+    {state.result.outcome&&!(state.result.outcome.kind==='review'&&state.result.outcome.pending===0&&state.result.outcome.message==='Confira as alterações antes de aplicar.')&&<p className="voice-outcome" role="status">{state.result.outcome.message}</p>}
     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal" role="alert">Exclusão definitiva em todos os cenários. Serviços e componentes vinculados também podem ser removidos.</p>}
    </>}
    {applyError&&<p role="alert" className="voice-apply-error">{applyError}</p>}
