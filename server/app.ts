@@ -17,6 +17,8 @@ import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
 import {resolveVoiceOption} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
+import { ChatRepository } from './chat/repository.ts'
+import { readMessages } from './chat/read.ts'
 
 export interface AppOptions {
   voiceProvider?:VoiceProvider|null
@@ -31,6 +33,7 @@ export interface AppOptions {
 
 export function createRequestHandler(options: AppOptions) {
   const commercial = new CommercialRepository(options.atendimentos.db)
+  const chat = new ChatRepository(options.atendimentos.db)
   const scenarios = new ScenarioRepository(options.atendimentos.db)
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
@@ -99,6 +102,11 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
+      if (chatReadRoute) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
+        return send(200, readMessages(chat, chatReadRoute[1]!, url.searchParams))
+      }
       const voiceResolveRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/resolver$/.exec(url.pathname)
       if(voiceResolveRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para resolver a dúvida.')

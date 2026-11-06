@@ -128,23 +128,26 @@ export class ChatRepository {
     const limit = options.limit ?? 50
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) return invalid()
     if (!this.db.prepare('SELECT 1 FROM atendimentos WHERE id=?').get(atendimentoId)) return missing()
-    let afterTime = '', after = 0, ceiling = Number(this.db.prepare('SELECT COALESCE(MAX(sequence),0) AS n FROM chat_messages').get()!.n)
+    let beforeTime = '', before = 0, ceiling = Number(this.db.prepare('SELECT COALESCE(MAX(sequence),0) AS n FROM chat_messages').get()!.n)
+    const initial = options.cursor === undefined
     if (options.cursor !== undefined) {
       if (typeof options.cursor !== 'string' || options.cursor.length > 600) return invalid()
       let cursor: unknown
       try { cursor = JSON.parse(Buffer.from(options.cursor, 'base64url').toString()) } catch { return invalid() }
-      if (!Array.isArray(cursor) || cursor.length !== 4 || cursor[0] !== atendimentoId || !timestamp(cursor[1]) ||
-        !Number.isSafeInteger(cursor[2]) || !Number.isSafeInteger(cursor[3]) || cursor[2] < 0 || cursor[3] < cursor[2]) return invalid()
-      afterTime = cursor[1]; after = cursor[2]; ceiling = cursor[3]
+      // Versioned because the previous cursor traversed towards newer messages.
+      if (!Array.isArray(cursor) || cursor.length !== 5 || cursor[0] !== 2 || cursor[1] !== atendimentoId || !timestamp(cursor[2]) ||
+        new Date(cursor[2]).toISOString() !== cursor[2] || !Number.isSafeInteger(cursor[3]) || !Number.isSafeInteger(cursor[4]) ||
+        cursor[3] < 1 || cursor[4] < cursor[3]) return invalid()
+      beforeTime = cursor[2]; before = cursor[3]; ceiling = cursor[4]
     }
     const rows = this.db.prepare(`SELECT m.*,s.status FROM chat_messages m JOIN chat_links l ON l.id=m.link_id
       LEFT JOIN chat_statuses s ON s.conversation_id=m.conversation_id AND s.message_id=m.message_id
-      WHERE l.atendimento_id=? AND (m.occurred_at>? OR (m.occurred_at=? AND m.sequence>?)) AND m.sequence<=?
-      ORDER BY m.occurred_at,m.sequence LIMIT ?`).all(atendimentoId, afterTime, afterTime, after, ceiling, limit + 1)
-    const items = rows.slice(0, limit).map(row => ({ sequence: Number(row.sequence), messageId: String(row.message_id),
+      WHERE l.atendimento_id=? AND (?=1 OR m.occurred_at<? OR (m.occurred_at=? AND m.sequence<?)) AND m.sequence<=?
+      ORDER BY m.occurred_at DESC,m.sequence DESC LIMIT ?`).all(atendimentoId, initial ? 1 : 0, beforeTime, beforeTime, before, ceiling, limit + 1)
+    const items = rows.slice(0, limit).reverse().map(row => ({ sequence: Number(row.sequence), messageId: String(row.message_id),
       occurredAt: String(row.occurred_at), fromMe: row.from_me === 1, origin: row.origin as 'external' | 'unknown',
       kind: row.kind as ChatPage['items'][number]['kind'], text: row.text === null ? null : String(row.text),
       mediaState: row.kind === 'text' ? 'none' as const : 'unavailable' as const, status: row.status === null ? null : row.status as ChatStatus }))
-    return { items, nextCursor: rows.length > limit ? Buffer.from(JSON.stringify([atendimentoId, items.at(-1)!.occurredAt, items.at(-1)!.sequence, ceiling])).toString('base64url') : null }
+    return { items, nextCursor: rows.length > limit ? Buffer.from(JSON.stringify([2, atendimentoId, items[0]!.occurredAt, items[0]!.sequence, ceiling])).toString('base64url') : null }
   }
 }

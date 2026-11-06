@@ -39,10 +39,15 @@ assert.equal((await fetch(base+"/api/session",{method:"POST",headers:{Origin:"ht
 const login=await fetch(base+"/api/session",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json"},body:JSON.stringify({password:process.env.FUNIX_OPERATOR_PASSWORD})});
 assert.equal(login.status,200); assert.match(login.headers.get("set-cookie"),/; Secure/);
 const cookie=login.headers.get("set-cookie").split(";")[0];
+assert.equal((await (await fetch(base+"/api/health")).json()).capabilities.messages,false);
 const list=await fetch(base+"/api/atendimentos",{headers:{Cookie:cookie}});
 assert.equal(list.status,200); assert.equal((await list.json()).total,0);
 const created=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"+5511999990000"})});
 assert.equal(created.status,201); const record=await created.json();
+assert.equal((await fetch(base+"/api/atendimentos/"+record.id+"/messages")).status,401);
+const messages=await fetch(base+"/api/atendimentos/"+record.id+"/messages",{headers:{Cookie:cookie}});
+assert.equal(messages.status,200); assert.equal(messages.headers.get("cache-control"),"no-store");
+assert.deepEqual(await messages.json(),{items:[],nextCursor:null});
 assert.equal((await fetch(base+"/api/atendimentos/"+record.id,{headers:{Cookie:cookie}})).status,200);
 assert.equal((await fetch(base+"/api/workspace",{headers:{Cookie:cookie}})).status,410);
 assert.equal((await fetch(base+"/api/experiencias/i-ci",{method:"POST",headers:{Cookie:cookie}})).status,405);
