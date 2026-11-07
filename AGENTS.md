@@ -1,5 +1,12 @@
 # AGENTS.md — FUNIX, Issue #7 / MVP Comercial integrado
 
+## Política de uso ChatGPT / Codex (proposta em revisão)
+
+A decisão de convocar o Codex ocorre **antes** da execução, preferencialmente nas instruções do projeto ChatGPT. Para tarefas de desenvolvimento, priorize o ChatGPT quando ele conseguir concluir e verificar o trabalho com as ferramentas disponíveis; use Codex quando o checkout, os testes locais, a depuração ou alterações integradas justificarem materialmente o seu ambiente. Complexidade aparente não é critério suficiente. Antes de iniciar, delimite escopo, verificações, permissões e restrições; não repita análise já concluída e não comprometa testes para economizar uso.
+
+Política proposta: [docs/governanca/politica-uso-chatgpt-codex.md](docs/governanca/politica-uso-chatgpt-codex.md). A aprovação desta proposta **não altera** autorizações específicas, nem permite merge, deploy, produção ou uso de segredos. Até aprovação, tratar como orientação em revisão.
+
+
 ## Correção vigente PR39 — categorias das etapas
 
 Agrupar o PDF pelas cinco categorias técnicas da referência `docs/referencias/pdf/CODA_STAGE_CLUSTERS_2026-11-03.json` (39 etapas/113 relações), não por serviceId. Categoria pertence à etapa e é preservada no JSON/importador por IDs exatos; ausências não são inferidas por nome. Rateio usa valor efetivo da linha e proporção da energia, com aritmética racional, sem alterar preço/energia/quantidade. Desconto global permanece separado, sem rateio fictício; apresentação das categorias em centavos fecha por diagnóstico. Duas relações sem etapa/categoria ficam pendentes. Parcelamento está aprovado e não muda. Sem SQL/migração, Coda/VPS/importação real, merge/deploy. Relatório vigente `docs/PR39_AGRUPAMENTO_ETAPAS.md`; esta decisão substitui o agrupamento anterior por serviço.
