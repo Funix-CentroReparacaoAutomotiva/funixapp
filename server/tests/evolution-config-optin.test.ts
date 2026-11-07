@@ -9,9 +9,7 @@ test('Evolution is not created by default; absent and malformed flags fail close
     assert.equal(loadEvolutionChat({}, db), undefined)
     assert.equal(loadEvolutionChat({ FUNIX_EVOLUTION_READ_ENABLED: 'false' }, db), undefined)
     assert.equal(loadEvolutionChat({ FUNIX_EVOLUTION_READ_ENABLED: 'TRUE' }, db), undefined)
-    assert.throws(() => loadEvolutionChat({ FUNIX_EVOLUTION_READ_ENABLED: 'true' }, db), /credentials\\/instance ID are unavailable/)
-  } catch (error) {
-    assert.match(String(error), /credentials\/instance ID are unavailable/)
+    assert.throws(() => loadEvolutionChat({ FUNIX_EVOLUTION_READ_ENABLED: 'true' }, db), /configuration|credentials/)
   } finally { db.close() }
 })
 
