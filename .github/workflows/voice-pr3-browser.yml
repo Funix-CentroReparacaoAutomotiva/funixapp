@@ -29,7 +29,8 @@ jobs:
         env:
           FUNIX_TEST_MIC_STARTUP_MS: "700"
       - name: Check existing app.funix.com.br (GET only; no credentials)
-        if: always()
+        # PR validation must remain synthetic/offline from FUNIX services (Issue #71).
+        if: always() && github.event_name == 'workflow_dispatch'
         run: |
           node --input-type=module <<'NODE'
           const base='https://app.funix.com.br';
