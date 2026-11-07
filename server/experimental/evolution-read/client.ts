@@ -37,6 +37,19 @@ function jid(value: unknown): string {
   return text
 }
 function input<T>(parse: () => T): T { try { return parse() } catch { return fail('INPUT') } }
+/**
+ * A provider pushName is a presentation hint, not verified person identity.
+ * Ignore invalid/malformed names instead of leaking JIDs or failing all chats.
+ */
+function displayName(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed || [...trimmed].length > 80 ||
+      /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(trimmed) ||
+      /@(?:s\.whatsapp\.net|lid|g\.us)/i.test(trimmed)) return null
+  return trimmed
+}
+
 export type ReadMessage = {
   recordId: string
   instanceId: string
@@ -52,7 +65,7 @@ export type ReadMessage = {
   media: { reference: string; mimeType: string | null; bytes: number | null; available: false } | null
   statuses: string[]
 }
-export type ReadChat = { remoteJid: string; updatedAt: string | null; unreadCount: number | null }
+export type ReadChat = { remoteJid: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
 export type MessagePage = {
   items: ReadMessage[]
   currentPage: number
@@ -133,8 +146,11 @@ export class EvolutionReadPoc {
         updatedAt = string(row.updatedAt, 40)
         if (!Number.isFinite(Date.parse(updatedAt)) || new Date(updatedAt).toISOString() !== updatedAt) return fail()
       }
-      // Intentionally project only metadata; no lastMessage/profile/avatar URLs.
-      return { remoteJid, updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) }
+      // Project only safe identification hints; never lastMessage/profile/avatar URLs, provider JID is server-only.
+      return { remoteJid,
+        displayName: displayName(row.pushName),
+        phoneNumber: remoteJid.endsWith('@s.whatsapp.net') ? remoteJid.slice(0, -'@s.whatsapp.net'.length) : null,
+        updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) }
     })
   }
   async findMessages(remoteJid: string, options: { page?: number; signal?: AbortSignal } = {}): Promise<MessagePage> {
