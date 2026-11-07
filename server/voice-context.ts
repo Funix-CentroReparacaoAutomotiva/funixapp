@@ -24,8 +24,7 @@ export function readVoiceContext(db:DatabaseSync,at:string,scenarioId:string):Vo
 // No contacts, plate, customer names, notes, monetary values or other Atendimentos.
 // Other scenarios' identities/masks are backend-only: the model sees only the active mask.
 export type VoiceModelContextMode='standard'|'omit_recommendations'
-// Pilot only: omit recommendation rules from the model prompt, not from the trusted planner.
-// The strict model schema has no operation for applying recommendation rules.
+// Economic pilot: omit recommendations only from model prompt; trusted planner gets all rules.
 export function modelVoiceContext(c:VoicePlanningContext,mode:VoiceModelContextMode='standard'){
  const selected=c.workspace.scenarios.find(s=>s.id===c.workspace.selectedId)!
  return{intensities:DIAGNOSIS_INTENSITIES,

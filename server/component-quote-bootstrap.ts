@@ -2,6 +2,7 @@ import{lstatSync,statSync}from'node:fs'
 import{dirname,isAbsolute,resolve}from'node:path'
 import{createQuoteService}from'./component-quote-service.ts'
 import{openAIQuoteProvider}from'./component-quote-provider.ts'
+import{createQuoteMetricsObserver}from'./component-quote-observability.ts'
 import type{QuoteService}from'./component-quote-service.ts'
 
 // The existing FUNIX database volume is the source of persistence for this
@@ -25,5 +26,5 @@ export function loadQuotePilot(env:NodeJS.ProcessEnv,databasePath:string):QuoteS
  }catch(error){
   if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error
  }
- return createQuoteService(openAIQuoteProvider({key,ledger}))
+ return createQuoteService(openAIQuoteProvider({key,ledger}),{observe:createQuoteMetricsObserver(env.FUNIX_QUOTE_METRICS_ENABLED==='true')})
 }

@@ -1,7 +1,7 @@
 # FUNIX — Issue #77 · piloto opt-in de redução do contexto do Copiloto
 
 ## Hipótese e fundamento
-Em amostra operacional de 07/11/2026, quatro interpretações Terra reportaram 34.456, 34.460, 34.461 e 34.932 tokens de entrada. Em todas, 3.122 tokens vieram do cache. A maior parcela dos custos estimados está na entrada não-cacheada, mas os logs não isolam as parcelas de schema, instruções, catálogo, cenário e recomendações.
+Em amostra operacional de 07/11/2026, quatro interpretações Terra reportaram 34.456, 34.460, 34.461 e 34.932 tokens de entrada. Em todas, 3.122 tokens vieram do cache. A maior parcela dos custos estimados está na entrada não-cacheada. A telemetria posterior mostrou 80.082 bytes de contexto real, sendo 20.187 bytes de recomendações (25,2% do contexto), 50.818 bytes de catálogo (63,5%) e 8.914 bytes de pares (11,1%). Não equiparar bytes a tokens.
 
 O `modelVoiceContext` transmite recomendações de diagnóstico e intensidade para o modelo, mesmo que o schema de saída **não tenha operação de executar uma recomendação**. As regras de recomendação são consumidas no planejador determinístico, que recebe o contexto completo obtido de `readVoiceContext`.
 
@@ -20,3 +20,6 @@ O `modelVoiceContext` transmite recomendações de diagnóstico e intensidade pa
 **Fora do escopo:** UX/ordem de opções, mudar Terra ou Transcribe, trocar esforço de raciocínio, resumir nomes/IDs, selecionar peças heurísticamente, cobrança web, migração e alterações financeiras/operacionais.
 
 **Estado:** hipótese/implementação experimental em PR, não economia comprovada.
+
+## Medição real que justifica o piloto
+Em 07/11/2026, em um único ditado fictício de 3 s, o contexto tinha 80.082 bytes, incluindo 20.187 de regras de recomendação, com 48 conjuntos e 74 regras. O request completo tinha 107.096 bytes; o modelo registrou 33.829 tokens de entrada, 3.122 tokens em cache e 125 tokens de saída. Um fixture sintético anterior economizou só 314 bytes; não era representativo da carga real de regras. A economia real em tokens precisa ser medida por A/B com o mesmo cenário/ditado e atenção ao cache. A variante não elimina as regras do planejador.
