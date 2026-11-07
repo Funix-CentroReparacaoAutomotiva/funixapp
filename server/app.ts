@@ -21,8 +21,11 @@ import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
+import type{QuoteService}from'./component-quote-service.ts'
+import{readQuoteContext}from'./component-quote-context.ts'
 
 export interface AppOptions {
+  quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
   whatsappIngest?: IngestOptions
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
@@ -107,6 +110,24 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade')return send(200,{enabled:Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')})
+      const quoteRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/cotar$/.exec(url.pathname)
+      if(quoteRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para cotar.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(!options.quotePilot||(process.env.NODE_ENV==='production'&&process.env.FUNIX_QUOTE_ENABLED!=='true'))return fail(503,'QUOTE_DISABLED','Cotação indisponível.')
+        const body=await readJson(req,1024),context=readQuoteContext(options.atendimentos.db,quoteRoute[1]!,body,cookie)
+        if(!context.query)return send(200,{status:'needs_details',offers:[],observedAt:new Date(now()).toISOString(),expiresAt:new Date(now()).toISOString(),cached:false})
+        const controller=new AbortController(),cancel=()=>{if(!res.writableEnded)controller.abort()}
+        res.once('close',cancel)
+        try{
+          const result=await options.quotePilot.run(context.query,cookie,controller.signal)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a consulta.')
+          context.revalidate()
+          return send(200,result)
+        }finally{res.off('close',cancel)}
+      }
       const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
       if (chatReadRoute) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')

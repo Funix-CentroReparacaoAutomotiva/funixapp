@@ -1,0 +1,6 @@
+import type{QuoteQuery}from'../../../shared/component-quote.ts'
+export const quoteFixtureQuery:QuoteQuery={brand:'volkswagen',model:'gol',year:2019,component:'farol dianteiro esquerdo',parent:'parachoque dianteiro',side:'esquerdo'}
+// Synthetic HTTP fixtures: not observed offers and never production defaults.
+export const quoteFixtureUrl='https://produto.mercadolivre.com.br/MLB-0000000000-fixture-sintetica-_JM'
+export const quoteFixtureOffer={category:'original_nova',price:'39.90',priceText:'R$ 39,90',url:quoteFixtureUrl,title:'Farol dianteiro esquerdo Volkswagen Gol 2017 a 2023',brand:'Volkswagen',model:'Gol',yearFrom:2017,yearTo:2023,side:'esquerdo',condition:'new',origin:'original',unit:'unit',priceKind:'total',currency:'BRL',sourceQuote:'Farol dianteiro esquerdo Gol 2017 a 2023 novo R$ 39,90. Loja oficial Volkswagen',officialEvidence:'Loja oficial Volkswagen',qualityEvidence:''}
+export function quoteFixtureResponse(offers:unknown[]=[quoteFixtureOffer]){return{status:'completed',usage:{input_tokens:1100,output_tokens:500},output:[{type:'web_search_call',status:'completed',action:{type:'search',queries:['consulta sintética'],sources:[{url:quoteFixtureUrl}]}},{type:'message',content:[{type:'output_text',text:JSON.stringify({offers}),annotations:[{type:'url_citation',url:quoteFixtureUrl}]}]}]}}

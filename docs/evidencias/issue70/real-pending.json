@@ -1,0 +1,273 @@
+{
+  "mode": "real_execution_pending",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "maximumInitialSearches": 10,
+  "maximumReservedUsd": 3.3000000000000003,
+  "actualPaidSearches": 0,
+  "note": "Sem execução real. Preços/URLs de fixtures são fictícios e não são fontes de cotação.",
+  "records": [
+    {
+      "id": "P01",
+      "syntheticInput": {
+        "id": "P01",
+        "brand": "Volkswagen",
+        "model": "Gol",
+        "vehicle": "Gol 2019",
+        "component": "farol dianteiro esquerdo",
+        "parent": "para-choque dianteiro"
+      },
+      "query": {
+        "brand": "volkswagen",
+        "model": "gol",
+        "year": 2019,
+        "component": "farol dianteiro esquerdo",
+        "parent": "parachoque dianteiro",
+        "side": "esquerdo"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=volkswagen%20gol%202019%20farol%20dianteiro%20esquerdo",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P02",
+      "syntheticInput": {
+        "id": "P02",
+        "brand": "Volkswagen",
+        "model": "Polo",
+        "vehicle": "Polo 2020",
+        "component": "para-choque dianteiro",
+        "parent": "para-choque dianteiro"
+      },
+      "query": {
+        "brand": "volkswagen",
+        "model": "polo",
+        "year": 2020,
+        "component": "parachoque dianteiro",
+        "parent": "parachoque dianteiro",
+        "side": null
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=volkswagen%20polo%202020%20parachoque%20dianteiro",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P03",
+      "syntheticInput": {
+        "id": "P03",
+        "brand": "Fiat",
+        "model": "Uno",
+        "vehicle": "Uno 2014",
+        "component": "maçaneta externa dianteira direita",
+        "parent": "porta dianteira direita"
+      },
+      "query": {
+        "brand": "fiat",
+        "model": "uno",
+        "year": 2014,
+        "component": "macaneta externa dianteira direita",
+        "parent": "porta dianteira direita",
+        "side": "direito"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=fiat%20uno%202014%20macaneta%20externa%20dianteira%20direita",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P04",
+      "syntheticInput": {
+        "id": "P04",
+        "brand": "Chevrolet",
+        "model": "Cobalt",
+        "vehicle": "Cobalt 2016",
+        "component": "vidro porta dianteira esquerda",
+        "parent": "porta dianteira esquerda"
+      },
+      "query": {
+        "brand": "chevrolet",
+        "model": "cobalt",
+        "year": 2016,
+        "component": "vidro porta dianteira esquerda",
+        "parent": "porta dianteira esquerda",
+        "side": "esquerdo"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=chevrolet%20cobalt%202016%20vidro%20porta%20dianteira%20esquerda",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P05",
+      "syntheticInput": {
+        "id": "P05",
+        "brand": "Hyundai",
+        "model": "HB20",
+        "vehicle": "HB20 2017",
+        "component": "guia para-choque dianteiro direito",
+        "parent": "para-choque dianteiro"
+      },
+      "query": {
+        "brand": "hyundai",
+        "model": "hb20",
+        "year": 2017,
+        "component": "guia parachoque dianteiro direito",
+        "parent": "parachoque dianteiro",
+        "side": "direito"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=hyundai%20hb20%202017%20guia%20parachoque%20dianteiro%20direito",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P06",
+      "syntheticInput": {
+        "id": "P06",
+        "brand": "Fiat",
+        "model": "Mobi",
+        "vehicle": "Mobi 2020",
+        "component": "presilha fixação para-barro",
+        "parent": "para-lama dianteiro"
+      },
+      "query": {
+        "brand": "fiat",
+        "model": "mobi",
+        "year": 2020,
+        "component": "presilha fixacao parabarro",
+        "parent": "paralama dianteiro",
+        "side": null
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=fiat%20mobi%202020%20presilha%20fixacao%20parabarro",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P07",
+      "syntheticInput": {
+        "id": "P07",
+        "brand": "Ford",
+        "model": "Ka",
+        "vehicle": "Ka 2018",
+        "component": "farol dianteiro esquerdo",
+        "parent": "para-choque dianteiro"
+      },
+      "query": {
+        "brand": "ford",
+        "model": "ka",
+        "year": 2018,
+        "component": "farol dianteiro esquerdo",
+        "parent": "parachoque dianteiro",
+        "side": "esquerdo"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=ford%20ka%202018%20farol%20dianteiro%20esquerdo",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P08",
+      "syntheticInput": {
+        "id": "P08",
+        "brand": "Jeep",
+        "model": "Compass",
+        "vehicle": "Compass 2020",
+        "component": "para-choque dianteiro",
+        "parent": "para-choque dianteiro"
+      },
+      "query": {
+        "brand": "jeep",
+        "model": "compass",
+        "year": 2020,
+        "component": "parachoque dianteiro",
+        "parent": "parachoque dianteiro",
+        "side": null
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=jeep%20compass%202020%20parachoque%20dianteiro",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P09",
+      "syntheticInput": {
+        "id": "P09",
+        "brand": "Fiat",
+        "model": "Argo",
+        "vehicle": "Argo",
+        "component": "maçaneta externa dianteira direita",
+        "parent": "porta dianteira direita"
+      },
+      "query": {
+        "brand": "fiat",
+        "model": "argo",
+        "year": null,
+        "component": "macaneta externa dianteira direita",
+        "parent": "porta dianteira direita",
+        "side": "direito"
+      },
+      "manualPreparedUrl": "https://www.google.com/search?q=fiat%20argo%20macaneta%20externa%20dianteira%20direita",
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    },
+    {
+      "id": "P10",
+      "syntheticInput": {
+        "id": "P10",
+        "brand": "Jeep",
+        "model": "Renegade",
+        "vehicle": "Renegade 2019",
+        "component": "farol dianteiro",
+        "parent": "para-choque dianteiro"
+      },
+      "query": null,
+      "manualPreparedUrl": null,
+      "status": "real_execution_pending",
+      "latencyMs": null,
+      "inputTokens": null,
+      "outputTokens": null,
+      "webSearchCalls": null,
+      "costUsd": null,
+      "offers": []
+    }
+  ]
+}

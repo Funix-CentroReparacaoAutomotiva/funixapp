@@ -1,0 +1,30 @@
+{
+  "base": "5351ab8ea4c53ae4dff4e33d7a638c26a49cb059",
+  "check": {
+    "tests": 562,
+    "passed": 562,
+    "failed": 0,
+    "skipped": 0,
+    "build": true,
+    "server_types": true,
+    "lint": "passed with existing warnings"
+  },
+  "new_quote_tests": 12,
+  "browser_pilot": [
+    320,
+    390,
+    1440
+  ],
+  "browser_regression_issue64_66": [
+    320,
+    390,
+    1440
+  ],
+  "actual_paid_calls": 0,
+  "real_execution": "pending",
+  "voice_provider_sha256": "d20789541f9b8c5618a664b6e1b311d4d21f6f97392e19adb3530957bf8ad500",
+  "limitations": [
+    "No live provider execution or price validation",
+    "Chromium with synthetic audio; no physical mobile or real screen reader"
+  ]
+}
