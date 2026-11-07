@@ -248,19 +248,7 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       PRIMARY KEY(atendimento_id,idempotency_key)
     );
   `)},
-  {version:14,apply:createChatSchema},
-  // Additive V15: separate Evolution provider identities; legacy Chat linkage remains untouched.
-  // Applied by openDatabase() at startup: require SQLite backup/restoration gate before deploy.
-  {version:15,apply:db=>db.exec(`
-    CREATE TABLE evolution_conversations (
-      id TEXT PRIMARY KEY,
-      instance TEXT NOT NULL CHECK(length(instance) BETWEEN 1 AND 80),
-      remote_jid TEXT NOT NULL CHECK(length(remote_jid) BETWEEN 1 AND 150),
-      created_at TEXT NOT NULL,
-      UNIQUE(instance,remote_jid)
-    );
-    CREATE INDEX evolution_conversations_instance ON evolution_conversations(instance,id);
-  `)}
+  {version:14,apply:createChatSchema}
 ]
 
 export function migrate(db: DatabaseSync) {
