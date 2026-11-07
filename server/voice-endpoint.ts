@@ -5,13 +5,14 @@ import{ServiceError}from'./errors.ts'
 import{VOICE_MAX_BYTES,VOICE_MAX_DURATION_MS,VOICE_MIMES,VOICE_PROCESSING_MS,VOICE_UPLOAD_MS}from'../shared/voice-input.ts'
 import{stageVoiceResolution,readVoiceResolution,clarifyVoiceResolution}from'./voice-resolution.ts'
 import{readVoiceContext,modelVoiceContext}from'./voice-context.ts'
+import type{VoiceModelContextMode}from'./voice-context.ts'
 import{voiceContextDigest,voiceRevisions}from'./voice-planner.ts'
 import{validateVoiceCommands}from'./voice-command-validation.ts'
 import{convertVoiceModelOutput}from'./voice-model-contract.ts'
 import type{VoiceProvider}from'./voice-provider.ts'
 const invalid=(message:string):never=>{throw new ServiceError(400,'VOICE_INVALID_INPUT',message)}
 const stale=()=>new ServiceError(409,'VOICE_CONTEXT_STALE','O Atendimento ou cenário mudou. Grave novamente no contexto atual.')
-export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undefined,processingMs=VOICE_PROCESSING_MS){
+export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undefined,processingMs=VOICE_PROCESSING_MS,contextMode:VoiceModelContextMode='standard'){
  let busy=false,windowStart=0,attempts=0
  return async(req:IncomingMessage,at:string,url:URL,requestId:string,sessionValid:()=>boolean,sessionId:string)=>{
   if(!provider)throw new ServiceError(503,'VOICE_UNAVAILABLE','Copiloto de voz não configurado no backend.')
@@ -68,7 +69,7 @@ export function createVoiceEndpoint(db:DatabaseSync,provider:VoiceProvider|undef
      if(!sessionValid())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada durante o esclarecimento.')
      return clarifyVoiceResolution(db,at,scene,resolutionId,questionId,transcription,sessionId,requestId)
     }
-    const output=await provider.interpret(transcription,modelVoiceContext(context),controller.signal)
+    const output=await provider.interpret(transcription,modelVoiceContext(context,contextMode),controller.signal)
     controller.signal.throwIfAborted()
     if(!sessionValid())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada durante o processamento.')
     let fresh

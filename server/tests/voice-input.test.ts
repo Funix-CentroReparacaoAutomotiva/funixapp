@@ -18,8 +18,8 @@ const origin='http://127.0.0.1:5173',password='synthetic-voice-test-password'
 const audio=Buffer.from([0x1a,0x45,0xdf,0xa3,0,0,0,0])
 const resolved=(id:string)=>({state:'resolved',id})
 const provider=(output:unknown={commands:[]}):VoiceProvider=>({transcribe:async()=>'Ditado sintético sem cliente.',interpret:async()=>output})
-async function fixture(p:VoiceProvider|null=provider(),timeout?:number){
- const db=openDatabase(':memory:'),f=commercialFixture(db),app=createApp({atendimentos:f.atendimentos,password,origin,voiceProvider:p,voiceProcessingMs:timeout})
+async function fixture(p:VoiceProvider|null=provider(),timeout?:number,contextMode?:'standard'|'omit_recommendations'){
+ const db=openDatabase(':memory:'),f=commercialFixture(db),app=createApp({atendimentos:f.atendimentos,password,origin,voiceProvider:p,voiceProcessingMs:timeout,voiceContextMode:contextMode})
  app.listen(0,'127.0.0.1');await once(app,'listening')
  const host='http://127.0.0.1:'+(app.address() as {port:number}).port
  const auth=await fetch(host+'/api/session',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password})}),cookie=auth.headers.get('set-cookie')!.split(';')[0]!
@@ -496,4 +496,45 @@ test('Issue77: voice prompt footprint measures only fixed-size metadata, opt-in 
  for(const forbidden of ['PRIVATE','SECRET','DICTATION','private-piece-id','MOLDURA'])assert(!JSON.stringify(sink).includes(forbidden))
  const exception=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_FOOTPRINT_ENABLED:'true'},transport,undefined,()=>{throw new Error('private sink error')})!
  assert.deepEqual(await exception.interpret('SECRET',contexts[0],new AbortController().signal),{commands:[]})
+})
+
+test('economic context pilot omits only model-visible recommendations; planner retains all rules',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const f=commercialFixture(db),ctx=readVoiceContext(db,f.at.id,f.scenario.id)
+  // The commercial fixture has no validated diagnosis rules by default.
+  // Add one synthetic rule only in memory to verify that we omit actual data.
+  ctx.recommendations.push({
+   diagnosisId:'diagnosis-synthetic',intensity:'leve',availability:'available',
+   rules:[{id:'rule-synthetic',sourceRowId:'rule-synthetic',sourceTable:'qa',serviceId:f.service.id,dimensionId:f.dimension.id,selectedByDefault:true}],
+   pending:[{ruleId:'pending-synthetic',reason:'SYNTHETIC_TEST_ONLY'}]
+  })
+  const full=modelVoiceContext(ctx),compact=modelVoiceContext(ctx,'omit_recommendations')
+  const {recommendations:rules,...untouched}=full
+  assert(Array.isArray(rules)&&rules.length>0)
+  assert.deepEqual(compact,untouched)
+  assert.equal(Object.hasOwn(compact,'recommendations'),false)
+  assert(ctx.recommendations.length===rules.length)
+  const baseBytes=Buffer.byteLength(JSON.stringify(full)),compactBytes=Buffer.byteLength(JSON.stringify(compact))
+  assert(compactBytes<baseBytes)
+  console.info('FUNIX_SYNTHETIC_VOICE_CONTEXT_BYTES '+JSON.stringify({standard:baseBytes,omitRecommendations:compactBytes,savingsBytes:baseBytes-compactBytes}))
+ }finally{db.close()}
+})
+test('economic context pilot is opt-in at endpoint and still requires human review',async()=>{
+ let seen:unknown
+ const h=await fixture({transcribe:async()=> 'Porta não especificada.',interpret:async(_text,ctx)=>{seen=ctx;return{commands:[{id:'a',op:'add_piece',intent:'instruction',piece:{state:'unresolved',text:'porta',candidates:[]}}]}}},undefined,'omit_recommendations')
+ try{
+  const response=await h.post();assert.equal(response.status,200)
+  const data=await response.json()
+  assert.equal(data.applied,false)
+  assert(data.resolution.questions.length>0)
+  assert.equal(Object.hasOwn(seen as object,'recommendations'),false)
+  assert(h.db.prepare('SELECT COUNT(*) AS count FROM diagnosis_recommendations').get())
+ }finally{await h.close()}
+})
+test('default voice model context still includes recommendation rules unchanged',async()=>{
+ let seen:unknown
+ const h=await fixture({transcribe:async()=> 'Capô.',interpret:async(_text,ctx)=>{seen=ctx;return{commands:[]}}})
+ try{assert.equal((await h.post()).status,200);assert.equal(Array.isArray((seen as Record<string,unknown>).recommendations),true)}
+ finally{await h.close()}
 })
