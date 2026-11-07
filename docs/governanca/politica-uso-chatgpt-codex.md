@@ -1,6 +1,6 @@
 # FUNIX — Política de escolha entre ChatGPT, Codex e ferramentas conectadas
 
-**Estado:** proposta para aprovação pela direção (PR documental). **Escopo:** desenvolvimento de software, integrações, automações, testes, depuração e documentação técnica da FUNIX. Não substitui as políticas empresariais, as instruções específicas de cada tarefa nem as regras de segurança e aprovação.
+**Estado:** diretriz aprovada pela direção em 2026-11-07, com vigência documental na branch `main` após a integração desta PR. **Escopo:** desenvolvimento de software, integrações, automações, testes, depuração e documentação técnica da FUNIX. Não substitui as políticas empresariais, as instruções específicas de cada tarefa nem as regras de segurança e aprovação.
 
 ## 1. Objetivo
 
@@ -54,9 +54,7 @@ Evitar o extremo inverso: não economizar Codex sacrificando compilação, regre
 
 **Fonte técnica versionada:** este arquivo governa a decisão de roteamento para trabalhos de desenvolvimento do FunixApp. Para outras iniciativas da FUNIX, aplicar o mesmo princípio pelas instruções do projeto, sem pressupor que o repositório do aplicativo governa automaticamente outros sistemas.
 
-**Texto curto proposto para as instruções do Projeto FUNIX:**
-
-> Para demandas de tecnologia, desenvolvimento e automações, resolva primeiro no ChatGPT quando houver contexto, ferramentas e meios de validação suficientes. Encaminhe ao Codex apenas quando ele oferecer vantagem real em ambiente local, alterações integradas, depuração ou testes. Não use a distinção fácil/difícil; avalie necessidade de ambiente, validação, risco e esforço total. Se recomendar Codex, delimite objetivo, escopo, critérios de aceitação e permissões. Não invoque Codex apenas para análise, documentação ou tarefas executáveis com conectores. A política técnica complementar está no repositório FunixApp, em `docs/governanca/politica-uso-chatgpt-codex.md`. Nunca presuma testes, acessos ou autorizações não verificados.
+**Aplicação no Projeto FUNIX:** a direção confirmou a inclusão da diretriz nas Instruções do Projeto em 2026-11-07. As instruções do projeto realizam a triagem antes da convocação; este documento detalha os critérios técnicos versionados. Para alterações futuras, manter os dois pontos coerentes, sem duplicar o texto integral aqui.
 
 ## 6. Revisão de eficácia
 
