@@ -14,6 +14,7 @@ import{saneQuoteQuery}from'../component-quote-query.ts'
 import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl}from'../component-quote-provider.ts'
 import{reserveQuoteAttempt}from'../component-quote-budget.ts'
 import{createQuoteService}from'../component-quote-service.ts'
+import{loadQuotePilot}from'../component-quote-bootstrap.ts'
 import type{ServiceError}from'../errors.ts'
 import{quoteFixtureQuery as q,quoteFixtureOffer as offer,quoteFixtureResponse as response,quoteFixtureUrl}from'./fixtures/component-quote.ts'
 import type{QuoteProvider}from'../component-quote-provider.ts'
@@ -164,4 +165,43 @@ test('quotation HTTP discards a response after logout/expiry or changed vehicle/
  try{const running=h.post();await new Promise(r=>setTimeout(r,10));h.expire();release();assert.equal((await running).status,401)}finally{release();await h.close()}
  const h2=await httpFixture({search:async()=>{h2.f.atendimentos.update(h2.f.at.id,{revision:h2.f.atendimentos.get(h2.f.at.id).revision,vehicle:'Gol 2020'});return validateQuoteResponse(response(),q)}})
  try{assert.equal((await h2.post()).status,409)}finally{await h2.close()}
+})
+
+test('normal FUNIX startup quote provider is opt-in, reuses existing data volume, and refuses missing secrets',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quote-app-')),dbPath=join(dir,'funix.sqlite')
+ try{
+  assert.equal(loadQuotePilot({OPENAI_API_KEY:'synthetic'},dbPath),undefined)
+  assert.equal(loadQuotePilot({FUNIX_QUOTE_ENABLED:'false',OPENAI_API_KEY:'synthetic'},dbPath),undefined)
+  assert.throws(()=>loadQuotePilot({FUNIX_QUOTE_ENABLED:'true'},dbPath),/OPENAI_API_KEY/)
+  assert.throws(()=>loadQuotePilot({FUNIX_QUOTE_ENABLED:'true',OPENAI_API_KEY:'synthetic'},':memory:'),/armazenamento persistente/)
+  assert.throws(()=>loadQuotePilot({FUNIX_QUOTE_ENABLED:'true',OPENAI_API_KEY:'synthetic',FUNIX_QUOTE_LEDGER:'relative-ledger'},dbPath),/Caminho persistente/)
+  assert(loadQuotePilot({FUNIX_QUOTE_ENABLED:'true',OPENAI_API_KEY:'synthetic'},dbPath))
+  assert.equal(existsSync(join(dir,'funix-quote-pilot-ledger.json')),false,'bootstrap must not spend or initialize a new round')
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+test('production-like test app permits quotation only behind the explicit feature flag',async()=>{
+ let calls=0
+ const previousNode=process.env.NODE_ENV,previousFlag=process.env.FUNIX_QUOTE_ENABLED
+ const h=await httpFixture({search:async()=>{calls++;return validateQuoteResponse(response(),q)}})
+ try{
+  process.env.NODE_ENV='production'
+  delete process.env.FUNIX_QUOTE_ENABLED
+  assert.equal((await h.post()).status,503)
+  process.env.FUNIX_QUOTE_ENABLED='true'
+  const capability=await fetch(h.host+'/api/cotacoes/capacidade',{headers:h.headers})
+  assert.equal((await capability.json()).enabled,true)
+  const quoted=await h.post()
+  assert.equal(quoted.status,200)
+  assert.equal((await quoted.json()).offers[0]?.price,'39.90')
+  assert.equal(calls,1)
+  process.env.FUNIX_QUOTE_ENABLED='false'
+  assert.equal((await h.post()).status,503)
+  assert.equal(calls,1)
+ }finally{
+  if(previousNode===undefined)delete process.env.NODE_ENV
+  else process.env.NODE_ENV=previousNode
+  if(previousFlag===undefined)delete process.env.FUNIX_QUOTE_ENABLED
+  else process.env.FUNIX_QUOTE_ENABLED=previousFlag
+  await h.close()
+ }
 })
