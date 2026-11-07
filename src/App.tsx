@@ -13,6 +13,7 @@ import { CommercialPanel } from './CommercialPanel'
 import {detailScreen,parentDetail,swipeTab,isTabSwipe} from './detail-navigation'
 import type {DetailScreen} from './detail-navigation'
 import { ChatPanel } from './chat/ChatPanel'
+import { EvolutionConversationReader } from './chat/EvolutionConversationReader'
 import './App.css'
 import './footer-copilot.css'
 
@@ -272,7 +273,7 @@ function App() {
             <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
           </div></div>
-          {area === 'conversas' ? <div className="fh-surface"><Notice title="Chat WhatsApp ainda indisponível" retry={() => navigate('/funil')} actionLabel="Abrir Funil">Você já pode criar e editar Atendimentos pelo Funil. Mensagens reais serão conectadas em uma próxima etapa.</Notice></div> : <>
+          {area === 'conversas' ? <EvolutionConversationReader onUnauthorized={expireSession} /> : <>
             {loading && <div className="fh-surface"><Notice title="Carregando Atendimentos…" /></div>}{failure && <div className="fh-surface"><Notice title="Não foi possível carregar" error retry={() => setReload(value => value + 1)}>{failure}</Notice></div>}
             {!loading && list && <><div className="query-meta"><span>{list.items.length} de {list.total} Atendimento{list.total !== 1 ? 's' : ''}</span><button onClick={() => setReload(value => value + 1)}>Atualizar</button></div>
               {!list.items.length && <div className="fh-surface"><Notice title={query ? 'Nenhum Atendimento encontrado' : 'Nenhum Atendimento cadastrado'}>{query ? 'Tente outro nome, telefone, placa ou identificador.' : 'Use Novo Atendimento para registrar o primeiro contato.'}</Notice></div>}
