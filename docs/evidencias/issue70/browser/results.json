@@ -1,0 +1,116 @@
+[
+  {
+    "width": 320,
+    "geometry": {
+      "width": 298,
+      "scroll": 296,
+      "client": 296,
+      "rows": [
+        {
+          "x": 43,
+          "width": 44,
+          "y": 481
+        },
+        {
+          "x": 91,
+          "width": 54.25,
+          "y": 481
+        },
+        {
+          "x": 149.25,
+          "width": 100.75,
+          "y": 481
+        },
+        {
+          "x": 254,
+          "width": 44,
+          "y": 481
+        }
+      ]
+    },
+    "synthetic": true,
+    "quoteProviderCalls": 1,
+    "voiceCalls": 1,
+    "singleSelectionRevision": true,
+    "manualEditPreserved": true,
+    "finalExplicitApply": true,
+    "clipboardPrivate": true,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "geometry": {
+      "width": 368,
+      "scroll": 366,
+      "client": 366,
+      "rows": [
+        {
+          "x": 43,
+          "width": 44,
+          "y": 585
+        },
+        {
+          "x": 91,
+          "width": 78.75,
+          "y": 585
+        },
+        {
+          "x": 173.75,
+          "width": 146.25,
+          "y": 585
+        },
+        {
+          "x": 324,
+          "width": 44,
+          "y": 585
+        }
+      ]
+    },
+    "synthetic": true,
+    "quoteProviderCalls": 1,
+    "voiceCalls": 1,
+    "singleSelectionRevision": true,
+    "manualEditPreserved": true,
+    "finalExplicitApply": true,
+    "clipboardPrivate": true,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "geometry": {
+      "width": 370,
+      "scroll": 368,
+      "client": 368,
+      "rows": [
+        {
+          "x": 631,
+          "width": 44,
+          "y": 637.5625
+        },
+        {
+          "x": 679,
+          "width": 79.4375,
+          "y": 637.5625
+        },
+        {
+          "x": 762.4375,
+          "width": 147.546875,
+          "y": 637.5625
+        },
+        {
+          "x": 913.984375,
+          "width": 44,
+          "y": 637.5625
+        }
+      ]
+    },
+    "synthetic": true,
+    "quoteProviderCalls": 1,
+    "voiceCalls": 1,
+    "singleSelectionRevision": true,
+    "manualEditPreserved": true,
+    "finalExplicitApply": true,
+    "clipboardPrivate": true,
+    "errors": []
+  }
+]

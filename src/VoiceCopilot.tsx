@@ -13,6 +13,10 @@ import'./voice-copilot.css'
 export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied,onClose}:{navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void;onClose:()=>void}){
  const[state,setState]=useState<CaptureState>({phase:'idle',message:'Segure o Copiloto para ditar.'})
  const[applying,setApplying]=useState(false)
+ const[quoteEnabled,setQuoteEnabled]=useState(false)
+ const reviseLock=useRef(false)
+ const componentEdits=useRef<Record<string,number>>({})
+ useEffect(()=>{let active=true;void api<{enabled:boolean}>('/api/cotacoes/capacidade').then(v=>{if(active)setQuoteEnabled(v.enabled===true)}).catch(()=>{});return()=>{active=false}},[])
  const[componentDrafts,setComponentDrafts]=useState<Record<string,{quantity:string;manualPrice:string}>>({})
  const hasComponentEdits=Object.keys(componentDrafts).length>0
  const[applyError,setApplyError]=useState('')
@@ -109,14 +113,15 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   }catch(error){addEvents(['Falha ao aplicar · '+diagnosticError(error)],diagnosticFailure('apply',error));setApplyError((error as Error).message||'A confirmação não foi concluída; confira o Atendimento antes de tentar novamente.')}
   finally{setApplying(false)}
  }
- async function reviseComponent(commandId:string,enabled?:boolean){
+ async function reviseComponent(commandId:string,enabled?:boolean,quotedPrice?:string){
   const active=context,resolution=state.result?.resolution,value=componentDrafts[commandId]??state.result?.reviewGroups.flatMap(g=>g.entries).find(e=>e.component?.commandId===commandId)?.component,epoch=reviewEpoch.current
-  if(!active||!resolution||!value||busy)return
-  setResolving(true);setApplyError('')
+  if(!active||!resolution||!value||busy||reviseLock.current)return
+  const editVersion=componentEdits.current[commandId]??0
+  reviseLock.current=true;setResolving(true);setApplyError('')
   try{
-   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/revisar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,commandId,quantity:value.quantity.trim().replace(',','.'),manualPrice:value.manualPrice.trim().replace(',','.'),...(enabled===undefined?{}:{enabled})})})
-   if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});setComponentDrafts(old=>{const next={...old};delete next[commandId];return next});if(result.diagnostic)addEvents([...diagnosticHistory(result.diagnostic),...diagnosticQuestions(result.resolution)])}
-  }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao revisar componente · '+diagnosticError(error)],diagnosticFailure('resolution',error))}}finally{setResolving(false)}
+   const result=await api<VoiceInterpretation>(`/api/atendimentos/${active.atendimentoId}/copiloto/revisar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarioId:active.scenarioId,resolutionId:resolution.id,commandId,quantity:value.quantity.trim().replace(',','.'),manualPrice:quotedPrice??value.manualPrice.trim().replace(',','.'),...(enabled===undefined?{}:{enabled})})})
+   if(epoch===reviewEpoch.current){setState({phase:'done',message:'',result});setComponentDrafts(old=>{if((componentEdits.current[commandId]??0)!==editVersion)return old;const next={...old};delete next[commandId];return next});if(result.diagnostic)addEvents([...diagnosticHistory(result.diagnostic),...diagnosticQuestions(result.resolution)])}
+  }catch(error){if(epoch===reviewEpoch.current){setApplyError((error as Error).message);addEvents(['Falha ao revisar componente · '+diagnosticError(error)],diagnosticFailure('resolution',error))}}finally{reviseLock.current=false;setResolving(false)}
  }
  async function copyDiagnostic(){
   try{await navigator.clipboard.writeText(copiedVoiceDiagnostic(events));setCopyStatus('Diagnóstico copiado sem transcrição ou dados pessoais.')}
@@ -152,7 +157,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
     <button onClick={()=>void copyDiagnostic()}>Copiar diagnóstico</button><p role="status">{copyStatus}</p>
    </section>}
    {state.result&&<>
-    <VoiceReview groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy} decisionsDisabled={hasComponentEdits} componentDrafts={componentDrafts} onComponentChange={(id,value)=>setComponentDrafts(old=>({...old,[id]:value}))} onComponentRevise={id=>void reviseComponent(id)} onComponentToggle={(id,enabled)=>void reviseComponent(id,enabled)}/>
+    <VoiceReview quoteEnabled={quoteEnabled} quoteContext={context&&state.result.resolution?{atendimentoId:context.atendimentoId,scenarioId:context.scenarioId,resolutionId:state.result.resolution.id}:undefined} onQuoteSelect={(id,price)=>void reviseComponent(id,undefined,price)} groups={state.result.reviewGroups} onResolve={id=>void resolve(id)} onClarify={talk} busy={busy} decisionsDisabled={hasComponentEdits} componentDrafts={componentDrafts} onComponentChange={(id,value)=>{componentEdits.current[id]=(componentEdits.current[id]??0)+1;setComponentDrafts(old=>({...old,[id]:value}))}} onComponentRevise={id=>void reviseComponent(id)} onComponentToggle={(id,enabled)=>void reviseComponent(id,enabled)}/>
     {hasComponentEdits&&<p className="voice-outcome" role="status">Use Revisar valores para validar as edições antes de aplicar. Nada foi salvo.</p>}
     {state.result.outcome&&!(state.result.outcome.kind==='review'&&state.result.outcome.pending===0&&state.result.outcome.message==='Confira as alterações antes de aplicar.')&&<p className="voice-outcome" role="status">{state.result.outcome.message}</p>}
     {state.result.plan.changes.some(c=>c.impact.requiresGlobalRemovalConfirmation)&&<p className="voice-removal" role="alert">Exclusão definitiva em todos os cenários. Serviços e componentes vinculados também podem ser removidos.</p>}
