@@ -420,3 +420,51 @@ test('Issue66 HTTP switch uses the existing authenticated revision route and los
   assert.equal(h.f.scenarios.list(h.f.at.id).find(s=>s.id===h.f.scenario.id)!.componentFlags[component.id as string],false)
  }finally{await h.close()}
 })
+
+
+test('Issue77: OpenAI voice usage log is opt-in, sanitized, and does not change default model',async()=>{
+ const metrics:import('../voice-usage.ts').VoiceUsageMetric[]=[]
+ const bodies:RequestInit[]=[]
+ const transport:typeof fetch=async(url,init)=>{
+  bodies.push(init!)
+  return new Response(JSON.stringify(String(url).endsWith('/transcriptions')
+   ?{text:'private transcript',usage:{type:'duration',seconds:1.5}}
+   :{status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"commands":[]}'}]}],
+     usage:{input_tokens:230,output_tokens:48,total_tokens:278,input_tokens_details:{cached_tokens:40},output_tokens_details:{reasoning_tokens:12}}}))
+ }
+ const off=openAIVoiceProvider({OPENAI_API_KEY:'synthetic'},transport,m=>metrics.push(m))!
+ assert.equal(await off.transcribe(audio,'audio/webm',new AbortController().signal),'private transcript')
+ assert.deepEqual(await off.interpret('sensitive dictation',{},new AbortController().signal),{commands:[]})
+ assert.equal(metrics.length,0)
+ const on=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_USAGE_ENABLED:'true'},transport,m=>metrics.push(m))!
+ await on.transcribe(audio,'audio/webm',new AbortController().signal)
+ await on.interpret('sensitive dictation',{},new AbortController().signal)
+ assert.equal(metrics.length,2)
+ assert.equal(metrics[0]!.stage,'transcription')
+ assert.equal(metrics[0]!.audioSeconds,1.5)
+ assert.equal(metrics[1]!.status,'response')
+ assert.equal(metrics[1]!.model,'gpt-6.1-terra')
+ assert.equal(metrics[1]!.inputTokens,230)
+ assert.equal(metrics[1]!.cachedInputTokens,40)
+ assert.equal(metrics[1]!.reasoningOutputTokens,12)
+ assert.equal(metrics[1]!.totalTokens,278)
+ assert.equal(JSON.stringify(bodies[3]!.body).includes('reasoning'),false)
+ assert(!JSON.stringify(metrics).includes('private transcript'))
+ assert(!JSON.stringify(metrics).includes('sensitive dictation'))
+ const low=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_REASONING_EFFORT:'low'},transport)!
+ await low.interpret('synthetic',{},new AbortController().signal)
+ assert.deepEqual(JSON.parse(String(bodies[4]!.body)).reasoning,{effort:'low'})
+})
+
+test('Issue77: error metadata has unknown usage and telemetry failure cannot affect request',async()=>{
+ const metrics:import('../voice-usage.ts').VoiceUsageMetric[]=[]
+ const fail=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_USAGE_ENABLED:'true'},async()=>new Response('PRIVATE ERROR',{status:401}),m=>metrics.push(m))!
+ await assert.rejects(fail.interpret('secret',{},new AbortController().signal))
+ assert.equal(metrics.length,1)
+ assert.equal(metrics[0]!.status,'transport_error')
+ assert.equal(metrics[0]!.inputTokens,null)
+ assert(!JSON.stringify(metrics).includes('PRIVATE ERROR'))
+ assert(!JSON.stringify(metrics).includes('secret'))
+ const ok=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_USAGE_ENABLED:'true'},async()=>new Response(JSON.stringify({text:'ok'})),()=>{throw Error('logging unavailable')})!
+ assert.equal(await ok.transcribe(audio,'audio/webm',new AbortController().signal),'ok')
+})
