@@ -16,7 +16,7 @@ const round=v=>Math.round((v+Number.EPSILON)*1e8)/1e8
 
 export function validateTariffs(raw){
  if(!isObj(raw)||!isObj(raw.models)||!Object.keys(raw.models).length)throw Error('TARIFFS_INVALID')
- const result={}
+ const result=Object.create(null)
  for(const [model,p] of Object.entries(raw.models)){
   if(!/^[a-zA-Z0-9._-]{1,80}$/.test(model)||!isObj(p))throw Error('TARIFFS_INVALID')
   if(p.billing==='tokens'){
@@ -48,11 +48,11 @@ function estimate(o,tariff){
   return o.audioSeconds/60*tariff.usdPerMinute
  }
  if(tariff.billing!=='tokens'||o.inputTokens===null||o.outputTokens===null)return null
- let cached=0
- if(tariff.cachedInputUsdPerMillion!==undefined){
-  if(o.cachedInputTokens===null||o.cachedInputTokens>o.inputTokens)return null
-  cached=o.cachedInputTokens
- }
+ // Missing cache accounting is not equivalent to zero cached tokens.
+ if(o.cachedInputTokens===null||o.cachedInputTokens>o.inputTokens)return null
+ // If the response reports cached tokens, the corresponding rate is mandatory.
+ if(o.cachedInputTokens>0&&tariff.cachedInputUsdPerMillion===undefined)return null
+ const cached=o.cachedInputTokens
  return (o.inputTokens-cached)*tariff.inputUsdPerMillion/1e6+
   cached*(tariff.cachedInputUsdPerMillion??tariff.inputUsdPerMillion)/1e6+
   o.outputTokens*tariff.outputUsdPerMillion/1e6

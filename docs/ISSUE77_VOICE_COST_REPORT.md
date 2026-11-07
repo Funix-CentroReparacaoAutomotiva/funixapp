@@ -12,8 +12,8 @@ Ferramenta **offline e somente de leitura** para analisar as linhas `funix_voice
 ```json
 {
   "models": {
-    "gpt-transcribe": {"billing": "audio_minutes", "usdPerMinute": 0.006},
-    "gpt-6.1-terra": {
+    "modelo-exemplo-transcricao": {"billing": "audio_minutes", "usdPerMinute": 0.006},
+    "modelo-exemplo-interpretacao": {
       "billing": "tokens",
       "inputUsdPerMillion": 1,
       "outputUsdPerMillion": 5,
@@ -36,7 +36,7 @@ Saída: JSON agregado por etapa e modelo, quantidade de respostas do transporte,
 - Se o modelo de transcrição cobrar por tokens, e não por duração, esta versão não deve estimar seu custo a partir de segundos. O relatório marcará a chamada como não estimável até incluir um contrato validado com as unidades corretas.
 - Chamadas interrompidas, erros e respostas sem `usage` podem ser cobradas; nunca tratar dados ausentes como custo zero. `estimatedUsd` é **subtotal somente das chamadas estimáveis**, não uma despesa total.
 - O custo de tokens de raciocínio está incluído em `outputTokens` se o provedor assim o informar; o relatório **não soma reasoningTokens uma segunda vez**.
-- A estimativa pressupõe que `cachedInputTokens` esteja incluído em `inputTokens`, como no contrato da API. Não inventa cache se faltar contagem.
+- A estimativa pressupõe que `cachedInputTokens` esteja incluído em `inputTokens`, como no contrato da API. Contagem de cache ausente é custo desconhecido; se houver tokens em cache, sua tarifa precisa estar informada para evitar cobrança incorreta.
 - O relatório não diferencia ambientes nem resolve duplicidades de logs. O operador deve fornecer somente o intervalo correto uma única vez; ele não estabelece uma fatura.
 - Custo de API do Copiloto, consumo de Codex e custos/despesas operacionais do ERP são categorias distintas.
 

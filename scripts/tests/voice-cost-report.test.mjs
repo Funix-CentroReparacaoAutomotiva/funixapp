@@ -99,3 +99,18 @@ test('empty or wholly unpriced log produces unknown total, never a fictitious ze
  assert.equal(unpriced.estimatedUsd,null)
  assert.equal(unpriced.groups[0].estimatedUsd,null)
 })
+
+test('missing cache tariff or usage cannot silently overprice token requests',()=>{
+ const noCachePrice={models:{'gpt-6.1-terra':{billing:'tokens',inputUsdPerMillion:1,outputUsdPerMillion:5}}}
+ const log=[line(metric({cachedInputTokens:20})),line(metric({cachedInputTokens:null})),line(metric({cachedInputTokens:0}))].join('\n')
+ const r=analyzeVoiceUsage(log,noCachePrice)
+ assert.equal(r.pricedCalls,1)
+ assert.equal(r.unestimatedCalls,2)
+ assert.equal(r.estimateCoverage,'partial')
+ assert.equal(r.groups[0].estimatedUsd,0.001)
+})
+test('model-name edge cases never inherit properties from plain objects',()=>{
+ const r=analyzeVoiceUsage(line(metric({model:'constructor'})),{models:{constructor:{billing:'tokens',inputUsdPerMillion:1,outputUsdPerMillion:2,cachedInputUsdPerMillion:0.1}}})
+ assert.equal(r.validRecords,1)
+ assert.equal(r.pricedCalls,1)
+})
