@@ -1,4 +1,4 @@
-import type{QuoteOffer,QuoteQuery,QuoteMetrics}from'../shared/component-quote.ts'
+import type{QuoteOffer,QuoteQuery,QuoteMetrics,QuoteRejectionReason}from'../shared/component-quote.ts'
 import{QUOTE_CATEGORIES}from'../shared/component-quote.ts'
 import{ServiceError}from'./errors.ts'
 import{normalizeQuote}from'./component-quote-query.ts'
@@ -44,48 +44,52 @@ export function validateQuoteResponse(raw:unknown,query:QuoteQuery):QuoteProvide
  const sources=new Set(list(object(calls[0]!.action).sources).map(v=>safeQuoteUrl(object(v).url)).filter(Boolean))
  const citations=new Set(list(texts[0]!.annotations).filter(v=>object(v).type==='url_citation').map(v=>safeQuoteUrl(object(v).url)).filter(Boolean))
  const offers:QuoteOffer[]=[]
+ const rejectionReasons:Partial<Record<QuoteRejectionReason,number>>={}
+ const reject=(reason:QuoteRejectionReason)=>{rejectionReasons[reason]=(rejectionReasons[reason]??0)+1}
+ // Each proposed offer contributes only its first failing criterion.
  for(const item of body.offers){
   const o=object(item),url=safeQuoteUrl(o.url),category=o.category
-  if(Object.keys(o).length!==Object.keys(fields).length||Object.keys(o).some(k=>!(k in fields)))continue
-  if(!QUOTE_CATEGORIES.includes(category as QuoteOffer['category'])||offers.some(x=>x.category===category)||!url||!sources.has(url)||!citations.has(url))continue
-  if(typeof o.price!=='string'||!/^\d{1,8}(?:\.\d{1,2})?$/.test(o.price)||!/[1-9]/.test(o.price)||o.currency!=='BRL'||o.unit!=='unit'||o.priceKind!=='total')continue
-  if(!['new','used'].includes(String(o.condition))||!['original','parallel'].includes(String(o.origin)))continue
+  if(Object.keys(o).length!==Object.keys(fields).length||Object.keys(o).some(k=>!(k in fields))){reject('structure');continue}
+  if(!QUOTE_CATEGORIES.includes(category as QuoteOffer['category'])||offers.some(x=>x.category===category)){reject('structure');continue}
+  if(!url||!sources.has(url)||!citations.has(url)){reject('source');continue}
+  if(typeof o.price!=='string'||!/^\d{1,8}(?:\.\d{1,2})?$/.test(o.price)||!/[1-9]/.test(o.price)||o.currency!=='BRL'||o.unit!=='unit'||o.priceKind!=='total'){reject('price');continue}
+  if(!['new','used'].includes(String(o.condition))||!['original','parallel'].includes(String(o.origin))){reject('condition');continue}
   const strings=['priceText','sourceQuote','title','brand','model','officialEvidence','qualityEvidence']
-  if(strings.some(k=>typeof o[k]!=='string'||(o[k] as string).length>500||/[<>]/.test(o[k] as string)))continue
+  if(strings.some(k=>typeof o[k]!=='string'||(o[k] as string).length>500||/[<>]/.test(o[k] as string))){reject('text');continue}
   const excerpt=o.sourceQuote as string,title=normalizeQuote(o.title as string),evidence=normalizeQuote(excerpt)
-  if(!/^R\$\s*(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{2})?$/.test(o.priceText as string)||!excerpt.includes(o.priceText as string)||/\b\d+\s*x\s*R\$/i.test(excerpt))continue
+  if(!/^R\$\s*(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{2})?$/.test(o.priceText as string)||!excerpt.includes(o.priceText as string)||/\b\d+\s*x\s*R\$/i.test(excerpt)){reject('price_evidence');continue}
   const numeric=(o.priceText as string).replace(/R\$\s*/,'').replace(/\./g,'').replace(',','.')
-  if(Number(numeric)!==Number(o.price))continue
-  if(normalizeQuote(o.brand as string)!==query.brand||normalizeQuote(o.model as string)!==query.model||!title.includes(query.model))continue
+  if(Number(numeric)!==Number(o.price)){reject('price_mismatch');continue}
+  if(normalizeQuote(o.brand as string)!==query.brand||normalizeQuote(o.model as string)!==query.model||!title.includes(query.model)){reject('vehicle');continue}
   const nouns=query.component.split(' ').filter(w=>['farol','parachoque','macaneta','vidro','guia','presilha','suporte'].includes(w))
-  if(!nouns.length||!nouns.every(n=>title.replace(/para choque/g,'parachoque').includes(n)))continue
-  if(/\b(kit|par|avaria|avariado|detalhes|quebrado|cupom|parcela|parcelas)\b/.test(title+' '+evidence))continue
-  if(/\btravessa\b/.test(title)&&!query.component.includes('travessa'))continue
+  if(!nouns.length||!nouns.every(n=>title.replace(/para choque/g,'parachoque').includes(n))){reject('component');continue}
+  if(/\b(kit|par|avaria|avariado|detalhes|quebrado|cupom|parcela|parcelas)\b/.test(title+' '+evidence)){reject('excluded');continue}
+  if(/\btravessa\b/.test(title)&&!query.component.includes('travessa')){reject('subcomponent');continue}
   const direction=query.component.match(/\b(dianteir[oa]|traseir[oa])\b/)?.[0]?.slice(0,-1)
-  if(direction&&!title.includes(direction))continue
+  if(direction&&!title.includes(direction)){reject('direction');continue}
   // A noun match cannot turn a light into its bracket or a door glass into a
   // regulator; preserve every technical qualifier present in the safe request.
   const qualifiers=query.component.split(' ').filter(w=>!['de','da','do','para','e','esquerdo','esquerda','direito','direita'].includes(w))
   const searchable=title.replace(/para choque/g,'parachoque').replace(/para lama/g,'paralama').replace(/para barro/g,'parabarro')
-  if(!qualifiers.every(w=>searchable.includes(w.replace(/[oa]$/,''))))continue
+  if(!qualifiers.every(w=>searchable.includes(w.replace(/[oa]$/,'')))){reject('qualifiers');continue}
   const subparts=['guia','suporte','presilha','moldura','travessa','motor','maquina','regulador']
-  if(subparts.some(w=>title.includes(w)&&!query.component.includes(w)))continue
-  if(query.side&&(o.side!==query.side||!title.includes(query.side.slice(0,-1))))continue
-  if(query.year===null||!Number.isInteger(o.yearFrom)||!Number.isInteger(o.yearTo)||(o.yearFrom as number)>query.year||(o.yearTo as number)<query.year)continue
-  if(!excerpt.includes(String(o.yearFrom))||!excerpt.includes(String(o.yearTo))||!evidence.includes(query.model))continue
-  if(o.condition==='new'&&!/\b(novo|nova)\b/.test(evidence)||o.condition==='used'&&!/\b(usado|usada)\b/.test(evidence))continue
+  if(subparts.some(w=>title.includes(w)&&!query.component.includes(w))){reject('subcomponent');continue}
+  if(query.side&&(o.side!==query.side||!title.includes(query.side.slice(0,-1)))){reject('side');continue}
+  if(query.year===null||!Number.isInteger(o.yearFrom)||!Number.isInteger(o.yearTo)||(o.yearFrom as number)>query.year||(o.yearTo as number)<query.year){reject('year');continue}
+  if(!excerpt.includes(String(o.yearFrom))||!excerpt.includes(String(o.yearTo))||!evidence.includes(query.model)){reject('compatibility_evidence');continue}
+  if(o.condition==='new'&&!/\b(novo|nova)\b/.test(evidence)||o.condition==='used'&&!/\b(usado|usada)\b/.test(evidence)){reject('condition_evidence');continue}
   if(category==='original_nova'){
    const proof=normalizeQuote(o.officialEvidence as string)
-   if(o.condition!=='new'||o.origin!=='original'||!proof.includes(query.brand)||!evidence.includes(proof)||!/(loja oficial|concessionaria|peca genuina|peca original)/.test(proof))continue
+   if(o.condition!=='new'||o.origin!=='original'||!proof.includes(query.brand)||!evidence.includes(proof)||!/(loja oficial|concessionaria|peca genuina|peca original)/.test(proof)){reject('originality');continue}
    const host=new URL(url).hostname
    const officialPortal=query.brand==='volkswagen'&&/(^|\.)pecas\.vw\.com\.br$/.test(host)||query.brand==='renault'&&/(^|\.)mecanico\.renault\.com\.br$/.test(host)
    const officialMarketplace=/(^|\.)mercadolivre\.com\.br$/.test(host)&&new RegExp('(loja oficial|concessionaria)(?: da| do)? '+query.brand).test(proof)
-   if(!officialPortal&&!officialMarketplace)continue
+   if(!officialPortal&&!officialMarketplace){reject('official_source');continue}
   }
-  if(category==='equilibrada'&&(!(o.qualityEvidence as string).trim()||!evidence.includes(normalizeQuote(o.qualityEvidence as string))))continue
+  if(category==='equilibrada'&&(!(o.qualityEvidence as string).trim()||!evidence.includes(normalizeQuote(o.qualityEvidence as string)))){reject('quality_evidence');continue}
   offers.push({category:category as QuoteOffer['category'],price:o.price,url,condition:o.condition as QuoteOffer['condition'],origin:o.origin as QuoteOffer['origin'],sourceQuote:excerpt})
  }
- return{offers,metrics:{elapsedMs:0,webSearchCalls:1,inputTokens:input as number,outputTokens:generated as number,estimatedUsd:quoteCost(input as number,generated as number,1),rejected:body.offers.length-offers.length,status:offers.length?'found':'empty'}}
+ return{offers,metrics:{elapsedMs:0,webSearchCalls:1,inputTokens:input as number,outputTokens:generated as number,estimatedUsd:quoteCost(input as number,generated as number,1),proposedOffers:body.offers.length,acceptedOffers:offers.length,rejected:body.offers.length-offers.length,rejectionReasons,usableSources:sources.size,usableCitations:citations.size,status:offers.length?'found':'empty'}}
 }
 export function openAIQuoteProvider(options:{key:string;ledger:string;transport?:typeof fetch}):QuoteProvider{
  let halted=false

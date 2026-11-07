@@ -25,9 +25,9 @@ export function createQuoteService(provider:QuoteProvider,options:{timeoutMs?:nu
     const value=await Promise.race([provider.search(query,controller.signal),cancelled]);controller.signal.throwIfAborted()
     const result:QuoteResult={status:value.offers.length?'found':'empty',offers:value.offers,observedAt:new Date(now()).toISOString(),expiresAt:new Date(now()+ttl).toISOString(),cached:false}
     cache.set(key,result);if(cache.size>100)cache.delete(cache.keys().next().value!)
-    options.observe?.({...value.metrics,elapsedMs:now()-start})
+    try{options.observe?.({...value.metrics,elapsedMs:now()-start})}catch{/* Metric logging must not affect quote. */}
     return structuredClone(result)
-   }catch(error){options.observe?.({elapsedMs:now()-start,webSearchCalls:null,inputTokens:null,outputTokens:null,estimatedUsd:null,rejected:0,status:error instanceof ServiceError?error.code:'QUOTE_FAILED'});throw error}
+   }catch(error){try{options.observe?.({elapsedMs:now()-start,webSearchCalls:null,inputTokens:null,outputTokens:null,estimatedUsd:null,proposedOffers:null,acceptedOffers:null,rejected:null,rejectionReasons:null,usableSources:null,usableCitations:null,status:error instanceof ServiceError?error.code:'QUOTE_FAILED'})}catch{/* Metric logging must not affect errors. */}throw error}
    finally{clearTimeout(timer);signal.removeEventListener('abort',abort);pending.delete(key)}
   })()
   pending.set(key,work);return work

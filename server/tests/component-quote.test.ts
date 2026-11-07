@@ -15,6 +15,7 @@ import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl}from'../component-
 import{reserveQuoteAttempt}from'../component-quote-budget.ts'
 import{createQuoteService}from'../component-quote-service.ts'
 import{loadQuotePilot}from'../component-quote-bootstrap.ts'
+import{createQuoteMetricsObserver}from'../component-quote-observability.ts'
 import type{ServiceError}from'../errors.ts'
 import{quoteFixtureQuery as q,quoteFixtureOffer as offer,quoteFixtureResponse as response,quoteFixtureUrl}from'./fixtures/component-quote.ts'
 import type{QuoteProvider}from'../component-quote-provider.ts'
@@ -63,6 +64,43 @@ test('quotation rejects wrong part/side/generation, zero, kit, installment, cond
  const balanced={...offer,category:'equilibrada',condition:'used',qualityEvidence:'procedencia documentada',sourceQuote:offer.sourceQuote.replace('novo','usado')+' procedencia documentada'}
  assert.equal(validateQuoteResponse(response([balanced]),q).offers[0]?.condition,'used')
  assert.equal(validateQuoteResponse(response([{...balanced,qualityEvidence:''}]),q).offers.length,0)
+})
+test('quotation counts first rejection reasons without changing offer selection',()=>{
+ const zero=validateQuoteResponse(response([]),q).metrics
+ assert.equal(zero.proposedOffers,0);assert.equal(zero.acceptedOffers,0);assert.equal(zero.rejected,0)
+ assert.deepEqual(zero.rejectionReasons,{})
+ const noCitations=response();noCitations.output[1]!.content![0]!.annotations=[]
+ const missing=validateQuoteResponse(noCitations,q).metrics
+ assert.equal(missing.proposedOffers,1);assert.equal(missing.acceptedOffers,0);assert.equal(missing.rejected,1)
+ assert.deepEqual(missing.rejectionReasons,{source:1})
+ const price=validateQuoteResponse(response([{...offer,price:'0'}]),q).metrics
+ assert.deepEqual(price.rejectionReasons,{price:1})
+ const side=validateQuoteResponse(response([{...offer,side:'direito'}]),q).metrics
+ assert.deepEqual(side.rejectionReasons,{side:1})
+ const accepted=validateQuoteResponse(response(),q).metrics
+ assert.equal(accepted.proposedOffers,1);assert.equal(accepted.acceptedOffers,1);assert.equal(accepted.rejected,0)
+ assert.deepEqual(accepted.rejectionReasons,{})
+ assert.equal(accepted.usableSources,1);assert.equal(accepted.usableCitations,1)
+})
+test('quote metrics are opt-in, sanitized and logging exceptions cannot break calls',async()=>{
+ const lines:string[]=[]
+ assert.equal(createQuoteMetricsObserver(false,line=>lines.push(line)),undefined)
+ const m=validateQuoteResponse(response([{...offer,price:'0'}]),q).metrics
+ createQuoteMetricsObserver(true,line=>lines.push(line))!({...m,status:'PRIVATE_SESSION',rejectionReasons:{price:1,PRIVATE_ID:3} as never,secret:'PRIVATE_SECRET',query:'PRIVATE_QUERY'} as never)
+ assert.equal(lines.length,1);assert(lines[0]!.startsWith('funix_quote_metrics '))
+ const data=JSON.parse(lines[0]!.slice('funix_quote_metrics '.length))
+ assert.equal(data.status,'QUOTE_FAILED');assert.equal(data.proposedOffers,1)
+ assert.deepEqual(data.rejectionReasons,{price:1})
+ assert(!JSON.stringify(data).includes('PRIVATE'));assert(!JSON.stringify(data).includes('volkswagen'))
+ assert.doesNotThrow(()=>createQuoteMetricsObserver(true,()=>{throw Error('PRIVATE_SECRET')})!(m))
+ const events:unknown[]=[]
+ const broken=createQuoteService({search:async()=>{throw Error('PRIVATE_TRANSPORT')}},{observe:metric=>events.push(metric)})
+ await assert.rejects(broken.run(q,'PRIVATE_SESSION',signal()))
+ const failed=events[0] as {proposedOffers:null;acceptedOffers:null;rejected:null;rejectionReasons:null;estimatedUsd:null}
+ assert.equal(failed.proposedOffers,null);assert.equal(failed.acceptedOffers,null)
+ assert.equal(failed.rejected,null);assert.equal(failed.rejectionReasons,null);assert.equal(failed.estimatedUsd,null)
+ const healthy=createQuoteService({search:async()=>validateQuoteResponse(response(),q)},{observe:()=>{throw Error('PRIVATE_LOGGER')}})
+ assert.equal((await healthy.run(q,'safe-session',signal())).status,'found')
 })
 test('quotation links cannot contain credentials, tracking, arbitrary origins, listings or script URLs',()=>{
  assert.equal(safeQuoteUrl(quoteFixtureUrl),quoteFixtureUrl)
