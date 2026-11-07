@@ -5,6 +5,8 @@
  */
 export type ConversationRow = {
   conversationId: string
+  displayName: string | null
+  phoneNumber: string | null
   updatedAt: string | null
   unreadCount: number | null
 }
@@ -40,6 +42,18 @@ function opaqueId(value: unknown): string {
   if (typeof value !== 'string' || !/^[0-9a-f-]{36}$/.test(value)) return invalid()
   return value
 }
+function label(value: unknown): string | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || !value.trim() || [...value].length > 80 ||
+      /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value) ||
+      /@(?:s\.whatsapp\.net|lid|g\.us)/i.test(value)) return invalid()
+  return value
+}
+function phone(value: unknown): string | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || !/^[0-9]{8,15}$/.test(value)) return invalid()
+  return value
+}
 function nullableNonnegative(value: unknown): number | null {
   return value === null ? null : count(value, 10_000_000)
 }
@@ -62,7 +76,7 @@ export function parseConversationList(raw: unknown): ConversationList {
     const conversationId = opaqueId(row.conversationId)
     if (seen.has(conversationId)) return invalid()
     seen.add(conversationId)
-    return { conversationId, updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount) }
+    return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
   return { items, nextSkip, source: 'evolution' }
