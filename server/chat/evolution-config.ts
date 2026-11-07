@@ -1,5 +1,3 @@
-import type { DatabaseSync } from 'node:sqlite'
-import { EvolutionConversationStore } from './evolution-conversation-store.ts'
 import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution-bridge.ts'
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
 import { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
@@ -14,7 +12,6 @@ const EXISTING_INSTANCE = 'funix_comercial'
 /** Fails closed before any HTTP if opt-in is absent or malformed. */
 export function loadEvolutionChat(
   env: NodeJS.ProcessEnv,
-  db: DatabaseSync,
 ): EvolutionChatBridge | undefined {
   if (env.FUNIX_EVOLUTION_READ_ENABLED !== 'true') return undefined
   const key = env.FUNIX_EVOLUTION_READ_API_KEY
@@ -33,5 +30,5 @@ export function loadEvolutionChat(
     instanceId,
     timeoutMs: 5000,
   })
-  return createEvolutionChatBridge(provider, Date.now, new EvolutionConversationStore(db, EXISTING_INSTANCE))
+  return createEvolutionChatBridge(provider)
 }
