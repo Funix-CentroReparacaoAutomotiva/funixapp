@@ -8,6 +8,11 @@ import './evolution-read.css'
 
 const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
 const time = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
+function conversationLabel(row: ConversationRow): string {
+  if (row.displayName) return row.displayName
+  if (row.phoneNumber) return '+' + row.phoneNumber
+  return 'Contato não identificado'
+}
 const mediaNames: Record<ReadUiMessage['kind'], string> = {
   text: 'Texto', image: 'Imagem', audio: 'Áudio', video: 'Vídeo',
   document: 'Documento', unsupported: 'Formato não disponível',
@@ -159,10 +164,10 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
     {!listBusy && available === true && !listError && !list.length && <Notice title="Nenhuma conversa retornada">A consulta não comprova que o histórico está vazio.</Notice>}
     {list.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
-      {list.map((row, index) => <button type="button" key={row.conversationId}
+      {list.map(row => <button type="button" key={row.conversationId}
         className={selected === row.conversationId ? 'ev-item selected' : 'ev-item'}
         onClick={() => choose(row.conversationId)} aria-pressed={selected === row.conversationId}>
-        <strong>Conversa {index + 1}</strong>
+        <strong>{conversationLabel(row)}</strong>
         <span>{row.updatedAt ? `Atualização: ${date.format(new Date(row.updatedAt))}` : 'Data não informada'}</span>
         {row.unreadCount !== null && <small>{row.unreadCount} não lida(s) informadas pelo provedor</small>}
       </button>)}
