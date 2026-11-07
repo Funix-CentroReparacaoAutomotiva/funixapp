@@ -110,13 +110,13 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade')return send(200,{enabled:Boolean(options.quotePilot)&&process.env.NODE_ENV!=='production'})
+      if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade')return send(200,{enabled:Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')})
       const quoteRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/cotar$/.exec(url.pathname)
       if(quoteRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para cotar.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
-        if(!options.quotePilot||process.env.NODE_ENV==='production')return fail(503,'QUOTE_DISABLED','Cotação indisponível.')
+        if(!options.quotePilot||(process.env.NODE_ENV==='production'&&process.env.FUNIX_QUOTE_ENABLED!=='true'))return fail(503,'QUOTE_DISABLED','Cotação indisponível.')
         const body=await readJson(req,1024),context=readQuoteContext(options.atendimentos.db,quoteRoute[1]!,body,cookie)
         if(!context.query)return send(200,{status:'needs_details',offers:[],observedAt:new Date(now()).toISOString(),expiresAt:new Date(now()).toISOString(),cached:false})
         const controller=new AbortController(),cancel=()=>{if(!res.writableEnded)controller.abort()}
