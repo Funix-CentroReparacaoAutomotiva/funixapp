@@ -19,7 +19,7 @@ const databasePath = process.env.FUNIX_DATABASE_PATH ?? (process.env.NODE_ENV ==
 if (!databasePath || (process.env.NODE_ENV === 'production' && databasePath === ':memory:')) throw new Error('Configure FUNIX_DATABASE_PATH para um arquivo em armazenamento persistente autorizado.')
 const db = openDatabase(databasePath)
 const atendimentos = new AtendimentoRepository(db)
-const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env,db), quotePilot: loadQuotePilot(process.env,databasePath) })
+const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env), quotePilot: loadQuotePilot(process.env,databasePath) })
 app.requestTimeout = 15_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
