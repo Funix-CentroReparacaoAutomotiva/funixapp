@@ -7,18 +7,21 @@ const connecting=new Set('de da do das dos para e a o'.split(' '))
 // Fail closed, then project ONLY a controlled vocabulary. Never forward arbitrary
 // names/vehicle strings, even if they contain a legitimate component word.
 const sensitive=(s:string)=>s.length>200||/[<>@:/\\]|\b(?:placa|chassi|vin|cpf|cnpj|telefone|whatsapp|cliente|ignore|instrucoes|token)\b/i.test(s)||/\b[A-Z]{3}[-]?\d[A-Z\d]\d{2}\b/i.test(s)||/\d[\d ().+-]{7,}\d/.test(s)||/\b[A-HJ-NPR-Z0-9]{17}\b/i.test(s)
-function technical(raw:string):string|null{
+function technical(raw:string,catalogParent=false):string|null{
  if(sensitive(raw))return null
  const tokens=normalized(raw).replace(/para choque/g,'parachoque').replace(/para lama/g,'paralama').replace(/para barro/g,'parabarro').split(' ')
- if(!tokens.length||tokens.some(w=>!parts.has(w)&&!connecting.has(w)))return null
- return tokens.filter(w=>parts.has(w)).join(' ')
+ const catalogSide=(w:string)=>w==='motorista'||w==='passageiro'
+ if(!tokens.length||tokens.some(w=>!parts.has(w)&&!connecting.has(w)&&!(catalogParent&&catalogSide(w))))return null
+ // The Brazilian FUNIX catalog names sides as motorista/passageiro.
+ // Translate only the catalog parent; the requested component must still specify its own side.
+ return tokens.filter(w=>parts.has(w)||(catalogParent&&catalogSide(w))).map(w=>catalogParent&&w==='motorista'?'esquerdo':catalogParent&&w==='passageiro'?'direito':w).join(' ')
 }
 export function saneQuoteQuery(input:{brand:string;model:string;vehicle:string;component:string;parent:string}):QuoteQuery|null{
  const brand=normalized(input.brand)==='vw'?'volkswagen':normalized(input.brand)
  if(!models[brand]||sensitive(input.model)||sensitive(input.vehicle))return null
  const known=models[brand].filter(m=>(' '+normalized(input.model)+' ').includes(' '+m+' '))
  if(known.length!==1)return null
- const component=technical(input.component),parent=technical(input.parent)
+ const component=technical(input.component),parent=technical(input.parent,true)
  if(!component||!parent)return null
  const all=component+' '+parent,left=/\besquerd[oa]\b/.test(all),right=/\bdireit[oa]\b/.test(all)
  if(left&&right)return null

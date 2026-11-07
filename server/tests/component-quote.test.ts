@@ -25,6 +25,15 @@ const signal=()=>new AbortController().signal
 test('quotation projects a closed technical vocabulary; no customer identifiers, arbitrary vehicle text or year guesses',()=>{
  const base={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019',component:'farol dianteiro esquerdo',parent:'para-choque dianteiro'}
  assert.deepEqual(saneQuoteQuery(base),q)
+ assert.deepEqual(saneQuoteQuery({...base,parent:'Farol Motorista'}),{...q,parent:'farol esquerdo'})
+ assert.deepEqual(saneQuoteQuery({...base,parent:'Farol · motorista'}),{...q,parent:'farol esquerdo'})
+ assert.deepEqual(saneQuoteQuery({...base,parent:'Farol Passageiro',component:'farol dianteiro direito'}),{...q,parent:'farol direito',component:'farol dianteiro direito',side:'direito'})
+ assert.equal(saneQuoteQuery({...base,parent:'Farol Passageiro'}),null,'catalog passenger side must reject a left component')
+ assert.equal(saneQuoteQuery({...base,parent:'Farol Motorista',component:'farol dianteiro direito'}),null,'catalog driver side must reject a right component')
+ assert.equal(saneQuoteQuery({...base,parent:'Farol Motorista Passageiro'}),null,'conflicting catalog sides must be rejected')
+ assert.equal(saneQuoteQuery({...base,parent:'Farol Motorista desconhecido'}),null,'no arbitrary catalog words')
+ assert.equal(saneQuoteQuery({...base,component:'farol motorista'}),null,'component still needs an explicit technical side')
+ assert.equal(saneQuoteQuery({...base,vehicle:'Gol',parent:'Farol Motorista'})?.year,null,'catalog alias must not infer vehicle year')
  assert.equal(saneQuoteQuery({...base,vehicle:'Gol'} )?.year,null)
  for(const bad of ['farol dianteiro esquerdo Maria','farol <script>alert(1)</script>','farol cliente João','farol ABC1D23','farol 11988776655','farol chassi 9BWZZZ377VT004251'])assert.equal(saneQuoteQuery({...base,component:bad}),null)
  assert.equal(saneQuoteQuery({...base,component:'farol dianteiro'}),null)
