@@ -4,7 +4,7 @@ Data: **06/11/2026, America/Sao_Paulo**. Base `main` `ac73fed5431547999f82c79a6e
 
 ## Resultado: execução bloqueada, homologação HTTP não concluída
 
-**Nenhum contêiner do laboratório foi iniciado. Não houve requisição HTTP à Evolution, seed, consulta PostgreSQL, medição de latência ou teste real de recuperação.** O download da imagem pública fixada por digest chegou à extração e falhou com `failed to register layer ... no space left on device`. A fotografia posterior tinha aproximadamente 449 MiB livres no filesystem local de 7,9 GiB. O daemon gerenciado usa camadas VFS nessa extração; não extrapolar o espaço de uma imagem compactada para sua extração local.
+**Nenhum contêiner do laboratório foi iniciado. Não houve requisição HTTP à Evolution, seed, consulta PostgreSQL, medição de latência ou teste real de recuperação.** O download da imagem pública fixada por digest chegou à extração e falhou com `failed to register layer ... no space left on device`. A fotografia posterior tinha aproximadamente 449 MiB livres no filesystem **do workspace**, de 7,9 GiB; essa medição inicial não confirmou o espaço disponível no armazenamento do daemon. O daemon gerenciado usa camadas VFS nessa extração; não extrapolar o espaço de uma imagem compactada para sua extração local.
 
 Não foram removidos recursos compartilhados, alterado storage driver, reiniciado daemon nem usado `docker system prune`. O Docker local informou versão 29.9.2. O acesso inicial ao socket foi bloqueado pelo sandbox; a consulta ao socket **local explícito**, com seletores remotos removidos, funcionou com permissão de execução. O problema que bloqueou a imagem foi espaço, não acesso à VPS ou indisponibilidade comprovada da Evolution.
 
@@ -60,11 +60,25 @@ Arquivos em `tests/evolution-sandbox/`:
 - `compose.yaml`: três serviços novos, rede internal, **zero portas publicadas**, sem network_mode host, volumes external, Docker socket ou mounts de dados existentes. Volumes de PostgreSQL/Redis/instances são do projeto aleatório.
 - `run.py`: entrada opt-in; fixa socket Docker local, ignora seletores remotos/COMPOSE_/LAB_ herdados, usa nonce e recusa colisão com volumes/redes/contêineres existentes. Gera somente secrets locais aleatórios em arquivo temporário 0600, não carrega `.env` e não imprime config/erro bruto. Pull de dependências públicas ocorre fora da rede de runtime.
 - `contract.mjs`: executado **dentro da Evolution local**, com URL fixa loopback e allowlist de caminhos. Importa `EvolutionReadPoc` original por mount read-only, sem mudar o adaptador. Não fornece rotas connect/QR/send/download; única criação é instância fictícia com integration Baileys e qrcode=false.
-- `test_harness.py`: dez testes offline com comandos Docker simulados. Integrados ao `npm run check` pelo teste `server/tests/evolution-sandbox-harness.test.ts`; CI comum não inicia laboratório.
+- `test_harness.py`: testes offline com comandos Docker simulados. Integrados ao `npm run check` pelo teste `server/tests/evolution-sandbox-harness.test.ts`; CI comum não inicia laboratório.
 
 O estado da instância de laboratório é close; segundo código do monitor, reload de close não chama connectToWhatsapp. Runtime não tem egress, proxies de download não são passados ao processo, telemetry/Sentry/eventos globais/integrações externas ficam desabilitados. Não há QR, número, clone de sessão ou autenticação Baileys. Retorno de criação pode conter hash mesmo local: runner descarta e nunca grava resposta bruta.
 
-Pré-requisitos futuros: máquina descartável com Docker/Compose, linux/amd64 ou emulação revisada, Node 24/Python3 no controlador e disco suficiente para camadas/migrações/dados. O guard de **8 GiB livres** é uma reserva conservadora do harness, **não tamanho medido da imagem nem garantia de suficiência para VFS**. O ambiente atual inteiro tem menos espaço que isso; o guard interrompe antes de novo pull/start. Não retirar o guard para forçar execução neste filesystem.
+Pré-requisitos futuros: máquina descartável com Docker/Compose, linux/amd64 ou emulação revisada, Node 24/Python3 no controlador e disco suficiente para camadas/migrações/dados. O guard exige **8 GiB livres em cada filesystem verificado**, reserva conservadora do harness, **não tamanho medido da imagem nem garantia de suficiência para VFS**. Se workspace e Docker compartilham filesystem, o espaço não é somado, duplicado nem reservado. Quotas, consumo concorrente e expansão durante extração ainda podem causar falha. A fotografia inicial bloqueava pelo workspace; não demonstrava capacidade do Docker. Não retirar o guard para forçar execução.
+
+### Correção do preflight após revisão técnica da PR #75
+
+O [comentário técnico](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/75#issuecomment-6700701350) identificou que `disk_usage(ROOT)` sozinho não verificava o recurso onde o daemon extrai camadas. Agora o preflight, antes de gerar secrets/pull/criar contêiner:
+
+1. Resolve o workspace existente, associa seu `st_dev` ao mount mais específico em `/proc/self/mountinfo` e mede seu próprio `statvfs` via disk_usage. Falta de acesso/metadados ou espaço insuficiente bloqueia; não busca um ancestral para mascarar diretório ausente.
+2. Verifica o peer do socket Unix local por `SO_PEERCRED`: precisa ser processo dockerd acessível, no mesmo namespace de mounts. Socket encaminhado, namespace distinto ou confirmação sem permissão bloqueiam. Somente a existência do socket não prova que o caminho informado pelo daemon corresponda ao filesystem visto pelo cliente.
+3. Consulta somente DockerRootDir/Driver/DriverStatus/ServerVersion formatados do daemon local, sem ambientes/credenciais ou inventário de recursos. Resolve DockerRootDir estritamente, confirma diretório/device/mount e mede o filesystem correspondente, independentemente de ROOT. Não faz fallback ao workspace.
+4. Confere também mounts descendentes de DockerRootDir, para não ignorar uma partição separada de driver/volumes. Só lê metadados do kernel e estatísticas de espaço; não enumera conteúdo de imagens/volumes/contêineres. Qualquer mount inacessível ou insuficiente bloqueia. Essa escolha é conservadora e pode bloquear mounts descendentes que não seriam usados pela extração.
+5. Repete identidade do daemon/socket e tabela de mounts para rejeitar mudança durante a conferência. Suporta somente backends convencionais vfs/overlay2/fuse-overlayfs; storage externo, devicemapper/zfs/btrfs e image store containerd/snapshotter não têm capacidade confirmada por esta abordagem e bloqueiam, exigindo desenho posterior. Não mudar configuração do daemon para passar no guard.
+
+Resumo privado registra bytes livres, device, mount ID e tipo de filesystem separadamente para workspace/Docker/mounts descendentes, sem paths completos ou raw Docker info. Erros de armazenamento têm categoria sanitizada; incapacidade de confirmar é bloqueio, nunca autorização. Continua sendo uma observação pontual, não uma transação/reserva de disco.
+
+**Nesta correção não se executou o laboratório nem o preflight contra o daemon real.** Foram usados testes offline para partições diferentes, Docker cheio com workspace livre, diretório ausente/inacessível, falha de statvfs, device/mount divergente, namespace/socket não verificável e mount descendente insuficiente. O registro JSON da tentativa inicial permanece histórico e agora nomeia explicitamente o escopo da medição como workspace.
 
 ```sh
 # Estático/offline, não inicia Docker nem Evolution
@@ -87,7 +101,7 @@ O fluxo proposto executa ensaios, interrompe só o PostgreSQL local para observa
 | Manifest/proveniência/tag/package upstream | REGISTRO PÚBLICO/CÓDIGO: vínculo documentado; execução do pacote da imagem não verificada |
 | Pull por digest | FALHOU: extração sem espaço; sem contêiner iniciado |
 | Configuração Compose resolvida com secrets temporários, saída não impressa | ESTÁTICO: passou; três imagens fixas, rede interna, sem portas/volumes externos |
-| Gates de disco/versão/pull/colisão, cleanup e não propagação de secrets | SIMULADO: 10/10 testes offline; não certificam comportamento de Docker real |
+| Gates de disco/versão/pull/colisão, cleanup e não propagação de secrets | SIMULADO: suíte offline ampliada na correção de armazenamento; não certifica comportamento de Docker real |
 | Sintaxe runner JS / regressões POC existentes | ESTÁTICO/SIMULADO: verificadas pelos comandos e CI; sem alteração do adaptador |
 | HTTP listagem, take/skip e GET indevido | BLOQUEADO; runner preparado, não executado |
 | 123 mensagens estáticas: últimas50 e páginas2/3 | BLOQUEADO; asserções futuras via POC inalterada |
@@ -113,7 +127,7 @@ Carga planejada: 123 mensagens iniciais, 60 empates, quatro mídias/um LID, regi
 
 ## Testes de repositório e decisões
 
-Foram executados testes offline do harness (**10/10**), validação de sintaxe, configuração Compose sem start e `npm run check` (**567/567**, build/TypeScript/lint sem erros, avisos preexistentes) com dados sintéticos. Após ajustes finais de autenticação Redis/metadados, testes próprios, lint e Compose estático foram repetidos e aprovados. O teste integrado que cria subprocessos exigiu permissão de execução por bloqueio EPERM do sandbox; não foi contornado reduzindo assertions. Links/blocos/JSON e whitespace também foram conferidos. Resultados do CI constam na PR. Nenhum workflow de deploy foi modificado; os quatro workflows existentes validam regressões/imagens FunixApp, **não executam este laboratório**. A restrição anterior do health-check produtivo a disparo manual permanece.
+Na entrega inicial foram executados dez testes offline do harness, validação de sintaxe, configuração Compose sem start e `npm run check` (**567/567**, build/TypeScript/lint sem erros, avisos preexistentes) com dados sintéticos. Na correção do preflight, **24/24 testes offline** e novamente **567/567 no check** passaram; ajustes finais do guard foram revalidados pela suíte própria. O total Node continua 567 porque um teste Node executa toda a suíte Python. O CI do novo head consta na PR. O teste integrado que cria subprocessos exigiu permissão de execução por bloqueio EPERM do sandbox; não foi contornado reduzindo assertions. Links/blocos/JSON e whitespace também foram conferidos. Nenhum workflow de deploy foi modificado; os quatro workflows existentes validam regressões/imagens FunixApp, **não executam este laboratório**. A restrição anterior do health-check produtivo a disparo manual permanece.
 
 **Decisões dependentes da FUNIX:** disponibilizar ambiente descartável com espaço adequado (sem liberar/alterar VPS produtiva para isso); revisar os gates/artefatos da imagem e, após execução real, aceitar ou corrigir o contrato de leitura/POC com testes; decidir tolerância a lacunas/status/aliases, autorização e migração N:N/períodos, retenção/backup/RPO/RTO. A escolha entre leitura direta/cache/mirror continua pendente; nenhum cache, broker ou duplicação integral foi acrescentado.
 

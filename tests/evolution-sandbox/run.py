@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import socket
+import struct
 import subprocess
 import tempfile
 
@@ -12,6 +14,115 @@ COMPOSE = Path(__file__).with_name('compose.yaml')
 EVOLUTION = 'evoapicloud/evolution-api@sha256:456b4104b0ddffbb092d6b3c0560a4ae86fc3e014e885b882aca4b1b371dfc81'
 LOCAL_DOCKER = ['docker', '--host=unix:///var/run/docker.sock']
 SELECTORS = {'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'}
+MIN_FREE_BYTES = 8 * 1024**3
+DOCKER_INFO_FORMAT = '{"root":{{json .DockerRootDir}},"driver":{{json .Driver}},"driverStatus":{{json .DriverStatus}},"version":{{json .ServerVersion}}}'
+
+
+def local_daemon_identity():
+    """Reject forwarded sockets and a different/inaccessible mount namespace."""
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
+            peer.settimeout(5)
+            peer.connect('/var/run/docker.sock')
+            pid, _, _ = struct.unpack('3i', peer.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+            process = Path('/proc') / str(pid)
+            if pid <= 0 or (process / 'comm').read_text().strip() != 'dockerd':
+                raise ValueError()
+            ours = os.stat('/proc/self/ns/mnt')
+            daemon = os.stat(process / 'ns/mnt')
+            if (ours.st_dev, ours.st_ino) != (daemon.st_dev, daemon.st_ino):
+                raise ValueError()
+            started = (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
+            endpoint = os.stat('/var/run/docker.sock')
+            return pid, started, daemon.st_ino, endpoint.st_dev, endpoint.st_ino
+    except (OSError, ValueError, IndexError, AttributeError):
+        raise RuntimeError('Storage preflight blocked: DOCKER_NAMESPACE_UNVERIFIED') from None
+
+
+def mount_table():
+    # Kernel metadata only; no Docker resource directories/content are enumerated.
+    try:
+        rows = []
+        raw = Path('/proc/self/mountinfo').read_text()
+        for line in raw.splitlines():
+            fields = line.split()
+            separator = fields.index('-')
+            mount = fields[4]
+            for encoded, decoded in [('\\040', ' '), ('\\011', '\t'), ('\\012', '\n'), ('\\134', '\\')]:
+                mount = mount.replace(encoded, decoded)
+            rows.append({'id': fields[0], 'device': fields[2], 'path': Path(mount), 'type': fields[separator + 1]})
+        if not rows:
+            raise ValueError()
+        return raw, rows
+    except (OSError, ValueError, IndexError):
+        raise RuntimeError('Storage preflight blocked: MOUNT_TABLE_UNAVAILABLE') from None
+
+
+def filesystem_space(path, mounts):
+    """Resolve the existing directory and match stat's device to its deepest mount."""
+    resolved = path.resolve(strict=True)
+    before = resolved.stat()
+    if not resolved.is_dir():
+        raise ValueError()
+    ancestors = [m for m in mounts if resolved.is_relative_to(m['path'])]
+    depth = max(len(m['path'].parts) for m in ancestors)
+    device = f'{os.major(before.st_dev)}:{os.minor(before.st_dev)}'
+    matches = [m for m in ancestors if len(m['path'].parts) == depth and m['device'] == device]
+    if not matches:
+        raise ValueError()
+    usage = shutil.disk_usage(resolved)  # statvfs of this filesystem, never ROOT as fallback
+    after = resolved.stat()
+    if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+        raise ValueError()
+    return {'freeBytes': usage.free, 'device': device, 'mountId': matches[-1]['id'], 'filesystem': matches[-1]['type']}
+
+
+def storage_preflight(env, report):
+    """All checks precede pulls, secrets, resource inspection and container creation."""
+    raw_mounts, mounts = mount_table()
+    report['storage'] = {'minimumFreeBytesPerFilesystem': MIN_FREE_BYTES}
+    try:
+        report['storage']['workspace'] = filesystem_space(ROOT, mounts)
+    except (OSError, ValueError, RuntimeError):
+        raise RuntimeError('Storage preflight blocked: WORKSPACE_STORAGE_ACCESS') from None
+    if report['storage']['workspace']['freeBytes'] < MIN_FREE_BYTES:
+        raise RuntimeError('Storage preflight blocked: WORKSPACE_SPACE_LOW')
+    identity = local_daemon_identity()
+    try:
+        info = json.loads(command([*LOCAL_DOCKER, 'info', '--format', DOCKER_INFO_FORMAT], env, timeout=15))
+        root = info['root']
+        if not isinstance(root, str) or not root.startswith('/') or '\x00' in root or root == '/':
+            raise ValueError()
+        if not isinstance(info['version'], str) or not info['version']:
+            raise ValueError()
+        status = info.get('driverStatus')
+        if status is not None and (not isinstance(status, list) or any(
+            not isinstance(entry, list) or len(entry) != 2 or not all(isinstance(value, str) for value in entry)
+            for entry in status
+        )):
+            raise ValueError()
+        if info['driver'] not in {'vfs', 'overlay2', 'fuse-overlayfs'} or any(
+            'snapshotter' in value.lower() for entry in status or [] for value in entry
+        ):
+            raise RuntimeError('Storage preflight blocked: DOCKER_BACKEND_UNSUPPORTED')
+    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired):
+        raise RuntimeError('Storage preflight blocked: DOCKER_INFO_UNAVAILABLE') from None
+    try:
+        docker_root = Path(root).resolve(strict=True)
+        if docker_root == Path('/'):
+            raise ValueError()
+        report['storage']['docker'] = filesystem_space(docker_root, mounts)
+        # A separate driver/volume mount beneath DockerRootDir must not escape the check.
+        nested = [m for m in mounts if m['path'] != docker_root and m['path'].is_relative_to(docker_root)]
+        report['storage']['dockerNestedMounts'] = [filesystem_space(m['path'], mounts) for m in nested]
+    except (OSError, ValueError, RuntimeError):
+        raise RuntimeError('Storage preflight blocked: DOCKER_STORAGE_ACCESS') from None
+    if identity != local_daemon_identity() or raw_mounts != mount_table()[0]:
+        raise RuntimeError('Storage preflight blocked: STORAGE_IDENTITY_CHANGED')
+    if any(s['freeBytes'] < MIN_FREE_BYTES for s in [report['storage']['docker'], *report['storage']['dockerNestedMounts']]):
+        raise RuntimeError('Storage preflight blocked: DOCKER_SPACE_LOW')
+    report['localDockerVersion'] = info['version']
+    report['storageDriver'] = info['driver']
 
 
 def command(args, env, timeout=120):
@@ -30,16 +141,21 @@ def write_private(path, value):
 def main():
     os.umask(0o077)
     folder = ROOT / '.runtime' / 'evolution-sandbox'
-    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        print('BLOCKED: workspace storage inaccessible; cannot write a private summary')
+        return 2
     env = {k: v for k, v in os.environ.items() if k not in SELECTORS and not k.startswith(('LAB_', 'COMPOSE_'))}
     project = 'evoreadlab-' + secrets.token_hex(6)
     report = {'state': 'blocked', 'project': project, 'httpHarnessInvoked': False, 'image': EVOLUTION}
-    # Conservative space guard for layered VFS extraction; not an image size guarantee.
-    report['freeBytes'] = shutil.disk_usage(ROOT).free
-    if report['freeBytes'] < 8 * 1024**3:
-        report['reason'] = 'Less than the laboratory guard of 8 GiB free; no pull/start attempted'
+    # Conservative checks, not an image size guarantee or a reservation of free blocks.
+    try:
+        storage_preflight(env, report)
+    except (RuntimeError, OSError, ValueError) as error:
+        report['reason'] = str(error) if isinstance(error, RuntimeError) else 'Storage preflight unavailable'
         write_private(folder / 'run-summary.json', json.dumps(report, indent=2) + '\n')
-        print('BLOCKED: insufficient local disk; summary in .runtime/evolution-sandbox/run-summary.json')
+        print('BLOCKED: storage preflight; summary in .runtime/evolution-sandbox/run-summary.json')
         return 2
     with tempfile.TemporaryDirectory(prefix=project + '-', dir=folder) as tmp:
         temp = Path(tmp)
@@ -51,8 +167,6 @@ def main():
         inspection_id = None
         started = False
         try:
-            report['localDockerVersion'] = command([*LOCAL_DOCKER, 'info', '--format', '{{.ServerVersion}}'], env).strip()
-            report['storageDriver'] = command([*LOCAL_DOCKER, 'info', '--format', '{{.Driver}}'], env).strip()
             # A nonce is not the sole protection against accidentally adopting old resources.
             for resource in ['volume', 'network']:
                 if command([*LOCAL_DOCKER, resource, 'ls', '--filter', 'label=com.docker.compose.project=' + project, '--format', '{{.Name}}'], env).strip():

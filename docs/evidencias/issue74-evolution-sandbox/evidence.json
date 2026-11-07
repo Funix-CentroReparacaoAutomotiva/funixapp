@@ -19,7 +19,8 @@
   },
   "environment": {
     "localDockerVersion": "29.9.2",
-    "freeBytesAtHarnessGuard": 469393408,
+    "workspaceFreeBytesAtInitialHarnessGuard": 469393408,
+    "dockerStorageFreeBytesAtInitialHarnessGuard": null,
     "containersStarted": 0,
     "existingSharedResourcesPruned": false
   },
