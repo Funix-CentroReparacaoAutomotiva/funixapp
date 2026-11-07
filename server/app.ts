@@ -19,6 +19,7 @@ import {resolveVoiceOption,reviseVoiceComponent} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
+import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
@@ -26,6 +27,7 @@ import{readQuoteContext}from'./component-quote-context.ts'
 
 export interface AppOptions {
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
+  evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
   whatsappIngest?: IngestOptions
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
@@ -127,6 +129,32 @@ export function createRequestHandler(options: AppOptions) {
           context.revalidate()
           return send(200,result)
         }finally{res.off('close',cancel)}
+      }
+      // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
+      if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
+        const messagesRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
+        const listRoute = url.pathname === '/api/chat/conversations'
+        if (!listRoute && !messagesRoute) return fail(404, 'NOT_FOUND', 'Conversa não encontrada.')
+        const keys = [...url.searchParams.keys()]
+        if (listRoute) {
+          if (keys.some(k => k !== 'skip') || url.searchParams.getAll('skip').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          const skip = url.searchParams.get('skip') ?? '0'
+          if (!/^(0|[1-9][0-9]{0,5})$/.test(skip) || Number(skip) > 500000) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          try {
+            const result = await options.evolutionChat.list(Number(skip))
+            if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
+            return send(200, result)
+          } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as conversas agora.') }
+        }
+        if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const page = url.searchParams.get('page') ?? '1'
+        if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        try {
+          const result = await options.evolutionChat.messages(messagesRoute![1]!, Number(page))
+          if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
+          return result ? send(200, result) : fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
+        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
       }
       const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
       if (chatReadRoute) {
