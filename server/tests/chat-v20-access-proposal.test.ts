@@ -1,50 +1,46 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { authorizedReadRequest, canManageLink, canReadConversation, canSelectContext, type Conversation, type Principal } from '../experimental/chat-access/policy.ts'
+import { authorizedReadRequest, canManageLink, canReadConversation, canSelectContext, type Conversation } from '../experimental/chat-access/policy.ts'
 
-const conversation: Conversation = { id: 'conv-A', instance: 'synthetic', linkedAttendances: ['att-A', 'att-B'] }
-const base: Principal = { authenticated: true, individualId: 'user-A', instances: ['synthetic'], permissions: ['chat.inbox.read', 'chat.history.read_full'], visibleAttendances: ['att-A', 'att-B'] }
-const principal = (patch: Partial<Principal> = {}): Principal => ({ ...base, ...patch })
+const instance = 'synthetic-test-instance'
+const conversation: Conversation = { id: 'conv-A', instance, linkedAttendances: ['att-A', 'att-B'] }
+const active = { authenticated: true }
+const expired = { authenticated: false }
 
-test('AUTH-01: expired or absent session denied', () => {
-  assert.deepEqual(authorizedReadRequest(principal({ authenticated: false }), conversation), { ok: false, reason: 'unauthenticated' })
+test('SINGLE-01/02: anonymous and expired sessions cannot read', () => {
+  assert.deepEqual(authorizedReadRequest(expired, conversation, instance), { ok: false, reason: 'unauthenticated' })
+  assert.equal(canReadConversation(expired, conversation, instance), 'unauthenticated')
 })
-test('AUTH-02: shared password without individual identity cannot read', () => {
-  assert.equal(canReadConversation(principal({ individualId: null }), conversation), 'denied')
+test('SINGLE-03: sole authenticated operator can read internal instance', () => {
+  assert.deepEqual(authorizedReadRequest(active, conversation, instance), { ok: true, conversationId: 'conv-A' })
 })
-test('AUTH-03/16: Attendance A access alone cannot reveal A+B conversation', () => {
-  assert.equal(canReadConversation(principal({ permissions: ['chat.inbox.read'], visibleAttendances: ['att-A'] }), conversation), 'denied')
+test('SINGLE-04: cross-instance conversation is rejected', () => {
+  assert.deepEqual(authorizedReadRequest(active, { ...conversation, instance: 'other' }, instance), { ok: false, reason: 'out_of_scope' })
 })
-test('AUTH-04: switching context A to B preserves conversation request', () => {
-  const before = authorizedReadRequest(base, conversation)
-  assert.equal(canSelectContext(base, conversation, 'att-A'), 'allow')
-  assert.equal(canSelectContext(base, conversation, 'att-B'), 'allow')
-  assert.deepEqual(authorizedReadRequest(base, conversation), before)
+test('SINGLE-06: selected Attendance A/B does not affect conversation read', () => {
+  const request = authorizedReadRequest(active, conversation, instance)
+  assert.equal(canSelectContext(active, conversation, instance, 'att-A'), 'allow')
+  assert.equal(canSelectContext(active, conversation, instance, 'att-B'), 'allow')
+  assert.deepEqual(authorizedReadRequest(active, conversation, instance), request)
 })
-test('AUTH-05: authorized unlinked Chat gets neutral context', () => {
+test('SINGLE-07: no Attendance is allowed, with neutral context', () => {
   const unlinked = { ...conversation, linkedAttendances: [] }
-  assert.equal(canReadConversation(base, unlinked), 'allow')
-  assert.equal(canSelectContext(base, unlinked, 'att-A'), 'denied')
+  assert.equal(canReadConversation(active, unlinked, instance), 'allow')
+  assert.equal(canSelectContext(active, unlinked, instance, 'att-A'), 'not_linked')
 })
-test('AUTH-06: technical support lacking read-full cannot read content', () => {
-  assert.equal(canReadConversation(principal({ permissions: ['chat.inbox.read'] }), conversation), 'denied')
-})
-test('AUTH-07: cross-instance access denied', () => {
-  assert.equal(canReadConversation(principal({ instances: ['other'] }), conversation), 'denied')
-})
-test('AUTH-09/11: link management requires grant plus target Attendance scope', () => {
-  assert.equal(canManageLink(base, conversation, 'att-A'), 'denied')
-  assert.equal(canManageLink(principal({ permissions: ['chat.links.manage'], visibleAttendances: ['att-A'] }), conversation, 'att-B'), 'denied')
-  assert.equal(canManageLink(principal({ permissions: ['chat.links.manage'] }), conversation, 'att-B'), 'allow')
-})
-test('AUTH-12: unlinked Attendance cannot be selected or inserted implicitly', () => {
-  assert.equal(canSelectContext(base, conversation, 'att-C'), 'denied')
+test('SINGLE-08: unlinked Atendimento cannot become context', () => {
+  assert.equal(canSelectContext(active, conversation, instance, 'att-X'), 'not_linked')
   assert.deepEqual(conversation.linkedAttendances, ['att-A', 'att-B'])
 })
-test('AUTH-14: revoked permission is applied on next decision', () => {
-  assert.equal(canReadConversation(base, conversation), 'allow')
-  assert.equal(canReadConversation(principal({ permissions: [] }), conversation), 'denied')
+test('SINGLE-09: link action is restricted to current session and configured instance', () => {
+  assert.equal(canManageLink(active, conversation, instance), 'allow')
+  assert.equal(canManageLink(expired, conversation, instance), 'unauthenticated')
+  assert.equal(canManageLink(active, { ...conversation, instance: 'other' }, instance), 'out_of_scope')
 })
-test('Policy output excludes provider JID, message content and secrets', () => {
-  assert.deepEqual(authorizedReadRequest(base, conversation), { ok: true, conversationId: 'conv-A' })
+test('SINGLE-13: multiple linked Attendances do not restrict sole operator to subset of history', () => {
+  assert.equal(canReadConversation(active, conversation, instance), 'allow')
+  assert.equal(canReadConversation(active, { ...conversation, linkedAttendances: ['att-B', 'att-A', 'att-C'] }, instance), 'allow')
+})
+test('Policy sketch returns opaque conversationId only, not message content or JID', () => {
+  assert.deepEqual(authorizedReadRequest(active, conversation, instance), { ok: true, conversationId: 'conv-A' })
 })
