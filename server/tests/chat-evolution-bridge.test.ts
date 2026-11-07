@@ -18,7 +18,7 @@ function fixture(enabled = true, fail = false) {
     async findChats() {
       calls.push('chats')
       if (fail) throw new Error('private provider error / apikey')
-      return [{ remoteJid: jid, updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }]
+      return [{ remoteJid: jid, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }]
     },
     async findMessages(requested, { page } = {}) {
       calls.push('messages:' + page)
@@ -88,6 +88,8 @@ test('Chat bridge requires valid session, returns opaque IDs, no JID/provider ID
     const id = data.items[0].conversationId
     assert.match(id, /^[a-f0-9-]{36}$/)
     assert(!JSON.stringify(data).includes(jid))
+    assert.equal(data.items[0].displayName, 'Contato Sintético')
+    assert.equal(data.items[0].phoneNumber, '000000000001')
     const page = await f.request('/api/chat/conversations/' + id + '/messages', cookie)
     assert.equal(page.status, 200)
     const messages = await page.json()
