@@ -29,6 +29,7 @@ export interface AppOptions {
   whatsappIngest?: IngestOptions
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
+  voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
   budgetRenderer?:BudgetOptions['render']
   atendimentos: AtendimentoRepository
   password?: string
@@ -44,7 +45,8 @@ export function createRequestHandler(options: AppOptions) {
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
-  const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs)
+  const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
+  const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
   const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
   const origin = options.origin ?? 'http://127.0.0.1:5173'

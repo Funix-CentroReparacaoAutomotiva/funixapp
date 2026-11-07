@@ -23,14 +23,17 @@ export function readVoiceContext(db:DatabaseSync,at:string,scenarioId:string):Vo
 }
 // No contacts, plate, customer names, notes, monetary values or other Atendimentos.
 // Other scenarios' identities/masks are backend-only: the model sees only the active mask.
-export function modelVoiceContext(c:VoicePlanningContext){
+export type VoiceModelContextMode='standard'|'omit_recommendations'
+// Pilot only: omit recommendation rules from the model prompt, not from the trusted planner.
+// The strict model schema has no operation for applying recommendation rules.
+export function modelVoiceContext(c:VoicePlanningContext,mode:VoiceModelContextMode='standard'){
  const selected=c.workspace.scenarios.find(s=>s.id===c.workspace.selectedId)!
  return{intensities:DIAGNOSIS_INTENSITIES,
  piecePairs:hierarchyPiecePairs().flatMap(codes=>{const pair=codes.map(code=>c.catalog.find(item=>item.kind==='peca'&&item.code===code&&catalogItemUsable(item)));return pair.every(Boolean)?[pair.map(item=>item!.id)]:[]}),
  catalog:c.catalog.map(i=>({id:i.id,kind:i.kind,name:i.name,code:i.code,side:i.side,serviceId:i.serviceId,usable:catalogItemUsable(i),...(i.kind==='servico'?{policy:servicePolicy(i.id)??null}:{})})),
  pieces:c.workspace.items.map(p=>({id:p.id,pieceId:p.pieceId,diagnosisId:p.diagnosisId,intensity:p.intensity,enabled:Boolean(selected.pieceFlags[p.id]),
   services:p.services.map(l=>({id:l.id,serviceId:l.serviceId,dimensionId:l.dimensionId,quantity:l.quantity,enabled:Boolean(selected.serviceFlags[l.id])}))})),
- recommendations:c.recommendations.map(s=>({diagnosisId:s.diagnosisId,intensity:s.intensity,rules:s.rules.map(r=>({id:r.id,serviceId:r.serviceId,dimensionId:r.dimensionId,selectedByDefault:r.selectedByDefault})),pending:s.pending})),
+ ...(mode==='standard'?{recommendations:c.recommendations.map(s=>({diagnosisId:s.diagnosisId,intensity:s.intensity,rules:s.rules.map(r=>({id:r.id,serviceId:r.serviceId,dimensionId:r.dimensionId,selectedByDefault:r.selectedByDefault})),pending:s.pending}))}:{}),
  revisions:{composition:c.workspace.revision,configuration:c.workspace.configurationRevision,scenario:selected.revision}
  }
 }
