@@ -3,8 +3,9 @@ import type { EvolutionReadPoc, ReadChat, ReadMessage } from '../experimental/ev
 
 /**
  * Single-operator V20 read-only bridge.
- * Ephemeral IDs prevent browser-controlled remoteJid queries.
- * Stable IDs belong in the future N:N schema migration, not a standalone upgrade.
+ * Ephemeral opaque conversation IDs prevent browser-controlled remoteJid queries.
+ * Entries expire/restart with this backend; a list refresh re-registers the chat.
+ * This is NOT the eventual persisted N:N conversation model.
  */
 export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChats' | 'findMessages'>,
