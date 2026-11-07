@@ -45,7 +45,7 @@ export function createEvolutionChatBridge(
 
   return {
     async list(skip: number): Promise<{
-      items: Array<{ conversationId: string; updatedAt: string | null; unreadCount: number | null }>
+      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }>
       nextSkip: number | null
       source: 'evolution'
     }> {
@@ -53,7 +53,7 @@ export function createEvolutionChatBridge(
       const take = 50
       const rows: ReadChat[] = await provider.findChats({ take, skip })
       return {
-        items: rows.map(row => ({ conversationId: register(row.remoteJid), updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
+        items: rows.map(row => ({ conversationId: register(row.remoteJid), displayName: row.displayName, phoneNumber: row.phoneNumber, updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
         nextSkip: rows.length === take ? skip + take : null,
         source: 'evolution',
       }
