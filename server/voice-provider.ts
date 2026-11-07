@@ -1,5 +1,7 @@
 import {ServiceError} from './errors.ts'
 import {voiceModelSchema} from './voice-model-contract.ts'
+import {summarizeVoiceUsage} from './voice-usage.ts'
+import type {VoiceUsageMetric} from './voice-usage.ts'
 
 export interface VoiceProvider{
  transcribe(audio:Uint8Array,mime:string,signal:AbortSignal):Promise<string>
@@ -17,20 +19,32 @@ Forneça IDs únicos de comandos em ordem; line kind command só referencia coma
 Para componente automotivo explicitamente solicitado, use add_component: name é a descrição livre dita, nunca ID de catálogo. Não confunda o nome do componente com a peça pai. Preserve lado/região do componente apenas quando ditos. A peça pai segue as mesmas regras unresolved/pares reais, sem presumir lado. Quantity padrão "1" e manualPrice padrão "0" (não null) se omitidos; se explícitos use strings decimais exatas com ponto. Nunca pesquise, sugira nem invente preço. Não exclua nem edite componentes existentes. Não emita decisões de duplicação.
 Não crie atendimentos nem escolha destino. Não afirme que salvou ou aplicou algo.`
 const failure=(stage:'TRANSCRIPTION'|'INTERPRETATION')=>new ServiceError(502,'VOICE_'+stage+'_FAILED',stage==='TRANSCRIPTION'?'Não foi possível transcrever o áudio.':'Não foi possível interpretar a transcrição.')
-export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch):VoiceProvider|undefined{
+export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch,usageSink?:(event:VoiceUsageMetric)=>void):VoiceProvider|undefined{
  const key=env.OPENAI_API_KEY?.trim()
  if(!key)return
  const transcriptionModel=env.FUNIX_VOICE_TRANSCRIPTION_MODEL?.trim()||'gpt-transcribe'
  const interpretationModel=env.FUNIX_VOICE_INTERPRETATION_MODEL?.trim()||'gpt-6.1-terra'
+ const lowEffort=env.FUNIX_VOICE_REASONING_EFFORT==='low'
+ const usageEnabled=env.FUNIX_VOICE_USAGE_ENABLED==='true'
  async function post(path:string,body:BodyInit,signal:AbortSignal,stage:'TRANSCRIPTION'|'INTERPRETATION',json=false){
+  const started=performance.now()
+  let payload:ReturnType<typeof JSON.parse>
+  let completed=false
   try{
    const response=await transport('https://api.openai.com/v1/'+path,{method:'POST',redirect:'error',signal,headers:{Authorization:'Bearer '+key,...(json?{'Content-Type':'application/json'}:{})},body})
    if(!response.ok)throw failure(stage)
    const reader=response.body?.getReader();if(!reader)throw failure(stage)
    let bytes=0;const chunks:Uint8Array[]=[]
    try{while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.length;if(bytes>512*1024)throw failure(stage);chunks.push(part.value)}}finally{await reader.cancel().catch(()=>{})}
-   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+   payload=JSON.parse(Buffer.concat(chunks).toString('utf8'))
+   completed=true
+   return payload
   }catch(error){if(signal.aborted)throw signal.reason;throw error instanceof ServiceError?error:failure(stage)}
+  finally{
+   if(usageEnabled){const event=summarizeVoiceUsage(stage==='TRANSCRIPTION'?'transcription':'interpretation',stage==='TRANSCRIPTION'?transcriptionModel:interpretationModel,signal.aborted?'aborted':completed?'response':'transport_error',Math.round(performance.now()-started),payload)
+    try{(usageSink??((v:VoiceUsageMetric)=>console.info('funix_voice_usage '+JSON.stringify(v))))(event)}catch{/* Logging must not affect voice calls. */}
+   }
+  }
  }
  return{
   async transcribe(audio,mime,signal){
@@ -44,7 +58,7 @@ export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:
    return result.text.trim()
   },
   async interpret(transcription,context,signal){
-   const result=await post('responses',JSON.stringify({model:interpretationModel,store:false,max_output_tokens:12000,
+   const result=await post('responses',JSON.stringify({model:interpretationModel,store:false,max_output_tokens:12000,...(lowEffort?{reasoning:{effort:'low'}}:{}),
     instructions:VOICE_INSTRUCTIONS,input:[{role:'user',content:JSON.stringify({catalogContext:context,dictation:transcription})}],
     text:{format:{type:'json_schema',name:'funix_voice_commands',strict:true,schema:voiceModelSchema}}}),signal,'INTERPRETATION',true)
    if(result.status!=='completed')throw new ServiceError(502,'VOICE_MODEL_INCOMPLETE','A IA não concluiu a interpretação. Nenhuma alteração foi aplicada.')
