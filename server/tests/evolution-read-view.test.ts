@@ -5,7 +5,7 @@ import type { ReadUiMessage } from '../../src/chat/evolution-read-model.ts'
 
 const a = '11111111-1111-4111-8111-111111111111'
 const b = '22222222-2222-4222-8222-222222222222'
-const rows = { source: 'evolution', nextSkip: null, items: [{ conversationId: a, updatedAt: null, unreadCount: 0 }] }
+const rows = { source: 'evolution', nextSkip: null, items: [{ conversationId: a, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: null, unreadCount: 0 }] }
 const message = (messageId: string, timestamp: number): ReadUiMessage => ({ messageId, timestamp, fromMe: false, kind: 'text', text: 'EXEMPLO SINTÉTICO' })
 const messages = { source: 'evolution', conversationId: a, page: 1, nextPage: null,
   reportedTotal: 1, consistency: 'offset-not-snapshot', historyComplete: 'unknown',
@@ -13,10 +13,12 @@ const messages = { source: 'evolution', conversationId: a, page: 1, nextPage: nu
 
 test('list projection accepts only opaque backend IDs; never accepts JID or arbitrary data', () => {
   assert.deepEqual(parseConversationList(rows), rows)
-  assert.throws(() => parseConversationList({ ...rows, items: [{ conversationId: '00000000001@s.whatsapp.net', updatedAt: null, unreadCount: 0 }] }), /CHAT_READ_RESPONSE_INVALID/)
+  assert.throws(() => parseConversationList({ ...rows, items: [{ conversationId: '00000000001@s.whatsapp.net', displayName: null, phoneNumber: null, updatedAt: null, unreadCount: 0 }] }), /CHAT_READ_RESPONSE_INVALID/)
   assert.throws(() => parseConversationList({ ...rows, items: [rows.items[0], rows.items[0]] }), /CHAT_READ_RESPONSE_INVALID/)
   assert.throws(() => parseConversationList({ ...rows, nextSkip: -1 }), /CHAT_READ_RESPONSE_INVALID/)
   assert.throws(() => parseConversationList({ ...rows, source: 'unknown' }), /CHAT_READ_RESPONSE_INVALID/)
+  assert.throws(() => parseConversationList({ ...rows, items: [{ ...rows.items[0], phoneNumber: '123@lid' }] }), /CHAT_READ_RESPONSE_INVALID/)
+  assert.throws(() => parseConversationList({ ...rows, items: [{ ...rows.items[0], displayName: '\u202Ebad' }] }), /CHAT_READ_RESPONSE_INVALID/)
 })
 
 test('message projection requires selected conversation; does not include backend-only fields', () => {
