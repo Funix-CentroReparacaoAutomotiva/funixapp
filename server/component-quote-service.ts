@@ -9,6 +9,7 @@ export function createQuoteService(provider:QuoteProvider,options:{timeoutMs?:nu
  const cache=new Map<string,QuoteResult>(),pending=new Map<string,Promise<QuoteResult>>()
  return{async run(query,session,signal){
   signal.throwIfAborted()
+  if(query.year===null)return{status:'needs_details',offers:[],observedAt:new Date(now()).toISOString(),expiresAt:new Date(now()).toISOString(),cached:false}
   const key=createHash('sha256').update(session+'\0'+JSON.stringify(query)).digest('hex')
   for(const [k,v]of cache)if(Date.parse(v.expiresAt)<=now())cache.delete(k)
   const cached=cache.get(key);if(cached)return{...structuredClone(cached),cached:true}

@@ -41,7 +41,7 @@ Não aceita consulta montada pelo cliente, preço, nome livre, URL ou alteraçã
 {"brand":"volkswagen","model":"gol","year":2019,"component":"farol dianteiro esquerdo","parent":"parachoque dianteiro","side":"esquerdo"}
 ```
 
-Marca/modelo e termos técnicos usam vocabulário controlado. Campos `name`, `phone`, `plate`, VIN/chassi, notas, motivo, áudio/transcrição, IDs de negócio e textos livres não são enviados ao provider. Conteúdo suspeito/termos não suportados bloqueiam a consulta. Ano só sai quando houver exatamente um ano explícito em modelo/veículo; ano não é inferido do modelo, VIN ou contexto. Versão/motorização não são extraídas nesta versão; isso reduz cobertura e deve ser explicitado na decisão comercial. Ambiguidade de lado em farol/maçaneta/vidro/guia produz `needs_details`, sem ferramenta. Ano ausente pode ir como null; o filtro não aceita oferta sem aplicação suficiente.
+Marca/modelo e termos técnicos usam vocabulário controlado. Campos `name`, `phone`, `plate`, VIN/chassi, notas, motivo, áudio/transcrição, IDs de negócio e textos livres não são enviados ao provider. Conteúdo suspeito/termos não suportados bloqueiam a consulta. Ano só sai quando houver exatamente um ano explícito em modelo/veículo; ano não é inferido do modelo, VIN ou contexto. Versão/motorização não são extraídas nesta versão; isso reduz cobertura e deve ser explicitado na decisão comercial. Ambiguidade de lado em farol/maçaneta/vidro/guia produz `needs_details`, sem ferramenta. Ano ausente permanece null no saneamento, mas o serviço/harness devolve `needs_details` antes do transporte; o provider também rejeita antes de reservar no ledger. Não se gasta chamada que o validador não poderia aproveitar.
 
 Retorno: `status`, até três ofertas, `observedAt`, `expiresAt`, `cached`. Cada oferta conserva categoria, preço decimal, URL, condição, origem e trecho de sustentação pública. O frontend mostra somente ícone+valor/traço; metadados não viram cartão ou ressalva. O provider retorna métricas para observador agregado, separado da UI/clipboard.
 
@@ -104,7 +104,7 @@ node scripts/quote-pilot.ts --live --out work/quote-real-pending.json
 FUNIX_TEST_MIC_STARTUP_MS=700 node scripts/quote-pilot-browser.mjs
 ```
 
-Criar `work/` antes dos dois arquivos se necessário. O comando `--live` **não faz requisição** a menos que todos os gates estejam presentes: ambiente não production, `FUNIX_QUOTE_PILOT_LIVE=authorized`, `OPENAI_API_KEY` já autorizada/configurada e `FUNIX_QUOTE_LEDGER` apontando para registro persistente local exclusivo desta rodada. Não imprimir chave, movê-la, procurar `.env` ou injetar segredo para tentar destravar o piloto. Este relatório não é autorização para executar em produção nem contratar/criar credenciais. O caminho do ledger tem de ser mantido entre reinícios e entre harnesses da mesma rodada.
+Criar `work/` antes dos dois arquivos se necessário. O comando `--live` seleciona apenas P01 por padrão, com no máximo uma tentativa por invocação; não percorre automaticamente a rodada paga. Depois de inspecionar a primeira resposta real e somente se válida/custo esperado, selecionar explicitamente cada próximo caso com `--case P02`, sempre no mesmo ledger. Em incompatibilidade, preço sem sustentação, falha repetida ou cobrança anormal, parar sem novas tentativas cegas. P09 (ano ausente) e P10 (lado ambíguo) retornam `needs_details` sem chamada. O comando `--live` **não faz requisição** a menos que todos os gates estejam presentes: ambiente não production, `FUNIX_QUOTE_PILOT_LIVE=authorized`, `OPENAI_API_KEY` já autorizada/configurada e `FUNIX_QUOTE_LEDGER` apontando para registro persistente local exclusivo desta rodada. Não imprimir chave, movê-la, procurar `.env` ou injetar segredo para tentar destravar o piloto. Este relatório não é autorização para executar em produção nem contratar/criar credenciais. O caminho do ledger tem de ser mantido entre reinícios e entre harnesses da mesma rodada.
 
 O script de navegador usa o módulo Playwright já disponível no ambiente de desenvolvimento e Chromium local. Na sessão foi usada a instalação disponibilizada pelo executor, sem alterar package.json/lockfile. O app do harness usa SQLite `:memory:`, áudio PCM sintético e provider injetado. Não instalar dependência paga nem reutilizar banco local instalado.
 
@@ -123,3 +123,27 @@ Logs de execução em `work/` da sessão; evidências reduzidas no repositório.
 Antes de optar pela integração definitiva: rodar a amostra com credencial autorizada e mesmo ledger dentro do teto; reconciliar `web_search_call`, usage e faturamento (especialmente erros/timeout); revisar fontes reais por peça/lado/versão e genuinidade; medir latência fim a fim e campos ausentes; conferir combinação atual de schema estrito com citations; comparar qualitativamente com pesquisa manual ou cronometrá-la explicitamente. A presença de source+annotation não substitui a revisão técnica independente.
 
 O saneador e a allowlist deliberadamente limitam cobertura; nomes/versões/OEM adicionais precisam de desenho revisado sem vazamento de texto livre. A condição de preço unitário total e a prova de originalidade ainda dependem da qualidade de extração do modelo. Dez amostras não demonstram confiabilidade estatística. Esta PR deixa a prova executável e segura para revisão; não antecipa o resultado comercial nem ativa o recurso.
+
+
+## Atualização após autorização expressa — execução impedida no preflight
+
+A [autorização mais recente da direção](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/72#issuecomment-6700213817) foi lida integralmente. Autoriza até dez tentativas reais, exige credencial previamente aprovada, rede autorizada e o mesmo ledger, e condiciona a continuação à inspeção da primeira resposta válida. Não inclui merge/deploy/produção. A autorização de execução existe; a infraestrutura necessária não está disponível nesta sessão.
+
+Nova verificação, registrada com timestamp UTC em [authorized-preflight.json](evidencias/issue70/authorized-preflight.json):
+
+| Pré-condição | Observação atual |
+|---|---|
+| Branch isolada revisada | PR72, base revisada `285598e`, árvore limpa antes deste ajuste |
+| Ambiente não-production | Confirmado |
+| Credencial OpenAI aprovada | Ausente no runtime de segredos e `OPENAI_API_KEY` ausente no ambiente |
+| Conectividade autorizada | Política de rede aplicada e restrita, sem `api.openai.com`; não foi feito probe HTTP a destino bloqueado |
+| Ledger persistente da rodada | `FUNIX_QUOTE_LEDGER` ausente; não há caminho configurado para inspecionar ou reconciliar reservas |
+| Flag local de execução real | `FUNIX_QUOTE_PILOT_LIVE` ausente |
+
+**Resultado real desta tentativa operacional: zero requisições ao provedor, zero ferramentas web_search, zero ofertas reais.** A primeira chamada não foi iniciada e não se prosseguiu com a rodada. Não houve consumo do provedor nesta sessão; tokens, preço, fontes, custo por resposta, fatura e p50/p95 são N/D, e não resultados iguais a zero de uma pesquisa executada. O número de reservas anteriores não foi presumido: sem caminho configurado, o ledger não foi lido, criado, zerado ou substituído. Nenhuma credencial foi procurada em `.env` ou produção, copiada, impressa ou solicitada no chat.
+
+Foram concluídas as proteções independentes do impedimento: ano ausente retorna `needs_details` no serviço e no harness antes de qualquer tentativa/reserva; o provider direto também recusa. A execução real agora é de um único caso por invocação (P01 padrão), permitindo parar e inspecionar formato `web_search_call`, sources, annotations, JSON, usage, custo e anúncio antes de optar explicitamente pelo próximo caso. Não há continuação automática após sucesso ou falha. O limite total persistente de dez reservas permanece.
+
+A validação `--live` sem os gates gerou somente estados pendentes/preflight em arquivo de trabalho, sem executar o caminho mock nem o transporte OpenAI. Os artefatos mock anteriores continuam identificados como históricos offline e não foram usados como evidência desta rodada. O novo teste de ano ausente comprova ausência de transporte/arquivo de ledger e preservação do limite de tentativa para consulta elegível. A regressão atual `npm run check` aprovou **563/563 testes**, zero falhas/ignorados, build, tipos e lint (avisos legados); não houve mudança de UI, provedor de voz, motor, startup, segredos ou infraestrutura.
+
+**Encaminhamento:** manter a PR em draft, com execução real pendente das pré-condições técnicas. Quando disponibilizadas por canal aprovado no executor isolado, revalidar política/credencial e inspecionar o ledger original antes de uma única chamada P01; somente continuar caso haja resposta tecnicamente válida, preço sustentado, fonte/link e custo compatíveis. Não é necessária nova autorização de direção para repetir este preflight, mas este registro não supre credencial, conectividade ou evidência da primeira resposta.

@@ -1,7 +1,7 @@
 import test from'node:test'
 import assert from'node:assert/strict'
 import{once}from'node:events'
-import{mkdtempSync,readFileSync,writeFileSync,rmSync}from'node:fs'
+import{mkdtempSync,readFileSync,writeFileSync,rmSync,existsSync}from'node:fs'
 import{tmpdir}from'node:os'
 import{join}from'node:path'
 import{openDatabase}from'../database.ts'
@@ -14,6 +14,7 @@ import{saneQuoteQuery}from'../component-quote-query.ts'
 import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl}from'../component-quote-provider.ts'
 import{reserveQuoteAttempt}from'../component-quote-budget.ts'
 import{createQuoteService}from'../component-quote-service.ts'
+import type{ServiceError}from'../errors.ts'
 import{quoteFixtureQuery as q,quoteFixtureOffer as offer,quoteFixtureResponse as response,quoteFixtureUrl}from'./fixtures/component-quote.ts'
 import type{QuoteProvider}from'../component-quote-provider.ts'
 import type{VoiceCommandBatch}from'../../shared/voice-commands.ts'
@@ -85,6 +86,20 @@ test('quotation coalesces concurrent clicks, caches only within a session and ca
  assert.equal((await service.run(q,'a',signal())).cached,true)
  await service.run(q,'b',signal());assert.equal(calls,2)
  now+=600001;await assert.rejects(service.run(q,'a',signal()));assert.equal(calls,2)
+})
+test('yearless quotations need details without transport, ledger or attempt consumption',async()=>{
+ let calls=0
+ const service=createQuoteService({search:async()=>{calls++;return validateQuoteResponse(response(),q)}},{maxAttempts:1})
+ assert.equal((await service.run({...q,year:null},'s',signal())).status,'needs_details')
+ assert.equal((await service.run({...q,year:null},'s',signal())).status,'needs_details')
+ assert.equal(calls,0)
+ assert.equal((await service.run(q,'s',signal())).status,'found');assert.equal(calls,1)
+ const dir=mkdtempSync(join(tmpdir(),'quote-year-')),ledger=join(dir,'ledger')
+ try{
+  const provider=openAIQuoteProvider({key:'synthetic',ledger,transport:async()=>{calls++;throw Error('unexpected')}})
+  await assert.rejects(provider.search({...q,year:null},signal()),e=>(e as ServiceError).code==='QUOTE_NEEDS_DETAILS')
+  assert.equal(calls,1);assert.equal(existsSync(ledger),false);assert.equal(existsSync(ledger+'.lock'),false)
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })
 test('quotation timeout/cancellation discards providers that ignore AbortSignal, does not refund unknown usage or log query',async()=>{
  const observed:unknown[]=[]

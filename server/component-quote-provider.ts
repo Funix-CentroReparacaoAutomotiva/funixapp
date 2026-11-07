@@ -90,6 +90,8 @@ export function validateQuoteResponse(raw:unknown,query:QuoteQuery):QuoteProvide
 export function openAIQuoteProvider(options:{key:string;ledger:string;transport?:typeof fetch}):QuoteProvider{
  let halted=false
  return{async search(query,signal){
+  // The validator cannot accept yearless offers: reject before any reservation.
+  if(query.year===null)throw fail('QUOTE_NEEDS_DETAILS',422)
   if(!options.key||halted)throw fail('QUOTE_DISABLED',503)
   signal.throwIfAborted();reserveQuoteAttempt(options.ledger)
   const start=performance.now()

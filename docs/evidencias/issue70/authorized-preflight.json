@@ -1,0 +1,44 @@
+{
+  "status": "blocked_preflight",
+  "authorization": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/72#issuecomment-6700213817",
+  "checked_at_utc": "2026-11-07T01:24:04.270502+00:00",
+  "reviewed_base_sha": "285598ec296d167c33ceb8b7e5fbc1219ac842e4",
+  "preconditions": {
+    "non_production": true,
+    "openai_key_available_via_environment": false,
+    "managed_approved_secret_configured": false,
+    "network_policy_enforced": true,
+    "api_openai_authorized_in_network_policy": false,
+    "live_flag_authorized": false,
+    "persistent_ledger_configured": false
+  },
+  "ledger": {
+    "inspected": false,
+    "reserved_count": null,
+    "created_or_reset": false
+  },
+  "provider_request_attempts_this_run": 0,
+  "web_search_calls_this_run": 0,
+  "first_real_response_inspected": false,
+  "accepted_real_offers": 0,
+  "input_tokens": null,
+  "output_tokens": null,
+  "p50_ms": null,
+  "p95_ms": null,
+  "estimated_usage_cost_usd": null,
+  "incurred_provider_cost_this_run_usd": 0,
+  "invoice": null,
+  "simulation_executed": false,
+  "remote_connectivity_probe_executed": false,
+  "note": "No provider request: approved credential, authorized connectivity and configured persistent ledger are absent. Network readiness is based on enforced policy, not an HTTP probe. Null metrics are unmeasured.",
+  "validation": {
+    "command": "npm run check",
+    "tests": 563,
+    "passed": 563,
+    "failed": 0,
+    "skipped": 0,
+    "new_yearless_guard_test": "passed",
+    "pending_cli_preflight": "passed_without_transport",
+    "live_provider_execution": false
+  }
+}
