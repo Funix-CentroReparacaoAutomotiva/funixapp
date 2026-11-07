@@ -2,6 +2,8 @@ import {ServiceError} from './errors.ts'
 import {voiceModelSchema} from './voice-model-contract.ts'
 import {summarizeVoiceUsage} from './voice-usage.ts'
 import type {VoiceUsageMetric} from './voice-usage.ts'
+import {summarizeVoicePromptFootprint} from './voice-footprint.ts'
+import type {VoicePromptFootprintMetric} from './voice-footprint.ts'
 
 export interface VoiceProvider{
  transcribe(audio:Uint8Array,mime:string,signal:AbortSignal):Promise<string>
@@ -19,13 +21,14 @@ Forneça IDs únicos de comandos em ordem; line kind command só referencia coma
 Para componente automotivo explicitamente solicitado, use add_component: name é a descrição livre dita, nunca ID de catálogo. Não confunda o nome do componente com a peça pai. Preserve lado/região do componente apenas quando ditos. A peça pai segue as mesmas regras unresolved/pares reais, sem presumir lado. Quantity padrão "1" e manualPrice padrão "0" (não null) se omitidos; se explícitos use strings decimais exatas com ponto. Nunca pesquise, sugira nem invente preço. Não exclua nem edite componentes existentes. Não emita decisões de duplicação.
 Não crie atendimentos nem escolha destino. Não afirme que salvou ou aplicou algo.`
 const failure=(stage:'TRANSCRIPTION'|'INTERPRETATION')=>new ServiceError(502,'VOICE_'+stage+'_FAILED',stage==='TRANSCRIPTION'?'Não foi possível transcrever o áudio.':'Não foi possível interpretar a transcrição.')
-export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch,usageSink?:(event:VoiceUsageMetric)=>void):VoiceProvider|undefined{
+export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:typeof fetch=fetch,usageSink?:(event:VoiceUsageMetric)=>void,footprintSink?:(event:VoicePromptFootprintMetric)=>void):VoiceProvider|undefined{
  const key=env.OPENAI_API_KEY?.trim()
  if(!key)return
  const transcriptionModel=env.FUNIX_VOICE_TRANSCRIPTION_MODEL?.trim()||'gpt-transcribe'
  const interpretationModel=env.FUNIX_VOICE_INTERPRETATION_MODEL?.trim()||'gpt-6.1-terra'
  const lowEffort=env.FUNIX_VOICE_REASONING_EFFORT==='low'
  const usageEnabled=env.FUNIX_VOICE_USAGE_ENABLED==='true'
+ const footprintEnabled=env.FUNIX_VOICE_FOOTPRINT_ENABLED==='true'
  async function post(path:string,body:BodyInit,signal:AbortSignal,stage:'TRANSCRIPTION'|'INTERPRETATION',json=false){
   const started=performance.now()
   let payload:ReturnType<typeof JSON.parse>
@@ -58,9 +61,14 @@ export function openAIVoiceProvider(env:NodeJS.ProcessEnv=process.env,transport:
    return result.text.trim()
   },
   async interpret(transcription,context,signal){
-   const result=await post('responses',JSON.stringify({model:interpretationModel,store:false,max_output_tokens:12000,...(lowEffort?{reasoning:{effort:'low'}}:{}),
+   const requestBody=JSON.stringify({model:interpretationModel,store:false,max_output_tokens:12000,...(lowEffort?{reasoning:{effort:'low'}}:{}),
     instructions:VOICE_INSTRUCTIONS,input:[{role:'user',content:JSON.stringify({catalogContext:context,dictation:transcription})}],
-    text:{format:{type:'json_schema',name:'funix_voice_commands',strict:true,schema:voiceModelSchema}}}),signal,'INTERPRETATION',true)
+    text:{format:{type:'json_schema',name:'funix_voice_commands',strict:true,schema:voiceModelSchema}}})
+   if(footprintEnabled)try{
+    const m=summarizeVoicePromptFootprint(context,VOICE_INSTRUCTIONS,voiceModelSchema,transcription,requestBody)
+    ;(footprintSink??((event:VoicePromptFootprintMetric)=>console.info('funix_voice_footprint '+JSON.stringify(event))))(m)
+   }catch{/* Diagnostics must never block voice calls. */}
+   const result=await post('responses',requestBody,signal,'INTERPRETATION',true)
    if(result.status!=='completed')throw new ServiceError(502,'VOICE_MODEL_INCOMPLETE','A IA não concluiu a interpretação. Nenhuma alteração foi aplicada.')
    const content=(Array.isArray(result.output)?result.output:[]).filter((o:{type?:string})=>o.type==='message').flatMap((o:{content?:unknown[]})=>o.content??[])
    if(content.some((c:{type?:string})=>c.type==='refusal'))throw new ServiceError(422,'VOICE_MODEL_REFUSED','A IA recusou a interpretação. Nenhuma alteração foi aplicada.')

@@ -468,3 +468,32 @@ test('Issue77: error metadata has unknown usage and telemetry failure cannot aff
  const ok=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_USAGE_ENABLED:'true'},async()=>new Response(JSON.stringify({text:'ok'})),()=>{throw Error('logging unavailable')})!
  assert.equal(await ok.transcribe(audio,'audio/webm',new AbortController().signal),'ok')
 })
+
+test('Issue77: voice prompt footprint measures only fixed-size metadata, opt-in and without changing the provider request',async()=>{
+ const payload={status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"commands":[]}'}]}]}
+ const contexts=[{catalog:[{id:'private-piece-id',name:'SECRET CATALOG NAME',usable:true},{id:'x',name:'MOLDURA PRIVATE',usable:false}],pieces:[{id:'PRIVATE PIECE'}],piecePairs:[['private-piece-id','x']],recommendations:[{rules:[{id:'PRIVATE RULE'}]}],revisions:{configuration:1}}]
+ const sink:import('../voice-footprint.ts').VoicePromptFootprintMetric[]=[]
+ const requests:string[]=[]
+ const transport:typeof fetch=async(_url,init)=>{requests.push(String(init!.body));return new Response(JSON.stringify(payload))}
+ const off=openAIVoiceProvider({OPENAI_API_KEY:'synthetic'},transport,undefined,m=>sink.push(m))!
+ await off.interpret('PRIVATE DICTATION',contexts[0],new AbortController().signal)
+ assert.equal(sink.length,0)
+ const on=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_FOOTPRINT_ENABLED:'true'},transport,undefined,m=>sink.push(m))!
+ await on.interpret('PRIVATE DICTATION',contexts[0],new AbortController().signal)
+ assert.equal(sink.length,1)
+ assert.equal(requests[0],requests[1])
+ assert.equal(sink[0]!.catalogItems,2)
+ assert.equal(sink[0]!.catalogUsable,1)
+ assert.equal(sink[0]!.catalogUnusable,1)
+ assert.equal(sink[0]!.pieces,1)
+ assert.equal(sink[0]!.recommendationSets,1)
+ assert.equal(sink[0]!.recommendationRules,1)
+ assert(sink[0]!.requestBodyBytes>sink[0]!.contextBytes)
+ assert(sink[0]!.catalogBytes>0)
+ assert(sink[0]!.inputContentBytes>sink[0]!.contextBytes)
+ const allowed=['format','requestBodyBytes','inputContentBytes','instructionsBytes','outputSchemaBytes','contextBytes','catalogBytes','piecesBytes','recommendationsBytes','piecePairsBytes','revisionsBytes','catalogItems','catalogUsable','catalogUnusable','pieces','recommendationSets','recommendationRules']
+ assert.deepEqual(Object.keys(sink[0]!).sort(),allowed.sort())
+ for(const forbidden of ['PRIVATE','SECRET','DICTATION','private-piece-id','MOLDURA'])assert(!JSON.stringify(sink).includes(forbidden))
+ const exception=openAIVoiceProvider({OPENAI_API_KEY:'synthetic',FUNIX_VOICE_FOOTPRINT_ENABLED:'true'},transport,undefined,()=>{throw new Error('private sink error')})!
+ assert.deepEqual(await exception.interpret('SECRET',contexts[0],new AbortController().signal),{commands:[]})
+})
