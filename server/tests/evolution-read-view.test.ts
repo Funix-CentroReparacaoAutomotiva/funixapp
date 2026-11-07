@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { mergeReadMessages, parseConversationList, parseConversationMessages } from '../../src/chat/evolution-read-model.ts'
+import type { ReadUiMessage } from '../../src/chat/evolution-read-model.ts'
 
 const a = '11111111-1111-4111-8111-111111111111'
 const b = '22222222-2222-4222-8222-222222222222'
 const rows = { source: 'evolution', nextSkip: null, items: [{ conversationId: a, updatedAt: null, unreadCount: 0 }] }
-const message = (messageId: string, timestamp: number) => ({ messageId, timestamp, fromMe: false, kind: 'text', text: 'EXEMPLO SINTÉTICO' })
+const message = (messageId: string, timestamp: number): ReadUiMessage => ({ messageId, timestamp, fromMe: false, kind: 'text', text: 'EXEMPLO SINTÉTICO' })
 const messages = { source: 'evolution', conversationId: a, page: 1, nextPage: null,
   reportedTotal: 1, consistency: 'offset-not-snapshot', historyComplete: 'unknown',
   items: [message('synthetic-1', 1794045600)] }
