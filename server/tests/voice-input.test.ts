@@ -474,6 +474,13 @@ test('economic context pilot omits only model-visible recommendations; planner r
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db),ctx=readVoiceContext(db,f.at.id,f.scenario.id)
+  // The commercial fixture has no validated diagnosis rules by default.
+  // Add one synthetic rule only in memory to verify that we omit actual data.
+  ctx.recommendations.push({
+   diagnosisId:'diagnosis-synthetic',intensity:'leve',availability:'available',
+   rules:[{id:'rule-synthetic',sourceRowId:'rule-synthetic',sourceTable:'qa',serviceId:f.service.id,dimensionId:f.dimension.id,selectedByDefault:true}],
+   pending:[{ruleId:'pending-synthetic',reason:'SYNTHETIC_TEST_ONLY'}]
+  })
   const full=modelVoiceContext(ctx),compact=modelVoiceContext(ctx,'omit_recommendations')
   const {recommendations:rules,...untouched}=full
   assert(Array.isArray(rules)&&rules.length>0)
