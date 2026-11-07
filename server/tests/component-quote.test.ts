@@ -11,7 +11,7 @@ import{readVoiceContext}from'../voice-context.ts'
 import{voiceRevisions}from'../voice-planner.ts'
 import{stageVoiceResolution}from'../voice-resolution.ts'
 import{saneQuoteQuery}from'../component-quote-query.ts'
-import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl}from'../component-quote-provider.ts'
+import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl,QUOTE_DISCOVERY_INSTRUCTIONS,QUOTE_INSTRUCTIONS}from'../component-quote-provider.ts'
 import{reserveQuoteAttempt}from'../component-quote-budget.ts'
 import{createQuoteService}from'../component-quote-service.ts'
 import{loadQuotePilot}from'../component-quote-bootstrap.ts'
@@ -105,6 +105,51 @@ test('quote metrics are opt-in, sanitized and logging exceptions cannot break ca
 test('quotation links cannot contain credentials, tracking, arbitrary origins, listings or script URLs',()=>{
  assert.equal(safeQuoteUrl(quoteFixtureUrl),quoteFixtureUrl)
  for(const url of ['http://produto.mercadolivre.com.br/x','https://user:token@produto.mercadolivre.com.br/x','https://mercadolivre.com.br.evil.test/x','https://127.0.0.1/x','https://mercadolivre.com.br/loja/volkswagen','https://lista.mercadolivre.com.br/x','https://produto.mercadolivre.com.br/x?redirect=https://evil.test','https://produto.mercadolivre.com.br:444/x','javascript:alert(1)'])assert.equal(safeQuoteUrl(url),null)
+})
+test('focused discovery stays opt-in, uses one medium-context search and preserves limits and validator',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quote-discovery-'))
+ const variants:{context:string;instructions:string;tools:number;output:number}[]=[]
+ try{
+  for(const [enabled,expected] of [[false,'low'],[true,'medium']] as const){
+   const ledger=join(dir,enabled?'v2.json':'baseline.json')
+   let calls=0
+   const provider=openAIQuoteProvider({key:'synthetic',ledger,discoveryV2:enabled,transport:async(url,init)=>{
+    calls++
+    assert.equal(url,'https://api.openai.com/v1/responses')
+    const body=JSON.parse(init!.body as string)
+    assert.equal(body.tools.length,1)
+    assert.equal(body.tools[0].type,'web_search')
+    assert.equal(body.tools[0].search_context_size,expected)
+    assert.equal(body.max_tool_calls,1)
+    assert.equal(body.parallel_tool_calls,false)
+    assert.equal(body.max_output_tokens,4096)
+    assert.equal(body.store,false)
+    assert.equal(body.background,false)
+    assert.equal(body.text.format.name,'component_quote')
+    assert.deepEqual(JSON.parse(body.input),q)
+    assert.equal(body.instructions,enabled?QUOTE_DISCOVERY_INSTRUCTIONS:QUOTE_INSTRUCTIONS)
+    variants.push({context:expected,instructions:body.instructions,tools:body.max_tool_calls,output:body.max_output_tokens})
+    return new Response(JSON.stringify(response()))
+   }})
+   assert.equal((await provider.search(q,signal())).offers[0]?.price,'39.90')
+   assert.equal(calls,1)
+   assert.equal(JSON.parse(readFileSync(ledger,'utf8')).reserved,1)
+  }
+  assert.equal(variants.length,2)
+  assert.notEqual(variants[0]!.instructions,variants[1]!.instructions)
+  assert.match(QUOTE_DISCOVERY_INSTRUCTIONS,/UM anúncio/)
+  assert.match(QUOTE_DISCOVERY_INSTRUCTIONS,/offers vazio/)
+  assert.match(QUOTE_DISCOVERY_INSTRUCTIONS,/annotations/)
+  assert.match(QUOTE_DISCOVERY_INSTRUCTIONS,/sem segunda busca/)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+test('focused discovery does not accept evidence-free synthetic offers or modify safety checks',()=>{
+ for(const patch of [{price:'0'},{side:'direito'},{yearFrom:2022},{url:'https://evil.test/item'},{condition:'used'},{sourceQuote:'R$ 39,90'}]){
+  assert.equal(validateQuoteResponse(response([{...offer,...patch}]),q).offers.length,0)
+ }
+ const none=response([])
+ assert.equal(validateQuoteResponse(none,q).offers.length,0)
+ assert.equal(validateQuoteResponse(none,q).metrics.proposedOffers,0)
 })
 test('quotation transport fixes model/tool ceilings and reserves even failed calls across provider restarts',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'quote-')),ledger=join(dir,'ledger.json');let calls=0
