@@ -30,8 +30,8 @@ try{
   const context=await browser.newContext({viewport:{width,height},permissions:['microphone','clipboard-read','clipboard-write']});await audio.install(context);let page
   try{
    await context.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})
-   page=await context.newPage();const errors=[],componentPosts=[]
-   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname.endsWith('/componentes'))componentPosts.push(r.url())})
+   page=await context.newPage();const errors=[],componentPosts=[],revisionPosts=[],switchTransitions=[]
+   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname.endsWith('/componentes'))componentPosts.push(r.url());if(r.method()==='POST'&&new URL(r.url()).pathname.endsWith('/copiloto/revisar'))revisionPosts.push(r.postDataJSON())})
    await page.goto(origin+'/atendimentos/'+f.at.id+'?aba=diagnosticos');await page.locator('.commercial-workspace').waitFor()
    await page.locator('.approved-finance .summary').click();await page.locator('.neg-head').click()
    const money=page.getByRole('textbox',{name:'Valor em reais',exact:true});await money.fill('123,45');await money.blur();await page.locator('.approved-finance .summary').click()
@@ -47,6 +47,33 @@ try{
     assert(await line.evaluate(el=>el.scrollWidth<=el.clientWidth+1))
     const quote=row.getByRole('button',{name:'Cotar componente',exact:true});assert(await quote.isDisabled());assert.equal(await quote.getAttribute('title'),'Cotação indisponível nesta etapa');assert.equal(await quote.locator('svg').count(),1)
    }
+   async function toggleComponent(row,expected,keyboard=false){
+    const control=row.getByRole('switch'),before=revisionPosts.length
+    await row.locator('button[role="switch"]:enabled').waitFor({state:'visible',timeout:3000})
+    assert.equal(await control.getAttribute('aria-checked'),String(!expected))
+    // Status is asserted after receiving the response: do not hide 4xx/5xx by
+    // filtering only successful replies, and do not confuse HTTP with rendering.
+    const pending=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/copiloto/revisar'))
+    if(keyboard){await control.focus();assert(await control.evaluate(el=>el===document.activeElement));await page.keyboard.press('Space')}
+    else await control.click()
+    const response=await pending;assert.equal(response.status(),200)
+    const request=response.request().postDataJSON(),revised=await response.json()
+    assert.equal(request.enabled,expected)
+    const command=revised.reviewGroups.flatMap(g=>g.entries).find(e=>e.component?.commandId===request.commandId)?.component
+    assert(command,'server response must include the revised component')
+    assert.equal(command.enabled,expected)
+    const change=revised.plan.changes.find(c=>c.op==='add_component'&&c.origins.presence?.commandId===request.commandId)
+    assert(change,'server plan must include the component command')
+    assert.equal(change.flags[f.scenario.id],expected)
+    assert.equal(revised.applied,false)
+    // A locator re-resolves after the component remounts on a new resolution.
+    await row.getByRole('switch',{checked:expected}).waitFor({state:'visible',timeout:3000})
+    await row.locator('button[role="switch"]:enabled').waitFor({state:'visible',timeout:3000})
+    assert.equal(await control.getAttribute('aria-checked'),String(expected))
+    assert.equal(revisionPosts.length-before,1,'one switch activation must issue one revision')
+    switchTransitions.push({trigger:keyboard?'Space':'click',expected,requestEnabled:request.enabled,serverEnabled:command.enabled,serverFlag:change.flags[f.scenario.id],domChecked:await control.getAttribute('aria-checked'),revisionPosts:revisionPosts.length-before,status:response.status()})
+    return revised
+   }
    assert.equal(await panel.locator('.voice-piece h3').first().innerText(),'Para-choque dianteiro');writeFileSync(artifacts+'/accessibility-'+width+'.txt',await row.ariaSnapshot())
    await compactRow(row);assert.equal(await row.getByRole('switch').getAttribute('aria-checked'),'true')
    assert(!(await panel.innerText()).includes('Dados compartilhados; habilitação por cenário.'));assert(!(await panel.innerText()).includes('Confira as alterações antes de aplicar.'))
@@ -57,10 +84,10 @@ try{
    await panel.getByRole('alert').filter({hasText:'quantidade positiva'}).waitFor()
    assert.equal(await row.getByRole('textbox',{name:'Preço unitário do componente',exact:true}).inputValue(),'-1')
    await row.getByRole('textbox',{name:'Preço unitário do componente',exact:true}).fill('35,90')
-   const revisedResponse=page.waitForResponse(r=>r.url().endsWith('/copiloto/revisar')&&r.status()===200);await row.getByRole('switch').click();const revised=await (await revisedResponse).json()
+   const revised=await toggleComponent(row,false)
    assert.equal(revised.plan.changes[0].flags[f.scenario.id],false);assert.equal(revised.plan.changes[0].values.quantity,'2');assert.equal(revised.plan.changes[0].values.manualPrice,'35.9');assert.equal(db.prepare('SELECT total_changes() n').get().n,writes)
    assert.equal(components.list(f.at.id).length,0);await panel.getByRole('button',{name:'Revisar valores',exact:true}).waitFor({state:'hidden'})
-   assert.equal(await row.getByRole('switch').getAttribute('aria-checked'),'false');const enabled=page.waitForResponse(r=>r.url().endsWith('/copiloto/revisar')&&r.status()===200);await row.getByRole('switch').focus();await page.keyboard.press('Space');await enabled;assert.equal(await row.getByRole('switch').getAttribute('aria-checked'),'true');await compactRow(row)
+   await toggleComponent(row,true,true);await compactRow(row)
    await panel.screenshot({path:artifacts+'/edited-'+width+'.png'})
    async function apply(){const refreshed=page.waitForResponse(r=>r.request().method()==='GET'&&new URL(r.url()).pathname.endsWith('/cenarios')&&r.status()===200),applied=page.waitForResponse(r=>r.url().endsWith('/copiloto/aplicar')&&r.status()===200);await panel.locator('.voice-apply').click();await applied;await panel.waitFor({state:'hidden'});return (await refreshed).json()}
    const workspace=await apply(),guide=components.list(f.at.id)[0]
@@ -69,7 +96,7 @@ try{
    assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===other.id).componentFlags[guide.id],false)
    await page.locator('.approved-finance .summary').click();assert.match(await money.inputValue(),/123,45/);await page.locator('.approved-finance .summary').click()
    mode='zero';await recordVoice(page,audio);assert.equal(await panel.locator('.voice-entry-label').first().innerText(),'Parafuso fixador')
-   const offResponse=page.waitForResponse(r=>r.url().endsWith('/copiloto/revisar')&&r.status()===200);await panel.getByRole('switch').click();await offResponse;await compactRow(panel.locator('.voice-component-values').first());await panel.screenshot({path:artifacts+'/off-'+width+'.png'});await apply();const zero=components.list(f.at.id)[1];assert.equal(zero.manualPrice,'0');assert.equal(zero.name,'PARAFUSO FIXADOR');assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===f.scenario.id).componentFlags[zero.id],false)
+   await toggleComponent(panel.locator('.voice-component-values').first(),false);await compactRow(panel.locator('.voice-component-values').first());await panel.screenshot({path:artifacts+'/off-'+width+'.png'});await apply();const zero=components.list(f.at.id)[1];assert.equal(zero.manualPrice,'0');assert.equal(zero.name,'PARAFUSO FIXADOR');assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===f.scenario.id).componentFlags[zero.id],false)
    for(const label of ['Motorista','Passageiro']){
     mode='pair';await recordVoice(page,audio);const selected=page.waitForResponse(r=>r.url().endsWith('/copiloto/resolver'))
     await panel.getByRole('button',{name:label,exact:true}).click();const result=await (await selected).json()
@@ -79,7 +106,7 @@ try{
    assert.equal(both.plan.changes.filter(c=>c.op==='add_component').length,2);assert.equal(both.plan.changes.filter(c=>c.op==='add_piece').length,1)
    for(let index=0;index<2;index++){
     row=panel.locator('.voice-component-values').nth(index);await row.getByRole('textbox',{name:'Quantidade do componente',exact:true}).fill(String(index+2));await row.getByRole('textbox',{name:'Preço unitário do componente',exact:true}).fill(String((index+1)*10))
-    const saved=page.waitForResponse(r=>r.url().endsWith('/copiloto/revisar')&&r.status()===200);if(index===1)await row.getByRole('switch').click();else await row.getByRole('button',{name:'Revisar valores',exact:true}).click();await saved;await compactRow(row);await panel.getByRole('button',{name:'Revisar valores',exact:true}).waitFor({state:'hidden'})
+    if(index===1)await toggleComponent(row,false);else{const saved=page.waitForResponse(r=>r.url().endsWith('/copiloto/revisar'));await row.getByRole('button',{name:'Revisar valores',exact:true}).click();assert.equal((await saved).status(),200)}await compactRow(row);await panel.getByRole('button',{name:'Revisar valores',exact:true}).waitFor({state:'hidden'})
    }
    await panel.screenshot({path:artifacts+'/both-'+width+'.png'});await apply();assert.equal(components.list(f.at.id).length,4)
    const additions=components.list(f.at.id).slice(2);assert.equal(additions.filter(c=>f.scenarios.list(f.at.id).find(s=>s.id===f.scenario.id).componentFlags[c.id]).length,1);assert.equal(new Set(additions.map(c=>c.pieceId)).size,2);for(const c of additions)assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===other.id).componentFlags[c.id],false)
@@ -96,6 +123,7 @@ try{
    assert.equal(await panel.getByRole('switch').getAttribute('aria-checked'),'false');assert(await panel.getByRole('switch').isDisabled());assert.match(await panel.innerText(),/fora do cálculo/);assert.equal(await panel.locator('.voice-entry-label').first().innerText(),'Suporte LED H4');await compactRow(panel.locator('.voice-component-values').first());await panel.screenshot({path:artifacts+'/parent-off-'+width+'.png'})
    assert.equal(f.commercial.list(f.at.id).find(p=>p.id===f.item.id).services[0].id,f.item.services[0].id)
    assert(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth+1));assert.deepEqual(componentPosts,[]);assert.deepEqual(errors,[])
+   writeFileSync(artifacts+'/switch-sync-'+width+'.json',JSON.stringify({width,switchTransitions},null,2)+'\n')
    console.log('PASS Issue66 '+width+ ' compact four controls, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard')
   }catch(error){if(page){console.log('VISIBLE',await page.locator('body').innerText());await page.screenshot({path:artifacts+'/failure-'+width+'.png'})}throw error}
   finally{await context.close();app.closeAllConnections();await new Promise(r=>app.close(r));db.close()}

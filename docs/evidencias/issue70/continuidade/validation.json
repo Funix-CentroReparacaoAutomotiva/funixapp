@@ -1,0 +1,101 @@
+{
+  "checked_at_utc": "2026-11-07T01:51:11.600186+00:00",
+  "main_sha": "ac73fed5431547999f82c79a6e35dc9fd34ea750",
+  "branch_parent_after_main_update": "4e4ab5468e66f50478b38c8c2c9de09b862f4336",
+  "switch_script_sha256": "e7bfb710b1829952eb3e56f43acd9bec65c1c04bb3d278dca538bdc022a5dc27",
+  "automation": {
+    "command": "npm run check",
+    "exit_code": 0,
+    "tests": 579,
+    "passed": 579,
+    "failed": 0,
+    "skipped": 0,
+    "build": true,
+    "server_types": true,
+    "lint": "passed with pre-existing warnings",
+    "log_sha256": "c18d058cc6e18f805353bef9adcf2d135d826e77c231050d3e812007aa303a1f"
+  },
+  "chromium": {
+    "voice-browser-review.mjs": {
+      "exit_code": 0,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "elapsed_seconds": 31.31,
+      "log_sha256": "a854910b61e625a27cc85947d30e4c24d25b9f081bf0ad38c8ecaa2b4d9826c9"
+    },
+    "voice-resolution-browser.mjs": {
+      "exit_code": 0,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "elapsed_seconds": 59.38,
+      "log_sha256": "245ea45cfd03d38e491ff5681c1131f26e7596512c6676d3811a0a8579cd051b"
+    },
+    "voice-clarification-browser.mjs": {
+      "exit_code": 0,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "elapsed_seconds": 44.84,
+      "log_sha256": "4f8d30f8bf86b71ea6a73c65dcb1939b0b9c9528e365c1afd60b4cf1f083bc90"
+    },
+    "quote-pilot-browser.mjs": {
+      "exit_code": 0,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "elapsed_seconds": 12.96,
+      "log_sha256": "0b2f3f46644a74c4a92f9f666a39f80c65665a5161a6e12461f79ec193362dea"
+    },
+    "voice-components-browser.mjs": {
+      "exit_code": 0,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "log_sha256": "911e32d84c099724d86f7912a5ed80c33aef574214fd973d6cc308e81d8adc97"
+    }
+  },
+  "prior_workflow_rerun": {
+    "run_id": 42324004884,
+    "job_id": 128257482462,
+    "latest_conclusion": "success",
+    "note": "Rerun of preceding SHA, not CI of this correction"
+  },
+  "preflight": {
+    "observations_current": true,
+    "approved_openai_secret_configured": false,
+    "openai_key_env_present": false,
+    "network_policy_enforced": true,
+    "api_openai_allowed": false,
+    "ledger_configured": false,
+    "live_flag_authorized": false,
+    "production": false,
+    "ledger_inspected_created_or_reset": false,
+    "provider_request_attempts_this_session": 0,
+    "web_search_calls_this_session": 0,
+    "p01_executed": false,
+    "real_latency_ms": null,
+    "real_input_tokens": null,
+    "real_output_tokens": null,
+    "real_price_sources": null,
+    "real_query_cost_usd": null,
+    "incurred_provider_cost_this_session_usd": 0,
+    "status": "blocked_missing_credential_authorized_network_and_ledger"
+  },
+  "limitations": [
+    "Chromium fixtures only; no real OpenAI calls",
+    "No physical Android/TalkBack homologation",
+    "Final remote CI recorded on PR/checks for the published SHA, separate from local validation"
+  ]
+}

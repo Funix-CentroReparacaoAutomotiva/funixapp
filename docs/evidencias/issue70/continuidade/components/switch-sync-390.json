@@ -1,0 +1,45 @@
+{
+  "width": 390,
+  "switchTransitions": [
+    {
+      "trigger": "click",
+      "expected": false,
+      "requestEnabled": false,
+      "serverEnabled": false,
+      "serverFlag": false,
+      "domChecked": "false",
+      "revisionPosts": 1,
+      "status": 200
+    },
+    {
+      "trigger": "Space",
+      "expected": true,
+      "requestEnabled": true,
+      "serverEnabled": true,
+      "serverFlag": true,
+      "domChecked": "true",
+      "revisionPosts": 1,
+      "status": 200
+    },
+    {
+      "trigger": "click",
+      "expected": false,
+      "requestEnabled": false,
+      "serverEnabled": false,
+      "serverFlag": false,
+      "domChecked": "false",
+      "revisionPosts": 1,
+      "status": 200
+    },
+    {
+      "trigger": "click",
+      "expected": false,
+      "requestEnabled": false,
+      "serverEnabled": false,
+      "serverFlag": false,
+      "domChecked": "false",
+      "revisionPosts": 1,
+      "status": 200
+    }
+  ]
+}

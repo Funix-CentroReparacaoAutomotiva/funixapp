@@ -1,6 +1,6 @@
 # Issue #70 — piloto isolado de cotação com OpenAI web_search
 
-Data de referência: 06/11/2026, America/Sao_Paulo. Base: main `5351ab8ea4c53ae4dff4e33d7a638c26a49cb059` (PR #68). Branch independente `feat/issue70-cotacao-web-search`; não inclui a investigação da branch PR #69.
+Data de referência: 06/11/2026, America/Sao_Paulo. Base atual: main `ac73fed5431547999f82c79a6e35dc9fd34ea750`, incorporada na branch da PR. O piloto começou na main `5351ab8ea4c53ae4dff4e33d7a638c26a49cb059` (PR #68). Branch independente `feat/issue70-cotacao-web-search`; não inclui a investigação da branch PR #69.
 
 **Entrega:** provider Responses separado da interpretação, endpoint autenticado, controle persistente de tentativas/custo, harness de dez casos, protótipo compacto explicitamente habilitado apenas no servidor de teste e testes de contrato/HTTP/navegador. O startup normal continua sem cotação; `NODE_ENV=production` bloqueia o endpoint mesmo com serviço injetado.
 
@@ -108,7 +108,7 @@ Criar `work/` antes dos dois arquivos se necessário. O comando `--live` selecio
 
 O script de navegador usa o módulo Playwright já disponível no ambiente de desenvolvimento e Chromium local. Na sessão foi usada a instalação disponibilizada pelo executor, sem alterar package.json/lockfile. O app do harness usa SQLite `:memory:`, áudio PCM sintético e provider injetado. Não instalar dependência paga nem reutilizar banco local instalado.
 
-## Testes e evidências
+## Testes e evidências iniciais
 
 - `npm run check`: **562/562 testes aprovados**, zero falhas/ignorados; build frontend, tipos backend e lint concluídos. Avisos legados de lint permanecem nos arquivos existentes; build/lint repetidos após ajuste final do ciclo de vida da UI.
 - Doze testes novos em `server/tests/component-quote.test.ts`: DTO/PII/ano/lado, ausência de busca/citação/usage, JSON inválido/recusa/incompleto, URL/XSS, aplicação/preço/kit/parcela/condição, teto persistente inclusive após recriar provider, corpo grande/429, cache concorrente por sessão, timeout e descarte, auth/origem/ownership/shape, revisão sem escrita e invalidada, expiração/stale e bloqueio em production.
@@ -147,3 +147,26 @@ Foram concluídas as proteções independentes do impedimento: ano ausente retor
 A validação `--live` sem os gates gerou somente estados pendentes/preflight em arquivo de trabalho, sem executar o caminho mock nem o transporte OpenAI. Os artefatos mock anteriores continuam identificados como históricos offline e não foram usados como evidência desta rodada. O novo teste de ano ausente comprova ausência de transporte/arquivo de ledger e preservação do limite de tentativa para consulta elegível. A regressão atual `npm run check` aprovou **563/563 testes**, zero falhas/ignorados, build, tipos e lint (avisos legados); não houve mudança de UI, provedor de voz, motor, startup, segredos ou infraestrutura.
 
 **Encaminhamento:** manter a PR em draft, com execução real pendente das pré-condições técnicas. Quando disponibilizadas por canal aprovado no executor isolado, revalidar política/credencial e inspecionar o ledger original antes de uma única chamada P01; somente continuar caso haja resposta tecnicamente válida, preço sustentado, fonte/link e custo compatíveis. Não é necessária nova autorização de direção para repetir este preflight, mas este registro não supre credencial, conectividade ou evidência da primeira resposta.
+
+
+## Continuidade — switch Chromium, main e preparação do executor
+
+O [último encaminhamento técnico](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/72#issuecomment-6700492835) foi lido. A repetição do workflow antigo [42324004884](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/actions/runs/42324004884) terminou em sucesso no job `128257482462`; isso não elimina a corrida da asserção original. O teste aguardava resposta HTTP e lia `aria-checked` imediatamente, antes de necessariamente ocorrer o render React da nova resolução.
+
+A correção em `scripts/voice-components-browser.mjs` preserva as exigências anteriores e acrescenta:
+
+- espera por um switch visível/habilitado e confirmação do estado inicial oposto;
+- foco efetivo no controle antes de `Space`, mantendo interação de teclado real;
+- exatamente um POST de revisão por ativação, conferência explícita de HTTP 200 (sem filtrar e esconder resposta de erro), `request.enabled`, componente da resposta e flag no novo plano do cenário;
+- resposta `applied:false`, seguida de espera do locator pelo estado acessível esperado em até **3 segundos**, inclusive após desmontagem/remontagem por mudança da resolução;
+- asserção final exata de `aria-checked` e preservação dos controles compactos, banco sem escrita durante a revisão, MR, flags dos outros cenários, acessibilidade e clipboard.
+
+Não há sleep fixo, retry de clique, alteração de expectativa ou desabilitação de caso. O mesmo helper cobre desligamento inicial, reativação por Espaço, componente a preço zero desligado e escolha de lado no lote Ambos. Os registros `components/switch-sync-{320,390,1440}.json` documentam pedido, retorno/plano e DOM: quatro transições por largura, todas com uma revisão e HTTP 200.
+
+A branch incorporou a main `ac73fed` sem conflitos, mantendo o trabalho de Chat #73 como ancestral de main: **nenhum arquivo experimental de Chat foi alterado no diff da PR contra a main atual**. Não houve integração desta PR à main nem deploy. Os novos testes de Chat herdados entram na regressão completa.
+
+A validação local atual é **579/579 testes aprovados**, zero falhas/ignorados, build/tipos/lint concluídos com avisos legados. A matriz dos cinco roteiros Chromium nas larguras 320/390/1440, os registros do switch, screenshots dos estados afetados e o preflight estão em [continuidade/validation.json](evidencias/issue70/continuidade/validation.json). O teste do switch não usa reexecução automática para obter aprovação. O CI remoto deve ser conferido no SHA final da PR, e não inferido do rerun do commit anterior.
+
+O [guia de ambiente isolado](ISSUE70_AMBIENTE_ISOLADO.md) cobre credencial previamente aprovada por secret manager/variável protegida, permissão de rede específica para `api.openai.com`, proxy/CA preservados, ledger único persistente com permissões restritas e criação exclusiva somente em rodada inédita confirmada, sem reset na retomada. Mostra a flag local e o comando de **uma única tentativa P01**, e exige inspeção de fontes/preços/usage/custo antes de decidir por outro caso.
+
+**P01 continua impedido nesta sessão:** nenhum segredo OpenAI configurado, `OPENAI_API_KEY` ausente, `api.openai.com` fora da política aplicada, ledger não configurado e flag local ausente. Não houve probe a destino bloqueado, chamada Responses, reserva/criação/reset de ledger, consulta a `.env`/produção ou cópia de segredo. A autorização da direção existe; as pré-condições técnicas continuam ausentes. Zero requisições pagas nesta sessão; preços/fontes/tokens/latência/custo por resposta real são N/D. As evidências Chromium usam somente fixtures sintéticas identificadas e não substituem pesquisa real. Manter a PR em draft, sem merge/deploy/habilitação produtiva.
