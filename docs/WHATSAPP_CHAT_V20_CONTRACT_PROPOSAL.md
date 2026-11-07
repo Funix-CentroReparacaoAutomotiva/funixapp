@@ -33,15 +33,17 @@ Nenhum teste com conteúdo real foi aprovado ou executado. Não se comprovou cap
 
 **Invariantes:** selecionar outro Atendimento não altera `conversationId`, consulta de mensagens nem a linha do tempo; vincular/desvincular não muda conteúdo do histórico; nenhuma mudança de contexto cria lead ou altera faturamento; vínculo N:N admite (0, N) em ambos os sentidos.
 
-## 4. Autorização e visibilidade — decisão bloqueante antes de exposição real
+## 4. Acesso e privacidade — decisão de produto: usuário único
 
-**Risco material:** histórico inteiro pode conter assuntos de múltiplos veículos, familiares, representantes e Atendimentos antigos. A lógica de leitura legada por Atendimento limita a visibilidade de forma diferente. O login por senha/sessão do MVP não identifica funções/papéis individuais nem fornece alçada suficiente para ampliar acesso.
+**Diretriz expressa pela direção em 07/11/2026:** a primeira versão do FunixApp terá **um único operador humano**, o proprietário. Não implementar cargos, múltiplos usuários, RBAC, grants, administração de contas, equipes ou hierarquias de permissões agora. Esta decisão vale para o **desenho do MVP**, não concede deploy ou acesso a dados produtivos.
 
-**Proposta conservadora:** antes de qualquer endpoint real de histórico por conversa, implementar ou comprovar identidade individual do operador e uma política aprovada de permissão. Por padrão, **negar** acesso sem autorização expressa. Uma autorização sobre Atendimento A **não concede** automaticamente acesso à conversa inteira quando ligada ao Atendimento B. A liberação precisa ser no escopo `conversationId` para um usuário/função autorizada, com decisão explícita sobre históricos cruzados.
+**Regra proposta:** o único operador com sessão válida na autenticação atual do FunixApp poderá consultar o histórico integral das conversas da instância explicitamente configurada `funix_comercial`, inclusive quando uma conversa estiver relacionada a vários Atendimentos. Essa leitura é intencional na experiência V20. Uma sessão anônima/expirada nunca consulta Evolution. Não há compartilhamento de senha com funcionários. A aplicação não abre acesso público.
 
-Para cada operação de conteúdo, o backend revalida sessão, operador, permissão específica por conversa e escopo da instância; nunca confia em `remoteJid` ou `atendimentoId` enviados pelo navegador como prova de autorização. Registra auditoria mínima de acessos/associações sem conteúdo sensível, sem repassar tokens de Evolution ao cliente, com resposta `Cache-Control: no-store`; erros não revelam existência de conversa sem permissão. Proteção de dados, retenção, finalidades e alçadas de acesso exigem validação de privacidade conforme `06_legal_and_policy.md`.
+Medidas mínimas que permanecem: login e senha robusta existentes, HTTPS e cookie seguro no acesso remoto, checagem de sessão no backend a cada chamada, `Cache-Control: no-store`, instância e JID resolvidos exclusivamente pelo servidor a partir de um `conversationId` opaco, limites de paginação/timeout, segredo Evolution somente no backend, proteção `Origin` nas escritas e auditoria técnica mínima de vínculos. Nunca gravar conteúdo/credenciais em logs. Conversas sem Atendimento podem ser exibidas sem gerar leads automáticos. As mudanças em vínculos exigem confirmação e motivo, mas **não outro nível de aprovação interna**.
 
-**Não decidido:** matriz de quem lê histórico integral e em que circunstâncias (gestão, comercial, operação, auditoria); visibilidade de conversas sem Atendimento; duração de logs/auditoria. Essas escolhas não devem ser inventadas pelo código.
+A sessão atual de senha só é aceitável para esta fase enquanto **a premissa de acesso humano único for verdadeira**. Antes da entrada de qualquer segundo operador humano, reavaliar identidade individual, revogação, papéis conforme necessidade e proteção de histórico cruzado. Proteção de dados e finalidade continuam aplicáveis; usuário único não elimina LGPD.
+
+A troca de Atendimento é só contexto comercial; não altera o histórico WhatsApp nem concederá acesso a outras instâncias ou a conversas não reconhecidas pelo servidor.
 
 ## 5. Interfaces candidatas (não rotas existentes)
 
@@ -49,10 +51,10 @@ Os exemplos abaixo são **propostas**; nenhum endpoint foi criado.
 
 | Operação | Contrato sugerido | Restrições |
 |---|---|---|
-| `GET /api/chat/conversations` | Lista paginada de metadados autorizados com `conversationId`, status de disponibilidade e quantidade de vínculos | Sem prévias ou conteúdo até autorização; não expor JIDs arbitrários |
-| `GET /api/chat/conversations/:conversationId/messages?limit=50&page=1` | Retorno normalizado de mensagens autorizadas, `page`, `reportedTotal`, `consistency:'offset-not-snapshot'` | `page` é escolha provisória; não oferecer cursor estável inexistente; não confundir contagem de fornecedor com snapshot |
+| `GET /api/chat/conversations` | Lista paginada de metadados autorizados com `conversationId`, status de disponibilidade e quantidade de vínculos | Sem conteúdo de conversas anônimas; não expor JIDs arbitrários |
+| `GET /api/chat/conversations/:conversationId/messages?limit=50&page=1` | Retorno normalizado para o operador autenticado, `page`, `reportedTotal`, `consistency:'offset-not-snapshot'` | `page` é escolha provisória; não oferecer cursor estável inexistente; não confundir contagem de fornecedor com snapshot |
 | `GET /api/chat/conversations/:conversationId/atendimentos` | Lista de Atendimentos associados que operador pode ver | Não incluir Atendimentos fora da permissão |
-| `POST /api/chat/conversations/:conversationId/atendimentos` | Vínculo explícito com `atendimentoId`, `expectedRevision`, `requestId`, `reason` | Escrita exige autenticação individual, Origin, autorização, idempotência, auditoria e conflito 409 |
+| `POST /api/chat/conversations/:conversationId/atendimentos` | Vínculo explícito com `atendimentoId`, `expectedRevision`, `requestId`, `reason` | Escrita exige sessão autenticada, Origin, confirmação explícita, idempotência, auditoria e conflito 409 |
 | `DELETE /api/chat/conversations/:conversationId/atendimentos/:linkId` | Desvínculo explícito com revisão/motivo | Sem excluir histórico nem vínculos legados por efeito colateral |
 | Contexto selecionado | Armazenado localmente na sessão do operador ou em preferência por usuário+conversa | Não confundir com vínculo; não dar acesso |
 
@@ -84,7 +86,7 @@ A interface deve diferenciar “sem mensagens retornadas” de “histórico com
 
 **C — Espelho durável:** avaliar se requisitos aprovados incluírem completude auditável, recuperação histórica, pesquisa, confiabilidade de eventos ou independência de retenção Evolution. Exige projeto separado de eventos, backfill, idempotência, recuperação, privacidade e backups; não presumir RabbitMQ obrigatório.
 
-**Falha/degradação:** em indisponibilidade Evolution, retornar estado explícito e não bloquear Atendimento/orçamento/ERP; não transformar timeout em chat vazio. Nenhum polling agressivo. O PostgreSQL Evolution não será consultado diretamente pelo browser; a rota de produção deve passar por backend e política de acesso.
+**Falha/degradação:** em indisponibilidade Evolution, retornar estado explícito e não bloquear Atendimento/orçamento/ERP; não transformar timeout em chat vazio. Nenhum polling agressivo. O PostgreSQL Evolution não será consultado diretamente pelo browser; a rota de produção deve passar por backend e validação da sessão única.
 
 ## 7. Compatibilidade e evolução de schema
 
@@ -94,32 +96,31 @@ A interface deve diferenciar “sem mensagens retornadas” de “histórico com
 - Não ativar `capabilities.messages` sem autenticação/permissão implementada, contrato real homologado e observabilidade.
 - Evitar adicionar entidades redundantes de contatos/veículos/ERP e inferência por telefone; n8n mantém classificação de leads e operação existente.
 
-## 8. Aceite e sequência recomendada
+## 8. Aceite e sequência recomendada (usuário único)
 
-| Ordem | Entrega | Ferramenta preferida | Gate |
+| Ordem | Entrega | Ferramenta | Gate |
 |---|---|---|---|
-| 1 | Revisão desta especificação + decisão de permissão de histórico | ChatGPT + direção | Não publicar história cruzada sem alçada |
-| 2 | Testes 100% sintéticos da política de visibilidade e invariante N:N, sem migração | ChatGPT ou Codex se necessário para execução integrada | Provar isolamento e invariantes |
-| 3 | Leitor backend experimental com transporte injetável e autenticação por conta individual; sem deploy | Codex **somente** se integração/testes no repositório completo justificarem | CI, testes negativos e regressão |
-| 4 | Migração aditiva do relacionamento N:N após aprovar regras e backup/restore | Codex, por ambiente e testes integrados | Dados legados preservados e rollback |
-| 5 | Piloto interno, explicitamente autorizado e reversível; amostra consentida/permitida | Ferramenta conforme acesso real | Métrica de desempenho, completude declarada, privacidade e proteção da produção |
-| 6 | Envio de mensagens e atualizações em tempo real | Projeto separado | Idempotência, observabilidade, segurança, continuidade do WhatsApp/n8n |
+| 1 | Aplicar premissa de um operador; revisar contrato V20, vínculo N:N e segurança | ChatGPT | Sem desenvolver RBAC/contas múltiplas |
+| 2 | Testes sintéticos de login, escopo da instância, vínculos N:N, contexto e rejeições | ChatGPT ou Codex conforme verificação | Não tocar produção |
+| 3 | Adaptador backend experimental de leitura por conversa via sessão atual | Codex quando testes integrados justificarem | CI + nenhum acesso de navegador à chave Evolution |
+| 4 | Migração aditiva de vínculos N:N, preservando períodos históricos e endpoint legado | Codex, após plano de backup/restauração | Regressão e rollback |
+| 5 | Piloto interno reversível com autorização específica | Ferramenta conforme acesso | Sem interromper n8n/WhatsApp |
+| 6 | Envio, mídia e tempo real | Projeto separado | Idempotência e resiliência |
 
 ### Cenários mínimos de teste
 
-- Uma conversa com dois Atendimentos, um Atendimento com dois chats; sem Atendimento; Atendimento sem chat.
-- Seleção A→B não altera requisição de mensagens nem histórico; troca de chat recupera contexto válido ou estado neutro.
-- Desvínculo da associação ativa não apaga mensagens; contexto inválido é limpo; concorrência de duas revisões gera 409.
-- Usuário sem autorização recebe negação mesmo com link conhecido/URL adivinhada; sessão expirada; acesso permitido a A mas não ao histórico cruzado de B; tentativa de JID arbitrário; mensagens e mídia nunca aparecem em logs/erros.
-- Paginação sob inserção/remoção/empates; identidade PN/LID não inferida; erro 401/timeout/5xx; zero de resultados não significa histórico totalmente vazio.
-- Nenhum requisito de cliente/n8n depende do Chat para seguir operando; `capabilities.messages=false` permanece até liberação.
+- Sem sessão e sessão expirada: nenhum acesso à Evolution.
+- Sessão autenticada do operador único: leitura do histórico de conversa na instância configurada; nenhum acesso por instância/JID arbitrários fornecidos pelo browser.
+- Uma conversa associada a dois Atendimentos e um Atendimento associado a duas conversas; troca de contexto não altera histórico.
+- Chat sem Atendimento; Atendimento sem Chat; seleção de contexto inválido; desvínculo não apaga mensagens.
+- Concorrência de vínculos: revision e requestId impedem duplicações ou atualização perdida.
+- Paginação instável/empates, falha/timeout, privacidade em logs e não exposição de segredos.
+- Preservar endpoint legado e `capabilities.messages=false` até piloto autorizado.
 
-## 9. Decisões para aprovação posterior
+## 9. Condições de avanço
 
-1. **Quem tem permissão de leitura do histórico integral por conversa?** Recomendação: privilégio de função específica, auditável, nunca automaticamente implícito no vínculo com Atendimento.
-2. **Como vincular ou desvincular?** Recomendação: ação explícita autorizada e auditada; sugestão por telefone/nome/placa é candidato, não vínculo.
-3. **Contexto ativo deve persistir entre sessões?** Recomendação: inicialmente só por sessão individual; persistência por usuário após confirmar necessidade real.
-4. **Como tratar históricos antigos e retenção?** Depende de orientação de privacidade e garantia de cobertura; não preencher com dedução.
-5. **Qual desempenho é aceitável?** Definir pela UX em teste piloto, não por estimativa do EXPLAIN sintético.
+**Definido pela direção:** um único operador humano, sem diferenciação de cargos ou perfis; o login atual é a referência de autenticação do MVP. Não desenvolver gestão de usuários enquanto essa premissa se mantiver.
 
-**Nenhuma dessas propostas equivale a política formal até aprovação expressa.**
+**Ainda pendente para implantação:** contrato técnico de leitura por conversa e tratamento de dados sensíveis; migração N:N, recuperação/backup, limites de paginação e desempenho, ausência de envio e implantação controlada. A política para múltiplos operadores só será desenhada se a realidade mudar.
+
+**Nenhuma alteração de ambiente, merge, migração ou deploy foi autorizada por esta especificação.**
