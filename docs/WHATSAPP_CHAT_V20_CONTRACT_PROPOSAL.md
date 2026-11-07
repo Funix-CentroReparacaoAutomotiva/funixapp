@@ -18,7 +18,7 @@ O protótipo usa `demoLinks` como associação N:N e `demoActiveByChat` como sel
 | `POST /chat/findMessages/funix_comercial` JID sintético, status 200 e 200 ms em uma chamada | Verificado via saída fornecida pela direção | Não é benchmark ou SLA |
 | Segunda chamada sintética: JSON no formato esperado, page=1, total=0, records=0 | Verificado via saída fornecida pela direção | Não demonstra filtros sobre dados reais nem cobertura histórica |
 | Contador/paginação separados, `page` e `offset` (offset=tamanho), ordenação por timestamp sem desempate estável | Verificado no código público Evolution 2.3.7 e POC sintética #73 | Pode duplicar/omitir sob mutação, sem snapshot |
-| O usuário do FunixApp usa sessão por senha compartilhada/sem papéis individuais formalizados no `server/app.ts` | Código da aplicação | Sessão autenticada NÃO basta para conceder acesso a todo histórico |
+| O FunixApp usa sessão autenticada por senha, sem papéis individuais, no `server/app.ts` | Código da aplicação + decisão da direção de operador único | Sessão autenticada atende ao MVP enquanto o acesso humano permanecer exclusivo; requer revisão antes do segundo usuário |
 | `capabilities.messages=false`, ingest HMAC inativo por padrão, endpoint legado GET por Atendimento | Código da aplicação | Não ativar nem mudar por documentação |
 
 Nenhum teste com conteúdo real foi aprovado ou executado. Não se comprovou captura de mensagens do celular, retenção histórica, mídia, disponibilidade, recuperação, consistência de paginação nem taxa de consultas sob uso real.
@@ -28,7 +28,7 @@ Nenhum teste com conteúdo real foi aprovado ou executado. Não se comprovou cap
 - `Conversation`: identidade técnica estável dentro da **instância**, usando `remoteJid` como identificador opaco. `@lid` não é número telefônico. Alias PN↔LID só com evidência de equivalência; conflito exige intervenção. Um contato, um telefone ou uma pessoa não são sinônimos de conversa.
 - `Attendance`: Atendimento comercial/operacional existente, ID local próprio. Pode não ter Chat; Chat pode não ter Atendimento.
 - `ConversationAttendanceLink`: associação explícita N:N, sem exclusividade artificial, sem criação automática por número/nome/placa. Contém ID próprio, IDs envolvidos, ator autorizado, instante, revisão, motivo e, quando removido, data/ator/motivo de desvínculo. Remover a associação **não apaga mensagens**.
-- `ActiveAttendanceContext`: preferência de navegação de um operador/sessão para uma conversa, opcional, deve pertencer aos vínculos atualmente autorizados. Preferência não equivale a propriedade dos dados, direito de acesso ou mudança de vínculo. Ao mudar de conversa, recuperar contexto previamente selecionado se continuar válido; caso contrário mostrar neutro, sem escolher Atendimento errado automaticamente.
+- `ActiveAttendanceContext`: preferência de navegação de um operador/sessão para uma conversa, opcional, deve pertencer aos vínculos da conversa. Preferência não equivale à alteração de vínculos ou do conteúdo. Ao mudar de conversa, recuperar contexto previamente selecionado se continuar válido; caso contrário mostrar neutro, sem escolher Atendimento errado automaticamente.
 - `Message`: pertence à conversa, jamais exclusivamente a um Atendimento. `messageId` qualificado por instância+conversa; origem `fromMe` não prova quem enviou (celular, Web ou automação). Não presumir completude, monotonicidade de status ou mídia disponível.
 
 **Invariantes:** selecionar outro Atendimento não altera `conversationId`, consulta de mensagens nem a linha do tempo; vincular/desvincular não muda conteúdo do histórico; nenhuma mudança de contexto cria lead ou altera faturamento; vínculo N:N admite (0, N) em ambos os sentidos.
@@ -53,10 +53,10 @@ Os exemplos abaixo são **propostas**; nenhum endpoint foi criado.
 |---|---|---|
 | `GET /api/chat/conversations` | Lista paginada de metadados autorizados com `conversationId`, status de disponibilidade e quantidade de vínculos | Sem conteúdo de conversas anônimas; não expor JIDs arbitrários |
 | `GET /api/chat/conversations/:conversationId/messages?limit=50&page=1` | Retorno normalizado para o operador autenticado, `page`, `reportedTotal`, `consistency:'offset-not-snapshot'` | `page` é escolha provisória; não oferecer cursor estável inexistente; não confundir contagem de fornecedor com snapshot |
-| `GET /api/chat/conversations/:conversationId/atendimentos` | Lista de Atendimentos associados que operador pode ver | Não incluir Atendimentos fora da permissão |
+| `GET /api/chat/conversations/:conversationId/atendimentos` | Lista dos Atendimentos associados à conversa | Não incluir Atendimentos inexistentes ou de outra conversa |
 | `POST /api/chat/conversations/:conversationId/atendimentos` | Vínculo explícito com `atendimentoId`, `expectedRevision`, `requestId`, `reason` | Escrita exige sessão autenticada, Origin, confirmação explícita, idempotência, auditoria e conflito 409 |
 | `DELETE /api/chat/conversations/:conversationId/atendimentos/:linkId` | Desvínculo explícito com revisão/motivo | Sem excluir histórico nem vínculos legados por efeito colateral |
-| Contexto selecionado | Armazenado localmente na sessão do operador ou em preferência por usuário+conversa | Não confundir com vínculo; não dar acesso |
+| Contexto selecionado | Armazenado localmente na sessão única ou em preferência por conversa | Não confundir com vínculo; não habilitar outra instância |
 
 **Não criar rotas de escrita ou ativar Chat nessa fase.** Preferir adaptar a superfície conforme autenticação real aprovada e decisões de UX, não transformar nomes de rotas propostos em exigências imutáveis.
 
@@ -93,7 +93,7 @@ A interface deve diferenciar “sem mensagens retornadas” de “histórico com
 - Preservar `server/chat/schema.ts`, `ChatRepository`, `GET /api/atendimentos/:id/messages`, inbox/ingest inativos e as demais rotas como estão até migração expressa.
 - **Não usar `chat_links` atual como relação N:N**: existe `chat_active_link` (índice único por conversa ativa) e `chat_messages.link_id`, ambos intencionais para a semântica legada por período.
 - Uma migração futura aditiva deve criar associação N:N própria e preservar vínculo temporal legado como proveniência do registro. Requer mapeamento verificável, backup/teste de restauração, teste de regressão e rollback claramente planejado; nenhuma modificação nesta PR.
-- Não ativar `capabilities.messages` sem autenticação/permissão implementada, contrato real homologado e observabilidade.
+- Não ativar `capabilities.messages` sem validação da sessão autenticada, instância autorizada, contrato real homologado e observabilidade.
 - Evitar adicionar entidades redundantes de contatos/veículos/ERP e inferência por telefone; n8n mantém classificação de leads e operação existente.
 
 ## 8. Aceite e sequência recomendada (usuário único)
