@@ -1,17 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import type { EvolutionReadPoc, ReadChat, ReadMessage } from '../experimental/evolution-read/client.ts'
-import type { EvolutionConversationStore } from './evolution-conversation-store.ts'
 
 /**
  * Single-operator V20 read-only bridge.
- * Opaque IDs prevent browser-controlled remoteJid queries.
- * Optional persistent store survives restart; fallback ephemeral IDs retain POC compatibility.
- * Neither mode implements the eventual N:N conversation-attendance relationship.
+ * Ephemeral IDs prevent browser-controlled remoteJid queries.
+ * Stable IDs belong in the future N:N schema migration, not a standalone upgrade.
  */
 export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChats' | 'findMessages'>,
   now: () => number = Date.now,
-  persistent?: Pick<EvolutionConversationStore, 'register' | 'findRemoteJid'>,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -27,7 +24,6 @@ export function createEvolutionChatBridge(
     }
   }
   const register = (jid: string): string => {
-    if (persistent) return persistent.register(jid)
     const known = byJid.get(jid)
     if (known && byId.has(known)) {
       byId.get(known)!.at = now()
@@ -73,10 +69,10 @@ export function createEvolutionChatBridge(
       source: 'evolution'
     } | null> {
       purge()
-      const jid = persistent ? persistent.findRemoteJid(conversationId) : byId.get(conversationId)?.jid
-      if (!jid) return null
-      if (!persistent) byId.get(conversationId)!.at = now()
-      const result = await provider.findMessages(jid, { page })
+      const entry = byId.get(conversationId)
+      if (!entry) return null
+      entry.at = now()
+      const result = await provider.findMessages(entry.jid, { page })
       return {
         conversationId,
         items: result.items.map(({ messageId, timestamp, fromMe, origin, kind, text, media, statuses }) =>
