@@ -12,7 +12,8 @@
     "db:backup": "node --env-file-if-exists=.env server/backup.ts",
     "check:server": "tsc -p server/tsconfig.json",
     "test:server": "node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts",
-    "check": "npm run build && npm run check:server && npm run test:server && npm run lint"
+    "check": "npm run build && npm run check:server && npm run test:server && npm run lint && npm run test:voice-cost",
+    "test:voice-cost": "node --test scripts/tests/voice-cost-report.test.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
