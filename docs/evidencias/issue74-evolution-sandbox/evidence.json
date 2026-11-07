@@ -1,0 +1,42 @@
+{
+  "classification": "blocked-before-container-start",
+  "inspectionDateLocal": "2026-11-06",
+  "timezone": "America/Sao_Paulo",
+  "baseCommit": "ac73fed5431547999f82c79a6e35dc9fd34ea750",
+  "evolution": {
+    "registryTagObserved": "evoapicloud/evolution-api:v2.3.7",
+    "platform": "linux/amd64",
+    "manifestDigest": "sha256:456b4104b0ddffbb092d6b3c0560a4ae86fc3e014e885b882aca4b1b371dfc81",
+    "publishedProvenanceSourceCommit": "cd800f2976e1e5b682fbf86a01ee4d85ae61f370",
+    "upstreamTag": "2.3.7",
+    "annotatedTagObject": "6a398a6a08e59eb87dcf98b0f389e8decaf08689",
+    "sourcePackageVersion": "2.3.7",
+    "sourcePackageBlob": "56e32fcc8a5401262dbc560d35c8285a9a75d7aa",
+    "imageId": null,
+    "extractedPackageVersion": null,
+    "runningApplicationVersion": null,
+    "pullResult": "failed to register layer: no space left on device"
+  },
+  "environment": {
+    "localDockerVersion": "29.9.2",
+    "freeBytesAtHarnessGuard": 469393408,
+    "containersStarted": 0,
+    "existingSharedResourcesPruned": false
+  },
+  "staticValidation": {
+    "composeParsed": true,
+    "services": 3,
+    "digestPinnedImages": 3,
+    "internalNetwork": true,
+    "publishedPorts": 0,
+    "externalVolumes": 0
+  },
+  "realLaboratoryExecution": {
+    "http": false,
+    "databaseSeed": false,
+    "catalogInspection": false,
+    "latencyMeasurements": false,
+    "restartRecovery": false,
+    "whatsappSession": false
+  }
+}
