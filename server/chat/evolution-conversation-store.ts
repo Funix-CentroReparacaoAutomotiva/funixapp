@@ -7,7 +7,11 @@ import type { DatabaseSync } from 'node:sqlite'
  * All writes are bounded to observed provider chat identities (never arbitrary URLs).
  */
 export class EvolutionConversationStore {
-  constructor(private readonly db: DatabaseSync, private readonly instance: string) {
+  private readonly db: DatabaseSync
+  private readonly instance: string
+  constructor(db: DatabaseSync, instance: string) {
+    this.db = db
+    this.instance = instance
     if (!/^[A-Za-z0-9_-]{1,80}$/.test(instance)) throw new Error('Invalid Evolution instance')
   }
 
