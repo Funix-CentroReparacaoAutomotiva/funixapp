@@ -31,6 +31,9 @@ export function ComponentQuotation({command,value,enabled,parentEnabled,busy,con
   finally{if(revision===epoch.current){controller.current=null;setLoading(false)}}
  }
  const price=(raw:string)=>{if(!componentDecimal(raw))return raw;const[w,f='']=raw.split('.');return w+','+f.padEnd(2,'0')}
+ const feedback=result?.status==='needs_details'?'Dados técnicos insuficientes ou incompatíveis para cotar.'
+  :result?.status==='empty'?'Pesquisa concluída sem ofertas verificáveis.'
+  :result?.status==='unavailable'?'Falha na cotação. Confira as tentativas antes de repetir.':null
  return <div className="voice-component-values">
   <div className="voice-component-line">
    <button type="button" className="voice-component-switch" role="switch" aria-label="Habilitar componente neste cenário" aria-checked={enabled&&parentEnabled} aria-description={!parentEnabled?'Peça desabilitada neste cenário; componente fora do cálculo.':undefined} disabled={busy||!parentEnabled} onClick={()=>{invalidate();onToggle()}}><span aria-hidden="true"/></button>
@@ -43,7 +46,8 @@ export function ComponentQuotation({command,value,enabled,parentEnabled,busy,con
     const offer=result?.offers.find(o=>o.category===category),name=quoteNames[category]
     return <span className="component-quote-option" key={category}><button type="button" disabled={busy||loading||!offer} aria-label={name+(offer?', R$ '+price(offer.price):', não encontrado nesta consulta')} title={name+(offer?'':' — não encontrado nesta consulta')} onClick={()=>{if(offer&&result&&Date.parse(result.expiresAt)>Date.now())onSelect(offer.price)}}><QuoteIcon index={index}/>{offer?'R$ '+price(offer.price):'—'}</button>{offer&&<a href={offer.url} target="_blank" rel="noopener noreferrer" aria-label={'Abrir anúncio de origem: '+name} title={'Abrir anúncio de origem: '+name}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M14 3h7v7M10 14 21 3M10 3H3v18h18v-7"/></svg></a>}</span>
    })}
-   <span className="quote-sr" role="status">{loading?'Consultando':result?.status==='needs_details'?'Dados de compatibilidade insuficientes':result?.offers.length?'Consulta concluída':'Não encontrado nesta consulta'}</span>
+   <span className="quote-sr" role="status">{loading?'Consultando':feedback??(result?.offers.length?'Consulta concluída':'Não encontrado nesta consulta')}</span>
+   {feedback&&<p className="component-quote-feedback">{feedback}</p>}
   </div>}
   {onRevise&&<button className="voice-component-revise" disabled={busy} onClick={()=>{invalidate();onRevise()}}>Revisar valores</button>}
  </div>

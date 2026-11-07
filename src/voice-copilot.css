@@ -70,4 +70,5 @@
 .component-quote-option button{display:inline-flex;align-items:center;gap:3px;min-height:32px;border:1px solid #cad4e3;border-radius:6px;background:#fff;padding:4px;font-size:11px;color:#12347c;white-space:nowrap}
 .component-quote-option button:disabled{color:#697589;background:#f6f7f9}
 .component-quote-option a{display:inline-grid;place-items:center;min-width:24px;min-height:32px;color:#12347c;text-decoration:none}
+.component-quote-feedback{flex-basis:100%;margin:2px 0 0;font-size:11px;line-height:1.4;color:#52637b}
 .quote-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
