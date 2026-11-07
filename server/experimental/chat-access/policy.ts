@@ -1,46 +1,50 @@
-/** Issue #71 / PR #83: proposed policy, synthetic only; no routes, DB, provider or env. */
-export type Permission = 'chat.inbox.read' | 'chat.history.read_full' | 'chat.links.manage' | 'chat.audit.read'
-export type Principal = Readonly<{
-  authenticated: boolean
-  individualId: string | null
-  permissions: readonly Permission[]
-  instances: readonly string[]
-  visibleAttendances: readonly string[]
+/** Issue #71: pure single-operator, synthetic policy sketch. Not wired to routes or Evolution. */
+export type Session = Readonly<{ authenticated: boolean }>
+export type Conversation = Readonly<{
+  id: string
+  instance: string
+  linkedAttendances: readonly string[]
 }>
-export type Conversation = Readonly<{ id: string; instance: string; linkedAttendances: readonly string[] }>
-export type Decision = 'allow' | 'unauthenticated' | 'denied'
+export type Decision = 'allow' | 'unauthenticated' | 'out_of_scope' | 'not_linked'
 
-function eligible(principal: Principal, conversation: Conversation): boolean {
-  return principal.authenticated && !!principal.individualId &&
-    principal.instances.includes(conversation.instance)
+/** Server-controlled instance; never read this from untrusted URL/body. */
+export function canReadConversation(
+  session: Session,
+  conversation: Conversation,
+  configuredInstance: string,
+): Decision {
+  if (!session.authenticated) return 'unauthenticated'
+  return conversation.instance === configuredInstance ? 'allow' : 'out_of_scope'
 }
 
-/** Atendimento access never promotes itself into full conversation-read authority. */
-export function canReadConversation(principal: Principal, conversation: Conversation): Decision {
-  if (!principal.authenticated) return 'unauthenticated'
-  if (!eligible(principal, conversation)) return 'denied'
-  return principal.permissions.includes('chat.history.read_full') ? 'allow' : 'denied'
+/** Linking requires a valid session and a known provider-side conversation. */
+export function canManageLink(
+  session: Session,
+  conversation: Conversation,
+  configuredInstance: string,
+): Decision {
+  return canReadConversation(session, conversation, configuredInstance)
 }
 
-/** Explicit grant and target Attendance visibility are both required. */
-export function canManageLink(principal: Principal, conversation: Conversation, atendimentoId: string): Decision {
-  if (!principal.authenticated) return 'unauthenticated'
-  if (!eligible(principal, conversation)) return 'denied'
-  if (!principal.permissions.includes('chat.links.manage')) return 'denied'
-  return principal.visibleAttendances.includes(atendimentoId) ? 'allow' : 'denied'
+/** Changing commercial context is not a new provider request and never creates a link. */
+export function canSelectContext(
+  session: Session,
+  conversation: Conversation,
+  configuredInstance: string,
+  atendimentoId: string,
+): Decision {
+  const authorized = canReadConversation(session, conversation, configuredInstance)
+  if (authorized !== 'allow') return authorized
+  return conversation.linkedAttendances.includes(atendimentoId) ? 'allow' : 'not_linked'
 }
 
-/** Context selection is navigation, not linkage or a privilege grant. */
-export function canSelectContext(principal: Principal, conversation: Conversation, atendimentoId: string): Decision {
-  if (!principal.authenticated) return 'unauthenticated'
-  if (!eligible(principal, conversation)) return 'denied'
-  return conversation.linkedAttendances.includes(atendimentoId) &&
-    principal.visibleAttendances.includes(atendimentoId) ? 'allow' : 'denied'
-}
-
-/** Resolves only an opaque conversation ID. No client-supplied provider JID. */
-export function authorizedReadRequest(principal: Principal, conversation: Conversation):
-  { ok: true; conversationId: string } | { ok: false; reason: Decision } {
-  const decision = canReadConversation(principal, conversation)
-  return decision === 'allow' ? { ok: true, conversationId: conversation.id } : { ok: false, reason: decision }
+export function authorizedReadRequest(
+  session: Session,
+  conversation: Conversation,
+  configuredInstance: string,
+): { ok: true; conversationId: string } | { ok: false; reason: Decision } {
+  const decision = canReadConversation(session, conversation, configuredInstance)
+  return decision === 'allow'
+    ? { ok: true, conversationId: conversation.id }
+    : { ok: false, reason: decision }
 }
