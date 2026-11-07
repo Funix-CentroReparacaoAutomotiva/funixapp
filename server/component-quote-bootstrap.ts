@@ -26,5 +26,5 @@ export function loadQuotePilot(env:NodeJS.ProcessEnv,databasePath:string):QuoteS
  }catch(error){
   if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error
  }
- return createQuoteService(openAIQuoteProvider({key,ledger}),{observe:createQuoteMetricsObserver(env.FUNIX_QUOTE_METRICS_ENABLED==='true')})
+ return createQuoteService(openAIQuoteProvider({key,ledger,discoveryV2:env.FUNIX_QUOTE_DISCOVERY_V2==='true'}),{observe:createQuoteMetricsObserver(env.FUNIX_QUOTE_METRICS_ENABLED==='true')})
 }
