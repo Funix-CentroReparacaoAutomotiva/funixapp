@@ -11,7 +11,7 @@ const errorCode = (code: string) => (error: unknown) => error instanceof Evoluti
 const ids = (items: { messageId: string }[]) => items.map(m => m.messageId)
 const history = (n: number) => Array.from({ length: n }, (_, i) => syntheticMessage(i + 1))
 
-test('Evolution POC: POST findChats uses take/skip and strips previews, names and URLs', async () => {
+test('Evolution POC: POST findChats uses take/skip and strips previews and URLs', async () => {
   const source = syntheticSource([syntheticMessage(1), syntheticMessage(2, { key: { id: 'lid-message', remoteJid: LID, fromMe: true } })])
   const api = client(source.transport)
   assert.deepEqual((await api.findChats({ take: 1 })).map(c => c.remoteJid), [PN])
@@ -20,8 +20,8 @@ test('Evolution POC: POST findChats uses take/skip and strips previews, names an
   assert.equal(source.requests[0].path, '/chat/findChats/synthetic-offline')
   assert.deepEqual(source.requests[0].body, { take: 1, skip: 0 })
   const chats = await client(response([{ remoteJid: LID, updatedAt: null, unreadCount: null,
-    lastMessage: { text: 'not projected' }, profilePicUrl: 'https://synthetic.invalid/private', pushName: 'ignored' }])).findChats()
-  assert.deepEqual(chats, [{ remoteJid: LID, updatedAt: null, unreadCount: null }])
+    lastMessage: { text: 'not projected' }, profilePicUrl: 'https://synthetic.invalid/private', pushName: 'Contato Sintético' }])).findChats()
+  assert.deepEqual(chats, [{ remoteJid: LID, displayName: 'Contato Sintético', phoneNumber: null, updatedAt: null, unreadCount: null }])
 })
 
 test('Evolution POC: latest 50 chronological, older pages, empty and exact page boundary', async () => {
@@ -218,4 +218,20 @@ test('V20 POC: N:N links, explicit context per chat, unlinked chat and no histor
   assert.throws(() => model.link('chat-a', 'unknown'))
   assert.throws(() => model.selectConversation('unknown'))
   assert.equal(source.requests.length, 3) // context/link operations never query or mutate source
+})
+
+
+test('Evolution POC: chat labels are hints, not identity, with PN and LID distinct', async () => {
+  const api = client(response([
+    { remoteJid: PN, pushName: '  Cliente de Teste  ', updatedAt: null, unreadCount: null },
+    { remoteJid: LID, pushName: '\u202Eidentidade falsa', updatedAt: null, unreadCount: null },
+  ]))
+  const rows = await api.findChats()
+  assert.equal(rows[0]?.displayName, 'Cliente de Teste')
+  assert.equal(rows[0]?.phoneNumber, PN.split('@')[0])
+  assert.equal(rows[1]?.displayName, null)
+  assert.equal(rows[1]?.phoneNumber, null)
+  assert.notEqual(rows[0]?.remoteJid, rows[1]?.remoteJid)
+  const raw = await client(response([{ remoteJid: LID, pushName: '  ', updatedAt: null, unreadCount: null }])).findChats()
+  assert.equal(raw[0]?.displayName, null)
 })
