@@ -76,13 +76,29 @@ export type MessagePage = {
 }
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 const identity = (m: ReadMessage) => JSON.stringify([m.instanceId, m.remoteJid, m.messageId])
+/** Only non-semantic row identity and delivery observations may change between
+ * provider copies. Text, timestamp, sender, scope, alias and media MUST agree.
+ * A status union is evidence of statuses seen, NOT an inferred chronology.
+ */
+function stablePayload(m: ReadMessage): string {
+  const { recordId: _recordId, statuses: _statuses, ...stable } = m
+  return JSON.stringify(stable)
+}
+
 /** Pure, bounded-to-caller batches. Dedup cannot repair unseen gaps or alias changes. */
 export function reconcileReadBatches(...batches: ReadMessage[][]): ReadMessage[] {
   const byId = new Map<string, ReadMessage>()
   for (const m of batches.flat()) {
     const key = identity(m), previous = byId.get(key)
-    if (previous && JSON.stringify(previous) !== JSON.stringify(m)) return fail('CONFLICT')
-    byId.set(key, m)
+    if (previous && stablePayload(previous) !== stablePayload(m)) return fail('CONFLICT')
+    if (previous) {
+      byId.set(key, {
+        ...previous,
+        // No source-record preference implied; stable regardless of arrival order.
+        recordId: compare(previous.recordId, m.recordId) <= 0 ? previous.recordId : m.recordId,
+        statuses: [...new Set([...previous.statuses, ...m.statuses])].sort(),
+      })
+    } else byId.set(key, m)
   }
   // Presentation tie-break only, never a provider cursor or causal ordering.
   return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || compare(identity(a), identity(b)))
