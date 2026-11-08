@@ -211,7 +211,7 @@ export function createRequestHandler(options: AppOptions) {
           try {
             const result = await options.evolutionChat.list(Number(skip))
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-            return send(200, result)
+            return send(200, options.v20Associations ? { ...result, linksEnabled: true } : result)
           } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as conversas agora.') }
         }
         if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
