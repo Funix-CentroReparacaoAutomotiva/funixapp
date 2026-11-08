@@ -1,0 +1,70 @@
+// Synthetic end-to-end check of optional vehicle suggestions and legacy edits.
+import assert from 'node:assert/strict'
+import {existsSync,mkdirSync} from 'node:fs'
+import {spawn} from 'node:child_process'
+import {chromium} from 'playwright'
+import {openDatabase} from '../server/database.ts'
+import {commercialFixture} from '../server/tests/fixtures/commercial.ts'
+import {createApp} from '../server/app.ts'
+
+const origin='http://127.0.0.1:5173',password='synthetic-vehicle-form-password'
+const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5173','--strictPort'],{stdio:'pipe'})
+const artifacts='artifacts/vehicle-form';mkdirSync(artifacts,{recursive:true})
+let browser
+async function ready(){for(let i=0;i<80;i++){try{if((await fetch(origin)).ok)return}catch{}await new Promise(r=>setTimeout(r,100))}throw Error('Vite unavailable')}
+try{
+ await ready()
+ browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH??(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':'/usr/bin/google-chrome'),args:['--no-sandbox']})
+ for(const [width,height] of [[320,740],[390,844],[1440,900]]){
+  const db=openDatabase(':memory:'),fixture=commercialFixture(db)
+  const app=createApp({atendimentos:fixture.atendimentos,origin,password,voiceProvider:null})
+  await new Promise(resolve=>app.listen(8787,'127.0.0.1',resolve))
+  const ctx=await browser.newContext({viewport:{width,height}});let page
+  try{
+   const response=await ctx.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})
+   assert.equal(response.status(),200)
+   page=await ctx.newPage()
+   const errors=[];page.on('pageerror',e=>errors.push(e.message))
+   await page.goto(origin+'/funil')
+   await page.getByRole('button',{name:/Novo Atendimento/}).click()
+   const dialog=page.getByRole('dialog',{name:'Novo Atendimento'});await dialog.waitFor()
+   assert.equal(await dialog.getByText('Veículo informado').count(),0)
+   assert.equal(await dialog.getByText('Marca', {exact:true}).count(),0)
+   const brand=dialog.getByRole('textbox',{name:'Montadora'})
+   const vehicle=dialog.getByRole('textbox',{name:'Veículo',exact:true})
+   const year=dialog.getByRole('textbox',{name:'Ano fabricação/modelo'})
+   assert(await brand.isVisible()&&await vehicle.isVisible()&&await year.isVisible())
+   assert(await dialog.locator('datalist#at-brand-choices option[value="Fiat"]').count())
+   await brand.fill('Fiat')
+   assert(await dialog.locator('datalist#at-model-choices option[value="Punto"]').count())
+   await vehicle.fill('Punto')
+   await year.fill('2019/2020')
+   await dialog.getByRole('textbox',{name:'Telefone *'}).fill('31999990000')
+   await dialog.getByRole('button',{name:'Criar Atendimento'}).click()
+   await dialog.waitFor({state:'hidden',timeout:6000})
+   const list=fixture.atendimentos.list({q:'31999990000'});assert.equal(list.total,1)
+   const record=list.items[0]
+   assert.equal(record.brand,'Fiat')
+   assert.equal(record.model,'Punto')
+   assert.equal(record.vehicle,'Punto 2019/2020')
+   await page.getByRole('button',{name:'Editar Atendimento'}).click()
+   const edit=page.getByRole('dialog',{name:'Editar Atendimento'});await edit.waitFor()
+   assert.equal(await edit.getByRole('textbox',{name:'Montadora'}).inputValue(),'Fiat')
+   assert.equal(await edit.getByRole('textbox',{name:'Veículo',exact:true}).inputValue(),'Punto')
+   assert.equal(await edit.getByRole('textbox',{name:'Ano fabricação/modelo'}).inputValue(),'2019/2020')
+   await edit.getByRole('textbox',{name:'Montadora'}).fill('Montadora Livre QA')
+   await edit.getByRole('textbox',{name:'Veículo',exact:true}).fill('Modelo Livre QA')
+   await edit.getByRole('textbox',{name:'Ano fabricação/modelo'}).fill('2020')
+   await edit.getByRole('button',{name:'Salvar alterações'}).click()
+   await edit.waitFor({state:'hidden',timeout:6000})
+   const edited=fixture.atendimentos.get(record.id)
+   assert.equal(edited.brand,'Montadora Livre QA')
+   assert.equal(edited.model,'Modelo Livre QA')
+   assert.equal(edited.vehicle,'Modelo Livre QA 2020')
+   assert.deepEqual(errors,[])
+   await page.screenshot({path:artifacts+'/vehicle-'+width+'.png'})
+   console.log('PASS vehicle form',width,'suggestions, free text, years and read-after-save')
+  }catch(e){if(page)await page.screenshot({path:artifacts+'/failure-'+width+'.png'});throw e}
+  finally{await ctx.close();app.closeAllConnections();await new Promise(resolve=>app.close(resolve));db.close()}
+ }
+}finally{await browser?.close();vite.kill('SIGTERM')}
