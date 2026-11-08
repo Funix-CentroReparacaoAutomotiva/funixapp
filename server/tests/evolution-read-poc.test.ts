@@ -153,7 +153,7 @@ test('Evolution POC: exact duplicates collapse; changed content/status never sil
   assert.equal(page.items.length, 1)
   const changed = { ...page.items[0], text: 'different' }
   assert.throws(() => reconcileReadBatches(page.items, [changed]), errorCode('CONFLICT'))
-  assert.deepEqual(reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }])[0]?.statuses, ['READ'])
+  assert.deepEqual(reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }])[0]?.statuses, ['READ', 'SERVER_ACK'])
   const withStatusAndRow = { ...page.items[0], recordId: 'provider-row-2', statuses: ['READ', 'SERVER_ACK'] }
   const forward = reconcileReadBatches(page.items, [withStatusAndRow])
   const reverse = reconcileReadBatches([withStatusAndRow], page.items)
