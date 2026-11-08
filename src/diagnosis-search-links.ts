@@ -20,7 +20,12 @@ const marketplaceStoreSlugs:Record<string,string>={
  fiat:'fiat',
  jeep:'jeep',
  hyundai:'hyundai-mobis',
- 'hyundai mobis':'hyundai-mobis'
+ 'hyundai mobis':'hyundai-mobis',
+ citroen:'citroen',
+ peugeot:'peugeot',
+ ram:'ram',
+ ford:'ford',
+ renault:'renault'
 }
 function searchSlug(value:string):string {
  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
@@ -43,6 +48,7 @@ export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'mod
  const year=yearFromVehicle(vehicle.vehicle)
  const query=[brand,model,year,part].filter(Boolean).join(' ')
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
- const make=brand.toLocaleLowerCase('pt-BR')==='vw'?'volkswagen':brand.toLocaleLowerCase('pt-BR')
+ const normalizedBrand=brand.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
+ const make=normalizedBrand==='vw'?'volkswagen':normalizedBrand
  return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,part),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:[part,model,year].filter(Boolean).join(' ')}).toString():manufacturerPartsStores[make]):null}
 }
