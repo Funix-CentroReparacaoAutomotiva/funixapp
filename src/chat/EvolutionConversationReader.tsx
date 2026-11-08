@@ -48,7 +48,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
       const result = parseConversationList(await api<unknown>(`/api/chat/conversations?skip=${skip}`, { signal: controller.signal }))
       if (controller.signal.aborted) return
       setAvailable(true)
-      setLinksEnabled(result.linksEnabled)
+      setLinksEnabled(result.linksEnabled === true)
       setList(previous => skip === 0 ? result.items : [
         ...previous, ...result.items.filter(row => !previous.some(known => known.conversationId === row.conversationId)),
       ])
