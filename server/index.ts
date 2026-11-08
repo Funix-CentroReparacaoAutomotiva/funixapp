@@ -35,7 +35,7 @@ const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
-const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 app.requestTimeout = 15_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
