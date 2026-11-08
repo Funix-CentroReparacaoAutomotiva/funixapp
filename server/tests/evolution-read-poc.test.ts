@@ -166,18 +166,21 @@ test('Evolution POC: numeric-string protobuf media sizes and MIME parameters nor
   assert.ok(!/PRIVATE_FIXTURE_KEY|private|codecs/.test(JSON.stringify(page.items)))
   const sizes = ['-1', '1.5', '01', '1e2', '9007199254740992', { low: 1, high: 0 }, true]
   for (const fileLength of sizes) {
-    await assert.rejects(
-      client(response(envelope([syntheticMessage(5, {
-        messageType: 'audioMessage', message: { audioMessage: { mimetype: 'audio/ogg', fileLength } },
-      })]))).findMessages(PN), errorCode('RESPONSE'),
-    )
+    const item = (await client(response(envelope([syntheticMessage(5, {
+      messageType: 'audioMessage', message: { audioMessage: { mimetype: 'audio/ogg', fileLength } },
+    })]))).findMessages(PN)).items[0]
+    assert.equal(item?.kind, 'audio')
+    assert.equal(item?.media?.bytes, null)
+    assert.equal(item?.media?.available, false)
   }
   for (const mimetype of ['audio/ogg; evil=<script>', 'audio/ogg; codecs=', 'bad', 'audio/ogg;\nsecret=x']) {
-    await assert.rejects(
-      client(response(envelope([syntheticMessage(6, {
-        messageType: 'audioMessage', message: { audioMessage: { mimetype } },
-      })]))).findMessages(PN), errorCode('RESPONSE'),
-    )
+    const item = (await client(response(envelope([syntheticMessage(6, {
+      messageType: 'audioMessage', message: { audioMessage: { mimetype } },
+    })]))).findMessages(PN)).items[0]
+    assert.equal(item?.kind, 'audio')
+    assert.equal(item?.media?.mimeType, null)
+    assert.equal(item?.media?.available, false)
+    assert.ok(!JSON.stringify(item).includes('script'))
   }
 })
 
