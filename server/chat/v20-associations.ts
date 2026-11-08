@@ -78,10 +78,13 @@ type MutationResult = { linkId: string; revision: number }
  * Integration with the live Evolution bridge is a separate, gated change.
  */
 export class V20AssociationRepository {
-  constructor(
-    private readonly db: DatabaseSync,
-    private readonly now: () => string = () => new Date().toISOString(),
-  ) {}
+  private readonly db: DatabaseSync
+  private readonly now: () => string
+
+  constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) {
+    this.db = db
+    this.now = now
+  }
 
   private transaction<T>(run: () => T): T {
     this.db.exec('BEGIN IMMEDIATE')
