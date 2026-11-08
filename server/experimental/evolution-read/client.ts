@@ -37,6 +37,19 @@ function jid(value: unknown): string {
   return text
 }
 function input<T>(parse: () => T): T { try { return parse() } catch { return fail('INPUT') } }
+/**
+ * A provider pushName is a presentation hint, not verified person identity.
+ * Ignore invalid/malformed names instead of leaking JIDs or failing all chats.
+ */
+function displayName(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed || [...trimmed].length > 80 ||
+      /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(trimmed) ||
+      /@(?:s\.whatsapp\.net|lid|g\.us)/i.test(trimmed)) return null
+  return trimmed
+}
+
 export type ReadMessage = {
   recordId: string
   instanceId: string
@@ -52,7 +65,7 @@ export type ReadMessage = {
   media: { reference: string; mimeType: string | null; bytes: number | null; available: false } | null
   statuses: string[]
 }
-export type ReadChat = { remoteJid: string; updatedAt: string | null; unreadCount: number | null }
+export type ReadChat = { remoteJid: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
 export type MessagePage = {
   items: ReadMessage[]
   currentPage: number
@@ -117,15 +130,26 @@ export class EvolutionReadPoc {
       clearTimeout(timer); signal?.removeEventListener('abort', cancel)
     }
   }
-  async findChats(options: { take?: number; skip?: number; signal?: AbortSignal } = {}): Promise<ReadChat[]> {
+  /**
+   * One bounded Evolution source page, not a page of *visible* contacts.
+   * sourceCount deliberately includes unsupported group/broadcast/newsletter chats,
+   * so the caller advances the original skip/take cursor without losing rows.
+   */
+  async findChatsPage(options: { take?: number; skip?: number; signal?: AbortSignal } = {}): Promise<{ items: ReadChat[]; sourceCount: number }> {
     const take = input(() => integer(options.take ?? 50, 1, 100))
     const skip = input(() => integer(options.skip ?? 0, 0, 500000))
-    // fetchChats in the public tag consumes take/skip, NOT Query.page/offset.
+    // fetchChats consumes take/skip, NOT Query.page/offset. Never loop over an unknown source.
     const raw = await this.request('findChats', { take, skip }, options.signal)
     if (!Array.isArray(raw) || raw.length > take) return fail()
     const seen = new Set<string>()
-    return raw.map(value => {
-      const row = object(value), remoteJid = jid(row.remoteJid)
+    const items: ReadChat[] = []
+    for (const value of raw) {
+      const row = object(value)
+      const identifier = string(row.remoteJid, 150)
+      // Only these explicitly recognized non-individual types are excluded.
+      // Unknown suffixes and malformed PN/LID still fail closed for this page.
+      if (/^[A-Za-z0-9_-]{1,100}@(g\.us|broadcast|newsletter)$/.test(identifier)) continue
+      const remoteJid = jid(identifier)
       if (seen.has(remoteJid)) return fail('CONFLICT')
       seen.add(remoteJid)
       let updatedAt: string | null = null
@@ -133,9 +157,17 @@ export class EvolutionReadPoc {
         updatedAt = string(row.updatedAt, 40)
         if (!Number.isFinite(Date.parse(updatedAt)) || new Date(updatedAt).toISOString() !== updatedAt) return fail()
       }
-      // Intentionally project only metadata; no lastMessage/profile/avatar URLs.
-      return { remoteJid, updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) }
-    })
+      // Project only safe identification hints; never lastMessage/profile/avatar URLs, provider JID is server-only.
+      items.push({ remoteJid,
+        displayName: displayName(row.pushName),
+        phoneNumber: remoteJid.endsWith('@s.whatsapp.net') ? remoteJid.slice(0, -'@s.whatsapp.net'.length) : null,
+        updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) })
+    }
+    return { items, sourceCount: raw.length }
+  }
+  /** Compatibility for offline POC consumers that need only individual rows. */
+  async findChats(options: { take?: number; skip?: number; signal?: AbortSignal } = {}): Promise<ReadChat[]> {
+    return (await this.findChatsPage(options)).items
   }
   async findMessages(remoteJid: string, options: { page?: number; signal?: AbortSignal } = {}): Promise<MessagePage> {
     const requested = input(() => jid(remoteJid)), page = input(() => integer(options.page ?? 1, 1, 10000))

@@ -1,12 +1,12 @@
 # FUNIX — Transporte HTTP de leitura Evolution, sem novo ambiente
 
-**Status:** implementação experimental com ponte e rotas opcionais; **não habilitada no bootstrap do FunixApp e não implantada**. Desenvolvido para funcionar futuramente no **FunixApp atual** (piloto na mesma VPS), sem segunda instalação, segunda VM ou novo PostgreSQL.
+**Status na PR #90 (branch empilhada):** transporte e rotas opcionais preparados na #86, inicializador **opt-in desligado por padrão** na #88 e tela de leitura na #90. **Nada implantado; nenhum histórico real consultado nesta cadeia de PRs.** A conexão será testada futuramente no **FunixApp atual**, sem segunda instalação, segunda VM ou novo PostgreSQL. Antes de qualquer piloto, seguir `docs/WHATSAPP_CHAT_V20_PILOT_READINESS.md`.
 
 ## Decisão operacional da direção — 07/11/2026
 
 A instalação atual de `app.funix.com.br` é o ambiente de teste e homologação do FunixApp, ainda não lançado oficialmente. **Não criar ambiente separado.** Porém a Evolution `funix_comercial`, a sessão WhatsApp e o n8n já suportam operações comerciais reais. Modificar/applicar um deploy do FunixApp exige cuidado para não afetar esses serviços.
 
-Esta entrega adiciona `server/experimental/evolution-read/http-transport.ts` (HTTP somente leitura), `server/chat/evolution-bridge.ts` (IDs de conversa opacos e efêmeros em memória) e **rotas opcionais em `server/app.ts`**. A aplicação só expõe essas rotas se receber `evolutionChat` por injeção explícita. **`server/index.ts` não injeta essa dependência**: as rotas seguem indisponíveis no aplicativo instalado. Não modifica UI, Compose, variáveis de produção, imagens, `capabilities.messages=false`, n8n, Redis, webhook ou volumes. Importar o módulo não abre rede.
+Esta entrega adiciona `server/experimental/evolution-read/http-transport.ts` (HTTP somente leitura), `server/chat/evolution-bridge.ts` (IDs de conversa opacos e efêmeros em memória) e **rotas opcionais em `server/app.ts`**. A aplicação só expõe essas rotas se receber `evolutionChat` por injeção explícita. **Na #88, `server/index.ts` passa a injetar a dependência somente quando `FUNIX_EVOLUTION_READ_ENABLED=true`, com credencial e ID técnico válidos**; sem a flag, as rotas permanecem indisponíveis. Nenhuma dessas alterações foi implantada no aplicativo instalado. Não modifica UI, Compose, variáveis de produção, imagens, `capabilities.messages=false`, n8n, Redis, webhook ou volumes. Importar o módulo não abre rede.
 
 ## Especificação do transporte
 

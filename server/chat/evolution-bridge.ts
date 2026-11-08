@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { EvolutionReadPoc, ReadChat, ReadMessage } from '../experimental/evolution-read/client.ts'
+import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
 
 /**
  * Single-operator V20 read-only bridge.
@@ -8,7 +8,7 @@ import type { EvolutionReadPoc, ReadChat, ReadMessage } from '../experimental/ev
  * This is NOT the eventual persisted N:N conversation model.
  */
 export function createEvolutionChatBridge(
-  provider: Pick<EvolutionReadPoc, 'findChats' | 'findMessages'>,
+  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
   now: () => number = Date.now,
 ) {
   const maxEntries = 2048
@@ -45,16 +45,16 @@ export function createEvolutionChatBridge(
 
   return {
     async list(skip: number): Promise<{
-      items: Array<{ conversationId: string; updatedAt: string | null; unreadCount: number | null }>
+      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }>
       nextSkip: number | null
       source: 'evolution'
     }> {
       purge()
       const take = 50
-      const rows: ReadChat[] = await provider.findChats({ take, skip })
+      const { items: rows, sourceCount } = await provider.findChatsPage({ take, skip })
       return {
-        items: rows.map(row => ({ conversationId: register(row.remoteJid), updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
-        nextSkip: rows.length === take ? skip + take : null,
+        items: rows.map(row => ({ conversationId: register(row.remoteJid), displayName: row.displayName, phoneNumber: row.phoneNumber, updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
+        nextSkip: sourceCount === take && skip + take <= 500000 ? skip + take : null,
         source: 'evolution',
       }
     },

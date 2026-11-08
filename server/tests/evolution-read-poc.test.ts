@@ -11,7 +11,7 @@ const errorCode = (code: string) => (error: unknown) => error instanceof Evoluti
 const ids = (items: { messageId: string }[]) => items.map(m => m.messageId)
 const history = (n: number) => Array.from({ length: n }, (_, i) => syntheticMessage(i + 1))
 
-test('Evolution POC: POST findChats uses take/skip and strips previews, names and URLs', async () => {
+test('Evolution POC: POST findChats uses take/skip and strips previews and URLs', async () => {
   const source = syntheticSource([syntheticMessage(1), syntheticMessage(2, { key: { id: 'lid-message', remoteJid: LID, fromMe: true } })])
   const api = client(source.transport)
   assert.deepEqual((await api.findChats({ take: 1 })).map(c => c.remoteJid), [PN])
@@ -20,8 +20,8 @@ test('Evolution POC: POST findChats uses take/skip and strips previews, names an
   assert.equal(source.requests[0].path, '/chat/findChats/synthetic-offline')
   assert.deepEqual(source.requests[0].body, { take: 1, skip: 0 })
   const chats = await client(response([{ remoteJid: LID, updatedAt: null, unreadCount: null,
-    lastMessage: { text: 'not projected' }, profilePicUrl: 'https://synthetic.invalid/private', pushName: 'ignored' }])).findChats()
-  assert.deepEqual(chats, [{ remoteJid: LID, updatedAt: null, unreadCount: null }])
+    lastMessage: { text: 'not projected' }, profilePicUrl: 'https://synthetic.invalid/private', pushName: 'Contato Sintético' }])).findChats()
+  assert.deepEqual(chats, [{ remoteJid: LID, displayName: 'Contato Sintético', phoneNumber: null, updatedAt: null, unreadCount: null }])
 })
 
 test('Evolution POC: latest 50 chronological, older pages, empty and exact page boundary', async () => {
@@ -120,7 +120,7 @@ test('Evolution POC: strict consumed-field validation; unsupported types do not 
   const m = (await client(response(envelope([unsupported]))).findMessages(PN)).items[0]
   assert.equal(m.kind, 'unsupported'); assert.equal(m.text, null); assert.equal(m.media, null)
   assert.ok(!JSON.stringify(m).includes('secret'))
-  for (const badChats of [{}, [{ remoteJid: 'group@g.us' }], [{ remoteJid: LID, updatedAt: 'invalid' }],
+  for (const badChats of [{}, [{ remoteJid: '12345@unknown' }], [{ remoteJid: 'not-a-valid-pn@s.whatsapp.net' }], [{ remoteJid: LID, updatedAt: 'invalid' }],
     [{ remoteJid: LID, unreadCount: -1 }], [{ remoteJid: LID }, { remoteJid: LID }]]) {
     await assert.rejects(client(response(badChats)).findChats(), EvolutionReadError)
   }
@@ -218,4 +218,77 @@ test('V20 POC: N:N links, explicit context per chat, unlinked chat and no histor
   assert.throws(() => model.link('chat-a', 'unknown'))
   assert.throws(() => model.selectConversation('unknown'))
   assert.equal(source.requests.length, 3) // context/link operations never query or mutate source
+})
+
+
+test('Evolution POC: chat labels are hints, not identity, with PN and LID distinct', async () => {
+  const api = client(response([
+    { remoteJid: PN, pushName: '  Cliente de Teste  ', updatedAt: null, unreadCount: null },
+    { remoteJid: LID, pushName: '\u202Eidentidade falsa', updatedAt: null, unreadCount: null },
+  ]))
+  const rows = await api.findChats()
+  assert.equal(rows[0]?.displayName, 'Cliente de Teste')
+  assert.equal(rows[0]?.phoneNumber, PN.split('@')[0])
+  assert.equal(rows[1]?.displayName, null)
+  assert.equal(rows[1]?.phoneNumber, null)
+  assert.notEqual(rows[0]?.remoteJid, rows[1]?.remoteJid)
+  const raw = await client(response([{ remoteJid: LID, pushName: '  ', updatedAt: null, unreadCount: null }])).findChats()
+  assert.equal(raw[0]?.displayName, null)
+})
+
+test('Evolution POC: mixed provider chats omit only recognized non-individual types and preserve sourceCount', async () => {
+  const mixed = [
+    { remoteJid: '120363000000000000@g.us', pushName: 'Synthetic private group', lastMessage: { text: 'GROUP SECRET' } },
+    { remoteJid: PN, pushName: 'Pessoa PN' },
+    { remoteJid: 'status@broadcast', pushName: 'Synthetic status', lastMessage: { text: 'STATUS SECRET' } },
+    { remoteJid: '123456789@newsletter', pushName: 'Synthetic newsletter' },
+    { remoteJid: LID, pushName: 'Pessoa LID' },
+  ]
+  const api = client(response(mixed))
+  const page = await api.findChatsPage({ take: 5, skip: 10 })
+  assert.equal(page.sourceCount, 5)
+  assert.deepEqual(page.items.map(row => row.remoteJid), [PN, LID])
+  assert.deepEqual((await api.findChats({ take: 5 })).map(row => row.remoteJid), [PN, LID])
+  assert.ok(!JSON.stringify(page).includes('GROUP SECRET'))
+  assert.ok(!JSON.stringify(page).includes('STATUS SECRET'))
+  assert.ok(!JSON.stringify(page).includes('120363000000000000'))
+  assert.deepEqual(await client(response([{ remoteJid: 'status@broadcast' }])).findChatsPage(),
+    { items: [], sourceCount: 1 })
+})
+
+test('Evolution POC: 50 group rows do not hide an individual on the next source page', async () => {
+  const rows = Array.from({ length: 50 }, (_, i) => ({ remoteJid: `1203630000${String(i).padStart(10,'0')}@g.us` }))
+  rows.push({ remoteJid: PN })
+  const calls: { take: unknown; skip: unknown }[] = []
+  const api = client(async request => {
+    calls.push(request.body as { take: unknown; skip: unknown })
+    const take = Number(request.body.take), skip = Number(request.body.skip)
+    return { status: 200, body: rows.slice(skip, skip + take) }
+  })
+  const first = await api.findChatsPage({ take: 50, skip: 0 })
+  assert.equal(first.items.length, 0)
+  assert.equal(first.sourceCount, 50)
+  const second = await api.findChatsPage({ take: 50, skip: 50 })
+  assert.deepEqual(second.items.map(row => row.remoteJid), [PN])
+  assert.equal(second.sourceCount, 1)
+  assert.deepEqual(calls, [{ take: 50, skip: 0 }, { take: 50, skip: 50 }])
+})
+
+test('Evolution POC: invalid or ambiguous PN/LID is never silently skipped', async () => {
+  for (const remoteJid of [
+    '123@unknown', 'this-is-not-valid@s.whatsapp.net', 'bad id@lid',
+    'group@g.us/../', '123@broadcast/abc', '123@newsletter?secret=1',
+  ]) {
+    await assert.rejects(
+      client(response([{ remoteJid: PN }, { remoteJid }])).findChatsPage({ take: 2 }),
+      errorCode('RESPONSE'),
+    )
+  }
+  const pages = [
+    [{ remoteJid: PN }, { remoteJid: PN }],
+    Array.from({ length: 51 }, (_, i) => ({ remoteJid: `${i + 10000000}@s.whatsapp.net` })),
+  ]
+  for (const page of pages) await assert.rejects(
+    client(response(page)).findChatsPage({ take: 50 }), EvolutionReadError,
+  )
 })
