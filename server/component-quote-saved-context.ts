@@ -9,7 +9,7 @@ import{saneQuoteQuery}from'./component-quote-query.ts'
 // committed component owned by the requested Atendimento and a real scenario.
 export function readSavedComponentQuoteContext(db:DatabaseSync,at:string,id:string,input:unknown){
  if(!input||typeof input!=='object'||Array.isArray(input))throw new ServiceError(400,'QUOTE_INPUT','Consulta inválida.')
- const b=input as Record<string,unknown>,keys=['scenarioId','componentRevision']
+ const b=input as Record<string,unknown>
  if(Object.keys(b).length!==2||typeof b.scenarioId!=='string'||!b.scenarioId||b.scenarioId.length>100||!Number.isSafeInteger(b.componentRevision)||(b.componentRevision as number)<1)throw new ServiceError(400,'QUOTE_INPUT','Consulta inválida.')
  const scenario=b.scenarioId as string
  const vehicle=new AtendimentoRepository(db).get(at)
