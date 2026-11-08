@@ -49,14 +49,15 @@ try{
    const options=component.locator('.component-search-links')
    await options.waitFor()
    const anchors=options.locator('a')
-   assert.deepEqual(await anchors.allTextContents(),['Geral','Original','Loja oficial'])
+   assert.deepEqual(await anchors.allTextContents(),['Geral','Original','Oficial','Montadora'])
    const general=new URL(await anchors.nth(0).getAttribute('href'))
    const original=new URL(await anchors.nth(1).getAttribute('href'))
    assert.equal(general.host,'www.google.com')
    assert.equal(general.searchParams.get('tbm'),'shop')
    assert.equal(general.searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo')
    assert.equal(original.searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo original')
-   assert.equal(await anchors.nth(2).getAttribute('href'),'https://pecas.vw.com.br/')
+   assert.equal(await anchors.nth(2).getAttribute('href'),'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios')
+   assert.equal(await anchors.nth(3).getAttribute('href'),'https://pecas.vw.com.br/')
    assert.equal(await component.getByRole('textbox',{name:'Preço unitário do componente'}).inputValue(),'10,00')
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id).manualPrice,'10')
    assert.equal(quoteCalls.length,0,'displaying links must not call quotation API')
@@ -71,7 +72,7 @@ try{
    assert(await component.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'horizontal overflow at '+width)
    assert.deepEqual(errors,[])
    await component.screenshot({path:dir+'/manual-links-'+width+'.png'})
-   console.log('PASS manual search links '+width+' : correct order, technical query, selection guard, no billing')
+   console.log('PASS manual search links '+width+' : correct conditional four-link order, technical query, selection guard, no billing')
   }catch(error){if(page)await page.screenshot({path:dir+'/manual-links-failure-'+width+'.png'});throw error}
   finally{await ctx.close();app.closeAllConnections();await new Promise(r=>app.close(r));db.close()}
  }
