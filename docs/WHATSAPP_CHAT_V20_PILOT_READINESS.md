@@ -15,32 +15,15 @@ O FunixApp atual é o ambiente de testes operacionais do aplicativo, **mas a Evo
 | Rede interna/porta TCP | Teste anterior do operador: `funixapp-api-1` alcançou `evolution-api-nvzq-api-1:8080`. Isso **não** prova HTTP autenticado entre contêineres. |
 | Endpoint Evolution | Duas consultas autorizadas com JID **sintético**, `POST /chat/findMessages/funix_comercial`, retornaram 200; a segunda comprovou página 1 com zero registros. Não prova outros filtros, nomes, históricos ou carga. Issue #76. |
 | Código | PRs #86, #88 e #90, empilhadas, continuam sem merge/deploy. Interface com testes sintéticos de navegador em 320/390/1440 px, CI aprovado na HEAD registrada da #90. |
-| Identificador técnico (`instanceId`) | **Existência e formato confirmados** em 08/11/2026, via PostgreSQL produtivo: uma linha de `public."Instance"` com `name='funix_comercial'`, `id` não nulo compatível com `^[A-Za-z0-9_-]{1,128}# FUNIX — Gate de homologação do Chat V20 na instalação existente
-
-**Status em 07/11/2026:** plano técnico em revisão, **não executado na VPS**. Não constitui aprovação de merge, deploy, leitura de histórico real ou uso de credenciais. Consolida as PRs #86 (transporte), #88 (configuração) e #90 (interface). Base de código: `feat/chat-v20-conversation-read-ui`.
-
-## 1. Objetivo e limites
-
-Validar de maneira **reversível e de escopo mínimo** a leitura pelo FunixApp já instalado em `app.funix.com.br`, utilizando a Evolution API e o WhatsApp `funix_comercial` **já operacionais**. Não criar nova instalação, VM, banco, Redis, n8n, webhook ou serviço. Não enviar mensagens, importar históricos, habilitar ingestão, realizar migração N:N ou criar vínculos automáticos com Atendimentos.
-
-O FunixApp atual é o ambiente de testes operacionais do aplicativo, **mas a Evolution, o WhatsApp e o n8n atendem à operação real**. Testes em cliente real só podem ocorrer após autorização própria, com privacidade e finalidade verificadas.
-
-## 2. Evidência já comprovada versus pendências
-
-| Elemento | Evidência/status |
-| --- | --- |
-| Rede interna/porta TCP | Teste anterior do operador: `funixapp-api-1` alcançou `evolution-api-nvzq-api-1:8080`. Isso **não** prova HTTP autenticado entre contêineres. |
-| Endpoint Evolution | Duas consultas autorizadas com JID **sintético**, `POST /chat/findMessages/funix_comercial`, retornaram 200; a segunda comprovou página 1 com zero registros. Não prova outros filtros, nomes, históricos ou carga. Issue #76. |
-| Código | PRs #86, #88 e #90, empilhadas, continuam sem merge/deploy. Interface com testes sintéticos de navegador em 320/390/1440 px, CI aprovado na HEAD registrada da #90. |
-. **Valor não exibido e ainda não provisionado no backend FUNIX**; alias e ID não são intercambiáveis. |
+| Identificador técnico (`instanceId`) | **Existência e formato confirmados** em 08/11/2026 por consulta de metadados ao PostgreSQL: uma instância `funix_comercial`, ID interno compatível com `^[A-Za-z0-9_-]{1,128}$`. O valor do ID não foi exibido e seu provisionamento ao FunixApp permanece pendente. |
 | Segredo disponível para o backend FunixApp | **NÃO PROVISIONADO/VERIFICADO**. A chave existente no ambiente Evolution não aparece automaticamente no FunixApp. |
 | API real de lista `findChats` | **NÃO HOMOLOGADA**. Nome `pushName` pode faltar; apresentação usa nome verificado pelo parser, número PN válido ou "Contato não identificado". |
 | Paginação/completude | **NÃO COMPROVADAS**; `offset` não é snapshot, pode repetir e omitir mensagens sob mudanças. |
 | Persistência de vínculos V20 | **NÃO IMPLANTADA**; IDs efêmeros até 30 min/reinício, sem associação N:N. |
 
-### Evidência administrativa de 08/11/2026 (somente metadados)
+### Evidência administrativa da instância — 08/11/2026
 
-Saída fornecida pelo administrador no terminal da Hostinger: `docker exec -i evolution-api-nvzq-postgres-1 psql -X -w -U evolution -d evolution` com transação `BEGIN TRANSACTION READ ONLY`, `statement_timeout=3000ms`, `lock_timeout=500ms` e `ROLLBACK`. O SQL consultou somente agregados de `public."Instance"`, restringidos ao alias `funix_comercial`, sem retornar valor de `id`. Resultado: `INSTANCIA: CONFIRMADA` e `ID_TECNICO: FORMATO_COMPATIVEL`. **Não houve acesso a conteúdo de conversas, chave, alterações ou ativação do FunixApp.** Não há confirmação de credencial nem comunicação HTTP autenticada a partir do FunixApp.
+O administrador executou uma consulta somente de metadados em `public."Instance"`, com transação `READ ONLY`, timeouts de 3 s e 500 ms e `ROLLBACK`. Resultado: `INSTANCIA: CONFIRMADA`; `ID_TECNICO: FORMATO_COMPATIVEL`. Nenhum ID, segredo, contato ou mensagem foi exibido. Este resultado não comprova autenticação HTTP a partir do FunixApp nem provisiona o ID no backend.
 
 ## 3. Configuração no backend (apenas referência; **não aplicar agora**)
 
@@ -72,28 +55,13 @@ O `compose.yaml` utiliza `/etc/funix/runtime.env`, propriedade root, modo 0600, 
 5. Separadamente, preservar cópia **privada root-only** do `/etc/funix/runtime.env`, pois o rollback das imagens **não restaura** esse arquivo. Validar o procedimento administrativo de restauração sem mostrar seu conteúdo.
 6. Registrar janela, responsável, critérios de interrupção e caminho de recuperação se a API não atingir readiness. Não alterar contêineres ainda.
 
-### Instrumento de pré-verificação (opcional, somente leitura)
+### Pré-verificação administrativa na VPS — 08/11/2026
 
-O repositório contém `deploy/chat-readiness-preflight.sh`, um roteiro que **não altera** runtime, banco, Docker ou outros serviços e **não exibe valores de variáveis**. Ele informa exclusivamente: proteção de `runtime.env`, estado da flag `FUNIX_EVOLUTION_READ_ENABLED`, presença/permissões dos registros de revisão atual e anterior, e existência do script de rollback.
+O administrador executou no terminal um roteiro somente leitura colado na sessão, depois que o download por URL raw pública de uma branch GitHub privada retornou HTTP 404. **Não foi uma execução do script remoto.**
 
-- **Antes da execução:** revisar o arquivo na revisão GitHub que será executada, por administrador autorizado. Não executar conteúdo baixado sem revisão nem assumir que o script já está instalado na VPS. O teste de sintaxe no CI não equivale à execução na VPS.
-- **Resultados permitidos:** rótulos `RUNTIME_PROTECAO`, `EVOLUTION_FLAG`, `REGISTRO_CURRENT`, `REGISTRO_PREVIOUS`, `ROLLBACK_SCRIPT`, `BACKUP_SQLITE` e `RESTAURACAO_RUNTIME`; não informar credenciais/identificadores reais.
-- **Importante:** `REGISTRO_PREVIOUS: AUSENTE_OU_SYMLINK` pode significar que ainda não houve troca de versão; não interpretar automaticamente como falha. Existência dos registros **não verifica** se seus digests estão válidos ou se o rollback foi executado com sucesso.
-- **Pendente:** uma inspeção administrativa posterior do mecanismo de backup/restauração e um ensaio de recuperação apenas quando autorizado; o roteiro **não cria backup nem testa restauração**.
-- **Segurança:** `EVOLUTION_FLAG: ATIVA` deve interromper esta preparação: checar se houve ativação fora do plano, sem executar novas chamadas e sem reproduzir segredos.
+Resultados: `RUNTIME_PROTECAO: OK`; `EVOLUTION_FLAG: AUSENTE`; `REGISTRO_CURRENT: PROTEGIDO`; `REGISTRO_PREVIOUS: PROTEGIDO`; `ROLLBACK_SCRIPT: ENCONTRADO`; `BACKUP_SQLITE: NAO_TESTADO`; `RESTAURACAO_RUNTIME: NAO_TESTADA`. Não houve alteração de serviços ou leitura de mensagens. A presença dos registros e do script **não prova a recuperação** nem valida seus digests.
 
-### Evidência de pré-verificação na VPS — 08/11/2026
-
-O administrador compartilhou a saída de um script colado diretamente no terminal da VPS, por não ser possível baixar sem autenticação o arquivo da branch privada (`raw.githubusercontent.com` retornou HTTP 404). **O comando lido/executado correspondeu ao objetivo da pré-verificação, mas não foi uma execução do arquivo remoto do GitHub.**
-
-Resultados sanitizados observados:
-- `RUNTIME_PROTECAO: OK` — `/etc/funix/runtime.env` é arquivo regular (não symlink), proprietário UID/GID 0:0, modo 0600 no momento da consulta.
-- `EVOLUTION_FLAG: AUSENTE` — a flag não estava declarada no arquivo; no código opt-in proposto, isso corresponde ao estado **desligado**. Não comprova o estado de qualquer instância da integração se outro mecanismo tiver sido implantado.
-- `REGISTRO_CURRENT: PROTEGIDO` e `REGISTRO_PREVIOUS: PROTEGIDO` — arquivos de controle presentes com modo 0600 e proprietário root; **seus conteúdos, digests, compatibilidade e capacidade efetiva de rollback não foram verificados**.
-- `ROLLBACK_SCRIPT: ENCONTRADO` — caminho executável presente, sem symlink; **script não foi executado**, nem houve simulação de recuperação.
-- `BACKUP_SQLITE: NAO_TESTADO` e `RESTAURACAO_RUNTIME: NAO_TESTADA` — continuam pendentes, não são aprovações.
-
-Escopo: leitura de metadados e somente da chave booleana da flag; nenhum conteúdo de segredo exposto, nenhuma alteração de dados ou serviço. **O passo não autoriza deploy nem ativação.**
+O script de referência `deploy/chat-readiness-preflight.sh` existe somente no código da PR; imprime estados sanitizados, sem segredos, e não realiza cópia, restauração ou reinício. Não executar novamente sem necessidade; a verificação de estado já foi feita.
 
 ### Gate C — implantação inativa no FunixApp atual (aprovação explícita de merge e deploy)
 
@@ -121,16 +89,15 @@ Se a API não subir por chave/ID inválidos, corrigir/desabilitar a flag **no ar
 | Campo | Resultado |
 | --- | --- |
 | Aprovador, data e escopo por gate | PENDENTE |
-| CI da HEAD e QA Chromium | CONFERIR ANTES DE MERGE |
-| ID técnico da instância confere por metadado? | SIM quanto à existência e ao formato: `INSTANCIA: CONFIRMADA` / `ID_TECNICO: FORMATO_COMPATIVEL` em 08/11/2026. O valor não foi exibido; provisionamento e uso pelo backend continuam NÃO VERIFICADOS. |
+| CI da HEAD e QA Chromium | Aprovados no commit anterior; reconfirmar contra a HEAD de cada merge. |
+| ID técnico da instância confere por metadado? | SIM para existência e formato (08/11/2026). Valor não exibido; ainda não configurado no FunixApp. |
 | Credencial provisionada em backend com proteção? | NÃO VERIFICADO |
-| Flag de leitura Evolution no arquivo privado da VPS | AUSENTE (verificação do operador em 08/11/2026); configuração propositiva segue desligada. |
-| Cópia privada do `runtime.env` e restauração revisadas? | Arquivo atual PROTEGIDO; cópia/restauração NÃO TESTADAS. |
-| Revisão atual/digests e rollback verificados? | Registros current/previous PROTEGIDOS e script ENCONTRADO; digests/execução do rollback NÃO VERIFICADOS. |
-| Backup/restauração SQLite FUNIX verificados? | NÃO TESTADOS. |
+| Cópia privada do `runtime.env` e restauração revisadas? | Permissões do arquivo atual conferidas; cópia/restauração NÃO TESTADAS. |
+| Revisão atual/digests e rollback verificados? | Registros current/previous protegidos e script encontrado; conteúdo e rollback NÃO TESTADOS. |
+| Backup/restauração SQLite FUNIX verificados? | Teste sintético automatizado adicionado; recuperação da VPS NÃO TESTADA. |
 | Deploy **com flag off** autorizado e realizado? | NÃO |
 | Leitura com JID sintético pós-deploy autorizada? | NÃO |
 | Leitura real autorizada separadamente? | NÃO |
 | Evolution/n8n/WhatsApp produtivos modificados? | NÃO |
 
-**Decisão nesta entrega:** apenas preparo documental e auditoria estática. Não há evidência de homologação real nem autorização implícita para executá-la.
+**Decisão nesta entrega:** preparação documental, auditoria estática e teste de recuperação sintético. Não há evidência de homologação real nem autorização implícita para executá-la.
