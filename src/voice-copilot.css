@@ -53,22 +53,23 @@
 .voice-panel .voice-action-bar{flex-wrap:wrap}
 .voice-panel .voice-action-bar .voice-apply{flex:1;min-width:120px;width:auto}
  .voice-component-values{margin:5px 0}
-.voice-component-line{display:grid;grid-template-columns:44px minmax(0,.7fr) minmax(0,1.3fr) 44px;gap:4px;align-items:end}
+.voice-component-line{display:grid;grid-template-columns:44px minmax(0,.7fr) minmax(0,1.3fr);gap:4px;align-items:end}
 .voice-component-line label{font-size:10px;min-width:0}
 .voice-component-values input{display:block;width:100%;box-sizing:border-box;min-height:44px;border:1px solid #cad4e3;border-radius:6px;padding:5px;font:inherit;font-size:12px}
-.voice-component-switch,.voice-component-quote{width:44px;height:44px;min-width:44px;padding:0;border:0;border-radius:6px;display:grid;place-items:center;background:transparent}
+.voice-component-switch{width:44px;height:44px;min-width:44px;padding:0;border:0;border-radius:6px;display:grid;place-items:center;background:transparent}
 .voice-component-switch span{width:34px;height:20px;border-radius:12px;background:#738093;position:relative}
 .voice-component-switch span:after{content:'';position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:white}
 .voice-component-switch[aria-checked=true] span{background:#167044}
 .voice-component-switch[aria-checked=true] span:after{left:17px}
 .voice-component-switch:disabled{opacity:.55}
-.voice-component-quote:disabled{color:#738093;opacity:.65;cursor:not-allowed}
-.voice-component-quote svg{width:22px;height:22px}
 .voice-component-revise{min-height:44px;max-width:90px;border:1px solid #12347c;border-radius:6px;background:#fff;color:#12347c;padding:4px;font-size:10px}
-.component-quote-options{display:flex;gap:4px;margin:4px 0;align-items:center;flex-wrap:wrap}
-.component-quote-option{display:inline-flex;align-items:center;gap:1px;min-width:0}
-.component-quote-option button{display:inline-flex;align-items:center;gap:3px;min-height:32px;border:1px solid #cad4e3;border-radius:6px;background:#fff;padding:4px;font-size:11px;color:#12347c;white-space:nowrap}
-.component-quote-option button:disabled{color:#697589;background:#f6f7f9}
-.component-quote-option a{display:inline-grid;place-items:center;min-width:24px;min-height:32px;color:#12347c;text-decoration:none}
-.component-quote-feedback{flex-basis:100%;margin:2px 0 0;font-size:11px;line-height:1.4;color:#52637b}
-.quote-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Shared manual search choices, visually present without launching any external request. */
+.component-search-links{min-width:0;margin:6px 0 2px;padding:7px;border:1px solid #d7e0ec;border-radius:9px;background:#f7faff}
+.component-search-links-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0}
+.component-search-link-cell{min-width:0}
+.component-search-link-cell a,.component-search-link-disabled{box-sizing:border-box;display:grid;place-items:center;min-height:44px;padding:5px 3px;border:1px solid #bccbdb;border-radius:7px;background:white;color:#253e5e;font-size:11px;font-weight:650;text-align:center;text-decoration:none;overflow-wrap:anywhere}
+.component-search-link-cell a:hover{background:#e7f0fb}
+.component-search-link-cell a:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+.component-search-link-disabled{color:#697589;opacity:.65}
+.component-search-link-status{font-size:11px;display:block;margin-top:4px;overflow-wrap:anywhere}
