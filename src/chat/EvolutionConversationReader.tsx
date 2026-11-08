@@ -202,7 +202,7 @@ export function EvolutionConversationReader({
     <div className="ev-conversation-detail">
     {!selected && <div className="ev-empty-detail">
       <strong>Selecione uma conversa</strong>
-      <p>Abra o histórico diretamente no Chat. Não é preciso criar nem vincular um Atendimento.</p>
+      <p>Piloto de leitura: o histórico pode ser visualizado aqui. A associação automática ao Atendimento na chegada da mensagem ainda está em desenvolvimento.</p>
     </div>}
     {selected && <>
       <header className="ev-detail-heading">
@@ -224,7 +224,7 @@ export function EvolutionConversationReader({
           Mapa
         </button>
       </nav>
-      {!activeAtendimentoId && <p className="ev-links-hint">Conversa independente. Diagnósticos e Mapa exigem um Atendimento vinculado e selecionado.</p>}
+      {!activeAtendimentoId && <p className="ev-links-hint">Atendimento ainda não identificado nesta integração. A criação e associação devem ocorrer na chegada da mensagem, não no clique.</p>}
     </>}
     {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized}
       onActiveAtendimentoChange={setActiveAtendimentoId} />}
