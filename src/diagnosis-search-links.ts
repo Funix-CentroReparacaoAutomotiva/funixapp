@@ -9,6 +9,9 @@ function technical(value:string,max=80):string|null {
  return text
 }
 function yearFromVehicle(vehicle:string):string {
+ // Fabrication/model year (2019/2020): search by the model year, not the older fabrication year.
+ const pairs=[...vehicle.matchAll(/\b(?:19\d{2}|20\d{2})\s*\/\s*(19\d{2}|20\d{2})\b/g)]
+ if(pairs.length===1)return pairs[0]![1]!
  const matches=[...vehicle.matchAll(/\b(?:19[89]\d|20[0-3]\d)\b/g)].map(m=>m[0])
  return matches.length===1?matches[0]!:''
 }
