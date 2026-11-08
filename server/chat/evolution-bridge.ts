@@ -70,6 +70,17 @@ export function createEvolutionChatBridge(
         source: 'evolution',
       }
     },
+    /** Never disclose a conversation under a different Atendimento's context.
+     * The conversationId stays opaque; the canonical Coda mapping is checked
+     * server-side at the exact time of the read, not merely in the browser list.
+     */
+    async messagesForAtendimento(atendimentoId: string, conversationId: string, page: number) {
+      purge()
+      const entry = byId.get(conversationId)
+      const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
+      if (!jid || !codaSync || codaSync.resolveActive(jid) !== atendimentoId) return null
+      return this.messages(conversationId, page)
+    },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string
       items: Array<Pick<ReadMessage, 'messageId' | 'timestamp' | 'fromMe' | 'origin' | 'kind' | 'text' | 'media' | 'statuses'>>
