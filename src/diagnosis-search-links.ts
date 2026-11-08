@@ -25,7 +25,8 @@ const marketplaceStoreSlugs:Record<string,string>={
  peugeot:'peugeot',
  ram:'ram',
  ford:'ford',
- renault:'renault'
+ renault:'renault',
+ audi:'audi'
 }
 function searchSlug(value:string):string {
  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
