@@ -43,21 +43,44 @@ export function createCodaSyncEndpoint(config: CodaSyncEndpointOptions) {
     const declared = header('content-length')
     if (declared != null && (!/^(0|[1-9]\d*)$/.test(declared) ||
       Number(declared) > maxBodyBytes)) return reject(413, 'CODA_SYNC_SIZE')
-    const chunks: Buffer[] = []
-    let bytes = 0
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 5000)
-    let body: Buffer
-    try {
-      for await (const part of req) {
-        if (controller.signal.aborted) return reject(408, 'CODA_SYNC_TIMEOUT')
-        bytes += (part as Buffer).length
-        if (bytes > maxBodyBytes) return reject(413, 'CODA_SYNC_SIZE')
-        chunks.push(Buffer.from(part as Buffer))
+    const body = await new Promise<Buffer>((resolve, reject) => {
+      let size = 0
+      const chunks: Buffer[] = []
+      let finished = false
+      const cleanup = () => {
+        clearTimeout(timeout)
+        req.off('data', onData)
+        req.off('end', onEnd)
+        req.off('aborted', onAborted)
+        req.off('error', onAborted)
+        req.pause()
       }
-      if (controller.signal.aborted) return reject(408, 'CODA_SYNC_TIMEOUT')
-      body = Buffer.concat(chunks, bytes)
-    } finally { clearTimeout(timer) }
+      const fail = (status: number, code: string) => {
+        if (finished) return
+        finished = true
+        cleanup()
+        reject(new ServiceError(status, code, 'Solicitação da integração rejeitada.'))
+      }
+      const onData = (chunk: Buffer) => {
+        const part = Buffer.from(chunk)
+        size += part.length
+        if (size > maxBodyBytes) return fail(413, 'CODA_SYNC_SIZE')
+        chunks.push(part)
+      }
+      const onEnd = () => {
+        if (finished) return
+        finished = true
+        cleanup()
+        resolve(Buffer.concat(chunks, size))
+      }
+      const onAborted = () => fail(400, 'CODA_SYNC_BODY')
+      const timeout = setTimeout(() => fail(408, 'CODA_SYNC_TIMEOUT'), 5000)
+      req.on('error', () => {}) // Connection teardown after a timeout must not crash the API.
+      req.on('data', onData)
+      req.once('end', onEnd)
+      req.once('aborted', onAborted)
+      req.once('error', onAborted)
+    })
     const actual = createHmac('sha256', config.secret)
       .update('coda-sync-v1\n' + timestamp + '\n').update(body).digest()
     if (!timingSafeEqual(actual, Buffer.from(signature.slice(7), 'hex'))) return deny()
