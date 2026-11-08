@@ -18,7 +18,8 @@ export function ComponentSearchLinks({atendimentoId,componentName,className=''}:
  const options=[
   {key:'general',label:'Geral',url:state.links?.general??null},
   {key:'original',label:'Original',url:state.links?.original??null},
-  {key:'official',label:'Loja oficial',url:state.links?.official??null}
+  {key:'official',label:'Oficial',url:state.links?.official??null},
+  ...(state.links?.montadora?[{key:'montadora',label:'Montadora',url:state.links.montadora}]:[])
  ]
  return <div className={'component-search-links '+className} role="group" aria-label="Pesquisar preços do componente em sites externos">
   <div className="component-search-links-grid">{options.map(option=><span key={option.key} className="component-search-link-cell">{option.url?
