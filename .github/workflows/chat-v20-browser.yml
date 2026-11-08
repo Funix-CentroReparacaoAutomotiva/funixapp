@@ -7,6 +7,7 @@ on:
       - 'server/chat/**'
       - 'server/experimental/evolution-read/**'
       - 'tests/browser/chat_v20_conversations.py'
+      - 'tests/browser/chat_v20_links.py'
       - '.github/workflows/chat-v20-browser.yml'
   workflow_dispatch:
 
@@ -32,9 +33,15 @@ jobs:
       - run: python tests/browser/chat_v20_conversations.py
         env:
           FUNIX_EVOLUTION_READ_ENABLED: 'false'
+      - run: python tests/browser/chat_v20_links.py
+        env:
+          FUNIX_EVOLUTION_READ_ENABLED: 'false'
+          FUNIX_CHAT_V20_LINKS_ENABLED: 'false'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: chat-v20-synthetic-browser
-          path: docs/evidencias/issue71-chat-v20-browser/
+          path: |
+            docs/evidencias/issue71-chat-v20-browser/
+            docs/evidencias/issue98-chat-v20-links-browser/
           if-no-files-found: ignore
