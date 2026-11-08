@@ -84,7 +84,11 @@ test('Gated manual N:N routes require auth/Origin, reject arbitrary UUID, preser
     assert.equal(second.status, 201)
     let linked = await (await f.request(base + '/atendimentos', 'GET', undefined, cookie)).json()
     assert.equal(linked.items.length, 2)
-    assert.equal(linked.items[0].name, 'Sintético A')
+    // Linked records may share the same millisecond; order is not a contract.
+    assert.deepEqual(
+      new Set(linked.items.map((item: { atendimentoId: string; name: string }) => JSON.stringify([item.atendimentoId, item.name]))),
+      new Set([JSON.stringify([f.one.id, 'Sintético A']), JSON.stringify([f.two.id, 'Sintético B'])]),
+    )
     assert.equal(linked.revision, 2)
     assert.equal((await f.request(base + '/context', 'POST', { linkId: result.linkId }, cookie)).status, 200)
     linked = await (await f.request(base + '/atendimentos', 'GET', undefined, cookie)).json()
