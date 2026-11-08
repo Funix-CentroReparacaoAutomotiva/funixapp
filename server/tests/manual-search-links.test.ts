@@ -19,8 +19,8 @@ test('missing or multiple years are not guessed and unmapped official stores sta
  assert.equal(noYear.montadora,null)
  const ambiguous=manualComponentSearchLinks({brand:'Volkswagen',model:'Gol',vehicle:'Gol 2018 / 2019'},'farol esquerdo')
  assert(ambiguous)
- assert.equal(new URL(ambiguous.general).searchParams.get('q'),'Volkswagen Gol farol esquerdo')
- assert.equal(ambiguous.montadora,'https://pecas.vw.com.br/todas-categorias?q=farol+esquerdo+Gol')
+ assert.equal(new URL(ambiguous.general).searchParams.get('q'),'Volkswagen Gol 2019 farol esquerdo')
+ assert.equal(ambiguous.montadora,'https://pecas.vw.com.br/todas-categorias?q=farol+esquerdo+Gol+2019')
 })
 test('reject unsafe and missing technical fields rather than leaking identifiers',()=>{
  const vehicle={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'}
