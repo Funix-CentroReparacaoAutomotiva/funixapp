@@ -49,7 +49,7 @@ try{
     const links=row.locator('.component-search-links')
     await links.waitFor()
     assert.equal(await links.locator('.component-search-link-cell').count(),3)
-    assert.deepEqual(await links.locator('.component-search-link-cell').allTextContents(),['Geral','Original','Loja oficial'])
+    assert.deepEqual(await links.locator('.component-search-link-cell').allTextContents(),['Geral','Original','Oficial'])
     assert.equal(await links.locator('a[href*="/cotar"]').count(),0,'no quotation API links')
    }
    async function toggleComponent(row,expected,keyboard=false){
