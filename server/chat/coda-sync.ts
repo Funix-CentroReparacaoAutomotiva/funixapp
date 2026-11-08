@@ -106,6 +106,14 @@ export class CodaEventSyncRepository {
       this.db.prepare(
         'INSERT OR IGNORE INTO coda_sync_conversation_links VALUES(?,?,?,?)',
       ).run(event.instance,event.remoteJid,event.codaRowId,at)
+      // Equal timestamps from different canonical Coda records do not carry
+      // enough causal information to select one. Fail closed instead of
+      // lexicographically choosing a possibly incorrect customer context.
+      const active = this.db.prepare(
+        'SELECT coda_row_id,occurred_at FROM coda_sync_active_conversations WHERE instance=? AND remote_jid=?',
+      ).get(event.instance, event.remoteJid)
+      if (active && Number(active.occurred_at) === event.occurredAt &&
+          String(active.coda_row_id) !== event.codaRowId) return conflict()
       // A delayed old event cannot replace the newest confirmed Atendimento.
       this.db.prepare([
         'INSERT INTO coda_sync_active_conversations VALUES(?,?,?,?,?)',
