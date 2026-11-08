@@ -50,9 +50,19 @@ test('operator-observed store search pattern isolates Chevrolet and Jeep routes'
  const unknown=manualComponentSearchLinks({brand:'Nissan',model:'Versa',vehicle:'Versa 2020'},'farol dianteiro direito')
  assert(unknown)
  assert.equal(unknown.official,null)
- for(const brand of ['Ford','Renault']){
+ for(const brand of ['Nissan','Toyota','Honda']){
   const other=manualComponentSearchLinks({brand,model:'Modelo',vehicle:'Modelo 2020'},'farol dianteiro direito')
   assert(other)
-  assert.equal(other.official,null,'an unverified official search must stay disabled')
+  assert.equal(other.official,null,'an unverified official store must stay disabled')
+ }
+})
+
+test('verified additional official shops get store-scoped links, with accent normalization',()=>{
+ const stores=[['Ford','ford'],['Renault','renault'],['Citroën','citroen'],['Peugeot','peugeot'],['Ram','ram']] as const
+ for(const [brand,store] of stores){
+  const result=manualComponentSearchLinks({brand,model:'Teste',vehicle:'Teste 2021'},'farol dianteiro direito')
+  assert(result)
+  assert.equal(result.official,'https://lista.mercadolivre.com.br/loja/'+store+'/farol-dianteiro-direito?sb=storefront_url')
+  assert.equal(result.montadora,null,'do not show unverified deep link for automaker web store')
  }
 })
