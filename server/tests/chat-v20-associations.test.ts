@@ -4,7 +4,6 @@ import { test } from 'node:test'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { createV20AssociationSchema, V20AssociationRepository } from '../chat/v20-associations.ts'
-import type { DatabaseSync } from 'node:sqlite'
 
 const instance = 'funix_comercial'
 const pn = '5531999990001@s.whatsapp.net'
