@@ -200,6 +200,8 @@ async def device_case(browser, width, height):
         h.mark(f"{width}px: no horizontal overflow, no external network, no JS exceptions")
 
         state["enabled"] = False
+        if width <= 760:
+            await page.get_by_role("button", name="Voltar às conversas").click()
         await page.get_by_role("button", name="Atualizar lista").click()
         await page.get_by_role("button", name="Contato Sintético Alfa").click()
         await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
