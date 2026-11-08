@@ -1,4 +1,4 @@
-import type {Atendimento} from '../shared/contracts'
+import type {Atendimento} from '../shared/contracts.ts'
 
 // Only technical terms leave the browser. Never place names, license plates,
 // contacts, notes, VINs or unfiltered free-form vehicle descriptions in links.
