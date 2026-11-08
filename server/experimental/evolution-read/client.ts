@@ -30,27 +30,29 @@ function integer(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number
   return Number(value)
 }
 function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }
-/** Protobuf uint64 media sizes may be serialized as decimal strings.
- * Accept only safe, nonnegative integer values; no lossy coercion.
+/** Media byte count is optional display metadata, not an identity or scope key.
+ * Decode only lossless safe integers; unknown protobuf representations stay null.
+ * Malformed metadata must not prevent valid conversation text from being read.
  */
 function mediaSize(value: unknown): number | null {
-  if (value == null) return null
-  if (typeof value === 'number') return integer(value)
-  if (typeof value !== 'string' || !/^(0|[1-9][0-9]{0,15})$/.test(value)) return fail()
-  return integer(Number(value))
+  if (typeof value === 'number')
+    return Number.isSafeInteger(value) && value >= 0 ? value : null
+  if (typeof value !== 'string' || !/^(0|[1-9][0-9]{0,15})$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) ? parsed : null
 }
 
-/** Accept a valid base MIME with up to 3 strictly typed parameters.
- * Parameters are discarded, never exposed through the Chat API.
+/** MIME metadata is optional and never shown to the operator.
+ * Invalid/oversized/provider-specific values are omitted, not echoed.
  */
 function mediaMime(value: unknown): string | null {
-  if (value == null) return null
-  const raw = string(value, 100)
-  const [base, ...parameters] = raw.split(';')
+  if (typeof value !== 'string' || value.length < 1 || value.length > 100 ||
+      /[\u0000-\u001f\u007f]/.test(value)) return null
+  const [base, ...parameters] = value.split(';')
   const normalized = base!.trim()
-  if (!/^[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+\/[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+$/.test(normalized) || parameters.length > 3) return fail()
+  if (!/^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/.test(normalized) || parameters.length > 3) return null
   for (const part of parameters) {
-    if (!/^[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+=(?:[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+|"[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+, -]{1,60}")$/.test(part.trim())) return fail()
+    if (!/^[A-Za-z0-9!#$&^_.+-]+=(?:[A-Za-z0-9!#$&^_.+-]+|"[A-Za-z0-9!#$&^_.+, -]{1,60}")$/.test(part.trim())) return null
   }
   return normalized.toLowerCase()
 }
