@@ -185,6 +185,8 @@ async def device_case(browser, width, height):
         await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
         h.mark(f"{width}px: cancel/confirm unlink, context reset, message preserved")
 
+        if width <= 760:
+            await page.get_by_role("button", name="Voltar às conversas").click()
         await page.get_by_role("button", name="Contato Sintético Beta").click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
         await expect(page.get_by_text("Mensagem sintética B separada")).to_be_visible()
