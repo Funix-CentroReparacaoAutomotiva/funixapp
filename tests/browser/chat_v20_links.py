@@ -144,9 +144,9 @@ async def device_case(browser, width, height):
         await panel.get_by_role("button", name="Buscar").click()
         await expect(panel.get_by_text("Oficina Exemplo A", exact=False)).to_be_visible()
         await expect(panel.get_by_text("Oficina Exemplo B", exact=False)).to_be_visible()
-        assert not await panel.get_by_role("button", name="Vincular").first.is_enabled()
+        assert not await panel.get_by_role("button", name="Vincular", exact=True).first.is_enabled()
         await panel.get_by_role("textbox", name="Motivo para vincular ou desvincular").fill("Associação manual de teste")
-        await panel.get_by_role("button", name="Vincular").first.click()
+        await panel.get_by_role("button", name="Vincular", exact=True).first.click()
         await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(1)
         assert state["revision"] == 1
         await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
@@ -156,10 +156,10 @@ async def device_case(browser, width, height):
         await panel.get_by_role("button", name="Buscar").click()
         await panel.get_by_role("textbox", name="Motivo para vincular ou desvincular").fill("Segundo Atendimento")
         state["fail_next_link"] = True
-        await panel.get_by_role("button", name="Vincular").click()
+        await panel.get_by_role("button", name="Vincular", exact=True).click()
         await expect(panel.get_by_role("alert")).to_contain_text("Vínculo alterado")
         assert state["revision"] == 1 and len(state["links"]) == 1
-        await panel.get_by_role("button", name="Vincular").click()
+        await panel.get_by_role("button", name="Vincular", exact=True).click()
         await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(2)
         assert state["revision"] == 2
         h.mark(f"{width}px: 409 conflict displays warning and safe retry, N:N links")
