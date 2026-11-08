@@ -60,7 +60,7 @@ try{
    const b=await button.boundingBox()
    assert(mr&&b&&b.x>mr.x,'button must follow MR')
    await button.click()
-   await component.locator('.diagnosis-quote-option').first().getByRole('button',{name:/R\$ 39,90/}).waitFor()
+   await component.locator('.diagnosis-quote-option').last().getByRole('button',{name:/R\$ 39,90/}).waitFor()
    assert.equal(searches,1)
    assert.equal(await component.locator('.diagnosis-quote-option').count(),3)
    assert.equal(await component.locator('.diagnosis-quote-option button:disabled').count(),2)
