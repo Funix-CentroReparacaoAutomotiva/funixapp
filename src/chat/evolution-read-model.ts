@@ -10,7 +10,7 @@ export type ConversationRow = {
   updatedAt: string | null
   unreadCount: number | null
 }
-export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution' }
+export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'; linksEnabled: boolean }
 export type ReadUiMessage = {
   messageId: string
   timestamp: number
@@ -79,7 +79,7 @@ export function parseConversationList(raw: unknown): ConversationList {
     return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
-  return { items, nextSkip, source: 'evolution' }
+  return { items, nextSkip, source: 'evolution', linksEnabled: data.linksEnabled === true }
 }
 
 export function parseConversationMessages(raw: unknown, expectedId: string): ConversationMessages {
