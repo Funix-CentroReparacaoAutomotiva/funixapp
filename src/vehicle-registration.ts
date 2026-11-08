@@ -70,7 +70,9 @@ export function readVehicleRegistration(record:{vehicle:string;model:string;bran
  // Keep persisted fields untouched until the operator actually edits vehicle identity.
  if(yearValue.test(model)){
   const withoutYear=description.replace(/\s+(?:19\d{2}|20\d{2})(?:\s*\/\s*(?:19\d{2}|20\d{2}))?$/,'').trim()
-  return {name:withoutYear||description,year:model.replace(/\s*\/\s*/g,'/'),legacy:true}
+  const brand=record.brand.trim()
+  const name=brand&&fold(withoutYear).startsWith(fold(brand)+' ')?withoutYear.slice(brand.length).trim():withoutYear
+  return {name:name||description,year:model.replace(/\s*\/\s*/g,'/'),legacy:true}
  }
  const year=extractVehicleYear(description,model)
  return {name:model||(!year?description:''),year,legacy:false}
