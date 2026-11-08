@@ -13,6 +13,7 @@ import{stageVoiceResolution}from'../voice-resolution.ts'
 import{saneQuoteQuery}from'../component-quote-query.ts'
 import{openAIQuoteProvider,validateQuoteResponse,safeQuoteUrl,QUOTE_DISCOVERY_INSTRUCTIONS,QUOTE_INSTRUCTIONS}from'../component-quote-provider.ts'
 import{reserveQuoteAttempt}from'../component-quote-budget.ts'
+import{ComponentRepository}from'../components.ts'
 import{createQuoteService}from'../component-quote-service.ts'
 import{loadQuotePilot}from'../component-quote-bootstrap.ts'
 import{createQuoteMetricsObserver}from'../component-quote-observability.ts'
@@ -294,6 +295,82 @@ test('production-like test app permits quotation only behind the explicit featur
   else process.env.NODE_ENV=previousNode
   if(previousFlag===undefined)delete process.env.FUNIX_QUOTE_ENABLED
   else process.env.FUNIX_QUOTE_ENABLED=previousFlag
+  await h.close()
+ }
+})
+
+
+test('saved diagnosis component quotation is independent of voice and requires explicit opt-in, authentication and revision',async()=>{
+ const prev=process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED
+ delete process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED
+ let calls=0
+ const h=await httpFixture({search:async(query)=>{calls++;assert.deepEqual(query,q);return validateQuoteResponse(response(),query)}})
+ try{
+  const parent=h.f.commercial.list(h.f.at.id,h.f.scenario.id).find(x=>h.f.commercial.item(x.pieceId).code==='para_choque_dianteiro')!
+  const components=new ComponentRepository(h.db)
+  const created=components.save(h.f.at.id,{pieceId:parent.id,name:'farol dianteiro esquerdo',quantity:'1',manualPrice:null,notes:'',scenarioId:h.f.scenario.id,scenarioRevision:h.f.scenarios.list(h.f.at.id)[0]!.revision})
+  const route=h.host+'/api/atendimentos/'+h.f.at.id+'/componentes/'+created.id+'/cotar'
+  const post=(body:unknown,headers=h.headers)=>fetch(route,{method:'POST',headers,body:JSON.stringify(body)})
+  const body={scenarioId:h.f.scenario.id,componentRevision:created.revision}
+  assert.equal((await post(body)).status,503)
+  process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED='true'
+  assert.equal((await post(body,{...h.headers,Cookie:''})).status,401)
+  assert.equal((await post(body,{...h.headers,Origin:'https://evil.invalid'})).status,403)
+  assert.equal((await post({...body,name:'other'})).status,400)
+  assert.equal((await post({...body,componentRevision:created.revision+1})).status,409)
+  assert.equal((await post({...body,scenarioId:'wrong'})).status,404)
+  assert.equal((await fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/componentes/missing/cotar',{method:'POST',headers:h.headers,body:JSON.stringify(body)})).status,404)
+  const before=h.db.prepare('SELECT total_changes() n').get()!.n
+  const reply=await post(body);assert.equal(reply.status,200)
+  assert.equal((await reply.json()).offers[0]?.price,'39.90')
+  assert.equal(calls,1)
+  assert.equal(h.db.prepare('SELECT total_changes() n').get()!.n,before,'search must be read-only')
+  const again=await post(body);assert.equal(again.status,200);assert.equal((await again.json()).cached,true);assert.equal(calls,1)
+  const cap=await fetch(h.host+'/api/cotacoes/capacidade',{headers:h.headers});assert.equal((await cap.json()).diagnosisEnabled,true)
+ }finally{
+  if(prev===undefined)delete process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED;else process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED=prev
+  await h.close()
+ }
+})
+
+test('saved component quote refuses incomplete details without calling provider and invalidates stale records',async()=>{
+ const prev=process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED;process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED='true'
+ let calls=0
+ const h=await httpFixture({search:async()=>{calls++;return validateQuoteResponse(response(),q)}})
+ try{
+  const parent=h.f.commercial.list(h.f.at.id,h.f.scenario.id).find(x=>h.f.commercial.item(x.pieceId).code==='para_choque_dianteiro')!
+  const components=new ComponentRepository(h.db)
+  const create=(name:string)=>components.save(h.f.at.id,{pieceId:parent.id,name,quantity:'1',manualPrice:null,notes:'',scenarioId:h.f.scenario.id,scenarioRevision:h.f.scenarios.list(h.f.at.id)[0]!.revision})
+  const unsupported=create('farol com dados privados não previstos')
+  const post=(id:string,revision:number)=>fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/componentes/'+id+'/cotar',{method:'POST',headers:h.headers,body:JSON.stringify({scenarioId:h.f.scenario.id,componentRevision:revision})})
+  const r=await post(unsupported.id,unsupported.revision);assert.equal(r.status,200);assert.equal((await r.json()).status,'needs_details');assert.equal(calls,0)
+  const valid=create('farol dianteiro esquerdo')
+  components.save(h.f.at.id,{pieceId:parent.id,name:'farol dianteiro esquerdo led',quantity:'1',manualPrice:null,notes:'',revision:valid.revision,scenarioId:h.f.scenario.id,scenarioRevision:h.f.scenarios.list(h.f.at.id)[0]!.revision},valid.id)
+  assert.equal((await post(valid.id,valid.revision)).status,409);assert.equal(calls,0)
+ }finally{
+  if(prev===undefined)delete process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED;else process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED=prev
+  await h.close()
+ }
+})
+
+test('saved component quote revalidates vehicle and component after delayed provider work',async()=>{
+ const prev=process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED;process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED='true'
+ let run!:()=>void
+ const wait=new Promise<void>(resolve=>{run=resolve})
+ const h=await httpFixture({search:async()=>{await wait;return validateQuoteResponse(response(),q)}})
+ try{
+  const parent=h.f.commercial.list(h.f.at.id,h.f.scenario.id).find(x=>h.f.commercial.item(x.pieceId).code==='para_choque_dianteiro')!
+  const components=new ComponentRepository(h.db)
+  const saved=components.save(h.f.at.id,{pieceId:parent.id,name:'farol dianteiro esquerdo',quantity:'1',manualPrice:null,notes:'',scenarioId:h.f.scenario.id,scenarioRevision:h.f.scenarios.list(h.f.at.id)[0]!.revision})
+  const quote=fetch(h.host+'/api/atendimentos/'+h.f.at.id+'/componentes/'+saved.id+'/cotar',{method:'POST',headers:h.headers,body:JSON.stringify({scenarioId:h.f.scenario.id,componentRevision:saved.revision})})
+  await new Promise(resolve=>setTimeout(resolve,15))
+  const vehicle=h.f.atendimentos.get(h.f.at.id)
+  h.f.atendimentos.update(vehicle.id,{revision:vehicle.revision,vehicle:'Gol 2020'})
+  run()
+  assert.equal((await quote).status,409)
+ }finally{
+  run()
+  if(prev===undefined)delete process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED;else process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED=prev
   await h.close()
  }
 })
