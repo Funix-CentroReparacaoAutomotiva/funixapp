@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { V20AssociationRepository } from './v20-associations.ts'
 import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
 
 /**
@@ -10,6 +11,7 @@ import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-re
 export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
   now: () => number = Date.now,
+  associations?: V20AssociationRepository,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -25,6 +27,7 @@ export function createEvolutionChatBridge(
     }
   }
   const register = (jid: string): string => {
+    if (associations) return associations.rememberConversation('funix_comercial', jid).conversationId
     const known = byJid.get(jid)
     if (known && byId.has(known)) {
       byId.get(known)!.at = now()
@@ -71,9 +74,10 @@ export function createEvolutionChatBridge(
     } | null> {
       purge()
       const entry = byId.get(conversationId)
-      if (!entry) return null
-      entry.at = now()
-      const result = await provider.findMessages(entry.jid, { page })
+      const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
+      if (!jid) return null
+      if (entry) entry.at = now()
+      const result = await provider.findMessages(jid, { page })
       return {
         conversationId,
         items: result.items.map(({ messageId, timestamp, fromMe, origin, kind, text, media, statuses }) =>

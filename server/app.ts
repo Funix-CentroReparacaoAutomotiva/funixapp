@@ -20,6 +20,7 @@ import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
+import type { V20AssociationRepository } from './chat/v20-associations.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
@@ -29,6 +30,7 @@ import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 export interface AppOptions {
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
   evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
+  v20Associations?: V20AssociationRepository // independent opt-in: never read legacy chat_links
   whatsappIngest?: IngestOptions
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
@@ -153,6 +155,48 @@ export function createRequestHandler(options: AppOptions) {
           return send(200,result)
         }finally{res.off('close',cancel)}
       }
+      // V20 N:N associations: opt-in, single authenticated operator and explicit Origin on writes.
+      // These operations NEVER contact Evolution or change legacy chat/messages.
+      if (options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
+        const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
+        const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
+        if (associationRoute || contextRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1])!
+          if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
+          if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          if (associationRoute && req.method === 'GET' && !associationRoute[3])
+            return send(200, options.v20Associations.listActive(conversationId))
+          if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+          if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+          const body = await readJson(req, 2048)
+          if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
+          const input = body as Record<string, unknown>
+          if (associationRoute && req.method === 'POST' && !associationRoute[3]) {
+            if (Object.keys(input).some(key => !['atendimentoId','expectedRevision','requestId','reason'].includes(key)))
+              return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
+            return send(201, options.v20Associations.link({
+              conversationId, atendimentoId: input.atendimentoId as string, expectedRevision: input.expectedRevision as number,
+              requestId: input.requestId as string, reason: input.reason as string,
+            }))
+          }
+          if (associationRoute && req.method === 'DELETE' && associationRoute[3]) {
+            if (Object.keys(input).some(key => !['expectedRevision','requestId','reason'].includes(key)))
+              return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
+            return send(200, options.v20Associations.unlink({
+              conversationId, linkId: associationRoute[3], expectedRevision: input.expectedRevision as number,
+              requestId: input.requestId as string, reason: input.reason as string,
+            }))
+          }
+          if (contextRoute && req.method === 'POST') {
+            if (Object.keys(input).some(key => key !== 'linkId'))
+              return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
+            if (!Object.hasOwn(input, 'linkId') || (input.linkId !== null && typeof input.linkId !== 'string'))
+              return fail(400, 'CHAT_INVALID_BODY', 'Contexto inválido.')
+            return send(200, { activeAtendimentoId: options.v20Associations.selectAtendimento(conversationId, input.linkId as string | null) })
+          }
+          return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        }
+      }
       // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
       if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
@@ -167,7 +211,7 @@ export function createRequestHandler(options: AppOptions) {
           try {
             const result = await options.evolutionChat.list(Number(skip))
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-            return send(200, result)
+            return send(200, options.v20Associations ? { ...result, linksEnabled: true } : result)
           } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as conversas agora.') }
         }
         if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 import { Notice } from '../ui'
+import { ConversationLinksPanel } from './ConversationLinksPanel'
 import { mergeReadMessages, parseConversationList, parseConversationMessages } from './evolution-read-model'
 import type { ConversationRow, ReadUiMessage } from './evolution-read-model'
 import './evolution-read.css'
@@ -26,6 +27,7 @@ function errorLabel(cause: unknown): string {
 
 export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized: () => void }) {
   const [available, setAvailable] = useState<boolean | null>(null)
+  const [linksEnabled, setLinksEnabled] = useState(false)
   const [list, setList] = useState<ConversationRow[]>([])
   const [nextSkip, setNextSkip] = useState<number | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -46,6 +48,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
       const result = parseConversationList(await api<unknown>(`/api/chat/conversations?skip=${skip}`, { signal: controller.signal }))
       if (controller.signal.aborted) return
       setAvailable(true)
+      setLinksEnabled(result.linksEnabled === true)
       setList(previous => skip === 0 ? result.items : [
         ...previous, ...result.items.filter(row => !previous.some(known => known.conversationId === row.conversationId)),
       ])
@@ -126,6 +129,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     setList([])
     setNextSkip(null)
     setAvailable(null)
+    setLinksEnabled(false)
     setListVersion(value => value + 1)
   }
 
@@ -159,7 +163,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
       <div><strong>Conversas · somente leitura</strong><small>Evolution · histórico não verificado como completo</small></div>
       <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
     </div>
-    <p className="ev-warning">Piloto de leitura. Os identificadores das conversas são temporários e podem expirar após 30 minutos ou reinício. Nenhum Atendimento é vinculado automaticamente.</p>
+    <p className="ev-warning">Piloto de leitura. {linksEnabled ? 'Vínculos manuais com Atendimentos habilitados; histórico permanece na Evolution.' : 'Identificadores temporários que podem expirar após 30 minutos ou reinício. Nenhum Atendimento vinculado automaticamente.'}</p>
     {listBusy && !list.length && <Notice title="Carregando conversas…" />}
     {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
     {!listBusy && available === true && !listError && !list.length && <Notice title="Nenhuma conversa retornada">A consulta não comprova que o histórico está vazio.</Notice>}
@@ -175,6 +179,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
       {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
     </button>}
+    {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized} />}
     {selected && <section className="ev-history" aria-label="Histórico da conversa">
       <header><strong>Histórico · somente leitura</strong><button type="button" className="fh-filter"
         disabled={messageBusy} onClick={() => {
@@ -199,6 +204,6 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
         Carregar página anterior
       </button>}
     </section>}
-    <p className="read-only-note">Exibição sem envio, sem mídia e sem vínculo N:N. Use o Funil para editar Atendimentos.</p>
+    <p className="read-only-note">Exibição sem envio e sem mídia. {linksEnabled ? 'Associações manuais não alteram mensagens.' : 'Vínculos N:N ainda indisponíveis.'} Use o Funil para editar Atendimentos.</p>
   </section>
 }
