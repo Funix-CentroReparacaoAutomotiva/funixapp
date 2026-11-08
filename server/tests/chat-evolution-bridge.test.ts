@@ -15,10 +15,13 @@ function fixture(enabled = true, fail = false) {
   let clock = Date.parse('2026-11-07T10:00:00Z')
   const calls: string[] = []
   const bridge = createEvolutionChatBridge({
-    async findChats() {
+    async findChatsPage() {
       calls.push('chats')
       if (fail) throw new Error('private provider error / apikey')
-      return [{ remoteJid: jid, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }]
+      return {
+        items: [{ remoteJid: jid, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }],
+        sourceCount: 1,
+      }
     },
     async findMessages(requested, { page } = {}) {
       calls.push('messages:' + page)
@@ -159,4 +162,31 @@ test('Chat bridge opaque IDs expire and never trigger fallback to arbitrary JID'
     assert.equal((await f.request('/api/chat/conversations/' + id + '/messages', cookie)).status, 404)
     assert.deepEqual(f.calls, ['chats'])
   } finally { f.db.close() }
+})
+
+test('Chat bridge paginates by provider rows, not by visible individuals', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const pages: number[] = []
+    const bridge = createEvolutionChatBridge({
+      async findChatsPage({ take, skip }) {
+        assert.equal(take, 50)
+        pages.push(skip)
+        if (skip === 0) return { items: [], sourceCount: 50 } // all unsupported provider rows
+        if (skip === 50) return { items: [{ remoteJid: jid, displayName: 'Pessoa Sintética', phoneNumber: '000000000001', updatedAt: null, unreadCount: 0 }], sourceCount: 2 }
+        return { items: [], sourceCount: 0 }
+      },
+      async findMessages() { throw Error('Not called') },
+    })
+    const first = await bridge.list(0)
+    assert.deepEqual(first.items, [])
+    assert.equal(first.nextSkip, 50)
+    const second = await bridge.list(first.nextSkip)
+    assert.equal(second.items.length, 1)
+    assert.equal(second.nextSkip, null)
+    assert.deepEqual(pages, [0, 50])
+    // A complete page at the provider's permitted maximum has no further cursor.
+    const atBound = await bridge.list(500000)
+    assert.equal(atBound.nextSkip, null)
+  } finally { db.close() }
 })
