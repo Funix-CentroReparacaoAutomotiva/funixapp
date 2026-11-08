@@ -59,8 +59,15 @@ try{
    const mr=await component.getByRole('note',{name:'MR do componente'}).boundingBox()
    const b=await button.boundingBox()
    assert(mr&&b&&b.x>mr.x,'button must follow MR')
-   await button.click()
-   await component.locator('.diagnosis-quote-option').last().getByRole('button',{name:/R\$ 39,90/}).waitFor()
+   const [http]=await Promise.all([
+    page.waitForResponse(response=>response.url().endsWith('/componentes/'+saved.id+'/cotar')),
+    button.click()
+   ])
+   const payload=await http.json()
+   assert.equal(http.status(),200,'synthetic quote request failed: '+JSON.stringify(payload))
+   assert.equal(payload.status,'found','synthetic quote unexpectedly empty: '+JSON.stringify(payload))
+   assert.equal(payload.offers.length,1,'synthetic response offer count')
+   await component.locator('.diagnosis-quote-option').last().getByRole('button',{name:/R\$ 39,90/}).waitFor({timeout:5000})
    assert.equal(searches,1)
    assert.equal(await component.locator('.diagnosis-quote-option').count(),3)
    assert.equal(await component.locator('.diagnosis-quote-option button:disabled').count(),2)
