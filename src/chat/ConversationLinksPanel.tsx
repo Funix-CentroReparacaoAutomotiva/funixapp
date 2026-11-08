@@ -13,7 +13,11 @@ function errorText(error: unknown): string {
   return 'Não foi possível concluir. Confira os dados e tente novamente.'
 }
 /** Explicit operator choice only; no phone/PN/LID-based automatic association. */
-export function ConversationLinksPanel({ conversationId, onUnauthorized }: { conversationId: string; onUnauthorized: () => void }) {
+export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange }: {
+  conversationId: string
+  onUnauthorized: () => void
+  onActiveAtendimentoChange?: (atendimentoId: string | null) => void
+}) {
   const base = '/api/chat/conversations/' + encodeURIComponent(conversationId)
   const [links, setLinks] = useState<Links | null>(null)
   const [query, setQuery] = useState('')
@@ -29,7 +33,10 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized }: { con
     queueMicrotask(() => {
       if (controller.signal.aborted) return
       void api<Links>(base + '/atendimentos', { signal: controller.signal })
-        .then(value => { if (!controller.signal.aborted) setLinks(value) })
+        .then(value => { if (!controller.signal.aborted) {
+            setLinks(value)
+            onActiveAtendimentoChange?.(value.activeAtendimentoId)
+          } })
         .catch(cause => {
           if (controller.signal.aborted) return
           if ((cause as RequestFailure).status === 401) onUnauthorized()
@@ -37,10 +44,14 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized }: { con
         })
     })
     return () => controller.abort()
-  }, [base, onUnauthorized])
+  }, [base, onUnauthorized, onActiveAtendimentoChange])
 
   async function reload() {
-    try { setLinks(await api<Links>(base + '/atendimentos')) }
+    try {
+      const value = await api<Links>(base + '/atendimentos')
+      setLinks(value)
+      onActiveAtendimentoChange?.(value.activeAtendimentoId)
+    }
     catch (cause) {
       if ((cause as RequestFailure).status === 401) onUnauthorized()
       else setError(errorText(cause))
