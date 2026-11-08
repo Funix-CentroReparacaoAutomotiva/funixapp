@@ -169,9 +169,11 @@ test('Chat bridge paginates by provider rows, not by visible individuals', async
   try {
     const pages: number[] = []
     const bridge = createEvolutionChatBridge({
-      async findChatsPage({ take, skip }) {
+      async findChatsPage(options = {}) {
+        const { take, skip } = options
         assert.equal(take, 50)
-        pages.push(skip)
+        assert.equal(typeof skip, 'number')
+        pages.push(skip!)
         if (skip === 0) return { items: [], sourceCount: 50 } // all unsupported provider rows
         if (skip === 50) return { items: [{ remoteJid: jid, displayName: 'Pessoa Sintética', phoneNumber: '000000000001', updatedAt: null, unreadCount: 0 }], sourceCount: 2 }
         if (skip === 500000) return { items: [], sourceCount: 50 }
