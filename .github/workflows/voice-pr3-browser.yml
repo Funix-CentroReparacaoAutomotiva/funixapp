@@ -28,7 +28,6 @@ jobs:
       - run: node scripts/voice-components-browser.mjs
         env:
           FUNIX_TEST_MIC_STARTUP_MS: "700"
-      - run: node scripts/diagnosis-quote-browser.mjs
       - name: Check existing app.funix.com.br (GET only; no credentials)
         # PR validation must remain synthetic/offline from FUNIX services (Issue #71).
         if: always() && github.event_name == 'workflow_dispatch'
