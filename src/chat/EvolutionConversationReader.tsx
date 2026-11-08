@@ -25,7 +25,10 @@ function errorLabel(cause: unknown): string {
   return 'Não foi possível carregar os dados. Confira a conexão e tente novamente.'
 }
 
-export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized: () => void }) {
+export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento }: {
+  onUnauthorized: () => void
+  onOpenAtendimento?: (atendimentoId: string, conversationId: string) => void
+}) {
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
   const [list, setList] = useState<ConversationRow[]>([])
@@ -179,6 +182,11 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
       {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
     </button>}
+    {selected && (() => {
+      const linked = list.find(row => row.conversationId === selected)
+      return linked?.atendimentoId && onOpenAtendimento ? <button type="button" className="fh-filter" onClick={() => onOpenAtendimento(linked.atendimentoId!, selected)}>Abrir Atendimento vinculado · Chat</button> :
+        <p className="ev-warning">Sem vínculo Coda confirmado: o Chat pode ser lido aqui, mas nenhum Atendimento será criado ao clicar.</p>
+    })()}
     {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized} />}
     {selected && <section className="ev-history" aria-label="Histórico da conversa">
       <header><strong>Histórico · somente leitura</strong><button type="button" className="fh-filter"
