@@ -15,11 +15,32 @@ O FunixApp atual é o ambiente de testes operacionais do aplicativo, **mas a Evo
 | Rede interna/porta TCP | Teste anterior do operador: `funixapp-api-1` alcançou `evolution-api-nvzq-api-1:8080`. Isso **não** prova HTTP autenticado entre contêineres. |
 | Endpoint Evolution | Duas consultas autorizadas com JID **sintético**, `POST /chat/findMessages/funix_comercial`, retornaram 200; a segunda comprovou página 1 com zero registros. Não prova outros filtros, nomes, históricos ou carga. Issue #76. |
 | Código | PRs #86, #88 e #90, empilhadas, continuam sem merge/deploy. Interface com testes sintéticos de navegador em 320/390/1440 px, CI aprovado na HEAD registrada da #90. |
-| Identificador técnico (`instanceId`) | **NÃO VERIFICADO** na VPS para o contrato de mensagens. O alias `funix_comercial` não deve ser usado como ID técnico por suposição. |
+| Identificador técnico (`instanceId`) | **Existência e formato confirmados** em 08/11/2026, via PostgreSQL produtivo: uma linha de `public."Instance"` com `name='funix_comercial'`, `id` não nulo compatível com `^[A-Za-z0-9_-]{1,128}# FUNIX — Gate de homologação do Chat V20 na instalação existente
+
+**Status em 07/11/2026:** plano técnico em revisão, **não executado na VPS**. Não constitui aprovação de merge, deploy, leitura de histórico real ou uso de credenciais. Consolida as PRs #86 (transporte), #88 (configuração) e #90 (interface). Base de código: `feat/chat-v20-conversation-read-ui`.
+
+## 1. Objetivo e limites
+
+Validar de maneira **reversível e de escopo mínimo** a leitura pelo FunixApp já instalado em `app.funix.com.br`, utilizando a Evolution API e o WhatsApp `funix_comercial` **já operacionais**. Não criar nova instalação, VM, banco, Redis, n8n, webhook ou serviço. Não enviar mensagens, importar históricos, habilitar ingestão, realizar migração N:N ou criar vínculos automáticos com Atendimentos.
+
+O FunixApp atual é o ambiente de testes operacionais do aplicativo, **mas a Evolution, o WhatsApp e o n8n atendem à operação real**. Testes em cliente real só podem ocorrer após autorização própria, com privacidade e finalidade verificadas.
+
+## 2. Evidência já comprovada versus pendências
+
+| Elemento | Evidência/status |
+| --- | --- |
+| Rede interna/porta TCP | Teste anterior do operador: `funixapp-api-1` alcançou `evolution-api-nvzq-api-1:8080`. Isso **não** prova HTTP autenticado entre contêineres. |
+| Endpoint Evolution | Duas consultas autorizadas com JID **sintético**, `POST /chat/findMessages/funix_comercial`, retornaram 200; a segunda comprovou página 1 com zero registros. Não prova outros filtros, nomes, históricos ou carga. Issue #76. |
+| Código | PRs #86, #88 e #90, empilhadas, continuam sem merge/deploy. Interface com testes sintéticos de navegador em 320/390/1440 px, CI aprovado na HEAD registrada da #90. |
+. **Valor não exibido e ainda não provisionado no backend FUNIX**; alias e ID não são intercambiáveis. |
 | Segredo disponível para o backend FunixApp | **NÃO PROVISIONADO/VERIFICADO**. A chave existente no ambiente Evolution não aparece automaticamente no FunixApp. |
 | API real de lista `findChats` | **NÃO HOMOLOGADA**. Nome `pushName` pode faltar; apresentação usa nome verificado pelo parser, número PN válido ou "Contato não identificado". |
 | Paginação/completude | **NÃO COMPROVADAS**; `offset` não é snapshot, pode repetir e omitir mensagens sob mudanças. |
 | Persistência de vínculos V20 | **NÃO IMPLANTADA**; IDs efêmeros até 30 min/reinício, sem associação N:N. |
+
+### Evidência administrativa de 08/11/2026 (somente metadados)
+
+Saída fornecida pelo administrador no terminal da Hostinger: `docker exec -i evolution-api-nvzq-postgres-1 psql -X -w -U evolution -d evolution` com transação `BEGIN TRANSACTION READ ONLY`, `statement_timeout=3000ms`, `lock_timeout=500ms` e `ROLLBACK`. O SQL consultou somente agregados de `public."Instance"`, restringidos ao alias `funix_comercial`, sem retornar valor de `id`. Resultado: `INSTANCIA: CONFIRMADA` e `ID_TECNICO: FORMATO_COMPATIVEL`. **Não houve acesso a conteúdo de conversas, chave, alterações ou ativação do FunixApp.** Não há confirmação de credencial nem comunicação HTTP autenticada a partir do FunixApp.
 
 ## 3. Configuração no backend (apenas referência; **não aplicar agora**)
 
@@ -78,7 +99,7 @@ Se a API não subir por chave/ID inválidos, corrigir/desabilitar a flag **no ar
 | --- | --- |
 | Aprovador, data e escopo por gate | PENDENTE |
 | CI da HEAD e QA Chromium | CONFERIR ANTES DE MERGE |
-| ID técnico da instância confere por metadado? | NÃO VERIFICADO |
+| ID técnico da instância confere por metadado? | SIM quanto à existência e ao formato: `INSTANCIA: CONFIRMADA` / `ID_TECNICO: FORMATO_COMPATIVEL` em 08/11/2026. O valor não foi exibido; provisionamento e uso pelo backend continuam NÃO VERIFICADOS. |
 | Credencial provisionada em backend com proteção? | NÃO VERIFICADO |
 | Cópia privada do `runtime.env` e restauração revisadas? | NÃO EXECUTADO |
 | Revisão atual/digests e rollback verificados? | NÃO EXECUTADO |
