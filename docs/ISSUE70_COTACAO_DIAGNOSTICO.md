@@ -18,6 +18,6 @@ Atualmente, a cotação existe somente na revisão do Copiloto de Voz, ligada a 
 
 ## Verificações e pendências
 
-Testar autenticação, origem, rota fechada, componente e cenário inexistentes, revisão obsoleta, dados técnicos insuficientes, nenhuma mutação por consulta, cache na mesma sessão e descarte da resposta após troca do veículo. Testar UI em desktop (1440) e celular (390/320), sem overflow, sem botões ativos durante edição e sem alteração do preço até clique explícito. Nenhuma chamada à OpenAI real durante testes.
+Testar autenticação, origem, rota fechada, componente e cenário inexistentes, revisão obsoleta, dados técnicos insuficientes, nenhuma mutação por consulta, cache na mesma sessão e descarte da resposta após troca do veículo. A CI de Chromium executa `node scripts/diagnosis-quote-browser.mjs` em 1440/390/320 com SQLite efêmero e um provedor de cotação mockado: verifica ausência de consulta automática, botão depois de MR, três categorias, nenhuma escrita ao pesquisar, seleção explícita, autosave de `manualPrice`, quantidade preservada e ausência de overflow. O teste utiliza somente preços/links sintéticos. Nenhuma chamada à OpenAI real durante testes.
 
 **Gates:** branch e PR somente, revisão dos checks, autorização separada de merge/deploy e ativação da flag. Não realizar a quarta tentativa paga, não aumentar o ledger e não afrouxar prova de fonte nesta entrega. O último registro de uso é 3/10 reservas e este trabalho não o altera.
