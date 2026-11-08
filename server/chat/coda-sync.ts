@@ -71,7 +71,9 @@ export function createCodaEventSchema(db: DatabaseSync) {
  * No match by phone, name or inferred PN/LID equivalence, ever.
  */
 export class CodaEventSyncRepository {
-  constructor(private readonly db: DatabaseSync, private readonly now: () => string = () => new Date().toISOString()) {}
+  private readonly db: DatabaseSync
+  private readonly now: () => string
+  constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) { this.db = db; this.now = now }
 
   sync(raw: unknown): { atendimentoId: string; state: 'created' | 'existing' } {
     const event = validate(raw)
