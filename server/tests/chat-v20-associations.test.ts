@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
@@ -104,4 +107,32 @@ test('offline schema is explicitly not part of V14 bootstrap; no production migr
     assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 14)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally { db.close() }
+})
+
+test('stable association survives full SQLite file close/reopen with no legacy migration change', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'funix-v20-nn-offline-'))
+  const filename = join(dir, 'associations.sqlite')
+  let db = openDatabase(filename)
+  try {
+    createV20AssociationSchema(db)
+    const atendimento = new AtendimentoRepository(db).create({ phone: '00000000001' })
+    const repo = new V20AssociationRepository(db)
+    const { conversationId } = repo.rememberConversation(instance, pn)
+    const linked = repo.link({
+      conversationId, atendimentoId: atendimento.id, expectedRevision: 0,
+      requestId: randomUUID(), reason: 'teste sintético de persistência',
+    })
+    repo.selectAtendimento(conversationId, linked.linkId)
+    db.close()
+    db = openDatabase(filename)
+    const reopened = new V20AssociationRepository(db)
+    assert.deepEqual(reopened.rememberConversation(instance, pn), { conversationId, revision: 1 })
+    assert.deepEqual(reopened.listActive(conversationId).items.map(x => x.atendimentoId), [atendimento.id])
+    assert.equal(reopened.listActive(conversationId).activeAtendimentoId, atendimento.id)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version), 14)
+    assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
+  } finally {
+    try { db.close() } catch { /* already closed on failure */ }
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
