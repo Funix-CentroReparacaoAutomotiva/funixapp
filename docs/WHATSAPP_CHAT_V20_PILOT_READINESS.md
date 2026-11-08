@@ -63,6 +63,21 @@ Resultados: `RUNTIME_PROTECAO: OK`; `EVOLUTION_FLAG: AUSENTE`; `REGISTRO_CURRENT
 
 O script de referência `deploy/chat-readiness-preflight.sh` existe somente no código da PR; imprime estados sanitizados, sem segredos, e não realiza cópia, restauração ou reinício. Não executar novamente sem necessidade; a verificação de estado já foi feita.
 
+### Ensaio de recuperação isolada na VPS — 08/11/2026
+
+O administrador executou manualmente no terminal da VPS um roteiro de teste com `Python sqlite3`, acesso **somente leitura** ao banco FUNIX, backup online para diretório temporário privado, restauração **somente para outra cópia temporária** e comparação de uma cópia temporária de `/etc/funix/runtime.env`. Não executou rollback, deploy, restart nem acesso à Evolution. A saída intermediária do comando colado no terminal contém texto truncado/embaralhado; os **resultados finais** informados foram:
+
+```text
+RESTAURACAO_CONFIGURACAO: OK
+BACKUP_SQLITE: OK
+RESTAURACAO_ISOLADA: OK
+INTEGRIDADE_SQLITE: OK
+RELACOES_SQLITE: OK
+RESULTADO: TESTE_CONCLUIDO
+```
+
+**Interpretação limitada e correta:** o roteiro concluiu com êxito cópia e comparação da configuração, backup SQLite, abertura da cópia restaurada, `PRAGMA integrity_check` e `PRAGMA foreign_key_check`. Nenhum conteúdo privado, caminho temporário específico ou segredo foi divulgado. O teste **não** valida restauração *sobre* o banco de produção, disponibilidade após rollback de imagem, integridade de imagens/digests, cópia de segurança persistente nem disaster recovery. A limpeza dos arquivos temporários foi prevista pelo `trap` do roteiro; não houve conferência independente posterior do diretório. A política permanece: não solicitar dados de clientes, não reexecutar testes desnecessariamente, não ativar Chat sem aprovação específica.
+
 ### Gate C — implantação inativa no FunixApp atual (aprovação explícita de merge e deploy)
 
 1. Somente após Gate A e B, submeter a sequência das PRs a revisão/merge **autorizados**, com CI final contra a base vigente.
@@ -92,9 +107,9 @@ Se a API não subir por chave/ID inválidos, corrigir/desabilitar a flag **no ar
 | CI da HEAD e QA Chromium | Aprovados no commit anterior; reconfirmar contra a HEAD de cada merge. |
 | ID técnico da instância confere por metadado? | SIM para existência e formato (08/11/2026). Valor não exibido; ainda não configurado no FunixApp. |
 | Credencial provisionada em backend com proteção? | NÃO VERIFICADO |
-| Cópia privada do `runtime.env` e restauração revisadas? | Permissões do arquivo atual conferidas; cópia/restauração NÃO TESTADAS. |
+| Cópia privada do `runtime.env` e restauração revisadas? | **SIM para ensaio isolado temporário**: cópia/restauração e comparação OK (08/11/2026). Sem teste de aplicação do arquivo em produção. |
 | Revisão atual/digests e rollback verificados? | Registros current/previous protegidos e script encontrado; conteúdo e rollback NÃO TESTADOS. |
-| Backup/restauração SQLite FUNIX verificados? | Teste sintético automatizado adicionado; recuperação da VPS NÃO TESTADA. |
+| Backup/restauração SQLite FUNIX verificados? | **SIM para ensaio isolado na VPS**: backup, abertura da cópia, integridade e chaves estrangeiras OK (08/11/2026). Sem backup permanente ou restauração sobre produção. |
 | Deploy **com flag off** autorizado e realizado? | NÃO |
 | Leitura com JID sintético pós-deploy autorizada? | NÃO |
 | Leitura real autorizada separadamente? | NÃO |
