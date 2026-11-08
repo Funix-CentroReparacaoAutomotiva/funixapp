@@ -109,7 +109,7 @@ O `main` pode avançar independentemente desta cadeia de PRs. **Antes de qualque
 
 ### Achado da revisão de código — bloqueio para leitura real
 
-**Issue #94:** a implementação atual de `findChats` considera qualquer `remoteJid` de grupo ou broadcast inválido e rejeita a página inteira. Isso é uma **inferência verificada no código**, não um defeito confirmado com payload da Evolution produtiva. Antes do **Gate D** é necessário definir e testar com dados sintéticos a exclusão de conversas não individuais, preservando o deslocamento/paginação na fonte e sem degradar a validação de PN/LID. Não interpretar a CI da PR #93 como comprovação dessa compatibilidade com dados reais.
+**Issue #94:** detectamos originalmente que `findChats` rejeitava toda a página quando a Evolution apresentava JIDs de grupo ou broadcast. **Correção proposta, ainda sujeita ao CI e à revisão:** `findChatsPage` filtra apenas formatos explicitamente reconhecidos como não individuais (`@g.us`, `@broadcast`, `@newsletter`), mantém falha fechada para PN/LID malformados e devolve `sourceCount` bruto para a ponte calcular `nextSkip` pelo número de registros consumidos na fonte. Incluímos testes sintéticos de páginas mistas e exclusivamente de grupos, limites de offset e dados privados não projetados. **A compatibilidade com payload real da Evolution permanece NÃO HOMOLOGADA; o Gate D continua bloqueado até revisão, CI e autorização de ensaio real.**
 
 **Revisão humana:** em 08/11/2026, as PRs #86, #88 e #90 não continham review formal submetida no GitHub. Os checks automáticos não substituem revisão do fluxo de autenticação, compatibilidade de API e segurança antes de merge.
 
