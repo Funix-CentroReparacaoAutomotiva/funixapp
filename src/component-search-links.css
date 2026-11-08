@@ -1,0 +1,9 @@
+/* Shared manual search choices, visually present without launching any external request. */
+.component-search-links{min-width:0;margin:6px 0 2px;padding:7px;border:1px solid #d7e0ec;border-radius:9px;background:#f7faff}
+.component-search-links-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;min-width:0}
+.component-search-link-cell{min-width:0}
+.component-search-link-cell a,.component-search-link-disabled{box-sizing:border-box;display:grid;place-items:center;min-height:44px;padding:5px 3px;border:1px solid #bccbdb;border-radius:7px;background:white;color:#253e5e;font-size:11px;font-weight:650;text-align:center;text-decoration:none;overflow-wrap:anywhere}
+.component-search-link-cell a:hover{background:#e7f0fb}
+.component-search-link-cell a:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+.component-search-link-disabled{color:#697589;opacity:.65}
+.component-search-link-status{font-size:11px;display:block;margin-top:4px;overflow-wrap:anywhere}

@@ -1,12 +1,11 @@
 import {useState} from 'react'
 import {ComponentQuotation} from './ComponentQuotation'
-import type{QuotationContext}from'./ComponentQuotation'
 import {voiceReviewName} from './voice-review-name'
 import {componentDecimal} from '../shared/voice-components'
 import type {VoiceReviewGroup} from '../shared/voice-review'
 const symbols={add:'+',remove:'−',change:'↔',pending:'!',warning:'!',noop:'✓'}
 const labels={add:'Inclusão ou habilitação',remove:'Remoção ou desabilitação',change:'Alteração',pending:'Pendência — não será aplicada',warning:'Atenção operacional',noop:'Já está assim'}
-export function VoiceReview({groups,onResolve,onClarify,onComponentChange,onComponentRevise,onComponentToggle,quoteContext,quoteEnabled=false,onQuoteSelect,componentDrafts={},decisionsDisabled=false,busy=false}:{quoteContext?:QuotationContext;quoteEnabled?:boolean;onQuoteSelect?:(id:string,price:string)=>void;groups:VoiceReviewGroup[];onResolve?:(id:string)=>void;onClarify?:(id:string)=>void;busy?:boolean;decisionsDisabled?:boolean;componentDrafts?:Record<string,{quantity:string;manualPrice:string}>;onComponentChange?:(id:string,value:{quantity:string;manualPrice:string})=>void;onComponentRevise?:(id:string)=>void;onComponentToggle?:(id:string,enabled:boolean)=>void}){
+export function VoiceReview({groups,onResolve,onClarify,onComponentChange,onComponentRevise,onComponentToggle,atendimentoId,componentDrafts={},decisionsDisabled=false,busy=false}:{atendimentoId:string;groups:VoiceReviewGroup[];onResolve?:(id:string)=>void;onClarify?:(id:string)=>void;busy?:boolean;decisionsDisabled?:boolean;componentDrafts?:Record<string,{quantity:string;manualPrice:string}>;onComponentChange?:(id:string,value:{quantity:string;manualPrice:string})=>void;onComponentRevise?:(id:string)=>void;onComponentToggle?:(id:string,enabled:boolean)=>void}){
  const[expanded,setExpanded]=useState<Record<string,number>>({})
  return <section className="voice-review" aria-label="Alterações previstas">
   {groups.length===0&&<p>Nenhuma alteração.</p>}
@@ -17,7 +16,7 @@ export function VoiceReview({groups,onResolve,onClarify,onComponentChange,onComp
     <div className="voice-entry-body"><span className="voice-entry-label">{entry.component||entry.nameKind==='component'?voiceReviewName(entry.label):entry.label}</span>
      {entry.scope!=='shared'&&entry.kind!=='pending'&&entry.kind!=='warning'&&<small className="voice-scope">{entry.scope==='global'?'Excluir em todos os cenários':'Só neste cenário'}</small>}
      {entry.fields.length>0&&<dl>{entry.fields.map((field,i)=><div key={i}><dt>{field.label}</dt><dd>{field.before!==undefined&&<><span className="voice-before">{field.before}</span><span aria-label="para"> → </span></>}{field.namePrefix?voiceReviewName(field.namePrefix)+field.after.slice(field.namePrefix.length):field.after}</dd></div>)}</dl>}
-     {entry.component&&(()=>{const c=entry.component!,draft=componentDrafts[c.commandId],value=draft??{quantity:c.quantity,manualPrice:displayPrice(c.manualPrice)};return <ComponentQuotation key={(quoteContext?.resolutionId??'')+c.commandId} command={c.commandId} value={value} enabled={c.enabled??true} parentEnabled={c.parentEnabled!==false} busy={busy} context={quoteContext} quoteEnabled={quoteEnabled} onChange={v=>onComponentChange?.(c.commandId,v)} onRevise={draft?()=>onComponentRevise?.(c.commandId):undefined} onToggle={()=>onComponentToggle?.(c.commandId,!(c.enabled??true))} onSelect={price=>onQuoteSelect?.(c.commandId,price)}/>})()}
+     {entry.component&&(()=>{const c=entry.component!,draft=componentDrafts[c.commandId],value=draft??{quantity:c.quantity,manualPrice:displayPrice(c.manualPrice)};return <ComponentQuotation key={c.commandId} value={value} enabled={c.enabled??true} parentEnabled={c.parentEnabled!==false} busy={busy} atendimentoId={atendimentoId} componentName={entry.label} onChange={v=>onComponentChange?.(c.commandId,v)} onRevise={draft?()=>onComponentRevise?.(c.commandId):undefined} onToggle={()=>onComponentToggle?.(c.commandId,!(c.enabled??true))}/>})()}
      {entry.pendingId&&<div className="voice-options">
       {(entry.options??[]).slice(0,expanded[entry.pendingId]??3).map(option=><button key={option.id} disabled={busy||decisionsDisabled} onClick={()=>onResolve?.(option.id)}>{option.label}</button>)}
       {(entry.options?.length??0)>(expanded[entry.pendingId]??3)&&<button disabled={busy} onClick={()=>setExpanded(old=>({...old,[entry.pendingId!]:(old[entry.pendingId!]??3)+3}))}>Mais opções</button>}

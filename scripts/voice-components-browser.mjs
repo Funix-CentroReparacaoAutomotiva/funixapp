@@ -41,11 +41,16 @@ try{
    assert.equal(await row.getByRole('textbox',{name:'Quantidade do componente',exact:true}).inputValue(),'1');assert.equal(await row.getByRole('textbox',{name:'Preço unitário do componente',exact:true}).inputValue(),'0,00')
    async function compactRow(row){
     const line=row.locator('.voice-component-line'),controls=line.locator('button,input')
-    assert.equal(await controls.count(),4)
+    assert.equal(await controls.count(),3)
     const boxes=await controls.evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom}}))
     assert(boxes.every(b=>b.height>=44));assert(boxes.every(b=>Math.abs(b.bottom-boxes[0].bottom)<1));assert(boxes.every((b,i)=>!i||b.x>=boxes[i-1].x+boxes[i-1].width))
     assert(await line.evaluate(el=>el.scrollWidth<=el.clientWidth+1))
-    const quote=row.getByRole('button',{name:'Cotar componente',exact:true});assert(await quote.isDisabled());assert.equal(await quote.getAttribute('title'),'Cotação indisponível nesta etapa');assert.equal(await quote.locator('svg').count(),1)
+    assert.equal(await row.getByRole('button',{name:'Cotar componente',exact:true}).count(),0)
+    const links=row.locator('.component-search-links')
+    await links.waitFor()
+    assert.equal(await links.locator('.component-search-link-cell').count(),3)
+    assert.deepEqual(await links.locator('.component-search-link-cell').allTextContents(),['Geral','Original','Loja oficial'])
+    assert.equal(await links.locator('a[href*="/cotar"]').count(),0,'no quotation API links')
    }
    async function toggleComponent(row,expected,keyboard=false){
     const control=row.getByRole('switch'),before=revisionPosts.length
@@ -124,7 +129,7 @@ try{
    assert.equal(f.commercial.list(f.at.id).find(p=>p.id===f.item.id).services[0].id,f.item.services[0].id)
    assert(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth+1));assert.deepEqual(componentPosts,[]);assert.deepEqual(errors,[])
    writeFileSync(artifacts+'/switch-sync-'+width+'.json',JSON.stringify({width,switchTransitions},null,2)+'\n')
-   console.log('PASS Issue66 '+width+ ' compact four controls, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard')
+   console.log('PASS Issue66 '+width+ ' compact three controls and search links, real switch, keyboard, off and disabled parent; Issue64: editable component, zero price, sides/Both/Falar, duplicate decisions, same Apply, MR, R$ 123,45, XSS and private clipboard')
   }catch(error){if(page){console.log('VISIBLE',await page.locator('body').innerText());await page.screenshot({path:artifacts+'/failure-'+width+'.png'})}throw error}
   finally{await context.close();app.closeAllConnections();await new Promise(r=>app.close(r));db.close()}
  }
