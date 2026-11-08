@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-sync.ts'
+import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
 
 function synthetic(row: string, event = 'evo:synthetic:one', jid = '5531999990001@s.whatsapp.net', occurredAt = 1794144000) {
   return { version: 1, source: 'coda', eventId: event, codaRowId: row,
@@ -99,5 +100,30 @@ test('Coda sync: V14 open/reopen remains valid with additive tables and local At
     const one=f.sync.sync(event)
     assert.deepEqual(fresh.sync(event),{ ...one,state:'existing' })
     assert.equal(f.db.prepare('PRAGMA foreign_key_check').all().length,0)
+  } finally { f.db.close() }
+})
+
+
+test('read-only conversation list reports linked local Atendimento only when event mapping is available', async () => {
+  const f = fixture()
+  try {
+    const pn='5531999990001@s.whatsapp.net'
+    const rows = [{ remoteJid: pn, displayName: 'Fictício', phoneNumber: '5531999990001',
+      updatedAt: null, unreadCount: 0 }]
+    const provider = {
+      async findChatsPage() { return { items: rows, sourceCount: rows.length } },
+      async findMessages() { return { items: [], currentPage: 1, reportedTotal: 0, reportedPages: 0,
+        nextPage: null, consistency: 'offset-not-snapshot' as const } },
+    }
+    const noSync = createEvolutionChatBridge(provider)
+    const withSync = createEvolutionChatBridge(provider, Date.now, undefined, f.sync)
+    const before = await withSync.list(0)
+    assert.equal(before.items[0]?.atendimentoId, null)
+    const linked = f.sync.sync(synthetic('i-SYNTH_A'))
+    const after = await withSync.list(0)
+    assert.equal(after.items[0]?.atendimentoId, linked.atendimentoId)
+    const old = await noSync.list(0)
+    assert.equal(Object.hasOwn(old.items[0]!, 'atendimentoId'), false)
+    assert.equal(Object.hasOwn(after.items[0]!, 'remoteJid'), false)
   } finally { f.db.close() }
 })
