@@ -63,3 +63,15 @@ export function yearSuggestions(currentYear=new Date().getFullYear()):string[]{
  }
  return options
 }
+
+export function readVehicleRegistration(record:{vehicle:string;model:string;brand:string}):{name:string;year:string;legacy:boolean}{
+ const model=record.model.trim(),description=record.vehicle.trim()
+ // Some historical records used "model" for the year and "vehicle" for the car name.
+ // Keep persisted fields untouched until the operator actually edits vehicle identity.
+ if(yearValue.test(model)){
+  const withoutYear=description.replace(/\s+(?:19\d{2}|20\d{2})(?:\s*\/\s*(?:19\d{2}|20\d{2}))?$/,'').trim()
+  return {name:withoutYear||description,year:model.replace(/\s*\/\s*/g,'/'),legacy:true}
+ }
+ const year=extractVehicleYear(description,model)
+ return {name:model||(!year?description:''),year,legacy:false}
+}
