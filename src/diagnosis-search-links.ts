@@ -22,19 +22,13 @@ const marketplaceStoreSlugs:Record<string,string>={
  hyundai:'hyundai-mobis',
  'hyundai mobis':'hyundai-mobis'
 }
-// Preserve previously mapped channels pending a verified store-search example.
-// They open the store home, never a generic marketplace search represented as official.
-const storeHomeFallbacks:Record<string,string>={
- ford:'https://www.mercadolivre.com.br/a/store/ford-loja-oficial',
- renault:'https://www.mercadolivre.com.br/loja/renault'
-}
 function searchSlug(value:string):string {
  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
   .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')
 }
 function officialMarketplaceSearch(make:string,part:string):string|null {
  const store=marketplaceStoreSlugs[make]
- if(!store)return storeHomeFallbacks[make]??null
+ if(!store)return null
  const item=searchSlug(part)
  return item?'https://lista.mercadolivre.com.br/loja/'+store+'/'+item+'?sb=storefront_url':null
 }
