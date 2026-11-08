@@ -56,7 +56,7 @@ try{
    assert.equal(general.searchParams.get('tbm'),'shop')
    assert.equal(general.searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo')
    assert.equal(original.searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo original')
-   assert.equal(await anchors.nth(2).getAttribute('href'),'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios')
+   assert.equal(await anchors.nth(2).getAttribute('href'),'https://lista.mercadolivre.com.br/loja/volkswagen/farol-dianteiro-esquerdo?sb=storefront_url')
    assert.equal(await anchors.nth(3).getAttribute('href'),'https://pecas.vw.com.br/todas-categorias?q=farol+dianteiro+esquerdo+Gol+2019')
    assert.equal(await component.getByRole('textbox',{name:'Preço unitário do componente'}).inputValue(),'10,00')
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id).manualPrice,'10')
