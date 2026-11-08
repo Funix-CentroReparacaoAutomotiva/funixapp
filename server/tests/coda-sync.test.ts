@@ -127,3 +127,15 @@ test('read-only conversation list reports linked local Atendimento only when eve
     assert.equal(Object.hasOwn(after.items[0]!, 'remoteJid'), false)
   } finally { f.db.close() }
 })
+
+
+test('same-time conflicting canonical Coda rows cannot silently switch active conversation', () => {
+  const f = fixture()
+  try {
+    const original = f.sync.sync(synthetic('i-SYNTH_A', 'event:alpha'))
+    assert.throws(() => f.sync.sync(synthetic('i-SYNTH_B', 'event:beta')), isCode('CODA_SYNC_CONFLICT'))
+    assert.equal(f.sync.resolveActive('5531999990001@s.whatsapp.net'), original.atendimentoId)
+    assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM atendimentos').get()!.n), 1)
+    assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM coda_sync_receipts').get()!.n), 1)
+  } finally { f.db.close() }
+})
