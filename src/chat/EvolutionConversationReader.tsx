@@ -25,9 +25,16 @@ function errorLabel(cause: unknown): string {
   return 'Não foi possível carregar os dados. Confira a conexão e tente novamente.'
 }
 
-export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized: () => void }) {
+export function EvolutionConversationReader({
+  onUnauthorized,
+  onOpenAtendimento,
+}: {
+  onUnauthorized: () => void
+  onOpenAtendimento?: (atendimentoId: string, tab: 'diagnosticos' | 'mapa') => void
+}) {
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
+  const [activeAtendimentoId, setActiveAtendimentoId] = useState<string | null>(null)
   const [list, setList] = useState<ConversationRow[]>([])
   const [nextSkip, setNextSkip] = useState<number | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -117,7 +124,17 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     setMessages([])
     setNextPage(null)
     setMessageError('')
+    setActiveAtendimentoId(null)
     setSelected(conversationId)
+  }
+
+  function backToList() {
+    messageRequest.current?.abort()
+    setSelected(null)
+    setMessages([])
+    setNextPage(null)
+    setMessageError('')
+    setActiveAtendimentoId(null)
   }
 
   function refreshList() {
@@ -130,6 +147,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     setNextSkip(null)
     setAvailable(null)
     setLinksEnabled(false)
+    setActiveAtendimentoId(null)
     setListVersion(value => value + 1)
   }
 
@@ -158,7 +176,8 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     <Notice title="Chat WhatsApp ainda indisponível">A integração de conversas não está habilitada neste FunixApp. Os Atendimentos continuam disponíveis no Funil.</Notice>
   </div>
 
-  return <section className="ev-reader" aria-label="Conversas WhatsApp — leitura experimental">
+  return <section className={selected ? 'ev-reader ev-has-selection' : 'ev-reader'} aria-label="Conversas WhatsApp — leitura experimental">
+    <div className="ev-conversations-pane">
     <div className="ev-header">
       <div><strong>Conversas · somente leitura</strong><small>Evolution · histórico não verificado como completo</small></div>
       <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
@@ -179,7 +198,36 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
     {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
       {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
     </button>}
-    {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized} />}
+    </div>
+    <div className="ev-conversation-detail">
+    {!selected && <div className="ev-empty-detail">
+      <strong>Selecione uma conversa</strong>
+      <p>Abra o histórico diretamente no Chat. Não é preciso criar nem vincular um Atendimento.</p>
+    </div>}
+    {selected && <>
+      <header className="ev-detail-heading">
+        <strong>{conversationLabel(list.find(row => row.conversationId === selected) ?? {
+          conversationId: selected, displayName: null, phoneNumber: null, updatedAt: null, unreadCount: null,
+        })}</strong>
+        <button type="button" className="fh-filter ev-back" onClick={backToList}>Voltar às conversas</button>
+      </header>
+      <nav className="ev-detail-tabs" aria-label="Visões da conversa">
+        <button type="button" className="ev-detail-tab active" aria-current="page">Chat</button>
+        <button type="button" className="ev-detail-tab" disabled={!activeAtendimentoId || !onOpenAtendimento}
+          title={!activeAtendimentoId ? 'Vincule e selecione um Atendimento para abrir Diagnósticos' : undefined}
+          onClick={() => { if (activeAtendimentoId) onOpenAtendimento?.(activeAtendimentoId, 'diagnosticos') }}>
+          Diagnósticos
+        </button>
+        <button type="button" className="ev-detail-tab" disabled={!activeAtendimentoId || !onOpenAtendimento}
+          title={!activeAtendimentoId ? 'Vincule e selecione um Atendimento para abrir Mapa' : undefined}
+          onClick={() => { if (activeAtendimentoId) onOpenAtendimento?.(activeAtendimentoId, 'mapa') }}>
+          Mapa
+        </button>
+      </nav>
+      {!activeAtendimentoId && <p className="ev-links-hint">Conversa independente. Diagnósticos e Mapa exigem um Atendimento vinculado e selecionado.</p>}
+    </>}
+    {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized}
+      onActiveAtendimentoChange={setActiveAtendimentoId} />}
     {selected && <section className="ev-history" aria-label="Histórico da conversa">
       <header><strong>Histórico · somente leitura</strong><button type="button" className="fh-filter"
         disabled={messageBusy} onClick={() => {
@@ -204,6 +252,7 @@ export function EvolutionConversationReader({ onUnauthorized }: { onUnauthorized
         Carregar página anterior
       </button>}
     </section>}
-    <p className="read-only-note">Exibição sem envio e sem mídia. {linksEnabled ? 'Associações manuais não alteram mensagens.' : 'Vínculos N:N ainda indisponíveis.'} Use o Funil para editar Atendimentos.</p>
+    {selected && <p className="read-only-note">Exibição sem envio e sem mídia. {linksEnabled ? 'Associações manuais não alteram mensagens.' : 'Vínculos N:N ainda indisponíveis.'} Use o Funil para editar Atendimentos.</p>}
+    </div>
   </section>
 }
