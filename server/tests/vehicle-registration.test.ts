@@ -27,6 +27,7 @@ test('year selection supports fabrication/model year without guessing an invalid
 
 test('existing records are interpreted for display but are not rewritten implicitly',()=>{
  assert.deepEqual(readVehicleRegistration({brand:'Fiat',model:'2019',vehicle:'Punto'}),{name:'Punto',year:'2019',legacy:true})
+ assert.deepEqual(readVehicleRegistration({brand:'Fiat',model:'2019',vehicle:'Fiat Punto'}),{name:'Punto',year:'2019',legacy:true})
  assert.deepEqual(readVehicleRegistration({brand:'Fiat',model:'Punto',vehicle:'Punto 2019/2020'}),{name:'Punto',year:'2019/2020',legacy:false})
  assert.deepEqual(readVehicleRegistration({brand:'Ford',model:'',vehicle:'Escort'}),{name:'Escort',year:'',legacy:false})
  assert.equal(extractVehicleYear('Gol 2020','Gol'),'2020')
