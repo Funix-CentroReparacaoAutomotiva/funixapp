@@ -50,4 +50,9 @@ test('operator-observed store search pattern isolates Chevrolet and Jeep routes'
  const unknown=manualComponentSearchLinks({brand:'Nissan',model:'Versa',vehicle:'Versa 2020'},'farol dianteiro direito')
  assert(unknown)
  assert.equal(unknown.official,null)
+ for(const brand of ['Ford','Renault']){
+  const other=manualComponentSearchLinks({brand,model:'Modelo',vehicle:'Modelo 2020'},'farol dianteiro direito')
+  assert(other)
+  assert.equal(other.official,null,'an unverified official search must stay disabled')
+ }
 })
