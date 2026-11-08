@@ -13,12 +13,18 @@ function yearFromVehicle(vehicle:string):string {
  return matches.length===1?matches[0]!:''
 }
 const officialStores:Record<string,string>={
- volkswagen:'https://pecas.vw.com.br/',
+ // Marketplace channel, not the automaker-owned parts e-commerce.
+ volkswagen:'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios',
  chevrolet:'https://www.mercadolivre.com.br/a/store/chevrolet-loja-oficial',
  fiat:'https://www.mercadolivre.com.br/loja/fiat',
  jeep:'https://www.mercadolivre.com.br/loja/jeep',
  ford:'https://www.mercadolivre.com.br/a/store/ford-loja-oficial',
  renault:'https://www.mercadolivre.com.br/loja/renault'
+}
+// Only add a fourth button for verified, automaker-backed online parts sales.
+// Institutional catalogs and independent dealers do not qualify.
+const manufacturerPartsStores:Record<string,string>={
+ volkswagen:'https://pecas.vw.com.br/'
 }
 export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string) {
  const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100)
@@ -26,5 +32,6 @@ export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'mod
  const year=yearFromVehicle(vehicle.vehicle)
  const query=[brand,model,year,part].filter(Boolean).join(' ')
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
- return {general:google(query),original:google(query+' original'),official:officialStores[brand.toLocaleLowerCase('pt-BR')]??null}
+ const make=brand.toLocaleLowerCase('pt-BR')==='vw'?'volkswagen':brand.toLocaleLowerCase('pt-BR')
+ return {general:google(query),original:google(query+' original'),official:officialStores[make]??null,montadora:manufacturerPartsStores[make]??null}
 }
