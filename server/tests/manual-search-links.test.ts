@@ -58,7 +58,7 @@ test('operator-observed store search pattern isolates Chevrolet and Jeep routes'
 })
 
 test('verified additional official shops get store-scoped links, with accent normalization',()=>{
- const stores=[['Ford','ford'],['Renault','renault'],['Citroën','citroen'],['Peugeot','peugeot'],['Ram','ram']] as const
+ const stores=[['Ford','ford'],['Renault','renault'],['Citroën','citroen'],['Peugeot','peugeot'],['Ram','ram'],['Audi','audi']] as const
  for(const [brand,store] of stores){
   const result=manualComponentSearchLinks({brand,model:'Teste',vehicle:'Teste 2021'},'farol dianteiro direito')
   assert(result)
