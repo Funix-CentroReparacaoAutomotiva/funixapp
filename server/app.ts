@@ -23,6 +23,7 @@ import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
 import{readQuoteContext}from'./component-quote-context.ts'
+import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
 export interface AppOptions {
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -112,7 +113,27 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade')return send(200,{enabled:Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')})
+      if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade'){
+        const enabled=Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')
+        return send(200,{enabled,diagnosisEnabled:enabled&&process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED==='true'})
+      }
+      const savedComponentQuoteRoute=/^\/api\/atendimentos\/([^/]{1,100})\/componentes\/([^/]{1,100})\/cotar$/.exec(url.pathname)
+      if(savedComponentQuoteRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para cotar.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(!options.quotePilot||(process.env.NODE_ENV==='production'&&process.env.FUNIX_QUOTE_ENABLED!=='true')||process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED!=='true')return fail(503,'QUOTE_DISABLED','Cotação indisponível.')
+        const body=await readJson(req,1024),context=readSavedComponentQuoteContext(options.atendimentos.db,savedComponentQuoteRoute[1]!,savedComponentQuoteRoute[2]!,body)
+        if(!context.query)return send(200,{status:'needs_details',offers:[],observedAt:new Date(now()).toISOString(),expiresAt:new Date(now()).toISOString(),cached:false})
+        const controller=new AbortController(),cancel=()=>{if(!res.writableEnded)controller.abort()}
+        res.once('close',cancel)
+        try{
+          const result=await options.quotePilot.run(context.query,cookie,controller.signal)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a consulta.')
+          context.revalidate()
+          return send(200,result)
+        }finally{res.off('close',cancel)}
+      }
       const quoteRoute=/^\/api\/atendimentos\/([^/]{1,100})\/copiloto\/cotar$/.exec(url.pathname)
       if(quoteRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST para cotar.')

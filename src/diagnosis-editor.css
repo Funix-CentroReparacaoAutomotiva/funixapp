@@ -32,3 +32,38 @@
 .approved-editor .suggestion-option input{width:18px;height:18px;flex:none}.approved-editor .suggestion-option span{min-width:0}.approved-editor .suggestion-option strong,.approved-editor .suggestion-option small{display:block;font-weight:400}.approved-editor .suggestion-option small{color:#6e6e72;font-size:11px}
 .approved-editor .suggestion-list button{min-height:36px;max-width:100%;border:1px solid #c6d3e2;border-radius:8px;background:#f7faff;color:#315a84;padding:5px 10px}
 .approved-editor .suggestion-origin{display:block;color:#6e6e72;font-size:10px;margin:0 0 4px}
+
+
+/* Opt-in quote: preserve existing four-field layout until the flag is enabled. */
+.approved-editor .component-values:has(.diagnosis-quote-button){
+ grid-template-columns:52px minmax(82px,1fr) minmax(42px,.5fr) 44px minmax(69px,.8fr);
+ gap:5px;
+}
+.approved-editor .diagnosis-quote-button{
+ grid-column:4;grid-row:1;align-self:end;display:grid;place-items:center;
+ min-height:44px;min-width:44px;border:1px solid #bccbdb;border-radius:9px;
+ background:#f7faff;color:#315a84;cursor:pointer;
+}
+.approved-editor .diagnosis-quote-button .icon{width:19px;height:19px}
+.approved-editor .diagnosis-quote-button:disabled{opacity:.45;cursor:not-allowed}
+.approved-editor .diagnosis-quote-button:focus-visible,.approved-editor .diagnosis-quote-option button:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+.approved-editor .component-values:has(.diagnosis-quote-button) .component-total{grid-column:5;grid-row:1}
+.approved-editor .diagnosis-quote-options{
+ grid-column:1/-1;grid-row:2;min-width:0;margin:4px 0 0;padding:8px;
+ border:1px solid #d7e0ec;border-radius:10px;background:#f7faff;font-size:11px;color:#365675;
+}
+.approved-editor .diagnosis-quote-prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.approved-editor .diagnosis-quote-option{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0}
+.approved-editor .diagnosis-quote-label{font-size:10px;min-height:26px;overflow-wrap:anywhere}
+.approved-editor .diagnosis-quote-option button{font:inherit;font-weight:650;min-height:36px;padding:4px;border-radius:7px;background:#fff;border:1px solid #bccbdb;color:#253e5e}
+.approved-editor .diagnosis-quote-option button:disabled{opacity:.6}
+.approved-editor .diagnosis-quote-option a{text-align:center;color:#315a84;text-decoration:underline}
+.approved-editor .diagnosis-quote-status{display:block;margin-top:7px;overflow-wrap:anywhere}
+@media(max-width:360px){
+ .approved-editor .component-values:has(.diagnosis-quote-button){grid-template-columns:58px minmax(0,1fr);gap:8px 10px}
+ .approved-editor .component-values:has(.diagnosis-quote-button) .component-mr{grid-column:1;grid-row:2}
+ .approved-editor .component-values:has(.diagnosis-quote-button) .diagnosis-quote-button{grid-column:2;grid-row:2;justify-self:start}
+ .approved-editor .component-values:has(.diagnosis-quote-button) .component-total{grid-column:1/-1;grid-row:3}
+ .approved-editor .component-values:has(.diagnosis-quote-button) .diagnosis-quote-options{grid-column:1/-1;grid-row:4}
+ .approved-editor .diagnosis-quote-prices{gap:4px}
+}
