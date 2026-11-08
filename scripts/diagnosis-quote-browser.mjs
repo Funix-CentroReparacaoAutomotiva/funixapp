@@ -32,6 +32,7 @@ try{
   const piece=f.commercial.add(f.at.id,{pieceCodes:[catalog.code]})[0]
   const saved=components.save(f.at.id,{pieceId:piece.id,name:'farol dianteiro esquerdo',quantity:'2',manualPrice:'10',notes:'',scenarioId:f.scenario.id,scenarioRevision:f.scenarios.list(f.at.id)[0].revision})
   const local=readSavedComponentQuoteContext(db,f.at.id,saved.id,{scenarioId:f.scenario.id,componentRevision:saved.revision})
+  if(local.query===null)console.log('SYNTHETIC_QUOTE_INPUT',JSON.stringify({brand:f.atendimentos.get(f.at.id).brand,model:f.atendimentos.get(f.at.id).model,vehicle:f.atendimentos.get(f.at.id).vehicle,parent:f.commercial.item(catalog.id).name,component:saved.name}))
   assert.deepEqual(local.query,quoteFixtureQuery,'saved component technical query must match reference fixture')
   let searches=0
   const quotePilot=createQuoteService({search:async query=>{
