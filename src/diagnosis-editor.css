@@ -46,7 +46,7 @@
 }
 .approved-editor .diagnosis-quote-button .icon{width:19px;height:19px}
 .approved-editor .diagnosis-quote-button:disabled{opacity:.45;cursor:not-allowed}
-.approved-editor .diagnosis-quote-button:focus-visible,.approved-editor .diagnosis-quote-option button:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+.approved-editor .diagnosis-quote-button:focus-visible,.approved-editor .diagnosis-quote-option a:focus-visible{outline:2px solid #142c60;outline-offset:2px}
 .approved-editor .component-values:has(.diagnosis-quote-button) .component-total{grid-column:5;grid-row:1}
 .approved-editor .diagnosis-quote-options{
  grid-column:1/-1;grid-row:2;min-width:0;margin:4px 0 0;padding:8px;
@@ -54,10 +54,9 @@
 }
 .approved-editor .diagnosis-quote-prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .approved-editor .diagnosis-quote-option{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0}
-.approved-editor .diagnosis-quote-label{font-size:10px;min-height:26px;overflow-wrap:anywhere}
-.approved-editor .diagnosis-quote-option button{font:inherit;font-weight:650;min-height:36px;padding:4px;border-radius:7px;background:#fff;border:1px solid #bccbdb;color:#253e5e}
-.approved-editor .diagnosis-quote-option button:disabled{opacity:.6}
-.approved-editor .diagnosis-quote-option a{text-align:center;color:#315a84;text-decoration:underline}
+.approved-editor .diagnosis-quote-option a,.approved-editor .diagnosis-quote-unavailable{display:grid;place-items:center;text-align:center;font:inherit;font-weight:650;min-height:44px;padding:5px;border-radius:7px;background:#fff;border:1px solid #bccbdb;color:#253e5e;text-decoration:none;overflow-wrap:anywhere}
+.approved-editor .diagnosis-quote-option a:hover{background:#e7f0fb}
+.approved-editor .diagnosis-quote-unavailable{opacity:.5;cursor:not-allowed}
 .approved-editor .diagnosis-quote-status{display:block;margin-top:7px;overflow-wrap:anywhere}
 @media(max-width:360px){
  .approved-editor .component-values:has(.diagnosis-quote-button){grid-template-columns:58px minmax(0,1fr);gap:8px 10px}
