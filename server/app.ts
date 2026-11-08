@@ -206,6 +206,22 @@ export function createRequestHandler(options: AppOptions) {
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
       }
+      // Authenticated canonical read: a client-supplied conversationId must be
+      // confirmed against the current Coda→Atendimento mapping on the server.
+      const syncedEvolutionRoute = /^\\/api\\/atendimentos\\/([a-f0-9-]{36})\\/evolution-conversations\\/([a-f0-9-]{36})\\/messages$/.exec(url.pathname)
+      if (syncedEvolutionRoute && options.evolutionChat && options.codaSync) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
+        if ([...url.searchParams.keys()].some(key => key !== 'page') || url.searchParams.getAll('page').length > 1)
+          return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const page = url.searchParams.get('page') ?? '1'
+        if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
+          return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        try {
+          const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page))
+          if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
+          return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
+        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
+      }
       // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
       if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
