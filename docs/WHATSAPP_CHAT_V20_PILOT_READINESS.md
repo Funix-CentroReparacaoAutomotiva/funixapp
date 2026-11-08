@@ -82,6 +82,19 @@ O repositório contém `deploy/chat-readiness-preflight.sh`, um roteiro que **n�
 - **Pendente:** uma inspeção administrativa posterior do mecanismo de backup/restauração e um ensaio de recuperação apenas quando autorizado; o roteiro **não cria backup nem testa restauração**.
 - **Segurança:** `EVOLUTION_FLAG: ATIVA` deve interromper esta preparação: checar se houve ativação fora do plano, sem executar novas chamadas e sem reproduzir segredos.
 
+### Evidência de pré-verificação na VPS — 08/11/2026
+
+O administrador compartilhou a saída de um script colado diretamente no terminal da VPS, por não ser possível baixar sem autenticação o arquivo da branch privada (`raw.githubusercontent.com` retornou HTTP 404). **O comando lido/executado correspondeu ao objetivo da pré-verificação, mas não foi uma execução do arquivo remoto do GitHub.**
+
+Resultados sanitizados observados:
+- `RUNTIME_PROTECAO: OK` — `/etc/funix/runtime.env` é arquivo regular (não symlink), proprietário UID/GID 0:0, modo 0600 no momento da consulta.
+- `EVOLUTION_FLAG: AUSENTE` — a flag não estava declarada no arquivo; no código opt-in proposto, isso corresponde ao estado **desligado**. Não comprova o estado de qualquer instância da integração se outro mecanismo tiver sido implantado.
+- `REGISTRO_CURRENT: PROTEGIDO` e `REGISTRO_PREVIOUS: PROTEGIDO` — arquivos de controle presentes com modo 0600 e proprietário root; **seus conteúdos, digests, compatibilidade e capacidade efetiva de rollback não foram verificados**.
+- `ROLLBACK_SCRIPT: ENCONTRADO` — caminho executável presente, sem symlink; **script não foi executado**, nem houve simulação de recuperação.
+- `BACKUP_SQLITE: NAO_TESTADO` e `RESTAURACAO_RUNTIME: NAO_TESTADA` — continuam pendentes, não são aprovações.
+
+Escopo: leitura de metadados e somente da chave booleana da flag; nenhum conteúdo de segredo exposto, nenhuma alteração de dados ou serviço. **O passo não autoriza deploy nem ativação.**
+
 ### Gate C — implantação inativa no FunixApp atual (aprovação explícita de merge e deploy)
 
 1. Somente após Gate A e B, submeter a sequência das PRs a revisão/merge **autorizados**, com CI final contra a base vigente.
@@ -111,9 +124,10 @@ Se a API não subir por chave/ID inválidos, corrigir/desabilitar a flag **no ar
 | CI da HEAD e QA Chromium | CONFERIR ANTES DE MERGE |
 | ID técnico da instância confere por metadado? | SIM quanto à existência e ao formato: `INSTANCIA: CONFIRMADA` / `ID_TECNICO: FORMATO_COMPATIVEL` em 08/11/2026. O valor não foi exibido; provisionamento e uso pelo backend continuam NÃO VERIFICADOS. |
 | Credencial provisionada em backend com proteção? | NÃO VERIFICADO |
-| Cópia privada do `runtime.env` e restauração revisadas? | NÃO EXECUTADO |
-| Revisão atual/digests e rollback verificados? | NÃO EXECUTADO |
-| Backup/restauração SQLite FUNIX verificados? | NÃO EXECUTADO |
+| Flag de leitura Evolution no arquivo privado da VPS | AUSENTE (verificação do operador em 08/11/2026); configuração propositiva segue desligada. |
+| Cópia privada do `runtime.env` e restauração revisadas? | Arquivo atual PROTEGIDO; cópia/restauração NÃO TESTADAS. |
+| Revisão atual/digests e rollback verificados? | Registros current/previous PROTEGIDOS e script ENCONTRADO; digests/execução do rollback NÃO VERIFICADOS. |
+| Backup/restauração SQLite FUNIX verificados? | NÃO TESTADOS. |
 | Deploy **com flag off** autorizado e realizado? | NÃO |
 | Leitura com JID sintético pós-deploy autorizada? | NÃO |
 | Leitura real autorizada separadamente? | NÃO |
