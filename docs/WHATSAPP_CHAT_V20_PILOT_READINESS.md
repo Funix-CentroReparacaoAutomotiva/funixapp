@@ -72,6 +72,16 @@ O `compose.yaml` utiliza `/etc/funix/runtime.env`, propriedade root, modo 0600, 
 5. Separadamente, preservar cópia **privada root-only** do `/etc/funix/runtime.env`, pois o rollback das imagens **não restaura** esse arquivo. Validar o procedimento administrativo de restauração sem mostrar seu conteúdo.
 6. Registrar janela, responsável, critérios de interrupção e caminho de recuperação se a API não atingir readiness. Não alterar contêineres ainda.
 
+### Instrumento de pré-verificação (opcional, somente leitura)
+
+O repositório contém `deploy/chat-readiness-preflight.sh`, um roteiro que **não altera** runtime, banco, Docker ou outros serviços e **não exibe valores de variáveis**. Ele informa exclusivamente: proteção de `runtime.env`, estado da flag `FUNIX_EVOLUTION_READ_ENABLED`, presença/permissões dos registros de revisão atual e anterior, e existência do script de rollback.
+
+- **Antes da execução:** revisar o arquivo na revisão GitHub que será executada, por administrador autorizado. Não executar conteúdo baixado sem revisão nem assumir que o script já está instalado na VPS. O teste de sintaxe no CI não equivale à execução na VPS.
+- **Resultados permitidos:** rótulos `RUNTIME_PROTECAO`, `EVOLUTION_FLAG`, `REGISTRO_CURRENT`, `REGISTRO_PREVIOUS`, `ROLLBACK_SCRIPT`, `BACKUP_SQLITE` e `RESTAURACAO_RUNTIME`; não informar credenciais/identificadores reais.
+- **Importante:** `REGISTRO_PREVIOUS: AUSENTE_OU_SYMLINK` pode significar que ainda não houve troca de versão; não interpretar automaticamente como falha. Existência dos registros **não verifica** se seus digests estão válidos ou se o rollback foi executado com sucesso.
+- **Pendente:** uma inspeção administrativa posterior do mecanismo de backup/restauração e um ensaio de recuperação apenas quando autorizado; o roteiro **não cria backup nem testa restauração**.
+- **Segurança:** `EVOLUTION_FLAG: ATIVA` deve interromper esta preparação: checar se houve ativação fora do plano, sem executar novas chamadas e sem reproduzir segredos.
+
 ### Gate C — implantação inativa no FunixApp atual (aprovação explícita de merge e deploy)
 
 1. Somente após Gate A e B, submeter a sequência das PRs a revisão/merge **autorizados**, com CI final contra a base vigente.
