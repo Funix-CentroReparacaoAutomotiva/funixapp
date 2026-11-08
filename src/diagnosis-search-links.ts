@@ -12,14 +12,31 @@ function yearFromVehicle(vehicle:string):string {
  const matches=[...vehicle.matchAll(/\b(?:19[89]\d|20[0-3]\d)\b/g)].map(m=>m[0])
  return matches.length===1?matches[0]!:''
 }
-const officialStores:Record<string,string>={
- // Marketplace channel, not the automaker-owned parts e-commerce.
- volkswagen:'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios',
- chevrolet:'https://www.mercadolivre.com.br/a/store/chevrolet-loja-oficial',
- fiat:'https://www.mercadolivre.com.br/loja/fiat',
- jeep:'https://www.mercadolivre.com.br/loja/jeep',
+// Store-scoped search routes observed in the examples supplied by the operator.
+// These are store slugs, NOT generic marketplace search filters.
+const marketplaceStoreSlugs:Record<string,string>={
+ volkswagen:'volkswagen',
+ chevrolet:'chevrolet',
+ fiat:'fiat',
+ jeep:'jeep',
+ hyundai:'hyundai-mobis',
+ 'hyundai mobis':'hyundai-mobis'
+}
+// Preserve previously mapped channels pending a verified store-search example.
+// They open the store home, never a generic marketplace search represented as official.
+const storeHomeFallbacks:Record<string,string>={
  ford:'https://www.mercadolivre.com.br/a/store/ford-loja-oficial',
  renault:'https://www.mercadolivre.com.br/loja/renault'
+}
+function searchSlug(value:string):string {
+ return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+  .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')
+}
+function officialMarketplaceSearch(make:string,part:string):string|null {
+ const store=marketplaceStoreSlugs[make]
+ if(!store)return storeHomeFallbacks[make]??null
+ const item=searchSlug(part)
+ return item?'https://lista.mercadolivre.com.br/loja/'+store+'/'+item+'?sb=storefront_url':null
 }
 // Only add a fourth button for verified, automaker-backed online parts sales.
 // Institutional catalogs and independent dealers do not qualify.
@@ -33,5 +50,5 @@ export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'mod
  const query=[brand,model,year,part].filter(Boolean).join(' ')
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
  const make=brand.toLocaleLowerCase('pt-BR')==='vw'?'volkswagen':brand.toLocaleLowerCase('pt-BR')
- return {general:google(query),original:google(query+' original'),official:officialStores[make]??null,montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:[part,model,year].filter(Boolean).join(' ')}).toString():manufacturerPartsStores[make]):null}
+ return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,part),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:[part,model,year].filter(Boolean).join(' ')}).toString():manufacturerPartsStores[make]):null}
 }
