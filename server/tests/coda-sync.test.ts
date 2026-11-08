@@ -139,3 +139,28 @@ test('same-time conflicting canonical Coda rows cannot silently switch active co
     assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM coda_sync_receipts').get()!.n), 1)
   } finally { f.db.close() }
 })
+
+
+test('canonical Evolution history is never exposed under another Atendimento or an unlinked conversation', async () => {
+  const f = fixture()
+  try {
+    const jid = '5531999990001@s.whatsapp.net'
+    const seen: string[] = []
+    const provider = {
+      async findChatsPage() { return { items: [{remoteJid: jid, displayName: null, phoneNumber: null, updatedAt: null, unreadCount: 0}], sourceCount: 1 } },
+      async findMessages(requestedJid: string) { seen.push(requestedJid); return { items: [], currentPage: 1, reportedTotal: 0, reportedPages: 0, nextPage: null, consistency: 'offset-not-snapshot' as const } },
+    }
+    const bridge = createEvolutionChatBridge(provider, Date.now, undefined, f.sync)
+    const conversationId = (await bridge.list(0)).items[0]!.conversationId
+    const a = f.sync.sync(synthetic('i-SYNTH_A'))
+    assert.equal(await bridge.messagesForAtendimento(randomUUID(), conversationId, 1), null)
+    assert.equal(await bridge.messagesForAtendimento(a.atendimentoId, randomUUID(), 1), null)
+    assert.equal(seen.length, 0)
+    assert.equal((await bridge.messagesForAtendimento(a.atendimentoId, conversationId, 1))?.source, 'evolution')
+    assert.deepEqual(seen, [jid])
+    const b = f.sync.sync(synthetic('i-SYNTH_B', 'evo:synthetic:changed', jid, 1794144010))
+    assert.equal(await bridge.messagesForAtendimento(a.atendimentoId, conversationId, 1), null)
+    assert.equal((await bridge.messagesForAtendimento(b.atendimentoId, conversationId, 1))?.source, 'evolution')
+    assert.deepEqual(seen, [jid, jid])
+  } finally { f.db.close() }
+})
