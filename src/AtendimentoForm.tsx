@@ -4,7 +4,7 @@ import { ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
-import {montadoraSuggestions,vehicleSuggestions,composeVehicleDescription,extractVehicleYear,validVehicleYear,yearSuggestions} from './vehicle-registration'
+import {montadoraSuggestions,vehicleSuggestions,composeVehicleDescription,readVehicleRegistration,validVehicleYear,yearSuggestions} from './vehicle-registration'
 import './vehicle-registration.css'
 
 function initialFields(record?: Atendimento): AtendimentoInput {
@@ -25,7 +25,8 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
 }) {
   const initial = useMemo(() => initialFields(record), [record])
   const [fields, setFields] = useState(initial)
-  const [year, setYear] = useState(() => extractVehicleYear(initial.vehicle??'',initial.model??''))
+  const [vehicleName,setVehicleName]=useState(()=>readVehicleRegistration(initial as {vehicle:string;model:string;brand:string}).name)
+  const [year, setYear] = useState(() => readVehicleRegistration(initial as {vehicle:string;model:string;brand:string}).year)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const [conflict, setConflict] = useState(false)
@@ -37,11 +38,12 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
     setFields(previous => ({ ...previous, [name]: value }))
   }
   function updateVehicleName(value:string){
+    setVehicleName(value)
     setFields(previous=>({...previous,model:value,vehicle:composeVehicleDescription(value,year)}))
   }
   function updateYear(value:string){
     setYear(value)
-    setFields(previous=>({...previous,vehicle:composeVehicleDescription(previous.model??'',value)}))
+    setFields(previous=>({...previous,model:vehicleName,vehicle:composeVehicleDescription(vehicleName,value)}))
   }
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -65,7 +67,7 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   const textField = (name: 'phone' | 'name' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => update(name, event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'phone'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
   const suggestionField=(name:'brand'|'model',label:string,choices:readonly string[],onValue:(next:string)=>void)=>
     <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label>
-      <input id={`at-${name}`} name={name} value={fields[name]??''} onChange={event=>onValue(event.target.value)}
+      <input id={`at-${name}`} name={name} value={name==='model'?vehicleName:fields.brand??''} onChange={event=>onValue(event.target.value)}
        list={`at-${name}-choices`} maxLength={name==='brand'?150:120} autoComplete="off" disabled={busy}/>
       <datalist id={`at-${name}-choices`}>{choices.map(choice=><option key={choice} value={choice}/>)}</datalist>
     </div>
@@ -82,8 +84,8 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
         </div>
       </div>
       <p className="at-form-hint at-vehicle-hint">Selecione uma sugestão ou digite livremente. Ex.: Fiat · Punto · 2019/2020.</p>
-      {record?.vehicle&&fields.vehicle===record.vehicle&&!extractVehicleYear(record.vehicle,record.model)&&
-       <p className="at-form-hint at-legacy-vehicle">Descrição anterior preservada: {record.vehicle}. Para padronizar, preencha Veículo e Ano.</p>}
+      {record&&readVehicleRegistration(record).legacy&&fields.vehicle===record.vehicle&&fields.model===record.model&&
+       <p className="at-form-hint at-legacy-vehicle">Registro antigo: os campos originais serão preservados até você editar Veículo ou Ano.</p>}
       {textField('plate', 'Placa', 100)}
       <div className="at-field"><label htmlFor="at-reason">Motivo / descrição do ocorrido</label><textarea id="at-reason" value={fields.reason} onChange={event => update('reason', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
       <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
