@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react'
 import {api} from './api'
 import type {Atendimento} from '../shared/contracts'
 import {manualComponentSearchLinks} from './diagnosis-search-links'
+import './component-search-links.css'
 
 // Display-only navigation. No automatic external searches, quote API or price mutations.
 export function ComponentSearchLinks({atendimentoId,componentName,className=''}:{atendimentoId:string;componentName:string;className?:string}){
