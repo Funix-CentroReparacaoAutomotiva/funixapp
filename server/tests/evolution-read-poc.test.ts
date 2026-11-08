@@ -153,7 +153,18 @@ test('Evolution POC: exact duplicates collapse; changed content/status never sil
   assert.equal(page.items.length, 1)
   const changed = { ...page.items[0], text: 'different' }
   assert.throws(() => reconcileReadBatches(page.items, [changed]), errorCode('CONFLICT'))
-  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }]), errorCode('CONFLICT'))
+  assert.deepEqual(reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }])[0]?.statuses, ['READ'])
+  const withStatusAndRow = { ...page.items[0], recordId: 'provider-row-2', statuses: ['READ', 'SERVER_ACK'] }
+  const forward = reconcileReadBatches(page.items, [withStatusAndRow])
+  const reverse = reconcileReadBatches([withStatusAndRow], page.items)
+  assert.deepEqual(forward, reverse)
+  assert.equal(forward.length, 1)
+  assert.deepEqual(forward[0]?.statuses, ['READ', 'SERVER_ACK'])
+  assert.equal(forward[0]?.recordId, 'provider-row-2')
+  // No cross-chat, cross-instance or content collapsing.
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], timestamp: page.items[0]!.timestamp + 1 }]), errorCode('CONFLICT'))
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], remoteJidAlt: PN }]), errorCode('CONFLICT'))
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], fromMe: !page.items[0]!.fromMe }]), errorCode('CONFLICT'))
 })
 
 test('Evolution POC: invalid input never invokes transport; no arbitrary query or path', async () => {
