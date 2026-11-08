@@ -49,7 +49,7 @@ try{
    page=await ctx.newPage();const errors=[]
    page.on('pageerror',e=>errors.push(e.message))
    await page.goto(origin+'/atendimentos/'+f.at.id+'?aba=diagnosticos')
-   await page.locator('.diagnosis-open').first().click()
+   await page.locator('.diagnosis-open').filter({hasText:catalog.name}).click()
    const editor=page.locator('.approved-editor')
    await editor.waitFor()
    const component=editor.locator('[data-component-id="'+saved.id+'"]')
