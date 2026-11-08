@@ -33,5 +33,5 @@ export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'mod
  const query=[brand,model,year,part].filter(Boolean).join(' ')
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
  const make=brand.toLocaleLowerCase('pt-BR')==='vw'?'volkswagen':brand.toLocaleLowerCase('pt-BR')
- return {general:google(query),original:google(query+' original'),official:officialStores[make]??null,montadora:manufacturerPartsStores[make]??null}
+ return {general:google(query),original:google(query+' original'),official:officialStores[make]??null,montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:[part,model,year].filter(Boolean).join(' ')}).toString():manufacturerPartsStores[make]):null}
 }
