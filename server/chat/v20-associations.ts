@@ -68,6 +68,9 @@ export type V20Association = {
   linkId: string
   atendimentoId: string
   linkedAt: string
+  name: string
+  vehicle: string
+  plate: string
 }
 type MutationResult = { linkId: string; revision: number }
 
@@ -128,13 +131,23 @@ export class V20AssociationRepository {
     })
   }
 
+  /** Never expose raw provider JIDs in routes or browser responses. */
+  resolveRemoteJid(conversationId: string, instance: string): string | null {
+    validateId(conversationId)
+    if (!instancePattern.test(instance)) return invalid()
+    const row = this.db.prepare('SELECT remote_jid FROM v20_conversations WHERE id=? AND instance=?')
+      .get(conversationId, instance)
+    return row ? String(row.remote_jid) : null
+  }
+
   listActive(conversationId: string): { revision: number; items: V20Association[]; activeAtendimentoId: string | null } {
     validateId(conversationId)
     const revision = this.conversation(conversationId)
     const items = this.db.prepare(
-      'SELECT id,atendimento_id,linked_at FROM v20_associations WHERE conversation_id=? AND unlinked_at IS NULL ORDER BY linked_at,id',
+      'SELECT l.id,l.atendimento_id,l.linked_at,a.name,a.vehicle,a.plate FROM v20_associations l JOIN atendimentos a ON a.id=l.atendimento_id WHERE l.conversation_id=? AND l.unlinked_at IS NULL ORDER BY l.linked_at,l.id',
     ).all(conversationId).map(row => ({
       linkId: String(row.id), atendimentoId: String(row.atendimento_id), linkedAt: String(row.linked_at),
+      name: String(row.name), vehicle: String(row.vehicle), plate: String(row.plate),
     }))
     const selected = this.db.prepare(
       'SELECT l.atendimento_id FROM v20_active_context c JOIN v20_associations l ON l.id=c.link_id AND l.conversation_id=c.conversation_id WHERE c.conversation_id=? AND l.unlinked_at IS NULL',
