@@ -78,6 +78,28 @@ RESULTADO: TESTE_CONCLUIDO
 
 **Interpretação limitada e correta:** o roteiro concluiu com êxito cópia e comparação da configuração, backup SQLite, abertura da cópia restaurada, `PRAGMA integrity_check` e `PRAGMA foreign_key_check`. Nenhum conteúdo privado, caminho temporário específico ou segredo foi divulgado. O teste **não** valida restauração *sobre* o banco de produção, disponibilidade após rollback de imagem, integridade de imagens/digests, cópia de segurança persistente nem disaster recovery. A limpeza dos arquivos temporários foi prevista pelo `trap` do roteiro; não houve conferência independente posterior do diretório. A política permanece: não solicitar dados de clientes, não reexecutar testes desnecessariamente, não ativar Chat sem aprovação específica.
 
+### Verificação somente leitura de revisões/digests na VPS — 08/11/2026
+
+O administrador executou um comando Python de inspeção local, sem revelar SHA/digests e **sem realizar rollback**. Os estados sanitizados retornados foram:
+
+```text
+REGISTRO_CURRENT: FORMATO_OK
+RELEASE_CURRENT: COERENTE
+REGISTRO_PREVIOUS: FORMATO_OK
+RELEASE_PREVIOUS: COERENTE
+VERSOES_DISTINTAS: SIM
+CONTAINER_API: ALINHADO
+CONTAINER_WEB: ALINHADO
+IMAGEM_ANTERIOR_API: CACHE_PRESENTE
+IMAGEM_ANTERIOR_WEB: CACHE_PRESENTE
+ROLLBACK_EXECUTADO: NAO
+RESULTADO: VERIFICACAO_SOMENTE_LEITURA
+```
+
+**Interpretação:** `current.env` e `previous.env` são estruturalmente válidos e idênticos aos registros de release associados; os contêineres FUNIX usam as imagens declaradas na versão atual; o Docker dispõe localmente das imagens da revisão anterior. Nenhuma imagem foi baixada, iniciada ou restaurada. Isso **não verifica o funcionamento de um rollback real** nem garante a restauração de dados/configurações, e não constitui autorização de deploy.
+
+O `main` pode avançar independentemente desta cadeia de PRs. **Antes de qualquer merge**, reconfirmar base atual, conflitos e CI integrados (#86 → #88 → #90). Se houver conflito ou alteração de código central, resolver em branch e refazer os testes; não usar aprovações de uma base antiga.
+
 ### Gate C — implantação inativa no FunixApp atual (aprovação explícita de merge e deploy)
 
 1. Somente após Gate A e B, submeter a sequência das PRs a revisão/merge **autorizados**, com CI final contra a base vigente.
@@ -108,11 +130,11 @@ Se a API não subir por chave/ID inválidos, corrigir/desabilitar a flag **no ar
 | ID técnico da instância confere por metadado? | SIM para existência e formato (08/11/2026). Valor não exibido; ainda não configurado no FunixApp. |
 | Credencial provisionada em backend com proteção? | NÃO VERIFICADO |
 | Cópia privada do `runtime.env` e restauração revisadas? | **SIM para ensaio isolado temporário**: cópia/restauração e comparação OK (08/11/2026). Sem teste de aplicação do arquivo em produção. |
-| Revisão atual/digests e rollback verificados? | Registros current/previous protegidos e script encontrado; conteúdo e rollback NÃO TESTADOS. |
+| Revisão atual/digests e rollback verificados? | **SIM para coerência estática local**: current/previous válidos e coerentes com registros, contêineres atuais alinhados, imagens anteriores no cache (08/11/2026). **Rollback real NÃO EXECUTADO.** |
 | Backup/restauração SQLite FUNIX verificados? | **SIM para ensaio isolado na VPS**: backup, abertura da cópia, integridade e chaves estrangeiras OK (08/11/2026). Sem backup permanente ou restauração sobre produção. |
 | Deploy **com flag off** autorizado e realizado? | NÃO |
 | Leitura com JID sintético pós-deploy autorizada? | NÃO |
 | Leitura real autorizada separadamente? | NÃO |
 | Evolution/n8n/WhatsApp produtivos modificados? | NÃO |
 
-**Decisão nesta entrega:** preparação documental, auditoria estática e teste de recuperação sintético. Não há evidência de homologação real nem autorização implícita para executá-la.
+**Decisão nesta entrega:** preparação documental, auditoria estática, ensaio de recuperação isolada na VPS e verificação de reversão estática. O rollback efetivo e a homologação da Evolution não foram executados. Não há evidência de homologação real nem autorização implícita para executá-la.
