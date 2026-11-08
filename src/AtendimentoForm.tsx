@@ -4,6 +4,8 @@ import { ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
+import {montadoraSuggestions,vehicleSuggestions,composeVehicleDescription,extractVehicleYear,validVehicleYear,yearSuggestions} from './vehicle-registration'
+import './vehicle-registration.css'
 
 function initialFields(record?: Atendimento): AtendimentoInput {
   return {
@@ -23,6 +25,7 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
 }) {
   const initial = useMemo(() => initialFields(record), [record])
   const [fields, setFields] = useState(initial)
+  const [year, setYear] = useState(() => extractVehicleYear(initial.vehicle??'',initial.model??''))
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const [conflict, setConflict] = useState(false)
@@ -33,10 +36,18 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   function update<K extends keyof AtendimentoInput>(name: K, value: AtendimentoInput[K]) {
     setFields(previous => ({ ...previous, [name]: value }))
   }
+  function updateVehicleName(value:string){
+    setFields(previous=>({...previous,model:value,vehicle:composeVehicleDescription(value,year)}))
+  }
+  function updateYear(value:string){
+    setYear(value)
+    setFields(previous=>({...previous,vehicle:composeVehicleDescription(previous.model??'',value)}))
+  }
   async function save(event: FormEvent) {
     event.preventDefault()
     if (busy || conflict) return
     if (!fields.phone.trim()) { setFailure('Informe o telefone para abrir o Atendimento.'); return }
+    if (!validVehicleYear(year)) { setFailure('Ano de fabricação/modelo inválido. Use 2020 ou 2019/2020.'); return }
     setBusy(true); onBusy(true); setFailure('')
     try {
       const saved = await api<Atendimento>(record ? `/api/atendimentos/${encodeURIComponent(record.id)}` : '/api/atendimentos', {
@@ -51,11 +62,29 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
       if (error.status === 401) onAuthRequired()
     } finally { setBusy(false); onBusy(false) }
   }
-  const textField = (name: 'phone' | 'name' | 'vehicle' | 'brand' | 'model' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => update(name, event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'phone'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
+  const textField = (name: 'phone' | 'name' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => update(name, event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'phone'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
+  const suggestionField=(name:'brand'|'model',label:string,choices:readonly string[],onValue:(next:string)=>void)=>
+    <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label>
+      <input id={`at-${name}`} name={name} value={fields[name]??''} onChange={event=>onValue(event.target.value)}
+       list={`at-${name}-choices`} maxLength={name==='brand'?150:120} autoComplete="off" disabled={busy}/>
+      <datalist id={`at-${name}-choices`}>{choices.map(choice=><option key={choice} value={choice}/>)}</datalist>
+    </div>
   return <form className="at-form" onSubmit={save} aria-label={record ? 'Editar Atendimento' : 'Novo Atendimento'}>
     <div className="at-form-scroll"><p className="at-form-hint">Somente o telefone é obrigatório. Os demais dados podem ser completados depois.</p>
-      {textField('phone', 'Telefone *', 100)}{textField('name', 'Nome do contato')}{textField('vehicle', 'Veículo informado')}
-      <div className="at-field-pair">{textField('brand', 'Marca', 150)}{textField('model', 'Modelo')}</div>{textField('plate', 'Placa', 100)}
+      {textField('phone', 'Telefone *', 100)}{textField('name', 'Nome do contato')}
+      <div className="at-vehicle-fields" aria-label="Identificação do veículo">
+        {suggestionField('brand','Montadora',montadoraSuggestions,next=>update('brand',next))}
+        {suggestionField('model','Veículo',vehicleSuggestions(fields.brand??''),updateVehicleName)}
+        <div className="at-field"><label htmlFor="at-year">Ano fabricação/modelo</label>
+          <input id="at-year" name="year" list="at-year-choices" inputMode="text" placeholder="Ex.: 2019/2020"
+           maxLength={15} value={year} onChange={event=>updateYear(event.target.value)} autoComplete="off" disabled={busy}/>
+          <datalist id="at-year-choices">{yearSuggestions().map(value=><option key={value} value={value}/>)}</datalist>
+        </div>
+      </div>
+      <p className="at-form-hint at-vehicle-hint">Selecione uma sugestão ou digite livremente. Ex.: Fiat · Punto · 2019/2020.</p>
+      {record?.vehicle&&fields.vehicle===record.vehicle&&!extractVehicleYear(record.vehicle,record.model)&&
+       <p className="at-form-hint at-legacy-vehicle">Descrição anterior preservada: {record.vehicle}. Para padronizar, preencha Veículo e Ano.</p>}
+      {textField('plate', 'Placa', 100)}
       <div className="at-field"><label htmlFor="at-reason">Motivo / descrição do ocorrido</label><textarea id="at-reason" value={fields.reason} onChange={event => update('reason', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
       <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
       {record && <><div className="at-field"><label htmlFor="at-stage">Fase comercial</label><select id="at-stage" value={fields.stage} onChange={event => update('stage', event.target.value as Atendimento['stage'])} disabled={busy}>{ATENDIMENTO_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></div><p className="at-form-hint">Movimentação manual. Os prazos dos nomes não mudam a fase automaticamente.</p></>}
