@@ -21,6 +21,8 @@ import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
 import type { V20AssociationRepository } from './chat/v20-associations.ts'
+import { createCodaSyncEndpoint } from './chat/coda-sync-endpoint.ts'
+import type { CodaSyncEndpointOptions } from './chat/coda-sync-endpoint.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
@@ -32,6 +34,7 @@ export interface AppOptions {
   evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
   v20Associations?: V20AssociationRepository // independent opt-in: never read legacy chat_links
   whatsappIngest?: IngestOptions
+  codaSync?: Omit<CodaSyncEndpointOptions, 'now'> // separately gated machine-to-machine intake
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
@@ -54,6 +57,7 @@ export function createRequestHandler(options: AppOptions) {
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
   const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
+  const codaIntake = options.codaSync ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
   const cookieName = 'funix_session'
@@ -77,6 +81,11 @@ export function createRequestHandler(options: AppOptions) {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
+      if (url.pathname === '/api/integrations/coda/atendimentos') {
+        if (!codaIntake) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        const result = await codaIntake(req, res, url)
+        return send(result.status, { atendimentoId: result.atendimentoId, state: result.state })
+      }
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
