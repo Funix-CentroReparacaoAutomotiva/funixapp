@@ -174,6 +174,7 @@ test('Chat bridge paginates by provider rows, not by visible individuals', async
         pages.push(skip)
         if (skip === 0) return { items: [], sourceCount: 50 } // all unsupported provider rows
         if (skip === 50) return { items: [{ remoteJid: jid, displayName: 'Pessoa Sintética', phoneNumber: '000000000001', updatedAt: null, unreadCount: 0 }], sourceCount: 2 }
+        if (skip === 500000) return { items: [], sourceCount: 50 }
         return { items: [], sourceCount: 0 }
       },
       async findMessages() { throw Error('Not called') },
