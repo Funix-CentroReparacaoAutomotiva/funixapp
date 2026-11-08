@@ -7,7 +7,7 @@ test('manual search links preserve order, add original term and use official cha
  assert(links)
  assert.equal(new URL(links.general).searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo')
  assert.equal(new URL(links.original).searchParams.get('q'),'Volkswagen Gol 2019 farol dianteiro esquerdo original')
- assert.equal(links.official,'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios')
+ assert.equal(links.official,'https://lista.mercadolivre.com.br/loja/volkswagen/farol-dianteiro-esquerdo?sb=storefront_url')
  assert.equal(links.montadora,'https://pecas.vw.com.br/todas-categorias?q=farol+dianteiro+esquerdo+Gol+2019')
  assert.equal(new URL(links.general).searchParams.get('tbm'),'shop')
 })
@@ -15,7 +15,7 @@ test('missing or multiple years are not guessed and unmapped official stores sta
  const noYear=manualComponentSearchLinks({brand:'Hyundai',model:'HB20',vehicle:'HB20'},'maçaneta direita')
  assert(noYear)
  assert.equal(new URL(noYear.general).searchParams.get('q'),'Hyundai HB20 maçaneta direita')
- assert.equal(noYear.official,null)
+ assert.equal(noYear.official,'https://lista.mercadolivre.com.br/loja/hyundai-mobis/macaneta-direita?sb=storefront_url')
  assert.equal(noYear.montadora,null)
  const ambiguous=manualComponentSearchLinks({brand:'Volkswagen',model:'Gol',vehicle:'Gol 2018 / 2019'},'farol esquerdo')
  assert(ambiguous)
@@ -33,10 +33,21 @@ test('reject unsafe and missing technical fields rather than leaking identifiers
 test('other automakers use official marketplace when mapped, no unverified manufacturer storefront',()=>{
  const fiat=manualComponentSearchLinks({brand:'Fiat',model:'Argo',vehicle:'Argo 2022'},'lanterna traseira direita')
  assert(fiat)
- assert.equal(fiat.official,'https://www.mercadolivre.com.br/loja/fiat')
+ assert.equal(fiat.official,'https://lista.mercadolivre.com.br/loja/fiat/lanterna-traseira-direita?sb=storefront_url')
  assert.equal(fiat.montadora,null)
  const vw=manualComponentSearchLinks({brand:'VW',model:'Gol',vehicle:'Gol 2019'},'farol esquerdo')
  assert(vw)
  assert.equal(vw.montadora,'https://pecas.vw.com.br/todas-categorias?q=farol+esquerdo+Gol+2019')
- assert.equal(vw.official,'https://www.mercadolivre.com.br/loja/volkswagen/pecas-e-acessorios')
+ assert.equal(vw.official,'https://lista.mercadolivre.com.br/loja/volkswagen/farol-esquerdo?sb=storefront_url')
+})
+
+test('operator-observed store search pattern isolates Chevrolet and Jeep routes',()=>{
+ for(const [brand,store] of [['Chevrolet','chevrolet'],['Jeep','jeep']] as const){
+  const result=manualComponentSearchLinks({brand,model:'Modelo',vehicle:'Modelo 2020'},'farol dianteiro direito')
+  assert(result)
+  assert.equal(result.official,'https://lista.mercadolivre.com.br/loja/'+store+'/farol-dianteiro-direito?sb=storefront_url')
+ }
+ const unknown=manualComponentSearchLinks({brand:'Nissan',model:'Versa',vehicle:'Versa 2020'},'farol dianteiro direito')
+ assert(unknown)
+ assert.equal(unknown.official,null)
 })
