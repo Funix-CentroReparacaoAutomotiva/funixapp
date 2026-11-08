@@ -30,6 +30,31 @@ function integer(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number
   return Number(value)
 }
 function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }
+/** Protobuf uint64 media sizes may be serialized as decimal strings.
+ * Accept only safe, nonnegative integer values; no lossy coercion.
+ */
+function mediaSize(value: unknown): number | null {
+  if (value == null) return null
+  if (typeof value === 'number') return integer(value)
+  if (typeof value !== 'string' || !/^(0|[1-9][0-9]{0,15})$/.test(value)) return fail()
+  return integer(Number(value))
+}
+
+/** Accept a valid base MIME with up to 3 strictly typed parameters.
+ * Parameters are discarded, never exposed through the Chat API.
+ */
+function mediaMime(value: unknown): string | null {
+  if (value == null) return null
+  const raw = string(value, 100)
+  const [base, ...parameters] = raw.split(';')
+  const normalized = base!.trim()
+  if (!/^[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+\/[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+$/.test(normalized) || parameters.length > 3) return fail()
+  for (const part of parameters) {
+    if (!/^[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+=(?:[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+-]+|"[A-Za-z0-9!#function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }^_.+, -]{1,60}")$/.test(part.trim())) return fail()
+  }
+  return normalized.toLowerCase()
+}
+
 function jid(value: unknown): string {
   const text = string(value, 150)
   // Individual PN/LID only. Opaque LID is never converted to a phone or merged.
@@ -81,8 +106,16 @@ const identity = (m: ReadMessage) => JSON.stringify([m.instanceId, m.remoteJid, 
  * A status union is evidence of statuses seen, NOT an inferred chronology.
  */
 function stablePayload(m: ReadMessage): string {
-  const { recordId: _recordId, statuses: _statuses, ...stable } = m
-  return JSON.stringify(stable)
+  const { recordId: _recordId, statuses: _statuses, media, ...stable } = m
+  if (!media) return JSON.stringify({ ...stable, media: null })
+  const types: Partial<Record<ReadMessage['kind'], string>> = {
+    image: 'imageMessage', audio: 'audioMessage', video: 'videoMessage', document: 'documentMessage',
+  }
+  const kind = types[m.kind]
+  // An internal media reference must belong to this row's own instance and ID.
+  if (!kind || media.reference !== JSON.stringify([m.instanceId, m.recordId, kind])) return fail('CONFLICT')
+  const { reference: _reference, ...safeMedia } = media
+  return JSON.stringify({ ...stable, media: safeMedia })
 }
 
 /** Pure, bounded-to-caller batches. Dedup cannot repair unseen gaps or alias changes. */
@@ -92,10 +125,9 @@ export function reconcileReadBatches(...batches: ReadMessage[][]): ReadMessage[]
     const key = identity(m), previous = byId.get(key)
     if (previous && stablePayload(previous) !== stablePayload(m)) return fail('CONFLICT')
     if (previous) {
+      const chosen = compare(previous.recordId, m.recordId) <= 0 ? previous : m
       byId.set(key, {
-        ...previous,
-        // No source-record preference implied; stable regardless of arrival order.
-        recordId: compare(previous.recordId, m.recordId) <= 0 ? previous.recordId : m.recordId,
+        ...chosen, // retain reference for the chosen internal provider row
         statuses: [...new Set([...previous.statuses, ...m.statuses])].sort(),
       })
     } else byId.set(key, m)
@@ -220,9 +252,8 @@ export class EvolutionReadPoc {
       if (Object.hasOwn(mediaTypes, messageType)) {
         kind = mediaTypes[messageType as keyof typeof mediaTypes]
         const data = object(payload[messageType])
-        const mimeType = data.mimetype == null ? null : string(data.mimetype, 100)
-        if (mimeType && !/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)) return fail()
-        const bytes = data.fileLength == null ? null : integer(data.fileLength)
+        const mimeType = mediaMime(data.mimetype)
+        const bytes = mediaSize(data.fileLength)
         media = { reference: JSON.stringify([instanceId, recordId, messageType]), mimeType, bytes, available: false }
       }
     }
