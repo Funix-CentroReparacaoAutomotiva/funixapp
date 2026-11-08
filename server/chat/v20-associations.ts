@@ -34,13 +34,17 @@ function hashRequest(value: unknown): string {
  * to represent temporal attribution, not the new N:N association.
  */
 export function createV20AssociationSchema(db: DatabaseSync) {
-  db.exec([
-    'CREATE TABLE v20_conversations (',
+  // Additive, idempotent DDL; no schema_migrations V15 entry or legacy table edits.
+  // DDL is atomically committed, so interrupted startup cannot leave partial schema.
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.exec([
+    'CREATE TABLE IF NOT EXISTS v20_conversations (',
     ' id TEXT PRIMARY KEY, instance TEXT NOT NULL, remote_jid TEXT NOT NULL,',
     ' revision INTEGER NOT NULL DEFAULT 0 CHECK(revision >= 0), created_at TEXT NOT NULL,',
     ' UNIQUE(instance,remote_jid)',
     ');',
-    'CREATE TABLE v20_associations (',
+    'CREATE TABLE IF NOT EXISTS v20_associations (',
     ' id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES v20_conversations(id) ON DELETE RESTRICT,',
     ' atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,',
     ' linked_at TEXT NOT NULL, linked_by TEXT NOT NULL, link_reason TEXT NOT NULL,',
@@ -49,19 +53,25 @@ export function createV20AssociationSchema(db: DatabaseSync) {
     "        (unlinked_at IS NOT NULL AND unlinked_by IS NOT NULL AND unlink_reason IS NOT NULL)),",
     ' UNIQUE(id,conversation_id)',
     ');',
-    'CREATE UNIQUE INDEX v20_active_pair ON v20_associations(conversation_id,atendimento_id) WHERE unlinked_at IS NULL;',
-    'CREATE INDEX v20_active_by_atendimento ON v20_associations(atendimento_id,conversation_id) WHERE unlinked_at IS NULL;',
-    'CREATE TABLE v20_active_context (',
+    'CREATE UNIQUE INDEX IF NOT EXISTS v20_active_pair ON v20_associations(conversation_id,atendimento_id) WHERE unlinked_at IS NULL;',
+    'CREATE INDEX IF NOT EXISTS v20_active_by_atendimento ON v20_associations(atendimento_id,conversation_id) WHERE unlinked_at IS NULL;',
+    'CREATE TABLE IF NOT EXISTS v20_active_context (',
     ' conversation_id TEXT PRIMARY KEY REFERENCES v20_conversations(id) ON DELETE CASCADE,',
     ' link_id TEXT NOT NULL,',
     ' FOREIGN KEY(link_id,conversation_id) REFERENCES v20_associations(id,conversation_id) ON DELETE RESTRICT',
     ');',
-    'CREATE TABLE v20_association_receipts (',
+    'CREATE TABLE IF NOT EXISTS v20_association_receipts (',
     ' conversation_id TEXT NOT NULL REFERENCES v20_conversations(id) ON DELETE RESTRICT,',
     ' request_id TEXT NOT NULL, digest TEXT NOT NULL, result_json TEXT NOT NULL,',
     ' PRIMARY KEY(conversation_id,request_id)',
     ');',
-  ].join('\n'))
+    ].join('\n'))
+    if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('V20_ASSOCIATION_FK_INVALID')
+    db.exec('COMMIT')
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
 }
 
 export type V20Association = {
