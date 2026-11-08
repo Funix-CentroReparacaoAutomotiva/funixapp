@@ -8,6 +8,7 @@ import{openDatabase}from'../server/database.ts'
 import{commercialFixture}from'../server/tests/fixtures/commercial.ts'
 import{ComponentRepository}from'../server/components.ts'
 import{createQuoteService}from'../server/component-quote-service.ts'
+import{readSavedComponentQuoteContext}from'../server/component-quote-saved-context.ts'
 import{validateQuoteResponse}from'../server/component-quote-provider.ts'
 import{quoteFixtureQuery,quoteFixtureResponse}from'../server/tests/fixtures/component-quote.ts'
 import{createApp}from'../server/app.ts'
@@ -30,6 +31,8 @@ try{
   const catalog=f.commercial.catalogs().items.find(x=>x.code==='para_choque_dianteiro')
   const piece=f.commercial.add(f.at.id,{pieceCodes:[catalog.code]})[0]
   const saved=components.save(f.at.id,{pieceId:piece.id,name:'farol dianteiro esquerdo',quantity:'2',manualPrice:'10',notes:'',scenarioId:f.scenario.id,scenarioRevision:f.scenarios.list(f.at.id)[0].revision})
+  const local=readSavedComponentQuoteContext(db,f.at.id,saved.id,{scenarioId:f.scenario.id,componentRevision:saved.revision})
+  assert.deepEqual(local.query,quoteFixtureQuery,'saved component technical query must match reference fixture')
   let searches=0
   const quotePilot=createQuoteService({search:async query=>{
    searches++
