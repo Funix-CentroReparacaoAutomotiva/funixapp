@@ -105,3 +105,16 @@ test('Coda event endpoint remains 404 when not injected into ordinary App', asyn
     assert.equal(db.prepare("SELECT name FROM sqlite_schema WHERE name='coda_sync_receipts'").get(),undefined)
   } finally { db.close() }
 })
+
+
+test('twenty concurrent deliveries of one signed Coda event resolve to one local Atendimento', async () => {
+  const f=harness()
+  try {
+    const results=await Promise.all(Array.from({length:20},()=>f.request(body)))
+    assert.equal(results.every(r=>r.status===202),true)
+    assert.equal(new Set(results.map(r=>r.value.atendimentoId)).size,1)
+    assert.equal(results.filter(r=>r.value.state==='created').length,1)
+    assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM atendimentos').get()!.n),1)
+    assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM coda_sync_receipts').get()!.n),1)
+  } finally { f.db.close() }
+})
