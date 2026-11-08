@@ -147,6 +147,16 @@ async def device_case(browser, width, height):
         h.mark(f"{width}px: expired conversation differs from empty history")
 
         await first.click()
+        await expect(page.get_by_role("navigation", name="Visões da conversa")).to_be_visible()
+        await expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute("aria-current", "page")
+        await expect(page.get_by_role("button", name="Diagnósticos", exact=True)).to_be_disabled()
+        await expect(page.get_by_role("button", name="Mapa", exact=True)).to_be_disabled()
+        if width <= 760:
+            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") == "none"
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
+        else:
+            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") != "none"
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
         await expect(page.locator(".ev-messages li")).to_have_count(50)
         assert await page.evaluate("width => document.documentElement.scrollWidth <= width + 1", width)
         await page.screenshot(path=str(ARTIFACTS / f"{width}-historico.png"))
@@ -156,6 +166,13 @@ async def device_case(browser, width, height):
         assert await page.locator(".ev-messages img, .ev-messages video, .ev-messages audio").count() == 0
         h.mark(f"{width}px: previous page merges without duplicate, media unavailable")
 
+        if width <= 760:
+            await page.get_by_role("button", name="Voltar às conversas").click()
+            await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") == "none"
+            h.mark(f"{width}px: opened Chat without scrolling and returned to conversation list")
+        else:
+            h.mark("1440px: selected conversation visible beside the list")
         state["fail_list"] = True
         await page.get_by_role("button", name="Atualizar lista").click()
         await expect(page.get_by_text("Falha na lista", exact=True)).to_be_visible()
