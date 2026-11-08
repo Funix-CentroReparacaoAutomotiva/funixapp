@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { V20AssociationRepository } from './v20-associations.ts'
+import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
 
 /**
@@ -12,6 +13,7 @@ export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
+  codaSync?: CodaEventSyncRepository,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -48,7 +50,7 @@ export function createEvolutionChatBridge(
 
   return {
     async list(skip: number): Promise<{
-      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }>
+      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null; atendimentoId?: string | null }>
       nextSkip: number | null
       source: 'evolution'
     }> {
@@ -56,7 +58,14 @@ export function createEvolutionChatBridge(
       const take = 50
       const { items: rows, sourceCount } = await provider.findChatsPage({ take, skip })
       return {
-        items: rows.map(row => ({ conversationId: register(row.remoteJid), displayName: row.displayName, phoneNumber: row.phoneNumber, updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
+        items: rows.map(row => ({
+          conversationId: register(row.remoteJid),
+          displayName: row.displayName,
+          phoneNumber: row.phoneNumber,
+          updatedAt: row.updatedAt,
+          unreadCount: row.unreadCount,
+          ...(codaSync ? { atendimentoId: codaSync.resolveActive(row.remoteJid) } : {}),
+        })),
         nextSkip: sourceCount === take && skip + take <= 500000 ? skip + take : null,
         source: 'evolution',
       }
