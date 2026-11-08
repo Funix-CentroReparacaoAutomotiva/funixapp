@@ -107,6 +107,14 @@ O `main` pode avançar independentemente desta cadeia de PRs. **Antes de qualque
 3. Verificar `/api/ready` e release web/backend, navegação, Funil, login, Chat legado e disponibilidade **404** da rota experimental para sessão autenticada (a 404 é esperada quando desabilitada). Sem consulta à Evolution.
 4. Se falhar, restaurar imagem/revisão anteriores pelo fluxo de rollback existente e conferir de novo a prontidão. Não tocar Evolution, PostgreSQL, Redis, n8n, webhook ou sessão WhatsApp.
 
+### Achado da revisão de código — bloqueio para leitura real
+
+**Issue #94:** a implementação atual de `findChats` considera qualquer `remoteJid` de grupo ou broadcast inválido e rejeita a página inteira. Isso é uma **inferência verificada no código**, não um defeito confirmado com payload da Evolution produtiva. Antes do **Gate D** é necessário definir e testar com dados sintéticos a exclusão de conversas não individuais, preservando o deslocamento/paginação na fonte e sem degradar a validação de PN/LID. Não interpretar a CI da PR #93 como comprovação dessa compatibilidade com dados reais.
+
+**Revisão humana:** em 08/11/2026, as PRs #86, #88 e #90 não continham review formal submetida no GitHub. Os checks automáticos não substituem revisão do fluxo de autenticação, compatibilidade de API e segurança antes de merge.
+
+**Integração:** a PR temporária #93 testou o conjunto #86 → #88 → #90 contra a `main` vigente com mergeabilidade sem conflito e CI geral/Chromium sintéticos aprovados. Isso não valida individualmente cada merge da cadeia ou sua base futura. **Não mesclar a #93**: retomar a sequência #86, depois #88, depois #90, com revisão e testes finais; somente então submeter Gate C à autorização explícita.
+
 ### Gate D — ativação de leitura restrita (autorização **adicional**, específica)
 
 1. Depois de confirmar ID, escopo, finalidade, privacidade e restauração, autorizar **separadamente** colocar as três variáveis no runtime protegido. Aplicar a configuração por processo supervisionado que atue **somente no FunixApp**, verificando readiness.
