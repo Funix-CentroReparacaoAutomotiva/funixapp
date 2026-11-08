@@ -9,7 +9,6 @@ import{commercialFixture}from'../server/tests/fixtures/commercial.ts'
 import{ComponentRepository}from'../server/components.ts'
 import{createQuoteService}from'../server/component-quote-service.ts'
 import{readSavedComponentQuoteContext}from'../server/component-quote-saved-context.ts'
-import{saneQuoteQuery}from'../server/component-quote-query.ts'
 import{validateQuoteResponse}from'../server/component-quote-provider.ts'
 import{quoteFixtureQuery,quoteFixtureResponse}from'../server/tests/fixtures/component-quote.ts'
 import{createApp}from'../server/app.ts'
@@ -30,10 +29,10 @@ try{
   const vehicle=f.atendimentos.get(f.at.id)
   f.atendimentos.update(vehicle.id,{revision:vehicle.revision,brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'})
   const catalog=f.commercial.catalogs().items.find(x=>x.code==='para_choque_dianteiro')
-  const piece=f.commercial.add(f.at.id,{pieceCodes:[catalog.code]})[0]
+  const piece=f.commercial.add(f.at.id,{pieceCodes:[catalog.code]}).find(item=>item.pieceId===catalog.id)
+  assert(piece,'synthetic diagnosis must use the newly added catalog piece, not the existing capo')
   const saved=components.save(f.at.id,{pieceId:piece.id,name:'farol dianteiro esquerdo',quantity:'2',manualPrice:'10',notes:'',scenarioId:f.scenario.id,scenarioRevision:f.scenarios.list(f.at.id)[0].revision})
   const local=readSavedComponentQuoteContext(db,f.at.id,saved.id,{scenarioId:f.scenario.id,componentRevision:saved.revision})
-  if(local.query===null){const v=f.atendimentos.get(f.at.id),parent=f.commercial.item(catalog.id).name;console.log('SYNTHETIC_QUOTE_INPUT',JSON.stringify({brand:v.brand,model:v.model,vehicle:v.vehicle,parent,component:saved.name,direct:saneQuoteQuery({brand:v.brand,model:v.model,vehicle:v.vehicle,component:saved.name,parent})}))}
   assert.deepEqual(local.query,quoteFixtureQuery,'saved component technical query must match reference fixture')
   let searches=0
   const quotePilot=createQuoteService({search:async query=>{
