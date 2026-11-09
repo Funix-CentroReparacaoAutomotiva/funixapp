@@ -59,7 +59,7 @@ test('PDF terms: zero technical days are not a promised deadline; explicit manua
   const f=setup(db);let scene=f.scenarios.list(f.at.id)[0]!
   f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:f.item.services.map(l=>({...l,enabled:false}))})
   const{ComponentRepository}=await import('../components.ts');new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'1',manualPrice:'10',notes:''})
-  assert.equal(f.b.preview(f.at.id,f.req).canEmit,false);await assert.rejects(f.b.emit(f.at.id,f.payload()),code('BUDGET_INCOMPLETE'))
+  const missingStages=f.b.preview(f.at.id,f.req);assert.equal(missingStages.canEmit,true);assert.equal(missingStages.snapshot.calculation.energy,'0');assert.equal(missingStages.snapshot.calculation.total,automatic.snapshot.calculation.total);assert(missingStages.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')));const issued=await f.b.emit(f.at.id,f.payload());assert.equal(issued.snapshot.document?.data.condicoes.prazo,'7');assert.equal(issued.snapshot.document?.data.financeiro.totalVista,'R$ 100,00');assert(!JSON.stringify(issued.snapshot.document?.data).includes('não configurad'))
   scene=f.scenarios.list(f.at.id)[0]!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:1}});assert.equal(f.b.preview(f.at.id,f.req).canEmit,true)
   await f.b.emit(f.at.id,f.payload())
  }finally{db.close()}
@@ -142,7 +142,7 @@ test('PDF V11→V12 upgrade keeps historical identities, snapshots/PDFs, all old
   const rows=db.prepare('SELECT * FROM budget_versions').all(),scene=db.prepare('SELECT * FROM scenarios').get();db.close();db=openDatabase(file)
   assert.deepEqual(db.prepare('SELECT * FROM budget_versions').all(),rows);const{deadline_mode,deadline_days,...rest}=db.prepare('SELECT * FROM scenarios').get()!;assert.deepEqual(rest,{...scene});assert.equal(deadline_mode,'automatic');assert.equal(deadline_days,null)
   const b=new BudgetRepository(db,{render:async()=>pdf()});assert.equal(b.get(f.at.id,v.id).documentNumber,'OR-000042');assert.equal(b.get(f.at.id,v2.id).documentNumber,undefined);assert.deepEqual(b.get(f.at.id,v.id).snapshot,v.snapshot);assert.deepEqual(b.pdf(f.at.id,v.id),before)
-  assert.equal(b.preview(f.at.id,req).canEmit,false);await(await import('./fixtures/budget-renderer.ts')).configureSyntheticStageCategories(db)
+  assert.equal(b.preview(f.at.id,req).canEmit,true);assert(b.preview(f.at.id,req).snapshot.pdfPresentation?.errors.length);await(await import('./fixtures/budget-renderer.ts')).configureSyntheticStageCategories(db)
   const q=b.preview(f.at.id,req),next=await b.emit(f.at.id,{...req,previewToken:q.token,idempotencyKey:randomUUID()});assert.equal(next.documentNumber,'OR-000043');assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
  const failed=new DatabaseSync(':memory:');try{migrateV11(failed);failed.exec('CREATE VIEW installment_configuration AS SELECT id FROM atendimentos');assert.throws(()=>migrate(failed));assert.equal(failed.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,11);assert(!failed.prepare('PRAGMA table_info(scenarios)').all().some(c=>c.name==='deadline_mode'))}finally{failed.close()}
