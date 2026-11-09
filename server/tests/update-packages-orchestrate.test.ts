@@ -55,7 +55,8 @@ test('atestado com conferências explícitas permite apenas preparar envelope',(
  const input=make()
  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
    verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
- const result=prepare(input)
+ signed(input)
+ const result=prepare(input,reviewSecret)
  assert.equal(result.status,'READY_FOR_SIGNED_INGEST')
  assert.equal(result.canPublish,false)
  if(result.status==='READY_FOR_SIGNED_INGEST'){
@@ -77,7 +78,8 @@ test('indício comercial não é convertido em autorização pelo atestado',()=>
  input.message.body='APROVADO complemento R$ 500,00.'
  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
    verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
- const result=prepare(input)
+ signed(input)
+ const result=prepare(input,reviewSecret)
  assert.equal(result.status,'NEEDS_REVIEW')
  if(result.status==='NEEDS_REVIEW') assert.ok(result.pending.includes('COMMERCIAL_REPLAN_REQUIRED'))
 })
