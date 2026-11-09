@@ -1,14 +1,12 @@
-"""Synthetic Chromium QA for the V20 reader. Evolution stays disabled.
+"""Chromium: Conversas is an entry to the canonical Atendimento, not a second Chat.
 
-Own loopback API/Vite and temporary SQLite; browser mocks just the two GET
-endpoints. Never touches the VPS, n8n, WhatsApp or any production data.
+Only synthetic records and local 127.0.0.1 mocks. Never contacts real Evolution.
 """
 import asyncio
 import json
 import os
-import re
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
@@ -16,243 +14,98 @@ from m1_atendimentos import Harness, ROOT, ORIGIN
 ARTIFACTS = ROOT / "docs/evidencias/issue71-chat-v20-browser"
 A = "11111111-1111-4111-8111-111111111111"
 B = "22222222-2222-4222-8222-222222222222"
-C = "33333333-3333-4333-8333-333333333333"
-LIST = "/api/chat/conversations"
-ROWS = [
-    {"conversationId": A, "displayName": "João Sintético", "phoneNumber": "5531999990001",
-     "updatedAt": "2026-11-07T12:00:00.000Z", "unreadCount": 1},
-    {"conversationId": B, "displayName": None, "phoneNumber": "5531999990002",
-     "updatedAt": "2026-11-07T11:00:00.000Z", "unreadCount": 0},
-    {"conversationId": C, "displayName": None, "phoneNumber": None,
-     "updatedAt": None, "unreadCount": None},
-]
 
 
-def message(n):
-    return {"messageId": f"synthetic-A-{n}", "timestamp": 1794045600 + n,
-            "fromMe": n % 2 == 0, "kind": "text", "text": f"Texto sintético A {n}"}
-
-
-def messages_payload(conversation, page):
-    if conversation == A:
-        items = [message(n) for n in range(1, 51)] if page == 1 else [
-            message(1), {"messageId": "synthetic-image", "timestamp": 1794045600,
-                          "fromMe": False, "kind": "image", "text": None}]
-        next_page = 2 if page == 1 else None
-    elif conversation == B:
-        items = [{"messageId": "synthetic-B-1", "timestamp": 1794045600,
-                  "fromMe": False, "kind": "text", "text": "Mensagem sintética B"}]
-        next_page = None
-    else:
-        items, next_page = [], None
-    return {"source": "evolution", "conversationId": conversation, "items": items,
-            "page": page, "nextPage": next_page, "reportedTotal": 51 if conversation == A else len(items),
+def messages_payload(conversation):
+    return {"source": "evolution", "conversationId": conversation,
+            "items": [{"messageId": "synthetic-A-1", "timestamp": 1794045600,
+                       "fromMe": False, "kind": "text", "text": "Mensagem sintética A"}],
+            "page": 1, "nextPage": None, "reportedTotal": 1,
             "consistency": "offset-not-snapshot", "historyComplete": "unknown"}
-
-
-async def select_chat(page, button, width):
-    """O shell FUNIX usa uma única coluna inclusive em monitores largos."""
-    if await page.locator(".ev-reader").evaluate(
-        "(el) => el.classList.contains('ev-has-selection')"
-    ):
-        await page.get_by_role("button", name="Voltar às conversas").click()
-    await button.click()
 
 
 async def device_case(browser, width, height):
     h = Harness()
     page = None
     context = None
-    state = {"fail_b": True, "fail_list": False, "expire_c": True, "hold_a": width == 390, "canonical_id": None}
-    release_a = asyncio.Event()
-    seen = []
+    sent = []
     try:
         h.check_ports()
         await h.start_api()
-        vite = h.start(["node", "node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5173", "--strictPort"], "vite")
+        vite = h.start(["node", "node_modules/vite/bin/vite.js", "--host",
+                        "127.0.0.1", "--port", "5173", "--strictPort"], "vite")
         await h.ready(ORIGIN, vite)
         context = await browser.new_context(viewport={"width": width, "height": height})
         await h.watch(context)
         page = await context.new_page()
         await h.attach(page)
-        await page.goto(ORIGIN + "/conversas")
+        await page.goto(ORIGIN + "/funil")
         await h.login(page)
-        await expect(page.get_by_text("Chat WhatsApp ainda indisponível", exact=True)).to_be_visible()
-        assert (await context.request.get(ORIGIN + LIST)).status == 404
-        h.mark(f"{width}px: feature disabled by default, no provider access")
+
+        created = await context.request.post(ORIGIN + "/api/atendimentos",
+                                             headers={"Origin": ORIGIN},
+                                             data={"phone": "+5531999990001",
+                                                   "name": "Atendimento Sintético"})
+        assert created.status == 201
+        atendimento_id = (await created.json())["id"]
 
         async def mock(route):
             parsed = urlparse(route.request.url)
-            path = parsed.path
-            seen.append((route.request.method, path, parsed.query))
-            headers = {"Cache-Control": "no-store", "Content-Type": "application/json"}
             assert route.request.method == "GET"
-            if path == LIST:
-                if state["fail_list"]:
-                    return await route.fulfill(status=503, headers=headers,
-                                               json={"error": {"code": "CHAT_PROVIDER_UNAVAILABLE"}})
-                assert parse_qs(parsed.query).get("skip", ["0"]) == ["0"]
-                return await route.fulfill(status=200, headers=headers,
-                                           json={"source": "evolution", "items": [{**row, **({"atendimentoId": state["canonical_id"]} if row["conversationId"] == A and state["canonical_id"] else {})} for row in ROWS], "nextSkip": None,
-                                                 "hiddenField": "NEVER SHOW"})
-            matched = re.fullmatch(r"/api/chat/conversations/([0-9a-f-]{36})/messages", path)
-            assert matched is not None, path
-            conversation = matched.group(1)
-            assert conversation in [A, B, C]
-            p = int(parse_qs(parsed.query).get("page", ["1"])[0])
-            if conversation == A and p == 1 and state["hold_a"]:
-                await release_a.wait()
-            if conversation == B and state["fail_b"]:
-                return await route.fulfill(status=503, headers=headers,
-                                           json={"error": {"code": "CHAT_PROVIDER_UNAVAILABLE"}})
-            if conversation == C and state["expire_c"]:
-                return await route.fulfill(status=404, headers=headers,
-                                           json={"error": {"code": "CHAT_NOT_FOUND"}})
-            try:
-                return await route.fulfill(status=200, headers=headers, json=messages_payload(conversation, p))
-            except Exception:
-                if conversation != A:
-                    raise
+            sent.append(parsed.path)
+            if parsed.path == "/api/chat/conversations":
+                return await route.fulfill(status=200, json={"source": "evolution",
+                    "items": [
+                        {"conversationId": A, "displayName": "Contato Vinculado",
+                         "phoneNumber": "5531999990001", "updatedAt": None,
+                         "unreadCount": 0, "atendimentoId": atendimento_id},
+                        {"conversationId": B, "displayName": "Contato Sem Vínculo",
+                         "phoneNumber": "5531999990002", "updatedAt": None,
+                         "unreadCount": 0, "atendimentoId": None}],
+                    "nextSkip": None, "linksEnabled": False})
+            if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
+                return await route.fulfill(status=200, json=messages_payload(A))
+            if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
+                return await route.fulfill(status=200, json={"conversationId": A})
+            raise AssertionError(f"Unexpected API request: {parsed.path}")
 
-        async def canonical_history(route):
-            parsed = urlparse(route.request.url)
-            assert route.request.method == "GET"
-            assert parsed.path == f"/api/atendimentos/{state['canonical_id']}/evolution-conversations/{A}/messages"
-            assert parse_qs(parsed.query).get("page") == ["1"]
-            return await route.fulfill(status=200, headers={"Cache-Control": "no-store", "Content-Type": "application/json"}, json=messages_payload(A, 1))
-
-        async def canonical_resolution(route):
-            parsed = urlparse(route.request.url)
-            assert route.request.method == "GET"
-            if parsed.path == f"/api/atendimentos/{state['canonical_id']}/evolution-conversation":
-                return await route.fulfill(status=200, headers={"Content-Type": "application/json"}, json={"conversationId": A})
-            return await route.fulfill(status=404, headers={"Content-Type": "application/json"},
-                                       json={"error": {"code": "CHAT_NOT_LINKED", "message": "Sem vínculo canônico"}})
-
-        await context.route("**/api/atendimentos/*/evolution-conversation", canonical_resolution)
-        await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", canonical_history)
-        await context.route("**/api/chat/conversations**", mock)
-        await page.goto(ORIGIN + "/funil")
+        await context.route("**/api/chat/conversations?*", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversation*", mock)
         await page.goto(ORIGIN + "/conversas")
-        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
-        await expect(page.get_by_text("+5531999990002", exact=True)).to_be_visible()
-        await expect(page.get_by_text("Contato não identificado", exact=True)).to_be_visible()
-        assert await page.get_by_text("Conversa 1", exact=True).count() == 0
-        assert "NEVER SHOW" not in await page.locator(".ev-reader").inner_text()
-        assert await page.evaluate("width => document.documentElement.scrollWidth <= width + 1", width)
-        await page.screenshot(path=str(ARTIFACTS / f"{width}-lista.png"))
-        h.mark(f"{width}px: display name, phone, LID fallback, sanitized UI")
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
 
-        first = page.locator(".ev-item").filter(has_text="João Sintético")
-        second = page.locator(".ev-item").filter(has_text="+5531999990002")
-        third = page.locator(".ev-item").filter(has_text="Contato não identificado")
-        if state["hold_a"]:
-            await select_chat(page, first, width)
-            await expect(page.get_by_text("Carregando mensagens…", exact=True)).to_be_visible()
-            await select_chat(page, second, width)
-            await expect(page.get_by_text("A Evolution está indisponível ou não respondeu.", exact=False)).to_be_visible()
-            state["hold_a"] = False
-            release_a.set()
-            await page.wait_for_timeout(120)
-            assert "Texto sintético A" not in await page.locator(".ev-reader").inner_text()
-            h.mark("390px: late request from conversation A cannot overwrite B")
-        else:
-            await select_chat(page, second, width)
-            await expect(page.get_by_text("A Evolution está indisponível ou não respondeu.", exact=False)).to_be_visible()
-        state["fail_b"] = False
-        await page.get_by_role("button", name="Atualizar mensagens").click()
-        await expect(page.get_by_text("Mensagem sintética B", exact=True)).to_be_visible()
-        assert "Texto sintético A" not in await page.locator(".ev-reader").inner_text()
-        h.mark(f"{width}px: provider 503 is not empty history; manual recovery works")
+        await page.get_by_role("button", name="Contato Sem Vínculo").click()
+        await expect(page.get_by_role("region", name="Conversa sem Atendimento")).to_be_visible()
+        assert page.url.endswith("/conversas")
+        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
+        assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
+        h.mark(f"{width}px: unlinked conversation never opens guessed Atendimento")
 
-        await select_chat(page, third, width)
-        await expect(page.get_by_text("Esta conversa temporária expirou.", exact=False)).to_be_visible()
-        state["expire_c"] = False
-        await page.get_by_role("button", name="Atualizar mensagens").click()
-        await expect(page.get_by_text("Nenhuma mensagem retornada", exact=True)).to_be_visible()
-        h.mark(f"{width}px: expired conversation differs from empty history")
-
-        await select_chat(page, first, width)
-        await expect(page.get_by_role("navigation", name="Visões da conversa")).to_be_visible()
-        await expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute("aria-current", "page")
-        await expect(page.get_by_role("button", name="Diagnósticos", exact=True)).to_be_disabled()
-        await expect(page.get_by_role("button", name="Mapa", exact=True)).to_be_disabled()
-        assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") == "none"
-        assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
-        assert await page.locator(".app-viewport").evaluate("(e) => e.scrollTop") == 0
-        await expect(page.locator(".ev-messages li")).to_have_count(50)
-        assert await page.evaluate("width => document.documentElement.scrollWidth <= width + 1", width)
-        await page.screenshot(path=str(ARTIFACTS / f"{width}-historico.png"))
-        await page.get_by_role("button", name="Carregar página anterior").click()
-        await expect(page.locator(".ev-messages li")).to_have_count(51)
-        await expect(page.get_by_text("Imagem · conteúdo indisponível", exact=True)).to_be_visible()
-        assert await page.locator(".ev-messages img, .ev-messages video, .ev-messages audio").count() == 0
-        h.mark(f"{width}px: previous page merges without duplicate, media unavailable")
-
-        await page.get_by_role("button", name="Voltar às conversas").click()
-        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
-        assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") == "none"
-        h.mark(f"{width}px: single-pane conversation opens at top and returns to list")
-        state["fail_list"] = True
-        await page.get_by_role("button", name="Atualizar lista").click()
-        await expect(page.get_by_text("Falha na lista", exact=True)).to_be_visible()
-        state["fail_list"] = False
-        await page.get_by_role("button", name="Atualizar lista").click()
-        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
-        assert await page.locator(".ev-history").count() == 0
-        assert all(method == "GET" for method, _, _ in seen)
-        assert all("remoteJid" not in query and "@lid" not in path for _, path, query in seen)
-        assert not h.external and not h.page_errors, (h.external, h.page_errors)
-        h.mark(f"{width}px: 503 list recovery, no writes, no external calls, no JS exceptions")
-
-        # A canonical Atendimento exists BEFORE the user opens the conversation.
-        # This uses a local synthetic record; no n8n, Coda, or WhatsApp call.
-        created = await context.request.post(ORIGIN + "/api/atendimentos", headers={"Origin": ORIGIN},
-                                             data={"phone": "+5531999990001", "name": "Atendimento Sintético", "model": "Veículo fictício"})
-        assert created.status == 201
-        state["canonical_id"] = (await created.json())["id"]
-        await page.get_by_role("button", name="Atualizar lista").click()
-        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
-        await select_chat(page, page.locator(".ev-item").filter(has_text="João Sintético"), width)
-        await expect(page.get_by_role("button", name="Abrir Atendimento vinculado · Chat")).to_be_visible()
-        await page.get_by_role("button", name="Abrir Atendimento vinculado · Chat").click()
-        await page.wait_for_url(f"**/atendimentos/{state['canonical_id']}?aba=chat&conversa={A}")
+        await page.get_by_role("button", name="Contato Vinculado").click()
+        await page.wait_for_url(f"**/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
         await expect(page.locator(".detail-header")).to_contain_text("Atendimento Sintético")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
-        await expect(page.get_by_text("Texto sintético A 1", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_be_visible()
+        assert await page.get_by_text("Chat · Evolution").count() == 0
+        assert await page.get_by_text("Evolution · leitura somente, histórico possivelmente incompleto").count() == 0
+        assert await page.get_by_text("Envio indisponível · somente leitura").count() == 0
+        assert await page.locator(".chat-rail, .chat-page .record-summary, .chat-page .compose").count() == 0
+        await expect(page.get_by_role("button", name="Atualizar mensagens")).to_be_visible()
+        await page.screenshot(path=str(ARTIFACTS / f"{width}-atendimento-chat.png"))
+        assert "/api/chat/conversations/" not in " ".join(sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
-        h.mark(f"{width}px: canonical Coda-linked navigation opens existing Atendimento with Evolution history")
-
-        # Funil/direct URL also resolves the canonical link without an explicit
-        # /conversas navigation and must not fall back to the old empty chat.
-        await page.goto(ORIGIN + f"/atendimentos/{state['canonical_id']}?aba=chat")
-        await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
-        await expect(page.get_by_text("Texto sintético A 1", exact=True)).to_be_visible()
-        assert await page.get_by_text("Recebimento WhatsApp ainda não conectado").count() == 0
-        h.mark(f"{width}px: direct Funil navigation resolves canonical Evolution history")
-
-        # Unlinked manually-created record cannot infer a conversation by phone.
-        unlinked = await context.request.post(ORIGIN + "/api/atendimentos",
-                                             headers={"Origin": ORIGIN},
-                                             data={"phone": "+5531999990001", "name": "Registro não vinculado"})
-        assert unlinked.status == 201
-        other_id = (await unlinked.json())["id"]
-        await page.goto(ORIGIN + f"/atendimentos/{other_id}?aba=chat")
-        await expect(page.get_by_text("Conversa da Evolution não vinculada a este Atendimento")).to_be_visible()
-        await expect(page.get_by_role("link", name="Abrir Conversas")).to_be_visible()
-        assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
-        assert not h.external and not h.page_errors, (h.external, h.page_errors)
-        h.mark(f"{width}px: unrelated Atendimento displays explicit safe no-link state")
+        h.mark(f"{width}px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card")
 
     except Exception:
         if page:
             await page.screenshot(path=str(ARTIFACTS / f"{width}-failure.png"))
         raise
     finally:
-        release_a.set()
         if context:
             await context.close()
         h.cleanup()
+        ARTIFACTS.mkdir(parents=True, exist_ok=True)
         (ARTIFACTS / f"{width}-results.json").write_text(json.dumps(
             {"synthetic": True, "realEvolution": False, "width": width,
              "results": h.results, "pageErrors": h.page_errors, "external": h.external},
@@ -263,10 +116,12 @@ async def run():
     os.environ["FUNIX_EVOLUTION_READ_ENABLED"] = "false"
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as playwright:
-        chrome = os.environ.get("CHROME_PATH") or ("/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else None)
-        browser = await playwright.chromium.launch(executable_path=chrome, headless=True, args=["--no-sandbox"])
+        chrome = os.environ.get("CHROME_PATH") or (
+            "/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else None)
+        browser = await playwright.chromium.launch(executable_path=chrome, headless=True,
+                                                   args=["--no-sandbox"])
         try:
-            for width, height in [(320, 740), (390, 844), (1440, 900)]:
+            for width, height in [(320, 780), (390, 844), (1440, 900)]:
                 await device_case(browser, width, height)
         finally:
             await browser.close()
