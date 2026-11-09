@@ -30,14 +30,14 @@ function validateProposal(proposal: Proposal): void {
   if (!Array.isArray(proposal.actions) || !proposal.actions.length || proposal.actions.length > 40 || !Array.isArray(proposal.missingFields) || proposal.missingFields.length > 15) fail(400, 'PACKAGE_INVALID', 'Quantidade de alterações inválida.')
   const actionIds = new Set<string>(), missingKeys = new Set<string>()
   for (const action of proposal.actions) {
-    if (!action || !validateText(action.id, 100) || !idPattern.test(action.id) || !['drive_archive','erp_update','other'].includes(action.type) || !validateText(action.title, 240) || typeof action.detail !== 'string' || action.detail.length > 1000 || actionIds.has(action.id)) fail(400, 'PACKAGE_INVALID', 'Ação inválida ou repetida.')
+    if (!action || typeof action!=='object' || Array.isArray(action) || Object.keys(action).sort().join(',')!=='detail,id,title,type' || !validateText(action.id, 100) || !idPattern.test(action.id) || !['drive_archive','erp_update','other'].includes(action.type) || !validateText(action.title, 240) || typeof action.detail !== 'string' || action.detail.length > 1000 || actionIds.has(action.id)) fail(400, 'PACKAGE_INVALID', 'Ação inválida ou repetida.')
     actionIds.add(action.id)
   }
   for (const field of proposal.missingFields) {
-    if (!field || !validateText(field.key, 100) || !idPattern.test(field.key) || !validateText(field.label, 160) || typeof field.hint !== 'string' || field.hint.length > 300 || missingKeys.has(field.key)) fail(400, 'PACKAGE_INVALID', 'Pendência inválida ou repetida.')
+    if (!field || typeof field!=='object' || Array.isArray(field) || Object.keys(field).sort().join(',')!==(field.options===undefined?'hint,key,label':'hint,key,label,options') || !validateText(field.key, 100) || !idPattern.test(field.key) || !validateText(field.label, 160) || typeof field.hint !== 'string' || field.hint.length > 300 || missingKeys.has(field.key)) fail(400, 'PACKAGE_INVALID', 'Pendência inválida ou repetida.')
     if (field.options !== undefined && (!Array.isArray(field.options) || field.options.length<1 || field.options.length>20 ||
       new Set(field.options.map(x=>x?.value)).size!==field.options.length ||
-      field.options.some(x=>!x || !validateText(x.value,100) || !validateText(x.label,180)))) fail(400,'PACKAGE_INVALID','Opções de pendência inválidas.')
+      field.options.some(x=>!x || typeof x!=='object' || Array.isArray(x) || Object.keys(x).sort().join(',')!=='label,value' || !validateText(x.value,100) || !validateText(x.label,180)))) fail(400,'PACKAGE_INVALID','Opções de pendência inválidas.')
     missingKeys.add(field.key)
   }
 }
