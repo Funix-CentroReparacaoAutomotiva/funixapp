@@ -1,61 +1,42 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 import { Notice } from '../ui'
 import { ConversationLinksPanel } from './ConversationLinksPanel'
-import { mergeReadMessages, parseConversationList, parseConversationMessages } from './evolution-read-model'
-import type { ConversationRow, ReadUiMessage } from './evolution-read-model'
+import { parseConversationList } from './evolution-read-model'
+import type { ConversationRow } from './evolution-read-model'
 import './evolution-read.css'
 
 const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
-const time = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
 function conversationLabel(row: ConversationRow): string {
-  if (row.displayName) return row.displayName
-  if (row.phoneNumber) return '+' + row.phoneNumber
-  return 'Contato não identificado'
+  return row.displayName || (row.phoneNumber ? '+' + row.phoneNumber : 'Contato não identificado')
 }
-const mediaNames: Record<ReadUiMessage['kind'], string> = {
-  text: 'Texto', image: 'Imagem', audio: 'Áudio', video: 'Vídeo',
-  document: 'Documento', unsupported: 'Formato não disponível',
-}
-function errorLabel(cause: unknown): string {
+function listErrorLabel(cause: unknown) {
   const error = cause as RequestFailure
-  if (error.status === 503) return 'A Evolution está indisponível ou não respondeu. Nenhuma conclusão sobre o histórico pode ser tirada.'
-  if (error.status === 404) return 'Esta conversa temporária expirou. Atualize a lista para continuar.'
-  return 'Não foi possível carregar os dados. Confira a conexão e tente novamente.'
+  return error.status === 503
+    ? 'A Evolution não respondeu. Atualize a lista para tentar novamente.'
+    : 'Não foi possível carregar as conversas. Confira a conexão e tente novamente.'
 }
 
-export function EvolutionConversationReader({
-  onUnauthorized,
-  onOpenAtendimento,
-}: {
+/**
+ * Conversas é uma entrada para o Atendimento, não um segundo Chat.
+ * A navegação só usa o Atendimento canônico confirmado no servidor;
+ * contatos sem vínculo têm uma ação explícita, sem adivinhar por telefone.
+ */
+export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento }: {
   onUnauthorized: () => void
   onOpenAtendimento?: (atendimentoId: string, tab: 'chat' | 'diagnosticos' | 'mapa', conversationId?: string) => void
 }) {
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
-  const [activeAtendimentoId, setActiveAtendimentoId] = useState<string | null>(null)
   const [list, setList] = useState<ConversationRow[]>([])
   const [nextSkip, setNextSkip] = useState<number | null>(null)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ReadUiMessage[]>([])
-  const [nextPage, setNextPage] = useState<number | null>(null)
+  const [unlinked, setUnlinked] = useState<string | null>(null)
   const [listBusy, setListBusy] = useState(false)
-  const [messageBusy, setMessageBusy] = useState(false)
   const [listError, setListError] = useState('')
-  const [messageError, setMessageError] = useState('')
-  const [listVersion, setListVersion] = useState(0)
-  const [messageVersion, setMessageVersion] = useState(0)
+  const [version, setVersion] = useState(0)
   const listRequest = useRef<AbortController | null>(null)
-  const messageRequest = useRef<AbortController | null>(null)
   const loadingMore = useRef(false)
-
-  // O app ocupa uma coluna estreita mesmo no desktop. Ao selecionar um contato,
-  // a lista cede lugar ao histórico, sem deixar a rolagem do contato anterior.
-  useLayoutEffect(() => {
-    const viewport = document.querySelector<HTMLElement>('.app-viewport')
-    if (viewport) viewport.scrollTop = 0
-  }, [selected])
 
   const loadList = useCallback(async (skip: number, controller: AbortController) => {
     try {
@@ -72,8 +53,10 @@ export function EvolutionConversationReader({
       if (controller.signal.aborted) return
       const error = cause as RequestFailure
       if (error.status === 401) { onUnauthorized(); return }
-      if (error.status === 404 && skip === 0) { setAvailable(false); setList([]); setNextSkip(null); return }
-      setListError(errorLabel(cause))
+      if (error.status === 404 && skip === 0) {
+        setAvailable(false); setList([]); setNextSkip(null); return
+      }
+      setListError(listErrorLabel(cause))
     } finally {
       if (!controller.signal.aborted) setListBusy(false)
       loadingMore.current = false
@@ -84,78 +67,19 @@ export function EvolutionConversationReader({
     const controller = new AbortController()
     listRequest.current = controller
     queueMicrotask(() => {
-      if (!controller.signal.aborted) {
-        setListBusy(true)
-        setListError('')
-        void loadList(0, controller)
-      }
+      if (controller.signal.aborted) return
+      setListBusy(true)
+      setListError('')
+      void loadList(0, controller)
     })
     return () => controller.abort()
-  }, [loadList, listVersion])
-
-  const loadPage = useCallback(async (conversationId: string, page: number, controller: AbortController) => {
-    try {
-      const result = parseConversationMessages(await api<unknown>(
-        `/api/chat/conversations/${encodeURIComponent(conversationId)}/messages?page=${page}`,
-        { signal: controller.signal },
-      ), conversationId)
-      if (controller.signal.aborted) return
-      setMessages(previous => page === 1 ? mergeReadMessages([], result.items) : mergeReadMessages(previous, result.items))
-      setNextPage(result.nextPage)
-      setMessageError('')
-    } catch (cause) {
-      if (controller.signal.aborted) return
-      const error = cause as RequestFailure
-      if (error.status === 401) { onUnauthorized(); return }
-      setMessageError(errorLabel(cause))
-    } finally { if (!controller.signal.aborted) setMessageBusy(false) }
-  }, [onUnauthorized])
-
-  useEffect(() => {
-    if (!selected) return
-    const controller = new AbortController()
-    messageRequest.current = controller
-    queueMicrotask(() => {
-      if (!controller.signal.aborted) {
-        setMessageBusy(true)
-        setMessageError('')
-        void loadPage(selected, 1, controller)
-      }
-    })
-    return () => controller.abort()
-  }, [selected, messageVersion, loadPage])
-
-  function choose(conversationId: string) {
-    if (selected === conversationId) return
-    messageRequest.current?.abort()
-    setMessages([])
-    setNextPage(null)
-    setMessageError('')
-    setActiveAtendimentoId(null)
-    setSelected(conversationId)
-  }
-
-  function backToList() {
-    messageRequest.current?.abort()
-    setSelected(null)
-    setMessages([])
-    setNextPage(null)
-    setMessageError('')
-    setActiveAtendimentoId(null)
-  }
+  }, [loadList, version])
 
   function refreshList() {
     listRequest.current?.abort()
-    messageRequest.current?.abort()
-    setSelected(null)
-    setMessages([])
-    setNextPage(null)
-    setList([])
-    setNextSkip(null)
-    setAvailable(null)
-    setLinksEnabled(false)
-    setActiveAtendimentoId(null)
-    setListVersion(value => value + 1)
+    setUnlinked(null); setList([]); setNextSkip(null)
+    setAvailable(null); setLinksEnabled(false)
+    setVersion(value => value + 1)
   }
 
   function moreList() {
@@ -164,106 +88,51 @@ export function EvolutionConversationReader({
     listRequest.current?.abort()
     const controller = new AbortController()
     listRequest.current = controller
-    setListBusy(true)
-    setListError('')
+    setListBusy(true); setListError('')
     void loadList(nextSkip, controller)
   }
 
-  function moreMessages() {
-    if (!selected || nextPage === null || messageBusy) return
-    messageRequest.current?.abort()
-    const controller = new AbortController()
-    messageRequest.current = controller
-    setMessageBusy(true)
-    setMessageError('')
-    void loadPage(selected, nextPage, controller)
+  function open(row: ConversationRow) {
+    if (row.atendimentoId && onOpenAtendimento) {
+      setUnlinked(null)
+      onOpenAtendimento(row.atendimentoId, 'chat', row.conversationId)
+      return
+    }
+    setUnlinked(current => current === row.conversationId ? null : row.conversationId)
   }
 
   if (available === false) return <div className="fh-surface">
-    <Notice title="Chat WhatsApp ainda indisponível">A integração de conversas não está habilitada neste FunixApp. Os Atendimentos continuam disponíveis no Funil.</Notice>
+    <Notice title="Conversas indisponíveis">A consulta de conversas não está habilitada. Os Atendimentos continuam disponíveis no Funil.</Notice>
   </div>
 
-  const canonical = selected ? list.find(row => row.conversationId === selected)?.atendimentoId ?? null : null
-  const navigationId = activeAtendimentoId ?? canonical
-
-  return <section className={selected ? 'ev-reader ev-has-selection' : 'ev-reader'} aria-label="Conversas WhatsApp — leitura experimental">
+  return <section className="ev-reader" aria-label="Conversas WhatsApp">
     <div className="ev-conversations-pane">
-    <div className="ev-header">
-      <div><strong>Conversas · somente leitura</strong><small>Evolution · histórico não verificado como completo</small></div>
-      <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
-    </div>
-    <p className="ev-warning">Histórico da Evolution em modo somente leitura. {linksEnabled ? 'Atendimentos vinculados podem ser abertos aqui.' : 'Identificadores temporários podem expirar após reinício.'}</p>
-    {listBusy && !list.length && <Notice title="Carregando conversas…" />}
-    {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
-    {!listBusy && available === true && !listError && !list.length && <Notice title="Nenhuma conversa retornada">A consulta não comprova que o histórico está vazio.</Notice>}
-    {list.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
-      {list.map(row => <button type="button" key={row.conversationId}
-        className={selected === row.conversationId ? 'ev-item selected' : 'ev-item'}
-        onClick={() => choose(row.conversationId)} aria-pressed={selected === row.conversationId}>
-        <strong>{conversationLabel(row)}</strong>
-        <span>{row.updatedAt ? `Atualização: ${date.format(new Date(row.updatedAt))}` : 'Data não informada'}</span>
-        {row.unreadCount !== null && <small>{row.unreadCount} não lida(s) informadas pelo provedor</small>}
-      </button>)}
-    </div>}
-    {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
-      {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
-    </button>}
-    </div>
-    <div className="ev-conversation-detail">
-    {!selected && <div className="ev-empty-detail">
-      <strong>Selecione uma conversa</strong>
-      <p>Selecione um contato para visualizar o histórico de mensagens.</p>
-    </div>}
-    {selected && <>
-      <header className="ev-detail-heading">
-        <strong>{conversationLabel(list.find(row => row.conversationId === selected) ?? {
-          conversationId: selected, displayName: null, phoneNumber: null, updatedAt: null, unreadCount: null,
-        })}</strong>
-        <button type="button" className="fh-filter ev-back" onClick={backToList}>Voltar às conversas</button>
-      </header>
-      <nav className="ev-detail-tabs" aria-label="Visões da conversa">
-        <button type="button" className="ev-detail-tab active" aria-current="page">Chat</button>
-        <button type="button" className="ev-detail-tab" disabled={!navigationId || !onOpenAtendimento}
-          title={!navigationId ? 'Vincule e selecione um Atendimento para abrir Diagnósticos' : undefined}
-          onClick={() => { if (navigationId) onOpenAtendimento?.(navigationId, 'diagnosticos') }}>
-          Diagnósticos
-        </button>
-        <button type="button" className="ev-detail-tab" disabled={!navigationId || !onOpenAtendimento}
-          title={!navigationId ? 'Vincule e selecione um Atendimento para abrir Mapa' : undefined}
-          onClick={() => { if (navigationId) onOpenAtendimento?.(navigationId, 'mapa') }}>
-          Mapa
-        </button>
-      </nav>
-      {canonical && onOpenAtendimento && <button type="button" className="fh-filter" onClick={() => onOpenAtendimento(canonical, 'chat', selected!)}>Abrir Atendimento vinculado · Chat</button>}
-      {!navigationId && <p className="ev-links-hint">Atendimento ainda não identificado nesta integração. A criação e associação devem ocorrer na chegada da mensagem, não no clique.</p>}
-    </>}
-    {selected && linksEnabled && <ConversationLinksPanel key={selected} conversationId={selected} onUnauthorized={onUnauthorized}
-      onActiveAtendimentoChange={setActiveAtendimentoId} />}
-    {selected && <section className="ev-history" aria-label="Histórico da conversa">
-      <header><strong>Histórico · somente leitura</strong><button type="button" className="fh-filter"
-        disabled={messageBusy} onClick={() => {
-          messageRequest.current?.abort()
-          setMessages([])
-          setNextPage(null)
-          setMessageVersion(value => value + 1)
-        }}>Atualizar mensagens</button></header>
-      <p className="ev-warning">A paginação é por deslocamento, sem fotografia estável. Novas mensagens podem gerar repetições ou lacunas. Mídias e envio indisponíveis.</p>
-      {messageError && <Notice title="Falha de leitura" error retry={() => setMessageVersion(value => value + 1)}>{messageError}</Notice>}
-      {messageBusy && <Notice title="Carregando mensagens…" />}
-      {!messageBusy && !messageError && !messages.length && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
-      {messages.length > 0 && <ol className="ev-messages">{messages.map(message =>
-        <li key={message.messageId} className={message.fromMe ? 'ev-outgoing' : 'ev-incoming'}>
-          <article><small>{message.fromMe ? 'Saída · origem não identificada' : 'Entrada'}</small>
-            {message.kind === 'text' ? <p dir="auto">{message.text}</p> :
-              <p>{mediaNames[message.kind]} · conteúdo indisponível</p>}
-            <time dateTime={new Date(message.timestamp * 1000).toISOString()}>{time.format(new Date(message.timestamp * 1000))}</time>
-          </article>
-        </li>)}</ol>}
-      {nextPage !== null && <button type="button" className="fh-filter ev-more" onClick={moreMessages} disabled={messageBusy}>
-        Carregar página anterior
+      <div className="ev-header"><strong>Conversas</strong>
+        <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
+      </div>
+      {listBusy && !list.length && <Notice title="Carregando conversas…" />}
+      {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
+      {!listBusy && available === true && !listError && !list.length &&
+        <Notice title="Nenhuma conversa retornada">Atualize a lista para consultar novamente.</Notice>}
+      {list.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
+        {list.map(row => <div key={row.conversationId}>
+          <button type="button" className="ev-item" onClick={() => open(row)}
+            aria-expanded={!row.atendimentoId ? unlinked === row.conversationId : undefined}>
+            <strong>{conversationLabel(row)}</strong>
+            <span>{row.updatedAt ? `Atualização: ${date.format(new Date(row.updatedAt))}` : 'Data não informada'}</span>
+            <small>{row.atendimentoId ? 'Abrir Chat do Atendimento' : 'Atendimento não vinculado'}</small>
+          </button>
+          {unlinked === row.conversationId && !row.atendimentoId && <section className="ev-unlinked" aria-label="Conversa sem Atendimento">
+            <strong>Esta conversa ainda não tem Atendimento confirmado.</strong>
+            <p>Não é possível abrir o Chat de um Atendimento sem um vínculo. A associação não será feita automaticamente pelo nome ou telefone.</p>
+            {linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
+            <p className="ev-links-hint">Se o Atendimento já existir no Funil, confira o vínculo antes de abrir o histórico dele.</p>
+          </section>}
+        </div>)}
+      </div>}
+      {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
+        {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
       </button>}
-    </section>}
-    {selected && <p className="read-only-note">Exibição sem envio e sem mídia. {linksEnabled ? 'Associações manuais não alteram mensagens.' : 'Vínculos N:N ainda indisponíveis.'} Use o Funil para editar Atendimentos.</p>}
     </div>
   </section>
 }
