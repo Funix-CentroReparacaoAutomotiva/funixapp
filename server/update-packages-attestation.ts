@@ -2,14 +2,14 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 
 /**
  * An attestation binds a reviewed proposal to the exact source and fragment
- * bytes that were presented to the trusted reviewer. It is NOT proof of a
+ * source text and attachment digests presented to the trusted reviewer. It is NOT proof of a
  * customer's or association's commercial authorization.
  */
 export type ReviewMaterial = {
   eventKey: string
   body: string
   subject: string
-  attachmentIds: string[]
+  attachments: Array<{id:string;sha256:string}>
   fragments: unknown[]
 }
 export type ReviewAttestation = {
@@ -22,16 +22,17 @@ const idPattern=/^[A-Za-z0-9][A-Za-z0-9_.:/-]{7,119}$/
 export function reviewMaterialHash(input:ReviewMaterial):string {
   if (!input || !idPattern.test(input.eventKey) ||
     typeof input.body!=='string' || typeof input.subject!=='string' ||
-    !Array.isArray(input.attachmentIds) || !Array.isArray(input.fragments) ||
-    input.attachmentIds.length>40 ||
-    input.attachmentIds.some(id=>typeof id!=='string'||!idPattern.test(id)) ||
-    new Set(input.attachmentIds).size!==input.attachmentIds.length) {
+    !Array.isArray(input.attachments) || !Array.isArray(input.fragments) ||
+    input.attachments.length>40 ||
+    input.attachments.some(a=>!a || typeof a.id!=='string' || !idPattern.test(a.id) ||
+      typeof a.sha256!=='string' || !/^[a-f0-9]{64}$/.test(a.sha256)) ||
+    new Set(input.attachments.map(a=>a.id)).size!==input.attachments.length) {
     throw new Error('REVIEW_MATERIAL_INVALID')
   }
-  const attachmentIds=[...input.attachmentIds].sort()
+  const attachments=[...input.attachments].sort((a,b)=>a.id.localeCompare(b.id))
   return createHash('sha256').update(JSON.stringify({
     eventKey:input.eventKey,body:input.body,subject:input.subject,
-    attachmentIds,fragments:input.fragments
+    attachments,fragments:input.fragments
   })).digest('hex')
 }
 /** Only call from a trusted verifier; never from n8n extraction or browser. */
