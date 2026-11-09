@@ -120,7 +120,7 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, children }: {
+function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized }: {
   atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode
 }) {
   const [items, setItems] = useState<ReadUiMessage[]>([])
