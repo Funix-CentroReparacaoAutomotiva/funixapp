@@ -208,7 +208,7 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
-      const syncedEvolutionRoute = /^\\/api\\/atendimentos\\/([a-f0-9-]{36})\\/evolution-conversations\\/([a-f0-9-]{36})\\/messages$/.exec(url.pathname)
+      const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
       if (syncedEvolutionRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         if ([...url.searchParams.keys()].some(key => key !== 'page') || url.searchParams.getAll('page').length > 1)
