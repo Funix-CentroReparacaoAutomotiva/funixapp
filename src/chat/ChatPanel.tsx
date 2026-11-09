@@ -154,7 +154,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     queueMicrotask(() => { if (active) void load(1) })
     return () => { active = false; request.current?.abort() }
   }, [load])
-  return <div className="detail-page chat-page chat-readonly">
+  return <div className="detail-page chat-page chat-readonly chat-evolution">
     <div className="chat-stage"><div className="at-chat-scroll">
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
         <div className="chat-read-toolbar"><button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button></div>
