@@ -48,7 +48,7 @@ async def device_case(browser, width, height):
         await h.attach(page)
         await page.goto(ORIGIN + "/conversas")
         await h.login(page)
-        await expect(page.get_by_text("Chat WhatsApp ainda indisponível", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Conversas indisponíveis", exact=True)).to_be_visible()
 
         async def mock(route):
             request = route.request
