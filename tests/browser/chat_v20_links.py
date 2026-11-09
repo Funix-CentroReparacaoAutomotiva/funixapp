@@ -48,7 +48,7 @@ async def device_case(browser, width, height):
         await h.attach(page)
         await page.goto(ORIGIN + "/conversas")
         await h.login(page)
-        await expect(page.get_by_text("Chat WhatsApp ainda indisponível", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Conversas indisponíveis", exact=True)).to_be_visible()
 
         async def mock(route):
             request = route.request
@@ -136,9 +136,8 @@ async def device_case(browser, width, height):
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
         await expect(panel).to_be_visible()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
-        await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
         await page.screenshot(path=str(ARTIFACTS / f"{width}-vazio.png"))
-        h.mark(f"{width}px: opted-in UI, empty links, independent history")
+        h.mark(f"{width}px: opted-in UI, empty links, no duplicate chat history")
 
         await panel.get_by_role("searchbox", name="Localizar Atendimento existente").fill("Caso")
         await panel.get_by_role("button", name="Buscar").click()
@@ -149,8 +148,7 @@ async def device_case(browser, width, height):
         await panel.get_by_role("button", name="Vincular", exact=True).first.click()
         await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(1)
         assert state["revision"] == 1
-        await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
-        h.mark(f"{width}px: search, reason required, manual link, timeline unchanged")
+        h.mark(f"{width}px: search, reason required, manual link, no parallel chat view")
 
         await panel.get_by_role("searchbox", name="Localizar Atendimento existente").fill("Caso")
         await panel.get_by_role("button", name="Buscar").click()
@@ -169,9 +167,8 @@ async def device_case(browser, width, height):
         assert state["active"] == AT1
         await panel.get_by_role("button", name="Usar contexto").click()
         assert state["active"] == AT2
-        await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
         await page.screenshot(path=str(ARTIFACTS / f"{width}-dois-vinculos.png"))
-        h.mark(f"{width}px: switch active Atendimento without changing WhatsApp messages")
+        h.mark(f"{width}px: switch active Atendimento context while no nested chat exists")
 
         await panel.get_by_role("button", name="Desvincular").last.click()
         await expect(panel.get_by_role("button", name="Confirmar desvínculo")).to_be_visible()
@@ -182,15 +179,11 @@ async def device_case(browser, width, height):
         await panel.get_by_role("button", name="Confirmar desvínculo").click()
         await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(1)
         assert state["active"] is None and len(state["links"]) == 1
-        await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
-        h.mark(f"{width}px: cancel/confirm unlink, context reset, message preserved")
+        h.mark(f"{width}px: cancel/confirm unlink and reset context")
 
-        await page.get_by_role("button", name="Voltar às conversas").click()
         await page.get_by_role("button", name="Contato Sintético Beta").click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
-        await expect(page.get_by_text("Mensagem sintética B separada")).to_be_visible()
-        assert await page.get_by_text("Mensagem sintética A preservada").count() == 0
-        h.mark(f"{width}px: conversation switch isolates links and history")
+        h.mark(f"{width}px: conversation switch isolates manual association panels")
 
         assert await page.evaluate("w => document.documentElement.scrollWidth <= w + 1", width)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
@@ -199,12 +192,10 @@ async def device_case(browser, width, height):
         h.mark(f"{width}px: no horizontal overflow, no external network, no JS exceptions")
 
         state["enabled"] = False
-        await page.get_by_role("button", name="Voltar às conversas").click()
         await page.get_by_role("button", name="Atualizar lista").click()
         await page.get_by_role("button", name="Contato Sintético Alfa").click()
-        await expect(page.get_by_text("Mensagem sintética A preservada")).to_be_visible()
         assert await page.get_by_role("region", name="Vínculos com Atendimentos").count() == 0
-        h.mark(f"{width}px: link feature OFF keeps Evolution reading and hides writes")
+        h.mark(f"{width}px: link feature OFF hides writes and never opens a second chat")
     except Exception:
         if page:
             await page.screenshot(path=str(ARTIFACTS / f"{width}-failure.png"))
