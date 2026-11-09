@@ -147,13 +147,75 @@ test('Evolution POC: four media formats project opaque metadata only; no retriev
   assert.equal((await client(response(envelope([extended]))).findMessages(PN)).items[0].text, 'Synthetic extended')
 })
 
+test('Evolution POC: numeric-string protobuf media sizes and MIME parameters normalize without leaking metadata', async () => {
+  const raw = syntheticMessage(3, {
+    messageType: 'audioMessage',
+    message: { audioMessage: {
+      mimetype: 'audio/ogg; codecs=opus',
+      fileLength: '12345',
+      mediaKey: 'PRIVATE_FIXTURE_KEY',
+      directPath: '/private',
+    } },
+  })
+  const page = await client(response(envelope([raw]))).findMessages(PN)
+  assert.equal(page.items.length, 1)
+  assert.equal(page.items[0]?.kind, 'audio')
+  assert.equal(page.items[0]?.media?.mimeType, 'audio/ogg')
+  assert.equal(page.items[0]?.media?.bytes, 12345)
+  assert.equal(page.items[0]?.media?.available, false)
+  assert.ok(!/PRIVATE_FIXTURE_KEY|private|codecs/.test(JSON.stringify(page.items)))
+  const sizes = ['-1', '1.5', '01', '1e2', '9007199254740992', { low: 1, high: 0 }, true]
+  for (const fileLength of sizes) {
+    const item = (await client(response(envelope([syntheticMessage(5, {
+      messageType: 'audioMessage', message: { audioMessage: { mimetype: 'audio/ogg', fileLength } },
+    })]))).findMessages(PN)).items[0]
+    assert.equal(item?.kind, 'audio')
+    assert.equal(item?.media?.bytes, null)
+    assert.equal(item?.media?.available, false)
+  }
+  for (const mimetype of ['audio/ogg; evil=<script>', 'audio/ogg; codecs=', 'bad', 'audio/ogg;\nsecret=x']) {
+    const item = (await client(response(envelope([syntheticMessage(6, {
+      messageType: 'audioMessage', message: { audioMessage: { mimetype } },
+    })]))).findMessages(PN)).items[0]
+    assert.equal(item?.kind, 'audio')
+    assert.equal(item?.media?.mimeType, null)
+    assert.equal(item?.media?.available, false)
+    assert.ok(!JSON.stringify(item).includes('script'))
+  }
+})
+
+test('Evolution POC: duplicate media rows use matched chosen-row opaque reference; changing media bytes fails closed', async () => {
+  const a = syntheticMessage(10, { messageType: 'imageMessage',
+    message: { imageMessage: { mimetype: 'image/jpeg', fileLength: '9' } } })
+  const b = { ...a, id: 'row-11', MessageUpdate: [{ status: 'READ' }] }
+  const forward = (await client(response(envelope([a,b]))).findMessages(PN)).items
+  const reverse = (await client(response(envelope([b,a]))).findMessages(PN)).items
+  assert.deepEqual(forward, reverse)
+  assert.equal(forward.length, 1)
+  assert.equal(forward[0]?.media?.reference, JSON.stringify([INSTANCE, 'row-10', 'imageMessage']))
+  assert.deepEqual(forward[0]?.statuses, ['READ', 'SERVER_ACK'])
+  const changed = { ...b, message: { imageMessage: { mimetype: 'image/jpeg', fileLength: '10' } } }
+  await assert.rejects(client(response(envelope([a,changed]))).findMessages(PN), errorCode('CONFLICT'))
+})
+
 test('Evolution POC: exact duplicates collapse; changed content/status never silently overwrites', async () => {
   const m = syntheticMessage(1)
   const page = await client(response(envelope([m, m]))).findMessages(PN)
   assert.equal(page.items.length, 1)
   const changed = { ...page.items[0], text: 'different' }
   assert.throws(() => reconcileReadBatches(page.items, [changed]), errorCode('CONFLICT'))
-  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }]), errorCode('CONFLICT'))
+  assert.deepEqual(reconcileReadBatches(page.items, [{ ...page.items[0], statuses: ['READ'] }])[0]?.statuses, ['READ', 'SERVER_ACK'])
+  const withStatusAndRow = { ...page.items[0], recordId: 'provider-row-2', statuses: ['READ', 'SERVER_ACK'] }
+  const forward = reconcileReadBatches(page.items, [withStatusAndRow])
+  const reverse = reconcileReadBatches([withStatusAndRow], page.items)
+  assert.deepEqual(forward, reverse)
+  assert.equal(forward.length, 1)
+  assert.deepEqual(forward[0]?.statuses, ['READ', 'SERVER_ACK'])
+  assert.equal(forward[0]?.recordId, 'provider-row-2')
+  // No cross-chat, cross-instance or content collapsing.
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], timestamp: page.items[0]!.timestamp + 1 }]), errorCode('CONFLICT'))
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], remoteJidAlt: PN }]), errorCode('CONFLICT'))
+  assert.throws(() => reconcileReadBatches(page.items, [{ ...page.items[0], fromMe: !page.items[0]!.fromMe }]), errorCode('CONFLICT'))
 })
 
 test('Evolution POC: invalid input never invokes transport; no arbitrary query or path', async () => {
