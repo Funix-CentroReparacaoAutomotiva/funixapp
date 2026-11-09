@@ -204,7 +204,7 @@ test('canonical Coda Evolution route requires operator session and matching acti
     const signedEvent = {
       version: 1, source: 'coda', eventId: 'evo:synthetic:canonical',
       codaRowId: 'i-CANON_A', instance: 'funix_comercial',
-      remoteJid: jid, phoneE164: '+000000000001',
+      remoteJid: jid, phoneE164: null,
       displayName: 'Contato Sintético', occurredAt: 1794144000,
     }
     const id = f.sync!.sync(signedEvent).atendimentoId
