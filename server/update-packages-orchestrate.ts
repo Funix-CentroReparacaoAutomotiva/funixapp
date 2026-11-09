@@ -5,6 +5,8 @@ import type { CommercialTriage } from './update-packages-commercial.ts'
 import type { UpdatePackageFragment } from './update-packages-consolidate.ts'
 import { prepareCompleteUpdateEvent } from './update-packages-event.ts'
 import type { EventPreparation, EventInventory } from './update-packages-event.ts'
+import { verifyReviewAttestation } from './update-packages-attestation.ts'
+import type { ReviewAttestation } from './update-packages-attestation.ts'
 
 /**
  * Pure bridge from n8n extraction to FUNIX package proposal.
@@ -29,6 +31,8 @@ export type GmailEventBridgeInput = {
     reviewedAttachmentIds: string[]
     verifiedSourceReference: string
     reviewId: string
+    attachmentDigests: Array<{id:string;sha256:string}>
+    attestation: ReviewAttestation
   }
 }
 export type GmailBridgeResult =
@@ -38,7 +42,7 @@ export type GmailBridgeResult =
 const unique=(values:string[]):boolean=>new Set(values).size===values.length
 const reviewKey=/^[A-Za-z0-9][A-Za-z0-9_.:/-]{7,119}$/
 
-export function prepareGmailPackageForReview(input:GmailEventBridgeInput):GmailBridgeResult {
+export function prepareGmailPackageForReview(input:GmailEventBridgeInput, reviewSecret?:string):GmailBridgeResult {
   const correlated=correlateGmailEvidence(input.text,input.attachments)
   if (input.message.id!==correlated.inventory.sourceReference ||
     !input.message.bodyComplete || input.message.body===null) {
@@ -72,6 +76,22 @@ export function prepareGmailPackageForReview(input:GmailEventBridgeInput):GmailB
       verification.reviewedAttachmentIds.length!==correlated.inventory.attachmentIds.length ||
       !verification.reviewedAttachmentIds.every(id=>correlated.inventory.attachmentIds.includes(id))) {
     throw new Error('REVIEW_ATTESTATION_INVALID')
+  }
+  // Never trust boolean review flags sent by n8n or a browser alone.
+  // The trusted verifier must sign the exact body, attachment digests,
+  // and fragment content observed by the operator.
+  if (!reviewSecret || !Array.isArray(verification.attachmentDigests) ||
+      verification.attachmentDigests.length!==verification.reviewedAttachmentIds.length ||
+      verification.attachmentDigests.some(a=>!verification.reviewedAttachmentIds.includes(a?.id)) ||
+      verification.attestation?.reviewId!==verification.reviewId ||
+      !verifyReviewAttestation({
+        eventKey:correlated.inventory.eventKey,
+        subject:input.message.subject,
+        body:input.message.body,
+        attachments:verification.attachmentDigests,
+        fragments:parts
+      },verification.attestation,reviewSecret)) {
+    throw new Error('REVIEW_ATTESTATION_UNTRUSTED')
   }
   // A commercial ambiguity cannot be resolved merely by declaring an attest;
   // verified commercial outcomes must be separately replanned into the final
