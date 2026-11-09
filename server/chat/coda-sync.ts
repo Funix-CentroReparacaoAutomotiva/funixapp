@@ -36,6 +36,10 @@ function validate(input: unknown): ConfirmedCodaEvent {
     typeof x.displayName !== 'string' || x.displayName.length > 250 ||
     /[\u0000-\u001f\u007f]/.test(x.displayName) ||
     !Number.isSafeInteger(x.occurredAt) || Number(x.occurredAt) < 0 || Number(x.occurredAt) > 2147483647) return invalid()
+  // A claimed verified E.164 number must match the exact PN JID.
+  // LID-only events remain separate and never infer a phone number.
+  if (typeof x.phoneE164 === 'string' && (x.remoteJid as string).endsWith('@s.whatsapp.net') &&
+    x.phoneE164.slice(1) !== (x.remoteJid as string).split('@')[0]) return invalid()
   return x as ConfirmedCodaEvent
 }
 
