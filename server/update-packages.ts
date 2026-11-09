@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import type { UpdatePackage, UpdatePackageDecision, UpdatePackageList, UpdatePackageStatus, UpdatePackageIngest, UpdatePackageClarification, UpdatePackageProposal } from '../shared/update-packages.ts'
+import type { UpdatePackage, UpdatePackageAction, UpdatePackageMissingField, UpdatePackageDecision, UpdatePackageList, UpdatePackageStatus, UpdatePackageIngest, UpdatePackageClarification, UpdatePackageProposal } from '../shared/update-packages.ts'
 import { ServiceError } from './errors.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 
@@ -12,6 +12,7 @@ type PackageRow = {
   title: string; summary: string; status: UpdatePackageStatus
   actions_json: string; missing_fields_json: string
   created_at: string; updated_at: string; decided_at: string | null; decided_by: string | null
+  clarification_pending?: number
 }
 
 const fail = (status: number, code: string, detail: string): never => { throw new ServiceError(status, code, detail) }
