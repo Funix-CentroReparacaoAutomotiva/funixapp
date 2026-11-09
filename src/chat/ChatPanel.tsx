@@ -156,10 +156,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   }, [load])
   return <div className="detail-page chat-page chat-readonly">
     <div className="chat-stage"><div className="at-chat-scroll">
-      <div className="chat-channel-state">Evolution · leitura somente, histórico possivelmente incompleto</div>
-      {children}
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
-        <div className="chat-read-toolbar"><strong>Chat · Evolution</strong><button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button></div>
+        <div className="chat-read-toolbar"><button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button></div>
         {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
@@ -171,8 +169,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
       </section>
-    </div><ChatRail /></div>
-    <footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio indisponível · somente leitura" disabled rows={1} /></div></footer>
+    </div></div>
   </div>
 }
 /** Resolve the server-confirmed Coda context when opening an Atendimento directly from Funil. */
