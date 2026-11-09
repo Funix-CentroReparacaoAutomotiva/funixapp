@@ -4,6 +4,7 @@ export type UpdatePackageStatus =
   | 'execution_failed'
   | 'executed'
   | 'rejected'
+  | 'superseded'
 
 export type UpdatePackageAction = {
   id: string
@@ -66,9 +67,19 @@ export type UpdatePackageProposal = {
   missingFields: UpdatePackageMissingField[]
 }
 
+export type UpdatePackageReverification = {
+  parentPackageId: string
+  clarificationRequestId: string
+  /** Coda record observed again after the user supplied the missing XP. */
+  codaRowId: string
+  verifiedExperienceId: string
+  verifiedPlate: string
+}
+
 export type UpdatePackageIngest = {
   eventKey: string
   proposal: UpdatePackageProposal
+  replaces?: UpdatePackageReverification
 }
 
 export type UpdatePackageClarification = {
