@@ -16,6 +16,8 @@ export type UpdatePackageMissingField = {
   key: string
   label: string
   hint: string
+  /** Opções de seleção fornecidas pelo planejador; não dispensam revalidação da XP. */
+  options?: { value: string; label: string }[]
 }
 
 export type UpdatePackage = {
@@ -35,6 +37,8 @@ export type UpdatePackage = {
   updatedAt: string
   decidedAt: string | null
   decidedBy: string | null
+  /** Respostas humanas aguardam replanejamento; não alteram a proposta aprovada. */
+  clarificationPending: boolean
 }
 
 export type UpdatePackageList = {
@@ -48,4 +52,27 @@ export type UpdatePackageDecision = {
   snapshotHash: string
   decision: 'approve' | 'reject'
   requestId: string
+}
+
+export type UpdatePackageProposal = {
+  source: UpdatePackage['source']
+  sourceReference: string
+  experienceId: string | null
+  plate: string | null
+  title: string
+  summary: string
+  actions: UpdatePackageAction[]
+  missingFields: UpdatePackageMissingField[]
+}
+
+export type UpdatePackageIngest = {
+  eventKey: string
+  proposal: UpdatePackageProposal
+}
+
+export type UpdatePackageClarification = {
+  revision: number
+  snapshotHash: string
+  requestId: string
+  answers: Record<string, string>
 }
