@@ -139,7 +139,7 @@ export function createRequestHandler(options: AppOptions) {
           const visao=url.searchParams.get('visao')??'open'
           const query=url.searchParams.get('q')??''
           if (!['open','closed'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
-          return send(200,{...updates.list(visao as 'open'|'closed',query),decisionsEnabled:hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true'})
+          return send(200,{...updates.list(visao as 'open'|'closed',query),decisionsEnabled:hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true',clarificationsEnabled:hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'&&process.env.FUNIX_UPDATES_CLARIFICATIONS_ENABLED==='true'})
         }
         if (clarificationMatch) {
           if(req.method!=='POST') return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
