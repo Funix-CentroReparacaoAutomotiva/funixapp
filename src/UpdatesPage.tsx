@@ -9,7 +9,8 @@ const statusLabel: Record<UpdatePackageStatus,string> = {
   approved_pending_execution:'Aguardando execução',
   execution_failed:'Execução pendente de correção',
   executed:'Executado',
-  rejected:'Rejeitado'
+  rejected:'Rejeitado',
+  superseded:'Substituído por proposta revalidada'
 }
 function updatedDate(value:string){
   const date=new Date(value)
@@ -102,7 +103,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
       <p className="updates-count">{count} pacote{count===1?'':'s'} {view==='open'?'aberto'+(count===1?'':'s'):'fechado'+(count===1?'':'s')}</p>
       {!count&&<div className="fh-surface updates-empty"><strong>{view==='open'?'Nenhuma atualização pendente':'Nenhuma atualização fechada'}</strong><p>Os pacotes aparecerão aqui quando o backend preparar informações reais para revisão.</p></div>}
       <div className="updates-cards">
-        {result.items.map(pkg=><article key={pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':'')}>
+        {result.items.map(pkg=><article key={pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':pkg.status==='superseded'?'is-superseded':'')}>
           <button type="button" className="updates-card-summary" aria-expanded={expanded===pkg.id} onClick={()=>{setExpanded(expanded===pkg.id?null:pkg.id);setAnswers({})}}>
             <span className="updates-card-top"><strong>{pkg.title}</strong><span aria-hidden="true">{expanded===pkg.id?'▴':'▾'}</span></span>
             <span className="updates-source">{sourceLabel[pkg.source]} · {updatedDate(pkg.createdAt)}</span>
