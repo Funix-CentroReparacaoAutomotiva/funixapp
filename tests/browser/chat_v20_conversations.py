@@ -81,7 +81,8 @@ async def device_case(browser, width, height):
         assert page.url.endswith("/conversas")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
         assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
-        h.mark(f"{width}px: unlinked conversation never opens guessed Atendimento")
+        await expect(page.get_by_text("Não encontrei Atendimento correspondente no Funil.", exact=False)).to_be_visible()
+        h.mark(f"{width}px: unlinked conversation searches Funil without guessing or creating a record")
 
         await page.get_by_role("button", name="Contato Vinculado").click()
         await page.wait_for_url(f"**/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
@@ -105,6 +106,37 @@ async def device_case(browser, width, height):
         assert "/api/chat/conversations/" not in " ".join(sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card")
+
+        # Earlier Funil records can exist without an Evolution Coda mapping.
+        # The same card must open the existing Atendimento by exact phone.
+        matching = await context.request.post(ORIGIN + "/api/atendimentos",
+                                              headers={"Origin": ORIGIN},
+                                              data={"phone": "+5531999990002", "name": "Atendimento Antigo"})
+        assert matching.status == 201
+        existing_id = (await matching.json())["id"]
+        await page.goto(ORIGIN + "/conversas")
+        await page.get_by_role("button", name="Contato Sem Vínculo").click()
+        await page.wait_for_url(f"**/atendimentos/{existing_id}?aba=chat")
+        await expect(page.locator(".detail-header")).to_contain_text("Atendimento Antigo")
+        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
+        h.mark(f"{width}px: existing Funil record opens by exact phone, no new Atendimento or Evolution link")
+
+        # An ambiguous phone must never choose a record arbitrarily.
+        duplicated = await context.request.post(ORIGIN + "/api/atendimentos",
+                                                headers={"Origin": ORIGIN},
+                                                data={"phone": "+5531999990002", "name": "Segundo Atendimento"})
+        assert duplicated.status == 201
+        second_id = (await duplicated.json())["id"]
+        await page.goto(ORIGIN + "/conversas")
+        await page.get_by_role("button", name="Contato Sem Vínculo").click()
+        await expect(page.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
+        await expect(page.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
+        assert page.url.endswith("/conversas")
+        await page.get_by_role("button", name="Segundo Atendimento", exact=False).click()
+        await page.wait_for_url(f"**/atendimentos/{second_id}?aba=chat")
+        await expect(page.locator(".detail-header")).to_contain_text("Segundo Atendimento")
+        h.mark(f"{width}px: duplicate phone requires explicit Atendimento selection")
+
 
     except Exception:
         if page:
