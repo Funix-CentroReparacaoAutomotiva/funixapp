@@ -70,3 +70,65 @@ test('resposta humana fica pendente e não libera aprovação; repetição é id
   assert.equal(repo.list('open','').items[0]!.clarificationPending,true)
  }finally{db.close()}
 })
+
+test('revalidação cria novo pacote e fecha original sem perder auditoria',async()=>{
+ const {db,repo}=setup()
+ try {
+  const first=await signed(repo,proposed())
+  const previous=repo.get(first.packageId)
+  const requestId=randomUUID()
+  repo.submitClarification(previous.id,{
+   revision:previous.revision,snapshotHash:previous.snapshotHash,requestId,
+   answers:{experienceId:'XP1002'}
+  },'funix_operator')
+  const updated={
+   eventKey:'gmail:message-synthetic-001:verified:XP1002',
+   proposal:{...proposed().proposal,experienceId:'XP1002',missingFields:[]},
+   replaces:{
+    parentPackageId:previous.id,clarificationRequestId:requestId,
+    codaRowId:'i-synthetic-row1',verifiedExperienceId:'XP1002',verifiedPlate:'ABC1D23'
+   }
+  }
+  const changed=await signed(repo,updated)
+  assert.notEqual(changed.packageId,previous.id)
+  assert.equal(repo.get(changed.packageId).status,'awaiting_review')
+  assert.equal(repo.get(previous.id).status,'superseded')
+  assert.equal(repo.list('open','').total,1)
+  assert.equal(repo.list('closed','').total,1)
+  assert.equal((await signed(repo,updated)).packageId,changed.packageId)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM update_package_revisions').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM update_package_ingest_events').get()!.n,2)
+  assert.throws(()=>repo.decide(previous.id,{
+    revision:previous.revision,snapshotHash:previous.snapshotHash,decision:'approve',requestId:randomUUID()
+  },'funix_operator'),{code:'PACKAGE_STALE'})
+  const confirmed=repo.decide(changed.packageId,{
+    revision:1,snapshotHash:repo.get(changed.packageId).snapshotHash,decision:'approve',requestId:randomUUID()
+  },'funix_operator')
+  assert.equal(confirmed.status,'approved_pending_execution')
+ }finally{db.close()}
+})
+
+test('revalidação com XP, placa ou resposta divergente não substitui o pacote',async()=>{
+ const {db,repo}=setup()
+ try {
+  const created=repo.ingest(proposed())
+  const requestId=randomUUID()
+  repo.submitClarification(created.id,{
+   revision:1,snapshotHash:created.snapshotHash,requestId,answers:{experienceId:'XP1001'}
+  },'funix_operator')
+  const payload={
+   eventKey:'gmail:message-synthetic-001:verified:XP1002',
+   proposal:{...proposed().proposal,experienceId:'XP1002',missingFields:[]},
+   replaces:{parentPackageId:created.id,clarificationRequestId:requestId,
+     codaRowId:'i-synthetic-row1',verifiedExperienceId:'XP1002',verifiedPlate:'ABC1D23'}
+  }
+  await assert.rejects(()=>signed(repo,payload),{code:'PACKAGE_REVERIFICATION_MISMATCH'})
+  assert.equal(repo.get(created.id).status,'awaiting_review')
+  assert.equal(repo.list('open','').total,1)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM update_package_revisions').get()!.n,0)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM update_package_ingest_events').get()!.n,1)
+  await assert.rejects(()=>signed(repo,{...payload,replaces:{...payload.replaces,verifiedPlate:'AAA1A11'}}),{
+   code:'PACKAGE_REVERIFICATION_MISMATCH'
+  })
+ }finally{db.close()}
+})
