@@ -86,7 +86,15 @@ async def device_case(browser, width, height):
         await page.wait_for_url(f"**/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
         await expect(page.locator(".detail-header")).to_contain_text("Atendimento Sintético")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
-        await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_be_visible()
+        # Capture the exact client state in CI when a provider fixture diverges.
+        try:
+            await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_be_visible()
+        except AssertionError:
+            print("CHAT_DIAGNOSTIC", json.dumps({
+                "history": (await page.locator(".chat-history").inner_text())[:1200],
+                "paths": sent, "pageErrors": h.page_errors,
+            }, ensure_ascii=False))
+            raise
         assert await page.get_by_text("Chat · Evolution").count() == 0
         assert await page.get_by_text("Evolution · leitura somente, histórico possivelmente incompleto").count() == 0
         assert await page.get_by_text("Envio indisponível · somente leitura").count() == 0
