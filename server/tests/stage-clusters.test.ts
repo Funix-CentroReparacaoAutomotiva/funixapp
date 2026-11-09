@@ -38,12 +38,59 @@ for(const negotiation of[{mode:'discount',value:'10',acknowledgeResidual:false},
 test('decimal energy and periodic ratios allocate cents by largest remainder, with exact sum and stable ties',()=>{
  const a=categoryCents([{name:'Preparação técnica',amount:new Q(100n,3n),billable:true,descriptions:[]},{name:'Pintura e acabamento',amount:new Q(200n,3n),billable:true,descriptions:[]}]);assert.equal(a.get('Preparação técnica')!.toString(),'33.33');assert.equal(a.get('Pintura e acabamento')!.toString(),'66.67');assert.equal([...a.values()].reduce((s,q)=>s.add(q),new Q(0n)).toString(),'100')
 })
-for(const bad of['missing','zero-total','unknown','duplicate']as const)test('unrepresentable stage '+bad+' blocks issuance before reservation/HTTP, without changing official calculation',async()=>{
- const f=clusterFixture();try{const cfg=f.pricing.get(),stages=cfg.config.services[0]!.dimensions[0]!.stages;if(bad==='missing'){delete stages[0]!.presentation;stages[0]!.id='new-unclassified-stage'};if(bad==='zero-total')stages.forEach(s=>{s.baseEnergy='0';s.dimensionEnergy='0'});if(bad==='unknown')stages[0]!.presentation!.cluster=null;if(bad==='duplicate')stages.push({...stages[0]!,id:'another-relation'})
- f.pricing.save({revision:cfg.revision,config:cfg.config});const p=f.b.preview(f.at.id,f.req);assert.equal(p.canEmit,false);assert(p.snapshot.pdfPresentation!.errors.length);assert.equal(p.snapshot.calculation.serviceSubtotal,'100');await assert.rejects(f.b.emit(f.at.id,{...f.req,previewToken:p.token,idempotencyKey:randomUUID()}),e=>(e as{code:string}).code==='BUDGET_INCOMPLETE');assert.equal(f.db.prepare('SELECT COUNT(*) n FROM budget_emission_attempts').get()!.n,0)}finally{f.db.close()}
+for(const bad of['missing','zero-total','unknown','duplicate']as const)test('technical-stage presentation '+bad+' does not corrupt pricing or bypass integrity',async()=>{
+ const f=clusterFixture();try{
+  const cfg=f.pricing.get(),stages=cfg.config.services[0]!.dimensions[0]!.stages
+  if(bad==='missing'){delete stages[0]!.presentation;stages[0]!.id='new-unclassified-stage'}
+  if(bad==='zero-total')stages.forEach(s=>{s.baseEnergy='0';s.dimensionEnergy='0'})
+  if(bad==='unknown')stages[0]!.presentation!.cluster=null
+  if(bad==='duplicate')stages.push({...stages[0]!,id:'another-relation'})
+  f.pricing.save({revision:cfg.revision,config:cfg.config})
+  let p=f.b.preview(f.at.id,f.req)
+  assert(p.snapshot.pdfPresentation!.errors.length)
+  assert.equal(p.snapshot.calculation.serviceSubtotal,'100')
+  if(bad==='duplicate'){
+   assert.equal(p.canEmit,false)
+   await assert.rejects(f.b.emit(f.at.id,{...f.req,previewToken:p.token,idempotencyKey:randomUUID()}),e=>(e as{code:string}).code==='BUDGET_INCOMPLETE')
+   assert.equal(f.db.prepare('SELECT COUNT(*) n FROM budget_emission_attempts').get()!.n,0)
+  }else{
+   if(bad==='zero-total'){
+    assert.equal(p.canEmit,false)
+    const scene=f.scenarios.list(f.at.id)[0]!
+    f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:2}})
+    p=f.b.preview(f.at.id,f.req)
+   }
+   assert.equal(p.canEmit,true)
+   const v=await f.emit(),doc=toJsreportData(v)
+   assert.equal(v.snapshot.calculation.total,'100')
+   assert.equal(doc.financeiro.totalVista,'R$ 100,00')
+   assert(!JSON.stringify(doc).includes('não configurad'))
+   assert(doc.diagnosticos[0]!.clusters.length>0)
+  }
+ }finally{f.db.close()}
 })
+test('one unconfigured service contributes zero technical energy, while configured services retain their energy and prices',async()=>{
+ const f=clusterFixture();try{
+  const svc=f.commercial.saveCatalog({kind:'servico',name:'Pintura extra QA'})
+  const dim=f.commercial.saveCatalog({kind:'dimensao',name:'Dimensão extra QA',serviceId:svc.id})
+  const cfg=f.pricing.get()
+  cfg.config.services.push({serviceId:svc.id,base:'30',colorFactorEnabled:false,discountable:true,billable:true,dimensions:[{dimensionId:dim.id,fd:'1',stages:[]}]})
+  f.pricing.save({revision:cfg.revision,config:cfg.config})
+  f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:[...f.item.services,{serviceId:svc.id,dimensionId:dim.id,quantity:'1'}]})
+  const p=f.b.preview(f.at.id,f.req)
+  assert.equal(p.canEmit,true)
+  assert.equal(p.snapshot.calculation.energy,'5')
+  assert.equal(p.snapshot.calculation.total,'130')
+  assert(p.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')))
+  const v=await f.emit(),d=toJsreportData(v)
+  assert.equal(d.financeiro.totalVista,'R$ 130,00')
+  assert(d.diagnosticos[0]!.clusters.some(c=>c.nome==='Serviços'&&c.valor==='R$ 30,00'))
+  assert(!JSON.stringify(d).includes('não configurad'))
+ }finally{f.db.close()}
+})
+
 test('zero-energy individual stage has zero share; missing energy blocks and does not become equal division',()=>{
- const f=clusterFixture();try{const cfg=f.pricing.get();cfg.config.services[0]!.dimensions[0]!.stages[0]!.baseEnergy='0';f.pricing.save({revision:cfg.revision,config:cfg.config});let p=f.b.preview(f.at.id,f.req);assert(p.canEmit);assert.deepEqual(clusters(p.snapshot)[0]!.clusters.map(c=>c.valor),['R$ 0,00','R$ 100,00']);const next=f.pricing.get();next.config.services[0]!.dimensions[0]!.stages[0]!.baseEnergy=null;f.pricing.save({revision:next.revision,config:next.config});p=f.b.preview(f.at.id,f.req);assert(!p.canEmit);assert(technicalGroups(p.snapshot).errors.some(e=>e.includes('energia')))}finally{f.db.close()}
+ const f=clusterFixture();try{const cfg=f.pricing.get();cfg.config.services[0]!.dimensions[0]!.stages[0]!.baseEnergy='0';f.pricing.save({revision:cfg.revision,config:cfg.config});let p=f.b.preview(f.at.id,f.req);assert(p.canEmit);assert.deepEqual(clusters(p.snapshot)[0]!.clusters.map(c=>c.valor),['R$ 0,00','R$ 100,00']);const next=f.pricing.get();next.config.services[0]!.dimensions[0]!.stages[0]!.baseEnergy=null;f.pricing.save({revision:next.revision,config:next.config});p=f.b.preview(f.at.id,f.req);assert.equal(p.snapshot.calculation.energy,'0');assert.equal(p.snapshot.calculation.serviceSubtotal,'100');assert.equal(p.canEmit,false);assert(technicalGroups(p.snapshot).errors.some(e=>e.includes('energia')));const scene=f.scenarios.list(f.at.id)[0]!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:3}});const ready=f.b.preview(f.at.id,f.req);assert(ready.canEmit);assert.equal(clusters(ready.snapshot)[0]!.clusters[0]!.valor,'R$ 100,00')}finally{f.db.close()}
 })
 test('reference retains 39 stage IDs, 113 relations and the two explicitly unresolved relations; no name fallback',()=>{
  const a=readFileSync(new URL('../../docs/referencias/pdf/CODA_STAGE_CLUSTERS_2026-11-03.json',import.meta.url)),b=readFileSync(new URL('../data/coda-stage-clusters.json',import.meta.url));assert.deepEqual(a,b);const r=JSON.parse(a.toString());assert.equal(r.stages.length,39);assert.equal(r.relations.length,113);assert.deepEqual(r.relations.filter((r:{stageRowId:string|null})=>!r.stageRowId).map((r:{relationRowId:string})=>r.relationRowId).sort(),['i-cz0vjyEOB7','i-_C-sMqVV7H'].sort());const relation=r.relations[0];assert(referencePresentation(sourceId(TABLES.relations,relation.relationRowId),sourceId(TABLES.services,relation.serviceRowId),sourceId(TABLES.dimensions,relation.serviceDimensionRowId))?.cluster);assert.equal(referencePresentation(sourceId(TABLES.relations,relation.relationRowId),'wrong-service',sourceId(TABLES.dimensions,relation.serviceDimensionRowId)),undefined)
