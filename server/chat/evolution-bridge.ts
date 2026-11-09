@@ -86,7 +86,10 @@ export function createEvolutionChatBridge(
       const entry = byId.get(conversationId)
       const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
       if (!jid || !codaSync || codaSync.resolveActive(jid) !== atendimentoId) return null
-      return this.messages(conversationId, page)
+      const result = await this.messages(conversationId, page)
+      // The canonical active Atendimento may change while Evolution responds.
+      // Never return a stale conversation under a different Atendimento.
+      return codaSync.resolveActive(jid) === atendimentoId ? result : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string
