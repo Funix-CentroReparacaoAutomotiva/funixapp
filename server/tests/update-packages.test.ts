@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { openDatabase } from '../database.ts'
 import { UpdatePackageRepository } from '../update-packages.ts'
+import { createUpdatePackageSchema } from '../update-packages-schema.ts'
 
 const proposal = () => ({
   source:'gmail' as const,sourceReference:'message:synth-001',
@@ -13,6 +14,7 @@ const proposal = () => ({
 })
 function setup() {
   const db=openDatabase(':memory:')
+  createUpdatePackageSchema(db)
   const repo=new UpdatePackageRepository(db,()=> '2026-11-08T20:00:00.000Z')
   return {db,repo}
 }
