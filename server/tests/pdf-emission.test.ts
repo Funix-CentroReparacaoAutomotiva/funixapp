@@ -59,7 +59,7 @@ test('PDF terms: zero technical days are not a promised deadline; explicit manua
   const f=setup(db);let scene=f.scenarios.list(f.at.id)[0]!
   f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:f.item.services.map(l=>({...l,enabled:false}))})
   const{ComponentRepository}=await import('../components.ts');new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'1',manualPrice:'10',notes:''})
-  const missingStages=f.b.preview(f.at.id,f.req);assert.equal(missingStages.canEmit,true);assert.equal(missingStages.snapshot.calculation.energy,'0');assert.equal(missingStages.snapshot.calculation.total,automatic.snapshot.calculation.total);assert(missingStages.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')));const issued=await f.b.emit(f.at.id,f.payload());assert.equal(issued.snapshot.document?.data.condicoes.prazo,'7');assert.equal(issued.snapshot.document?.data.financeiro.totalVista,manual.snapshot.calculation.total===null?'':('R$ '+Number(manual.snapshot.calculation.total).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})));assert(!JSON.stringify(issued.snapshot.document?.data).includes('não configurad'))
+  assert.equal(f.b.preview(f.at.id,f.req).canEmit,false);await assert.rejects(f.b.emit(f.at.id,f.payload()),code('BUDGET_INCOMPLETE'))
   scene=f.scenarios.list(f.at.id)[0]!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:1}});assert.equal(f.b.preview(f.at.id,f.req).canEmit,true)
   await f.b.emit(f.at.id,f.payload())
  }finally{db.close()}
@@ -175,6 +175,6 @@ test('PDF deadline: valid manual promise replaces missing capacity suggestion on
   const scene=f.scenarios.list(f.at.id)[0]!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,deadline:{mode:'manual',manualDays:7}})
   const manual=f.b.preview(f.at.id,f.req);assert.deepEqual(manual.snapshot.calculation,automatic.snapshot.calculation);assert.equal(manual.canEmit,true);const v=await f.b.emit(f.at.id,f.payload());assert.equal(v.snapshot.document?.data.condicoes.prazo,'7');assert.equal(v.snapshot.calculation.days,null)
   f.pricing.save({revision:f.pricing.get().revision,config:{...f.config,capacity:null,services:f.config.services.map(s=>({...s,dimensions:s.dimensions.map(d=>({...d,stages:[]}))}))}})
-  assert.equal(f.b.preview(f.at.id,f.req).canEmit,false);await assert.rejects(f.b.emit(f.at.id,f.payload()),code('BUDGET_INCOMPLETE'))
+   const missingStages=f.b.preview(f.at.id,f.req);assert.equal(missingStages.canEmit,true);assert.equal(missingStages.snapshot.calculation.energy,'0');assert.equal(missingStages.snapshot.calculation.total,automatic.snapshot.calculation.total);assert(missingStages.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')));const issued=await f.b.emit(f.at.id,f.payload());assert.equal(issued.snapshot.document?.data.condicoes.prazo,'7');assert.equal(issued.snapshot.document?.data.financeiro.totalVista,v.snapshot.document?.data.financeiro.totalVista);assert(!JSON.stringify(issued.snapshot.document?.data).includes('não configurad'))
  }finally{db.close()}
 })
