@@ -229,3 +229,41 @@ test('canonical Coda Evolution route requires operator session and matching acti
     assert.deepEqual(f.calls, ['chats', 'messages:1'])
   } finally { f.db.close() }
 })
+
+test('direct Funil opens canonical Evolution context without a preceding conversation-list request', async () => {
+  const f = fixture(true, false, true)
+  try {
+    const row = { version: 1, source: 'coda', eventId: 'evo:synthetic:direct',
+      codaRowId: 'i-DIRECT_A', instance: 'funix_comercial',
+      remoteJid: jid, phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }
+    const id = f.sync!.sync(row).atendimentoId
+    const path = `/api/atendimentos/${id}/evolution-conversation`
+    const cookie = await f.login()
+    assert.equal((await f.request(path)).status, 401)
+    assert.equal((await f.request(path, cookie, 'POST')).status, 405)
+    assert.equal((await f.request(path+'?phone=000000000001', cookie)).status, 400)
+    assert.equal((await f.request('/api/atendimentos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/evolution-conversation', cookie)).status, 404)
+    const result = await f.request(path, cookie)
+    assert.equal(result.status, 200)
+    const {conversationId} = await result.json()
+    assert.match(conversationId,/^[0-9a-f-]{36}$/)
+    const messages = await f.request(`/api/atendimentos/${id}/evolution-conversations/${conversationId}/messages`,cookie)
+    assert.equal(messages.status, 200)
+    assert.equal((await messages.json()).items[0].text,'SYNTHETIC ONLY')
+    assert.deepEqual(f.calls, ['messages:1'])
+    f.sync!.sync({...row,eventId:'evo:synthetic:direct-b',codaRowId:'i-DIRECT_B',occurredAt:1794144050})
+    assert.equal((await f.request(path, cookie)).status,404)
+    assert.equal((await f.request(`/api/atendimentos/${id}/evolution-conversations/${conversationId}/messages`,cookie)).status,404)
+    assert.deepEqual(f.calls,['messages:1'])
+  } finally { f.db.close() }
+})
+
+test('direct Funil resolver stays unavailable without both Evolution and canonical Coda opt-ins', async () => {
+  for (const f of [fixture(true,false,false),fixture(false,false,true)]) {
+    try {
+      const cookie = await f.login()
+      assert.equal((await f.request('/api/atendimentos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/evolution-conversation',cookie)).status,404)
+      assert.deepEqual(f.calls,[])
+    } finally {f.db.close()}
+  }
+})
