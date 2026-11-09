@@ -206,6 +206,15 @@ export function createRequestHandler(options: AppOptions) {
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
       }
+      // Resolve the unique active Coda-linked conversation for direct Funil navigation.
+      // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
+      const canonicalConversationRoute = /^\\/api\\/atendimentos\\/([a-f0-9-]{36})\\/evolution-conversation$/.exec(url.pathname)
+      if (canonicalConversationRoute && options.evolutionChat && options.codaSync) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const conversation = options.evolutionChat.conversationForAtendimento(canonicalConversationRoute[1]!)
+        return conversation ? send(200, conversation) : fail(404, 'CHAT_NOT_LINKED', 'Nenhuma conversa canônica única vinculada.')
+      }
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
