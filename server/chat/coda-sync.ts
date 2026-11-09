@@ -133,6 +133,16 @@ export class CodaEventSyncRepository {
     } catch (error) { this.db.exec('ROLLBACK'); throw error }
   }
 
+  /** Never select an arbitrary conversation when multiple PN/LID contexts are active. */
+  resolveUniqueActiveJid(atendimentoId: string): string | null {
+    const rows = this.db.prepare([
+      'SELECT c.remote_jid FROM coda_sync_active_conversations c',
+      ' JOIN coda_sync_atendimentos a ON a.coda_row_id=c.coda_row_id',
+      ' WHERE c.instance=? AND a.atendimento_id=? LIMIT 2',
+    ].join('')).all(instance, atendimentoId)
+    return rows.length === 1 ? String(rows[0]!.remote_jid) : null
+  }
+
   resolveActive(remoteJid: string): string | null {
     if (!jid.test(remoteJid)) return null
     const row = this.db.prepare([
