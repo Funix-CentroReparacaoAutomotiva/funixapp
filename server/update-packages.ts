@@ -1,19 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import type { UpdatePackage, UpdatePackageAction, UpdatePackageDecision, UpdatePackageList, UpdatePackageMissingField, UpdatePackageStatus } from '../shared/update-packages.ts'
+import type { UpdatePackage, UpdatePackageAction, UpdatePackageDecision, UpdatePackageList, UpdatePackageMissingField, UpdatePackageStatus, UpdatePackageIngest, UpdatePackageClarification, UpdatePackageProposal } from '../shared/update-packages.ts'
 import { ServiceError } from './errors.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 
-type Proposal = {
-  source: 'gmail' | 'whatsapp' | 'other'
-  sourceReference: string
-  experienceId: string | null
-  plate: string | null
-  title: string
-  summary: string
-  actions: UpdatePackageAction[]
-  missingFields: UpdatePackageMissingField[]
-}
+type Proposal = UpdatePackageProposal
 
 type PackageRow = {
   id: string; revision: number; snapshot_hash: string; source: Proposal['source']
@@ -44,6 +35,9 @@ function validateProposal(proposal: Proposal): void {
   }
   for (const field of proposal.missingFields) {
     if (!field || !validateText(field.key, 100) || !idPattern.test(field.key) || !validateText(field.label, 160) || typeof field.hint !== 'string' || field.hint.length > 300 || missingKeys.has(field.key)) fail(400, 'PACKAGE_INVALID', 'Pendência inválida ou repetida.')
+    if (field.options !== undefined && (!Array.isArray(field.options) || field.options.length<1 || field.options.length>20 ||
+      new Set(field.options.map(x=>x?.value)).size!==field.options.length ||
+      field.options.some(x=>!x || !validateText(x.value,100) || !validateText(x.label,180)))) fail(400,'PACKAGE_INVALID','Opções de pendência inválidas.')
     missingKeys.add(field.key)
   }
 }
@@ -61,7 +55,8 @@ function map(row: PackageRow): UpdatePackage {
     title:row.title, summary:row.summary, status:row.status,
     actions:JSON.parse(row.actions_json) as UpdatePackageAction[],
     missingFields:JSON.parse(row.missing_fields_json) as UpdatePackageMissingField[],
-    createdAt:row.created_at, updatedAt:row.updated_at, decidedAt:row.decided_at, decidedBy:row.decided_by
+    createdAt:row.created_at, updatedAt:row.updated_at, decidedAt:row.decided_at, decidedBy:row.decided_by,
+    clarificationPending:Boolean(row.clarification_pending)
   }
 }
 
@@ -88,7 +83,8 @@ export class UpdatePackageRepository {
   get(id: string): UpdatePackage {
     if (!hasUpdatePackageSchema(this.db)) fail(503,'PACKAGE_STORAGE_DISABLED','Armazenamento de pacotes desativado.')
     if (!uuidPattern.test(id)) fail(404,'PACKAGE_NOT_FOUND','Pacote não localizado.')
-    const row = this.db.prepare('SELECT * FROM update_packages WHERE id=?').get(id) as PackageRow | undefined
+    const row = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending
+      FROM update_packages p WHERE p.id=?`).get(id) as PackageRow | undefined
     if (!row) fail(404,'PACKAGE_NOT_FOUND','Pacote não localizado.')
     return map(row!)
   }
@@ -97,7 +93,7 @@ export class UpdatePackageRepository {
     if (!['open','closed'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false}
     const closed = view === 'closed'
-    const rows = this.db.prepare(`SELECT * FROM update_packages WHERE
+    const rows = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
       ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected')"}
       ORDER BY created_at DESC, id DESC LIMIT 501`).all() as PackageRow[]
     const needle = query.toLocaleLowerCase('pt-BR').trim()
@@ -121,7 +117,7 @@ export class UpdatePackageRepository {
     }
     if (current.status !== 'awaiting_review' || current.revision !== input.revision || current.snapshotHash !== input.snapshotHash)
       fail(409,'PACKAGE_STALE','O pacote foi alterado. Atualize a tela antes de decidir.')
-    if (input.decision === 'approve' && current.missingFields.length) fail(422,'PACKAGE_INCOMPLETE','Há informações obrigatórias pendentes.')
+    if (input.decision === 'approve' && (current.missingFields.length || current.clarificationPending)) fail(422,'PACKAGE_INCOMPLETE','Há informações obrigatórias pendentes.')
     const status: UpdatePackageStatus = input.decision === 'approve' ? 'approved_pending_execution' : 'rejected'
     const now=this.now()
     this.db.exec('BEGIN IMMEDIATE')
@@ -137,4 +133,71 @@ export class UpdatePackageRepository {
     } catch(e) {this.db.exec('ROLLBACK');throw e}
     return this.get(id)
   }
+  ingest(input: UpdatePackageIngest): UpdatePackage {
+    if (!hasUpdatePackageSchema(this.db)) fail(503,'PACKAGE_STORAGE_DISABLED','Armazenamento desabilitado.')
+    if (!input || typeof input!=='object' || Array.isArray(input) ||
+      Object.keys(input).sort().join(',')!=='eventKey,proposal' ||
+      !validateText(input.eventKey,120) || !idPattern.test(input.eventKey) ||
+      !input.proposal || typeof input.proposal!=='object' || Array.isArray(input.proposal) ||
+      Object.keys(input.proposal).sort().join(',')!=='actions,experienceId,missingFields,plate,source,sourceReference,summary,title')
+      fail(400,'PACKAGE_EVENT_INVALID','Evento de proposta inválido.')
+    validateProposal(input.proposal)
+    const payloadHash=digest(canonical(input.proposal))
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      const existing=this.db.prepare('SELECT package_id,payload_hash FROM update_package_ingest_events WHERE event_key=?').get(input.eventKey) as {package_id:string,payload_hash:string}|undefined
+      if(existing){
+        if(existing.payload_hash!==payloadHash) fail(409,'PACKAGE_EVENT_CONFLICT','Evento já usado para outra proposta.')
+        const result=this.get(existing.package_id)
+        this.db.exec('COMMIT')
+        return result
+      }
+      const created=this.createProposal(input.proposal)
+      this.db.prepare('INSERT INTO update_package_ingest_events(event_key,package_id,payload_hash,created_at) VALUES (?,?,?,?)').run(input.eventKey,created.id,payloadHash,this.now())
+      this.db.exec('COMMIT')
+      return created
+    }catch(error){this.db.exec('ROLLBACK');throw error}
+  }
+
+  submitClarification(id:string, input:UpdatePackageClarification, actor:string):UpdatePackage {
+    if(!input || typeof input!=='object' || Array.isArray(input) ||
+      Object.keys(input).sort().join(',')!=='answers,requestId,revision,snapshotHash' ||
+      !Number.isSafeInteger(input.revision) || input.revision<1 ||
+      !hashPattern.test(input.snapshotHash) || !uuidPattern.test(input.requestId) ||
+      !input.answers || typeof input.answers!=='object' || Array.isArray(input.answers) ||
+      !validateText(actor,100)) fail(400,'PACKAGE_CLARIFICATION_INVALID','Resposta inválida.')
+    const current=this.get(id)
+    const answers=input.answers
+    const keys=Object.keys(answers).sort()
+    const required=current.missingFields.map(f=>f.key).sort()
+    if(keys.length!==required.length || !required.every((k,i)=>k===keys[i])) fail(400,'PACKAGE_CLARIFICATION_INVALID','Responda todos os campos obrigatórios.')
+    for(const f of current.missingFields){
+      const answer=answers[f.key]
+      if(!validateText(answer,250) || (f.options && !f.options.some(option=>option.value===answer)))
+        fail(400,'PACKAGE_CLARIFICATION_INVALID','Informação não reconhecida.')
+    }
+    const previous=this.db.prepare('SELECT request_id,revision,snapshot_hash,answers_json FROM update_package_clarifications WHERE package_id=?').get(id) as
+      {request_id:string,revision:number,snapshot_hash:string,answers_json:string}|undefined
+    if(previous){
+      if(previous.request_id===input.requestId && previous.revision===input.revision &&
+        previous.snapshot_hash===input.snapshotHash && previous.answers_json===JSON.stringify(answers))return current
+      fail(409,'PACKAGE_CLARIFICATION_EXISTS','Já existe uma resposta aguardando revalidação.')
+    }
+    if(current.status!=='awaiting_review' || current.revision!==input.revision ||
+      current.snapshotHash!==input.snapshotHash || !current.missingFields.length)
+      fail(409,'PACKAGE_STALE','A proposta mudou. Atualize antes de responder.')
+    const now=this.now()
+    this.db.exec('BEGIN IMMEDIATE')
+    try{
+      const saved=this.db.prepare(`INSERT INTO update_package_clarifications
+        (package_id,request_id,revision,snapshot_hash,answers_json,actor,submitted_at)
+        SELECT ?,?,?,?,?,?,? WHERE EXISTS
+        (SELECT 1 FROM update_packages WHERE id=? AND revision=? AND snapshot_hash=? AND status='awaiting_review')`)
+        .run(id,input.requestId,input.revision,input.snapshotHash,JSON.stringify(answers),actor,now,id,input.revision,input.snapshotHash)
+      if(saved.changes!==1)fail(409,'PACKAGE_STALE','A proposta mudou.')
+      this.db.exec('COMMIT')
+    }catch(error){this.db.exec('ROLLBACK');throw error}
+    return this.get(id)
+  }
+
 }
