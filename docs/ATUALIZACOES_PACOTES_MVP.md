@@ -60,3 +60,11 @@ O módulo puro `server/update-packages-consolidate.ts` reúne propostas independ
 Este incremento é **biblioteca de preparação, não integração ativa**: não foi conectado à API de ingestão, ao fluxo n8n, nem a fontes externas; não produz uploads, escritas no ERP, aprovações ou chamadas HTTP. O evento final só poderá ser publicado depois que um orquestrador confiável provar a completude real do e-mail/WhatsApp (incluindo corpo, anexos e informações comerciais) e fizer a revalidação pertinente. Declarar `expectedParts` incompleto para passar na verificação seria uma falha do orquestrador; por isso a preparação isolada **não autoriza habilitar as flags**.
 
 Teste de regressão: `server/tests/update-packages-consolidate.test.ts`; executar a suíte e conferir CI antes de qualquer merge. A documentação e o código não representam liberação de produção.
+
+## Pré-integração n8n: consolidação sem envio (09/11/2026)
+
+No workflow desativado `33N020GyY0IsUSNv` foi incluído o nó **Consolidar evento (SOMENTE RASCUNHO)** após **Preparar rascunho de pacote (SEM ENVIO)**. Ele não possui chamada HTTP, assinatura, credencial nova, upload nem executor. Sua saída preserva `send_enabled:false` e `upload_permitted:false`.
+
+A etapa exige `eventManifest` idêntico nos fragmentos, com `eventKey` e `expectedParts` explícitos, além de um `fragmentPart` distinto para cada fragmento. Na ausência do manifesto — estado atual dos rascunhos legados — retorna `AGUARDANDO_COMPLETUDE / MANIFESTO_AUSENTE`, sem publicar proposta. Quando todas as partes se apresentarem, verifica origem, referência, XP, placa, IDs de ações e pendências, mas **continua exigindo revalidação externa** e não efetua ingestão.
+
+Esta ligação é preparatória: o workflow ainda não produz um manifesto confiável nem reúne os ramos em uma única execução. **Não apresentar isso como integração fim a fim concluída.** Próximas condições: coletar todas as partes do mesmo evento de modo verificável; garantir que anexos e corpo foram inventariados; revalidar XP/placa e arquivos; confrontar o algoritmo n8n com o módulo `server/update-packages-consolidate.ts`; testar com fixtures sintéticas; só depois avaliar assinatura e envio, ainda sob flags desligadas. A presença da ramificação histórica de upload no workflow requer proteção explícita antes de qualquer teste fora do modo controlado.
