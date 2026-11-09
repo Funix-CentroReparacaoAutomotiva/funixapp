@@ -28,6 +28,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
   const [error,setError]=useState('')
   const [busy,setBusy]=useState<string|null>(null)
   const [notice,setNotice]=useState('')
+  const [answers,setAnswers]=useState<Record<string,string>>({})
   useEffect(()=>{
     const controller=new AbortController()
     setLoading(true);setError('');setNotice('')
@@ -44,8 +45,25 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     return()=>{clearTimeout(timer);controller.abort()}
   },[view,query,refresh,onUnauthorized])
   const count = useMemo(()=>result?.items.length??0,[result])
+  async function clarify(pkg:UpdatePackage){
+    if(!result?.clarificationsEnabled||busy||pkg.clarificationPending||pkg.status!=='awaiting_review')return
+    setBusy(pkg.id);setError('');setNotice('')
+    try{
+      const updated=await api<UpdatePackage>(`/api/atualizacoes/${encodeURIComponent(pkg.id)}/complementar`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({revision:pkg.revision,snapshotHash:pkg.snapshotHash,
+          requestId:crypto.randomUUID(),answers})
+      })
+      if(updated.clarificationPending)setNotice('Informações recebidas. Aguardando nova conferência do pacote antes da aprovação.')
+      setRefresh(v=>v+1);setExpanded(null);setAnswers({})
+    }catch(cause){
+      const error=cause as {status?:number,message:string}
+      if(error.status===401)onUnauthorized()
+      setError(error.message);setRefresh(v=>v+1)
+    }finally{setBusy(null)}
+  }
   async function decide(pkg:UpdatePackage,decision:'approve'|'reject'){
-    if(!result?.decisionsEnabled||busy||pkg.status!=='awaiting_review'||(decision==='approve'&&pkg.missingFields.length))return
+    if(!result?.decisionsEnabled||busy||pkg.status!=='awaiting_review'||(decision==='approve'&&(pkg.missingFields.length||pkg.clarificationPending)))return
     const word=decision==='approve'?'aprovar':'rejeitar'
     if(!window.confirm(`Deseja ${word} o pacote "${pkg.title}"? Esta decisão será registrada.`))return
     setBusy(pkg.id);setNotice('');setError('')
@@ -85,7 +103,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
       {!count&&<div className="fh-surface updates-empty"><strong>{view==='open'?'Nenhuma atualização pendente':'Nenhuma atualização fechada'}</strong><p>Os pacotes aparecerão aqui quando o backend preparar informações reais para revisão.</p></div>}
       <div className="updates-cards">
         {result.items.map(pkg=><article key={pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':'')}>
-          <button type="button" className="updates-card-summary" aria-expanded={expanded===pkg.id} onClick={()=>setExpanded(expanded===pkg.id?null:pkg.id)}>
+          <button type="button" className="updates-card-summary" aria-expanded={expanded===pkg.id} onClick={()=>{setExpanded(expanded===pkg.id?null:pkg.id);setAnswers({})}}>
             <span className="updates-card-top"><strong>{pkg.title}</strong><span aria-hidden="true">{expanded===pkg.id?'▴':'▾'}</span></span>
             <span className="updates-source">{sourceLabel[pkg.source]} · {updatedDate(pkg.createdAt)}</span>
             <span className="updates-description">{pkg.summary}</span>
@@ -99,12 +117,23 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
             <ul>{pkg.actions.map(action=><li key={action.id}><strong>{action.title}</strong>{action.detail&&<span>{action.detail}</span>}</li>)}</ul>
             {pkg.missingFields.length>0&&<div className="updates-missing"><strong>Informações necessárias antes de aprovar</strong>
               <ul>{pkg.missingFields.map(field=><li key={field.key}><strong>{field.label}</strong>{field.hint&&<span>{field.hint}</span>}</li>)}</ul>
-              <p>A resolução assistida dessas pendências será disponibilizada na próxima integração. Nenhum dado será presumido.</p>
+              {pkg.clarificationPending?<p role="status">Suas respostas foram registradas. O sistema deve preparar e conferir uma nova proposta antes de liberar a aprovação.</p>:
+                result.clarificationsEnabled && pkg.status==='awaiting_review'?<form onSubmit={e=>{e.preventDefault();void clarify(pkg)}} className="updates-answer-form">
+                  {pkg.missingFields.map(field=><label key={field.key}>{field.label}
+                    {field.options?.length?<select required value={answers[field.key]??''} onChange={e=>setAnswers(a=>({...a,[field.key]:e.target.value}))}>
+                      <option value="">Escolha uma opção</option>
+                      {field.options.map(opt=><option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>:<input required maxLength={250} value={answers[field.key]??''} placeholder={field.hint||'Informar dado'}
+                      onChange={e=>setAnswers(a=>({...a,[field.key]:e.target.value}))}/>}
+                  </label>)}
+                  <button type="submit" className="primary-btn" disabled={busy===pkg.id||pkg.missingFields.some(f=>!answers[f.key]?.trim())}>Enviar para conferência</button>
+                  <small>O envio não aprova o pacote nem executa ações.</small>
+                </form>:<p>A complementação ainda está desativada. Não é permitido aprovar o pacote com pendências.</p>}
             </div>}
             {pkg.status==='awaiting_review'&&<div className="updates-decisions">
               <button type="button" disabled={!result.decisionsEnabled||busy===pkg.id}
                 onClick={()=>void decide(pkg,'reject')}>Rejeitar</button>
-              <button type="button" className="primary-btn" disabled={!result.decisionsEnabled||busy===pkg.id||pkg.missingFields.length>0}
+              <button type="button" className="primary-btn" disabled={!result.decisionsEnabled||busy===pkg.id||pkg.missingFields.length>0||pkg.clarificationPending}
                 onClick={()=>void decide(pkg,'approve')}>Aprovar pacote</button>
             </div>}
             {pkg.status==='awaiting_review'&&!result.decisionsEnabled&&<p className="updates-note">Decisões ainda desabilitadas. Nenhuma alteração será executada.</p>}
