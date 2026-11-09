@@ -174,10 +174,38 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     <footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio indisponível · somente leitura" disabled rows={1} /></div></footer>
   </div>
 }
+/** Resolve the server-confirmed Coda context when opening an Atendimento directly from Funil. */
+function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
+  atendimentoId: string; onUnauthorized: () => void; children: ReactNode
+}) {
+  const [resolution, setResolution] = useState<{ state: 'loading' | 'legacy' | 'linked' | 'error'; id?: string }>({state:'loading'})
+  useEffect(() => {
+    const controller = new AbortController()
+    setResolution({state:'loading'})
+    void api<{conversationId:string}>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversation`,{signal:controller.signal})
+      .then(result => {
+        if (controller.signal.aborted) return
+        if (!/^[0-9a-f-]{36}$/.test(result.conversationId)) throw new Error('Invalid conversation ID')
+        setResolution({state:'linked',id:result.conversationId})
+      }).catch(cause => {
+        if (controller.signal.aborted) return
+        const error = cause as RequestFailure
+        if (error.status === 401) {onUnauthorized();return}
+        if (error.status === 404) {setResolution({state:'legacy'});return}
+        setResolution({state:'error'})
+      })
+    return () => controller.abort()
+  },[atendimentoId,onUnauthorized])
+  if (resolution.state==='loading') return <Notice title="Consultando vínculo do Chat…" />
+  if (resolution.state==='error') return <Notice title="Não foi possível verificar o vínculo do Chat">Atualize o Atendimento para tentar novamente. Nenhuma conversa foi selecionada por aproximação.</Notice>
+  return resolution.state==='linked' && resolution.id
+    ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
+}
 export function ChatPanel({ atendimentoId, evolutionConversationId, onUnauthorized, children }: {
   atendimentoId: string; evolutionConversationId?: string | null; onUnauthorized: () => void; children: ReactNode
 }) {
   return evolutionConversationId
     ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={evolutionConversationId} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
-    : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
+    : <ResolvedAtendimentoChat atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
 }
