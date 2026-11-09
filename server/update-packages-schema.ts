@@ -17,7 +17,7 @@ export function createUpdatePackageSchema(db: DatabaseSync): void {
         title TEXT NOT NULL,
         summary TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'awaiting_review'
-          CHECK(status IN ('awaiting_review','approved_pending_execution','execution_failed','executed','rejected')),
+          CHECK(status IN ('awaiting_review','approved_pending_execution','execution_failed','executed','rejected','superseded')),
         actions_json TEXT NOT NULL CHECK(json_valid(actions_json)),
         missing_fields_json TEXT NOT NULL CHECK(json_valid(missing_fields_json)),
         created_at TEXT NOT NULL,
@@ -51,6 +51,16 @@ export function createUpdatePackageSchema(db: DatabaseSync): void {
         actor TEXT NOT NULL,
         submitted_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS update_package_revisions (
+        previous_package_id TEXT PRIMARY KEY REFERENCES update_packages(id) ON DELETE RESTRICT,
+        new_package_id TEXT NOT NULL UNIQUE REFERENCES update_packages(id) ON DELETE RESTRICT,
+        event_key TEXT NOT NULL UNIQUE REFERENCES update_package_ingest_events(event_key) ON DELETE RESTRICT,
+        clarification_request_id TEXT NOT NULL,
+        coda_row_id TEXT NOT NULL,
+        verified_experience_id TEXT NOT NULL,
+        verified_plate TEXT NOT NULL,
+        revised_at TEXT NOT NULL
+      );
       CREATE TRIGGER IF NOT EXISTS update_packages_freeze_snapshot BEFORE UPDATE OF
         snapshot_hash,source,source_reference,experience_id,plate,title,summary,actions_json,missing_fields_json
         ON update_packages
@@ -64,5 +74,6 @@ export function hasUpdatePackageSchema(db: DatabaseSync): boolean {
   return Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_packages'").get()) &&
     Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_decisions'").get()) &&
     Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_ingest_events'").get()) &&
-    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_clarifications'").get())
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_clarifications'").get()) &&
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_revisions'").get())
 }
