@@ -67,6 +67,11 @@ async def device_case(browser, width, height):
                 return await route.fulfill(status=200, json=messages_payload(A))
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
+            if parsed.path.startswith("/api/atendimentos/") and parsed.path.endswith("/evolution-conversation"):
+                # An existing Funil record can be opened without a Coda/Evolution
+                # association; its Chat must report that fact, not guess a JID.
+                return await route.fulfill(status=404, json={"error": {
+                    "code": "CHAT_NOT_LINKED", "message": "Sem vínculo canônico"}})
             raise AssertionError(f"Unexpected API request: {parsed.path}")
 
         await context.route("**/api/chat/conversations?*", mock)
