@@ -95,7 +95,7 @@ export class UpdatePackageRepository {
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false,clarificationsEnabled:false}
     const closed = view === 'closed'
     const rows = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
-      ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected')"}
+      ${closed ? "status IN ('executed','rejected','superseded')" : "status NOT IN ('executed','rejected','superseded')"}
       ORDER BY created_at DESC, id DESC LIMIT 501`).all() as PackageRow[]
     const needle = query.toLocaleLowerCase('pt-BR').trim()
     const filtered = rows.map(map).filter(pkg => !needle || [pkg.title,pkg.summary,pkg.experienceId??'',pkg.plate??'',pkg.source,pkg.sourceReference].some(s=>s.toLocaleLowerCase('pt-BR').includes(needle)))
@@ -143,7 +143,20 @@ export class UpdatePackageRepository {
       Object.keys(input.proposal).sort().join(',')!=='actions,experienceId,missingFields,plate,source,sourceReference,summary,title')
       fail(400,'PACKAGE_EVENT_INVALID','Evento de proposta inválido.')
     validateProposal(input.proposal)
-    const payloadHash=digest(canonical(input.proposal))
+    const verification=input.replaces
+    if(verification!==undefined){
+      if(!verification || typeof verification!=='object' || Array.isArray(verification) ||
+        Object.keys(verification).sort().join(',')!=='clarificationRequestId,codaRowId,parentPackageId,verifiedExperienceId,verifiedPlate' ||
+        !uuidPattern.test(verification.parentPackageId) || !uuidPattern.test(verification.clarificationRequestId) ||
+        !validateText(verification.codaRowId,80) || !/^i-[a-zA-Z0-9_-]{5,60}$/.test(verification.codaRowId) ||
+        !/^XP[0-9]{3,8}$/.test(verification.verifiedExperienceId) ||
+        !/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(verification.verifiedPlate))
+        fail(400,'PACKAGE_REVERIFICATION_INVALID','Vínculo revalidado inválido.')
+      if(input.proposal.experienceId!==verification.verifiedExperienceId || input.proposal.plate!==verification.verifiedPlate ||
+        input.proposal.missingFields.length!==0)
+        fail(409,'PACKAGE_REVERIFICATION_MISMATCH','Proposta revalidada não corresponde à identificação.')
+    }
+    const payloadHash=digest(canonical(input.proposal)+JSON.stringify(verification??null))
     this.db.exec('BEGIN IMMEDIATE')
     try {
       const existing=this.db.prepare('SELECT package_id,payload_hash FROM update_package_ingest_events WHERE event_key=?').get(input.eventKey) as {package_id:string,payload_hash:string}|undefined
@@ -153,8 +166,34 @@ export class UpdatePackageRepository {
         this.db.exec('COMMIT')
         return result
       }
+      let parent:UpdatePackage|undefined
+      if(verification){
+        parent=this.get(verification.parentPackageId)
+        if(parent.status!=='awaiting_review' || !parent.clarificationPending ||
+          parent.source!==input.proposal.source || parent.sourceReference!==input.proposal.sourceReference ||
+          parent.missingFields.length!==1 || parent.missingFields[0]?.key!=='experienceId' ||
+          parent.plate!==input.proposal.plate ||
+          parent.actions.length!==input.proposal.actions.length ||
+          parent.actions.some((a,i)=>JSON.stringify(a)!==JSON.stringify(input.proposal.actions[i])))
+          fail(409,'PACKAGE_REVERIFICATION_MISMATCH','A proposta não corresponde ao pacote pendente.')
+        const clarification=this.db.prepare('SELECT request_id,revision,snapshot_hash,answers_json FROM update_package_clarifications WHERE package_id=?')
+          .get(parent.id) as {request_id:string,revision:number,snapshot_hash:string,answers_json:string}|undefined
+        if(!clarification || clarification.request_id!==verification.clarificationRequestId ||
+          clarification.revision!==parent.revision || clarification.snapshot_hash!==parent.snapshotHash ||
+          (JSON.parse(clarification.answers_json) as {experienceId?:string}).experienceId!==verification.verifiedExperienceId)
+          fail(409,'PACKAGE_REVERIFICATION_MISMATCH','A resposta humana não corresponde à experiência conferida.')
+      }
       const created=this.createProposal(input.proposal)
       this.db.prepare('INSERT INTO update_package_ingest_events(event_key,package_id,payload_hash,created_at) VALUES (?,?,?,?)').run(input.eventKey,created.id,payloadHash,this.now())
+      if(parent && verification){
+        const changed=this.db.prepare("UPDATE update_packages SET status='superseded',updated_at=?,revision=revision+1 WHERE id=? AND status='awaiting_review' AND revision=? AND snapshot_hash=?")
+          .run(this.now(),parent.id,parent.revision,parent.snapshotHash)
+        if(changed.changes!==1)fail(409,'PACKAGE_STALE','Pacote original foi alterado.')
+        this.db.prepare(`INSERT INTO update_package_revisions
+          (previous_package_id,new_package_id,event_key,clarification_request_id,coda_row_id,verified_experience_id,verified_plate,revised_at)
+          VALUES (?,?,?,?,?,?,?,?)`).run(parent.id,created.id,input.eventKey,verification.clarificationRequestId,
+          verification.codaRowId,verification.verifiedExperienceId,verification.verifiedPlate,this.now())
+      }
       this.db.exec('COMMIT')
       return created
     }catch(error){this.db.exec('ROLLBACK');throw error}
