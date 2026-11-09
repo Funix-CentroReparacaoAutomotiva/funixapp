@@ -30,6 +30,33 @@ function integer(value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number
   return Number(value)
 }
 function boolean(value: unknown): boolean { if (typeof value !== 'boolean') return fail(); return value }
+/** Media byte count is optional display metadata, not an identity or scope key.
+ * Decode only lossless safe integers; unknown protobuf representations stay null.
+ * Malformed metadata must not prevent valid conversation text from being read.
+ */
+function mediaSize(value: unknown): number | null {
+  if (typeof value === 'number')
+    return Number.isSafeInteger(value) && value >= 0 ? value : null
+  if (typeof value !== 'string' || !/^(0|[1-9][0-9]{0,15})$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
+/** MIME metadata is optional and never shown to the operator.
+ * Invalid/oversized/provider-specific values are omitted, not echoed.
+ */
+function mediaMime(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 100 ||
+      /[\u0000-\u001f\u007f]/.test(value)) return null
+  const [base, ...parameters] = value.split(';')
+  const normalized = base!.trim()
+  if (!/^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/.test(normalized) || parameters.length > 3) return null
+  for (const part of parameters) {
+    if (!/^[A-Za-z0-9!#$&^_.+-]+=(?:[A-Za-z0-9!#$&^_.+-]+|"[A-Za-z0-9!#$&^_.+, -]{1,60}")$/.test(part.trim())) return null
+  }
+  return normalized.toLowerCase()
+}
+
 function jid(value: unknown): string {
   const text = string(value, 150)
   // Individual PN/LID only. Opaque LID is never converted to a phone or merged.
@@ -76,13 +103,36 @@ export type MessagePage = {
 }
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 const identity = (m: ReadMessage) => JSON.stringify([m.instanceId, m.remoteJid, m.messageId])
+/** Only non-semantic row identity and delivery observations may change between
+ * provider copies. Text, timestamp, sender, scope, alias and media MUST agree.
+ * A status union is evidence of statuses seen, NOT an inferred chronology.
+ */
+function stablePayload(m: ReadMessage): string {
+  const { recordId: _recordId, statuses: _statuses, media, ...stable } = m
+  if (!media) return JSON.stringify({ ...stable, media: null })
+  const types: Partial<Record<ReadMessage['kind'], string>> = {
+    image: 'imageMessage', audio: 'audioMessage', video: 'videoMessage', document: 'documentMessage',
+  }
+  const kind = types[m.kind]
+  // An internal media reference must belong to this row's own instance and ID.
+  if (!kind || media.reference !== JSON.stringify([m.instanceId, m.recordId, kind])) return fail('CONFLICT')
+  const { reference: _reference, ...safeMedia } = media
+  return JSON.stringify({ ...stable, media: safeMedia })
+}
+
 /** Pure, bounded-to-caller batches. Dedup cannot repair unseen gaps or alias changes. */
 export function reconcileReadBatches(...batches: ReadMessage[][]): ReadMessage[] {
   const byId = new Map<string, ReadMessage>()
   for (const m of batches.flat()) {
     const key = identity(m), previous = byId.get(key)
-    if (previous && JSON.stringify(previous) !== JSON.stringify(m)) return fail('CONFLICT')
-    byId.set(key, m)
+    if (previous && stablePayload(previous) !== stablePayload(m)) return fail('CONFLICT')
+    if (previous) {
+      const chosen = compare(previous.recordId, m.recordId) <= 0 ? previous : m
+      byId.set(key, {
+        ...chosen, // retain reference for the chosen internal provider row
+        statuses: [...new Set([...previous.statuses, ...m.statuses])].sort(),
+      })
+    } else byId.set(key, m)
   }
   // Presentation tie-break only, never a provider cursor or causal ordering.
   return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || compare(identity(a), identity(b)))
@@ -204,9 +254,8 @@ export class EvolutionReadPoc {
       if (Object.hasOwn(mediaTypes, messageType)) {
         kind = mediaTypes[messageType as keyof typeof mediaTypes]
         const data = object(payload[messageType])
-        const mimeType = data.mimetype == null ? null : string(data.mimetype, 100)
-        if (mimeType && !/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)) return fail()
-        const bytes = data.fileLength == null ? null : integer(data.fileLength)
+        const mimeType = mediaMime(data.mimetype)
+        const bytes = mediaSize(data.fileLength)
         media = { reference: JSON.stringify([instanceId, recordId, messageType]), mimeType, bytes, available: false }
       }
     }

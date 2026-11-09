@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { V20AssociationRepository } from './v20-associations.ts'
+import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
 
 /**
@@ -12,6 +13,7 @@ export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
+  codaSync?: CodaEventSyncRepository,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -48,7 +50,7 @@ export function createEvolutionChatBridge(
 
   return {
     async list(skip: number): Promise<{
-      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }>
+      items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null; atendimentoId?: string | null }>
       nextSkip: number | null
       source: 'evolution'
     }> {
@@ -56,10 +58,38 @@ export function createEvolutionChatBridge(
       const take = 50
       const { items: rows, sourceCount } = await provider.findChatsPage({ take, skip })
       return {
-        items: rows.map(row => ({ conversationId: register(row.remoteJid), displayName: row.displayName, phoneNumber: row.phoneNumber, updatedAt: row.updatedAt, unreadCount: row.unreadCount })),
+        items: rows.map(row => ({
+          conversationId: register(row.remoteJid),
+          displayName: row.displayName,
+          phoneNumber: row.phoneNumber,
+          updatedAt: row.updatedAt,
+          unreadCount: row.unreadCount,
+          ...(codaSync ? { atendimentoId: codaSync.resolveActive(row.remoteJid) } : {}),
+        })),
         nextSkip: sourceCount === take && skip + take <= 500000 ? skip + take : null,
         source: 'evolution',
       }
+    },
+    /** Resolve from the canonical active mapping, never from a phone or UI hint. */
+    conversationForAtendimento(atendimentoId: string): { conversationId: string } | null {
+      if (!codaSync) return null
+      const jid = codaSync.resolveUniqueActiveJid(atendimentoId)
+      if (!jid) return null
+      return { conversationId: register(jid) }
+    },
+    /** Never disclose a conversation under a different Atendimento's context.
+     * The conversationId stays opaque; the canonical Coda mapping is checked
+     * server-side at the exact time of the read, not merely in the browser list.
+     */
+    async messagesForAtendimento(atendimentoId: string, conversationId: string, page: number) {
+      purge()
+      const entry = byId.get(conversationId)
+      const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
+      if (!jid || !codaSync || codaSync.resolveActive(jid) !== atendimentoId) return null
+      const result = await this.messages(conversationId, page)
+      // The canonical active Atendimento may change while Evolution responds.
+      // Never return a stale conversation under a different Atendimento.
+      return codaSync.resolveActive(jid) === atendimentoId ? result : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string

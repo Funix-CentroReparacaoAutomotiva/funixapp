@@ -14,3 +14,11 @@
 .chat-media span{font-size:11px;color:#607994}
 .chat-more{display:block;margin:14px auto 0}
 @media(max-width:400px){.chat-readonly .at-chat-scroll{padding-left:8px;padding-right:65px}.chat-message article{max-width:100%;padding:8px}.chat-text{font-size:12px}}
+
+/* Sem vínculo canônico, não renderizar silenciosamente o chat legado vazio. */
+.chat-unlinked{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:18px 14px;overflow:auto;min-height:0}
+.chat-unlinked .fh-filter{align-self:flex-start;text-decoration:none}
+
+/* Evolution can use the full chat width while sending and media controls are deferred. */
+.chat-evolution .at-chat-scroll{padding-right:12px}
+.chat-evolution .chat-read-toolbar{justify-content:flex-end}
