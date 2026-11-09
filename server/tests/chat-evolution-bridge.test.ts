@@ -6,12 +6,15 @@ import { createRequestHandler } from '../app.ts'
 import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
+import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-sync.ts'
 
 const origin = 'http://localhost:5173', password = 'synthetic-owner-password'
 const jid = '000000000001@s.whatsapp.net'
 
-function fixture(enabled = true, fail = false) {
+function fixture(enabled = true, fail = false, canonical = false) {
   const db = openDatabase(':memory:')
+  if (canonical) createCodaEventSchema(db)
+  const sync = canonical ? new CodaEventSyncRepository(db) : undefined
   let clock = Date.parse('2026-11-07T10:00:00Z')
   const calls: string[] = []
   const bridge = createEvolutionChatBridge({
@@ -38,10 +41,11 @@ function fixture(enabled = true, fail = false) {
         nextPage: null, consistency: 'offset-not-snapshot' as const,
       }
     },
-  }, () => clock)
+  }, () => clock, undefined, sync)
   const handler = createRequestHandler({
     atendimentos: new AtendimentoRepository(db), password, origin, voiceProvider: null,
     now: () => clock, evolutionChat: enabled ? bridge : undefined,
+    ...(sync ? { codaSync: { repo: sync, secret: Buffer.alloc(32, 9) } } : {}),
   })
   const request = async (path: string, cookie = '', method = 'GET', body?: unknown) => {
     const req = Object.assign(Readable.from(body === undefined ? [] : [JSON.stringify(body)]), {
@@ -62,7 +66,7 @@ function fixture(enabled = true, fail = false) {
     assert.equal(res.status, 200)
     return res.headers.get('set-cookie')!.split(';')[0]!
   }
-  return { db, calls, request, login, advance: (ms: number) => { clock += ms } }
+  return { db, sync, calls, request, login, advance: (ms: number) => { clock += ms } }
 }
 
 test('Chat bridge disabled: existing routes and capabilities are unchanged', async () => {
@@ -192,4 +196,36 @@ test('Chat bridge paginates by provider rows, not by visible individuals', async
     const atBound = await bridge.list(500000)
     assert.equal(atBound.nextSkip, null)
   } finally { db.close() }
+})
+
+test('canonical Coda Evolution route requires operator session and matching active Atendimento', async () => {
+  const f = fixture(true, false, true)
+  try {
+    const signedEvent = {
+      version: 1, source: 'coda', eventId: 'evo:synthetic:canonical',
+      codaRowId: 'i-CANON_A', instance: 'funix_comercial',
+      remoteJid: jid, phoneE164: '+000000000001',
+      displayName: 'Contato Sintético', occurredAt: 1794144000,
+    }
+    const id = f.sync!.sync(signedEvent).atendimentoId
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    assert.equal(list.items[0].atendimentoId, id)
+    const path = `/api/atendimentos/${id}/evolution-conversations/${conversationId}/messages`
+    assert.equal((await f.request(path)).status, 401)
+    assert.equal((await f.request(path, cookie, 'POST')).status, 405)
+    assert.equal((await f.request(path + '?page=0', cookie)).status, 400)
+    assert.equal((await f.request(path + '?remoteJid=spoof', cookie)).status, 400)
+    assert.equal((await f.request(path.replace(id, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), cookie)).status, 404)
+    assert.deepEqual(f.calls, ['chats'])
+    const result = await f.request(path, cookie)
+    assert.equal(result.status, 200)
+    assert.equal((await result.json()).items[0].text, 'SYNTHETIC ONLY')
+    assert.deepEqual(f.calls, ['chats', 'messages:1'])
+    f.sync!.sync({ ...signedEvent, eventId: 'evo:synthetic:new-row',
+      codaRowId: 'i-CANON_B', occurredAt: 1794144050 })
+    assert.equal((await f.request(path, cookie)).status, 404)
+    assert.deepEqual(f.calls, ['chats', 'messages:1'])
+  } finally { f.db.close() }
 })
