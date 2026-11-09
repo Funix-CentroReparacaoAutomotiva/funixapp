@@ -170,9 +170,9 @@ test('negative base energy compensated by positive dimension never becomes a val
   pricing.saveSettings(f.at.id,{revision:pricing.settings(f.at.id).revision,tableId:imported(TABLES.tables,'table'),colorId:imported(TABLES.colors,'color'),riskId:imported(TABLES.risks,'risk')})
   const budget=new BudgetRepository(db),scenario=new ScenarioRepository(db).list(f.at.id)[0]!
   const request={scenarioId:scenario.id,negotiation:{mode:'none'}},preview=budget.preview(f.at.id,request)
-  assert.equal(preview.canEmit,false);assert.equal(preview.snapshot.calculation.energy,null)
+  assert.equal(preview.canEmit,false);assert.equal(preview.snapshot.calculation.energy,'0')
   assert(preview.snapshot.calculation.errors.some(e=>e.includes('Etapas técnicas')))
-  await assert.rejects(async ()=>(await budget.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-negative-energy'})),/Etapas técnicas/)
+  await assert.rejects(async ()=>(await budget.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-negative-energy'})),/Prazo de execução/)
   assert.equal(budget.list(f.at.id).length,0)
  }finally{db.close()}
 })

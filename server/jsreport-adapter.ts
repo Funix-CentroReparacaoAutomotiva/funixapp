@@ -1,7 +1,7 @@
 import{pdfExpression,pdfDiagnosis}from'./pdf-text.ts'
 import{technicalGroups,categoryCents}from'./stage-allocation.ts'
 // Presentation only, from frozen values. Never reprice or infer technical activities.
-import{exactAmount,centAmount,budgetBlockingErrors}from'./budget-terms.ts'
+import{exactAmount,centAmount,budgetBlockingErrors,optionalTechnicalWarning}from'./budget-terms.ts'
 import{Q}from'./exact.ts'
 import type{BudgetSnapshot,BudgetVersion,PricedLine}from'../shared/pricing.ts'
 import type{JsreportDocument,JsreportTerms}from'../shared/budget-terms.ts'
@@ -28,13 +28,18 @@ export function toJsreportData(version:BudgetVersion,terms:JsreportTerms=frozenT
  const included=c.lines.filter(l=>l.included)
  if(included.some(l=>l.billing!=='not_billed'&&(l.total==null||l.finalUnit==null)))throw Error('Linha de orçamento incompleta.')
  const technical=technicalGroups(s)
- if(technical.errors.length)throw Error(technical.errors.join(' '))
+ if(technical.errors.some(error=>!optionalTechnicalWarning(error)))throw Error(technical.errors.filter(error=>!optionalTechnicalWarning(error)).join(' '))
  const diagnostics=technical.groups.map(group=>{
   const rows=group.rows,item=s.composition.items.find(i=>i.id===group.pieceId)
   const rawDiagnosis=s.composition.catalog.find(x=>x.id===group.diagnosisId)?.name??rows.find(x=>x.diagnosis)?.diagnosis??''
   const resumo=pdfDiagnosis(rawDiagnosis,item?.intensity)
   const services=rows.filter(l=>l.kind==='service'),components=rows.filter(l=>l.kind==='component'),cents=categoryCents(group.categories)
   const clusters:JsreportDocument['diagnosticos'][number]['clusters']=group.categories.map(category=>({tipo:'servico',nome:category.name,valor:category.billable?money(cents.get(category.name)!.toString()):'Sem cobrança',descricaoTexto:category.descriptions}))
+  // Fallback preserves real service prices, without inventing technical stages.
+  if(group.unallocated.length){
+   const billable=group.unallocated.some(line=>line.billing!=='not_billed')
+   clusters.push({tipo:'servico',nome:'Serviços',valor:billable?money(sumLines(group.unallocated)):'Sem cobrança',descricaoTexto:[...new Set(group.unallocated.map(line=>pdfExpression(line.name)))]})
+  }
   if(components.length)clusters.push({tipo:'itens',nome:'Itens',valor:money(sumLines(components)),itensDetalhados:components.map(line=>({nome:line.name,valorUnitario:money(line.finalUnit),quantidade:line.quantity,valorTotal:money(line.total)}))})
   return{nome:pdfExpression(rows[0]!.pieceName),resumo,totalServicos:services.some(l=>l.billing!=='not_billed')?money(sumLines(services)):'',totalComponentes:components.length?money(sumLines(components)):'',clusters}
  })
