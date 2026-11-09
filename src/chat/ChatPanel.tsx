@@ -150,8 +150,9 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     } finally { if (!controller.signal.aborted) setBusy(false) }
   }, [atendimentoId, conversationId, onUnauthorized])
   useEffect(() => {
-    queueMicrotask(() => { void load(1) })
-    return () => request.current?.abort()
+    let active = true
+    queueMicrotask(() => { if (active) void load(1) })
+    return () => { active = false; request.current?.abort() }
   }, [load])
   return <div className="detail-page chat-page chat-readonly">
     <div className="chat-stage"><div className="at-chat-scroll">
@@ -178,7 +179,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
 function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
   atendimentoId: string; onUnauthorized: () => void; children: ReactNode
 }) {
-  const [resolution, setResolution] = useState<{ state: 'loading' | 'legacy' | 'linked' | 'error'; id?: string }>({state:'loading'})
+  const [resolution, setResolution] = useState<{ state: 'loading' | 'legacy' | 'linked' | 'unlinked' | 'error'; id?: string }>({state:'loading'})
   useEffect(() => {
     const controller = new AbortController()
     setResolution({state:'loading'})
@@ -191,13 +192,17 @@ function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
         if (controller.signal.aborted) return
         const error = cause as RequestFailure
         if (error.status === 401) {onUnauthorized();return}
-        if (error.status === 404) {setResolution({state:'legacy'});return}
+        if (error.status === 404) {
+          setResolution({state:error.code === 'CHAT_NOT_LINKED' ? 'unlinked' : 'legacy'})
+          return
+        }
         setResolution({state:'error'})
       })
     return () => controller.abort()
   },[atendimentoId,onUnauthorized])
   if (resolution.state==='loading') return <Notice title="Consultando vínculo do Chat…" />
   if (resolution.state==='error') return <Notice title="Não foi possível verificar o vínculo do Chat">Atualize o Atendimento para tentar novamente. Nenhuma conversa foi selecionada por aproximação.</Notice>
+  if (resolution.state==='unlinked') return <div className="detail-page chat-page chat-readonly"><div className="chat-unlinked"><Notice title="Conversa da Evolution não vinculada a este Atendimento">Este registro ainda não tem uma conversa canônica única confirmada. Abra Conversas, selecione o contato e utilize o botão de Atendimento vinculado quando disponível. Não vinculamos históricos apenas pelo telefone.</Notice><a className="fh-filter" href="/conversas">Abrir Conversas</a></div></div>
   return resolution.state==='linked' && resolution.id
     ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
     : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
