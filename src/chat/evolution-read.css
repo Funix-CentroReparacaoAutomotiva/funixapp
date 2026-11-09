@@ -50,3 +50,9 @@
 .ev-links-hint{color:#617890;font-size:11px;line-height:1.5;margin:0}
 .ev-links-error{color:#993c27;margin:0}
 @media(max-width:520px){.ev-linked{align-items:stretch;flex-direction:column}.ev-link-actions{justify-content:flex-start}.ev-links>header{align-items:flex-start}}
+
+/* O card é uma entrada para o Atendimento; somente casos sem vínculo expandem uma orientação. */
+.ev-unlinked{padding:12px;margin:7px 0 12px;background:#f6f8fb;border:1px solid #dbe4ed;border-radius:9px;color:#38526d;font-size:12px}
+.ev-unlinked>strong{display:block;margin-bottom:6px}
+.ev-unlinked>p{margin:7px 0;line-height:1.5}
+.ev-unlinked .ev-links{margin-top:10px}
