@@ -65,3 +65,26 @@ test('rejeição fecha, pendências impedem aprovação, dados inválidos são r
     assert.throws(()=>repo.createProposal({...q,actions:[q.actions[0]!,q.actions[0]!]}),{code:'PACKAGE_INVALID'})
   }finally{db.close()}
 })
+
+test('busca inclui pacotes anteriores aos 501 mais recentes e informa total completo',()=>{
+  const {db,repo}=setup()
+  try {
+    const insert=db.prepare(`INSERT INTO update_packages
+      (id,revision,snapshot_hash,source,source_reference,experience_id,plate,title,summary,status,actions_json,missing_fields_json,created_at,updated_at)
+      VALUES (?,1,?,'gmail',?,'XP1234','ABC1D23',?,?,'awaiting_review',?,? ,?,?)`)
+    const base=proposal()
+    const actions=JSON.stringify(base.actions)
+    const missing=JSON.stringify(base.missingFields)
+    for(let i=0;i<510;i++){
+      const stamp=new Date(Date.UTC(2026,0,1,0,0,i)).toISOString()
+      insert.run(randomUUID(),'a'.repeat(64),'synth-'+i,i===0?'AGULHA-ANTIGA':'Pacote genérico',
+        'Resumo genérico',actions,missing,stamp,stamp)
+    }
+    assert.equal(repo.list('open','').total,510)
+    assert.equal(repo.list('open','').items.length,100)
+    const found=repo.list('open','AGULHA-ANTIGA')
+    assert.equal(found.total,1)
+    assert.equal(found.items.length,1)
+    assert.equal(found.items[0]?.title,'AGULHA-ANTIGA')
+  } finally {db.close()}
+})
