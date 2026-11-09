@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs'
 import {deflateSync} from 'node:zlib'
 import type {BudgetVersion} from '../shared/pricing.ts'
 import {money} from '../shared/format.ts'
+import {budgetBlockingErrors} from './budget-terms.ts'
 
 // Bundled, licensed font; no host fonts, network, browser, paid service or renderer dependency.
 const font=readFileSync(new URL('./data/fonts/DejaVuSans.ttf',import.meta.url))
@@ -31,7 +32,7 @@ const utf16=(value:string)=>{const b=Buffer.from(value,'utf16le');b.swap16();ret
 export function budgetPdf(version:BudgetVersion):Buffer {
  const {snapshot:s}=version,c=s.calculation
  const documentId=version.documentNumber??`Orçamento ${version.label}`
- if(c.errors.length||c.total===null||c.days===null)throw new Error('Não gerar PDF de emissão incompleta.')
+ if(budgetBlockingErrors(s).length||c.total===null||!s.executionDeadline?.effectiveDays)throw new Error('Não gerar PDF de emissão incompleta.')
  const paragraphs=[`FUNIX | ${documentId}`,`Versão ${version.sequence} | ${version.createdAt} | Cenário: ${s.scenarioName}`,
   `Atendimento: ${s.atendimento.id}`,`Contato: ${s.atendimento.name||'Não informado'} | Telefone: ${s.atendimento.phone}`,
   `Veículo: ${s.atendimento.vehicle||[s.atendimento.brand,s.atendimento.model].filter(Boolean).join(' ')||'Não informado'} | Placa: ${s.atendimento.plate||'Não informada'}`,

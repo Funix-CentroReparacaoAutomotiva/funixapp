@@ -37,9 +37,21 @@ export function installmentSnapshot(total:string,configuration:InstallmentConfig
 }
 export {executionDeadline}from'../shared/budget-terms.ts'
 
-// A manually supplied commercial deadline replaces only the missing capacity-derived
-// suggestion. Prices, energy and every other existing engine error remain blocking.
+// Missing technical-stage detail remains visible in the app, not in the PDF.
+// Duplicate stages and actual pricing/scope errors are not made optional.
+export function optionalTechnicalWarning(error:string):boolean{
+ return error.endsWith(': Etapas técnicas de serviço/dimensão não configuradas.')
+  ||error.endsWith(': Energia técnica não configurada; considerada zero para este serviço.')
+  ||(error.startsWith('PDF: ')&&(
+   error.endsWith(': origem serviço/dimensão ausente.')
+   ||error.endsWith(': etapas técnicas não configuradas para a apresentação.')
+   ||error.includes(': categoria ausente/não reconhecida na etapa ')
+   ||(error.includes(': energia da etapa ')&&error.endsWith(' ausente.'))
+   ||error.endsWith(': energia total das etapas igual a zero; não existe proporção financeira válida.')
+  ))
+}
+// Manual deadline replaces only a missing technical suggestion, not invalid prices.
 export function budgetBlockingErrors(snapshot:BudgetSnapshot):string[]{
  const d=snapshot.executionDeadline,manual=d?.mode==='manual'&&d.effectiveDays!==null&&snapshot.calculation.energy!==null
- return [...snapshot.calculation.errors.filter(error=>!(manual&&error==='Capacidade diária global positiva não configurada.')),...(snapshot.pdfPresentation?.errors??[])]
+ return [...snapshot.calculation.errors.filter(error=>!optionalTechnicalWarning(error)&&!(manual&&error==='Capacidade diária global positiva não configurada.')),...(snapshot.pdfPresentation?.errors??[]).filter(error=>!optionalTechnicalWarning(error))]
 }

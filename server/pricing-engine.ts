@@ -52,10 +52,20 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
     line.unit=unit.toString();line.finalUnit=line.unit;line.total=unit.mul(Q.from(service.quantity)).toString()
     }
     // Energy is independent of commercial multipliers and special prices.
-    if(!dim?.stages.length)throw new Error('Etapas técnicas de serviço/dimensão não configuradas.')
-    line.stages=structuredClone(dim.stages)
-    const energy=sum(dim.stages.map(stage=>required(stage.baseEnergy,`Energia base ${stage.name}`).add(required(stage.dimensionEnergy,`Energia dimensional ${stage.name}`)))).mul(Q.from(service.quantity))
-    line.energy=energy.toString()
+    // Missing stage configuration does not invalidate the commercial price.
+    if(!dim?.stages.length){
+     errors.push(`${line.pieceName} / ${line.name} (${line.id}): Etapas técnicas de serviço/dimensão não configuradas.`)
+     line.energy='0'
+    }else{
+     line.stages=structuredClone(dim.stages)
+     if(dim.stages.some(stage=>!stage.baseEnergy||!stage.dimensionEnergy)){
+      errors.push(`${line.pieceName} / ${line.name} (${line.id}): Energia técnica não configurada; considerada zero para este serviço.`)
+      line.energy='0'
+     }else{
+      const energy=sum(dim.stages.map(stage=>Q.from(stage.baseEnergy!).add(Q.from(stage.dimensionEnergy!)))).mul(Q.from(service.quantity))
+      line.energy=energy.toString()
+     }
+    }
    }catch(cause){errors.push(`${line.pieceName} / ${line.name} (${line.id}): ${(cause as Error).message}`)}
   }
   for(const component of components.filter(c=>c.pieceId===item.id)){
