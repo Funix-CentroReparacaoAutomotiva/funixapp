@@ -36,6 +36,21 @@ export function createUpdatePackageSchema(db: DatabaseSync): void {
         decided_at TEXT NOT NULL,
         PRIMARY KEY(package_id,request_id)
       );
+      CREATE TABLE IF NOT EXISTS update_package_ingest_events (
+        event_key TEXT PRIMARY KEY,
+        package_id TEXT NOT NULL UNIQUE REFERENCES update_packages(id) ON DELETE RESTRICT,
+        payload_hash TEXT NOT NULL CHECK(length(payload_hash)=64),
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS update_package_clarifications (
+        package_id TEXT PRIMARY KEY REFERENCES update_packages(id) ON DELETE RESTRICT,
+        request_id TEXT NOT NULL UNIQUE,
+        revision INTEGER NOT NULL CHECK(revision>0),
+        snapshot_hash TEXT NOT NULL CHECK(length(snapshot_hash)=64),
+        answers_json TEXT NOT NULL CHECK(json_valid(answers_json)),
+        actor TEXT NOT NULL,
+        submitted_at TEXT NOT NULL
+      );
       CREATE TRIGGER IF NOT EXISTS update_packages_freeze_snapshot BEFORE UPDATE OF
         snapshot_hash,source,source_reference,experience_id,plate,title,summary,actions_json,missing_fields_json
         ON update_packages
@@ -47,5 +62,7 @@ export function createUpdatePackageSchema(db: DatabaseSync): void {
 
 export function hasUpdatePackageSchema(db: DatabaseSync): boolean {
   return Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_packages'").get()) &&
-    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_decisions'").get())
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_decisions'").get()) &&
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_ingest_events'").get()) &&
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='update_package_clarifications'").get())
 }
