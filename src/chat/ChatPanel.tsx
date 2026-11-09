@@ -4,6 +4,8 @@ import type { ChatMessage, ChatPage } from '../../shared/chat'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 import { ChatRail, Icon, Notice } from '../ui'
+import { mergeReadMessages, parseConversationMessages } from './evolution-read-model'
+import type { ReadUiMessage } from './evolution-read-model'
 import './chat.css'
 
 const kinds = { text: 'Texto', image: 'Foto', audio: 'Áudio', video: 'Vídeo', document: 'Documento', unsupported: 'Formato não suportado' }
@@ -22,7 +24,7 @@ function Message({ message }: { message: ChatMessage }) {
   </li>
 }
 
-export function ChatPanel({ atendimentoId, onUnauthorized, children }: { atendimentoId: string; onUnauthorized: () => void; children: ReactNode }) {
+function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendimentoId: string; onUnauthorized: () => void; children: ReactNode }) {
   const [page, setPage] = useState<ChatPage>({ items: [], nextCursor: null })
   const [busy, setBusy] = useState(true), [failure, setFailure] = useState('')
   const [version, setVersion] = useState(0)
@@ -115,4 +117,95 @@ export function ChatPanel({ atendimentoId, onUnauthorized, children }: { atendim
       <button className="compose-button send" disabled title="Envio ainda indisponível" aria-label="Enviar mensagem indisponível"><Icon name="send" /></button>
     </div></footer>
   </div>
+}
+
+/** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
+function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, children }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode
+}) {
+  const [items, setItems] = useState<ReadUiMessage[]>([])
+  const [nextPage, setNextPage] = useState<number | null>(null)
+  const [busy, setBusy] = useState(true)
+  const [failure, setFailure] = useState('')
+  const request = useRef<AbortController | null>(null)
+  const load = useCallback(async (page: number) => {
+    request.current?.abort()
+    const controller = new AbortController()
+    request.current = controller
+    setBusy(true); setFailure('')
+    try {
+      const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}`, { signal: controller.signal })
+      const result = parseConversationMessages(raw, conversationId)
+      if (controller.signal.aborted) return
+      setItems(previous => page === 1 ? mergeReadMessages([], result.items) : mergeReadMessages(previous, result.items))
+      setNextPage(result.nextPage)
+    } catch (cause) {
+      if (controller.signal.aborted) return
+      const error = cause as RequestFailure
+      if (error.status === 401) { setItems([]); onUnauthorized(); return }
+      if (error.status === 404) {
+        setItems([])
+        setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
+      } else setFailure('Não foi possível carregar o histórico Evolution. Tente novamente.')
+    } finally { if (!controller.signal.aborted) setBusy(false) }
+  }, [atendimentoId, conversationId, onUnauthorized])
+  useEffect(() => {
+    queueMicrotask(() => { void load(1) })
+    return () => request.current?.abort()
+  }, [load])
+  return <div className="detail-page chat-page chat-readonly">
+    <div className="chat-stage"><div className="at-chat-scroll">
+      <div className="chat-channel-state">Evolution · leitura somente, histórico possivelmente incompleto</div>
+      {children}
+      <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
+        <div className="chat-read-toolbar"><strong>Chat · Evolution</strong><button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button></div>
+        {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
+        {busy && <Notice title="Carregando mensagens…" />}
+        {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
+        {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
+          <span className="chat-direction">{message.fromMe ? 'Saída' : 'Entrada'}</span>
+          {message.kind !== 'text' && <div className="chat-media"><strong>{kinds[message.kind]}</strong><span>Mídia indisponível</span></div>}
+          {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
+          <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time></footer>
+        </article></li>)}</ol>}
+        {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
+      </section>
+    </div><ChatRail /></div>
+    <footer className="compose"><div className="compose-area"><textarea aria-label="Mensagem ao cliente" placeholder="Envio indisponível · somente leitura" disabled rows={1} /></div></footer>
+  </div>
+}
+/** Resolve the server-confirmed Coda context when opening an Atendimento directly from Funil. */
+function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
+  atendimentoId: string; onUnauthorized: () => void; children: ReactNode
+}) {
+  const [resolution, setResolution] = useState<{ state: 'loading' | 'legacy' | 'linked' | 'error'; id?: string }>({state:'loading'})
+  useEffect(() => {
+    const controller = new AbortController()
+    setResolution({state:'loading'})
+    void api<{conversationId:string}>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversation`,{signal:controller.signal})
+      .then(result => {
+        if (controller.signal.aborted) return
+        if (!/^[0-9a-f-]{36}$/.test(result.conversationId)) throw new Error('Invalid conversation ID')
+        setResolution({state:'linked',id:result.conversationId})
+      }).catch(cause => {
+        if (controller.signal.aborted) return
+        const error = cause as RequestFailure
+        if (error.status === 401) {onUnauthorized();return}
+        if (error.status === 404) {setResolution({state:'legacy'});return}
+        setResolution({state:'error'})
+      })
+    return () => controller.abort()
+  },[atendimentoId,onUnauthorized])
+  if (resolution.state==='loading') return <Notice title="Consultando vínculo do Chat…" />
+  if (resolution.state==='error') return <Notice title="Não foi possível verificar o vínculo do Chat">Atualize o Atendimento para tentar novamente. Nenhuma conversa foi selecionada por aproximação.</Notice>
+  return resolution.state==='linked' && resolution.id
+    ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
+}
+export function ChatPanel({ atendimentoId, evolutionConversationId, onUnauthorized, children }: {
+  atendimentoId: string; evolutionConversationId?: string | null; onUnauthorized: () => void; children: ReactNode
+}) {
+  return evolutionConversationId
+    ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={evolutionConversationId} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    : <ResolvedAtendimentoChat atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
 }

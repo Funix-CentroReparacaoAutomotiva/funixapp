@@ -2,6 +2,7 @@ import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
 import { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { V20AssociationRepository } from './v20-associations.ts'
+import type { CodaEventSyncRepository } from './coda-sync.ts'
 
 /**
  * Existing VPS only. Operator explicitly controls opt-in; no automatic env discovery.
@@ -14,6 +15,7 @@ const EXISTING_INSTANCE = 'funix_comercial'
 export function loadEvolutionChat(
   env: NodeJS.ProcessEnv,
   associations?: V20AssociationRepository,
+  codaSync?: CodaEventSyncRepository,
 ): EvolutionChatBridge | undefined {
   if (env.FUNIX_EVOLUTION_READ_ENABLED !== 'true') return undefined
   const key = env.FUNIX_EVOLUTION_READ_API_KEY
@@ -32,5 +34,5 @@ export function loadEvolutionChat(
     instanceId,
     timeoutMs: 5000,
   })
-  return createEvolutionChatBridge(provider, Date.now, associations)
+  return createEvolutionChatBridge(provider, Date.now, associations, codaSync)
 }

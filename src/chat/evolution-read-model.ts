@@ -9,6 +9,7 @@ export type ConversationRow = {
   phoneNumber: string | null
   updatedAt: string | null
   unreadCount: number | null
+  atendimentoId?: string | null
 }
 export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'; linksEnabled?: true }
 export type ReadUiMessage = {
@@ -76,7 +77,7 @@ export function parseConversationList(raw: unknown): ConversationList {
     const conversationId = opaqueId(row.conversationId)
     if (seen.has(conversationId)) return invalid()
     seen.add(conversationId)
-    return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount) }
+    return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount), ...(Object.hasOwn(row, 'atendimentoId') ? { atendimentoId: row.atendimentoId === null ? null : opaqueId(row.atendimentoId) } : {}) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
   return data.linksEnabled === true ? { items, nextSkip, source: 'evolution', linksEnabled: true } : { items, nextSkip, source: 'evolution' }

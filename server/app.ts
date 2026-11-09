@@ -22,6 +22,8 @@ import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
 import type { V20AssociationRepository } from './chat/v20-associations.ts'
+import { createCodaSyncEndpoint } from './chat/coda-sync-endpoint.ts'
+import type { CodaSyncEndpointOptions } from './chat/coda-sync-endpoint.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
@@ -33,6 +35,7 @@ export interface AppOptions {
   evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
   v20Associations?: V20AssociationRepository // independent opt-in: never read legacy chat_links
   whatsappIngest?: IngestOptions
+  codaSync?: Omit<CodaSyncEndpointOptions, 'now'> // separately gated machine-to-machine intake
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
@@ -56,6 +59,7 @@ export function createRequestHandler(options: AppOptions) {
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
   const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
+  const codaIntake = options.codaSync ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
   const cookieName = 'funix_session'
@@ -81,6 +85,11 @@ export function createRequestHandler(options: AppOptions) {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
+      if (url.pathname === '/api/integrations/coda/atendimentos') {
+        if (!codaIntake) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        const result = await codaIntake(req, res, url)
+        return send(result.status, { atendimentoId: result.atendimentoId, state: result.state })
+      }
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
@@ -206,6 +215,31 @@ export function createRequestHandler(options: AppOptions) {
           }
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
+      }
+      // Resolve the unique active Coda-linked conversation for direct Funil navigation.
+      // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
+      const canonicalConversationRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversation$/.exec(url.pathname)
+      if (canonicalConversationRoute && options.evolutionChat && options.codaSync) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const conversation = options.evolutionChat.conversationForAtendimento(canonicalConversationRoute[1]!)
+        return conversation ? send(200, conversation) : fail(404, 'CHAT_NOT_LINKED', 'Nenhuma conversa canônica única vinculada.')
+      }
+      // Authenticated canonical read: a client-supplied conversationId must be
+      // confirmed against the current Coda→Atendimento mapping on the server.
+      const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
+      if (syncedEvolutionRoute && options.evolutionChat && options.codaSync) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
+        if ([...url.searchParams.keys()].some(key => key !== 'page') || url.searchParams.getAll('page').length > 1)
+          return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const page = url.searchParams.get('page') ?? '1'
+        if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
+          return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        try {
+          const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page))
+          if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
+          return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
+        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
       }
       // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
       if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
