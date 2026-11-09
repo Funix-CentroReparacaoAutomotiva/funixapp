@@ -45,6 +45,7 @@ export type UpdatePackageList = {
   items: UpdatePackage[]
   total: number
   decisionsEnabled: boolean
+  clarificationsEnabled: boolean
 }
 
 export type UpdatePackageDecision = {
