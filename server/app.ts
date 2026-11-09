@@ -208,7 +208,7 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Resolve the unique active Coda-linked conversation for direct Funil navigation.
       // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
-      const canonicalConversationRoute = /^\\/api\\/atendimentos\\/([a-f0-9-]{36})\\/evolution-conversation$/.exec(url.pathname)
+      const canonicalConversationRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversation$/.exec(url.pathname)
       if (canonicalConversationRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
