@@ -94,12 +94,30 @@ export class UpdatePackageRepository {
     if (!['open','closed'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false,clarificationsEnabled:false}
     const closed = view === 'closed'
-    const rows = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
+    // Paginate through the full queue so older matches are not silently lost
+    // after the first 501 records. Return at most 100 cards, but count all matches.
+    const statement = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
       ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected','superseded')"}
-      ORDER BY created_at DESC, id DESC LIMIT 501`).all() as PackageRow[]
+      ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
     const needle = query.toLocaleLowerCase('pt-BR').trim()
-    const filtered = rows.map(map).filter(pkg => !needle || [pkg.title,pkg.summary,pkg.experienceId??'',pkg.plate??'',pkg.source,pkg.sourceReference].some(s=>s.toLocaleLowerCase('pt-BR').includes(needle)))
-    return {items:filtered.slice(0,100),total:filtered.length,decisionsEnabled:false,clarificationsEnabled:false}
+    const items: UpdatePackage[] = []
+    let total = 0
+    let offset = 0
+    const pageSize = 250
+    while (true) {
+      const rows = statement.all(pageSize, offset) as PackageRow[]
+      for (const row of rows) {
+        const pkg = map(row)
+        if (!needle || [pkg.title,pkg.summary,pkg.experienceId??'',pkg.plate??'',pkg.source,pkg.sourceReference]
+          .some(s=>s.toLocaleLowerCase('pt-BR').includes(needle))) {
+          total++
+          if (items.length < 100) items.push(pkg)
+        }
+      }
+      if (rows.length < pageSize) break
+      offset += rows.length
+    }
+    return {items,total,decisionsEnabled:false,clarificationsEnabled:false}
   }
 
   decide(id: string, input: UpdatePackageDecision, actor: string): UpdatePackage {
