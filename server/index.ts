@@ -1,10 +1,12 @@
 import { createApp } from './app.ts'
 import { openDatabase } from './database.ts'
-import { createUpdatePackageSchema } from './update-packages-schema.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { loadIngestOptions } from './chat/ingest-config.ts'
 import { loadEvolutionChat } from './chat/evolution-config.ts'
 import { createV20AssociationSchema, V20AssociationRepository } from './chat/v20-associations.ts'
+import { createCodaEventSchema, CodaEventSyncRepository } from './chat/coda-sync.ts'
+import { createUpdatePackageSchema } from './update-packages-schema.ts'
+import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -20,8 +22,6 @@ if (process.env.NODE_ENV === 'production') {
 const databasePath = process.env.FUNIX_DATABASE_PATH ?? (process.env.NODE_ENV === 'production' ? '' : '.runtime/funix.sqlite')
 if (!databasePath || (process.env.NODE_ENV === 'production' && databasePath === ':memory:')) throw new Error('Configure FUNIX_DATABASE_PATH para um arquivo em armazenamento persistente autorizado.')
 const db = openDatabase(databasePath)
-// Independent opt-in schema; V14 migration history and importers remain unchanged.
-if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
 const atendimentos = new AtendimentoRepository(db)
 // Separate, OFF-by-default gate. V14 schema_migrations stays unchanged for image rollback.
 // SQLite DDL is additive and transactional; no legacy chat/history mutations.
@@ -29,7 +29,16 @@ const v20Associations = process.env.FUNIX_CHAT_V20_LINKS_ENABLED === 'true' &&
   process.env.FUNIX_EVOLUTION_READ_ENABLED === 'true'
   ? (() => { createV20AssociationSchema(db); return new V20AssociationRepository(db) })()
   : undefined
-const app = createApp({ atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+// Independent OFF-by-default event sync. The n8n workflow is never modified
+// by activating this bootstrap; actual event routing requires another gate.
+// Independent updates schema remains OFF by default; no production write path enabled.
+if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
+const codaSyncKey = parseCodaSyncSecret(process.env)
+const codaSync = codaSyncKey ? (() => {
+  createCodaEventSchema(db)
+  return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
+})() : undefined
+const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 app.requestTimeout = 15_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
