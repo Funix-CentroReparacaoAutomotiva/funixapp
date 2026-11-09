@@ -216,7 +216,7 @@ async def device_case(browser, width, height):
         await page.wait_for_url(f"**/atendimentos/{state['canonical_id']}?aba=chat&conversa={A}")
         await expect(page.locator(".detail-header")).to_contain_text("Atendimento Sintético")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
-        await expect(page.get_by_text("Texto sintético A 1")).to_be_visible()
+        await expect(page.get_by_text("Texto sintético A 1", exact=True)).to_be_visible()
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: canonical Coda-linked navigation opens existing Atendimento with Evolution history")
 
