@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { UpdatePackageRepository } from '../update-packages.ts'
+import { createUpdatePackageSchema } from '../update-packages-schema.ts'
 import { createRequestHandler } from '../app.ts'
 import { syntheticRenderer } from './fixtures/budget-renderer.ts'
 
@@ -31,6 +32,7 @@ test('Atualizações: sessão exigida, consulta vazia e nenhuma execução por a
   assert.equal(empty.status,200)
   assert.equal(empty.body.total,0)
   assert.equal(empty.body.decisionsEnabled,false)
+  createUpdatePackageSchema(db)
   const pkg=new UpdatePackageRepository(db).createProposal({
    source:'gmail',sourceReference:'synthetic-email',experienceId:'XP1234',plate:'ABC1D23',
    title:'Pacote sintético',summary:'Nenhum sistema externo será alterado',
