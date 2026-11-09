@@ -2,7 +2,22 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { prepareGmailPackageForReview as prepare } from '../update-packages-orchestrate.ts'
 import type { GmailEventBridgeInput } from '../update-packages-orchestrate.ts'
+import { signReviewAttestation } from '../update-packages-attestation.ts'
+import { triageCommercialEmail } from '../update-packages-commercial.ts'
 
+const reviewSecret='synthetic-review-secret-01234567890123456789'
+const signed=(input:GmailEventBridgeInput):GmailEventBridgeInput=>{
+  const verification=input.verification!
+  const commercial=triageCommercialEmail({messageId:input.message.id,subject:input.message.subject,
+    body:input.message.body,bodyComplete:input.message.bodyComplete,
+    experienceId:input.identity.proposal.experienceId,plate:input.identity.proposal.plate})
+  const attachmentDigests=[{id:'attachment_0',sha256:'a'.repeat(64)}]
+  verification.attachmentDigests=attachmentDigests
+  verification.attestation=signReviewAttestation({eventKey:'gmail:'+input.message.id+':v1',
+    subject:input.message.subject,body:input.message.body??'',attachments:attachmentDigests,
+    fragments:[input.identity,input.documents,commercial.fragment]},verification.reviewId,reviewSecret)
+  return input
+}
 const make=():GmailEventBridgeInput=>{
  const messageId='abcdef0123456789'
  const proposal=(actions: {id:string,type:'other'|'drive_archive',title:string,detail:string}[])=>({
@@ -39,7 +54,7 @@ test('sem atestado produz pendências, não publica nem grava',()=>{
 test('atestado com conferências explícitas permite apenas preparar envelope',()=>{
  const input=make()
  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
-   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001'}
+   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
  const result=prepare(input)
  assert.equal(result.status,'READY_FOR_SIGNED_INGEST')
  assert.equal(result.canPublish,false)
@@ -51,7 +66,7 @@ test('atestado com conferências explícitas permite apenas preparar envelope',(
 test('atestado de outra mensagem, anexo ausente ou revisão inválida é bloqueado',()=>{
  const input=make()
  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:[],
-   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001'}
+   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
  assert.throws(()=>prepare(input),/REVIEW_ATTESTATION_INVALID/)
  input.verification.reviewedAttachmentIds=['attachment_0']
  input.verification.verifiedSourceReference='ffffffffffffffff'
@@ -61,7 +76,7 @@ test('indício comercial não é convertido em autorização pelo atestado',()=>
  const input=make()
  input.message.body='APROVADO complemento R$ 500,00.'
  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
-   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001'}
+   verifiedSourceReference:'abcdef0123456789',reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
  const result=prepare(input)
  assert.equal(result.status,'NEEDS_REVIEW')
  if(result.status==='NEEDS_REVIEW') assert.ok(result.pending.includes('COMMERCIAL_REPLAN_REQUIRED'))
@@ -73,4 +88,21 @@ test('não aceita corpo parcial ou fragmentos pertencentes a outra mensagem',()=
  input.message.bodyComplete=true
  input.documents.proposal.sourceReference='ffffffffffffffff'
  assert.throws(()=>prepare(input),/FRAGMENT_MESSAGE_CONFLICT/)
+})
+
+test('atestado não assinado não prepara pacote',()=>{
+  const input=make()
+  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
+    verifiedSourceReference:input.message.id,reviewId:'review:synthetic-001',
+    attachmentDigests:[],attestation:null as never}
+  assert.throws(()=>prepare(input,reviewSecret),/REVIEW_ATTESTATION_UNTRUSTED/)
+})
+test('alterar texto após assinatura invalida pacote',()=>{
+  const input=make()
+  input.verification={bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
+    verifiedSourceReference:input.message.id,reviewId:'review:synthetic-001',
+    attachmentDigests:[],attestation:null as never}
+  signed(input)
+  input.message.body='Texto alterado depois da revisão.'
+  assert.throws(()=>prepare(input,reviewSecret),/REVIEW_ATTESTATION_UNTRUSTED/)
 })
