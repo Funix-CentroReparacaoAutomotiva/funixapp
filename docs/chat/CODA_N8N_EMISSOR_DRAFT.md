@@ -76,3 +76,20 @@ univocidade do registro antes de eventual envio. `Create a row` utiliza
 comprova persistência e não substitui leitura de confirmação.
 
 É necessário resolver essas lacunas antes de introduzir o emissor no n8n.
+
+## Protótipo isolado do emissor (08/11/2026)
+
+- Workflow n8n criado em **projeto pessoal, desativado e não publicado**: `OonRBjcVIbqUCvZf`, título `FUNIX | DEV | Coda → FunixApp | Ensaio sem envio (OFF)`.
+- Quatro nós: gatilho manual, gerador sintético, validador de elegibilidade e auditoria. Sem credenciais, webhook, Coda, HTTP Request ou chamadas externas.
+- Ensaio n8n `37353`: **sucesso**, 9 cenários sintéticos, 2 elegíveis para futura assinatura, 7 bloqueados.
+- Casos elegíveis: `existente_confirmado` e `criado_confirmado`. Exceções bloqueadas: `NAO_GERAR_LEAD`, `CODA_NOT_CONFIRMED`, `CODA_ROW_NOT_UNIQUE`, `PN_NOT_VERIFIED`, `CODA_ROW_NOT_CANONICAL`, `EVENT_ID_INVALID`, `CREATE_CONFIRMATION_MISMATCH`.
+- O ensaio apenas verifica uma **leitura Coda simulada** e serializa payload JSON de nove campos. **Não envia, não calcula HMAC com segredo, não persiste outbox, não faz retry, não prova confirmação real no Coda**. Não apresentar este ensaio como integração funcional.
+- Workflow de produção `21wpOido7t5OHb7i` foi consultado apenas em leitura e permanece sem alterações realizadas nesta etapa.
+
+### Próximos critérios de aceitação antes de qualquer ligação a sistemas reais
+
+1. Revalidar linha canônica diretamente no Coda após a gravação, com regra determinística para `fx_UUID` e eventuais múltiplos Atendimentos abertos; a flag de criação sozinha não serve como confirmação.
+2. Definir fila de saída durável e retomada de falhas, com `eventId` estável e recibo `202`; tratar `409/422` como investigação, não como motivo para criar outro Atendimento.
+3. Construir assinatura HMAC-SHA256 usando bytes exatos de JSON e segredo segregado, armazenado em credencial segura; não usar expressões que exponham a chave em dados de execução.
+4. Testar em destino **privado de desenvolvimento**, com credenciais sintéticas e sem copiar registros de clientes ou conectar o webhook de produção.
+5. Validar que o workflow de origem continua ativo e inalterado; só então propor a alteração real com aprovação independente de ativação.
