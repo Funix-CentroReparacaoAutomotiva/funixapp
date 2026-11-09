@@ -24,8 +24,10 @@ export type EventPreparation = {
 }
 
 export class EventPreparationError extends Error {
-  constructor(public readonly code: string, message: string) {
+  readonly code: string
+  constructor(code: string, message: string) {
     super(message)
+    this.code = code
     this.name = 'EventPreparationError'
   }
 }
