@@ -93,3 +93,18 @@ comprova persistência e não substitui leitura de confirmação.
 3. Construir assinatura HMAC-SHA256 usando bytes exatos de JSON e segredo segregado, armazenado em credencial segura; não usar expressões que exponham a chave em dados de execução.
 4. Testar em destino **privado de desenvolvimento**, com credenciais sintéticas e sem copiar registros de clientes ou conectar o webhook de produção.
 5. Validar que o workflow de origem continua ativo e inalterado; só então propor a alteração real com aprovação independente de ativação.
+
+## Ensaio de outbox persistente em desenvolvimento — 09/11/2026 (OFF)
+
+**Não é um emissor operacional.** Foram criados dois workflows MANUAIS e desativados no projeto pessoal n8n e uma Data Table exclusiva:
+- Produtor sintético `0oCfPO9LyX505llq` (3 nós): gera **dois eventos falsos** com `eventId` estável para aquela execução e os insere como `pending`.
+- Worker sintético `lsW4pONnHUuIRfK8` (4 nós): lê a tabela DEV, simula resposta HTTP 202/503 *sem realizar HTTP*, grava estado, contador de tentativas, horário elegível, erro e recibo fictício.
+- Tabela `FUNIX_DEV_CODA_OUTBOX_SYNTHETIC_OFF` (`xux8eScir9XRUX48`), somente dados sintéticos. Nenhuma credencial foi criada ou associada; não há webhook, Schedule Trigger nem Coda/WhatsApp/Evolution/FunixApp nesse ensaio.
+
+Evidências verificadas após execução:
+- `37378` produtor: **success**, 2 linhas persistidas em tabela DEV.
+- `37380` worker, primeira passagem: **success**; caso 1 = `delivered_simulated`, 1 tentativa, 202 fictício; caso 2 = `retry`, 1 tentativa, 503 fictício.
+- `37381` worker, segunda passagem: **success**; caso 2 = `delivered_simulated`, 2 tentativas, 202 fictício; ambos com recibos sintéticos persistidos.
+- `37382` worker, terceira passagem: **success**; registros `delivered_simulated` permaneceram inalterados (contadores 1/2).
+
+**Limitações sérias e gates pendentes:** Data Table e worker manuais **não asseguram unicidade de `eventId` sob concorrência**, claim/lease atômico, nem exatamente-uma-vez em ambiente distribuído; a simulação é local e de baixa escala. Ainda não há HMAC real, armazenamento de segredo, chamada HTTP, autenticação do receptor, confirmação Coda por consulta real, reconciliação PN/LID, tratamento de 409/422, retry com backoff, dead-letter, Scheduler, monitoramento, backup/restore, nem testes de interrupção no intervalo crítico entre Coda e inserção no outbox. A versão de produção precisa de identificação determinística, persistência atômica e restrições únicas adequadas, claim por trabalhador, revalidação do Coda e recibos efetivos do destino. **Não publicar esses workflows nem ligar o workflow de produção**, e não apresentar `delivered_simulated` como entrega real.
