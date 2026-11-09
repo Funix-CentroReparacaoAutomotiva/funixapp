@@ -65,7 +65,7 @@ try {
    assert.equal(await page.locator('.updates-card').count(),2)
    await page.getByRole('button',{name:/XP2345 · DEF2G34/}).click()
    assert.equal(await page.getByRole('button',{name:'Aprovar pacote'}).isDisabled(),true)
-   await page.getByText('Conferir autorização comercial').waitFor()
+   await page.locator('.updates-missing li strong').getByText('Conferir autorização comercial',{exact:true}).waitFor()
    await page.getByRole('button',{name:/XP1234 · ABC1D23/}).click()
    await page.getByRole('button',{name:'Aprovar pacote'}).click()
    await page.getByText('Aprovação registrada. A execução ainda não começou.').waitFor()
