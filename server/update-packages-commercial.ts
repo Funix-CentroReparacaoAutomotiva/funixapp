@@ -23,7 +23,7 @@ const monetary=/\bR\$\s*(?:\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{2})?\b/gi
 const rules: Array<[CommercialSignal['kind'],RegExp]> = [
   ['possible_authorization', /\b(?:autorizad[oa]s?|aprovad[oa]s?|liberad[oa]s?)\b/i],
   ['possible_rejection', /\b(?:negad[oa]s?|recusad[oa]s?|reprovad[oa]s?|cancelad[oa]s?)\b/i],
-  ['possible_change', /\b(?:complemento|alter[aç][aã]o|revis[aã]o|aditivo|franquia|participa[cç][aã]o)\b/i]
+  ['possible_change', /\b(?:complemento|altera(?:ção|cao)|revis(?:ão|ao)|aditivo|franquia|participa(?:ção|cao))\b/i]
 ]
 function excerpt(text:string, start:number, end:number):string {
   return text.slice(Math.max(0,start-80),Math.min(text.length,end+80)).replace(/\s+/g,' ').slice(0,200)
