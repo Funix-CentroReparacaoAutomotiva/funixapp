@@ -33,3 +33,9 @@ test('corpo ausente permanece pendente de verificação',()=>{
 test('identificação da mensagem Gmail inválida é rejeitada',()=>{
   assert.throws(()=>triageCommercialEmail({...base(),messageId:'invalida'}),/COMMERCIAL_INPUT_INVALID/)
 })
+
+test('reconhece alteração, revisão e participação em português com acentos',()=>{
+ const r=triageCommercialEmail({...base(),body:'Solicitamos alteração e revisão da participação.'})
+ assert.equal(r.status,'requires_review')
+ assert.ok(r.signals.some(s=>s.kind==='possible_change'))
+})
