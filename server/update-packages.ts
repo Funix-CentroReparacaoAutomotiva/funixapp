@@ -137,7 +137,7 @@ export class UpdatePackageRepository {
   ingest(input: UpdatePackageIngest): UpdatePackage {
     if (!hasUpdatePackageSchema(this.db)) fail(503,'PACKAGE_STORAGE_DISABLED','Armazenamento desabilitado.')
     if (!input || typeof input!=='object' || Array.isArray(input) ||
-      Object.keys(input).sort().join(',')!=='eventKey,proposal' ||
+      Object.keys(input).sort().join(',')!==(input.replaces===undefined?'eventKey,proposal':'eventKey,proposal,replaces') ||
       !validateText(input.eventKey,120) || !idPattern.test(input.eventKey) ||
       !input.proposal || typeof input.proposal!=='object' || Array.isArray(input.proposal) ||
       Object.keys(input.proposal).sort().join(',')!=='actions,experienceId,missingFields,plate,source,sourceReference,summary,title')
