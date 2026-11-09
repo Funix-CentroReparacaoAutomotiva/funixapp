@@ -18,7 +18,7 @@ function setup() {
   const repo=new UpdatePackageRepository(db,()=> '2026-11-08T20:00:00.000Z')
   return {db,repo}
 }
-test('V15 pacote nasce aberto, não cria dados de demonstração e fecha somente rejeitado ou executado',()=>{
+test('Armazenamento opt-in: pacote nasce aberto, não cria dados de demonstração e fecha somente rejeitado ou executado',()=>{
   const {db,repo}=setup()
   try{
     assert.equal(repo.list('open','').total,0)
