@@ -122,8 +122,9 @@ export function createRequestHandler(options: AppOptions) {
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
       // Authenticated, same-origin package decisions, OFF by default.
       // This endpoint only records a decision; it never calls the ERP, Drive or n8n.
-      if (url.pathname === '/api/atualizacoes' || /^\\/api\\/atualizacoes\\/[0-9a-f-]{36}\\/decisao$/.test(url.pathname)) {
-        const decisionMatch = /^\\/api\\/atualizacoes\\/([0-9a-f-]{36})\\/decisao$/.exec(url.pathname)
+      const updateDecisionPath = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/decisao$')
+      const decisionMatch = updateDecisionPath.exec(url.pathname)
+      if (url.pathname === '/api/atualizacoes' || decisionMatch) {
         if (url.pathname === '/api/atualizacoes') {
           if (req.method !== 'GET') return fail(405,'METHOD_NOT_ALLOWED','A consulta de pacotes é somente leitura.')
           if ([...url.searchParams.keys()].some(k=>!['visao','q'].includes(k))) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
