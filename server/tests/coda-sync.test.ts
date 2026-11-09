@@ -187,3 +187,29 @@ test('direct Funil canonical lookup fails closed for zero or multiple active con
     assert.equal(f.sync.resolveUniqueActiveJid(canonical.atendimentoId), null)
   } finally { f.db.close() }
 })
+
+test('canonical Evolution response is withheld if active Coda Atendimento changes during fetch', async () => {
+  const f = fixture()
+  try {
+    const first = f.sync.sync(synthetic('i-SYNTH_A','event:race-a'))
+    const jid = '5531999990001@s.whatsapp.net'
+    let release!: () => void
+    const pending = new Promise<void>(resolve => { release = resolve })
+    let started!: () => void
+    const called = new Promise<void>(resolve => { started = resolve })
+    const bridge = createEvolutionChatBridge({
+      async findChatsPage() { return {items:[{remoteJid:jid,displayName:null,phoneNumber:null,updatedAt:null,unreadCount:0}],sourceCount:1} },
+      async findMessages() {
+        started()
+        await pending
+        return {items:[],currentPage:1,reportedTotal:0,reportedPages:0,nextPage:null,consistency:'offset-not-snapshot' as const}
+      },
+    },Date.now,undefined,f.sync)
+    const conversationId = (await bridge.list(0)).items[0]!.conversationId
+    const read = bridge.messagesForAtendimento(first.atendimentoId,conversationId,1)
+    await called
+    f.sync.sync(synthetic('i-SYNTH_B','event:race-b',jid,1794144050))
+    release()
+    assert.equal(await read,null)
+  } finally { f.db.close() }
+})
