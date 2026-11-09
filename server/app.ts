@@ -130,8 +130,8 @@ export function createRequestHandler(options: AppOptions) {
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
       // Operator decisions and clarifications require authenticated same-origin sessions.
       // Preparing a proposal or authorizing it does not execute an external action.
-      const decisionMatch = /^\\/api\\/atualizacoes\\/([0-9a-f-]{36})\\/decisao$/.exec(url.pathname)
-      const clarificationMatch = /^\\/api\\/atualizacoes\\/([0-9a-f-]{36})\\/complementar$/.exec(url.pathname)
+      const decisionMatch = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/decisao$').exec(url.pathname)
+      const clarificationMatch = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/complementar$').exec(url.pathname)
       if (url.pathname === '/api/atualizacoes' || decisionMatch || clarificationMatch) {
         if (url.pathname === '/api/atualizacoes') {
           if (req.method !== 'GET') return fail(405,'METHOD_NOT_ALLOWED','A consulta de pacotes é somente leitura.')
