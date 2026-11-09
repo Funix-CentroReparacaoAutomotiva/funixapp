@@ -40,3 +40,9 @@
 .updates-message{color:#236644;border-color:#cbe9d6}
 .updates-placeholder{padding:30px;text-align:center;color:#74869e;font-size:12px}
 @media(max-width:390px){.updates-toolbar .fh-filter{padding:9px 7px}.updates-card-summary{padding:12px 10px}.updates-detail{padding:10px}}
+
+.updates-answer-form{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.updates-answer-form label{display:flex;flex-direction:column;gap:5px;font-weight:650;font-size:12px}
+.updates-answer-form select,.updates-answer-form input{height:40px;width:100%;border:1px solid #d4dfe9;border-radius:7px;background:#fff;padding:7px 9px;font-size:12px;color:#263e59}
+.updates-answer-form small{color:#6f7f92;font-size:10px;line-height:1.5}
+.updates-answer-form .primary-btn:disabled{opacity:.5}
