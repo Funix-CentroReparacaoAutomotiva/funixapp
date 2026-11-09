@@ -205,7 +205,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
             </button>)}
             {!lookupBusy && linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
             <p className="ev-links-hint">A busca só abre uma ficha já cadastrada. Não cria nem vincula Atendimentos, e o Chat continua sujeito à associação confirmada pela Evolution.</p>
-          </section>
+          </section>}
         </div>)}
       </div>}
       {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
