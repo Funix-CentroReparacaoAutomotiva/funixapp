@@ -2,6 +2,11 @@ name: Atendimento vehicle form Chromium
 on:
   pull_request:
     branches: [main]
+# Cancel only superseded PR checks. Never interrupt manual deployments or main pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:
