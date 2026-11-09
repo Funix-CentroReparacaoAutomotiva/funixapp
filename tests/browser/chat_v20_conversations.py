@@ -63,7 +63,7 @@ async def device_case(browser, width, height):
     h = Harness()
     page = None
     context = None
-    state = {"fail_b": True, "fail_list": False, "expire_c": True, "hold_a": width == 390}
+    state = {"fail_b": True, "fail_list": False, "expire_c": True, "hold_a": width == 390, "canonical_id": None}
     release_a = asyncio.Event()
     seen = []
     try:
@@ -93,7 +93,7 @@ async def device_case(browser, width, height):
                                                json={"error": {"code": "CHAT_PROVIDER_UNAVAILABLE"}})
                 assert parse_qs(parsed.query).get("skip", ["0"]) == ["0"]
                 return await route.fulfill(status=200, headers=headers,
-                                           json={"source": "evolution", "items": ROWS, "nextSkip": None,
+                                           json={"source": "evolution", "items": [{**row, **({"atendimentoId": state["canonical_id"]} if row["conversationId"] == A and state["canonical_id"] else {})} for row in ROWS], "nextSkip": None,
                                                  "hiddenField": "NEVER SHOW"})
             matched = re.fullmatch(r"/api/chat/conversations/([0-9a-f-]{36})/messages", path)
             assert matched is not None, path
@@ -114,6 +114,14 @@ async def device_case(browser, width, height):
                 if conversation != A:
                     raise
 
+        async def canonical_history(route):
+            parsed = urlparse(route.request.url)
+            assert route.request.method == "GET"
+            assert parsed.path == f"/api/atendimentos/{state['canonical_id']}/evolution-conversations/{A}/messages"
+            assert parse_qs(parsed.query).get("page") == ["1"]
+            return await route.fulfill(status=200, headers={"Cache-Control": "no-store", "Content-Type": "application/json"}, json=messages_payload(A, 1))
+
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", canonical_history)
         await context.route("**/api/chat/conversations**", mock)
         await page.goto(ORIGIN + "/funil")
         await page.goto(ORIGIN + "/conversas")
@@ -193,6 +201,25 @@ async def device_case(browser, width, height):
         assert all("remoteJid" not in query and "@lid" not in path for _, path, query in seen)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: 503 list recovery, no writes, no external calls, no JS exceptions")
+
+        # A canonical Atendimento exists BEFORE the user opens the conversation.
+        # This uses a local synthetic record; no n8n, Coda, or WhatsApp call.
+        created = await context.request.post(ORIGIN + "/api/atendimentos", headers={"Origin": ORIGIN},
+                                             data={"phone": "+5531999990001", "name": "Atendimento Sintético", "model": "Veículo fictício"})
+        assert created.status == 201
+        state["canonical_id"] = (await created.json())["id"]
+        await page.get_by_role("button", name="Atualizar lista").click()
+        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
+        await select_chat(page, page.locator(".ev-item").filter(has_text="João Sintético"), width)
+        await expect(page.get_by_role("button", name="Abrir Atendimento vinculado · Chat")).to_be_visible()
+        await page.get_by_role("button", name="Abrir Atendimento vinculado · Chat").click()
+        await page.wait_for_url(f"**/atendimentos/{state['canonical_id']}?aba=chat&conversa={A}")
+        await expect(page.locator(".detail-header")).to_contain_text("Atendimento Sintético")
+        await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
+        await expect(page.get_by_text("Texto sintético A 1")).to_be_visible()
+        assert not h.external and not h.page_errors, (h.external, h.page_errors)
+        h.mark(f"{width}px: canonical Coda-linked navigation opens existing Atendimento with Evolution history")
+
     except Exception:
         if page:
             await page.screenshot(path=str(ARTIFACTS / f"{width}-failure.png"))
