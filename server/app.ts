@@ -5,6 +5,7 @@ import{applySuggestedServices}from'./apply-recommendations.ts'
 import{recommendations}from'./diagnosis-recommendations.ts'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
+import { loginRateLimitIdentity, parseTrustedLoginProxies } from './login-rate-limit.ts'
 import type { AtendimentoRepository } from './atendimentos.ts'
 import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
@@ -41,6 +42,7 @@ export interface AppOptions {
   origin?: string
   revision?: string
   now?: () => number
+  trustedLoginProxies?: ReadonlySet<string> // synthetic QA injection; production config is parsed strictly
 }
 
 export function createRequestHandler(options: AppOptions) {
@@ -62,6 +64,8 @@ export function createRequestHandler(options: AppOptions) {
   const expected = scryptSync(configured ? options.password! : randomBytes(32).toString('hex'), salt, 32)
   const sessions = new Map<string, number>()
   const attempts = new Map<string, { count: number; expires: number }>()
+  const trustedLoginProxies = options.trustedLoginProxies ?? parseTrustedLoginProxies(process.env.FUNIX_LOGIN_TRUSTED_PROXY_IPS)
+  const maxAttemptBuckets = 4096
   const duration = 8 * 60 * 60 * 1000
 
   return async (req: IncomingMessage, res: ServerResponse) => {
@@ -98,11 +102,17 @@ export function createRequestHandler(options: AppOptions) {
         }
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ao aplicativo ainda não foi configurado no servidor.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
-        const address = req.socket.remoteAddress ?? 'unknown'
+        const address = loginRateLimitIdentity(req.socket.remoteAddress, req.headers, trustedLoginProxies)
         const previous = attempts.get(address)
         const attempt = previous && previous.expires > now() ? previous : { count: 0, expires: now() + 15 * 60 * 1000 }
         if (attempt.count >= 8) return fail(429, 'LOGIN_RATE_LIMIT', 'Muitas tentativas de acesso. Aguarde 15 minutos.')
         attempt.count += 1
+        // Prevent spoofed or highly distributed addresses from growing memory without bound.
+        if (!attempts.has(address) && attempts.size >= maxAttemptBuckets) {
+          for (const [key, entry] of attempts) if (entry.expires <= now()) attempts.delete(key)
+          // Evict the oldest bucket instead of denying every new visitor under distributed load.
+          if (attempts.size >= maxAttemptBuckets) attempts.delete(attempts.keys().next().value!)
+        }
         attempts.set(address, attempt)
         const body = await readJson(req, 1024)
         const password = body && typeof body === 'object' && 'password' in body ? body.password : null
