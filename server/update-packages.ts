@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { UpdatePackage, UpdatePackageAction, UpdatePackageDecision, UpdatePackageList, UpdatePackageMissingField, UpdatePackageStatus } from '../shared/update-packages.ts'
 import { ServiceError } from './errors.ts'
+import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 
 type Proposal = {
   source: 'gmail' | 'whatsapp' | 'other'
@@ -71,6 +72,7 @@ export class UpdatePackageRepository {
 
   // Internal-only entrypoint: no HTTP route or n8n ingestion is exposed in this increment.
   createProposal(proposal: Proposal, id: string = randomUUID()): UpdatePackage {
+    if (!hasUpdatePackageSchema(this.db)) fail(503,'PACKAGE_STORAGE_DISABLED','Armazenamento de pacotes desativado.')
     validateProposal(proposal)
     if (!uuidPattern.test(id)) fail(400,'PACKAGE_INVALID','Identificador inválido.')
     const snapshotHash = digest(canonical(proposal)), now = this.now()
@@ -84,6 +86,7 @@ export class UpdatePackageRepository {
   }
 
   get(id: string): UpdatePackage {
+    if (!hasUpdatePackageSchema(this.db)) fail(503,'PACKAGE_STORAGE_DISABLED','Armazenamento de pacotes desativado.')
     if (!uuidPattern.test(id)) fail(404,'PACKAGE_NOT_FOUND','Pacote não localizado.')
     const row = this.db.prepare('SELECT * FROM update_packages WHERE id=?').get(id) as PackageRow | undefined
     if (!row) fail(404,'PACKAGE_NOT_FOUND','Pacote não localizado.')
@@ -92,6 +95,7 @@ export class UpdatePackageRepository {
 
   list(view: 'open' | 'closed', query: string): UpdatePackageList {
     if (!['open','closed'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+    if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false}
     const closed = view === 'closed'
     const rows = this.db.prepare(`SELECT * FROM update_packages WHERE
       ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected')"}
