@@ -20,8 +20,10 @@ const allowedParts = new Set(['identity', 'documents', 'commercial'])
 const validEventKey = /^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,119}$/
 
 export class PackageConsolidationError extends Error {
-  constructor(public readonly code: string, message: string) {
+  readonly code: string
+  constructor(code: string, message: string) {
     super(message)
+    this.code = code
     this.name = 'PackageConsolidationError'
   }
 }
