@@ -95,7 +95,7 @@ export class UpdatePackageRepository {
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false,clarificationsEnabled:false}
     const closed = view === 'closed'
     const rows = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
-      ${closed ? "status IN ('executed','rejected','superseded')" : "status NOT IN ('executed','rejected','superseded')"}
+      ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected','superseded')"}
       ORDER BY created_at DESC, id DESC LIMIT 501`).all() as PackageRow[]
     const needle = query.toLocaleLowerCase('pt-BR').trim()
     const filtered = rows.map(map).filter(pkg => !needle || [pkg.title,pkg.summary,pkg.experienceId??'',pkg.plate??'',pkg.source,pkg.sourceReference].some(s=>s.toLocaleLowerCase('pt-BR').includes(needle)))
