@@ -43,3 +43,12 @@ O armazenamento é opt-in por `FUNIX_UPDATES_STORAGE_ENABLED=true` e usa tabelas
 - Implementar executor de ações por item com recibos, confirmação externa e retomada de falhas parciais. Uma aprovação apenas registra `approved_pending_execution`. Esta etapa **não implementa nem habilita o executor**.
 - Conflito provável com a PR #104 em `src/App.tsx` e `server/app.ts`: reconciliar antes do merge.
 - Realizar QA visual mobile/desktop e CI com dados sintéticos. Sem autorizar merge/deploy automaticamente.
+
+## Incremento seguinte — revalidação e preparação local (09/11/2026)
+
+- O contrato de ingestão aceita `replaces` opcional com `parentPackageId`, `clarificationRequestId`, `codaRowId`, `verifiedExperienceId`, `verifiedPlate`. O emissor autenticado precisa **conferir esses identificadores novamente no Coda** antes de emitir esse envelope; o servidor apenas valida a correspondência e a consistência interna, **não consulta o Coda autonomamente**.
+- A API só aceita substituir pacote aberto com complementação auditada, experiência escolhida compatível e mesmas ações originais; registra pacote novo e encerra o antigo como `superseded`, transacionalmente. O pacote substituído permanece no histórico SQLite, mas não aparece em Abertos ou Fechados. A nova proposta exige nova aprovação.
+- A substituição é idempotente por `eventKey`: reenvio idêntico retorna o mesmo pacote; alteração do conteúdo com a mesma chave retorna conflito.
+- O workflow n8n existente (`33N020GyY0IsUSNv`) recebeu nó **Preparar rascunho de pacote (SEM ENVIO)**, que produz objeto `{eventKey,proposal}` para identificação ou dossiê documental, **sem chamadas HTTP**. Execução manual `37407`: XP1945 identificada e rascunho gerado, sem publicação e sem upload; seletores restaurados e workflow desativado.
+- **Ainda não há um pacote único por evento multicanal.** As saídas independentes de identificação e documentos são rascunhos parciais e não devem ser publicadas separadamente. O próximo trabalho deve consolidar todas as propostas de um mesmo e-mail/WhatsApp em **um único pacote**, revalidar contra Coda e arquivos antes da proposta final e assegurar evidências imutáveis por ação.
+- Nenhuma flag produtiva, autorização de escrita, credencial nova ou executor foi habilitado. A ligação real n8n → endpoint assinado e o replanejamento após complementação permanecem pendentes e exigem validação em desenvolvimento.
