@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 import { Notice } from '../ui'
@@ -49,6 +49,13 @@ export function EvolutionConversationReader({
   const listRequest = useRef<AbortController | null>(null)
   const messageRequest = useRef<AbortController | null>(null)
   const loadingMore = useRef(false)
+
+  // O app ocupa uma coluna estreita mesmo no desktop. Ao selecionar um contato,
+  // a lista cede lugar ao histórico, sem deixar a rolagem do contato anterior.
+  useLayoutEffect(() => {
+    const viewport = document.querySelector<HTMLElement>('.app-viewport')
+    if (viewport) viewport.scrollTop = 0
+  }, [selected])
 
   const loadList = useCallback(async (skip: number, controller: AbortController) => {
     try {
@@ -185,7 +192,7 @@ export function EvolutionConversationReader({
       <div><strong>Conversas · somente leitura</strong><small>Evolution · histórico não verificado como completo</small></div>
       <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
     </div>
-    <p className="ev-warning">Piloto de leitura. {linksEnabled ? 'Vínculos manuais com Atendimentos habilitados; histórico permanece na Evolution.' : 'Identificadores temporários que podem expirar após 30 minutos ou reinício. Nenhum Atendimento vinculado automaticamente.'}</p>
+    <p className="ev-warning">Histórico da Evolution em modo somente leitura. {linksEnabled ? 'Atendimentos vinculados podem ser abertos aqui.' : 'Identificadores temporários podem expirar após reinício.'}</p>
     {listBusy && !list.length && <Notice title="Carregando conversas…" />}
     {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
     {!listBusy && available === true && !listError && !list.length && <Notice title="Nenhuma conversa retornada">A consulta não comprova que o histórico está vazio.</Notice>}
@@ -205,7 +212,7 @@ export function EvolutionConversationReader({
     <div className="ev-conversation-detail">
     {!selected && <div className="ev-empty-detail">
       <strong>Selecione uma conversa</strong>
-      <p>Piloto de leitura: o histórico pode ser visualizado aqui. A associação automática ao Atendimento na chegada da mensagem ainda está em desenvolvimento.</p>
+      <p>Selecione um contato para visualizar o histórico de mensagens.</p>
     </div>}
     {selected && <>
       <header className="ev-detail-heading">

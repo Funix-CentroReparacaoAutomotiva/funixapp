@@ -51,8 +51,8 @@ def messages_payload(conversation, page):
 
 
 async def select_chat(page, button, width):
-    """Mobile detail replaces list; navigate back before switching conversations."""
-    if width <= 760 and await page.locator(".ev-reader").evaluate(
+    """O shell FUNIX usa uma única coluna inclusive em monitores largos."""
+    if await page.locator(".ev-reader").evaluate(
         "(el) => el.classList.contains('ev-has-selection')"
     ):
         await page.get_by_role("button", name="Voltar às conversas").click()
@@ -121,6 +121,15 @@ async def device_case(browser, width, height):
             assert parse_qs(parsed.query).get("page") == ["1"]
             return await route.fulfill(status=200, headers={"Cache-Control": "no-store", "Content-Type": "application/json"}, json=messages_payload(A, 1))
 
+        async def canonical_resolution(route):
+            parsed = urlparse(route.request.url)
+            assert route.request.method == "GET"
+            if parsed.path == f"/api/atendimentos/{state['canonical_id']}/evolution-conversation":
+                return await route.fulfill(status=200, headers={"Content-Type": "application/json"}, json={"conversationId": A})
+            return await route.fulfill(status=404, headers={"Content-Type": "application/json"},
+                                       json={"error": {"code": "CHAT_NOT_LINKED", "message": "Sem vínculo canônico"}})
+
+        await context.route("**/api/atendimentos/*/evolution-conversation", canonical_resolution)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", canonical_history)
         await context.route("**/api/chat/conversations**", mock)
         await page.goto(ORIGIN + "/funil")
@@ -168,12 +177,9 @@ async def device_case(browser, width, height):
         await expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute("aria-current", "page")
         await expect(page.get_by_role("button", name="Diagnósticos", exact=True)).to_be_disabled()
         await expect(page.get_by_role("button", name="Mapa", exact=True)).to_be_disabled()
-        if width <= 760:
-            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") == "none"
-            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
-        else:
-            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") != "none"
-            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
+        assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") == "none"
+        assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
+        assert await page.locator(".app-viewport").evaluate("(e) => e.scrollTop") == 0
         await expect(page.locator(".ev-messages li")).to_have_count(50)
         assert await page.evaluate("width => document.documentElement.scrollWidth <= width + 1", width)
         await page.screenshot(path=str(ARTIFACTS / f"{width}-historico.png"))
@@ -183,13 +189,10 @@ async def device_case(browser, width, height):
         assert await page.locator(".ev-messages img, .ev-messages video, .ev-messages audio").count() == 0
         h.mark(f"{width}px: previous page merges without duplicate, media unavailable")
 
-        if width <= 760:
-            await page.get_by_role("button", name="Voltar às conversas").click()
-            await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
-            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") == "none"
-            h.mark(f"{width}px: opened Chat without scrolling and returned to conversation list")
-        else:
-            h.mark("1440px: selected conversation visible beside the list")
+        await page.get_by_role("button", name="Voltar às conversas").click()
+        await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
+        assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") == "none"
+        h.mark(f"{width}px: single-pane conversation opens at top and returns to list")
         state["fail_list"] = True
         await page.get_by_role("button", name="Atualizar lista").click()
         await expect(page.get_by_text("Falha na lista", exact=True)).to_be_visible()
@@ -219,6 +222,27 @@ async def device_case(browser, width, height):
         await expect(page.get_by_text("Texto sintético A 1", exact=True)).to_be_visible()
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: canonical Coda-linked navigation opens existing Atendimento with Evolution history")
+
+        # Funil/direct URL also resolves the canonical link without an explicit
+        # /conversas navigation and must not fall back to the old empty chat.
+        await page.goto(ORIGIN + f"/atendimentos/{state['canonical_id']}?aba=chat")
+        await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
+        await expect(page.get_by_text("Texto sintético A 1", exact=True)).to_be_visible()
+        assert await page.get_by_text("Recebimento WhatsApp ainda não conectado").count() == 0
+        h.mark(f"{width}px: direct Funil navigation resolves canonical Evolution history")
+
+        # Unlinked manually-created record cannot infer a conversation by phone.
+        unlinked = await context.request.post(ORIGIN + "/api/atendimentos",
+                                             headers={"Origin": ORIGIN},
+                                             data={"phone": "+5531999990001", "name": "Registro não vinculado"})
+        assert unlinked.status == 201
+        other_id = (await unlinked.json())["id"]
+        await page.goto(ORIGIN + f"/atendimentos/{other_id}?aba=chat")
+        await expect(page.get_by_text("Conversa da Evolution não vinculada a este Atendimento")).to_be_visible()
+        await expect(page.get_by_role("link", name="Abrir Conversas")).to_be_visible()
+        assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
+        assert not h.external and not h.page_errors, (h.external, h.page_errors)
+        h.mark(f"{width}px: unrelated Atendimento displays explicit safe no-link state")
 
     except Exception:
         if page:
