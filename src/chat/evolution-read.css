@@ -56,3 +56,5 @@
 .ev-unlinked>strong{display:block;margin-bottom:6px}
 .ev-unlinked>p{margin:7px 0;line-height:1.5}
 .ev-unlinked .ev-links{margin-top:10px}
+
+.ev-unlinked .ev-candidate{display:block;width:100%;margin:6px 0;padding:10px;text-align:left;white-space:normal;overflow-wrap:anywhere}

@@ -69,7 +69,14 @@ async def device_case(browser, width, height):
             if path == "/api/atendimentos" and method == "GET":
                 if state["fail_search"]:
                     return await route.fulfill(**response(503, {"error": {"code": "SYNTHETIC_TEMPORARY_ERROR"}}))
-                assert parse_qs(parsed.query).get("limit") == ["20"]
+                parameters = parse_qs(parsed.query)
+                if parameters.get("limit") == ["100"]:
+                    # Navigation fallback looks for real existing records by phone;
+                    # these synthetic manual-link records have no matching PN.
+                    return await route.fulfill(**response(200, {
+                        "items": [], "total": 0, "nextOffset": None, "stages": [],
+                    }))
+                assert parameters.get("limit") == ["20"]
                 return await route.fulfill(**response(200, {
                     "items": RECORDS, "total": 2, "nextOffset": None, "stages": [],
                 }))
