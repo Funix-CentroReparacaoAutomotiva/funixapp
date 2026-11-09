@@ -19,6 +19,7 @@ import {resolveVoiceOption,reviseVoiceComponent} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { UpdatePackageRepository } from './update-packages.ts'
+import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 import type { UpdatePackageDecision } from '../shared/update-packages.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
@@ -131,10 +132,10 @@ export function createRequestHandler(options: AppOptions) {
           const visao=url.searchParams.get('visao')??'open'
           const query=url.searchParams.get('q')??''
           if (!['open','closed'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
-          return send(200,{...updates.list(visao as 'open'|'closed',query),decisionsEnabled:process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true'})
+          return send(200,{...updates.list(visao as 'open'|'closed',query),decisionsEnabled:hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true'})
         }
         if (!decisionMatch || req.method!=='POST') return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
-        if (process.env.FUNIX_UPDATES_DECISIONS_ENABLED!=='true') return fail(503,'PACKAGE_DECISIONS_DISABLED','Aprovações ainda não estão habilitadas.')
+        if (process.env.FUNIX_UPDATES_DECISIONS_ENABLED!=='true' || !hasUpdatePackageSchema(options.atendimentos.db)) return fail(503,'PACKAGE_DECISIONS_DISABLED','Aprovações ainda não estão habilitadas.')
         if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
         const body=await readJson(req,4096)
