@@ -18,6 +18,8 @@ import { ServiceError } from './errors.ts'
 import {resolveVoiceOption,reviseVoiceComponent} from './voice-resolution.ts'
 import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
+import { UpdatePackageRepository } from './update-packages.ts'
+import type { UpdatePackageDecision } from '../shared/update-packages.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
 import type { V20AssociationRepository } from './chat/v20-associations.ts'
@@ -46,6 +48,7 @@ export interface AppOptions {
 export function createRequestHandler(options: AppOptions) {
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
+  const updates = new UpdatePackageRepository(options.atendimentos.db)
   const scenarios = new ScenarioRepository(options.atendimentos.db)
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
@@ -117,6 +120,27 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      // Authenticated, same-origin package decisions, OFF by default.
+      // This endpoint only records a decision; it never calls the ERP, Drive or n8n.
+      if (url.pathname === '/api/atualizacoes' || /^\\/api\\/atualizacoes\\/[0-9a-f-]{36}\\/decisao$/.test(url.pathname)) {
+        const decisionMatch = /^\\/api\\/atualizacoes\\/([0-9a-f-]{36})\\/decisao$/.exec(url.pathname)
+        if (url.pathname === '/api/atualizacoes') {
+          if (req.method !== 'GET') return fail(405,'METHOD_NOT_ALLOWED','A consulta de pacotes é somente leitura.')
+          if ([...url.searchParams.keys()].some(k=>!['visao','q'].includes(k))) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+          const visao=url.searchParams.get('visao')??'open'
+          const query=url.searchParams.get('q')??''
+          if (!['open','closed'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+          return send(200,{...updates.list(visao as 'open'|'closed',query),decisionsEnabled:process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true'})
+        }
+        if (!decisionMatch || req.method!=='POST') return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (process.env.FUNIX_UPDATES_DECISIONS_ENABLED!=='true') return fail(503,'PACKAGE_DECISIONS_DISABLED','Aprovações ainda não estão habilitadas.')
+        if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,4096)
+        if ((sessions.get(cookie)??0)<=now()) return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
+        return send(200,updates.decide(decisionMatch[1]!,body as UpdatePackageDecision,'funix_operator'))
+      }
+
       if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade'){
         const enabled=Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')
         return send(200,{enabled,diagnosisEnabled:enabled&&process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED==='true'})
