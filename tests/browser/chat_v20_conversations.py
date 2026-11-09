@@ -70,7 +70,8 @@ async def device_case(browser, width, height):
             raise AssertionError(f"Unexpected API request: {parsed.path}")
 
         await context.route("**/api/chat/conversations?*", mock)
-        await context.route("**/api/atendimentos/*/evolution-conversation*", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversation", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
         await page.goto(ORIGIN + "/conversas")
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
