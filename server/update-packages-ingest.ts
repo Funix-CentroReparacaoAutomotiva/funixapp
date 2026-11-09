@@ -35,8 +35,8 @@ export function createUpdatePackageIngest(
       chunks.push(part)
     }
     const raw=Buffer.concat(chunks)
-    const expected=createHmac('sha256',secret).update(ts+'.').update(raw).digest()
-    const actual=Buffer.from(signature,'hex')
+    const expected=createHmac('sha256',secret as string).update(String(ts)+'.').update(raw).digest()
+    const actual=Buffer.from(signature as string,'hex')
     if(actual.length!==expected.length || !timingSafeEqual(actual,expected))invalid('PACKAGE_UNAUTHORIZED','Assinatura inválida.',401)
     let payload:unknown
     try{payload=JSON.parse(raw.toString('utf8'))}catch{invalid('INVALID_JSON','JSON inválido.')}
