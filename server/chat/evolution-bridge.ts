@@ -70,6 +70,13 @@ export function createEvolutionChatBridge(
         source: 'evolution',
       }
     },
+    /** Resolve from the canonical active mapping, never from a phone or UI hint. */
+    conversationForAtendimento(atendimentoId: string): { conversationId: string } | null {
+      if (!codaSync) return null
+      const jid = codaSync.resolveUniqueActiveJid(atendimentoId)
+      if (!jid) return null
+      return { conversationId: register(jid) }
+    },
     /** Never disclose a conversation under a different Atendimento's context.
      * The conversationId stays opaque; the canonical Coda mapping is checked
      * server-side at the exact time of the read, not merely in the browser list.
