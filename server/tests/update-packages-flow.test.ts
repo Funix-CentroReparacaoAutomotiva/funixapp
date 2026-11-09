@@ -6,7 +6,21 @@ import { createUpdatePackageSchema } from '../update-packages-schema.ts'
 import { UpdatePackageRepository } from '../update-packages.ts'
 import { prepareGmailPackageForReview } from '../update-packages-orchestrate.ts'
 import type { GmailEventBridgeInput } from '../update-packages-orchestrate.ts'
+import { signReviewAttestation } from '../update-packages-attestation.ts'
+import { triageCommercialEmail } from '../update-packages-commercial.ts'
 
+const reviewSecret='synthetic-review-secret-01234567890123456789'
+const signFixture=(input:GmailEventBridgeInput)=>{
+ const commercial=triageCommercialEmail({messageId:input.message.id,subject:input.message.subject,
+  body:input.message.body,bodyComplete:input.message.bodyComplete,
+  experienceId:input.identity.proposal.experienceId,plate:input.identity.proposal.plate})
+ const attachmentDigests=[{id:'attachment_0',sha256:'a'.repeat(64)}]
+ input.verification!.attachmentDigests=attachmentDigests
+ input.verification!.attestation=signReviewAttestation({eventKey:'gmail:'+input.message.id+':v1',
+   subject:input.message.subject,body:input.message.body??'',attachments:attachmentDigests,
+   fragments:[input.identity,input.documents,commercial.fragment]},input.verification!.reviewId,reviewSecret)
+ return input
+}
 const fixture=():GmailEventBridgeInput=>{
  const msg='abcdef0123456789'
  const proposal=(actions:Array<{id:string,type:'other'|'drive_archive',title:string,detail:string}>)=>({
@@ -29,7 +43,7 @@ const fixture=():GmailEventBridgeInput=>{
   identity:{part:'identity',proposal:proposal([{id:'identity:review',type:'other',title:'Conferir identificacao',detail:'Sem escrita'}])},
   documents:{part:'documents',proposal:proposal([{id:'drive:foto',type:'drive_archive',title:'Arquivar foto',detail:'Depois da aprovacao'}])},
   verification:{bodyReviewed:true,commercialReviewed:true,reviewedAttachmentIds:['attachment_0'],
-    verifiedSourceReference:msg,reviewId:'review:synthetic-001'}
+    verifiedSourceReference:msg,reviewId:'review:synthetic-001',attachmentDigests:[],attestation:null as never}
  }
 }
 test('fluxo sintético: preparo -> armazenamento -> card -> aprovação auditada, sem executor',()=>{
@@ -37,7 +51,7 @@ test('fluxo sintético: preparo -> armazenamento -> card -> aprovação auditada
  try{
   createUpdatePackageSchema(db)
   const repo=new UpdatePackageRepository(db)
-  const prepared=prepareGmailPackageForReview(fixture())
+  const prepared=prepareGmailPackageForReview(signFixture(fixture()),reviewSecret)
   assert.equal(prepared.status,'READY_FOR_SIGNED_INGEST')
   if(prepared.status!=='READY_FOR_SIGNED_INGEST')return
   assert.equal(prepared.canPublish,false)
@@ -57,7 +71,7 @@ test('fluxo sintético: preparo -> armazenamento -> card -> aprovação auditada
 test('indício de autorização não chega ao armazenamento sem nova validação comercial',()=>{
  const input=fixture()
  input.message.body='Autorizado R$ 800,00 conforme documento.'
- const prepared=prepareGmailPackageForReview(input)
+ const prepared=prepareGmailPackageForReview(signFixture(input),reviewSecret)
  assert.equal(prepared.status,'NEEDS_REVIEW')
  if(prepared.status==='NEEDS_REVIEW')assert.ok(prepared.pending.includes('COMMERCIAL_REPLAN_REQUIRED'))
 })
