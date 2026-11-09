@@ -50,6 +50,15 @@ def messages_payload(conversation, page):
             "consistency": "offset-not-snapshot", "historyComplete": "unknown"}
 
 
+async def select_chat(page, button, width):
+    """Mobile detail replaces list; navigate back before switching conversations."""
+    if width <= 760 and await page.locator(".ev-reader").evaluate(
+        "(el) => el.classList.contains('ev-has-selection')"
+    ):
+        await page.get_by_role("button", name="Voltar às conversas").click()
+    await button.click()
+
+
 async def device_case(browser, width, height):
     h = Harness()
     page = None
@@ -121,9 +130,9 @@ async def device_case(browser, width, height):
         second = page.locator(".ev-item").filter(has_text="+5531999990002")
         third = page.locator(".ev-item").filter(has_text="Contato não identificado")
         if state["hold_a"]:
-            await first.click()
+            await select_chat(page, first, width)
             await expect(page.get_by_text("Carregando mensagens…", exact=True)).to_be_visible()
-            await second.click()
+            await select_chat(page, second, width)
             await expect(page.get_by_text("A Evolution está indisponível ou não respondeu.", exact=False)).to_be_visible()
             state["hold_a"] = False
             release_a.set()
@@ -131,7 +140,7 @@ async def device_case(browser, width, height):
             assert "Texto sintético A" not in await page.locator(".ev-reader").inner_text()
             h.mark("390px: late request from conversation A cannot overwrite B")
         else:
-            await second.click()
+            await select_chat(page, second, width)
             await expect(page.get_by_text("A Evolution está indisponível ou não respondeu.", exact=False)).to_be_visible()
         state["fail_b"] = False
         await page.get_by_role("button", name="Atualizar mensagens").click()
@@ -139,14 +148,24 @@ async def device_case(browser, width, height):
         assert "Texto sintético A" not in await page.locator(".ev-reader").inner_text()
         h.mark(f"{width}px: provider 503 is not empty history; manual recovery works")
 
-        await third.click()
+        await select_chat(page, third, width)
         await expect(page.get_by_text("Esta conversa temporária expirou.", exact=False)).to_be_visible()
         state["expire_c"] = False
         await page.get_by_role("button", name="Atualizar mensagens").click()
         await expect(page.get_by_text("Nenhuma mensagem retornada", exact=True)).to_be_visible()
         h.mark(f"{width}px: expired conversation differs from empty history")
 
-        await first.click()
+        await select_chat(page, first, width)
+        await expect(page.get_by_role("navigation", name="Visões da conversa")).to_be_visible()
+        await expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute("aria-current", "page")
+        await expect(page.get_by_role("button", name="Diagnósticos", exact=True)).to_be_disabled()
+        await expect(page.get_by_role("button", name="Mapa", exact=True)).to_be_disabled()
+        if width <= 760:
+            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") == "none"
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
+        else:
+            assert await page.locator(".ev-conversations-pane").evaluate("(e) => getComputedStyle(e).display") != "none"
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") != "none"
         await expect(page.locator(".ev-messages li")).to_have_count(50)
         assert await page.evaluate("width => document.documentElement.scrollWidth <= width + 1", width)
         await page.screenshot(path=str(ARTIFACTS / f"{width}-historico.png"))
@@ -156,6 +175,13 @@ async def device_case(browser, width, height):
         assert await page.locator(".ev-messages img, .ev-messages video, .ev-messages audio").count() == 0
         h.mark(f"{width}px: previous page merges without duplicate, media unavailable")
 
+        if width <= 760:
+            await page.get_by_role("button", name="Voltar às conversas").click()
+            await expect(page.get_by_text("João Sintético", exact=True)).to_be_visible()
+            assert await page.locator(".ev-conversation-detail").evaluate("(e) => getComputedStyle(e).display") == "none"
+            h.mark(f"{width}px: opened Chat without scrolling and returned to conversation list")
+        else:
+            h.mark("1440px: selected conversation visible beside the list")
         state["fail_list"] = True
         await page.get_by_role("button", name="Atualizar lista").click()
         await expect(page.get_by_text("Falha na lista", exact=True)).to_be_visible()
