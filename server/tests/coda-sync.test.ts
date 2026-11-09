@@ -164,3 +164,26 @@ test('canonical Evolution history is never exposed under another Atendimento or 
     assert.deepEqual(seen, [jid, jid])
   } finally { f.db.close() }
 })
+
+test('Coda sync rejects mismatched verified PN identity before any insert', () => {
+  const f = fixture()
+  try {
+    assert.throws(() => f.sync.sync({ ...synthetic('i-SYNTH_MISMATCH'), phoneE164: '+5531888880000' }), isCode('CODA_SYNC_INVALID_EVENT'))
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n), 0)
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM coda_sync_receipts').get()!.n), 0)
+    assert.equal(f.sync.sync(synthetic('i-SYNTH_MATCH')).state, 'created')
+  } finally { f.db.close() }
+})
+
+test('direct Funil canonical lookup fails closed for zero or multiple active conversations', () => {
+  const f = fixture()
+  try {
+    const canonical = f.sync.sync(synthetic('i-SYNTH_A'))
+    assert.equal(f.sync.resolveUniqueActiveJid(canonical.atendimentoId), '5531999990001@s.whatsapp.net')
+    assert.equal(f.sync.resolveUniqueActiveJid(randomUUID()), null)
+    // Distinct verified PN number, same canonical Coda row: no arbitrary pick.
+    const second = { ...synthetic('i-SYNTH_A','evo:synthetic:other-pn','5531888880000@s.whatsapp.net',1794144010), phoneE164:'+5531888880000' }
+    assert.equal(f.sync.sync(second).atendimentoId, canonical.atendimentoId)
+    assert.equal(f.sync.resolveUniqueActiveJid(canonical.atendimentoId), null)
+  } finally { f.db.close() }
+})
