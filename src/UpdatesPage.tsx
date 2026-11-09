@@ -32,7 +32,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
   const [answers,setAnswers]=useState<Record<string,string>>({})
   useEffect(()=>{
     const controller=new AbortController()
-    setLoading(true);setError('');setNotice('')
+    setLoading(true);setError('')
     const timer=setTimeout(()=>{
       const search=new URLSearchParams({visao:view,q:query})
       api<UpdatePackageList>(`/api/atualizacoes?${search}`,{signal:controller.signal})
@@ -88,13 +88,13 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     <div className="updates-toolbar">
       <label className="fh-search"><span aria-hidden="true">⌕</span>
         <input aria-label="Buscar pacotes por experiência, placa ou origem" value={query}
-          onChange={e=>setQuery(e.target.value)} placeholder="Buscar experiência, placa ou origem…" autoComplete="off" />
+          onChange={e=>{setNotice('');setQuery(e.target.value)}} placeholder="Buscar experiência, placa ou origem…" autoComplete="off" />
       </label>
-      <button className="fh-filter" onClick={()=>setRefresh(v=>v+1)}>Atualizar</button>
+      <button className="fh-filter" onClick={()=>{setNotice('');setRefresh(v=>v+1)}}>Atualizar</button>
     </div>
     <div className="updates-switch" role="group" aria-label="Situação dos pacotes">
-      <button aria-pressed={view==='open'} className={view==='open'?'selected':''} onClick={()=>{setView('open');setExpanded(null)}}>Abertos</button>
-      <button aria-pressed={view==='closed'} className={view==='closed'?'selected':''} onClick={()=>{setView('closed');setExpanded(null)}}>Fechados</button>
+      <button aria-pressed={view==='open'} className={view==='open'?'selected':''} onClick={()=>{setNotice('');setView('open');setExpanded(null)}}>Abertos</button>
+      <button aria-pressed={view==='closed'} className={view==='closed'?'selected':''} onClick={()=>{setNotice('');setView('closed');setExpanded(null)}}>Fechados</button>
     </div>
     {notice&&<p className="updates-message" role="status">{notice}</p>}
     {error&&<p className="updates-error" role="alert">{error}</p>}
