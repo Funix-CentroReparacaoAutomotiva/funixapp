@@ -1,5 +1,6 @@
 import { createApp } from './app.ts'
 import { openDatabase } from './database.ts'
+import { createUpdatePackageSchema } from './update-packages-schema.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { loadIngestOptions } from './chat/ingest-config.ts'
 import { loadEvolutionChat } from './chat/evolution-config.ts'
@@ -19,6 +20,8 @@ if (process.env.NODE_ENV === 'production') {
 const databasePath = process.env.FUNIX_DATABASE_PATH ?? (process.env.NODE_ENV === 'production' ? '' : '.runtime/funix.sqlite')
 if (!databasePath || (process.env.NODE_ENV === 'production' && databasePath === ':memory:')) throw new Error('Configure FUNIX_DATABASE_PATH para um arquivo em armazenamento persistente autorizado.')
 const db = openDatabase(databasePath)
+// Independent opt-in schema; V14 migration history and importers remain unchanged.
+if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
 const atendimentos = new AtendimentoRepository(db)
 // Separate, OFF-by-default gate. V14 schema_migrations stays unchanged for image rollback.
 // SQLite DDL is additive and transactional; no legacy chat/history mutations.
