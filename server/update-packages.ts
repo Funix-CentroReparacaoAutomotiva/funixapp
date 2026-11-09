@@ -65,7 +65,9 @@ function map(row: PackageRow): UpdatePackage {
 }
 
 export class UpdatePackageRepository {
-  constructor(private readonly db: DatabaseSync, private readonly now: () => string = () => new Date().toISOString()) {}
+  private readonly db: DatabaseSync
+  private readonly now: () => string
+  constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) { this.db=db; this.now=now }
 
   // Internal-only entrypoint: no HTTP route or n8n ingestion is exposed in this increment.
   createProposal(proposal: Proposal, id: string = randomUUID()): UpdatePackage {
