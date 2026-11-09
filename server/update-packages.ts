@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import type { UpdatePackage, UpdatePackageAction, UpdatePackageDecision, UpdatePackageList, UpdatePackageMissingField, UpdatePackageStatus, UpdatePackageIngest, UpdatePackageClarification, UpdatePackageProposal } from '../shared/update-packages.ts'
+import type { UpdatePackage, UpdatePackageDecision, UpdatePackageList, UpdatePackageStatus, UpdatePackageIngest, UpdatePackageClarification, UpdatePackageProposal } from '../shared/update-packages.ts'
 import { ServiceError } from './errors.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 
