@@ -110,7 +110,8 @@ export function createRequestHandler(options: AppOptions) {
         // Prevent spoofed or highly distributed addresses from growing memory without bound.
         if (!attempts.has(address) && attempts.size >= maxAttemptBuckets) {
           for (const [key, entry] of attempts) if (entry.expires <= now()) attempts.delete(key)
-          if (attempts.size >= maxAttemptBuckets) return fail(503, 'LOGIN_RATE_LIMIT_CAPACITY', 'Acesso temporariamente indisponível. Tente novamente mais tarde.')
+          // Evict the oldest bucket instead of denying every new visitor under distributed load.
+          if (attempts.size >= maxAttemptBuckets) attempts.delete(attempts.keys().next().value!)
         }
         attempts.set(address, attempt)
         const body = await readJson(req, 1024)
