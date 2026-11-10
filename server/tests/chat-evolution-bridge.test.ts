@@ -11,12 +11,13 @@ import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-syn
 const origin = 'http://localhost:5173', password = 'synthetic-owner-password'
 const jid = '000000000001@s.whatsapp.net'
 
-function fixture(enabled = true, fail = false, canonical = false) {
+function fixture(enabled = true, fail = false, canonical = false, sendEnabled = false) {
   const db = openDatabase(':memory:')
   if (canonical) createCodaEventSchema(db)
   const sync = canonical ? new CodaEventSyncRepository(db) : undefined
   let clock = Date.parse('2026-11-07T10:00:00Z')
   const calls: string[] = []
+  const sendCalls: Array<{ jid: string; text: string }> = []
   const bridge = createEvolutionChatBridge({
     async findChatsPage() {
       calls.push('chats')
@@ -41,7 +42,10 @@ function fixture(enabled = true, fail = false, canonical = false) {
         nextPage: null, consistency: 'offset-not-snapshot' as const,
       }
     },
-  }, () => clock, undefined, sync)
+  }, () => clock, undefined, sync, sendEnabled ? async (requested, text) => {
+    sendCalls.push({ jid: requested, text })
+    return { messageId: 'SYNTHETIC-SEND' }
+  } : undefined)
   const handler = createRequestHandler({
     atendimentos: new AtendimentoRepository(db), password, origin, voiceProvider: null,
     now: () => clock, evolutionChat: enabled ? bridge : undefined,
@@ -66,7 +70,7 @@ function fixture(enabled = true, fail = false, canonical = false) {
     assert.equal(res.status, 200)
     return res.headers.get('set-cookie')!.split(';')[0]!
   }
-  return { db, sync, calls, request, login, advance: (ms: number) => { clock += ms } }
+  return { db, sync, calls, sendCalls, request, login, advance: (ms: number) => { clock += ms } }
 }
 
 test('Chat bridge disabled: existing routes and capabilities are unchanged', async () => {
@@ -265,5 +269,56 @@ test('direct Funil resolver stays unavailable without both Evolution and canonic
       assert.equal((await f.request('/api/atendimentos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/evolution-conversation',cookie)).status,404)
       assert.deepEqual(f.calls,[])
     } finally {f.db.close()}
+  }
+})
+
+test('text send is off by default; canonical send has exact Atendimento/JID binding and a single provider call', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  process.env.FUNIX_EVOLUTION_SEND_ENABLED = 'true'
+  const f = fixture(true, false, true, true)
+  try {
+    const event = { version: 1, source: 'coda', eventId: 'evo:synthetic:send',
+      codaRowId: 'i-TEXT_SEND_A', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }
+    const atendimentoId = f.sync!.sync(event).atendimentoId
+    const cookie = await f.login()
+    const listing = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = listing.items[0].conversationId
+    const path = `/api/atendimentos/${atendimentoId}/evolution-conversations/${conversationId}/send-text`
+    assert.equal((await f.request(path, '', 'POST', { text: 'oi' })).status, 401)
+    assert.equal((await f.request(path, cookie, 'GET')).status, 405)
+    assert.equal((await f.request(path + '?remoteJid=spoof', cookie, 'POST', { text: 'oi' })).status, 400)
+    assert.equal((await f.request(path, cookie, 'POST', { text: '' })).status, 400)
+    assert.equal((await f.request(path, cookie, 'POST', { text: 'oi', jid: 'spoof@s.whatsapp.net' })).status, 400)
+    assert.equal((await f.request(path.replace(atendimentoId, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), cookie, 'POST', { text: 'oi' })).status, 404)
+    assert.deepEqual(f.sendCalls, [])
+    const sent = await f.request(path, cookie, 'POST', { text: 'Olá pelo FunixApp' })
+    assert.equal(sent.status, 200)
+    assert.deepEqual(await sent.json(), { state: 'accepted', messageId: 'SYNTHETIC-SEND' })
+    assert.deepEqual(f.sendCalls, [{ jid, text: 'Olá pelo FunixApp' }])
+    f.sync!.sync({ ...event, eventId: 'evo:synthetic:send-switched',
+      codaRowId: 'i-TEXT_SEND_B', occurredAt: 1794144050 })
+    assert.equal((await f.request(path, cookie, 'POST', { text: 'não enviar' })).status, 404)
+    assert.equal(f.sendCalls.length, 1)
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
+    f.db.close()
+  }
+})
+
+test('sending stays disabled despite injected sender while runtime feature flag is off', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  const f = fixture(true, false, true, true)
+  try {
+    const cookie = await f.login()
+    const res = await f.request('/api/atendimentos/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/evolution-conversations/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/send-text', cookie, 'POST', {text:'olá'})
+    assert.equal(res.status, 503)
+    assert.deepEqual(f.sendCalls, [])
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
+    f.db.close()
   }
 })
