@@ -88,3 +88,29 @@ test('não assina pacote que omite a conferência comercial',async()=>{
  })),/N8N_DRAFT_PROPOSAL_MISMATCH/)
  assert.equal(sent,false)
 })
+
+test('ambiente atual designado admite somente host FUNIX explícito e bloqueia operação por padrão',async()=>{
+ let calls=0
+ const exact='https://app.funix.com.br/api/integrations/updates/packages'
+ const sender:StagingSender=async request=>{
+  calls++
+  assert.equal(request.url,exact)
+  assert.equal(request.redirect,'error')
+  assert.ok(JSON.parse(request.body).proposal.missingFields.some((f:{key:string})=>f.key==='commercialReview'))
+  return {status:202,body:validReceipt}
+ }
+ const config={...settings(sender),endpoint:exact,expectedOrigin:'https://app.funix.com.br',
+  isolatedEnvironment:false,currentFunixHomologation:true}
+ assert.equal((await deliverStagingGmailDraft(draft,config)).status,'awaiting_review')
+ assert.equal(calls,1)
+ for(const invalid of [
+  {...config,enabled:false},
+  {...config,currentFunixHomologation:false},
+  {...config,isolatedEnvironment:true},
+  {...config,endpoint:'https://app.funix.com.br.evil.example/api/integrations/updates/packages'},
+  {...config,endpoint:'https://api.funix.com.br/api/integrations/updates/packages'},
+  {...config,endpoint:'http://app.funix.com.br/api/integrations/updates/packages'},
+  {...config,endpoint:'https://app.funix.com.br/api/integrations/updates/packages?preview=1'}
+ ])await assert.rejects(()=>deliverStagingGmailDraft(draft,invalid),/STAGING_(ENDPOINT_INVALID|TRANSPORT_DISABLED)/)
+ assert.equal(calls,1)
+})
