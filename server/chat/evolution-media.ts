@@ -94,7 +94,7 @@ export function createMediaGateway(config:{origin:string;apiKey:string;instance:
       const row=obj(envelope),key=obj(row.key),messageBody=obj(row.message)
       const remoteJid=key.remoteJid
       if(typeof key.id!=='string'||key.id.length<1||key.id.length>200||
-        typeof remoteJid!=='string'||!remoteJid.endsWith('@s.whatsapp.net')||
+        typeof remoteJid!=='string'||!/^(?:[0-9]{8,15}@s\.whatsapp\.net|[A-Za-z0-9_-]{1,100}@lid)$/.test(remoteJid)||
         !['image','video','audio'].includes(kind))throw Error('MEDIA_INVALID')
       // The caller authorizes the full provider record against the canonical JID.
       const response=await post('/chat/getBase64FromMediaMessage/'+config.instance,{
