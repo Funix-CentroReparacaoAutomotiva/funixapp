@@ -109,6 +109,7 @@ test('ambiente atual designado admite somente host FUNIX explícito e bloqueia o
   {...config,isolatedEnvironment:true},
   {...config,endpoint:'https://app.funix.com.br.evil.example/api/integrations/updates/packages'},
   {...config,endpoint:'https://api.funix.com.br/api/integrations/updates/packages'},
+  {...config,endpoint:'https://app.funix.com.br:8443/api/integrations/updates/packages',expectedOrigin:'https://app.funix.com.br:8443'},
   {...config,endpoint:'http://app.funix.com.br/api/integrations/updates/packages'},
   {...config,endpoint:'https://app.funix.com.br/api/integrations/updates/packages?preview=1'}
  ])await assert.rejects(()=>deliverStagingGmailDraft(draft,invalid),/STAGING_(ENDPOINT_INVALID|TRANSPORT_DISABLED)/)
