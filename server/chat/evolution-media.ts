@@ -75,12 +75,13 @@ export function createMediaGateway(config:{origin:string;apiKey:string;instance:
       const caption=item.caption??''
       if(typeof caption!=='string'||[...caption].length>1024||/[\u0000-\u001f\u007f]/.test(caption))
         throw Error('MEDIA_INVALID')
-      const number=jid.split('@')[0],data='data:'+item.mimeType+';base64,'+item.base64
+      const number=jid.split('@')[0],data=item.base64 // Evolution accepts raw base64; do not prepend a data URL
       const response=item.kind==='audio'
         ? await post('/message/sendWhatsAppAudio/'+config.instance,{number,audio:data})
         : await post('/message/sendMedia/'+config.instance,{
           number,mediatype:item.kind,mimetype:item.mimeType,media:data,
-          fileName:item.kind==='image'?'imagem.jpg':'video.mp4',caption})
+          fileName:({ 'image/jpeg':'foto.jpg','image/png':'foto.png','image/webp':'foto.webp',
+            'video/mp4':'video.mp4','video/webm':'video.webm' } as Record<string,string>)[item.mimeType],caption})
       const key=response.key && typeof response.key==='object'?obj(response.key):null
       const nested=response.data && typeof response.data==='object'?obj(response.data):null
       const info=nested?.Info&&typeof nested.Info==='object'?obj(nested.Info):null
