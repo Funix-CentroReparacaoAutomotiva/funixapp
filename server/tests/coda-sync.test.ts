@@ -34,7 +34,7 @@ test('Coda sync: one canonical Coda row, replay receipt, same row with another m
     assert.equal(f.atendimentos.get(first.atendimentoId).phone, '+5531999990001')
     assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM atendimentos').get()!.n),1)
     assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM coda_sync_receipts').get()!.n),2)
-    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,14)
+    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,15)
   } finally { f.db.close() }
 })
 
