@@ -55,7 +55,7 @@ test('media rejects MIME spoof, invalid signature, too large, bad provider and n
 })
 
 test('received MP4 video is fetched without conversion, preserving provider envelope',async()=>{
-  let posted: Record<string,unknown>|null=null
+  let posted: Record<string,unknown>={}
   const gateway=createMediaGateway({origin,apiKey:key,instance,fetcher:async(_input,init)=>{
     posted=JSON.parse(String(init?.body)) as Record<string,unknown>
     return new Response(JSON.stringify({base64:mp4}),{status:200})
