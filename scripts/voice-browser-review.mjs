@@ -79,7 +79,7 @@ try{
    await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='false')
    await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='true',null,{timeout:12000})
    const stored=f.scenarios.list(f.at.id)[0]?.negotiationDraft
-   assert(stored?.mode==='adjust'&&stored.value==='123,45','voice capture requires confirmed financial autosave')
+   assert(stored?.mode==='discount'&&stored.value==='123,45','voice capture requires confirmed financial autosave')
   }
   mode='compact'
   await record(page)
