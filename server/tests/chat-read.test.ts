@@ -103,7 +103,7 @@ test('Chat GET validates UUID/query/cursor, rejects writes and never exposes ing
       assert.equal((await f.request(route, cookie)).status, 404)
       assert.equal((await f.request(route, cookie, 'POST', {})).status, route === '/api/integrations/whatsapp/events' ? 404 : 405)
     }
-    assert.equal(f.db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 14)
+    assert.equal(f.db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 15)
   } finally { f.db.close() }
 })
 

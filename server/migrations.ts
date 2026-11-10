@@ -248,7 +248,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       PRIMARY KEY(atendimento_id,idempotency_key)
     );
   `)},
-  {version:14,apply:createChatSchema}
+  {version:14,apply:createChatSchema},
+  // Scenario-local drafts are separate from immutable emitted budget snapshots.
+  {version:15,apply:db=>db.exec(`ALTER TABLE scenarios ADD COLUMN negotiation_draft_json TEXT NOT NULL DEFAULT '{"mode":"none","value":""}';`)}
 ]
 
 export function migrate(db: DatabaseSync) {

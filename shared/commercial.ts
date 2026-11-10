@@ -36,6 +36,7 @@ export interface Scenario {
   pieceFlags: Record<string, boolean>; serviceFlags: Record<string, boolean>
   componentFlags: Record<string, boolean>
   deadline?: import('./budget-terms.ts').ScenarioDeadline
+  negotiationDraft?: {mode:'none'|'discount'|'adjust';value:string}
   serviceConfirmations?: Record<string,string>
 }
 export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {

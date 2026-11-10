@@ -62,22 +62,36 @@ async def device_case(browser,device,viewport):
   confirmations=[];page.on('request',lambda r:confirmations.append(r.post_data_json)if r.method=='POST'and r.url==ORIGIN+base+'/orcamentos'else None)
   await page.evaluate("()=>{window.revoked=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revoked.push(url);revoke(url)}}")
   async def begin():
-   await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(review).to_be_visible();await expect(review.locator('iframe')).to_be_visible();await expect(review.get_by_role('checkbox')).to_have_count(0)
+   await finance.get_by_role('button',name='Emitir',exact=True).click()
+   await expect(review).to_be_visible()
+   if device=='desktop':await expect(review.locator('iframe')).to_be_visible()
+   else:
+    await expect(review.locator('iframe')).to_have_count(0)
+    await expect(review.get_by_text('Prévia pronta.')).to_be_visible()
+   await expect(review.get_by_role('checkbox')).to_have_count(0)
   async def download(action):
    async with page.expect_download()as d:await action()
    downloaded=await d.value;path=await downloaded.path();return downloaded.suggested_filename,path.read_bytes()
   async def sql(query):
    with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:return db.execute(query).fetchone()[0]
   before=(await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))
-  await begin();assert not downloads;preview_url=await review.locator('iframe').get_attribute('src');assert preview_url.startswith('blob:')
+  await begin();assert not downloads;preview_url=await review.get_by_role('link',name='abrir prévia em outra aba').get_attribute('href');assert preview_url.startswith('blob:')
   await shot('previa-pdf');assert len(await get(base+'/orcamentos'))==1
-  async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
-  popup=await popup_event.value;assert popup.url.startswith('blob:');await popup.close();assert not downloads
-  h.mark(device+': mobile fallback opens the existing PDF blob without another render or automatic download')
+  if device=='desktop':
+   async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
+   popup=await popup_event.value;await popup.wait_for_url('blob:**');await popup.close();assert not downloads
+  else:
+   name,pdf_bytes=await download(lambda:review.get_by_role('link',name='Baixar prévia PDF').click())
+   assert name=='FUNIX - Prévia do orçamento.pdf'
+   assert pdf_bytes.startswith(b'%PDF-')and b'%%EOF'in pdf_bytes[-1024:]
+   assert len(downloads)==1
+   downloads.clear() # Subsequent assertions count only actual issued-budget downloads
+  assert len(await get(base+'/orcamentos'))==1
+  h.mark(device+': explicit desktop viewer or mobile preview download does not emit or reserve a quote')
   await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();assert len(await get(base+'/orcamentos'))==1
   assert (await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))==before
-  await page.wait_for_function('(url)=>window.revoked.includes(url)',arg=preview_url)
-  h.mark(device+': actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable')
+  if device=='desktop':await page.wait_for_function('(url)=>window.revoked.includes(url)',arg=preview_url)
+  h.mark(device+': mobile tab or desktop modal PDF preview does not issue a document; Back retains draft')
   # Lost temporary-PDF response never creates a commercial reservation.
   async def lose_preview(route):await route.abort('failed')
   await page.route('**/previa-pdf',lose_preview);await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('Tente Emitir novamente');await page.unroute('**/previa-pdf',lose_preview);assert len(await get(base+'/orcamentos'))==1 and await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1 and not downloads
@@ -156,11 +170,13 @@ async def device_case(browser,device,viewport):
   await page.reload();await expect(page.locator('.scenario-trigger')).to_be_enabled();await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 3',exact=True).click();await expect(finance.locator('.summary .deadline span')).to_have_text('—');await shot('prazo-indisponivel')
   h.mark(device+': an automatic deadline with missing capacity displays an em dash, never zero or a stale promise')
   with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:
-   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==12;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
+   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==15;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
   assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not h.external and not h.page_errors,(h.external,h.page_errors)
-  h.mark(device+': V12 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
+  h.mark(device+': V15 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
  except Exception as error:
-  if page:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')))
+  if page:
+   try:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')),timeout=3000)
+   except Exception:pass
   h.results.append({'name':device+': failure','pass':False,'error':str(error),'traceback':traceback.format_exc()});raise
  finally:
   (ARTIFACTS/(device+'-resultados.json')).write_text(json.dumps({'synthetic':True,'device':device,'results':h.results,'external':h.external,'pageErrors':h.page_errors},ensure_ascii=False,indent=2)+'\n')
