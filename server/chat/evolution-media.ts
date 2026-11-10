@@ -35,7 +35,10 @@ export function validateMedia(kind: MediaKind, mime: string, base64: string): Bu
 async function jsonResponse(response: Response): Promise<Record<string,unknown>> {
   if (![200,201].includes(response.status)) {
     await response.body?.cancel().catch(() => undefined)
-    throw Error('MEDIA_PROVIDER_REJECTED')
+    // Keep provider error bodies private; expose only a bounded status category.
+    throw Error(response.status === 413 ? 'MEDIA_PROVIDER_TOO_LARGE' :
+      response.status === 408 || response.status === 504 ? 'MEDIA_PROVIDER_TIMEOUT' :
+      'MEDIA_PROVIDER_REJECTED')
   }
   if (!response.body) throw Error('MEDIA_PROVIDER_INVALID')
   const reader=response.body.getReader(),parts:Uint8Array[]=[]
@@ -96,22 +99,34 @@ export function createMediaGateway(config:{origin:string;apiKey:string;instance:
       if(typeof key.id!=='string'||key.id.length<1||key.id.length>200||
         typeof remoteJid!=='string'||!/^(?:[0-9]{8,15}@s\.whatsapp\.net|[A-Za-z0-9_-]{1,100}@lid)$/.test(remoteJid)||
         !['image','video','audio'].includes(kind))throw Error('MEDIA_INVALID')
-      // The caller authorizes the full provider record against the canonical JID.
+      // Read the trusted original MIME before calling Evolution. An already
+      // compatible MP4 must not be transcoded: conversion can fail/timeout
+      // independently of the WhatsApp media being present.
+      const mediaMeta=typeof row.messageType==='string' &&
+        messageBody[row.messageType] && typeof messageBody[row.messageType]==='object'
+        ? obj(messageBody[row.messageType]) : null
+      const originalMime=typeof mediaMeta?.mimetype==='string'
+        ? mediaMeta.mimetype.split(';')[0]!.trim().toLowerCase() : ''
+      // Do not force transcoding merely because the message is a video.
+      // Existing MP4/WebM are passed through; browser codec support is a
+      // separate concern from media retrieval.
       const response=await post('/chat/getBase64FromMediaMessage/'+config.instance,{
-        message:{key,messageType:row.messageType,message:messageBody},convertToMp4:kind==='video'})
+        message:{key,messageType:row.messageType,message:messageBody},convertToMp4:false})
       const body=response.data&&typeof response.data==='object'?obj(response.data):response
       const data=body.base64
       if(typeof data!=='string')throw Error('MEDIA_PROVIDER_INVALID')
       const match=/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/s.exec(data)
-      const mediaMeta=typeof row.messageType==='string' &&
-        messageBody[row.messageType] && typeof messageBody[row.messageType]==='object'
-        ? obj(messageBody[row.messageType]) : null
       const providerMime=typeof body.mimetype==='string'?body.mimetype:null
-      const originalMime=typeof mediaMeta?.mimetype==='string'?mediaMeta.mimetype:null
-      const mime=(providerMime??match?.[1]??originalMime??'').split(';')[0]!.trim().toLowerCase()
+      const mime=(providerMime??match?.[1]??originalMime).split(';')[0]!.trim().toLowerCase()
       const base64=match?match[2]!:data
-      if(!limits[kind].includes(mime))throw Error('MEDIA_PROVIDER_INVALID')
-      validateMedia(kind,mime,base64)
+      if(!limits[kind].includes(mime))throw Error('MEDIA_FORMAT_UNSUPPORTED')
+      // Separate provider MIME/signature incompatibilities from transport errors.
+      try { validateMedia(kind,mime,base64) }
+      catch (cause) {
+        if(cause instanceof Error && cause.message==='MEDIA_INVALID')
+          throw Error('MEDIA_CONTENT_INVALID')
+        throw cause
+      }
       return {kind,mimeType:mime,base64}
     },
   }
