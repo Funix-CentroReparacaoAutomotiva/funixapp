@@ -110,6 +110,7 @@ async def device_case(browser, width, height):
         await context.route("**/api/chat/conversations?*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversation", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/messages/*/media*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-text", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
         await page.goto(ORIGIN + "/conversas")
