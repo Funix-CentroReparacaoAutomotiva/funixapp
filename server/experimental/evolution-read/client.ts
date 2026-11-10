@@ -233,6 +233,30 @@ export class EvolutionReadPoc {
     return { items: reconcileReadBatches(items), currentPage, reportedTotal, reportedPages,
       nextPage: items.length === 50 && page < 10000 ? page + 1 : null, consistency: 'offset-not-snapshot' }
   }
+  /** Obtain a full provider record only after verifying the requested JID and ID.
+   * The caller must have authenticated and authorized the canonical Atendimento.
+   * Returned data is strictly server-to-server; NEVER serialize it to the browser.
+   */
+  async findMediaEnvelope(remoteJid:string,messageId:string,page:number):Promise<{
+    envelope:Record<string,unknown>;kind:'image'|'video'|'audio';bytes:number|null
+  }|null>{
+    const requested=input(()=>jid(remoteJid))
+    const p=input(()=>integer(page,1,1000))
+    if(typeof messageId!=='string'||messageId.length<1||messageId.length>200)return fail('INPUT')
+    const raw=object(await this.request('findMessages',{
+      where:{key:{remoteJid:requested,remoteJidAlt:requested}},page:p,offset:50,
+    }))
+    const messages=object(raw.messages)
+    if(!Array.isArray(messages.records)||messages.records.length>50||messages.currentPage!==p)return fail()
+    for(const value of messages.records){
+      const parsed=this.message(value,requested)
+      if(parsed.messageId!==messageId)continue
+      if(!['image','video','audio'].includes(parsed.kind)||!parsed.media)return null
+      const row=object(value)
+      return {envelope:row,kind:parsed.kind as 'image'|'video'|'audio',bytes:parsed.media.bytes}
+    }
+    return null
+  }
   private message(value: unknown, requested: string): ReadMessage {
     const row = object(value), key = object(row.key), payload = object(row.message)
     const instanceId = string(row.instanceId), remoteJid = jid(key.remoteJid)
