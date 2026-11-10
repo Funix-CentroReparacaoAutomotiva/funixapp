@@ -445,7 +445,17 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
         </>}
       </>}
     </div>
-  </div>}{workspace && !budget && !matrix && <FinancialPanel onArchive={()=>onView('orcamentos')} onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} negotiationPending={negotiationDirty||dealSaving} negotiationSaveError={dealSaveError} onRetryNegotiation={()=>{setDealSaveError('');setDealRetry(v=>v+1)}} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone||dealSaving}/>}</div>
+  </div>}{workspace && !budget && !matrix && <FinancialPanel onArchive={()=>onView('orcamentos')} onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} negotiationPending={negotiationDirty||dealSaving} negotiationSaveError={dealSaveError} onRetryNegotiation={()=>{void (async()=>{
+    try{
+      const refreshed=await load(undefined,workspace.selectedId)
+      if(!refreshed)throw new Error('Leitura não confirmada.')
+      const remote=refreshed.scenarios.find(v=>v.id===workspace.selectedId)?.negotiationDraft
+      if(remote&&JSON.stringify(remote)===draftSignature){
+        setDealSaved({scenarioId:workspace.selectedId,signature:draftSignature})
+        setDealSaveError('')
+      }else{setDealSaveError('');setDealRetry(v=>v+1)}
+    }catch(cause){setDealSaveError('A conferência do rascunho falhou. Dados digitados preservados. '+(cause as Error).message)}
+   })()}} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone||dealSaving}/>}</div>
 
 }
 
