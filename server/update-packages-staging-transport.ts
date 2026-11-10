@@ -31,7 +31,7 @@ function checkedEndpoint(raw:string, expectedOrigin:string, allowCurrentFunixEnv
       origin.pathname!=='/' || !target.hostname || forbiddenHosts.has(target.hostname) ||
       target.hostname!==origin.hostname || target.port!==origin.port ||
       target.pathname!==permittedPath ||
-      !(allowCurrentFunixEnvironment ? target.hostname==='app.funix.com.br' :
+      !(allowCurrentFunixEnvironment ? target.origin==='https://app.funix.com.br' :
         /(?:^|[.-])(?:staging|homolog|sandbox|test)(?:[.-]|$)/i.test(target.hostname)))
       throw new Error('STAGING_ENDPOINT_INVALID')
   return target.toString()
