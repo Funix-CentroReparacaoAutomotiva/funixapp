@@ -1,6 +1,7 @@
 // Real HTTP loopback, synthetic source, in-memory DB, no production services.
 // This script is run only by isolated CI; it never contacts Gmail, Coda or Drive.
 import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
 import { openDatabase } from '../server/database.ts'
 import { AtendimentoRepository } from '../server/atendimentos.ts'
 import { createUpdatePackageSchema } from '../server/update-packages-schema.ts'
@@ -18,29 +19,8 @@ Object.assign(process.env,{
  FUNIX_UPDATES_STORAGE_ENABLED:'true',FUNIX_UPDATES_INGEST_ENABLED:'true',
  FUNIX_UPDATES_INGEST_SECRET:secret,FUNIX_UPDATES_DECISIONS_ENABLED:'false'
 })
-const id='abcdef0123456789'
-const base={source:'gmail',sourceReference:id,experienceId:'XP1234',plate:'ABC1D23'}
-const field={key:'commercialReview',label:'Validar informações comerciais',
- hint:'Conferir o documento oficial antes de aprovar'}
-const a={id:'review:identity',type:'other',title:'Revisar XP',detail:'Sem escrita'}
-const doc={id:'drive:'+'a'.repeat(32),type:'drive_archive',title:'Arquivar foto',
- detail:'Proposta dependente de aprovação e revalidação'}
-const draft={
- status:'PACOTE_UNICO_RASCUNHO_NAO_PUBLICADO',
- send_enabled:false,upload_permitted:false,
- readiness:'AGUARDANDO_REVALIDACAO_E_APROVACAO_HUMANA',
- eventKey:'gmail:'+id+':v1',
- inventory:{eventKey:'gmail:'+id+':v1',source:'gmail',sourceReference:id,
-  bodyReviewed:false,commercialReviewed:false,attachmentIds:['attachment_0'],checkedAttachmentIds:[]},
- eventManifest:{eventKey:'gmail:'+id+':v1',expectedParts:['identity','documents','commercial']},
- fragments:[
-  {part:'identity',proposal:{...base,title:'Identidade',summary:'Conferir XP e placa',actions:[a],missingFields:[]}},
-  {part:'documents',proposal:{...base,title:'Documentos',summary:'Arquivo novo',actions:[doc],missingFields:[]}},
-  {part:'commercial',proposal:{...base,title:'Comercial',summary:'Autorização não verificada',actions:[],missingFields:[field]}}
- ],
- proposal:{...base,title:'XP1234 · ABC1D23',summary:'Arquivo e informação comercial pendentes',
-  actions:[a,doc],missingFields:[field]}
-}
+// Payload exported from the isolated n8n execution 37901, never from live Gmail.
+const draft=JSON.parse(readFileSync(new URL('../server/tests/fixtures/n8n-synthetic-execution-37901.json',import.meta.url),'utf8'))
 const db=openDatabase(':memory:')
 createUpdatePackageSchema(db)
 const repo=new UpdatePackageRepository(db)
