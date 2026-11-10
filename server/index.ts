@@ -36,7 +36,8 @@ const codaSync = codaSyncKey ? (() => {
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
 const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
-app.requestTimeout = 15_000
+// Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
+app.requestTimeout = 60_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
