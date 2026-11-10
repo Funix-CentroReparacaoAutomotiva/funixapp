@@ -170,7 +170,9 @@ async def device_case(browser,device,viewport):
   assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not h.external and not h.page_errors,(h.external,h.page_errors)
   h.mark(device+': V14 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
  except Exception as error:
-  if page:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')))
+  if page:
+   try:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')),timeout=3000)
+   except Exception:pass
   h.results.append({'name':device+': failure','pass':False,'error':str(error),'traceback':traceback.format_exc()});raise
  finally:
   (ARTIFACTS/(device+'-resultados.json')).write_text(json.dumps({'synthetic':True,'device':device,'results':h.results,'external':h.external,'pageErrors':h.page_errors},ensure_ascii=False,indent=2)+'\n')
