@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {Readable} from 'node:stream'
+import {readFileSync} from 'node:fs'
+import {fileURLToPath} from 'node:url'
 import type {IncomingMessage,ServerResponse} from 'node:http'
 import {openDatabase} from '../database.ts'
 import {createUpdatePackageSchema} from '../update-packages-schema.ts'
@@ -89,5 +91,31 @@ test('adulteração de rascunho impede a assinatura ou bloqueia a recepção',as
   await assert.rejects(()=>receiver(request(signed.body.replace('XP1234','XP9999'),signed.headers),
     {setHeader:()=>{}} as unknown as ServerResponse),/Assinatura inválida/)
   assert.equal(repo.list('open','').total,0)
+ }finally{db.close()}
+})
+
+test('saída produzida pelo n8n isolado passa pela assinatura e pela API sem executar ações',async()=>{
+ const raw=readFileSync(fileURLToPath(new URL('./fixtures/n8n-synthetic-execution-37901.json',import.meta.url)),'utf8')
+ const actual=JSON.parse(raw)
+ const db=openDatabase(':memory:')
+ try{
+  createUpdatePackageSchema(db)
+  const repo=new UpdatePackageRepository(db)
+  const signed=prepareSignedPendingGmailRequest(actual,secret,now)
+  const receiver=createUpdatePackageIngest(repo,secret,true,()=>now)
+  const response=await receiver(request(signed.body,signed.headers),
+    {setHeader:()=>{}} as unknown as ServerResponse)
+  const pkg=repo.get(response.packageId)
+  assert.equal(pkg.status,'awaiting_review')
+  assert.equal(pkg.experienceId,'XP1234')
+  assert.equal(pkg.plate,'ABC1D23')
+  assert.equal(pkg.actions.length,2)
+  assert.ok(pkg.missingFields.some(f=>f.key==='commercialReview'))
+  assert.equal(repo.list('open','XP1234').total,1)
+  assert.equal(repo.list('closed','').total,0)
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM update_packages WHERE status='executed'").get()!.n,0)
+  assert.throws(()=>repo.decide(pkg.id,{decision:'approve',revision:pkg.revision,
+   snapshotHash:pkg.snapshotHash,requestId:'22222222-2222-4222-8222-222222222222'},
+   'synthetic_operator'),{code:'PACKAGE_INCOMPLETE'})
  }finally{db.close()}
 })
