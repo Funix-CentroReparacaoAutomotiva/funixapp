@@ -113,7 +113,8 @@ export function createEvolutionChatBridge(
       const result = await this.messages(conversationId, page)
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.
-      return codaSync.resolveActive(jid) === atendimentoId ? result : null
+      return codaSync.resolveActive(jid) === atendimentoId && result
+        ? { ...result, sendTextAvailable: Boolean(sendText) } : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string
