@@ -75,8 +75,11 @@ test('video failure categories do not expose provider response bodies',async()=>
     assert.equal(String(error),'Error: MEDIA_PROVIDER_TOO_LARGE')
     return true
   })
-  const wrongFormat=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+  const genericMime=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
     new Response(JSON.stringify({mimetype:'application/octet-stream',base64:mp4}),{status:200})})
+  assert.deepEqual(await genericMime.get(envelope,'video'),{kind:'video',mimeType:'video/mp4',base64:mp4})
+  const wrongFormat=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+    new Response(JSON.stringify({mimetype:'video/quicktime',base64:mp4}),{status:200})})
   await assert.rejects(wrongFormat.get(envelope,'video'),/MEDIA_FORMAT_UNSUPPORTED/)
   const invalidFile=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
     new Response(JSON.stringify({mimetype:'video/mp4',base64:jpeg}),{status:200})})
