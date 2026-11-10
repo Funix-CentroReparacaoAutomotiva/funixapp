@@ -31,11 +31,18 @@ export function createUpdatePackageSimulationSchema(db:DatabaseSync):void {
  * no connection to the HTTP API, n8n or any executor.
  */
 export class UpdatePackageSimulationRepository {
+ private readonly db:DatabaseSync
+ private readonly packages:Pick<UpdatePackageRepository,'get'>
+ private readonly clock:()=>string
  constructor(
-  private readonly db:DatabaseSync,
-  private readonly packages:Pick<UpdatePackageRepository,'get'>,
-  private readonly clock:()=>string=()=>new Date().toISOString()
- ){}
+  db:DatabaseSync,
+  packages:Pick<UpdatePackageRepository,'get'>,
+  clock:()=>string=()=>new Date().toISOString()
+ ){
+  this.db=db
+  this.packages=packages
+  this.clock=clock
+ }
 
  private load(id:string):{pkg:UpdatePackage;receipts:SimulatedActionReceipt[]} {
   const pkg=this.packages.get(id)
