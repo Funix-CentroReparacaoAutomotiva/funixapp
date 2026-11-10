@@ -6,6 +6,7 @@ import type { RequestFailure } from '../api'
 import { ChatRail, Icon, Notice } from '../ui'
 import { mergeReadMessages, parseConversationMessages } from './evolution-read-model'
 import type { ReadUiMessage } from './evolution-read-model'
+import { MediaMessage } from './MediaMessage'
 import './chat.css'
 
 const kinds = { text: 'Texto', image: 'Foto', audio: 'Áudio', video: 'Vídeo', document: 'Documento', unsupported: 'Formato não suportado' }
@@ -128,6 +129,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [busy, setBusy] = useState(true)
   const [failure, setFailure] = useState('')
   const [canSendText, setCanSendText] = useState(false)
+  const [canMedia, setCanMedia] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendNotice, setSendNotice] = useState('')
@@ -143,7 +146,9 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
       setCanSendText((raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
-      setItems(previous => page === 1 ? mergeReadMessages([], result.items) : mergeReadMessages(previous, result.items))
+      setCanMedia((raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
+      const pageItems = result.items.map(m => ({ ...m, page }))
+      setItems(previous => page === 1 ? mergeReadMessages([], pageItems) : mergeReadMessages(previous, pageItems))
       setNextPage(result.nextPage)
     } catch (cause) {
       if (controller.signal.aborted) return
@@ -160,6 +165,37 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     queueMicrotask(() => { if (active) void load(1) })
     return () => { active = false; request.current?.abort() }
   }, [load])
+  async function sendMedia() {
+    if(!file||!canMedia||sending)return
+    const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' :
+      file.type.startsWith('audio/') ? 'audio' : null
+    if(!kind || file.size > 12*1024*1024 || !file.size) {
+      setSendFailure('Formato de arquivo inválido ou acima de 12 MB.'); return
+    }
+    setSending(true);setSendFailure('');setSendNotice('')
+    try {
+      const base64 = await new Promise<string>((resolve,reject)=>{
+        const reader=new FileReader()
+        reader.onerror=()=>reject(Error('Falha no arquivo'))
+        reader.onload=()=> {
+          const data=reader.result
+          if(typeof data!=='string'||!data.includes(';base64,'))reject(Error('Falha no arquivo'))
+          else resolve(data.split(';base64,')[1]!)
+        }
+        reader.readAsDataURL(file)
+      })
+      await api<{state:'accepted';messageId:string}>(
+        '/api/atendimentos/'+encodeURIComponent(atendimentoId)+
+        '/evolution-conversations/'+encodeURIComponent(conversationId)+'/send-media',
+        {method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({kind,mimeType:file.type,base64,...(kind!=='audio'?{caption:draft}: {})})})
+      setFile(null);setDraft('')
+      setSendNotice('Arquivo aceito pela Evolution. Confira no WhatsApp antes de reenviar.')
+      void load(1)
+    }catch{
+      setSendFailure('Envio de mídia não confirmado. Confira o WhatsApp antes de tentar novamente.')
+    }finally{setSending(false)}
+  }
   async function sendText() {
     const text = draft.trim()
     if (!canSendText || sending || !text || [...text].length > 4096) return
@@ -186,14 +222,14 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           <span className="chat-direction">{message.fromMe ? 'Saída' : 'Entrada'}</span>
-          {message.kind !== 'text' && <div className="chat-media"><strong>{kinds[message.kind]}</strong><span>Mídia indisponível</span></div>}
+          {message.kind !== 'text' && <div className="chat-media"><strong>{kinds[message.kind]}</strong>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>Mídia indisponível</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time></footer>
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
       </section>
     </div></div>
-    {canSendText && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void sendText() }}>
+    {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void (file ? sendMedia() : sendText()) }}>
       <label htmlFor="chat-whatsapp-text">Responder pelo WhatsApp</label>
       <textarea id="chat-whatsapp-text" aria-label="Mensagem de texto para o cliente"
         value={draft} onChange={event => setDraft(event.target.value)}
@@ -201,11 +237,16 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         placeholder="Digite sua resposta ao cliente"
         onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-            event.preventDefault(); void sendText()
+            event.preventDefault(); void (file ? sendMedia() : sendText())
           }
         }} />
-      <button className="fh-filter" type="submit" disabled={sending || !draft.trim()}>
-        {sending ? 'Enviando…' : 'Enviar mensagem'}
+      {canMedia && <label className="chat-file-chooser">Anexar foto, vídeo ou áudio
+        <input type="file" aria-label="Escolher foto, vídeo ou áudio" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/webm" disabled={sending}
+          onChange={event => {setFile(event.target.files?.[0]??null);setSendFailure('');}} />
+      </label>}
+      {file && <p className="chat-file-picked">{file.name} ({(file.size/1024/1024).toFixed(1)} MB) <button type="button" onClick={()=>setFile(null)} disabled={sending}>Remover</button></p>}
+      <button className="fh-filter" type="submit" disabled={sending || (!file && (!draft.trim()||!canSendText))}>
+        {sending ? 'Enviando…' : file ? 'Enviar mídia' : 'Enviar mensagem'}
       </button>
       {sendNotice && <p role="status" className="chat-send-success">{sendNotice}</p>}
       {sendFailure && <p role="alert" className="chat-send-failure">{sendFailure}</p>}
