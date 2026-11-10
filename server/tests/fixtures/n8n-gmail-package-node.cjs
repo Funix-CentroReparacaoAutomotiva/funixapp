@@ -16,7 +16,7 @@ const msg=u.inventory.sourceReference;
 if(String(report.message_id??'')!==msg ||
    String(report.experience??'')!==xp ||
    String(report.plate??'')!==plate ||
-   u.inventory.eventKey!=='gmail:'+msg+':v1 ||
+   u.inventory.eventKey!=='gmail:'+msg+':v1' ||
    report.upload_permitted!==false ||
    report.status!=='CONFERENCIA_DOCUMENTAL_CONCLUIDA')
   throw new Error('RELATORIO_EVENTO_DIVERGENTE');
