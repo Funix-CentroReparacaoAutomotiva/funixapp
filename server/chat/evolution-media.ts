@@ -103,7 +103,12 @@ export function createMediaGateway(config:{origin:string;apiKey:string;instance:
       const data=body.base64
       if(typeof data!=='string')throw Error('MEDIA_PROVIDER_INVALID')
       const match=/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/s.exec(data)
-      const mime=(typeof body.mimetype==='string'?body.mimetype.split(';')[0]:null)??match?.[1]??''
+      const mediaMeta=typeof row.messageType==='string' &&
+        messageBody[row.messageType] && typeof messageBody[row.messageType]==='object'
+        ? obj(messageBody[row.messageType]) : null
+      const providerMime=typeof body.mimetype==='string'?body.mimetype:null
+      const originalMime=typeof mediaMeta?.mimetype==='string'?mediaMeta.mimetype:null
+      const mime=(providerMime??match?.[1]??originalMime??'').split(';')[0]!.trim().toLowerCase()
       const base64=match?match[2]!:data
       if(!limits[kind].includes(mime))throw Error('MEDIA_PROVIDER_INVALID')
       validateMedia(kind,mime,base64)
