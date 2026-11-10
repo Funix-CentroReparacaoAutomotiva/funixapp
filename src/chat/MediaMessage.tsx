@@ -32,9 +32,10 @@ export function MediaMessage({ atendimentoId, conversationId, messageId, page, k
         'Não foi possível carregar esta mídia pela Evolution. O WhatsApp pode continuar reproduzindo normalmente.')
     }finally{setBusy(false)}
   }
-  return <div className="chat-media">
-    {!uri && <button type="button" className="fh-filter" onClick={()=>void open()} disabled={!enabled||busy}>
-      {busy?'Carregando…':kind==='image'?'Abrir foto':kind==='video'?'Reproduzir vídeo':'Ouvir áudio'}
+  return <div className="chat-media chat-media-attachment" data-kind={kind}>
+    {!uri && <button type="button" className="fh-filter chat-media-open" onClick={()=>void open()} disabled={!enabled||busy}>
+      <span className="chat-media-cta-icon" aria-hidden="true">{kind==='image'?'▣':kind==='video'?'▶':'♫'}</span>
+      <span>{busy?'Carregando…':kind==='image'?'Abrir foto':kind==='video'?'Reproduzir vídeo':'Ouvir áudio'}</span>
     </button>}
     {uri && kind==='image' && <>
       <button type="button" className="chat-image-expand" aria-label="Ampliar foto" onClick={()=>setExpanded(true)}>
