@@ -20,7 +20,7 @@ import './approved.css'
 export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,onDirty,externalBusy,calculationState,parameterState,onParameterState,onConfiguration,onArchive}:{at:string;workspace:CommercialWorkspace;state:NegotiationState;onState:Dispatch<SetStateAction<NegotiationState>>;fresh:boolean;onSync:()=>Promise<CommercialWorkspace|void>;onBusy:(b:boolean)=>void;onDirty:(b:boolean)=>void;externalBusy:boolean;calculationState:CalculationState;parameterState:CalculationState;onParameterState:(v:CalculationState)=>void;onConfiguration:(c:PricingConfiguration)=>void;onArchive:()=>void}){
  const [open,setOpen]=useState(false),[neg,setNeg]=useState(false),[focus,setFocus]=useState(false),[moneyText,setMoneyText]=useState('')
  const [config,setConfig]=useState<PricingConfiguration|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[reauth,setReauth]=useState(false)
- const [review,setReview]=useState<{preview:BudgetPreview;key:string;url:string;newTab:boolean;deal:ReturnType<typeof negotiationInput>}|null>(null)
+ const [review,setReview]=useState<{preview:BudgetPreview;key:string;url:string;deal:ReturnType<typeof negotiationInput>}|null>(null)
  const [version,setVersion]=useState<BudgetVersion|null>(null),[uncertain,setUncertain]=useState(false)
  const [deadlineDirty,setDeadlineDirty]=useState(false),[deadlineBusy,setDeadlineBusy]=useState(false)
  const [mrText,setMRText]=useState(''),[mrDirty,setMRDirty]=useState(false)
@@ -33,7 +33,8 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
  const locked=busy||deadlineBusy||deadlineDirty||externalBusy||calculationState==='pending'||calculationState==='error'||parameterState==='pending'
  useEffect(()=>{let live=true;api<PricingConfiguration>('/api/precificacao').then(c=>{if(live){setConfig(c);onConfiguration(c)}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[workspace.configurationRevision,onConfiguration])
  useEffect(()=>{onDirty(mrDirty||deadlineDirty||uncertain);return()=>onDirty(false)},[uncertain,mrDirty,deadlineDirty,onDirty])
- useEffect(()=>()=>{if(review&&!review.newTab)URL.revokeObjectURL(review.url)},[review])
+ // On mobile, defer release while the external PDF viewer finishes loading.
+ useEffect(()=>()=>{if(review){if(window.matchMedia('(max-width:600px)').matches)window.setTimeout(()=>URL.revokeObjectURL(review.url),120000);else URL.revokeObjectURL(review.url)}},[review])
  useEffect(()=>{if(hasReview){opener.current=document.activeElement as HTMLElement;dialog.current?.showModal()}else opener.current?.focus()},[hasReview])
  async function operation(action:()=>Promise<void>,lock=true){
   if(running.current||deadlineBusy||(lock&&externalBusy))return
@@ -55,14 +56,7 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
   const key=crypto.randomUUID();onState(current=>({...current,preview:p,signature:intent,requestKey:key}))
   return {preview:p,key,deal}
  }
- async function beginEmission(){
-  // Reserve the mobile tab synchronously with the user gesture, before await.
-  if(running.current||deadlineBusy||externalBusy)return
-  const mobile=window.matchMedia('(max-width:600px)').matches
-  const tab=mobile?window.open('about:blank','_blank'):null
-  if(tab){tab.opener=null;tab.document.title='Prévia do orçamento';tab.document.body.textContent='Preparando prévia PDF…'}
-  let prepared=false
-  try{await operation(async()=>{
+ async function beginEmission(){await operation(async()=>{
   const controller=new AbortController();previewAbort.current=controller
   const p=await obtain();if(!p||controller.signal.aborted)return
   if(!p.preview.canEmit)throw new Error([...p.preview.snapshot.calculation.errors,...(p.preview.snapshot.pdfPresentation?.errors??[]),...(p.preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente.']:[])].join(' ')||'Orçamento incompleto. Confira a configuração comercial.')
@@ -72,14 +66,9 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
   const blob=await response.blob()
   if(controller.signal.aborted)return
   if(latest.current!==intent)throw new Error('Os dados mudaram. Gere uma nova prévia.')
-  const url=URL.createObjectURL(blob)
-  let newTab=false
-  if(tab&&!tab.closed){try{tab.location.replace(url);newTab=true}catch{tab.close()}}
-  // Mobile PDF viewers may still be reading the blob after the modal closes.
-  if(newTab)window.setTimeout(()=>URL.revokeObjectURL(url),300000)
-  setVersion(null);setUncertain(false);setReview({...p,url,newTab});prepared=true
- })}finally{if(!prepared&&tab&&!tab.closed)tab.close()}
- }
+  // An explicit second user gesture opens the finished PDF (no automatic popup).
+  setVersion(null);setUncertain(false);setReview({...p,url:URL.createObjectURL(blob)})
+ })}
  async function confirmEmission(){await operation(async()=>{
   if(!review||version)return
   setUncertain(true)
@@ -152,7 +141,7 @@ export function FinancialPanel({at,workspace,state,onState,fresh,onSync,onBusy,o
  <footer className="actions budget-actions" aria-label="Ações do orçamento"><button className="history" disabled={busy||deadlineBusy||externalBusy} onClick={onArchive}>Orçamentos emitidos</button><button className="emit" disabled={locked||valueState!=='current'} onClick={()=>beginEmission()}>Emitir</button></footer>
  {review&&<dialog ref={dialog} className="finance-review pdf-review" aria-label="Prévia PDF do orçamento" onCancel={e=>{e.preventDefault();closeReview()}}>
  <header><h2>{version?`Orçamento ${version.documentNumber??version.label} emitido`:'Prévia do orçamento'}</h2></header>
- {!version&&<>{review.newTab?<p className="pdf-mobile-message" role="status">Prévia aberta em outra aba. Volte a esta tela para confirmar ou cancelar a emissão.</p>:<iframe title="PDF da prévia do orçamento" src={review.url}/>}<p className="pdf-fallback">Se o PDF não aparecer, <a href={review.url} target="_blank" rel="noopener noreferrer">abrir prévia em outra aba</a>.</p></>}
+ {!version&&<><iframe title="PDF da prévia do orçamento" src={review.url}/><p className="pdf-mobile-message">Prévia pronta. Abra o PDF para conferir; depois volte a esta tela para confirmar ou cancelar a emissão.</p><p className="pdf-fallback"><a href={review.url} target="_blank" rel="noopener noreferrer">abrir prévia em outra aba</a></p></>}
  {login}{error&&<p role="alert">{error}</p>}{uncertain&&!busy&&<p role="status">Confirmação pendente. Tente Confirmar novamente para recuperar a mesma emissão com segurança.</p>}
  <footer><button disabled={busy||uncertain} onClick={closeReview}>Voltar</button>{version?<button disabled={busy} onClick={()=>operation(async()=>{await downloadIssuedPdf(at,version);setReview(null)})}>Baixar novamente</button>:<button disabled={busy} onClick={()=>confirmEmission()}>Confirmar</button>}</footer>
  </dialog>}
