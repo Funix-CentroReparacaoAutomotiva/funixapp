@@ -53,3 +53,35 @@ test('media rejects MIME spoof, invalid signature, too large, bad provider and n
   const missing=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>new Response('{}',{status:200})})
   await assert.rejects(missing.get({key:{id:'MSG-1',remoteJid:jid},messageType:'imageMessage',message:{}},'image'),/MEDIA_PROVIDER_INVALID/)
 })
+
+test('received MP4 video is fetched without conversion, preserving provider envelope',async()=>{
+  let posted: Record<string,unknown>={}
+  const gateway=createMediaGateway({origin,apiKey:key,instance,fetcher:async(_input,init)=>{
+    posted=JSON.parse(String(init?.body)) as Record<string,unknown>
+    return new Response(JSON.stringify({base64:mp4}),{status:200})
+  }})
+  const envelope={key:{id:'VIDEO-123',remoteJid:jid},messageType:'videoMessage',
+    message:{videoMessage:{mimetype:'video/mp4',fileLength:16}}}
+  assert.deepEqual(await gateway.get(envelope,'video'),{kind:'video',mimeType:'video/mp4',base64:mp4})
+  assert.equal(posted?.convertToMp4,false)
+  assert.deepEqual(posted?.message,envelope)
+})
+test('video failure categories do not expose provider response bodies',async()=>{
+  const envelope={key:{id:'VIDEO-123',remoteJid:jid},messageType:'videoMessage',
+    message:{videoMessage:{mimetype:'video/mp4'}}}
+  const oversized=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+    new Response('provider-secret', {status:413})})
+  await assert.rejects(oversized.get(envelope,'video'),(error:unknown)=>{
+    assert.equal(String(error),'Error: MEDIA_PROVIDER_TOO_LARGE')
+    return true
+  })
+  const genericMime=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+    new Response(JSON.stringify({mimetype:'application/octet-stream',base64:mp4}),{status:200})})
+  assert.deepEqual(await genericMime.get(envelope,'video'),{kind:'video',mimeType:'video/mp4',base64:mp4})
+  const wrongFormat=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+    new Response(JSON.stringify({mimetype:'video/quicktime',base64:mp4}),{status:200})})
+  await assert.rejects(wrongFormat.get(envelope,'video'),/MEDIA_FORMAT_UNSUPPORTED/)
+  const invalidFile=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>
+    new Response(JSON.stringify({mimetype:'video/mp4',base64:jpeg}),{status:200})})
+  await assert.rejects(invalidFile.get(envelope,'video'),/MEDIA_CONTENT_INVALID/)
+})
