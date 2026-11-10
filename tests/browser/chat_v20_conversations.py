@@ -53,6 +53,8 @@ async def device_case(browser, width, height):
         context = await browser.new_context(viewport={"width": width, "height": height})
         await h.watch(context)
         page = await context.new_page()
+        # Install before React mounts so the recurring interval uses mocked time.
+        await page.clock.install()
         await h.attach(page)
         await page.goto(ORIGIN + "/funil")
         await h.login(page)
@@ -152,7 +154,6 @@ async def device_case(browser, width, height):
         await expect(page.get_by_text("Atualização automática ativa")).to_be_visible()
         # Poll with a real browser clock; no artificial network or Evolution calls.
         # Preserve a draft through silent refresh, and do not duplicate existing rows.
-        await page.clock.install()
         await page.get_by_label("Mensagem de texto para o cliente").fill("Rascunho preservado")
         initial_reads = len(poll_calls)
         added_messages.append({"messageId": "synthetic-new-1", "timestamp": 1794045604,
