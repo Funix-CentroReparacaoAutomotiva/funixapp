@@ -82,7 +82,7 @@ async def device_case(browser,device,viewport):
   await begin();assert not downloads;preview_url=await review.get_by_role('link',name='abrir prévia em outra aba').get_attribute('href');assert preview_url.startswith('blob:')
   await shot('previa-pdf');assert len(await get(base+'/orcamentos'))==1
   async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
-  popup=await popup_event.value;assert popup.url.startswith('blob:');await popup.close();assert not downloads
+  popup=await popup_event.value;await popup.wait_for_url('blob:**');await popup.close();assert not downloads
   h.mark(device+': mobile fallback opens the existing PDF blob without another render or automatic download')
   await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();assert len(await get(base+'/orcamentos'))==1
   assert (await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))==before
