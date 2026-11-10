@@ -74,6 +74,10 @@ try{
    // The negotiation predates the clarification and must survive subsequent application.
    await page.locator('.approved-finance .summary').click();await page.locator('.neg-head').click()
    await page.getByRole('textbox',{name:'Valor em reais',exact:true}).fill('123,45');await page.getByRole('textbox',{name:'Valor em reais',exact:true}).blur()
+   // Finish the prior voice review before persisting finance; do not capture using a stale revision.
+   await panel.getByRole('button',{name:'Fechar Copiloto'}).click()
+   await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='true',null,{timeout:15000})
+   assert.equal(f.scenarios.list(f.at.id)[0]?.negotiationDraft?.value,'123,45')
    mode='original';await record(page)
    const originalCalls=interpretCalls
    mode='invalid';await clarifyVoice(page,audio,422)
