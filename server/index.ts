@@ -31,7 +31,7 @@ const v20Associations = process.env.FUNIX_CHAT_V20_LINKS_ENABLED === 'true' &&
   : undefined
 // Independent OFF-by-default event sync. The n8n workflow is never modified
 // by activating this bootstrap; actual event routing requires another gate.
-// Independent updates schema remains OFF by default; no production write path enabled.
+// Opt-in updates storage; disabled by default.
 if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
 const codaSyncKey = parseCodaSyncSecret(process.env)
 const codaSync = codaSyncKey ? (() => {
@@ -39,7 +39,8 @@ const codaSync = codaSyncKey ? (() => {
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
 const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
-app.requestTimeout = 15_000
+// Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
+app.requestTimeout = 60_000
 app.headersTimeout = 10_000
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
