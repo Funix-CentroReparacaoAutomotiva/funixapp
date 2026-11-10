@@ -127,6 +127,11 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [nextPage, setNextPage] = useState<number | null>(null)
   const [busy, setBusy] = useState(true)
   const [failure, setFailure] = useState('')
+  const [canSendText, setCanSendText] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendNotice, setSendNotice] = useState('')
+  const [sendFailure, setSendFailure] = useState('')
   const request = useRef<AbortController | null>(null)
   const load = useCallback(async (page: number) => {
     request.current?.abort()
@@ -137,6 +142,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
+      setCanSendText((raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
       setItems(previous => page === 1 ? mergeReadMessages([], result.items) : mergeReadMessages(previous, result.items))
       setNextPage(result.nextPage)
     } catch (cause) {
@@ -154,6 +160,23 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     queueMicrotask(() => { if (active) void load(1) })
     return () => { active = false; request.current?.abort() }
   }, [load])
+  async function sendText() {
+    const text = draft.trim()
+    if (!canSendText || sending || !text || [...text].length > 4096) return
+    setSending(true); setSendFailure(''); setSendNotice('')
+    try {
+      await api<{ state: 'accepted'; messageId: string }>(
+        `/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/send-text`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) },
+      )
+      setDraft('')
+      setSendNotice('Mensagem aceita pelo WhatsApp. Confira o histórico antes de enviar novamente.')
+      void load(1)
+    } catch (cause) {
+      if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
+      setSendFailure('Envio não confirmado. Verifique a conversa antes de tentar outra vez, para evitar mensagem duplicada.')
+    } finally { setSending(false) }
+  }
   return <div className="detail-page chat-page chat-readonly chat-evolution">
     <div className="chat-stage"><div className="at-chat-scroll">
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
@@ -170,6 +193,23 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
       </section>
     </div></div>
+    {canSendText && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void sendText() }}>
+      <label htmlFor="chat-whatsapp-text">Responder pelo WhatsApp</label>
+      <textarea id="chat-whatsapp-text" aria-label="Mensagem de texto para o cliente"
+        value={draft} onChange={event => setDraft(event.target.value)}
+        maxLength={4096} rows={2} disabled={sending}
+        placeholder="Digite sua resposta ao cliente"
+        onKeyDown={event => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault(); void sendText()
+          }
+        }} />
+      <button className="fh-filter" type="submit" disabled={sending || !draft.trim()}>
+        {sending ? 'Enviando…' : 'Enviar mensagem'}
+      </button>
+      {sendNotice && <p role="status" className="chat-send-success">{sendNotice}</p>}
+      {sendFailure && <p role="alert" className="chat-send-failure">{sendFailure}</p>}
+    </form>}
   </div>
 }
 /** Resolve the server-confirmed Coda context when opening an Atendimento directly from Funil. */
