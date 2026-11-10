@@ -77,9 +77,17 @@ async def device_case(browser,device,viewport):
   before=(await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))
   await begin();assert not downloads;preview_url=await review.get_by_role('link',name='abrir prévia em outra aba').get_attribute('href');assert preview_url.startswith('blob:')
   await shot('previa-pdf');assert len(await get(base+'/orcamentos'))==1
-  async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
-  popup=await popup_event.value;await popup.wait_for_url('blob:**');await popup.close();assert not downloads
-  h.mark(device+': explicit user click opens the existing PDF blob without another render or automatic download')
+  if device=='desktop':
+   async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
+   popup=await popup_event.value;await popup.wait_for_url('blob:**');await popup.close();assert not downloads
+  else:
+   name,pdf_bytes=await download(lambda:review.get_by_role('link',name='Baixar prévia PDF').click())
+   assert name=='FUNIX - Prévia do orçamento.pdf'
+   assert pdf_bytes.startswith(b'%PDF-')and b'%%EOF'in pdf_bytes[-1024:]
+   assert len(downloads)==1
+   downloads.clear() # Subsequent assertions count only actual issued-budget downloads
+  assert len(await get(base+'/orcamentos'))==1
+  h.mark(device+': explicit desktop viewer or mobile preview download does not emit or reserve a quote')
   await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();assert len(await get(base+'/orcamentos'))==1
   assert (await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))==before
   if device=='desktop':await page.wait_for_function('(url)=>window.revoked.includes(url)',arg=preview_url)
