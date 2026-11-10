@@ -35,6 +35,8 @@ try{
    await page.goto(origin+'/atendimentos/'+f.at.id+'?aba=diagnosticos');await page.locator('.commercial-workspace').waitFor()
    await page.locator('.approved-finance .summary').click();await page.locator('.neg-head').click()
    const money=page.getByRole('textbox',{name:'Valor em reais',exact:true});await money.fill('123,45');await money.blur();await page.locator('.approved-finance .summary').click()
+   await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='true',null,{timeout:15000})
+   assert.equal(f.scenarios.list(f.at.id)[0]?.negotiationDraft?.value,'123,45')
    const panel=page.locator('.voice-panel')
    const response=await recordVoice(page,audio),root=await response.json();assert.equal(root.plan.changes[0].values.manualPrice,'0')
    let row=panel.locator('.voice-component-values').first();await row.waitFor()
