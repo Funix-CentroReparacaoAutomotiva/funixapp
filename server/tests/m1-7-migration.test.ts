@@ -29,7 +29,7 @@ test('V6 to V7 removes only the obsolete column, preserving inputs, catalogs, co
   const repo=new BudgetRepository(db),request={scenarioId:f.scenario.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,request)
   assert.equal(preview.snapshot.calculation.componentSubtotal,'5.0125')
   assert.deepEqual(preview.snapshot.calculation.lines.find(l=>l.kind==='component')!.factors,{manualPrice:'10.01',MR:'2'})
-  assert.equal(preview.canEmit,false);await (await import('./fixtures/budget-renderer.ts')).configureSyntheticStageCategories(db)
+  assert.equal(preview.canEmit,true);await (await import('./fixtures/budget-renderer.ts')).configureSyntheticStageCategories(db)
   const confirmed=repo.preview(f.at.id,request)
   const version=(await repo.emit(f.at.id,{...request,previewToken:confirmed.token,idempotencyKey:randomUUID()})),pdf=repo.pdf(f.at.id,version.id)
   assert(!JSON.stringify(version.snapshot).includes('"fct"'))

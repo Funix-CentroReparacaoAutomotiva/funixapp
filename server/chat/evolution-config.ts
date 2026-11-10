@@ -1,6 +1,8 @@
 import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution-bridge.ts'
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
 import { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
+import { createEvolutionTextSender } from './evolution-send.ts'
+import { createMediaGateway } from './evolution-media.ts'
 import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 
@@ -34,5 +36,12 @@ export function loadEvolutionChat(
     instanceId,
     timeoutMs: 5000,
   })
-  return createEvolutionChatBridge(provider, Date.now, associations, codaSync)
+  // Sending is a separate, OFF-by-default, server-side-only opt-in.
+  const sender = env.FUNIX_EVOLUTION_SEND_ENABLED === 'true'
+    ? createEvolutionTextSender({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
+    : undefined
+  const media = env.FUNIX_EVOLUTION_MEDIA_ENABLED === 'true'
+    ? createMediaGateway({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
+    : undefined
+  return createEvolutionChatBridge(provider, Date.now, associations, codaSync, sender, media)
 }

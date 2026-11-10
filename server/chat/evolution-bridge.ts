@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
+import type { EvolutionTextSender } from './evolution-send.ts'
+import type { MediaGateway, MediaInput } from './evolution-media.ts'
 
 /**
  * Single-operator V20 read-only bridge.
@@ -10,15 +12,18 @@ import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-re
  * This is NOT the eventual persisted N:N conversation model.
  */
 export function createEvolutionChatBridge(
-  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
+  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'> & Partial<Pick<EvolutionReadPoc, 'findMediaEnvelope'>>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
   codaSync?: CodaEventSyncRepository,
+  sendText?: EvolutionTextSender,
+  media?: MediaGateway,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
   const byId = new Map<string, { jid: string; at: number }>()
   const byJid = new Map<string, string>()
+  const pendingSends = new Set<string>()
 
   const purge = () => {
     for (const [id, entry] of byId) {
@@ -81,6 +86,56 @@ export function createEvolutionChatBridge(
      * The conversationId stays opaque; the canonical Coda mapping is checked
      * server-side at the exact time of the read, not merely in the browser list.
      */
+    /** Send only to the same active canonical Coda JID used for reading.
+     * If sending is disabled, never expose a browser-controlled WhatsApp recipient.
+     */
+    async sendTextForAtendimento(atendimentoId: string, conversationId: string, text: string) {
+      if (!sendText || !codaSync || typeof text !== 'string' ||
+          text.trim().length === 0 || [...text].length > 4096 ||
+          /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) return { state: 'invalid' as const }
+      purge()
+      const entry = byId.get(conversationId)
+      const remoteJid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
+      if (!remoteJid || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(remoteJid) ||
+          codaSync.resolveActive(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
+      if (pendingSends.has(conversationId)) return { state: 'busy' as const }
+      pendingSends.add(conversationId)
+      try {
+        // Revalidate before any network side effect, including an active-context switch.
+        if (codaSync.resolveActive(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
+        const receipt = await sendText(remoteJid, text)
+        return { state: 'accepted' as const, receipt }
+      } finally { pendingSends.delete(conversationId) }
+    },
+    /** Media actions always require canonical active mapping, never a browser-supplied JID. */
+    async sendMediaForAtendimento(atendimentoId:string,conversationId:string,item:MediaInput){
+      if(!media||!codaSync)return {state:'invalid' as const}
+      const entry=byId.get(conversationId)
+      const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
+      if(!jid||!/^[0-9]{8,15}@s\.whatsapp\.net$/.test(jid)||
+        codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
+      if(pendingSends.has(conversationId))return {state:'busy' as const}
+      pendingSends.add(conversationId)
+      try{
+        if(codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
+        const receipt=await media.send(jid,item)
+        return {state:'accepted' as const,receipt}
+      }finally{pendingSends.delete(conversationId)}
+    },
+    async mediaForAtendimento(atendimentoId:string,conversationId:string,messageId:string,page:number){
+      if(!media||!codaSync)return null
+      const entry=byId.get(conversationId)
+      const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
+      if(!jid||codaSync.resolveActive(jid)!==atendimentoId)return null
+      // Fetch the full envelope on the server only. Never return raw provider data.
+      const item=await provider.findMediaEnvelope?.(jid,messageId,page)
+      if(!item)return null
+      if(item.bytes!==null&&item.bytes>12*1024*1024)return {state:'too_large' as const}
+      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      const result=await media.get(item.envelope,item.kind)
+      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      return {state:'ready' as const,...result}
+    },
     async messagesForAtendimento(atendimentoId: string, conversationId: string, page: number) {
       purge()
       const entry = byId.get(conversationId)
@@ -89,7 +144,8 @@ export function createEvolutionChatBridge(
       const result = await this.messages(conversationId, page)
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.
-      return codaSync.resolveActive(jid) === atendimentoId ? result : null
+      return codaSync.resolveActive(jid) === atendimentoId && result
+        ? { ...result, sendTextAvailable: Boolean(sendText), mediaSendAvailable: Boolean(media), mediaReadAvailable: Boolean(media) } : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string

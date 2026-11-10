@@ -22,3 +22,29 @@
 /* Evolution can use the full chat width while sending and media controls are deferred. */
 .chat-evolution .at-chat-scroll{padding-right:12px}
 .chat-evolution .chat-read-toolbar{justify-content:flex-end}
+
+/* WhatsApp text composer is available only after the server advertises sending. */
+.chat-send-text{display:flex;flex-direction:column;gap:7px;margin:10px 10px 12px;padding:12px;border:1px solid #ccdbea;border-radius:10px;background:#f8fbff}
+.chat-send-text label{font-weight:700;font-size:12px;color:#244565}
+.chat-send-text textarea{font:inherit;font-size:13px;line-height:1.5;resize:vertical;min-height:66px;max-height:180px;padding:9px;border:1px solid #b6c8dd;border-radius:8px;background:white;color:#203c57}
+.chat-send-text button{align-self:flex-end;min-height:38px}
+.chat-send-text p{margin:0;font-size:12px;line-height:1.4}
+.chat-send-success{color:#176846}
+.chat-send-failure{color:#9f3030}
+
+/* Media are opened explicitly to avoid downloading entire histories on load. */
+.chat-media video,.chat-media audio{display:block;max-width:100%;width:100%;margin-top:6px}
+.chat-image-expand{display:block;max-width:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
+.chat-image-expand img{display:block;max-width:100%;max-height:320px;border-radius:8px}
+.chat-image-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.90);padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px}
+.chat-image-overlay img{max-width:98vw;max-height:82vh;object-fit:contain}
+.chat-image-overlay button{align-self:flex-end}
+.chat-file-chooser{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chat-file-chooser input{width:100%;max-width:300px;font-size:12px}
+.chat-file-picked{font-size:12px;overflow-wrap:anywhere}
+.chat-file-picked button{min-height:32px}
+
+/* Polls do not replace the Chat view or interrupt writing. */
+.chat-evolution .chat-read-toolbar{display:flex;align-items:center;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.chat-auto-state{font-size:11px;color:#58758d}
+.chat-new-messages{display:block;margin:8px auto 4px;min-height:36px}

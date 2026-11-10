@@ -5,17 +5,17 @@ import{exactAmount,centAmount}from'./budget-terms.ts'
 import{stagePresentation,clusterName}from'./stage-presentation.ts'
 import{STAGE_CLUSTERS,type StageCluster}from'../shared/stage-clusters.ts'
 import type{BudgetSnapshot,PricedLine}from'../shared/pricing.ts'
-export interface TechnicalGroup{pieceId:string;diagnosisId:string|null;rows:PricedLine[];categories:{name:StageCluster;amount:Q;billable:boolean;descriptions:string[]}[]}
+export interface TechnicalGroup{pieceId:string;diagnosisId:string|null;rows:PricedLine[];unallocated:PricedLine[];categories:{name:StageCluster;amount:Q;billable:boolean;descriptions:string[]}[]}
 export function technicalGroups(snapshot:BudgetSnapshot):{groups:TechnicalGroup[];errors:string[]}{
  const grouped=new Map<string,TechnicalGroup>(),errors:string[]=[]
  const pending=(line:PricedLine,reason:string)=>errors.push(`PDF: ${line.pieceName} / ${line.name} (${line.id}): ${reason}`)
  for(const line of snapshot.calculation.lines.filter(l=>l.included)){
   const item=snapshot.composition.items.find(i=>i.id===line.pieceId),master=item?.services.find(s=>s.id===line.id)
   const diagnosisId=(line.kind==='service'?master?.diagnosisId:null)??item?.diagnosisId??null,key=JSON.stringify([line.pieceId,diagnosisId])
-  let group=grouped.get(key);if(!group){group={pieceId:line.pieceId,diagnosisId,rows:[],categories:[]};grouped.set(key,group)}group.rows.push(line)
+  let group=grouped.get(key);if(!group){group={pieceId:line.pieceId,diagnosisId,rows:[],unallocated:[],categories:[]};grouped.set(key,group)}group.rows.push(line)
   if(line.kind!=='service')continue
-  if(!master||!master.dimensionId){pending(line,'origem serviço/dimensão ausente.');continue}
-  if(!line.stages.length){pending(line,'etapas técnicas não configuradas para a apresentação.');continue}
+  if(!master||!master.dimensionId){pending(line,'origem serviço/dimensão ausente.');group.unallocated.push(line);continue}
+  if(!line.stages.length){pending(line,'etapas técnicas não configuradas para a apresentação.');group.unallocated.push(line);continue}
   const seen=new Set<string>(),stages=[]
   for(const stage of line.stages){
    const p=stagePresentation(stage,master.serviceId,master.dimensionId),category=clusterName(p?.cluster)
@@ -26,10 +26,10 @@ export function technicalGroups(snapshot:BudgetSnapshot):{groups:TechnicalGroup[
    try{const energy=Q.from(stage.baseEnergy).add(Q.from(stage.dimensionEnergy));stages.push({stage,category,energy,order:p?.order??Number.MAX_SAFE_INTEGER})}
    catch{pending(line,`energia da etapa ${stage.id} inválida.`)}
   }
-  if(stages.length!==line.stages.length)continue
+  if(stages.length!==line.stages.length){group.unallocated.push(line);continue}
   const totalEnergy=stages.reduce((v,s)=>v.add(s.energy),new Q(0n)),billable=line.billing!=='not_billed'
-  if(billable&&totalEnergy.n===0n){pending(line,'energia total das etapas igual a zero; não existe proporção financeira válida.');continue}
-  if(billable&&line.total===null){pending(line,'valor comercial efetivo indisponível.');continue}
+  if(billable&&totalEnergy.n===0n){pending(line,'energia total das etapas igual a zero; não existe proporção financeira válida.');group.unallocated.push(line);continue}
+  if(billable&&line.total===null){pending(line,'valor comercial efetivo indisponível.');group.unallocated.push(line);continue}
   // Quantity is already in line.total. Using per-unit energies keeps it from being applied twice.
   for(const s of stages.sort((a,b)=>a.order-b.order||a.stage.id.localeCompare(b.stage.id))){
    let category=group.categories.find(g=>g.name===s.category)

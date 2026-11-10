@@ -69,7 +69,7 @@ test('fractional quantities retain subcent totals without hidden rounding; disab
 })
 test('missing steps and capacity block emission without faking prices or losing valid partial totals',()=>{
  const f=calculationFixture();f.config.services[0]!.dimensions[0]!.stages=[]
- const c=f.run();assert.equal(c.total,'300.15');assert.equal(c.days,null);assert(c.errors.some(e=>e.includes('Etapas')))
+ const c=f.run();assert.equal(c.total,'300.15');assert.equal(c.energy,'0');assert.equal(c.days,'0');assert(c.errors.some(e=>e.includes('Etapas')))
  f.config.services[0]!.dimensions[0]!.stages=[{id:'x',name:'X',dimension:'X',baseEnergy:'0',dimensionEnergy:'0'}];f.config.capacity=null
  assert(f.run().errors.some(e=>e.includes('Capacidade')))
 })
