@@ -43,10 +43,13 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [dealSaved,setDealSaved]=useState<{scenarioId:string;signature:string}|null>(null)
   const [dealSaving,setDealSaving]=useState(false),[dealSaveError,setDealSaveError]=useState(''),[dealRetry,setDealRetry]=useState(0)
   const dealSaveLock=useRef(false),dealScenario=useRef('')
+  const dealSavedRef=useRef<{scenarioId:string;signature:string}|null>(null)
+  const dealDraftSignatureRef=useRef('')
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null), [items, setItems] = useState<DiagnosisItem[]>([])
   const [pricingConfiguration,setPricingConfiguration]=useState<PricingConfiguration|null>(null)
   const [workspace,setWorkspace] = useState<CommercialWorkspace|null>(null)
   const draftSignature=JSON.stringify({mode:dealState.draft.mode,value:dealState.draft.value})
+  useLayoutEffect(()=>{dealDraftSignatureRef.current=draftSignature},[draftSignature])
   const negotiationDirty=Boolean(workspace&&dealSaved?.scenarioId===workspace.selectedId&&draftSignature!==dealSaved.signature)
   useEffect(()=>{onNegotiationDirty(negotiationDirty||Boolean(dealSaveError));return()=>onNegotiationDirty(false)},[negotiationDirty,dealSaveError,onNegotiationDirty])
   const budget=screen==='orcamentos',matrix=screen==='comparacao'
@@ -92,11 +95,22 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const onFinanceBusy=useCallback((v:boolean)=>setFinanceBusy(v),[])
   const managerDirty=editorDirty||financeDirty
   const acceptWorkspace=useCallback((workspace:CommercialWorkspace,preferred=selection.current)=>{
+      const stored=workspace.scenarios.find(s=>s.id===workspace.selectedId)?.negotiationDraft??{mode:'none' as const,value:''}
+      const storedSignature=JSON.stringify(stored)
       if(dealScenario.current!==workspace.selectedId){
-        const stored=workspace.scenarios.find(s=>s.id===workspace.selectedId)?.negotiationDraft??{mode:'none' as const,value:''}
         dealScenario.current=workspace.selectedId
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:storedSignature}
         setDealState({...emptyNegotiationState(),draft:{...stored,acknowledgeResidual:false}})
-        setDealSaved({scenarioId:workspace.selectedId,signature:JSON.stringify(stored)})
+        setDealSaved(dealSavedRef.current)
+        setDealSaveError('')
+      }else if(dealSavedRef.current?.scenarioId===workspace.selectedId &&
+        storedSignature!==dealSavedRef.current.signature &&
+        dealDraftSignatureRef.current===dealSavedRef.current.signature &&
+        !dealSaveLock.current){
+        // Remote edit from another session: refresh only when there is no unsaved local draft.
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:storedSignature}
+        setDealSaved(dealSavedRef.current)
+        setDealState({...emptyNegotiationState(),draft:{...stored,acknowledgeResidual:false}})
         setDealSaveError('')
       }
       if(preferred && preferred!==workspace.selectedId)setScenarioGone(true)
@@ -158,7 +172,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       if(saved.id!==selected.id||JSON.stringify(saved.negotiationDraft)!==signature)throw new Error('Confirmação da negociação inválida; o valor digitado foi preservado.')
       const current=await load(undefined,selected.id)
       if(!current||JSON.stringify(current.scenarios.find(s=>s.id===selected.id)?.negotiationDraft)!==signature)throw new Error('Não foi possível conferir a negociação no servidor; o rascunho foi preservado.')
-      setDealSaved({scenarioId:selected.id,signature})
+      dealSavedRef.current={scenarioId:selected.id,signature}
+      setDealSaved(dealSavedRef.current)
     }catch(cause){setDealSaveError('Negociação não confirmada. Valores mantidos nesta tela; confira a versão salva antes de sair. '+(cause as Error).message);if((cause as RequestFailure).status===401)setReauth(true)}
     finally{dealSaveLock.current=false;setDealSaving(false)}
   })
@@ -451,7 +466,8 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
       if(!refreshed)throw new Error('Leitura não confirmada.')
       const remote=refreshed.scenarios.find(v=>v.id===workspace.selectedId)?.negotiationDraft
       if(remote&&JSON.stringify(remote)===draftSignature){
-        setDealSaved({scenarioId:workspace.selectedId,signature:draftSignature})
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:draftSignature}
+        setDealSaved(dealSavedRef.current)
         setDealSaveError('')
       }else{setDealSaveError('');setDealRetry(v=>v+1)}
     }catch(cause){setDealSaveError('A conferência do rascunho falhou. Dados digitados preservados. '+(cause as Error).message)}
