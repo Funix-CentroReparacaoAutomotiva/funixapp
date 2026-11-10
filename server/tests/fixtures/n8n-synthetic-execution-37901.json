@@ -1,0 +1,122 @@
+{
+  "status": "PACOTE_UNICO_RASCUNHO_NAO_PUBLICADO",
+  "send_enabled": false,
+  "upload_permitted": false,
+  "eventKey": "gmail:abcdef0123456789:v1",
+  "eventManifest": {
+    "eventKey": "gmail:abcdef0123456789:v1",
+    "expectedParts": [
+      "identity",
+      "documents",
+      "commercial"
+    ]
+  },
+  "inventory": {
+    "eventKey": "gmail:abcdef0123456789:v1",
+    "source": "gmail",
+    "sourceReference": "abcdef0123456789",
+    "bodyReviewed": false,
+    "commercialReviewed": false,
+    "attachmentIds": [
+      "attachment_0"
+    ],
+    "checkedAttachmentIds": []
+  },
+  "fragments": [
+    {
+      "part": "identity",
+      "proposal": {
+        "source": "gmail",
+        "sourceReference": "abcdef0123456789",
+        "experienceId": "XP1234",
+        "plate": "ABC1D23",
+        "title": "Conferir identidade",
+        "summary": "XP/placa associadas ao Coda; verificar contra origem.",
+        "actions": [
+          {
+            "id": "review:identity",
+            "type": "other",
+            "title": "Revisar vínculo da XP",
+            "detail": "A correspondência textual não constitui autorização de trabalho."
+          }
+        ],
+        "missingFields": []
+      }
+    },
+    {
+      "part": "documents",
+      "proposal": {
+        "source": "gmail",
+        "sourceReference": "abcdef0123456789",
+        "experienceId": "XP1234",
+        "plate": "ABC1D23",
+        "title": "Documentos",
+        "summary": "1 novo(s) arquivo(s) proposto(s)",
+        "actions": [
+          {
+            "id": "drive:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "type": "drive_archive",
+            "title": "Arquivar foto.jpg",
+            "detail": "Origem Gmail abcdef0123456789; destino synthetic-entry; MD5 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; revalidar arquivo e destino antes de gravar."
+          }
+        ],
+        "missingFields": []
+      }
+    },
+    {
+      "part": "commercial",
+      "proposal": {
+        "source": "gmail",
+        "sourceReference": "abcdef0123456789",
+        "experienceId": "XP1234",
+        "plate": "ABC1D23",
+        "title": "Dados comerciais",
+        "summary": "Conferência de autorização e condições comerciais obrigatória.",
+        "actions": [],
+        "missingFields": [
+          {
+            "key": "commercialReview",
+            "label": "Validar informações comerciais",
+            "hint": "Conferir mensagem integral, emissor, autorização, valores e escopo na fonte oficial."
+          }
+        ]
+      }
+    }
+  ],
+  "proposal": {
+    "source": "gmail",
+    "sourceReference": "abcdef0123456789",
+    "experienceId": "XP1234",
+    "plate": "ABC1D23",
+    "title": "XP1234 · ABC1D23",
+    "summary": "1 novos originais; validação comercial pendente.",
+    "actions": [
+      {
+        "id": "review:identity",
+        "type": "other",
+        "title": "Revisar vínculo da XP",
+        "detail": "A correspondência textual não constitui autorização de trabalho."
+      },
+      {
+        "id": "drive:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "type": "drive_archive",
+        "title": "Arquivar foto.jpg",
+        "detail": "Origem Gmail abcdef0123456789; destino synthetic-entry; MD5 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; revalidar arquivo e destino antes de gravar."
+      }
+    ],
+    "missingFields": [
+      {
+        "key": "commercialReview",
+        "label": "Validar informações comerciais",
+        "hint": "Conferir mensagem integral, emissor, autorização, valores e escopo na fonte oficial."
+      }
+    ]
+  },
+  "pending": [
+    "REVISAR_CORPO_INTEGRAL",
+    "REVISAR_INFORMACOES_COMERCIAIS",
+    "VALIDAR_CONTEUDO_DOS_ANEXOS",
+    "VALIDAR_AUTORIZACAO_COMERCIAL"
+  ],
+  "readiness": "AGUARDANDO_REVALIDACAO_E_APROVACAO_HUMANA"
+}
