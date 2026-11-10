@@ -36,8 +36,8 @@ const kindNames: Record<CatalogKind, string> = { peca: 'Peças', diagnostico: 'D
 function stateLabel(item?: CatalogItem) { return !item || (item.kind === 'peca' && !item.code?.trim()) ? 'Sem código · indisponível' : item.active ? 'Ativo' : 'Inativo' }
 const fold = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
-export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext, refreshVersion }: {
-  refreshVersion:number;onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
+export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext, refreshVersion, voiceReviewActive }: {
+  refreshVersion:number;voiceReviewActive:boolean;onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
 }) {
   const [dealState,setDealState] = useState<NegotiationState>(emptyNegotiationState)
   const [scenarioGone,setScenarioGone] = useState(false)
@@ -136,9 +136,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const pieceLocked=baseBusy||selectionBlocked||refreshNeeded||scenarioGone||Boolean(selectionState.deleting)||Boolean(removal)
   useLayoutEffect(()=>{
     const selected=workspace?.scenarios.find(s=>s.id===scenarioId)
-    onVoiceContext(workspace&&workspace.selectedId===scenarioId&&selected&&!busy&&!managerDirty&&!negotiationDirty&&!dealSaving&&!dealSaveError&&!refreshNeeded&&!scenarioGone&&!selectionBlocked?
+    onVoiceContext(workspace&&workspace.selectedId===scenarioId&&selected&&!busy&&!managerDirty&&!refreshNeeded&&!scenarioGone&&!selectionBlocked?
       {atendimentoId,scenarioId,compositionRevision:workspace.revision,scenarioRevision:selected.revision,configurationRevision:workspace.configurationRevision}:null)
-  },[workspace,scenarioId,atendimentoId,busy,managerDirty,negotiationDirty,dealSaving,dealSaveError,refreshNeeded,scenarioGone,selectionBlocked,onVoiceContext])
+  },[workspace,scenarioId,atendimentoId,busy,managerDirty,refreshNeeded,scenarioGone,selectionBlocked,onVoiceContext])
   useLayoutEffect(()=>()=>onVoiceContext(null),[onVoiceContext])
   const rowContext=viewKey+':'+scenarioId+':'+selecting+':'+busy+':'+pieceLocked
   if(swipeContext!==rowContext){setSwipeContext(rowContext);setRevealedPiece(null)}
@@ -163,7 +163,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     } catch(cause) {if(!signal?.aborted && version === loadVersion.current)throw cause}
   }, [atendimentoId,acceptWorkspace])
   const saveNegotiation=useEffectEvent(async()=>{
-    if(!workspace||!dealSaved||dealSaved.scenarioId!==workspace.selectedId||!negotiationDirty||dealSaveLock.current||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||refreshNeeded||scenarioGone)return
+    if(!workspace||!dealSaved||dealSaved.scenarioId!==workspace.selectedId||!negotiationDirty||dealSaveLock.current||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||voiceReviewActive||refreshNeeded||scenarioGone)return
     const selected=workspace.scenarios.find(s=>s.id===workspace.selectedId)
     if(!selected)return
     const sent={mode:dealState.draft.mode,value:dealState.draft.value},signature=JSON.stringify(sent)
@@ -179,10 +179,10 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     finally{dealSaveLock.current=false;setDealSaving(false)}
   })
   useEffect(()=>{
-    if(!negotiationDirty||dealSaveError||dealSaving||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||refreshNeeded||scenarioGone)return
+    if(!negotiationDirty||dealSaveError||dealSaving||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||voiceReviewActive||refreshNeeded||scenarioGone)return
     const timer=setTimeout(()=>{void saveNegotiation()},850)
     return()=>clearTimeout(timer)
-  },[draftSignature,negotiationDirty,dealSaveError,dealRetry,dealSaving,baseBusy,editorDirty,financeDirty,selectionState.phase,refreshNeeded,scenarioGone,workspace?.selectedId,workspace?.scenarios])
+  },[draftSignature,negotiationDirty,dealSaveError,dealRetry,dealSaving,baseBusy,editorDirty,financeDirty,selectionState.phase,voiceReviewActive,refreshNeeded,scenarioGone,workspace?.selectedId,workspace?.scenarios])
   function failed(cause: unknown, message?: string) {
     if ((cause as Error).name === 'AbortError') return
     setFailure(message ?? (cause as Error).message); setFailureDetails(cause as RequestFailure)
