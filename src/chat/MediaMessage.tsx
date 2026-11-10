@@ -23,8 +23,13 @@ export function MediaMessage({ atendimentoId, conversationId, messageId, page, k
           !result.base64 || result.base64.length>17*1024*1024)throw Error('Invalid media')
       setUri('data:'+result.mimeType+';base64,'+result.base64)
     }catch(e){
-      setError((e as RequestFailure).status===413?
-        'Arquivo acima do limite de tamanho do Chat.':'Mídia indisponível. Ela pode ter expirado no WhatsApp.')
+      const failure=e as RequestFailure
+      setError(failure.status===413 ? 'Arquivo acima do limite de 12 MB do Chat.' :
+        failure.status===415 ? 'Formato de mídia não compatível com este Chat.' :
+        failure.status===422 ? 'A Evolution retornou dados que não correspondem ao formato do arquivo.' :
+        failure.status===504 ? 'A Evolution não respondeu a tempo. Tente abrir o vídeo novamente.' :
+        failure.status===404 ? 'Mídia não encontrada nesta conversa. Atualize as mensagens e tente novamente.' :
+        'Não foi possível carregar esta mídia pela Evolution. O WhatsApp pode continuar reproduzindo normalmente.')
     }finally{setBusy(false)}
   }
   return <div className="chat-media">

@@ -300,7 +300,15 @@ export function createRequestHandler(options: AppOptions) {
           if(!result)return fail(404,'CHAT_MEDIA_NOT_FOUND','Mídia indisponível neste Atendimento.')
           if(result.state==='too_large')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo excede o limite suportado.')
           return send(200,{kind:result.kind,mimeType:result.mimeType,base64:result.base64})
-        }catch{return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar esta mídia agora.')}
+        }catch(cause){
+          // Never leak provider URLs, keys, raw media or error bodies.
+          const code=cause instanceof Error?cause.message:''
+          if(code==='MEDIA_PROVIDER_TOO_LARGE')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo acima do limite disponível para o Chat.')
+          if(code==='MEDIA_FORMAT_UNSUPPORTED')return fail(415,'CHAT_MEDIA_UNSUPPORTED','Formato de vídeo, imagem ou áudio não compatível com o Chat.')
+          if(code==='MEDIA_CONTENT_INVALID')return fail(422,'CHAT_MEDIA_INVALID_CONTENT','O arquivo recuperado não corresponde ao formato informado.')
+          if(code==='MEDIA_PROVIDER_TIMEOUT')return fail(504,'CHAT_MEDIA_TIMEOUT','A Evolution não respondeu a tempo para esta mídia.')
+          return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar a mídia pela Evolution.')
+        }
       }
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
