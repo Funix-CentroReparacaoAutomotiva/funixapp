@@ -62,22 +62,32 @@ async def device_case(browser,device,viewport):
   confirmations=[];page.on('request',lambda r:confirmations.append(r.post_data_json)if r.method=='POST'and r.url==ORIGIN+base+'/orcamentos'else None)
   await page.evaluate("()=>{window.revoked=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revoked.push(url);revoke(url)}}")
   async def begin():
-   await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(review).to_be_visible();await expect(review.locator('iframe')).to_be_visible();await expect(review.get_by_role('checkbox')).to_have_count(0)
+   if device!='desktop':
+    async with page.expect_popup()as opened:
+     await finance.get_by_role('button',name='Emitir',exact=True).click()
+    pdf_page=await opened.value
+    await pdf_page.wait_for_url('blob:**')
+    await pdf_page.close()
+   else:await finance.get_by_role('button',name='Emitir',exact=True).click()
+   await expect(review).to_be_visible()
+   if device=='desktop':await expect(review.locator('iframe')).to_be_visible()
+   else:await expect(review.get_by_text('Prévia aberta em outra aba.')).to_be_visible()
+   await expect(review.get_by_role('checkbox')).to_have_count(0)
   async def download(action):
    async with page.expect_download()as d:await action()
    downloaded=await d.value;path=await downloaded.path();return downloaded.suggested_filename,path.read_bytes()
   async def sql(query):
    with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:return db.execute(query).fetchone()[0]
   before=(await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))
-  await begin();assert not downloads;preview_url=await review.locator('iframe').get_attribute('src');assert preview_url.startswith('blob:')
+  await begin();assert not downloads;preview_url=await review.get_by_role('link',name='abrir prévia em outra aba').get_attribute('href');assert preview_url.startswith('blob:')
   await shot('previa-pdf');assert len(await get(base+'/orcamentos'))==1
   async with page.expect_popup()as popup_event:await review.get_by_role('link',name='abrir prévia em outra aba').click()
   popup=await popup_event.value;assert popup.url.startswith('blob:');await popup.close();assert not downloads
   h.mark(device+': mobile fallback opens the existing PDF blob without another render or automatic download')
   await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();assert len(await get(base+'/orcamentos'))==1
   assert (await sql('SELECT COUNT(*)FROM budget_emission_attempts'),await sql('SELECT MAX(serial)FROM budget_emission_attempts'))==before
-  await page.wait_for_function('(url)=>window.revoked.includes(url)',arg=preview_url)
-  h.mark(device+': actual PDF blob inside modal, no checkbox/download/number/history; Back revokes the temporary URL and leaves the draft editable')
+  if device=='desktop':await page.wait_for_function('(url)=>window.revoked.includes(url)',arg=preview_url)
+  h.mark(device+': mobile tab or desktop modal PDF preview does not issue a document; Back retains draft')
   # Lost temporary-PDF response never creates a commercial reservation.
   async def lose_preview(route):await route.abort('failed')
   await page.route('**/previa-pdf',lose_preview);await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('Tente Emitir novamente');await page.unroute('**/previa-pdf',lose_preview);assert len(await get(base+'/orcamentos'))==1 and await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1 and not downloads
