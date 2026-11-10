@@ -18,6 +18,7 @@ export type ReadUiMessage = {
   fromMe: boolean
   kind: 'text' | 'image' | 'audio' | 'video' | 'document' | 'unsupported'
   text: string | null
+  page?: number // client-only: provider page containing this media ID
 }
 export type ConversationMessages = {
   conversationId: string
