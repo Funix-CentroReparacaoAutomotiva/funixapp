@@ -43,3 +43,8 @@
 .chat-file-chooser input{width:100%;max-width:300px;font-size:12px}
 .chat-file-picked{font-size:12px;overflow-wrap:anywhere}
 .chat-file-picked button{min-height:32px}
+
+/* Polls do not replace the Chat view or interrupt writing. */
+.chat-evolution .chat-read-toolbar{display:flex;align-items:center;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.chat-auto-state{font-size:11px;color:#58758d}
+.chat-new-messages{display:block;margin:8px auto 4px;min-height:36px}
