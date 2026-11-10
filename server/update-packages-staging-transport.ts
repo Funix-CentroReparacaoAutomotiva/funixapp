@@ -21,7 +21,7 @@ export type StagingSender = (request:StagingRequest)=>Promise<StagingResponse>
 const permittedPath='/api/integrations/updates/packages'
 const forbiddenHosts=new Set(['localhost','127.0.0.1','0.0.0.0','[::1]'])
 
-function checkedEndpoint(raw:string, expectedOrigin:string):string {
+function checkedEndpoint(raw:string, expectedOrigin:string, allowCurrentFunixEnvironment:boolean):string {
   let target:URL, origin:URL
   try {target=new URL(raw);origin=new URL(expectedOrigin)}
   catch {throw new Error('STAGING_ENDPOINT_INVALID')}
@@ -31,7 +31,8 @@ function checkedEndpoint(raw:string, expectedOrigin:string):string {
       origin.pathname!=='/' || !target.hostname || forbiddenHosts.has(target.hostname) ||
       target.hostname!==origin.hostname || target.port!==origin.port ||
       target.pathname!==permittedPath ||
-      !/(?:^|[.-])(?:staging|homolog|sandbox|test)(?:[.-]|$)/i.test(target.hostname))
+      !(allowCurrentFunixEnvironment ? target.hostname==='app.funix.com.br' :
+        /(?:^|[.-])(?:staging|homolog|sandbox|test)(?:[.-]|$)/i.test(target.hostname)))
       throw new Error('STAGING_ENDPOINT_INVALID')
   return target.toString()
 }
@@ -49,14 +50,17 @@ function receipt(value:unknown):{packageId:string;status:'awaiting_review';revis
 
 /**
  * Approval of this transport is separate from approval of changes.
- * It can ingest an unverified, BLOCKED card into an isolated staging app,
- * but cannot mark it ready, approve it, or execute any proposed actions.
+ * It can ingest an unverified, BLOCKED card into staging, or explicitly into
+ * the owner's designated app.funix.com.br homologation host. The shared host
+ * requires a separate opt-in and NEVER receives automatic actions. This
+ * does not mark a card ready, approve it, or execute any proposed actions.
  */
 export async function deliverStagingGmailDraft(
   draft:unknown,
   settings:{
     enabled:boolean
     isolatedEnvironment:boolean
+    currentFunixHomologation?:boolean
     endpoint:string
     expectedOrigin:string
     secret:string
@@ -64,9 +68,11 @@ export async function deliverStagingGmailDraft(
     now?:number
   }
 ):Promise<{packageId:string;status:'awaiting_review';revision:number;snapshotHash:string}> {
-  if(settings?.enabled!==true || settings?.isolatedEnvironment!==true)
+  const isolated=settings?.isolatedEnvironment===true
+  const sharedFunix=settings?.currentFunixHomologation===true
+  if(settings?.enabled!==true || isolated===sharedFunix)
     throw new Error('STAGING_TRANSPORT_DISABLED')
-  const url=checkedEndpoint(settings.endpoint,settings.expectedOrigin)
+  const url=checkedEndpoint(settings.endpoint,settings.expectedOrigin,sharedFunix)
   if(typeof settings.sender!=='function')throw new Error('STAGING_SENDER_MISSING')
   const signed=prepareSignedPendingGmailRequest(draft,settings.secret,settings.now)
   const result=await settings.sender({
