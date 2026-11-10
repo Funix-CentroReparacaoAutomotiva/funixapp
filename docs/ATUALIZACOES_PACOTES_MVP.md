@@ -168,3 +168,16 @@ Criado `server/update-packages-staging-transport.ts` e testes sintéticos `serve
 - Os testes cobrem travas independentes, URL inesperada, domínio não segregado, alteração comercial ocultada, assinatura/headers e rejeição de resposta não pendente.
 
 **Condições para teste remoto futuro:** ambiente do FunixApp realmente segregado (banco, credenciais, secrets, URL e armazenamento sintético), endereço DNS e TLS verificados, restrição de rede/allowlist onde possível, ausência de acesso a Drive/Coda/ERP produtivos, trilha de auditoria, privacidade de dados e gatilho exclusivamente manual. Precisamos do endereço de homologação previamente existente ou de provisionamento técnico aprovado — não substituir por URL produtiva nem ligar o workflow principal. A execução real por ação permanece fora de escopo desta homologação e exige autorização explícita da direção.
+
+## Persistência de recibos simulados por ação (10/11/2026)
+
+O módulo `server/update-packages-simulation-store.ts` implementa armazenamento **apenas de simulação**, em tabela SQLite independente `update_package_simulated_receipts`, criada somente por `createUpdatePackageSimulationSchema` em testes/harness opt-in. Não altera o status real de `update_packages`, não cria endpoints e não acessa ERP, Google Drive, Coda ou n8n.
+
+As provas sintéticas em `server/tests/update-packages-simulation-store.test.ts` exercitam:
+- Recibo vinculado a `package_id`, `revision`, `snapshot_hash`, ID e SHA-256 da ação.
+- Transação e chave composta `(package_id, action_id, attempt)` para reentrega idêntica idempotente e conflito explícito em recibos diferentes.
+- Sucesso da ação A e falha da B, preservação após recriar o repositório e retomada apenas de B na segunda tentativa.
+- Bloqueio de tentativas com lacuna, nova tentativa após sucesso, snapshot desatualizado, ação inexistente e pacote não aprovado.
+- Mesmo que a projeção da simulação seja `executed`, o pacote aprovado original permanece `approved_pending_execution` e nenhuma ação externa ocorre.
+
+**Limitação crítica:** isso não é o registro de execução produtiva. A confiabilidade do executor real exigirá protocolo de recibos externos assinados/verificados, confirmação do destino, chave idempotente enviada ao serviço quando suportada, fila durável, transações e recuperação de falhas entre sistemas. A tabela de simulação não deve ser reutilizada como evidência de que algum arquivo foi arquivado ou valor lançado no ERP.
