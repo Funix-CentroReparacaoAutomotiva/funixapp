@@ -135,9 +135,9 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const pieceLocked=baseBusy||selectionBlocked||refreshNeeded||scenarioGone||Boolean(selectionState.deleting)||Boolean(removal)
   useLayoutEffect(()=>{
     const selected=workspace?.scenarios.find(s=>s.id===scenarioId)
-    onVoiceContext(workspace&&workspace.selectedId===scenarioId&&selected&&!busy&&!managerDirty&&!refreshNeeded&&!scenarioGone&&!selectionBlocked?
+    onVoiceContext(workspace&&workspace.selectedId===scenarioId&&selected&&!busy&&!managerDirty&&!negotiationDirty&&!dealSaving&&!dealSaveError&&!refreshNeeded&&!scenarioGone&&!selectionBlocked?
       {atendimentoId,scenarioId,compositionRevision:workspace.revision,scenarioRevision:selected.revision,configurationRevision:workspace.configurationRevision}:null)
-  },[workspace,scenarioId,atendimentoId,busy,managerDirty,refreshNeeded,scenarioGone,selectionBlocked,onVoiceContext])
+  },[workspace,scenarioId,atendimentoId,busy,managerDirty,negotiationDirty,dealSaving,dealSaveError,refreshNeeded,scenarioGone,selectionBlocked,onVoiceContext])
   useLayoutEffect(()=>()=>onVoiceContext(null),[onVoiceContext])
   const rowContext=viewKey+':'+scenarioId+':'+selecting+':'+busy+':'+pieceLocked
   if(swipeContext!==rowContext){setSwipeContext(rowContext);setRevealedPiece(null)}
