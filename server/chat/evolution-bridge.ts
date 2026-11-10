@@ -3,6 +3,7 @@ import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { EvolutionReadPoc, ReadMessage } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
+import type { MediaGateway, MediaInput } from './evolution-media.ts'
 
 /**
  * Single-operator V20 read-only bridge.
@@ -11,11 +12,12 @@ import type { EvolutionTextSender } from './evolution-send.ts'
  * This is NOT the eventual persisted N:N conversation model.
  */
 export function createEvolutionChatBridge(
-  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
+  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'> & Partial<Pick<EvolutionReadPoc, 'findMediaEnvelope'>>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
   codaSync?: CodaEventSyncRepository,
   sendText?: EvolutionTextSender,
+  media?: MediaGateway,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -105,6 +107,35 @@ export function createEvolutionChatBridge(
         return { state: 'accepted' as const, receipt }
       } finally { pendingSends.delete(conversationId) }
     },
+    /** Media actions always require canonical active mapping, never a browser-supplied JID. */
+    async sendMediaForAtendimento(atendimentoId:string,conversationId:string,item:MediaInput){
+      if(!media||!codaSync)return {state:'invalid' as const}
+      const entry=byId.get(conversationId)
+      const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
+      if(!jid||!/^[0-9]{8,15}@s\.whatsapp\.net$/.test(jid)||
+        codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
+      if(pendingSends.has(conversationId))return {state:'busy' as const}
+      pendingSends.add(conversationId)
+      try{
+        if(codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
+        const receipt=await media.send(jid,item)
+        return {state:'accepted' as const,receipt}
+      }finally{pendingSends.delete(conversationId)}
+    },
+    async mediaForAtendimento(atendimentoId:string,conversationId:string,messageId:string,page:number){
+      if(!media||!codaSync)return null
+      const entry=byId.get(conversationId)
+      const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
+      if(!jid||codaSync.resolveActive(jid)!==atendimentoId)return null
+      // Fetch the full envelope on the server only. Never return raw provider data.
+      const item=await provider.findMediaEnvelope?.(jid,messageId,page)
+      if(!item)return null
+      if(item.bytes!==null&&item.bytes>12*1024*1024)return {state:'too_large' as const}
+      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      const result=await media.get(item.envelope,item.kind)
+      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      return {state:'ready' as const,...result}
+    },
     async messagesForAtendimento(atendimentoId: string, conversationId: string, page: number) {
       purge()
       const entry = byId.get(conversationId)
@@ -114,7 +145,7 @@ export function createEvolutionChatBridge(
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.
       return codaSync.resolveActive(jid) === atendimentoId && result
-        ? { ...result, sendTextAvailable: Boolean(sendText) } : null
+        ? { ...result, sendTextAvailable: Boolean(sendText), mediaSendAvailable: Boolean(media), mediaReadAvailable: Boolean(media) } : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string

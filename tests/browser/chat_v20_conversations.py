@@ -4,6 +4,7 @@ Only synthetic records and local 127.0.0.1 mocks. Never contacts real Evolution.
 """
 import asyncio
 import json
+import base64
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,9 +19,16 @@ B = "22222222-2222-4222-8222-222222222222"
 
 def messages_payload(conversation):
     return {"source": "evolution", "conversationId": conversation,
-            "items": [{"messageId": "synthetic-A-1", "timestamp": 1794045600,
-                       "fromMe": False, "kind": "text", "text": "Mensagem sintética A"}],
-            "page": 1, "nextPage": None, "reportedTotal": 1,
+            "items": [
+                {"messageId": "synthetic-A-1", "timestamp": 1794045600,
+                 "fromMe": False, "kind": "text", "text": "Mensagem sintética A"},
+                {"messageId": "synthetic-photo-1", "timestamp": 1794045601,
+                 "fromMe": False, "kind": "image", "text": None},
+                {"messageId": "synthetic-video-1", "timestamp": 1794045602,
+                 "fromMe": False, "kind": "video", "text": None},
+                {"messageId": "synthetic-audio-1", "timestamp": 1794045603,
+                 "fromMe": False, "kind": "audio", "text": None}],
+            "page": 1, "nextPage": None, "reportedTotal": 4,
             "consistency": "offset-not-snapshot", "historyComplete": "unknown"}
 
 
@@ -30,6 +38,10 @@ async def device_case(browser, width, height):
     context = None
     sent = []
     outbound = []
+    outbound_media = []
+    photo_bytes = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/ub8AAAAASUVORK5CYII=')
+    video_bytes = bytes.fromhex('000000186674797069736f6d00000000')
+    audio_bytes = b'OggS' + bytes(15)
     try:
         h.check_ports()
         await h.start_api()
@@ -59,6 +71,19 @@ async def device_case(browser, width, height):
                 assert set(data.keys()) == {"text"}
                 outbound.append(data["text"])
                 return await route.fulfill(status=200, json={"state": "accepted", "messageId": "SYNTHETIC-SEND-1"})
+            if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/send-media":
+                assert route.request.method == "POST"
+                body = route.request.post_data_json
+                assert set(body.keys()) <= {"kind", "mimeType", "base64", "caption"}
+                outbound_media.append(body["kind"])
+                return await route.fulfill(status=200, json={"state": "accepted", "messageId": "SYNTHETIC-MEDIA-SEND"})
+            if parsed.path.startswith(f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages/") and parsed.path.endswith("/media"):
+                assert route.request.method == "GET"
+                kind = {"synthetic-photo-1": ("image", "image/png", photo_bytes),
+                        "synthetic-video-1": ("video", "video/mp4", video_bytes),
+                        "synthetic-audio-1": ("audio", "audio/ogg", audio_bytes)}[parsed.path.split("/")[-2]]
+                return await route.fulfill(status=200, json={"kind": kind[0], "mimeType": kind[1],
+                    "base64": base64.b64encode(kind[2]).decode()})
             assert route.request.method == "GET"
             if parsed.path == "/api/chat/conversations":
                 return await route.fulfill(status=200, json={"source": "evolution",
@@ -71,7 +96,8 @@ async def device_case(browser, width, height):
                          "unreadCount": 0, "atendimentoId": None}],
                     "nextSkip": None, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
-                return await route.fulfill(status=200, json={**messages_payload(A), "sendTextAvailable": True})
+                return await route.fulfill(status=200, json={**messages_payload(A), "sendTextAvailable": True,
+                    "mediaSendAvailable": True, "mediaReadAvailable": True})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
             if parsed.path.startswith("/api/atendimentos/") and parsed.path.endswith("/evolution-conversation"):
@@ -84,7 +110,9 @@ async def device_case(browser, width, height):
         await context.route("**/api/chat/conversations?*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversation", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/messages/*/media*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-text", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
         await page.goto(ORIGIN + "/conversas")
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
@@ -120,6 +148,28 @@ async def device_case(browser, width, height):
         await expect(page.get_by_text("Mensagem aceita pelo WhatsApp.", exact=False)).to_be_visible()
         assert outbound == ["Resposta sintética, sem Evolution real"]
         assert await page.get_by_label("Mensagem de texto para o cliente").input_value() == ""
+        await page.get_by_role("button", name="Abrir foto").click()
+        await expect(page.get_by_role("button", name="Ampliar foto")).to_be_visible()
+        await page.get_by_role("button", name="Ampliar foto").click()
+        await expect(page.get_by_role("dialog", name="Foto ampliada")).to_be_visible()
+        await page.get_by_role("button", name="Fechar foto").click()
+        await page.get_by_role("button", name="Reproduzir vídeo").click()
+        await expect(page.get_by_label("Vídeo do WhatsApp")).to_be_visible()
+        await page.get_by_role("button", name="Ouvir áudio").click()
+        await expect(page.get_by_label("Áudio do WhatsApp")).to_be_visible()
+        h.mark(f"{width}px: received photo/video/audio open inside Atendimento")
+
+        picker = page.get_by_label("Escolher foto, vídeo ou áudio")
+        for name, mime, content_bytes, kind in [
+            ("teste.png", "image/png", photo_bytes, "image"),
+            ("teste.mp4", "video/mp4", video_bytes, "video"),
+            ("teste.ogg", "audio/ogg", audio_bytes, "audio"),
+        ]:
+            await picker.set_input_files({"name": name, "mimeType": mime, "buffer": content_bytes})
+            await page.get_by_role("button", name="Enviar mídia").click()
+            await expect(page.get_by_text("Arquivo aceito pela Evolution.", exact=False)).to_be_visible()
+        assert outbound_media == ["image", "video", "audio"], outbound_media
+        h.mark(f"{width}px: sends one image/video/audio each with synthetic provider")
         await page.screenshot(path=str(ARTIFACTS / f"{width}-atendimento-chat.png"))
         assert "/api/chat/conversations/" not in " ".join(sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)

@@ -21,6 +21,7 @@ import { applyVoiceBatch } from './voice-apply.ts'
 import { ChatRepository } from './chat/repository.ts'
 import { readMessages } from './chat/read.ts'
 import type { EvolutionChatBridge } from './chat/evolution-bridge.ts'
+import { validateMedia, type MediaKind, type MediaInput } from './chat/evolution-media.ts'
 import type { V20AssociationRepository } from './chat/v20-associations.ts'
 import { createCodaSyncEndpoint } from './chat/coda-sync-endpoint.ts'
 import type { CodaSyncEndpointOptions } from './chat/coda-sync-endpoint.ts'
@@ -252,6 +253,54 @@ export function createRequestHandler(options: AppOptions) {
         } catch {
           return fail(502, 'CHAT_SEND_UNCERTAIN', 'Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.')
         }
+      }
+      // WhatsApp media: authenticated operator, canonical Coda JID, no public URLs.
+      const mediaSendRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/send-media$/.exec(url.pathname)
+      if(mediaSendRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
+        if(!options.evolutionChat||!options.codaSync||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
+          return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(url.search)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const raw=await readJson(req,17*1024*1024)
+        if(!raw||typeof raw!=='object'||Array.isArray(raw))return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
+        const data=raw as Record<string,unknown>,keys=Object.keys(data)
+        if(keys.some(key=>!['kind','mimeType','base64','caption'].includes(key))||
+          typeof data.kind!=='string'||!['image','video','audio'].includes(data.kind)||
+          typeof data.mimeType!=='string'||typeof data.base64!=='string'||
+          (data.caption!==undefined&&typeof data.caption!=='string'))return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
+        const item={kind:data.kind as MediaKind,mimeType:data.mimeType,base64:data.base64,
+          ...(typeof data.caption==='string'?{caption:data.caption}:{})} as MediaInput
+        try{validateMedia(item.kind,item.mimeType,item.base64)}
+        catch{return fail(400,'CHAT_MEDIA_INVALID','Formato ou tamanho de mídia não suportado.')}
+        try{
+          const result=await options.evolutionChat.sendMediaForAtendimento(mediaSendRoute[1]!,mediaSendRoute[2]!,item)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada; confira o WhatsApp antes de reenviar.')
+          if(result.state==='unlinked')return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada ao Atendimento.')
+          if(result.state==='busy')return fail(409,'CHAT_SEND_IN_PROGRESS','Outro envio está em andamento.')
+          if(result.state!=='accepted')return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
+          return send(200,{state:'accepted',messageId:result.receipt.messageId})
+        }catch{return fail(502,'CHAT_MEDIA_SEND_UNCERTAIN','Envio não confirmado. Confira o WhatsApp antes de tentar outra vez.')}
+      }
+      const mediaReadRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
+      if(mediaReadRoute){
+        if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
+        if(!options.evolutionChat||!options.codaSync||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
+          return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
+        if([...url.searchParams.keys()].some(key=>key!=='page')||url.searchParams.getAll('page').length>1)
+          return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const page=url.searchParams.get('page')??'1'
+        if(!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)
+          return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
+        try{
+          const result=await options.evolutionChat.mediaForAtendimento(
+            mediaReadRoute[1]!,mediaReadRoute[2]!,mediaReadRoute[3]!,Number(page))
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          if(!result)return fail(404,'CHAT_MEDIA_NOT_FOUND','Mídia indisponível neste Atendimento.')
+          if(result.state==='too_large')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo excede o limite suportado.')
+          return send(200,{kind:result.kind,mimeType:result.mimeType,base64:result.base64})
+        }catch{return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar esta mídia agora.')}
       }
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
