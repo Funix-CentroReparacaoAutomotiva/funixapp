@@ -75,6 +75,11 @@ try{
    await page.locator('.neg-head').click()
    await page.getByRole('textbox',{name:'Valor em reais',exact:true}).fill('123,45')
    await page.getByRole('textbox',{name:'Valor em reais',exact:true}).blur()
+   // A pending financial PATCH must not start voice capture on an outdated scenario revision.
+   await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='false')
+   await page.waitForFunction(()=>document.querySelector('.voice-launcher')?.getAttribute('data-voice-ready')==='true',null,{timeout:12000})
+   const stored=f.scenarios.list(f.at.id)[0]?.negotiationDraft
+   assert(stored?.mode==='adjust'&&stored.value==='123,45','voice capture requires confirmed financial autosave')
   }
   mode='compact'
   await record(page)
