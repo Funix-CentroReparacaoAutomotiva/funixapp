@@ -15,7 +15,7 @@ function legacyItems(db:DatabaseSync,at:string,scene:string):DiagnosisItem[]{
 function legacyScenarios(db:DatabaseSync,at:string):Scenario[]{
  return db.prepare('SELECT * FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at).map(r=>{
   const flags=(table:string,column:string)=>Object.fromEntries(db.prepare(`SELECT ${column} AS id,enabled FROM ${table} WHERE scenario_id=?`).all(r.id!).map(f=>[String(f.id),f.enabled===1]))
-  return{id:String(r.id),atendimentoId:at,name:String(r.name),position:Number(r.position),revision:Number(r.revision),deadline:{mode:r.deadline_mode as 'automatic'|'manual',manualDays:r.deadline_days===null?null:Number(r.deadline_days)},pieceFlags:flags('scenario_piece_flags','piece_id'),serviceFlags:flags('scenario_service_flags','service_id'),componentFlags:flags('scenario_component_flags','component_id')}
+  return{id:String(r.id),atendimentoId:at,name:String(r.name),position:Number(r.position),revision:Number(r.revision),deadline:{mode:r.deadline_mode as 'automatic'|'manual',manualDays:r.deadline_days===null?null:Number(r.deadline_days)},negotiationDraft:JSON.parse(String(r.negotiation_draft_json)),pieceFlags:flags('scenario_piece_flags','piece_id'),serviceFlags:flags('scenario_service_flags','service_id'),componentFlags:flags('scenario_component_flags','component_id')}
  })
 }
 
