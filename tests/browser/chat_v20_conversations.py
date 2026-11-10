@@ -29,6 +29,7 @@ async def device_case(browser, width, height):
     page = None
     context = None
     sent = []
+    outbound = []
     try:
         h.check_ports()
         await h.start_api()
@@ -51,8 +52,14 @@ async def device_case(browser, width, height):
 
         async def mock(route):
             parsed = urlparse(route.request.url)
-            assert route.request.method == "GET"
             sent.append(parsed.path)
+            if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/send-text":
+                assert route.request.method == "POST"
+                data = route.request.post_data_json
+                assert set(data.keys()) == {"text"}
+                outbound.append(data["text"])
+                return await route.fulfill(status=200, json={"state": "accepted", "messageId": "SYNTHETIC-SEND-1"})
+            assert route.request.method == "GET"
             if parsed.path == "/api/chat/conversations":
                 return await route.fulfill(status=200, json={"source": "evolution",
                     "items": [
@@ -64,7 +71,7 @@ async def device_case(browser, width, height):
                          "unreadCount": 0, "atendimentoId": None}],
                     "nextSkip": None, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
-                return await route.fulfill(status=200, json=messages_payload(A))
+                return await route.fulfill(status=200, json={**messages_payload(A), "sendTextAvailable": True})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
             if parsed.path.startswith("/api/atendimentos/") and parsed.path.endswith("/evolution-conversation"):
@@ -77,6 +84,7 @@ async def device_case(browser, width, height):
         await context.route("**/api/chat/conversations?*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversation", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
+        await context.route("**/api/atendimentos/*/evolution-conversations/*/send-text", mock)
         await page.goto(ORIGIN + "/conversas")
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
@@ -107,6 +115,11 @@ async def device_case(browser, width, height):
         assert await page.get_by_text("Envio indisponível · somente leitura").count() == 0
         assert await page.locator(".chat-rail, .chat-page .record-summary, .chat-page .compose").count() == 0
         await expect(page.get_by_role("button", name="Atualizar mensagens")).to_be_visible()
+        await page.get_by_label("Mensagem de texto para o cliente").fill("Resposta sintética, sem Evolution real")
+        await page.get_by_role("button", name="Enviar mensagem").click()
+        await expect(page.get_by_text("Mensagem aceita pelo WhatsApp.", exact=False)).to_be_visible()
+        assert outbound == ["Resposta sintética, sem Evolution real"]
+        assert await page.get_by_label("Mensagem de texto para o cliente").input_value() == ""
         await page.screenshot(path=str(ARTIFACTS / f"{width}-atendimento-chat.png"))
         assert "/api/chat/conversations/" not in " ".join(sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)

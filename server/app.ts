@@ -225,6 +225,34 @@ export function createRequestHandler(options: AppOptions) {
         const conversation = options.evolutionChat.conversationForAtendimento(canonicalConversationRoute[1]!)
         return conversation ? send(200, conversation) : fail(404, 'CHAT_NOT_LINKED', 'Nenhuma conversa canônica única vinculada.')
       }
+      // Text-only WhatsApp send. No JID is accepted from the browser:
+      // the active Coda mapping and opaque conversation ID select the recipient.
+      const sendEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/send-text$/.exec(url.pathname)
+      if (sendEvolutionRoute) {
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Use POST para enviar texto.')
+        if (!options.evolutionChat || !options.codaSync || process.env.FUNIX_EVOLUTION_SEND_ENABLED !== 'true')
+          return fail(503, 'CHAT_SEND_DISABLED', 'O envio WhatsApp não está habilitado.')
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const data = await readJson(req, 8192)
+        if (!data || typeof data !== 'object' || Array.isArray(data) ||
+            Object.keys(data).length !== 1 || typeof (data as Record<string, unknown>).text !== 'string')
+          return fail(400, 'CHAT_SEND_INVALID', 'Envie somente o texto da mensagem.')
+        const text = (data as { text: string }).text
+        if (!text.trim() || [...text].length > 4096 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))
+          return fail(400, 'CHAT_SEND_INVALID', 'Mensagem vazia, inválida ou muito longa.')
+        try {
+          const result = await options.evolutionChat.sendTextForAtendimento(sendEvolutionRoute[1]!, sendEvolutionRoute[2]!, text)
+          if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante o envio. Confira o WhatsApp antes de reenviar.')
+          if (result.state === 'unlinked') return fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada ao Atendimento.')
+          if (result.state === 'busy') return fail(409, 'CHAT_SEND_IN_PROGRESS', 'Há um envio em andamento nesta conversa.')
+          if (result.state !== 'accepted') return fail(400, 'CHAT_SEND_INVALID', 'Mensagem inválida ou envio desativado.')
+          return send(200, { state: 'accepted', messageId: result.receipt.messageId })
+        } catch {
+          return fail(502, 'CHAT_SEND_UNCERTAIN', 'Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.')
+        }
+      }
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
