@@ -151,7 +151,14 @@ async def device_case(browser, width, height):
         assert await page.get_by_text("Envio indisponível · somente leitura").count() == 0
         assert await page.locator(".chat-rail, .chat-page .record-summary, .chat-page .compose").count() == 0
         await expect(page.get_by_role("button", name="Atualizar mensagens")).to_be_visible()
-        await expect(page.get_by_text("Atualização automática ativa")).to_be_visible()
+        # The healthy 20s polling is quiet in the WhatsApp-like UI; behavior is checked below.
+        assert await page.get_by_text("Atualização automática ativa").count() == 0
+        assert await page.locator(".chat-evolution .chat-direction").count() == 0
+        await expect(page.locator(".chat-evolution .chat-composer-row")).to_be_visible()
+        # A compact composer retains reliable targets for touch and assistive tech.
+        for action in [".chat-send-action", ".chat-file-chooser"]:
+            box = await page.locator(".chat-evolution " + action).bounding_box()
+            assert box and box["height"] >= 44 and box["width"] >= 44, (width, action, box)
         # Poll with a real browser clock; no artificial network or Evolution calls.
         # Preserve a draft through silent refresh, and do not duplicate existing rows.
         await page.get_by_label("Mensagem de texto para o cliente").fill("Rascunho preservado")

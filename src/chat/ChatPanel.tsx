@@ -309,10 +309,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     <div className="chat-stage"><div className="at-chat-scroll" ref={scroll}>
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
         <div className="chat-read-toolbar">
-          <span className="chat-auto-state" role="status">{autoError
-            ? 'Atualização automática pausada · tente atualizar'
-            : 'Atualização automática ativa'}</span>
-          <button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button>
+          {autoError && <span className="chat-auto-state" role="status">Atualização pausada</span>}
+          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy} onClick={() => void load(1)}>↻</button>
         </div>
         {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
           const element = scroll.current
@@ -323,8 +321,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
-          <span className="chat-direction">{message.fromMe ? 'Saída' : 'Entrada'}</span>
-          {message.kind !== 'text' && <div className="chat-media"><strong>{kinds[message.kind]}</strong>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>Mídia indisponível</span>}</div>}
+          
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>Mídia indisponível</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time></footer>
         </article></li>)}</ol>}
@@ -332,24 +330,27 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       </section>
     </div></div>
     {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void (file ? sendMedia() : sendText()) }}>
-      <label htmlFor="chat-whatsapp-text">Responder pelo WhatsApp</label>
-      <textarea id="chat-whatsapp-text" aria-label="Mensagem de texto para o cliente"
-        value={draft} onChange={event => setDraft(event.target.value)}
-        maxLength={4096} rows={2} disabled={sending}
-        placeholder="Digite sua resposta ao cliente"
-        onKeyDown={event => {
-          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-            event.preventDefault(); void (file ? sendMedia() : sendText())
-          }
-        }} />
-      {canMedia && <label className="chat-file-chooser">Anexar foto, vídeo ou áudio
-        <input type="file" aria-label="Escolher foto, vídeo ou áudio" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/webm" disabled={sending}
-          onChange={event => {setFile(event.target.files?.[0]??null);setSendFailure('');}} />
-      </label>}
+      <label htmlFor="chat-whatsapp-text" className="sr-only">Responder pelo WhatsApp</label>
+      <div className="chat-composer-row">
+        <textarea id="chat-whatsapp-text" aria-label="Mensagem de texto para o cliente"
+          value={draft} onChange={event => setDraft(event.target.value)}
+          maxLength={4096} rows={2} disabled={sending}
+          placeholder="Mensagem"
+          onKeyDown={event => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault(); void (file ? sendMedia() : sendText())
+            }
+          }} />
+        {canMedia && <label className="chat-file-chooser" title="Anexar foto, vídeo ou áudio">
+          <Icon name="attach" /><span className="sr-only">Anexar foto, vídeo ou áudio</span>
+          <input type="file" aria-label="Escolher foto, vídeo ou áudio" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/webm" disabled={sending}
+            onChange={event => {setFile(event.target.files?.[0]??null);setSendFailure('');}} />
+        </label>}
+        <button className="chat-send-action" type="submit" disabled={sending || (!file && (!draft.trim()||!canSendText))}>
+          <Icon name="send" /><span className="sr-only">{sending ? 'Enviando…' : file ? 'Enviar mídia' : 'Enviar mensagem'}</span>
+        </button>
+      </div>
       {file && <p className="chat-file-picked">{file.name} ({(file.size/1024/1024).toFixed(1)} MB) <button type="button" onClick={()=>setFile(null)} disabled={sending}>Remover</button></p>}
-      <button className="fh-filter" type="submit" disabled={sending || (!file && (!draft.trim()||!canSendText))}>
-        {sending ? 'Enviando…' : file ? 'Enviar mídia' : 'Enviar mensagem'}
-      </button>
       {sendNotice && <p role="status" className="chat-send-success">{sendNotice}</p>}
       {sendFailure && <p role="alert" className="chat-send-failure">{sendFailure}</p>}
     </form>}
