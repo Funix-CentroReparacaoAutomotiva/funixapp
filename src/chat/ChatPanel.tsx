@@ -309,10 +309,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     <div className="chat-stage"><div className="at-chat-scroll" ref={scroll}>
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
         <div className="chat-read-toolbar">
-          <span className="chat-auto-state" role="status">{autoError
-            ? 'Atualização automática pausada · tente atualizar'
-            : 'Atualização automática ativa'}</span>
-          <button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button>
+          {autoError && <span className="chat-auto-state" role="status">Atualização pausada</span>}
+          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy} onClick={() => void load(1)}>↻</button>
         </div>
         {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
           const element = scroll.current
