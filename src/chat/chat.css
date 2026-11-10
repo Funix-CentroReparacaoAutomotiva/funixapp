@@ -51,7 +51,7 @@
 
 
 /* #144 — Dense WhatsApp-like conversation, inside the existing 520px shell. */
-.chat-evolution .at-chat-scroll{padding:10px 9px 16px}
+.chat-readonly.chat-evolution .at-chat-scroll{padding:10px 9px 16px}
 .chat-evolution .chat-read-toolbar{margin:0 0 8px;min-height:34px}
 .chat-evolution .chat-message article{
   max-width:95%;
@@ -116,7 +116,7 @@
 .chat-evolution .chat-file-picked button{min-height:36px;flex:none}
 .chat-evolution .chat-send-success,.chat-evolution .chat-send-failure{font-size:12px}
 @media(max-width:400px){
-  .chat-evolution .at-chat-scroll{padding:8px 7px 13px}
+  .chat-readonly.chat-evolution .at-chat-scroll{padding:8px 7px 13px}
   .chat-evolution .chat-message article{max-width:97%;padding:9px 10px}
   .chat-evolution .chat-text{font-size:14px}
 }
