@@ -12,7 +12,7 @@ import type { MediaGateway, MediaInput } from './evolution-media.ts'
  * This is NOT the eventual persisted N:N conversation model.
  */
 export function createEvolutionChatBridge(
-  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'>,
+  provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'> & Partial<Pick<EvolutionReadPoc, 'findMediaEnvelope'>>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
   codaSync?: CodaEventSyncRepository,
@@ -127,14 +127,12 @@ export function createEvolutionChatBridge(
       const entry=byId.get(conversationId)
       const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
       if(!jid||codaSync.resolveActive(jid)!==atendimentoId)return null
-      // Verify provider ID in this exact canonical JID and bounded page.
-      // The media gateway never receives JIDs or raw provider rows from a browser.
-      const found=await provider.findMessages(jid,{page})
-      const item=found.items.find(m=>m.messageId===messageId)
-      if(!item||!item.media||!['image','video','audio'].includes(item.kind))return null
-      if(item.media.bytes!==null&&item.media.bytes>12*1024*1024)return {state:'too_large' as const}
+      // Fetch the full envelope on the server only. Never return raw provider data.
+      const item=await provider.findMediaEnvelope?.(jid,messageId,page)
+      if(!item)return null
+      if(item.bytes!==null&&item.bytes>12*1024*1024)return {state:'too_large' as const}
       if(codaSync.resolveActive(jid)!==atendimentoId)return null
-      const result=await media.get(messageId,item.kind as 'image'|'video'|'audio')
+      const result=await media.get(item.envelope,item.kind)
       if(codaSync.resolveActive(jid)!==atendimentoId)return null
       return {state:'ready' as const,...result}
     },
