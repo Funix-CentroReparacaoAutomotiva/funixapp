@@ -135,12 +135,55 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [sending, setSending] = useState(false)
   const [sendNotice, setSendNotice] = useState('')
   const [sendFailure, setSendFailure] = useState('')
+  // A single active Atendimento is polled: no Coda writes, webhook or new infrastructure.
+  // Evolution pagination uses offsets, not snapshots; keep already loaded history.
+  const AUTO_REFRESH_MS = 20_000
   const request = useRef<AbortController | null>(null)
-  const load = useCallback(async (page: number) => {
+  const pending = useRef(false)
+  const autoPaused = useRef(false)
+  const lastCheckedAt = useRef(0)
+  const loadedOlderPage = useRef(false)
+  const sendingRef = useRef(false)
+  const itemsRef = useRef<ReadUiMessage[]>([])
+  const scroll = useRef<HTMLDivElement | null>(null)
+  const restore = useRef<{ bottom: true } | { id: string; offset: number } | { top: number } | null>(null)
+  const [autoError, setAutoError] = useState(false)
+  const [newMessages, setNewMessages] = useState(0)
+
+  const readingPosition = useCallback(() => {
+    const element = scroll.current
+    if (!element) return null
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < 48) return { bottom: true } as const
+    const bounds = element.getBoundingClientRect()
+    const anchor = Array.from(element.querySelectorAll<HTMLElement>('[data-chat-message-id]')).find(item => {
+      const rect = item.getBoundingClientRect()
+      return rect.bottom > bounds.top && rect.top < bounds.bottom
+    })
+    return anchor
+      ? { id: anchor.dataset.chatMessageId!, offset: anchor.getBoundingClientRect().top - bounds.top }
+      : { top: element.scrollTop }
+  }, [])
+
+  useLayoutEffect(() => {
+    const target = restore.current, element = scroll.current
+    if (!target || !element) return
+    restore.current = null
+    if ('bottom' in target) { element.scrollTop = element.scrollHeight; setNewMessages(0); return }
+    if ('top' in target) { element.scrollTop = target.top; return }
+    const anchor = Array.from(element.querySelectorAll<HTMLElement>('[data-chat-message-id]'))
+      .find(item => item.dataset.chatMessageId === target.id)
+    if (anchor) element.scrollTop +=
+      anchor.getBoundingClientRect().top - element.getBoundingClientRect().top - target.offset
+  }, [items])
+
+  const load = useCallback(async (page: number, silent = false) => {
+    if (silent && (pending.current || sendingRef.current || autoPaused.current)) return
     request.current?.abort()
     const controller = new AbortController()
     request.current = controller
-    setBusy(true); setFailure('')
+    pending.current = true
+    lastCheckedAt.current = Date.now()
+    if (!silent) { autoPaused.current = false; setAutoError(false); setBusy(true); setFailure('') }
     try {
       const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
@@ -148,22 +191,69 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       setCanSendText((raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
       setCanMedia((raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       const pageItems = result.items.map(m => ({ ...m, page }))
-      setItems(previous => page === 1 ? mergeReadMessages([], pageItems) : mergeReadMessages(previous, pageItems))
-      setNextPage(result.nextPage)
+      const old = itemsRef.current
+      const position = old.length ? readingPosition() : { bottom: true } as const
+      const next = mergeReadMessages(old, pageItems)
+      const changed = next.length !== old.length || next.some((item, index) => {
+        const before = old[index]
+        return !before || before.messageId !== item.messageId || before.timestamp !== item.timestamp ||
+          before.kind !== item.kind || before.text !== item.text || before.fromMe !== item.fromMe || before.page !== item.page
+      })
+      if (changed) {
+        restore.current = position
+        itemsRef.current = next
+        setItems(next)
+        if (silent && position && !('bottom' in position)) {
+          const known = new Set(old.map(message => message.messageId))
+          const added = pageItems.filter(message => !known.has(message.messageId)).length
+          if (added) setNewMessages(count => count + added)
+        }
+      }
+      if (page > 1) loadedOlderPage.current = true
+      if (page > 1 || !loadedOlderPage.current) setNextPage(result.nextPage)
+      setAutoError(false)
     } catch (cause) {
       if (controller.signal.aborted) return
       const error = cause as RequestFailure
-      if (error.status === 401) { setItems([]); onUnauthorized(); return }
+      if (error.status === 401) { itemsRef.current = []; setItems([]); onUnauthorized(); return }
+      if (silent) { autoPaused.current = true; setAutoError(true); return }
       if (error.status === 404) {
+        itemsRef.current = []
         setItems([])
         setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
       } else setFailure('Não foi possível carregar o histórico Evolution. Tente novamente.')
-    } finally { if (!controller.signal.aborted) setBusy(false) }
-  }, [atendimentoId, conversationId, onUnauthorized])
+      autoPaused.current = true
+      setAutoError(true)
+    } finally {
+      if (request.current === controller) {
+        pending.current = false
+        if (!controller.signal.aborted && !silent) setBusy(false)
+      }
+    }
+  }, [atendimentoId, conversationId, onUnauthorized, readingPosition])
+
   useEffect(() => {
     let active = true
     queueMicrotask(() => { if (active) void load(1) })
     return () => { active = false; request.current?.abort() }
+  }, [load])
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'visible' || autoPaused.current ||
+          sendingRef.current || pending.current) return
+      void load(1, true)
+    }
+    const interval = window.setInterval(refreshIfVisible, AUTO_REFRESH_MS)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' &&
+          Date.now() - lastCheckedAt.current >= AUTO_REFRESH_MS) refreshIfVisible()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [load])
   async function sendMedia() {
     if(!file||!canMedia||sending)return
@@ -172,6 +262,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     if(!kind || file.size > 12*1024*1024 || !file.size) {
       setSendFailure('Formato de arquivo inválido ou acima de 12 MB.'); return
     }
+    sendingRef.current = true
     setSending(true);setSendFailure('');setSendNotice('')
     try {
       const base64 = await new Promise<string>((resolve,reject)=>{
@@ -194,11 +285,12 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       void load(1)
     }catch{
       setSendFailure('Envio de mídia não confirmado. Confira o WhatsApp antes de tentar novamente.')
-    }finally{setSending(false)}
+    }finally{sendingRef.current = false;setSending(false)}
   }
   async function sendText() {
     const text = draft.trim()
     if (!canSendText || sending || !text || [...text].length > 4096) return
+    sendingRef.current = true
     setSending(true); setSendFailure(''); setSendNotice('')
     try {
       await api<{ state: 'accepted'; messageId: string }>(
@@ -211,16 +303,26 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     } catch (cause) {
       if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
       setSendFailure('Envio não confirmado. Verifique a conversa antes de tentar outra vez, para evitar mensagem duplicada.')
-    } finally { setSending(false) }
+    } finally { sendingRef.current = false; setSending(false) }
   }
   return <div className="detail-page chat-page chat-readonly chat-evolution">
-    <div className="chat-stage"><div className="at-chat-scroll">
+    <div className="chat-stage"><div className="at-chat-scroll" ref={scroll}>
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
-        <div className="chat-read-toolbar"><button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button></div>
+        <div className="chat-read-toolbar">
+          <span className="chat-auto-state" role="status">{autoError
+            ? 'Atualização automática pausada · tente atualizar'
+            : 'Atualização automática ativa'}</span>
+          <button type="button" className="fh-filter" disabled={busy} onClick={() => void load(1)}>Atualizar mensagens</button>
+        </div>
+        {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
+          const element = scroll.current
+          if (element) element.scrollTop = element.scrollHeight
+          setNewMessages(0)
+        }}>Ver {newMessages} {newMessages === 1 ? 'nova mensagem' : 'novas mensagens'}</button>}
         {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
-        {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
+        {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           <span className="chat-direction">{message.fromMe ? 'Saída' : 'Entrada'}</span>
           {message.kind !== 'text' && <div className="chat-media"><strong>{kinds[message.kind]}</strong>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>Mídia indisponível</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
