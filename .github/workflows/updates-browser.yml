@@ -19,6 +19,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm install --no-save --no-audit --no-fund playwright@1.56.1
+      - run: node scripts/updates-handoff-loopback.mjs
       - run: node scripts/updates-browser.mjs
       - if: always()
         uses: actions/upload-artifact@v4
