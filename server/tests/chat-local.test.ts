@@ -245,7 +245,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
     // the V13 baseline; the actual upgrade and its failure are exercised below.
     db.exec(`DROP TABLE chat_link_receipts; DROP TABLE chat_statuses; DROP TABLE chat_messages;
       DROP TABLE chat_links; DROP TABLE chat_conversations; DROP TABLE chat_events;
-      DROP TABLE chat_instances; DELETE FROM schema_migrations WHERE version=14;`)
+      DROP TABLE chat_instances; ALTER TABLE scenarios DROP COLUMN negotiation_draft_json; DELETE FROM schema_migrations WHERE version IN (14,15);`)
     db.exec('PRAGMA foreign_keys=ON')
     const at = new AtendimentoRepository(db).create({ phone: '000000000', notes: 'Preservar conteúdo sintético anterior' })
     const before = db.prepare('SELECT * FROM atendimentos').all()
