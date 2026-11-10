@@ -25,6 +25,10 @@ import { validateMedia, type MediaKind, type MediaInput } from './chat/evolution
 import type { V20AssociationRepository } from './chat/v20-associations.ts'
 import { createCodaSyncEndpoint } from './chat/coda-sync-endpoint.ts'
 import type { CodaSyncEndpointOptions } from './chat/coda-sync-endpoint.ts'
+import { UpdatePackageRepository } from './update-packages.ts'
+import { createUpdatePackageIngest } from './update-packages-ingest.ts'
+import { hasUpdatePackageSchema } from './update-packages-schema.ts'
+import type { UpdatePackageDecision, UpdatePackageClarification } from '../shared/update-packages.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
 import type{QuoteService}from'./component-quote-service.ts'
@@ -52,6 +56,9 @@ export interface AppOptions {
 export function createRequestHandler(options: AppOptions) {
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
+  const updates = new UpdatePackageRepository(options.atendimentos.db)
+  const updatesIngest = createUpdatePackageIngest(updates,process.env.FUNIX_UPDATES_INGEST_SECRET,
+    process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true' && process.env.FUNIX_UPDATES_INGEST_ENABLED==='true',options.now)
   const scenarios = new ScenarioRepository(options.atendimentos.db)
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
@@ -90,6 +97,10 @@ export function createRequestHandler(options: AppOptions) {
         if (!codaIntake) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
         const result = await codaIntake(req, res, url)
         return send(result.status, { atendimentoId: result.atendimentoId, state: result.state })
+      }
+      if (url.pathname === '/api/integrations/updates/packages') {
+        const result=await updatesIngest(req,res)
+        return send(202,result)
       }
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
@@ -137,6 +148,36 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      // Operator decisions and clarifications require authenticated same-origin sessions.
+      // Preparing a proposal or authorizing it does not execute an external action.
+      const decisionMatch = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/decisao$').exec(url.pathname)
+      const clarificationMatch = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/complementar$').exec(url.pathname)
+      if (url.pathname === '/api/atualizacoes' || decisionMatch || clarificationMatch) {
+        if (url.pathname === '/api/atualizacoes') {
+          if (req.method !== 'GET') return fail(405,'METHOD_NOT_ALLOWED','A consulta de pacotes é somente leitura.')
+          if ([...url.searchParams.keys()].some(k=>!['visao','q'].includes(k))) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+          const visao=url.searchParams.get('visao')??'open'
+          const query=url.searchParams.get('q')??''
+          if (!['open','closed'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+          const available=hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'
+          return send(200,{...updates.list(visao as 'open'|'closed',query),
+            decisionsEnabled:available&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true',
+            clarificationsEnabled:available&&process.env.FUNIX_UPDATES_CLARIFICATIONS_ENABLED==='true'})
+        }
+        if (req.method!=='POST') return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (clarificationMatch) {
+          if(process.env.FUNIX_UPDATES_STORAGE_ENABLED!=='true' || process.env.FUNIX_UPDATES_CLARIFICATIONS_ENABLED!=='true' ||
+            !hasUpdatePackageSchema(options.atendimentos.db)) return fail(503,'PACKAGE_CLARIFICATIONS_DISABLED','Complementação indisponível.')
+        } else if(process.env.FUNIX_UPDATES_STORAGE_ENABLED!=='true' || process.env.FUNIX_UPDATES_DECISIONS_ENABLED!=='true' ||
+          !hasUpdatePackageSchema(options.atendimentos.db)) return fail(503,'PACKAGE_DECISIONS_DISABLED','Aprovações ainda não estão habilitadas.')
+        if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,4096)
+        if ((sessions.get(cookie)??0)<=now()) return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
+        if (clarificationMatch) return send(202,updates.submitClarification(clarificationMatch[1]!,body as UpdatePackageClarification,'funix_operator'))
+        return send(200,updates.decide(decisionMatch![1]!,body as UpdatePackageDecision,'funix_operator'))
+      }
+
       if(req.method==='GET'&&url.pathname==='/api/cotacoes/capacidade'){
         const enabled=Boolean(options.quotePilot)&&(process.env.NODE_ENV!=='production'||process.env.FUNIX_QUOTE_ENABLED==='true')
         return send(200,{enabled,diagnosisEnabled:enabled&&process.env.FUNIX_DIAGNOSIS_QUOTE_ENABLED==='true'})

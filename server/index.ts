@@ -5,6 +5,7 @@ import { loadIngestOptions } from './chat/ingest-config.ts'
 import { loadEvolutionChat } from './chat/evolution-config.ts'
 import { createV20AssociationSchema, V20AssociationRepository } from './chat/v20-associations.ts'
 import { createCodaEventSchema, CodaEventSyncRepository } from './chat/coda-sync.ts'
+import { createUpdatePackageSchema } from './update-packages-schema.ts'
 import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
@@ -30,6 +31,8 @@ const v20Associations = process.env.FUNIX_CHAT_V20_LINKS_ENABLED === 'true' &&
   : undefined
 // Independent OFF-by-default event sync. The n8n workflow is never modified
 // by activating this bootstrap; actual event routing requires another gate.
+// Opt-in updates storage; disabled by default.
+if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
 const codaSyncKey = parseCodaSyncSecret(process.env)
 const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
