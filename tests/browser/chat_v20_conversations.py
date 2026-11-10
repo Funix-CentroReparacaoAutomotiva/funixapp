@@ -37,6 +37,8 @@ async def device_case(browser, width, height):
     page = None
     context = None
     sent = []
+    poll_calls = []
+    added_messages = []
     outbound = []
     outbound_media = []
     photo_bytes = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/ub8AAAAASUVORK5CYII=')
@@ -51,6 +53,8 @@ async def device_case(browser, width, height):
         context = await browser.new_context(viewport={"width": width, "height": height})
         await h.watch(context)
         page = await context.new_page()
+        # Install before React mounts so the recurring interval uses mocked time.
+        await page.clock.install()
         await h.attach(page)
         await page.goto(ORIGIN + "/funil")
         await h.login(page)
@@ -96,7 +100,11 @@ async def device_case(browser, width, height):
                          "unreadCount": 0, "atendimentoId": None}],
                     "nextSkip": None, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
-                return await route.fulfill(status=200, json={**messages_payload(A), "sendTextAvailable": True,
+                poll_calls.append(parsed.query)
+                payload = messages_payload(A)
+                payload["items"].extend(added_messages)
+                payload["reportedTotal"] = len(payload["items"])
+                return await route.fulfill(status=200, json={**payload, "sendTextAvailable": True,
                     "mediaSendAvailable": True, "mediaReadAvailable": True})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
@@ -143,6 +151,28 @@ async def device_case(browser, width, height):
         assert await page.get_by_text("Envio indisponível · somente leitura").count() == 0
         assert await page.locator(".chat-rail, .chat-page .record-summary, .chat-page .compose").count() == 0
         await expect(page.get_by_role("button", name="Atualizar mensagens")).to_be_visible()
+        await expect(page.get_by_text("Atualização automática ativa")).to_be_visible()
+        # Poll with a real browser clock; no artificial network or Evolution calls.
+        # Preserve a draft through silent refresh, and do not duplicate existing rows.
+        await page.get_by_label("Mensagem de texto para o cliente").fill("Rascunho preservado")
+        initial_reads = len(poll_calls)
+        added_messages.append({"messageId": "synthetic-new-1", "timestamp": 1794045604,
+            "fromMe": False, "kind": "text", "text": "Mensagem nova automática"})
+        await page.clock.fast_forward(20_000)
+        await expect(page.get_by_text("Mensagem nova automática", exact=True)).to_be_visible()
+        assert len(poll_calls) >= initial_reads + 1, poll_calls
+        assert await page.get_by_text("Mensagem nova automática", exact=True).count() == 1
+        assert await page.get_by_label("Mensagem de texto para o cliente").input_value() == "Rascunho preservado"
+        h.mark(f"{width}px: new message appears without click and typed reply is preserved")
+        # A hidden tab cannot continue polling, and resumes after visibility.
+        await page.evaluate("Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => 'hidden'})")
+        await page.clock.fast_forward(40_000)
+        hidden_reads = len(poll_calls)
+        assert hidden_reads >= initial_reads + 1
+        await page.clock.fast_forward(20_000)
+        assert len(poll_calls) == hidden_reads, (hidden_reads, poll_calls)
+        await page.evaluate("Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => 'visible'}); document.dispatchEvent(new Event('visibilitychange'))")
+        await page.clock.fast_forward(1_000)
         await page.get_by_label("Mensagem de texto para o cliente").fill("Resposta sintética, sem Evolution real")
         await page.get_by_role("button", name="Enviar mensagem").click()
         await expect(page.get_by_text("Mensagem aceita pelo WhatsApp.", exact=False)).to_be_visible()
