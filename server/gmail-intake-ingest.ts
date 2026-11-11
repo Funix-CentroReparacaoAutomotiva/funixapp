@@ -57,7 +57,7 @@ export function createGmailCandidateIngest(
     res.setHeader('Cache-Control','no-store')
     if(result.relevance==='irrelevant')return {status:'ignored' as const,reason:result.reason}
     const notice=repo.ingest(result.notice)
-    return {status:'awaiting_authorization' as const,noticeId:notice.id,
+    return {status:notice.status,noticeId:notice.id,
       revision:notice.revision,snapshotHash:notice.snapshotHash,relevance:result.relevance}
   }
 }
