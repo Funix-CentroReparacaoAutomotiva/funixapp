@@ -24,13 +24,26 @@ export class GmailIntakeQueue {
     this.database.prepare("INSERT OR IGNORE INTO gmail_intake_delivery_queue(message_id,state,attempts,next_attempt_at,created_at,updated_at) VALUES (?,'queued',0,?,?,?)").run(id,timestamp,timestamp,timestamp)
     return map(this.one(id)!)
   }
-  claim(limit:number):GmailQueueClaim[]{
+  claim(limit:number,requestId?:string):GmailQueueClaim[]{
     this.enabled()
-    if(!Number.isSafeInteger(limit)||limit<1||limit>25)fail(400,'GMAIL_QUEUE_INVALID','Lote inválido.')
+    if(!Number.isSafeInteger(limit)||limit<1||limit>25 ||
+      (requestId!==undefined && !uuidPattern.test(requestId)))
+      fail(400,'GMAIL_QUEUE_INVALID','Lote ou requisição inválida.')
     const now=new Date(this.now()).toISOString(),until=new Date(this.now()+120000).toISOString()
     const results:GmailQueueClaim[]=[]
     this.database.exec('BEGIN IMMEDIATE')
     try{
+      if(requestId){
+        const previous=this.database.prepare(
+          'SELECT requested_limit,response_json FROM gmail_intake_delivery_queue_claim_requests WHERE request_id=?'
+        ).get(requestId) as {requested_limit:number,response_json:string}|undefined
+        if(previous){
+          if(previous.requested_limit!==limit)fail(409,'GMAIL_QUEUE_CLAIM_CONFLICT','Requisição já utilizada com outro limite.')
+          const receipt=JSON.parse(previous.response_json) as GmailQueueClaim[]
+          this.database.exec('COMMIT')
+          return receipt
+        }
+      }
       // A lost worker cannot keep the lease forever. Do not retry after five attempts.
       // SQLite queue has no id; order by stable message key.
       const expiredRows=this.database.prepare("SELECT * FROM gmail_intake_delivery_queue WHERE state='leased' AND lease_expires_at<=? ORDER BY lease_expires_at,message_id LIMIT 100").all(now) as QueueRow[]
@@ -50,6 +63,11 @@ export class GmailIntakeQueue {
         this.database.prepare("INSERT INTO gmail_intake_delivery_queue_attempts(message_id,attempt,lease_token,started_at,outcome) VALUES (?,?,?,?,'leased')")
           .run(row.message_id,attempt,token,now)
         results.push({messageId:row.message_id,leaseToken:token,attempt,leaseExpiresAt:until})
+      }
+      if(requestId){
+        this.database.prepare(
+          'INSERT INTO gmail_intake_delivery_queue_claim_requests(request_id,requested_limit,response_json,created_at) VALUES (?,?,?,?)'
+        ).run(requestId,limit,JSON.stringify(results),now)
       }
       this.database.exec('COMMIT')
       return results
