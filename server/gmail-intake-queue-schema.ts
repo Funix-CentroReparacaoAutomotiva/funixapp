@@ -28,6 +28,12 @@ export function createGmailIntakeQueueSchema(db: DatabaseSync): void {
       );
       CREATE INDEX IF NOT EXISTS gmail_intake_delivery_queue_due
         ON gmail_intake_delivery_queue(state,next_attempt_at,lease_expires_at,created_at);
+      CREATE TABLE IF NOT EXISTS gmail_intake_delivery_queue_claim_requests (
+        request_id TEXT PRIMARY KEY,
+        requested_limit INTEGER NOT NULL CHECK(requested_limit BETWEEN 1 AND 25),
+        response_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS gmail_intake_delivery_queue_attempts (
         message_id TEXT NOT NULL REFERENCES gmail_intake_delivery_queue(message_id) ON DELETE RESTRICT,
         attempt INTEGER NOT NULL CHECK(attempt BETWEEN 1 AND 5),
@@ -46,5 +52,6 @@ export function createGmailIntakeQueueSchema(db: DatabaseSync): void {
 export function hasGmailIntakeQueueSchema(db: DatabaseSync): boolean {
   return hasGmailIntakeSchema(db) &&
     Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue'").get()) &&
-    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue_attempts'").get())
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue_attempts'").get()) &&
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue_claim_requests'").get())
 }
