@@ -6,7 +6,16 @@ export type CodaOutboxTransport = (request: {
   body: string
   timestamp: string
   signature: string
-}) => Promise<{ status: number }>
+}) => Promise<{ status: number; body?: unknown }>
+
+/** Confirm the authenticated application response, not just a gateway HTTP 202. */
+function acknowledged(body: unknown): boolean {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false
+  const r = body as Record<string, unknown>
+  return r.status === 202 && (r.state === 'created' || r.state === 'existing') &&
+    typeof r.atendimentoId === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.atendimentoId)
+}
 
 /**
  * DEVELOPMENT-ONLY worker contract. The transport is injected and must be
@@ -28,7 +37,10 @@ export async function deliverDevelopmentCodaEvent(
   let status = 0
   try {
     const response = await transport({body:claimed.body,timestamp,signature})
-    status = Number.isSafeInteger(response.status) ? response.status : 0
+    // A 202 without the FunixApp receipt may be a proxy response or an
+    // incompatible route. Retry idempotently rather than losing the event.
+    status = response.status === 202 && !acknowledged(response.body)
+      ? 502 : Number.isSafeInteger(response.status) ? response.status : 0
   } catch {
     // Network failures are retries. Never include the exception or payload
     // in operational status/logging: it may contain PII or credentials.
