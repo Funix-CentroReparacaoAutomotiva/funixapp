@@ -73,7 +73,7 @@ test('DEV outbox: permanent failure quarantine and max bounded transient retries
       assert.equal(claim.attempts,attempt)
       const status=q.complete(claim,503,now+1)
       assert.equal(status,attempt===8?'quarantined':'retry')
-      now+=15*60_000
+      now+=15*60_000+2 // past the maximum backoff from completion timestamp
     }
     assert.deepEqual(q.stats(),{pending:0,leased:0,delivered:0,quarantined:2})
   }finally{db.close()}
