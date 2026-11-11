@@ -37,3 +37,10 @@ test('sums decimal values exactly and isolates service/component categories and 
  assert.equal(totals.another!.serviceTotal,'23')
  assert.equal(totals.another!.componentTotal,'0')
 })
+
+test('empty pieces and no enabled rows produce zero by category',()=>{
+ const f=calculationFixture(),calc=f.run()
+ const totals=pieceFinancialSummary({...calc,lines:[]},['p','empty'])
+ assert.deepEqual(totals.p,{serviceTotal:'0',componentTotal:'0',servicesNonBillableOnly:false})
+ assert.deepEqual(totals.empty,{serviceTotal:'0',componentTotal:'0',servicesNonBillableOnly:false})
+})
