@@ -4,6 +4,8 @@ import { openDatabase } from '../database.ts'
 import { CodaEventSyncRepository, createCodaEventSchema } from '../chat/coda-sync.ts'
 import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from '../chat/coda-outbox-dev.ts'
 import { resolveCodaCommercialContext } from '../chat/coda-eligibility-dev.ts'
+import { deliverDevelopmentCodaEvent, reconcileDevelopmentSnapshot } from '../chat/coda-outbox-worker-dev.ts'
+import { createHmac } from 'node:crypto'
 
 const t0 = 1794150000000
 const event = (eventId = 'evo:synthetic:one', codaRowId = 'i-SYNTH_1') => ({
@@ -113,4 +115,35 @@ test('DEV commercial resolver: manual independence, open/closed, ambiguity and s
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-UNKNOWN','Novo Lead','unknown')])),{kind:'identity_review',reason:'unknown_record_origin'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','')])),{kind:'identity_review',reason:'unknown_commercial_status'})
   assert.deepEqual(resolveCodaCommercialContext({...context([candidate()]),remoteJid:'synthetic@lid'}),{kind:'identity_review',reason:'unverified_identity'})
+})
+
+test('DEV reconciler: missed WhatsApp event is recovered, manual rows ignored, HMAC renewed after transient 503',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    createDevelopmentOutboxSchema(db)
+    const queue=new DevelopmentCodaOutbox(db)
+    const rows=[
+      {event:event('evo:synthetic:lost','i-LOST'),source:'whatsapp' as const,confirmedRowId:'i-LOST'},
+      {event:event('evo:synthetic:manual','i-MANUAL'),source:'manual' as const,confirmedRowId:'i-MANUAL'},
+    ]
+    assert.deepEqual(reconcileDevelopmentSnapshot(queue,rows,t0),{created:1,existing:0,skippedManual:1})
+    assert.deepEqual(reconcileDevelopmentSnapshot(queue,rows,t0),{created:0,existing:1,skippedManual:1})
+    let now=t0, attempts=0
+    const signatures:string[]=[]
+    const secret=Buffer.alloc(32,9)
+    const transport=async (req:{body:string;timestamp:string;signature:string})=>{
+      attempts++
+      assert.equal(JSON.parse(req.body).codaRowId,'i-LOST')
+      const expected='sha256='+createHmac('sha256',secret).update('coda-sync-v1\n'+req.timestamp+'\n').update(req.body).digest('hex')
+      assert.equal(req.signature,expected)
+      signatures.push(req.signature)
+      return {status:attempts===1?503:202}
+    }
+    assert.deepEqual(await deliverDevelopmentCodaEvent(queue,transport,secret,()=>now),{status:'retry',attempts:1})
+    now+=30_001
+    assert.deepEqual(await deliverDevelopmentCodaEvent(queue,transport,secret,()=>now),{status:'delivered',attempts:2})
+    assert.notEqual(signatures[0],signatures[1])
+    assert.deepEqual(await deliverDevelopmentCodaEvent(queue,transport,secret,()=>now),{status:'idle'})
+    assert.deepEqual(queue.stats(),{pending:0,leased:0,delivered:1,quarantined:0})
+  }finally{db.close()}
 })
