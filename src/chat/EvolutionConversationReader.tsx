@@ -226,7 +226,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
             {lookupError && <p role="status">{lookupError}</p>}
             <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Verificar novamente</button>
             {linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
-            <p className="ev-links-hint">Este estado não cria nem sincroniza Atendimentos manuais com o ERP.</p>
+
           </section>}
         </div>)}
       </div>}
