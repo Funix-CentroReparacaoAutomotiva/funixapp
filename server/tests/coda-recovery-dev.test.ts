@@ -85,8 +85,24 @@ test('recovery: identical event ID claimed by two confirmed rows cannot silently
   withQueue(q=>{
     const rows=[row(),row({id:'i-ROW2',syncSnapshot:{...event(),codaRowId:'i-ROW2'}})]
     const r=recoverConfirmedWhatsAppRows(q,rows,now)
-    assert.equal(r.queued,1)
-    assert.equal(r.identityReview,1)
-    assert.equal(q.stats().pending,1)
+    assert.equal(r.queued,0)
+    assert.equal(r.identityReview,2)
+    assert.equal(q.stats().pending,0)
+    const reversed=recoverConfirmedWhatsAppRows(q,rows.slice().reverse(),now)
+    assert.equal(reversed.queued,0)
+    assert.equal(reversed.identityReview,2)
+    assert.equal(q.stats().pending,0)
+  })
+})
+
+test('recovery: duplicate source row ID quarantines every occurrence without order bias',()=>{
+  withQueue(q=>{
+    const first=row()
+    const copy={...row(),fx_UUID:'evo:funix_comercial:message2',
+      syncSnapshot:event('evo:funix_comercial:message2')}
+    const r=recoverConfirmedWhatsAppRows(q,[first,copy],now)
+    assert.equal(r.queued,0)
+    assert.equal(r.identityReview,2)
+    assert.deepEqual(q.stats(),{pending:0,leased:0,delivered:0,quarantined:0})
   })
 })
