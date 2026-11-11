@@ -107,3 +107,22 @@ A confirmação de `HTTP 202` pelo endpoint do aviso significa somente que o avi
 - n8n `O4pcoCtgFgHIm1K4` (FUNIX | Gmail → candidato de aviso): workflow **inativo**, somente leitura, acionamento manual, sem anexos e sem HTTP POST. Teste de dados sintéticos executado com sucesso (execução 38306).
 - **Não conectar** o workflow de captura ativo a esse adaptador/endpoint nem habilitar as flags enquanto não houver implantação aprovada e fluxo confiável de recuperação/revisão dos e-mails.
 - Avaliar qualidade do classificador com amostra supervisionada e monitorar falsos negativos; não se trata de classificação sem erros.
+
+## 9. Outbox de homologação de tentativas (11/11/2026)
+
+- Tabela independente: `FUNIX_DEV_GMAIL_OUTBOX_SIMULATION_OFF` (`UfBOPNDKGDXEAajj`), somente IDs **sintéticos**, estado, tentativas, próximo prazo, erro e recibo; **não é a fila de produção**.
+- Workflow n8n `PeErjWWg0EWX8GIp` — **inativo**, disparo manual, sem Gmail, HTTP, HMAC ou alterações no FunixApp/ERP/Drive.
+- Execução de homologação `38307` passou: `202/awaiting_authorization→delivered`, `202/ignored→ignored`, `503→retry` com backoff, `409→blocked`, quinto `503→blocked` por exaustão de tentativas. Mensagem entregue pré-existente não foi reenviada.
+- Reexecução `38308` passou sem consumir os eventos finais ou a tentativa 503 ainda não vencida. **Esses testes só verificam sequenciamento**, não concorrência, reinício do host ou rede real.
+- A fonte ativa `vlwnt13SHEKwOS2S` segue somente registrando IDs em `FUNIX_GMAIL_EVENT_LEDGER`. Consulta em 11/11/2026 confirmou 44 registros reais, todos `received` na amostra; não existe mudança automática de status para essa tabela neste incremento.
+
+### Requisitos ainda pendentes antes da ativação da outbox real
+
+1. Garantir reivindicação atômica (`claim`) por consumidor, com leasing e concorrência/reentrância; filtro `rowNotExists`/atualização condicional por estado não bastam para prova de exclusão mútua.
+2. Definir o armazenamento transacional da tentativa e do recibo, evitando perda entre envio `202` e persistência do status. Repetições devem enviar **o mesmo candidato imutável** ou obter tratamento explícito do `409`.
+3. Reprocessar `received` já existentes e mensagens que chegaram em janelas de falha; nenhuma mensagem pode ser perdida silenciosamente por já constar do ledger.
+4. Fazer ensaio com serviço de teste e rede autorizada para `408/429/5xx`, expiração HMAC, timeout e resposta malformada, sem tocar em dados de produção.
+5. Garantir que `202` com `ignored` ou recibo de aviso válido é sucesso; nunca marcar uma falha como entregue.
+6. Não armazenar corpo/anexos na outbox; persistir apenas ID e metadados mínimos e buscar conteúdo novamente de modo controlado. Revisar limitação de exposição de snippets.
+7. Separar classificação inicial (autorizada automaticamente) de triagem de documentos e atualizações (expressamente dependente da autorização humana no FunixApp).
+8. Implantação da PR, flags e HMAC só mediante liberação específica; não ativar/despachar mensagens reais automaticamente com base nessa simulação.
