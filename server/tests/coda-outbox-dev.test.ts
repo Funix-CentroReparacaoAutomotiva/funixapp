@@ -147,3 +147,29 @@ test('DEV reconciler: missed WhatsApp event is recovered, manual rows ignored, H
     assert.deepEqual(queue.stats(),{pending:0,leased:0,delivered:1,quarantined:0})
   }finally{db.close()}
 })
+
+test('DEV outbox: 401 blocks all subsequent sends, while unexpected 200 is quarantined',()=>{
+  const db=openDatabase(':memory:')
+  try{
+    createDevelopmentOutboxSchema(db)
+    const q=new DevelopmentCodaOutbox(db)
+    q.enqueue(event('evo:synthetic:auth','i-AUTH'),'whatsapp','i-AUTH',t0)
+    q.enqueue(event('evo:synthetic:later','i-LATER'),'whatsapp','i-LATER',t0)
+    const claim=q.claim(t0,5000)!
+    assert.equal(q.complete(claim,401,t0+1),'quarantined')
+    assert.equal(q.claim(t0+900_000,5000),null)
+    const stats=q.stats()
+    assert.equal(stats.pending,1)
+    assert.equal(stats.quarantined,1)
+    assert.throws(()=>q.complete(claim,42,t0+2),/OUTBOX_INVALID_RECEIPT/)
+  }finally{db.close()}
+  const fresh=openDatabase(':memory:')
+  try{
+    createDevelopmentOutboxSchema(fresh)
+    const q=new DevelopmentCodaOutbox(fresh)
+    q.enqueue(event(),'whatsapp','i-SYNTH_1',t0)
+    const claim=q.claim(t0,5000)!
+    assert.equal(q.complete(claim,200,t0+1),'quarantined')
+    assert.equal(q.claim(t0+900_000,5000),null)
+  }finally{fresh.close()}
+})
