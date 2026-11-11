@@ -6,6 +6,7 @@ import { loadEvolutionChat } from './chat/evolution-config.ts'
 import { createV20AssociationSchema, V20AssociationRepository } from './chat/v20-associations.ts'
 import { createCodaEventSchema, CodaEventSyncRepository } from './chat/coda-sync.ts'
 import { createUpdatePackageSchema } from './update-packages-schema.ts'
+import { createGmailIntakeSchema } from './gmail-intake-schema.ts'
 import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
@@ -33,6 +34,7 @@ const v20Associations = process.env.FUNIX_CHAT_V20_LINKS_ENABLED === 'true' &&
 // by activating this bootstrap; actual event routing requires another gate.
 // Opt-in updates storage; disabled by default.
 if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
+if (process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED === 'true') createGmailIntakeSchema(db)
 const codaSyncKey = parseCodaSyncSecret(process.env)
 const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
