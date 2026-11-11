@@ -88,7 +88,7 @@ try{
    await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .count')?.textContent==='1/1')
    await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='R$ 40,00')
    const price=component.getByRole('textbox',{name:'Preço unitário do componente'})
-   await price.fill('')
+   await price.fill('inválido')
    await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='Rascunho incompleto')
    await price.fill('10,00');await price.blur()
    await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='R$ 40,00',null,{timeout:12000})
