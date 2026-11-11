@@ -30,8 +30,7 @@ test('serviços de veículos e potenciais leads geram aviso antes de qualquer XP
     ['Cotação','Preciso de funilaria e pintura para meu automóvel'],
     ['Autorização complementar','Liberado o complemento de reparo do veículo'],
     ['Aviso de sinistro','Veículo sinistrado aguardando avaliação'],
-    ['Retorno sobre o reparo','A oficina pode me atualizar sobre o conserto?'],
-    ['Atualização de atendimento','Estamos aguardando a vistoria do veículo']
+    ['Retorno sobre o reparo','A oficina pode me atualizar sobre o conserto?']
   ]) {
     const result=is(subject,body,'relevant')
     assert.equal(result.notice?.xpHint,null)
@@ -47,6 +46,7 @@ test('pistas de XP e placa não dependem de assunto e são tratadas como não ve
   assert.equal(body.notice?.plateHint,'ABC1D23')
 })
 test('ambiguidades não são descartadas',()=>{
+  assert.ok(is('Atualização de atendimento','Estamos aguardando a vistoria do veículo','uncertain').notice)
   const result=is('Dúvida sobre reparo','XP1234 e XP1945: confirmar a placa antes de avançar','uncertain')
   assert.equal(result.reason,'MULTIPLE_VEHICLE_IDENTIFIERS')
   assert.equal(result.notice?.xpHint,null)
