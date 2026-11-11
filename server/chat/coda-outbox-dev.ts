@@ -52,7 +52,8 @@ function transaction<T>(db: DatabaseSync, action: () => T): T {
 }
 function digest(body: string) { return createHash('sha256').update(body).digest('hex') }
 export class DevelopmentCodaOutbox {
-  constructor(private readonly db: DatabaseSync) {}
+  private readonly db: DatabaseSync
+  constructor(db: DatabaseSync) { this.db = db }
 
   /** Only a Coda-confirmed WhatsApp-generated row may be enqueued.
    * Manual records are deliberately excluded, and never inferred by phone.
