@@ -46,7 +46,14 @@ export function resolveCodaCommercialContext(input: {
   const whatsapp = input.candidates.filter(x=>x.origin==='whatsapp')
   if(whatsapp.some(x=>!normalize(x.commercialStatus)))
     return {kind:'identity_review',reason:'unknown_commercial_status'}
-  const open = whatsapp.filter(x=>!closed.has(normalize(x.commercialStatus)))
+  // Unknown statuses are not proof of an open opportunity: never silently
+  // choose one or create a new case based on an unrecognized ERP stage.
+  const knownOpen = new Set(['novo lead','novo lead (30min)','em negociacao','aguardando dados'])
+  if (whatsapp.some(x => {
+    const status=normalize(x.commercialStatus)
+    return !closed.has(status) && !knownOpen.has(status)
+  })) return {kind:'identity_review',reason:'unrecognized_commercial_status'}
+  const open = whatsapp.filter(x=>knownOpen.has(normalize(x.commercialStatus)))
   if(open.length===1) return {kind:'direct',codaRowId:open[0]!.rowId}
   if(open.length>1) return {kind:'choose',candidates:open.map(x=>({
     rowId:x.rowId,name:x.name,vehicle:x.vehicle,plate:x.plate,commercialStatus:x.commercialStatus,
