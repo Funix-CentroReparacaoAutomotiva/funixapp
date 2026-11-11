@@ -6,6 +6,7 @@ import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from '../chat/co
 import { resolveCodaCommercialContext } from '../chat/coda-eligibility-dev.ts'
 import { deliverDevelopmentCodaEvent, reconcileDevelopmentSnapshot } from '../chat/coda-outbox-worker-dev.ts'
 import { createHmac } from 'node:crypto'
+import { classifyConfirmedCodaRows } from '../chat/coda-eligibility-adapter-dev.ts'
 
 const t0 = 1794150000000
 const event = (eventId = 'evo:synthetic:one', codaRowId = 'i-SYNTH_1') => ({
@@ -172,4 +173,20 @@ test('DEV outbox: 401 blocks all subsequent sends, while unexpected 200 is quara
     assert.equal(q.complete(claim,200,t0+1),'quarantined')
     assert.equal(q.claim(t0+900_000,5000),null)
   }finally{fresh.close()}
+})
+
+test('DEV Coda row adapter: real classifier field names, strict WhatsApp provenance, no manual replication',()=>{
+  const query={remoteJid:'5531999990001@s.whatsapp.net',phoneE164:'+5531999990001',suppressed:false}
+  const manual={id:'i-MANUAL_1',fx_UUID:'',funil_contatoE164:query.phoneE164,
+    at_StatusComercial:{name:'Novo Lead'},at_Nome:'Balcão'}
+  assert.deepEqual(classifyConfirmedCodaRows(query,[manual]),{kind:'create',reason:'new'})
+  const whatsapp={id:'i-WHATSAPP_1',fx_UUID:'evo:funix_comercial:ABC123',
+    funil_contatoE164:query.phoneE164,at_StatusComercial:{name:'Novo Lead'},at_Nome:'Teste'}
+  assert.deepEqual(classifyConfirmedCodaRows(query,[manual,whatsapp]),{kind:'direct',codaRowId:'i-WHATSAPP_1'})
+  const second={...whatsapp,id:'i-WHATSAPP_2',fx_UUID:'evo:funix_comercial:DEF456',at_StatusComercial:'Em negociação'}
+  const multiple=classifyConfirmedCodaRows(query,[whatsapp,second,manual])
+  assert.equal(multiple.kind,'choose')
+  if(multiple.kind==='choose')assert.deepEqual(multiple.candidates.map(x=>x.rowId),['i-WHATSAPP_1','i-WHATSAPP_2'])
+  assert.deepEqual(classifyConfirmedCodaRows(query,[{...whatsapp,fx_UUID:'foreign:unverified'}]),{kind:'identity_review',reason:'unknown_record_origin'})
+  assert.deepEqual(classifyConfirmedCodaRows(query,[{...whatsapp,at_StatusComercial:{name:'Fim Positivo'}}]),{kind:'create',reason:'all_closed'})
 })
