@@ -98,3 +98,12 @@ Documentação de design não é prova de implantação.
 **Autorizar processamento de e-mail não aprova execução de alterações**. O despacho futuro deverá verificar a decisão persistida no FunixApp antes de iniciar a triagem. Ativar os botões de decisão antes de construir a etapa de despacho apenas registra decisões; não implementa o processo todo.
 
 A confirmação de `HTTP 202` pelo endpoint do aviso significa somente que o aviso foi registrado; não comprova autorização ou processamento.
+
+## 8. Classificador e adaptador manual desenvolvidos
+
+- `server/gmail-intake-classifier.ts`: classifica candidato mínimo em `relevant`, `uncertain`, `irrelevant` por regras conservadoras; não consulta Coda nem toma decisão humana; XP e placa são pistas.
+- `POST /api/integrations/gmail/intake-candidates`: entrada HMAC, **OFF por padrão** com as mesmas flags de storage/ingest e segredo do domínio Gmail; e-mails irrelevantes retornam `ignored` sem criar aviso; relevantes/incertos criam aviso idempotente.
+- `server/tests/gmail-intake-classifier.test.ts` e testes do receptor: exemplos de publicidade, compras, folha, orçamento, cotação, sinistro, reparo, duplicidade e decisões negadas.
+- n8n `O4pcoCtgFgHIm1K4` (FUNIX | Gmail → candidato de aviso): workflow **inativo**, somente leitura, acionamento manual, sem anexos e sem HTTP POST. Teste de dados sintéticos executado com sucesso (execução 38306).
+- **Não conectar** o workflow de captura ativo a esse adaptador/endpoint nem habilitar as flags enquanto não houver implantação aprovada e fluxo confiável de recuperação/revisão dos e-mails.
+- Avaliar qualidade do classificador com amostra supervisionada e monitorar falsos negativos; não se trata de classificação sem erros.
