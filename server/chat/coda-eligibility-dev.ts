@@ -37,7 +37,10 @@ export function resolveCodaCommercialContext(input: {
     if(!/^i-[A-Za-z0-9_-]{1,100}$/.test(candidate.rowId) || seen.has(candidate.rowId))
       return {kind:'identity_review',reason:'invalid_or_duplicate_row'}
     seen.add(candidate.rowId)
-    if(candidate.phoneE164!==input.phoneE164) return {kind:'identity_review',reason:'phone_conflict'}
+    // Manual ERP records are independent; their phone is not part of the
+    // WhatsApp-origin resolver's identity contract.
+    if(candidate.origin==='whatsapp' && candidate.phoneE164!==input.phoneE164)
+      return {kind:'identity_review',reason:'phone_conflict'}
   }
   // A record whose origin cannot be verified must not become a commercial case
   // automatically: especially important for manual ERP records.
