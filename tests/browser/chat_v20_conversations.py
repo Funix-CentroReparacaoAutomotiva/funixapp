@@ -130,7 +130,7 @@ async def device_case(browser, width, height):
         assert page.url.endswith("/conversas")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
         assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
-        await expect(page.get_by_text("Não encontrei Atendimento correspondente no Funil.", exact=False)).to_be_visible()
+        await expect(page.get_by_text("Atendimento não identificado nesta consulta.", exact=False)).to_be_visible()
         h.mark(f"{width}px: unlinked conversation searches Funil without guessing or creating a record")
 
         await page.get_by_role("button", name="Contato Vinculado").click()
@@ -234,10 +234,12 @@ async def device_case(browser, width, height):
         second_id = (await duplicated.json())["id"]
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Contato Sem Vínculo").click()
-        await expect(page.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
-        await expect(page.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
+        dialog = page.get_by_role("dialog", name="Qual Atendimento deseja abrir?")
+        await expect(dialog).to_be_visible()
+        await expect(dialog.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
+        await expect(dialog.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
         assert page.url.endswith("/conversas")
-        await page.get_by_role("button", name="Segundo Atendimento", exact=False).click()
+        await dialog.get_by_role("button", name="Segundo Atendimento", exact=False).click()
         await page.wait_for_url(f"**/atendimentos/{second_id}?aba=chat")
         await expect(page.locator(".detail-header")).to_contain_text("Segundo Atendimento")
         h.mark(f"{width}px: duplicate phone requires explicit Atendimento selection")
