@@ -35,7 +35,8 @@ function validate(source:ImmutableWhatsAppSource) {
     throw new Error('SOURCE_LEDGER_INVALID')
 }
 export class DevelopmentSourceLedger {
-  constructor(private readonly db: DatabaseSync) {}
+  private readonly db: DatabaseSync
+  constructor(db: DatabaseSync) { this.db=db }
   append(source:ImmutableWhatsAppSource, nowMs:number):'created'|'existing' {
     validate(source)
     if (!Number.isSafeInteger(nowMs) || nowMs < 0)
