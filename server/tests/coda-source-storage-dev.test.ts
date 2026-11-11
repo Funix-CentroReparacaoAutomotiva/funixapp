@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDatabase } from '../database.ts'
 import { createDevelopmentSourceLedgerSchema, DevelopmentSourceLedger } from '../chat/coda-source-storage-dev.ts'
+import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from '../chat/coda-outbox-dev.ts'
+import { reconcilePersistedSourceLedger } from '../chat/coda-source-ledger-dev.ts'
 import type { ImmutableWhatsAppSource } from '../chat/coda-source-ledger-dev.ts'
 
 const now=1794150000000
@@ -62,5 +64,29 @@ test('source storage: original event timestamp, exact PN/JID and name restrictio
     assert.throws(()=>ledger.append({...source(),remoteJid:'abc@lid'},now),/SOURCE_LEDGER_INVALID/)
     assert.throws(()=>ledger.append({...source(),displayName:'Name\nInjected'},now),/SOURCE_LEDGER_INVALID/)
     assert.deepEqual(ledger.readPage('',10).entries,[])
+  }finally{db.close()}
+})
+
+test('source storage: recovered from persisted SQLite into idempotent outbox after reopen',()=>{
+  const db=openDatabase(':memory:')
+  try{
+    createDevelopmentSourceLedgerSchema(db)
+    createDevelopmentOutboxSchema(db)
+    const sourceLedger=new DevelopmentSourceLedger(db)
+    const outbox=new DevelopmentCodaOutbox(db)
+    assert.equal(sourceLedger.append(source(),now),'created')
+    const row={
+      id:'i-ROW1',fx_UUID:'evo:funix_comercial:message1',
+      'api_ID Omnichanel':'5531999990001@s.whatsapp.net',
+      funil_Canal:{rowId:'i-O01Tgl0bN2'},
+      funil_contatoE164:'+5531999990001',
+    }
+    const result=reconcilePersistedSourceLedger(outbox,sourceLedger,[row],now)
+    assert.equal(result.queued,1)
+    assert.equal(result.missingSnapshot,0)
+    assert.equal(result.sourceConflicts,0)
+    const again=reconcilePersistedSourceLedger(outbox,sourceLedger,[row],now)
+    assert.equal(again.existing,1)
+    assert.deepEqual(outbox.stats(),{pending:1,leased:0,delivered:0,quarantined:0})
   }finally{db.close()}
 })
