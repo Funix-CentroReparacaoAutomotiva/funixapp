@@ -7,7 +7,7 @@ export function createGmailIntakeQueueSchema(db: DatabaseSync): void {
   db.exec('BEGIN IMMEDIATE')
   try {
     db.exec(`
-      CREATE TABLE IF NOT EXISTS gmail_intake_queue (
+      CREATE TABLE IF NOT EXISTS gmail_intake_delivery_queue (
         message_id TEXT PRIMARY KEY,
         state TEXT NOT NULL DEFAULT 'queued'
           CHECK(state IN ('queued','leased','retry','notified','ignored','blocked')),
@@ -26,10 +26,10 @@ export function createGmailIntakeQueueSchema(db: DatabaseSync): void {
           OR (state!='leased' AND lease_token IS NULL AND lease_expires_at IS NULL)
         )
       );
-      CREATE INDEX IF NOT EXISTS gmail_intake_queue_due
-        ON gmail_intake_queue(state,next_attempt_at,lease_expires_at,created_at);
-      CREATE TABLE IF NOT EXISTS gmail_intake_queue_attempts (
-        message_id TEXT NOT NULL REFERENCES gmail_intake_queue(message_id) ON DELETE RESTRICT,
+      CREATE INDEX IF NOT EXISTS gmail_intake_delivery_queue_due
+        ON gmail_intake_delivery_queue(state,next_attempt_at,lease_expires_at,created_at);
+      CREATE TABLE IF NOT EXISTS gmail_intake_delivery_queue_attempts (
+        message_id TEXT NOT NULL REFERENCES gmail_intake_delivery_queue(message_id) ON DELETE RESTRICT,
         attempt INTEGER NOT NULL CHECK(attempt BETWEEN 1 AND 5),
         lease_token TEXT NOT NULL UNIQUE,
         started_at TEXT NOT NULL,
@@ -45,6 +45,6 @@ export function createGmailIntakeQueueSchema(db: DatabaseSync): void {
 
 export function hasGmailIntakeQueueSchema(db: DatabaseSync): boolean {
   return hasGmailIntakeSchema(db) &&
-    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_queue'").get()) &&
-    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_queue_attempts'").get())
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue'").get()) &&
+    Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gmail_intake_delivery_queue_attempts'").get())
 }
