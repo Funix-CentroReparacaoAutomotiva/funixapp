@@ -6,6 +6,9 @@ import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from '../chat/co
 import { resolveCodaCommercialContext } from '../chat/coda-eligibility-dev.ts'
 import { deliverDevelopmentCodaEvent, reconcileDevelopmentSnapshot } from '../chat/coda-outbox-worker-dev.ts'
 import { createHmac } from 'node:crypto'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { classifyConfirmedCodaRows } from '../chat/coda-eligibility-adapter-dev.ts'
 
 const t0 = 1794150000000
@@ -209,4 +212,39 @@ test('DEV outbox: HTTP 202 without a valid application receipt is retried, never
     assert.deepEqual(valid,{status:'delivered',attempts:2})
     assert.deepEqual(q.stats(),{pending:0,leased:0,delivered:1,quarantined:0})
   }finally{db.close()}
+})
+
+test('DEV outbox: pending event survives database close/reopen, receives application receipt once',async()=>{
+  const folder=mkdtempSync(join(tmpdir(),'funix-outbox-synthetic-'))
+  const filename=join(folder,'outbox.sqlite')
+  try{
+    const db=openDatabase(filename)
+    try{
+      createDevelopmentOutboxSchema(db)
+      const q=new DevelopmentCodaOutbox(db)
+      assert.equal(q.enqueue(event(),'whatsapp','i-SYNTH_1',t0),'created')
+      assert.equal(q.claim(t0,5000)?.attempts,1)
+    }finally{db.close()}
+    const reopened=openDatabase(filename)
+    try{
+      createDevelopmentOutboxSchema(reopened)
+      const q=new DevelopmentCodaOutbox(reopened)
+      assert.equal(q.claim(t0+4999,5000),null)
+      assert.equal(q.claim(t0+5001,5000)?.attempts,2)
+      // A crashed worker's late response is never allowed to mark delivery.
+      const stale=q.complete({eventId:event().eventId,attempts:1,leaseUntil:t0+5000},202,t0+5001)
+      assert.equal(stale,'stale')
+      assert.deepEqual(q.stats(),{pending:0,leased:1,delivered:0,quarantined:0})
+      // Simulate another restart before application acknowledges.
+    }finally{reopened.close()}
+    const last=openDatabase(filename)
+    try{
+      createDevelopmentOutboxSchema(last)
+      const q=new DevelopmentCodaOutbox(last)
+      let now=t0+10002
+      const result=await deliverDevelopmentCodaEvent(q,async()=>({status:202,body:validReceipt}),Buffer.alloc(32,9),()=>now)
+      assert.deepEqual(result,{status:'delivered',attempts:3})
+      assert.deepEqual(q.stats(),{pending:0,leased:0,delivered:1,quarantined:0})
+    }finally{last.close()}
+  }finally{rmSync(folder,{recursive:true,force:true})}
 })
