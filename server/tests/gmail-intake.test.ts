@@ -141,5 +141,12 @@ test('receptor de candidatos ignora propaganda e gera aviso de veículo, sem tom
     assert.equal(again.status,'awaiting_authorization')
     assert.equal(repo.list('open').total,1)
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_decisions").get()!.n,0)
+    const current=repo.list('open').items[0]!
+    repo.decide(current.id,{decision:'deny',revision:current.revision,snapshotHash:current.snapshotHash,requestId:randomUUID()},'funix_operator')
+    const replay=request(JSON.stringify(candidate))
+    const confirmed=await createGmailCandidateIngest(repo,secret,true,()=>instant)(replay.req,replay.res)
+    assert.equal(confirmed.status,'denied')
+    assert.equal(repo.list('open').total,0)
+    assert.equal(repo.list('closed').total,1)
   }finally{db.close()}
 })
