@@ -14,8 +14,9 @@ function exactTotal(rows:PricedLine[]):string|null{
  })
  return sum(decimals).toString()
 }
-export function pieceFinancialSummary(calculation:Calculation):Record<string,PieceCategoryTotals>{
+export function pieceFinancialSummary(calculation:Calculation,pieceIds:readonly string[]=[]):Record<string,PieceCategoryTotals>{
  const grouped=new Map<string,{services:PricedLine[];components:PricedLine[];notBilled:number}>()
+ for(const id of pieceIds)grouped.set(id,{services:[],components:[],notBilled:0})
  for(const line of calculation.lines){
   let piece=grouped.get(line.pieceId)
   if(!piece){piece={services:[],components:[],notBilled:0};grouped.set(line.pieceId,piece)}
