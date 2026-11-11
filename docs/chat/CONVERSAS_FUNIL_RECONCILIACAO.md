@@ -30,3 +30,15 @@
 Testar com Coda e FunixApp DEV isolados, eventos sintéticos, duplicação 20x, reordenação, crash/restart, receptor offline, PN/LID, sem lead e múltiplas candidaturas. Verificar backups e rollback, integridade de dados e aprovação separada antes de publicar alterações n8n, banco ou app.
 
 **Não implementado nesta PR:** outbox/reconciliador produtivo, resolução de múltiplos casos comerciais pelo Coda, nem integração de agendamento. Não interpretar um CI verde como essas garantias.
+
+
+## Revisão adicional em 11/11/2026 — limites comprovados na branch
+
+- A referência DEV agora só considera entrega confirmada quando o transporte retorna **HTTP 202 com corpo de recibo da aplicação** (`status:202`, `state:created|existing`, `atendimentoId` UUID). HTTP 202 sem recibo válido recebe tratamento de falha temporária (retry idempotente); isso impede sucesso falso de proxy/gateway. O endpoint existente do FunixApp produz esses campos.
+- A política de elegibilidade DEV deixa de presumir que todo status não encerrado é aberto: status não reconhecido gera `identity_review`. A lista explícita de estados abertos é **provisória**, deve ser validada contra os IDs/status reais do Coda antes de conectar à operação; não autoriza criar/encerrar Atendimento por conta própria.
+- Inspeção **somente leitura** do workflow n8n publicado `21wpOido7t5OHb7i` mostrou 55 nós, com evento validado após nova leitura Coda, HMAC e POST já conectados. O nó emissor **não é uma outbox** e a leitura após confirmação não oferece por si só recuperação após crash/reinício. O nome do nó “OFF” não representa seu estado: o nó POST publicado está habilitado. Nenhum nó foi alterado nesta revisão.
+- O classificador produtivo detecta oportunidades abertas pelo conjunto de status de encerramento. A política DEV deliberadamente mais conservadora não substitui o classificador publicado; deve-se validar o catálogo real de status para evitar bloqueios indevidos.
+- Os exemplos DEV de `fx_UUID` indicam proveniência de evento; **não é um marcador de origem universalmente confiável por si só**. Uma solução produtiva precisa confirmar a cadeia evento recebido → decisão do classificador → linha Coda confirmada, com regra explícita de exclusão de cadastros manuais, e não apenas aceitar correspondência de telefone ou campo vazio.
+- Recuperar o intervalo entre gravação no Coda e registro na outbox exige um **reconciliador independente** que consulte registros comprovadamente originados por WhatsApp, com cursor/varredura segura e paginação completa. O `reconcileDevelopmentSnapshot` demonstra idempotência quando recebe uma lista confiável, mas **não coleta** os dados, não inicia periodicamente e não é uma implantação durável no n8n.
+
+**Gate pendente:** contrato persistente da origem no Coda/n8n, mecanismo de varredura e claim seguro, QA com falhas/restart em ambiente DEV integrado, migração operacional e plano de rollback. A PR permanece draft; CI verde dos testes de referência não equivale a esse gate.
