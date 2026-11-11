@@ -60,3 +60,11 @@ Testar com Coda e FunixApp DEV isolados, eventos sintéticos, duplicação 20x, 
 - Próxima dependência de arquitetura: registrar um *snapshot imutável* no instante da confirmação Coda (ou em armazenamento durável autorizado) e implementar varredura independente + reentrega a partir dessa fonte, com confirmação do recibo, sem reclassificar histórico nem sincronizar fichas manuais. Para legado sem `occurredAt` comprovado, preservar exceção manual, não falsificar data.
 
 **Estado:** código/testes em DEV e rascunho n8n, sem alteração de Coda, banco instalado, execução produtiva ou publicação de workflow. 
+
+## Incremento DEV — vínculo à origem e duplicidades (11/11/2026)
+
+- O reconciliador `coda-recovery-dev.ts` faz **pré-verificação do conjunto completo de linhas** e bloqueia todas as ocorrências de um ID de linha ou `fx_UUID` duplicado. Não existe mais resultado dependente da ordem da varredura; casos duplicados não geram entrega antes da revisão.
+- O novo `coda-source-ledger-dev.ts` define a junção conservadora **mensagem original imutável → linha Coda confirmada → outbox** para o *evento que criou a linha*. A origem precisa trazer `eventId`, `occurredAt` real, JID, identificação, status de supressão e instância. Não inventar horário de criação a partir do Coda. Cadastros manuais, registros incompletos e conflitos continuam fora.
+- Uma mensagem posterior que **reutiliza uma ficha Coda** não pode ser conciliada apenas pelo `fx_UUID` original dessa ficha. É necessário persistir especificamente a decisão `messageEventId → codaRowId` após revalidação do classificador; o adaptador atual não afirma cobrir esse caso e não deve impor vínculos pela coincidência de telefone.
+- O adaptador ainda é código sem I/O para a origem. **Não existe neste incremento criação/acionamento de uma fonte imutável persistida no n8n**, nem agendamento de varredura ou integração ponta a ponta. Estes permanecem dependências para conclusão da Issue #103.
+- Os testes de duplicidade, eventos sem origem, identidade e opt-out estão incluídos na PR #148. Resultado do CI deve ser reportado para a SHA exata em que cada execução terminar.
