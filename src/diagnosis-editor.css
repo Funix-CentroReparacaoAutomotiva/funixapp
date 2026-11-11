@@ -37,3 +37,11 @@
 /* Inline searches only for components selected in the current scenario. */
 .approved-editor .diagnosis-inline-search{grid-column:1/-1;min-width:0;margin-top:6px}
 @media(max-width:360px){.approved-editor .diagnosis-inline-search{grid-column:1/-1}}
+
+/* Issue #146: accurate per-piece totals on compact service/component headings. */
+.approved-editor .piece-summary-bar{gap:8px;align-items:center}
+.approved-editor .piece-summary-heading{min-width:0;display:flex;flex:1;align-items:baseline;flex-wrap:wrap;column-gap:12px;row-gap:3px}
+.approved-editor .piece-summary-heading>.title{min-width:0}
+.approved-editor .piece-summary-heading>.piece-category-amount{font-size:12px;font-weight:650;color:#243756;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.approved-editor .piece-summary-bar>.add{flex:none}
+@media(max-width:390px){.approved-editor .piece-summary-heading{column-gap:7px}.approved-editor .piece-summary-heading>.piece-category-amount{font-size:11px}}
