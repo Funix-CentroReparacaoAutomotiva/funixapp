@@ -522,7 +522,7 @@ export function createRequestHandler(options: AppOptions) {
           const items = commercial.list(at,selectedId), parts = components.list(at), configured = pricing.get(), state = pricing.settings(at), catalog = commercial.catalogs().items
           const calculations=all.map(s=>calculate(items,parts,catalog,s,configured.config,state.settings))
           return { scenarios: all, selectedId, items, revision: state.revision, components: parts, settings: state.settings, configurationRevision: configured.revision,
-            calculations, pieceCategoryTotals:Object.fromEntries(calculations.map(c=>[c.scenarioId,pieceFinancialSummary(c)])) }
+            calculations, pieceCategoryTotals:Object.fromEntries(calculations.map(c=>[c.scenarioId,pieceFinancialSummary(c,items.map(item=>item.id))])) }
         }
         if (req.method === 'GET' && !id) return send(200,workspace(url.searchParams.get('scenarioId') ?? undefined))
         if ((req.method !== 'POST' || id) && (req.method !== 'PATCH' || !id) && (req.method !== 'DELETE' || !id)) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
