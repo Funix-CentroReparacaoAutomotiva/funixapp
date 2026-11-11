@@ -116,6 +116,7 @@ test('DEV commercial resolver: manual independence, open/closed, ambiguity and s
   assert.deepEqual(resolveCodaCommercialContext(context([candidate()],true)),{kind:'suppressed',reason:'commercial_opt_out'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-UNKNOWN','Novo Lead','unknown')])),{kind:'identity_review',reason:'unknown_record_origin'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','')])),{kind:'identity_review',reason:'unknown_commercial_status'})
+  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Status futuro inesperado')])),{kind:'identity_review',reason:'unrecognized_commercial_status'})
   assert.deepEqual(resolveCodaCommercialContext({...context([candidate()]),remoteJid:'synthetic@lid'}),{kind:'identity_review',reason:'unverified_identity'})
 })
 
