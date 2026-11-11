@@ -29,8 +29,8 @@ export function createGmailIntakeIngest(
       pieces.push(b)
     }
     const raw=Buffer.concat(pieces)
-    const expected=createHmac('sha256',secret).update(ts+'.').update(raw).digest()
-    const actual=Buffer.from(signature,'hex')
+    const expected=createHmac('sha256',secret as string).update(ts+'.').update(raw).digest()
+    const actual=Buffer.from(signature as string,'hex')
     if(actual.length!==expected.length||!timingSafeEqual(actual,expected))
       fail(401,'GMAIL_INTAKE_UNAUTHORIZED','Assinatura inválida.')
     let parsed:unknown
