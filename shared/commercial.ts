@@ -41,9 +41,12 @@ export interface Scenario {
 export function scenarioLabel(scenario: Pick<Scenario, 'position'>): string {
   return `Cenário ${scenario.position}`
 }
+export interface PieceCategoryTotals {serviceTotal:string|null;componentTotal:string|null;servicesNonBillableOnly:boolean}
 export interface CommercialWorkspace {
   scenarios: Scenario[]; selectedId: string; items: DiagnosisItem[]; revision: number
   components: ComponentItem[]; settings: PricingSettings; configurationRevision: number; calculations: Calculation[]
+  /** Read-only totals from official priced lines, keyed by active scenario and piece; never embedded in issued budget snapshots. */
+  pieceCategoryTotals?: Record<string,Record<string,PieceCategoryTotals>>
 }
 // Opt-in mutation acknowledgement: actual scenario revision after a confirmed write.
 export interface CommercialSave<T> { item:T; scenarioRevision:number }
