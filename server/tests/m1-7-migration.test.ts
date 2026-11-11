@@ -22,7 +22,7 @@ test('V6 to V7 removes only the obsolete column, preserving inputs, catalogs, co
   const before=tables.map(t=>db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all()),component={...db.prepare('SELECT * FROM component_items').get()};delete component.fct
   db.close();db=openDatabase(file)
   assert(!db.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))
-  assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version,14)
+  assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version,15)
   assert.deepEqual({...db.prepare('SELECT * FROM component_items').get()},component)
   tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])

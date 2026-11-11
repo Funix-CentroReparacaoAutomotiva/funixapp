@@ -1,7 +1,7 @@
 import type{VoiceCaptureContext}from'../shared/voice-input'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, useEffectEvent } from 'react'
 import type { CatalogItem, CatalogKind, CatalogResponse, DiagnosisItem, DiagnosisIntensity, RecommendationApplication, HierarchyNode, Scenario, CommercialWorkspace } from '../shared/commercial'
 import { catalogItemUsable as usable, scenarioLabel } from '../shared/commercial'
 import { api } from './api'
@@ -12,13 +12,14 @@ import {PieceSheet} from './PieceSheet'
 import{MapPieceButton}from'./MapPieceButton'
 import{DiagnosisSwipeRow}from'./DiagnosisSwipeRow'
 import {DiagnosisEditor} from './DiagnosisEditor'
+import {piecePendingFields} from './diagnosis-pendencies'
 import type {PricingConfiguration} from '../shared/pricing'
 import type {CalculationState} from './calculation-state'
 import {FinancialPanel} from './FinancialPanel'
 import {BudgetPanel} from './BudgetPanel'
 import type {DetailScreen} from './detail-navigation'
 import {ScenarioMenu} from './ScenarioMenu'
-import {emptyNegotiationState,negotiationSignature,negotiationIsDirty} from './negotiation'
+import {emptyNegotiationState,negotiationSignature} from './negotiation'
 import type {RemovalReview} from '../shared/piece-removal'
 import {RemovalConfirmation} from './RemovalConfirmation'
 import type {NegotiationState} from './negotiation'
@@ -35,16 +36,23 @@ const kindNames: Record<CatalogKind, string> = { peca: 'Peças', diagnostico: 'D
 function stateLabel(item?: CatalogItem) { return !item || (item.kind === 'peca' && !item.code?.trim()) ? 'Sem código · indisponível' : item.active ? 'Ativo' : 'Inativo' }
 const fold = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
-export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext, refreshVersion }: {
-  refreshVersion:number;onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
+export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioContext, scenarioSlot, diagnosisNoteSlot, chat, onNegotiationDirty, screen, pieceId, versionId, onView, onBack, onTitle, scrollPositions, onVoiceContext, refreshVersion, voiceReviewActive }: {
+  refreshVersion:number;voiceReviewActive:boolean;onVoiceContext:(context:VoiceCaptureContext|null)=>void; atendimentoId: string; tab: string; onDirty: (value: boolean) => void; onBusy: (value: boolean) => void; scenarioContext: Map<string,string>; scenarioSlot: HTMLElement | null; diagnosisNoteSlot:HTMLElement|null; chat: ReactNode; onNegotiationDirty:(value:boolean)=>void; screen:DetailScreen|null;pieceId:string|null;versionId:string|null;onView:(screen:DetailScreen,id?:string)=>boolean;onBack:()=>void;onTitle:(title:string)=>void;scrollPositions:Map<string,{top:number;left:number}>
 }) {
   const [dealState,setDealState] = useState<NegotiationState>(emptyNegotiationState)
   const [scenarioGone,setScenarioGone] = useState(false)
-  const negotiationDirty = negotiationIsDirty(dealState.draft)
-  useEffect(()=>{onNegotiationDirty(negotiationDirty);return()=>onNegotiationDirty(false)},[negotiationDirty,onNegotiationDirty])
+  const [dealSaved,setDealSaved]=useState<{scenarioId:string;signature:string}|null>(null)
+  const [dealSaving,setDealSaving]=useState(false),[dealSaveError,setDealSaveError]=useState(''),[dealRetry,setDealRetry]=useState(0)
+  const dealSaveLock=useRef(false),dealScenario=useRef('')
+  const dealSavedRef=useRef<{scenarioId:string;signature:string}|null>(null)
+  const dealDraftSignatureRef=useRef('')
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null), [items, setItems] = useState<DiagnosisItem[]>([])
   const [pricingConfiguration,setPricingConfiguration]=useState<PricingConfiguration|null>(null)
   const [workspace,setWorkspace] = useState<CommercialWorkspace|null>(null)
+  const draftSignature=JSON.stringify({mode:dealState.draft.mode,value:dealState.draft.value})
+  useLayoutEffect(()=>{dealDraftSignatureRef.current=draftSignature},[draftSignature])
+  const negotiationDirty=Boolean(workspace&&dealSaved?.scenarioId===workspace.selectedId&&draftSignature!==dealSaved.signature)
+  useEffect(()=>{onNegotiationDirty(negotiationDirty||Boolean(dealSaveError));return()=>onNegotiationDirty(false)},[negotiationDirty,dealSaveError,onNegotiationDirty])
   const budget=screen==='orcamentos',matrix=screen==='comparacao'
   const body=useRef<HTMLDivElement>(null)
   const viewKey=atendimentoId+':'+(screen==='peca'?'peca:'+pieceId:screen==='orcamentos'?'orcamentos:'+(versionId??'lista'):screen??tab)
@@ -72,7 +80,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const [calculationState,setCalculationState]=useState<CalculationState>('current'),[parameterState,setParameterState]=useState<CalculationState>('current')
   const [editorDirty,setEditorDirty]=useState(false),[financeDirty,setFinanceDirty]=useState(false)
   const [editorBusy,setEditorBusy]=useState(false),[financeBusy,setFinanceBusy]=useState(false)
-  const baseBusy=localBusy||editorBusy||financeBusy
+  const baseBusy=localBusy||editorBusy||financeBusy||dealSaving
   const [pendingBack,setPendingBack]=useState(false)
   const [quick,setQuick]=useState<{code:string;scenario:string;diagnosis:string;intensity:DiagnosisIntensity|null}|null>(null)
   const [quickBusy,setQuickBusy]=useState(false),[quickError,setQuickError]=useState('')
@@ -88,6 +96,24 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
   const onFinanceBusy=useCallback((v:boolean)=>setFinanceBusy(v),[])
   const managerDirty=editorDirty||financeDirty
   const acceptWorkspace=useCallback((workspace:CommercialWorkspace,preferred=selection.current)=>{
+      const stored=workspace.scenarios.find(s=>s.id===workspace.selectedId)?.negotiationDraft??{mode:'none' as const,value:''}
+      const storedSignature=JSON.stringify(stored)
+      if(dealScenario.current!==workspace.selectedId){
+        dealScenario.current=workspace.selectedId
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:storedSignature}
+        setDealState({...emptyNegotiationState(),draft:{...stored,acknowledgeResidual:false}})
+        setDealSaved(dealSavedRef.current)
+        setDealSaveError('')
+      }else if(dealSavedRef.current?.scenarioId===workspace.selectedId &&
+        storedSignature!==dealSavedRef.current.signature &&
+        dealDraftSignatureRef.current===dealSavedRef.current.signature &&
+        !dealSaveLock.current){
+        // Remote edit from another session: refresh only when there is no unsaved local draft.
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:storedSignature}
+        setDealSaved(dealSavedRef.current)
+        setDealState({...emptyNegotiationState(),draft:{...stored,acknowledgeResidual:false}})
+        setDealSaveError('')
+      }
       if(preferred && preferred!==workspace.selectedId)setScenarioGone(true)
       setDealState(old=>{
         const snapshot=old.preview?.snapshot
@@ -136,6 +162,27 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
 
     } catch(cause) {if(!signal?.aborted && version === loadVersion.current)throw cause}
   }, [atendimentoId,acceptWorkspace])
+  const saveNegotiation=useEffectEvent(async()=>{
+    if(!workspace||!dealSaved||dealSaved.scenarioId!==workspace.selectedId||!negotiationDirty||dealSaveLock.current||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||voiceReviewActive||refreshNeeded||scenarioGone)return
+    const selected=workspace.scenarios.find(s=>s.id===workspace.selectedId)
+    if(!selected)return
+    const sent={mode:dealState.draft.mode,value:dealState.draft.value},signature=JSON.stringify(sent)
+    dealSaveLock.current=true;setDealSaving(true);setDealSaveError('')
+    try{
+      const saved=await api<Scenario>(`/api/atendimentos/${atendimentoId}/cenarios/${selected.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:selected.revision,negotiationDraft:sent})})
+      if(saved.id!==selected.id||JSON.stringify(saved.negotiationDraft)!==signature)throw new Error('Confirmação da negociação inválida; o valor digitado foi preservado.')
+      const current=await load(undefined,selected.id)
+      if(!current||JSON.stringify(current.scenarios.find(s=>s.id===selected.id)?.negotiationDraft)!==signature)throw new Error('Não foi possível conferir a negociação no servidor; o rascunho foi preservado.')
+      dealSavedRef.current={scenarioId:selected.id,signature}
+      setDealSaved(dealSavedRef.current)
+    }catch(cause){setDealSaveError('Negociação não confirmada. Valores mantidos nesta tela; confira a versão salva antes de sair. '+(cause as Error).message);if((cause as RequestFailure).status===401)setReauth(true)}
+    finally{dealSaveLock.current=false;setDealSaving(false)}
+  })
+  useEffect(()=>{
+    if(!negotiationDirty||dealSaveError||dealSaving||baseBusy||editorDirty||financeDirty||selectionState.phase!=='idle'||voiceReviewActive||refreshNeeded||scenarioGone)return
+    const timer=setTimeout(()=>{void saveNegotiation()},850)
+    return()=>clearTimeout(timer)
+  },[draftSignature,negotiationDirty,dealSaveError,dealRetry,dealSaving,baseBusy,editorDirty,financeDirty,selectionState.phase,voiceReviewActive,refreshNeeded,scenarioGone,workspace?.selectedId,workspace?.scenarios])
   function failed(cause: unknown, message?: string) {
     if ((cause as Error).name === 'AbortError') return
     setFailure(message ?? (cause as Error).message); setFailureDetails(cause as RequestFailure)
@@ -156,7 +203,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     try { await operation(); return true } catch (cause) { failed(cause); return false }
     finally { mutationInFlight.current = false; setBusy(false) }
   }
-  function discardContext() {setDealState(emptyNegotiationState());setScenarioGone(false);setSelecting(false);setQuick(null);onDirty(false)}
+  function discardContext() {setScenarioGone(false);setSelecting(false);setQuick(null);onDirty(false)}
   function canChangeScenario() {return !busy && (!(managerDirty || negotiationDirty) || window.confirm('Há alterações não salvas de diagnóstico, configuração ou negociação. Deseja descartá-las para trocar de cenário?'))}
   async function chooseScenario(id:string) {
     if(id===scenarioId && !scenarioGone)return true
@@ -401,10 +448,11 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
             const included = byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):Boolean(active?.pieceFlags[item.id])
             const components = workspace?.components.filter(c => c.pieceId === item.id).length ?? 0
             const name=byId(item.pieceId)?.name??'Peça'
+            const pendingFields=piecePendingFields(item,(workspace?.components??[]).filter(c=>c.pieceId===item.id).map(c=>({...c,enabled:Boolean(active?.componentFlags[c.id])})))
             const remove=()=>{const code=byId(item.pieceId)?.code;if(code&&workspace)void selectionQueue.enqueueRemoval([code],workspace,pieceIdentities)}
             return <DiagnosisSwipeRow key={item.id} name={name} revealed={revealedPiece===item.id} onReveal={open=>setRevealedPiece(open?item.id:null)} onRemove={remove} disabled={busy||pieceLocked}><article className={`diagnosis-card diagnosis-row ${included ? '' : 'excluded'}`} key={item.id}>
               <button type="button" role="switch" className="piece-inclusion-toggle" aria-label={`Habilitar peça ${byId(item.pieceId)?.name} neste cenário`} aria-checked={byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included} aria-describedby="piece-selection-status" data-pending={selectionState.intents.has(byId(item.pieceId)?.code??'')} disabled={pieceLocked||!active||!byId(item.pieceId)||(!included&&!usable(byId(item.pieceId)!))} onClick={()=>{const code=byId(item.pieceId)?.code;if(code)select([code])}}><ApprovedIcon name={(byId(item.pieceId)?.code?selectedCode(byId(item.pieceId)!.code!):included)?'toggle':'off'}/></button>
-              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span><span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Habilitada':'Desabilitada'} neste cenário</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':calculation.pieceTotals.find(p=>p.pieceId===item.id)?.nonBillableOnly?'Sem cobrança':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
+              <button className="diagnosis-open" disabled={busy} onClick={() => {if(selectionQueue.status==='idle'){onView('peca',item.id);setMessage('')}}}><span className="diagnosis-text"><span className="diagnosis-title"><strong>{(byId(item.pieceId)?.name ?? 'Peça').replace(/\s*·\s*/g,' ')}:</strong> <span>{byId(item.diagnosisId)?.name ?? 'Diagnóstico pendente'}</span></span>{pendingFields.length>0&&<span className="diagnosis-pending-indicator">{pendingFields.length} pendência(s): {pendingFields[0]?.label}{pendingFields.length>1?' e outras':''}</span>}<span className="diagnosis-counts"><span aria-label={`${item.services.length} serviços`} title={`${item.services.length} serviços`}><Icon name="service" />{item.services.length}</span><span aria-label={`${components} componentes`} title={`${components} componentes`}><Icon name="component" />{components}</span><span className="sr-only">{included?'Habilitada':'Desabilitada'} neste cenário</span></span></span><strong className="piece-total">{selectionSaving?'Calculando…':selectionBlocked?'Não atualizado':calculation?.pieceTotals?.find(p=>p.pieceId===item.id)?.total==null?'—':calculation.pieceTotals.find(p=>p.pieceId===item.id)?.nonBillableOnly?'Sem cobrança':money(calculation.pieceTotals.find(p=>p.pieceId===item.id)!.total)}</strong></button>
               <button type="button" className="piece-delete" aria-label={`Excluir peça ${byId(item.pieceId)?.name} de todos os cenários`} disabled={busy||pieceLocked} onClick={remove}><ApprovedIcon name="trash"/></button>
             </article></DiagnosisSwipeRow>
           })}</div>
@@ -414,7 +462,18 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
         </>}
       </>}
     </div>
-  </div>}{workspace && !budget && !matrix && <FinancialPanel onArchive={()=>onView('orcamentos')} onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone}/>}</div>
+  </div>}{workspace && !budget && !matrix && <FinancialPanel onArchive={()=>onView('orcamentos')} onConfiguration={setPricingConfiguration} parameterState={parameterState} onParameterState={setParameterState} calculationState={refreshNeeded||scenarioGone||selectionBlocked||calculationState==='error'?'error':calculationState==='incomplete'?'incomplete':localBusy||editorBusy||selectionSaving?'pending':calculationState} at={atendimentoId} workspace={workspace} state={dealState} onState={setDealState} negotiationPending={negotiationDirty||dealSaving} negotiationSaveError={dealSaveError} onRetryNegotiation={()=>{void (async()=>{
+    try{
+      const refreshed=await load(undefined,workspace.selectedId)
+      if(!refreshed)throw new Error('Leitura não confirmada.')
+      const remote=refreshed.scenarios.find(v=>v.id===workspace.selectedId)?.negotiationDraft
+      if(remote&&JSON.stringify(remote)===draftSignature){
+        dealSavedRef.current={scenarioId:workspace.selectedId,signature:draftSignature}
+        setDealSaved(dealSavedRef.current)
+        setDealSaveError('')
+      }else{setDealSaveError('');setDealRetry(v=>v+1)}
+    }catch(cause){setDealSaveError('A conferência do rascunho falhou. Dados digitados preservados. '+(cause as Error).message)}
+   })()}} fresh={previewFresh} onSync={()=>load()} onBusy={onFinanceBusy} onDirty={onFinanceDirty} externalBusy={localBusy||editorBusy||editorDirty||selectionSaving||selectionBlocked||refreshNeeded||scenarioGone||dealSaving}/>}</div>
 
 }
 

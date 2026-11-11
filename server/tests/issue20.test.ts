@@ -85,7 +85,7 @@ test('Issue20 flags persist in V7 JSON, validate booleans, survive legacy PATCH 
   const saved=repo.save({revision:repo.get().revision,config:legacy});assert.equal(saved.config.services[0]!.colorFactorEnabled,false);assert.equal(saved.config.services[0]!.discountable,false)
   for(const flag of ['colorFactorEnabled','discountable','billable']){const invalid=structuredClone(config);Object.assign(invalid.services[0]!,{[flag]:'false'});assert.throws(()=>repo.save({revision:repo.get().revision,config:invalid}))}
   db.close();db=openDatabase(file);assert.equal(new PricingConfigurationRepository(db).get().config.services[0]!.discountable,false)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,14);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,15);assert.equal(db.prepare("SELECT COUNT(*) n FROM catalog_items WHERE kind='peca'").get()!.n,163)
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
 

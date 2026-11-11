@@ -63,6 +63,28 @@ try{
    assert.equal(edited.brand,'Montadora Livre QA')
    assert.equal(edited.model,'Modelo Livre QA')
    assert.equal(edited.vehicle,'Modelo Livre QA 2020')
+   // Issue #121: commercial draft is saved per scenario, confirmed by API and restored on reload.
+   await page.getByRole('button',{name:'Diagnósticos',exact:true}).click()
+   const finance=page.getByRole('region',{name:'Painel financeiro'})
+   await finance.locator('.summary').click()
+   await finance.getByRole('button',{name:/Negociação comercial/}).click()
+   const moneyInput=finance.getByRole('textbox',{name:'Valor em reais'})
+   await moneyInput.fill('125')
+   await moneyInput.blur()
+   let savedDeal=false
+   for(let retry=0;retry<80;retry++){
+    const stored=fixture.scenarios.list(record.id)[0]?.negotiationDraft
+    if(stored?.mode==='discount'&&stored.value==='125'){savedDeal=true;break}
+    await page.waitForTimeout(100)
+   }
+   assert.equal(savedDeal,true,'negotiation autosave was not confirmed')
+   await page.reload()
+   const restored=page.getByRole('region',{name:'Painel financeiro'})
+   await restored.locator('.summary').click()
+   await restored.getByRole('button',{name:/Negociação comercial/}).click()
+   assert.match(await restored.getByRole('textbox',{name:'Valor em reais'}).inputValue(),/125/)
+   console.log('PASS financial draft',width,'scenario autosave and reload')
+
    assert.deepEqual(errors,[])
    await page.screenshot({path:artifacts+'/vehicle-'+width+'.png'})
    console.log('PASS vehicle form',width,'suggestions, free text, years and read-after-save')

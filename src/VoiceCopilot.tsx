@@ -10,7 +10,7 @@ import{Icon}from'./ui'
 import{VoiceReview}from'./VoiceReview'
 import'./voice-copilot.css'
 
-export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied,onClose}:{navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void;onClose:()=>void}){
+export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navigationKey,onApplied,onClose,captureBlocked,onReviewActive}:{captureBlocked:boolean;onReviewActive:(value:boolean)=>void;navigationKey:string;context:VoiceCaptureContext|null;open:boolean;onToggle:()=>void;onOpen:()=>void;visible:boolean;disabled:boolean;onApplied:()=>void;onClose:()=>void}){
  const[state,setState]=useState<CaptureState>({phase:'idle',message:'Segure o Copiloto para ditar.'})
  const[applying,setApplying]=useState(false)
  const reviseLock=useRef(false)
@@ -63,6 +63,9 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  const gesture=useRef<{timer:ReturnType<typeof setTimeout>;long:boolean;pointer?:number;key?:string}|null>(null)
  const clearGesture=()=>{if(gesture.current)clearTimeout(gesture.current.timer);gesture.current=null}
  const key=voiceCaptureKey(context),available=visible&&!disabled
+ // Review is distinct from recording: preserve an open plan while finance is edited.
+ useEffect(()=>{onReviewActive(Boolean(state.result&&open&&available))},[state.result,open,available,onReviewActive])
+ useEffect(()=>()=>onReviewActive(false),[onReviewActive])
  useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.cancel();setApplyError('');setComponentDrafts({});setAppliedKey(null);setTranscriptionOpen(false);setEvents([]);setLastTranscription('');setCopyStatus('')},[navigationKey,capture])
  useLayoutEffect(()=>{reviewEpoch.current++;clarification.current=null;clearGesture();capture.setContext(available?context:null);setComponentDrafts({});setApplyError('')},[key,available,capture,context])
  useEffect(()=>{
@@ -87,6 +90,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
  }
  function talk(questionId=clarification.current?.questionId??state.result?.resolution?.questions[0]?.id){
   if(state.phase==='recording'){capture.release();return}
+  if(captureBlocked)return
   const resolution=state.result?.resolution
   if(!resolution||busy||hasComponentEdits||!context)return
   if(!questionId||!resolution.questions.some(q=>q.id===questionId))return
@@ -126,13 +130,13 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   catch{setCopyStatus('Não foi possível copiar. Tente novamente; o histórico detalhado permanece visível.')}
  }
  function newDictation(){
-  if(busy)return
+  if(busy||captureBlocked)return
   clarification.current=null;reviewEpoch.current++;capture.cancel();setApplyError('');setTranscriptionOpen(false);onOpen();void capture.hold()
  }
  function start(pointer?:number,key?:string){
   if(gesture.current||busy)return
   clarification.current=null;reviewEpoch.current++
-  const current={timer:setTimeout(()=>{current.long=true;onOpen();void capture.hold()},350),long:false,pointer,key}
+  const current={timer:setTimeout(()=>{current.long=true;onOpen();if(!captureBlocked)void capture.hold()},350),long:false,pointer,key}
   gesture.current=current
  }
  function end(cancel=false){
@@ -165,8 +169,8 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
    {['preparing','recording','processing'].includes(state.phase)&&<button className="voice-cancel" onClick={()=>{clearGesture();addEvents(['Captura cancelada.'],{type:'capture_cancelled'});capture.cancel()}}>Cancelar</button>}
   </div>
   {state.result&&<div className="voice-action-bar">
-   {state.result.resolution&&state.result.resolution.questions.length>0&&<button className="voice-talk" disabled={hasComponentEdits||applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}
-   <button className="voice-new" disabled={busy||!context} onClick={newDictation}>Novo ditado</button>
+   {state.result.resolution&&state.result.resolution.questions.length>0&&<button className="voice-talk" disabled={captureBlocked||hasComponentEdits||applying||resolving||state.phase==='preparing'||state.phase==='processing'||!context} onClick={()=>talk()}>{state.phase==='recording'?'Enviar esclarecimento':'Falar'}</button>}
+   <button className="voice-new" disabled={busy||captureBlocked||!context} onClick={newDictation}>Novo ditado</button>
    <button className="voice-apply" disabled={hasComponentEdits||busy||!context||state.result.plan.changes.length===0||appliedKey===state.result.plan.idempotencyKey} onClick={()=>void apply()}>{appliedKey===state.result.plan.idempotencyKey?'Alterações aplicadas':applying?'Aplicando…':state.result.plan.changes.length===0?(state.result.outcome?.kind==='unchanged'?(state.result.plan.results.some(r=>r.reason==='COMPONENT_KEPT')?'Existente mantido':'Já está assim'):state.result.outcome?.pending?'Resolver pendências':'Nenhuma alteração'):state.result.reviewGroups.some(g=>g.entries.some(e=>e.kind==='pending'||e.kind==='warning'))?'Aplicar assim mesmo':'Aplicar alterações'}</button>
   </div>}
   {!state.result&&state.phase==='error'&&context&&<button className="voice-new" onClick={newDictation}>Novo ditado</button>}
@@ -174,7 +178,7 @@ export function VoiceCopilot({context,open,onToggle,onOpen,visible,disabled,navi
   {state.result?.resolution&&state.phase==='recording'&&<p className="voice-clarification-hint">Diga apenas a opção ou o nome exato do cadastro. O ditado original será preservado.</p>}
   {state.phase!=='done'&&<div className={'copilot-status voice-status '+state.phase} role={state.phase==='error'?'alert':'status'}>{state.message}</div>}
  </section>}
- {visible&&<button data-voice-ready={Boolean(context)} className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled||applying||resolving}
+ {visible&&<button data-voice-ready={Boolean(context)&&!captureBlocked} className={'copilot-fixed voice-launcher '+state.phase} aria-label="Abrir Copiloto FUNIX" aria-description="Toque para abrir. Segure, ou mantenha Espaço ou Enter pressionado, para ditar no Atendimento atual." title="Copiloto" aria-expanded={open} disabled={disabled||applying||resolving}
   onPointerDown={e=>{if(e.button!==0)return;e.currentTarget.setPointerCapture(e.pointerId);start(e.pointerId)}}
   onPointerUp={e=>{if(gesture.current?.pointer===e.pointerId)end()}}
   onPointerCancel={()=>end(true)} onLostPointerCapture={()=>{if(gesture.current?.pointer!==undefined)end(true)}}

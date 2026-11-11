@@ -117,3 +117,21 @@ test('failure after additive M1.2 upgrades rolls back every new table/column wit
   db.close()
  }finally{rmSync(directory,{recursive:true,force:true})}
 })
+
+
+test('negotiation drafts persist separately per scenario and reject stale or approval writes',()=>{
+ const {db,at,scenarios:s}=setup()
+ try{
+  const first=s.list(at.id)[0]!
+  assert.deepEqual(first.negotiationDraft,{mode:'none',value:''})
+  const saved=s.update(at.id,first.id,{revision:first.revision,negotiationDraft:{mode:'discount',value:'120,00'}})
+  assert.deepEqual(s.list(at.id)[0]!.negotiationDraft,{mode:'discount',value:'120,00'})
+  assert.throws(()=>s.update(at.id,first.id,{revision:first.revision,negotiationDraft:{mode:'adjust',value:'200'}}))
+  assert.throws(()=>s.update(at.id,first.id,{revision:saved.revision,negotiationDraft:{mode:'adjust',value:'200',acknowledgeResidual:true}}))
+  const second=s.create(at.id,{name:'Variação',duplicateFrom:saved.id,sourceRevision:saved.revision})
+  assert.deepEqual(second.negotiationDraft,{mode:'none',value:''})
+  const changed=s.update(at.id,second.id,{revision:second.revision,negotiationDraft:{mode:'adjust',value:'200'}})
+  assert.deepEqual(s.list(at.id).find(x=>x.id===saved.id)!.negotiationDraft,saved.negotiationDraft)
+  assert.deepEqual(s.list(at.id).find(x=>x.id===changed.id)!.negotiationDraft,changed.negotiationDraft)
+ }finally{db.close()}
+})
