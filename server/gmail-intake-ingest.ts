@@ -8,7 +8,7 @@ import { classifyGmailCandidate } from './gmail-intake-classifier.ts'
 const fail=(status:number,code:string,message:string):never=>{throw new ServiceError(status,code,message)}
 
 /** Verify signed raw request before looking at any user-supplied email data. */
-async function verifiedPayload(req:IncomingMessage,secret:string|undefined,enabled:boolean,now:()=>number):Promise<unknown>{
+export async function verifySignedGmailPayload(req:IncomingMessage,secret:string|undefined,enabled:boolean,now:()=>number):Promise<unknown>{
   if(req.method!=='POST')fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
   if(!enabled||!secret||secret.length<32)fail(503,'GMAIL_INTAKE_INGEST_DISABLED','Recepção de avisos desabilitada.')
   if(req.headers['content-type']!=='application/json')fail(415,'JSON_REQUIRED','Envie JSON.')
@@ -40,7 +40,7 @@ export function createGmailIntakeIngest(
   repo:GmailIntakeRepository,secret:string|undefined,enabled:boolean,now:()=>number=Date.now
 ) {
   return async (req:IncomingMessage,res:ServerResponse)=>{
-    const parsed=await verifiedPayload(req,secret,enabled,now)
+    const parsed=await verifySignedGmailPayload(req,secret,enabled,now)
     const notice=repo.ingest(parsed as GmailIntakeNoticeInput)
     res.setHeader('Cache-Control','no-store')
     return {noticeId:notice.id,status:notice.status,revision:notice.revision,snapshotHash:notice.snapshotHash}
@@ -52,7 +52,7 @@ export function createGmailCandidateIngest(
   repo:GmailIntakeRepository,secret:string|undefined,enabled:boolean,now:()=>number=Date.now
 ) {
   return async (req:IncomingMessage,res:ServerResponse)=>{
-    const parsed=await verifiedPayload(req,secret,enabled,now)
+    const parsed=await verifySignedGmailPayload(req,secret,enabled,now)
     const result=classifyGmailCandidate(parsed)
     res.setHeader('Cache-Control','no-store')
     if(result.relevance==='irrelevant')return {status:'ignored' as const,reason:result.reason}
