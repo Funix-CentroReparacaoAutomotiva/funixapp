@@ -49,7 +49,7 @@ test('enqueue idempotente, claim único e recibo idempotente',()=>{
   assert.equal(queue.enqueue(msg).state,'notified')
   assert.deepEqual(queue.claim(1),[])
   assert.throws(()=>queue.acknowledge({...ack,result:'ignored',noticeId:null}),{code:'GMAIL_QUEUE_RECEIPT_CONFLICT'})
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_queue_attempts').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get()!.n,1)
  }finally{db.close()}
 })
 test('um lease não confirma aviso de outra mensagem; conflito preserva estado',()=>{
@@ -76,7 +76,7 @@ test('expiração do lease recupera, e token antigo não consegue concluir outra
   assert.throws(()=>queue.acknowledge({messageId:msg,leaseToken:first.leaseToken,result:'ignored',noticeId:null,errorCode:null}),{code:'GMAIL_QUEUE_STALE'})
   assert.equal(queue.acknowledge({messageId:msg,leaseToken:second.leaseToken,result:'ignored',noticeId:null,errorCode:null}).state,'ignored')
   assert.deepEqual(queue.claim(1),[])
-  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_queue_attempts WHERE outcome='expired'").get()!.n,1)
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts WHERE outcome='expired'").get()!.n,1)
  }finally{db.close()}
 })
 test('retentativa 503 com backoff e limite de cinco tentativas',()=>{
@@ -92,7 +92,7 @@ test('retentativa 503 com backoff e limite de cinco tentativas',()=>{
   }
   assert.deepEqual(queue.claim(1),[])
   assert.equal(queue.status(msg).attempts,5)
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_queue_attempts').get()!.n,5)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get()!.n,5)
  }finally{db.close()}
 })
 test('falha permanente bloqueia e confirmação fora do prazo requer reconciliação',()=>{
@@ -116,6 +116,6 @@ test('duas instâncias no mesmo banco não reclamam o mesmo evento',()=>{
   const claims=[...queue.claim(1),...other.claim(1)]
   assert.equal(claims.length,1)
   assert.equal(claims[0]?.messageId,msg)
-  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_queue_attempts WHERE outcome='leased'").get()!.n,1)
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts WHERE outcome='leased'").get()!.n,1)
  }finally{db.close()}
 })
