@@ -1,5 +1,6 @@
 import type { ConfirmedCodaEvent } from './coda-sync.ts'
 import type { DevelopmentCodaOutbox } from './coda-outbox-dev.ts'
+import type { DevelopmentSourceLedger } from './coda-source-storage-dev.ts'
 import { recoverConfirmedWhatsAppRows, type RecoverableCodaRow, type RecoverySummary } from './coda-recovery-dev.ts'
 
 /**
@@ -76,4 +77,28 @@ export function reconcileSourceLedger(
     return {...row,syncSnapshot:snapshot,suppressed:false}
   })
   return {...recoverConfirmedWhatsAppRows(outbox,joinRows,nowMs),sourceConflicts,unsupportedReuses}
+}
+
+/**
+ * Explicit read-only reconciliation entry point. Caller must supply a FULL
+ * paginated Coda snapshot. This does not perform I/O against Coda or run a
+ * timer, and must never use a partial Coda response to infer missing rows.
+ */
+export function reconcilePersistedSourceLedger(
+  outbox: DevelopmentCodaOutbox,
+  ledger: DevelopmentSourceLedger,
+  confirmedCodaRows: readonly RecoverableCodaRow[],
+  nowMs: number,
+): SourceLedgerResult {
+  const entries: ImmutableWhatsAppSource[] = []
+  let cursor = ''
+  for (;;) {
+    const page = ledger.readPage(cursor, 100)
+    entries.push(...page.entries)
+    if (entries.length > 10000) throw new Error('SOURCE_LEDGER_SCAN_LIMIT')
+    if (page.nextCursor === null) break
+    if (page.nextCursor <= cursor) throw new Error('SOURCE_LEDGER_INVALID_CURSOR')
+    cursor = page.nextCursor
+  }
+  return reconcileSourceLedger(outbox, confirmedCodaRows, entries, nowMs)
 }
