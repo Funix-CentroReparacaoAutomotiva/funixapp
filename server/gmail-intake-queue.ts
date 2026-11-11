@@ -70,19 +70,20 @@ export class GmailIntakeQueue {
     try{
       const row=this.one(id)
       if(!row)fail(404,'GMAIL_QUEUE_NOT_FOUND','Mensagem não encontrada.')
-      if(row.last_receipt_token===input.leaseToken){
-        if(row.last_receipt_hash!==hash)fail(409,'GMAIL_QUEUE_RECEIPT_CONFLICT','Recibo divergente.')
-        this.database.exec('COMMIT');return map(row)
+      const current=row!
+      if(current.last_receipt_token===input.leaseToken){
+        if(current.last_receipt_hash!==hash)fail(409,'GMAIL_QUEUE_RECEIPT_CONFLICT','Recibo divergente.')
+        this.database.exec('COMMIT');return map(current)
       }
-      if(row.state!=='leased'||row.lease_token!==input.leaseToken)fail(409,'GMAIL_QUEUE_STALE','Lease não corresponde à tentativa ativa.')
-      if(!row.lease_expires_at||row.lease_expires_at<=now)fail(409,'GMAIL_QUEUE_LEASE_EXPIRED','Lease expirado, requer reconciliação.')
+      if(current.state!=='leased'||current.lease_token!==input.leaseToken)fail(409,'GMAIL_QUEUE_STALE','Lease não corresponde à tentativa ativa.')
+      if(!current.lease_expires_at||current.lease_expires_at<=now)fail(409,'GMAIL_QUEUE_LEASE_EXPIRED','Lease expirado, requer reconciliação.')
       if(input.result==='notified'){
         const notice=this.database.prepare('SELECT message_id FROM gmail_intake_notices WHERE id=?').get(input.noticeId) as {message_id:string}|undefined
         if(!notice||notice.message_id!==id)fail(409,'GMAIL_QUEUE_NOTICE_MISMATCH','Aviso não corresponde ao e-mail.')
       }
-      const terminal=input.result==='notified'||input.result==='ignored'||input.result==='blocked'||row.attempts>=5
-      const state:GmailQueueState=!terminal?'retry':(row.attempts>=5&&input.result==='retry'?'blocked':input.result)
-      const delay=Math.min(3600000,60000*2**(row.attempts-1))
+      const terminal=input.result==='notified'||input.result==='ignored'||input.result==='blocked'||current.attempts>=5
+      const state:GmailQueueState=!terminal?'retry':(current.attempts>=5&&input.result==='retry'?'blocked':input.result)
+      const delay=Math.min(3600000,60000*2**(current.attempts-1))
       const next=terminal?null:new Date(this.now()+delay).toISOString()
       const err=state==='blocked'&&input.result==='retry'?'RETRY_EXHAUSTED':input.errorCode
       this.database.prepare("UPDATE gmail_intake_queue SET state=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=?,last_receipt_token=?,last_receipt_hash=?,notice_id=?,error_code=?,updated_at=? WHERE message_id=? AND lease_token=?")
@@ -98,6 +99,6 @@ export class GmailIntakeQueue {
     if(!messagePattern.test(messageId))fail(400,'GMAIL_QUEUE_INVALID','Identificador inválido.')
     const row=this.one(messageId.toLowerCase())
     if(!row)fail(404,'GMAIL_QUEUE_NOT_FOUND','Mensagem não encontrada.')
-    return map(row)
+    return map(row!)
   }
 }
