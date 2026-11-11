@@ -130,6 +130,40 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       onOpenAtendimento(row.atendimentoId, 'chat', row.conversationId)
       return
     }
+    // The list may predate a successful Coda→FunixApp event. Recheck the
+    // canonical mapping before relying on local phone matches as navigation.
+    // A 200/null response is an expected missing link, not permission to
+    // fabricate one or to merge manual records between systems.
+    const canonicalController = new AbortController()
+    lookupRequest.current = canonicalController
+    setLookupBusy(row.conversationId)
+    try {
+      const current = await api<{ atendimentoId: string | null }>(
+        '/api/chat/conversations/' + encodeURIComponent(row.conversationId) + '/active-atendimento',
+        { signal: canonicalController.signal },
+      )
+      if (canonicalController.signal.aborted) return
+      if (current.atendimentoId && onOpenAtendimento) {
+        setLookupBusy(null)
+        onOpenAtendimento(current.atendimentoId, 'chat', row.conversationId)
+        return
+      }
+    } catch (cause) {
+      if (canonicalController.signal.aborted) return
+      const error = cause as RequestFailure
+      if (error.status === 401) { onUnauthorized(); return }
+      // Fail safely if the authoritative lookup is unavailable. Display the
+      // problem instead of using a phone match as proof of an active context.
+      if (error.status !== 404) {
+        setLookupBusy(null)
+        setUnlinked(row.conversationId)
+        setLookupError('Não foi possível conferir o Atendimento vinculado. Tente novamente.')
+        return
+      }
+      // 404 is possible on older servers with the resolver not yet deployed.
+    } finally {
+      if (!canonicalController.signal.aborted) setLookupBusy(null)
+    }
     // A first tap performs the lookup. The operator should not have to open an
     // intermediate panel just to discover the only matching Atendimento.
     // This is navigation only; it MUST NOT create an ERP record or a link.
