@@ -6,6 +6,7 @@ import {chromium} from 'playwright'
 import {openDatabase} from '../server/database.ts'
 import {commercialFixture} from '../server/tests/fixtures/commercial.ts'
 import {ComponentRepository} from '../server/components.ts'
+import {money} from '../shared/format.ts'
 import {createApp} from '../server/app.ts'
 
 const origin='http://127.0.0.1:5173'
@@ -39,12 +40,26 @@ try{
    await page.locator('.diagnosis-open').filter({hasText:catalog.name}).click()
    const editor=page.locator('.approved-editor');await editor.waitFor()
    const component=editor.locator('[data-component-id="'+saved.id+'"]');await component.waitFor()
+   const serviceHeading=editor.locator('.piece-summary-bar').first(),componentHeading=editor.locator('.piece-summary-bar').nth(1)
+   assert.match(await serviceHeading.innerText(),/Serviços\\s+0\\/0/)
+   assert.match(await componentHeading.innerText(),/Componentes\\s+[01]\\/1/)
    await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    const toggle=component.getByRole('button',{name:'Habilitar componente neste cenário'})
    if((await toggle.getAttribute('aria-pressed'))==='false'){
      await toggle.click()
      await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    }
+   // The values must come from the backend. The fixture has MR 2 and two units priced 10.
+   const totals=await (await ctx.request.get(origin+'/api/atendimentos/'+f.at.id+'/cenarios?scenarioId='+f.scenario.id)).json()
+   const official=totals.pieceCategoryTotals[f.scenario.id][piece.id]
+   assert.equal(official.serviceTotal,'0')
+   assert.equal(official.componentTotal,'40')
+   await page.waitForFunction(expected=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent===expected,money(official.componentTotal))
+   assert.match(await componentHeading.innerText(),/Componentes\\s+1\\/1/)
+   assert((await serviceHeading.innerText()).includes('R$ 0,00'))
+   assert((await componentHeading.innerText()).includes(money(official.componentTotal)))
+   assert(await serviceHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'service header overflow at '+width)
+   assert(await componentHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'component header overflow at '+width)
    assert.equal(await component.getByRole('button',{name:'Pesquisar componente'}).count(),0,'no intermediate search button')
    const options=component.locator('.component-search-links')
    await options.waitFor()
@@ -63,11 +78,20 @@ try{
    assert.equal(quoteCalls.length,0,'displaying links must not call quotation API')
    await toggle.click()
    assert.equal(await component.locator('.component-search-links').count(),0,'links must hide immediately when unselected')
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .count')?.textContent==='0/1')
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='R$ 0,00')
    await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    await toggle.click()
    await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    await component.locator('.component-search-links').waitFor()
    assert.equal(await component.locator('.component-search-links').count(),1,'links reappear without extra click')
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .count')?.textContent==='1/1')
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='R$ 40,00')
+   const price=component.getByRole('textbox',{name:'Preço unitário do componente'})
+   await price.fill('')
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='Rascunho incompleto')
+   await price.fill('10,00');await price.blur()
+   await page.waitForFunction(()=>document.querySelector('.piece-summary-bar.component-title .piece-category-amount')?.textContent==='R$ 40,00',null,{timeout:12000})
    assert.equal(quoteCalls.length,0)
    assert(await component.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'horizontal overflow at '+width)
    assert.deepEqual(errors,[])
