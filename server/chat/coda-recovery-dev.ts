@@ -71,25 +71,32 @@ export function recoverConfirmedWhatsAppRows(
     scanned: 0, queued: 0, existing: 0, skippedManual: 0,
     missingSnapshot: 0, identityReview: 0, conflicts: 0,
   }
-  const seenRows = new Set<string>()
-  const seenEvents = new Set<string>()
+  // Preflight the complete scan: no first-writer-wins when a row or event
+  // identifier appears more than once, regardless of input ordering.
+  const rowCounts = new Map<string, number>()
+  const eventCounts = new Map<string, number>()
+  for (const row of rows) {
+    if (!row || typeof row.id !== 'string') continue
+    rowCounts.set(row.id, (rowCounts.get(row.id) ?? 0) + 1)
+    const marker = typeof row.fx_UUID === 'string' ? row.fx_UUID.trim() : ''
+    if (eventId.test(marker))
+      eventCounts.set(marker, (eventCounts.get(marker) ?? 0) + 1)
+  }
   for (const row of rows) {
     summary.scanned++
-    if (!row || !rowId.test(row.id) || seenRows.has(row.id)) {
+    if (!row || typeof row.id !== 'string' || !rowId.test(row.id) || rowCounts.get(row.id) !== 1) {
       summary.identityReview++
       continue
     }
-    seenRows.add(row.id)
     const marker = typeof row.fx_UUID === 'string' ? row.fx_UUID.trim() : ''
     if (!marker) {
       summary.skippedManual++
       continue
     }
-    if (!eventId.test(marker) || seenEvents.has(marker)) {
+    if (!eventId.test(marker) || eventCounts.get(marker) !== 1) {
       summary.identityReview++
       continue
     }
-    seenEvents.add(marker)
     if (row.suppressed !== false ||
         channel(row.funil_Canal) !== channelId ||
         typeof row['api_ID Omnichanel'] !== 'string' ||
