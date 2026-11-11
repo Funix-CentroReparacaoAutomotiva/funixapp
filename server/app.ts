@@ -30,7 +30,7 @@ import { createUpdatePackageIngest } from './update-packages-ingest.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 import { GmailIntakeRepository } from './gmail-intake.ts'
 import { hasGmailIntakeSchema } from './gmail-intake-schema.ts'
-import { createGmailIntakeIngest } from './gmail-intake-ingest.ts'
+import { createGmailIntakeIngest, createGmailCandidateIngest } from './gmail-intake-ingest.ts'
 import type { GmailIntakeDecisionInput } from '../shared/gmail-intake.ts'
 import type { UpdatePackageDecision, UpdatePackageClarification } from '../shared/update-packages.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
@@ -63,6 +63,9 @@ export function createRequestHandler(options: AppOptions) {
   const updates = new UpdatePackageRepository(options.atendimentos.db)
   const gmailIntake = new GmailIntakeRepository(options.atendimentos.db)
   const gmailIntakeIngest = createGmailIntakeIngest(gmailIntake,process.env.FUNIX_GMAIL_INTAKE_SECRET,
+    process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_INTAKE_INGEST_ENABLED==='true',options.now)
+  const gmailCandidateIngest = createGmailCandidateIngest(gmailIntake,process.env.FUNIX_GMAIL_INTAKE_SECRET,
     process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
     process.env.FUNIX_GMAIL_INTAKE_INGEST_ENABLED==='true',options.now)
   const updatesIngest = createUpdatePackageIngest(updates,process.env.FUNIX_UPDATES_INGEST_SECRET,
@@ -112,6 +115,10 @@ export function createRequestHandler(options: AppOptions) {
       }
       if (url.pathname === '/api/integrations/gmail/intake-notices') {
         const result=await gmailIntakeIngest(req,res)
+        return send(202,result)
+      }
+      if (url.pathname === '/api/integrations/gmail/intake-candidates') {
+        const result=await gmailCandidateIngest(req,res)
         return send(202,result)
       }
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
