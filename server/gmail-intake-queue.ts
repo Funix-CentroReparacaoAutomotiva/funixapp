@@ -16,12 +16,12 @@ export class GmailIntakeQueue {
   private readonly now:()=>number
   constructor(database:DatabaseSync,now:()=>number=Date.now){this.database=database;this.now=now}
   private enabled(){if(!hasGmailIntakeQueueSchema(this.database))fail(503,'GMAIL_QUEUE_DISABLED','Fila de e-mails indisponível.')}
-  private one(messageId:string):QueueRow|undefined {return this.database.prepare('SELECT * FROM gmail_intake_queue WHERE message_id=?').get(messageId) as QueueRow|undefined}
+  private one(messageId:string):QueueRow|undefined {return this.database.prepare('SELECT * FROM gmail_intake_delivery_queue WHERE message_id=?').get(messageId) as QueueRow|undefined}
   enqueue(messageId:string):GmailQueueReceipt{
     this.enabled()
     if(!messagePattern.test(messageId))fail(400,'GMAIL_QUEUE_INVALID','Identificador inválido.')
     const id=messageId.toLowerCase(),timestamp=new Date(this.now()).toISOString()
-    this.database.prepare("INSERT OR IGNORE INTO gmail_intake_queue(message_id,state,attempts,next_attempt_at,created_at,updated_at) VALUES (?,'queued',0,?,?,?)").run(id,timestamp,timestamp,timestamp)
+    this.database.prepare("INSERT OR IGNORE INTO gmail_intake_delivery_queue(message_id,state,attempts,next_attempt_at,created_at,updated_at) VALUES (?,'queued',0,?,?,?)").run(id,timestamp,timestamp,timestamp)
     return map(this.one(id)!)
   }
   claim(limit:number):GmailQueueClaim[]{
@@ -33,21 +33,21 @@ export class GmailIntakeQueue {
     try{
       // A lost worker cannot keep the lease forever. Do not retry after five attempts.
       // SQLite queue has no id; order by stable message key.
-      const expiredRows=this.database.prepare("SELECT * FROM gmail_intake_queue WHERE state='leased' AND lease_expires_at<=? ORDER BY lease_expires_at,message_id LIMIT 100").all(now) as QueueRow[]
+      const expiredRows=this.database.prepare("SELECT * FROM gmail_intake_delivery_queue WHERE state='leased' AND lease_expires_at<=? ORDER BY lease_expires_at,message_id LIMIT 100").all(now) as QueueRow[]
       for(const x of expiredRows){
-        this.database.prepare("UPDATE gmail_intake_queue_attempts SET outcome='expired',finished_at=?,error_code='LEASE_EXPIRED' WHERE message_id=? AND lease_token=? AND outcome='leased'").run(now,x.message_id,x.lease_token)
+        this.database.prepare("UPDATE gmail_intake_delivery_queue_attempts SET outcome='expired',finished_at=?,error_code='LEASE_EXPIRED' WHERE message_id=? AND lease_token=? AND outcome='leased'").run(now,x.message_id,x.lease_token)
         const blocked=x.attempts>=5
-        this.database.prepare("UPDATE gmail_intake_queue SET state=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=?,error_code='LEASE_EXPIRED',updated_at=? WHERE message_id=? AND lease_token=?")
+        this.database.prepare("UPDATE gmail_intake_delivery_queue SET state=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=?,error_code='LEASE_EXPIRED',updated_at=? WHERE message_id=? AND lease_token=?")
           .run(blocked?'blocked':'retry',blocked?null:now,now,x.message_id,x.lease_token)
       }
-      const due=this.database.prepare("SELECT * FROM gmail_intake_queue WHERE state IN ('queued','retry') AND (next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY created_at,message_id LIMIT ?").all(now,limit) as QueueRow[]
+      const due=this.database.prepare("SELECT * FROM gmail_intake_delivery_queue WHERE state IN ('queued','retry') AND (next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY created_at,message_id LIMIT ?").all(now,limit) as QueueRow[]
       for(const row of due){
         if(row.attempts>=5)continue
         const token=randomUUID(),attempt=row.attempts+1
-        const updated=this.database.prepare("UPDATE gmail_intake_queue SET state='leased',attempts=?,lease_token=?,lease_expires_at=?,next_attempt_at=NULL,updated_at=?,error_code=NULL WHERE message_id=? AND state IN ('queued','retry') AND attempts=?")
+        const updated=this.database.prepare("UPDATE gmail_intake_delivery_queue SET state='leased',attempts=?,lease_token=?,lease_expires_at=?,next_attempt_at=NULL,updated_at=?,error_code=NULL WHERE message_id=? AND state IN ('queued','retry') AND attempts=?")
           .run(attempt,token,until,now,row.message_id,row.attempts)
         if(updated.changes!==1)continue
-        this.database.prepare("INSERT INTO gmail_intake_queue_attempts(message_id,attempt,lease_token,started_at,outcome) VALUES (?,?,?,?,'leased')")
+        this.database.prepare("INSERT INTO gmail_intake_delivery_queue_attempts(message_id,attempt,lease_token,started_at,outcome) VALUES (?,?,?,?,'leased')")
           .run(row.message_id,attempt,token,now)
         results.push({messageId:row.message_id,leaseToken:token,attempt,leaseExpiresAt:until})
       }
@@ -86,9 +86,9 @@ export class GmailIntakeQueue {
       const delay=Math.min(3600000,60000*2**(current.attempts-1))
       const next=terminal?null:new Date(this.now()+delay).toISOString()
       const err=state==='blocked'&&input.result==='retry'?'RETRY_EXHAUSTED':input.errorCode
-      this.database.prepare("UPDATE gmail_intake_queue SET state=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=?,last_receipt_token=?,last_receipt_hash=?,notice_id=?,error_code=?,updated_at=? WHERE message_id=? AND lease_token=?")
+      this.database.prepare("UPDATE gmail_intake_delivery_queue SET state=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=?,last_receipt_token=?,last_receipt_hash=?,notice_id=?,error_code=?,updated_at=? WHERE message_id=? AND lease_token=?")
         .run(state,next,input.leaseToken,hash,input.noticeId,err,now,id,input.leaseToken)
-      this.database.prepare("UPDATE gmail_intake_queue_attempts SET outcome=?,finished_at=?,error_code=? WHERE message_id=? AND lease_token=? AND outcome='leased'")
+      this.database.prepare("UPDATE gmail_intake_delivery_queue_attempts SET outcome=?,finished_at=?,error_code=? WHERE message_id=? AND lease_token=? AND outcome='leased'")
         .run(state,now,err,id,input.leaseToken)
       this.database.exec('COMMIT')
       return map(this.one(id)!)
