@@ -62,7 +62,9 @@ function signature(input: GmailIntakeNoticeInput): string {
 
 /** Intake authorization is a different domain from approving a package of changes. */
 export class GmailIntakeRepository {
-  constructor(private readonly db: DatabaseSync,private readonly now: () => string = isoNow) {}
+  private readonly db: DatabaseSync
+  private readonly now: () => string
+  constructor(db: DatabaseSync,now: () => string = isoNow) {this.db=db;this.now=now}
   ingest(input:GmailIntakeNoticeInput):GmailIntakeNotice {
     if(!hasGmailIntakeSchema(this.db))fail(503,'GMAIL_INTAKE_DISABLED','Fila de e-mails desabilitada.')
     const payload=validated(input),hash=signature(payload)
@@ -91,7 +93,7 @@ export class GmailIntakeRepository {
     if(!uuidPattern.test(id))fail(404,'GMAIL_INTAKE_NOT_FOUND','Aviso não encontrado.')
     const row=this.db.prepare('SELECT * FROM gmail_intake_notices WHERE id=?').get(id) as Row|undefined
     if(!row)fail(404,'GMAIL_INTAKE_NOT_FOUND','Aviso não encontrado.')
-    return mapped(row)
+    return mapped(row!)
   }
   list(view:'open'|'closed'):GmailIntakeNoticeList {
     if(!['open','closed'].includes(view))fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
