@@ -48,7 +48,12 @@ export function resolveCodaCommercialContext(input: {
     return {kind:'identity_review',reason:'unknown_commercial_status'}
   // Unknown statuses are not proof of an open opportunity: never silently
   // choose one or create a new case based on an unrecognized ERP stage.
-  const knownOpen = new Set(['novo lead','novo lead (30min)','em negociacao','aguardando dados'])
+  // Verified against cnf_StatusComercial in Coda (10 rows, 11/11/2026).
+  // Match complete labels: guessing from an unfamiliar status risks wrong context.
+  const knownOpen = new Set([
+    'novo lead (30min)', 'aguardando dados (24h)', 'em negociacao (48h)',
+    'morno (3 dias)', 'frio (5 dias)', 'agendado', 'entrou',
+  ])
   if (whatsapp.some(x => {
     const status=normalize(x.commercialStatus)
     return !closed.has(status) && !knownOpen.has(status)
