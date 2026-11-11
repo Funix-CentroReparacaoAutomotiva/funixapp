@@ -34,10 +34,10 @@ export async function deliverDevelopmentCodaEvent(
     // in operational status/logging: it may contain PII or credentials.
     status = 0
   }
-  const normalized = status===202 || status===401 || status===403 ||
-    status===409 || status===422 || status===429 ||
-    [500,502,503,504].includes(status) ? status : status>=500?503:0
-  const result = queue.complete(claimed,normalized as 0|202|401|403|409|422|429|500|502|503|504,now())
+  // Unexpected 2xx/3xx/4xx is NOT success and NOT an outage. Quarantine;
+  // otherwise an accidental 200 could be retried indefinitely.
+  const normalized = Number.isSafeInteger(status) && status >= 100 && status <= 599 ? status : 0
+  const result = queue.complete(claimed,normalized,now())
   return { status:result, attempts:claimed.attempts }
 }
 
