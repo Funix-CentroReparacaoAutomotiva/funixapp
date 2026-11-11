@@ -59,16 +59,20 @@ export function classifyGmailCandidate(candidate:unknown): GmailCandidateClassif
   const {plates,xps,ambiguous}=hints(full)
   const vehicle=vehicleSignal.test(full),service=serviceSignal.test(full)
   const commercial=commercialSignal.test(full)
-  const admin=adminSignal.test(full),purchase=purchaseSignal.test(full),marketing=marketingSignal.test(full)
+  const subjectNormalized=normalize(subject)
+  const admin=adminSignal.test(subjectNormalized),purchase=purchaseSignal.test(subjectNormalized)
+  const marketing=marketingSignal.test(subjectNormalized)
   const identified=plates.size>0||xps.size>0
   let relevance: 'relevant'|'uncertain'|'irrelevant'
   let reason:string
   if(ambiguous){
     relevance='uncertain';reason='MULTIPLE_VEHICLE_IDENTIFIERS'
-  }else if((marketing||purchase||admin)&&!identified&&!service){
-    relevance='irrelevant';reason=admin?'ADMINISTRATIVE':purchase?'PURCHASE':'MARKETING'
-  }else if(marketing&&service&&!identified){
-    relevance='uncertain';reason='SERVICE_MENTION_IN_MARKETING'
+  }else if(admin||purchase){
+    relevance='irrelevant';reason=admin?'ADMINISTRATIVE':'PURCHASE'
+  }else if(marketing&&!identified){
+    relevance='irrelevant';reason='MARKETING'
+  }else if(marketing&&identified){
+    relevance='uncertain';reason='MARKETING_WITH_VEHICLE_IDENTIFIER'
   }else if(identified){
     relevance='relevant';reason='VEHICLE_IDENTIFIER'
   }else if(service){
