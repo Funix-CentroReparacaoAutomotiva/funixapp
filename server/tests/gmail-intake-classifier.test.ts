@@ -53,9 +53,15 @@ test('ambiguidades não são descartadas',()=>{
   assert.equal(is('Cotação','Gostaria de informações','uncertain').notice!==null,true)
   assert.equal(is('Informações sobre o veículo','Gostaria de saber mais','uncertain').notice!==null,true)
 })
-test('promoção sobre serviços de carro continua para revisão humana',()=>{
-  const result=is('Promoção de pintura automotiva','Desconto especial em reparos e funilaria','uncertain')
-  assert.equal(result.reason,'SERVICE_MENTION_IN_MARKETING')
+test('ofertas de serviços automotivos e compras continuam irrelevantes',()=>{
+  const offer=is('Promoção de pintura automotiva','Desconto especial em reparos e funilaria','irrelevant')
+  assert.equal(offer.reason,'MARKETING')
+  const purchase=is('Compra aprovada Mercado Livre','Pedido de peça para o veículo ABC1D23','irrelevant')
+  assert.equal(purchase.reason,'PURCHASE')
+})
+test('mensagem promocional com identificação concreta de XP exige revisão, não execução',()=>{
+  const result=is('Promoção para XP1945','Temos uma oferta especial referente ao veículo','uncertain')
+  assert.equal(result.reason,'MARKETING_WITH_VEHICLE_IDENTIFIER')
 })
 test('payload inválido e excesso de dados são rejeitados em vez de classificados silenciosamente',()=>{
   assert.throws(()=>classifyGmailCandidate({messageId:'bad',subject:'Teste',snippet:''}),/GMAIL_CANDIDATE_INVALID/)
