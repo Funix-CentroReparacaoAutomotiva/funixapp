@@ -9,6 +9,7 @@ import { createHmac } from 'node:crypto'
 import { classifyConfirmedCodaRows } from '../chat/coda-eligibility-adapter-dev.ts'
 
 const t0 = 1794150000000
+const validReceipt = {status:202, state:'created' as const, atendimentoId:'00000000-0000-4000-8000-000000000001'}
 const event = (eventId = 'evo:synthetic:one', codaRowId = 'i-SYNTH_1') => ({
   version: 1 as const, source: 'coda' as const, eventId, codaRowId,
   instance: 'funix_comercial' as const, remoteJid: '5531999990001@s.whatsapp.net',
@@ -138,7 +139,7 @@ test('DEV reconciler: missed WhatsApp event is recovered, manual rows ignored, H
       const expected='sha256='+createHmac('sha256',secret).update('coda-sync-v1\n'+req.timestamp+'\n').update(req.body).digest('hex')
       assert.equal(req.signature,expected)
       signatures.push(req.signature)
-      return {status:attempts===1?503:202}
+      return attempts===1 ? {status:503} : {status:202,body:validReceipt}
     }
     assert.deepEqual(await deliverDevelopmentCodaEvent(queue,transport,secret,()=>now),{status:'retry',attempts:1})
     now+=30_001
@@ -189,4 +190,22 @@ test('DEV Coda row adapter: real classifier field names, strict WhatsApp provena
   if(multiple.kind==='choose')assert.deepEqual(multiple.candidates.map(x=>x.rowId),['i-WHATSAPP_1','i-WHATSAPP_2'])
   assert.deepEqual(classifyConfirmedCodaRows(query,[{...whatsapp,fx_UUID:'foreign:unverified'}]),{kind:'identity_review',reason:'unknown_record_origin'})
   assert.deepEqual(classifyConfirmedCodaRows(query,[{...whatsapp,at_StatusComercial:{name:'Fim Positivo'}}]),{kind:'create',reason:'all_closed'})
+})
+
+test('DEV outbox: HTTP 202 without a valid application receipt is retried, never silently delivered',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    createDevelopmentOutboxSchema(db)
+    const q=new DevelopmentCodaOutbox(db)
+    q.enqueue(event(),'whatsapp','i-SYNTH_1',t0)
+    let now=t0
+    const secret=Buffer.alloc(32,9)
+    const fakeReceipt=await deliverDevelopmentCodaEvent(q,async()=>({status:202,body:{status:202,state:'created'}}),secret,()=>now)
+    assert.deepEqual(fakeReceipt,{status:'retry',attempts:1})
+    assert.deepEqual(q.stats(),{pending:1,leased:0,delivered:0,quarantined:0})
+    now+=30_001
+    const valid=await deliverDevelopmentCodaEvent(q,async()=>({status:202,body:validReceipt}),secret,()=>now)
+    assert.deepEqual(valid,{status:'delivered',attempts:2})
+    assert.deepEqual(q.stats(),{pending:0,leased:0,delivered:1,quarantined:0})
+  }finally{db.close()}
 })
