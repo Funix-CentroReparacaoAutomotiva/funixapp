@@ -1,6 +1,6 @@
 # FUNIX — Gate de autorização para e-mails de veículos
 
-Status: **proposta de implementação em desenvolvimento**. Não há aprovação para ativar processamento automático, nem para alterar produção. Decisão funcional do gestor: **receber notificações e autorizar o início do processamento exclusivamente na aba Atualizações do FunixApp**.
+Status: **implementação parcial em desenvolvimento (PR #149)**. Não há aprovação para ativar processamento automático, nem para alterar produção. Decisão funcional do gestor: **receber notificações e autorizar o início do processamento exclusivamente na aba Atualizações do FunixApp**.
 
 ## 1. Regra principal
 
@@ -81,3 +81,20 @@ Restrições:
 Implementar uma entidade `GmailIntakeNotice` (ou nome equivalente) e endpoint assinado de **aviso de triagem**, ambos OFF por padrão, seguido de lista de avisos e decisão autenticada para `intake_authorized/intake_denied`. Não alterar o fluxo de `UpdatePackage` para esse propósito. Integrar n8n somente após testes do gate.
 
 Documentação de design não é prova de implantação.
+
+## 7. Implementação parcial na PR #149
+
+- Tipos separados em `shared/gmail-intake.ts`.
+- Schema aditivo e isolado `server/gmail-intake-schema.ts`, criado somente com `FUNIX_GMAIL_INTAKE_STORAGE_ENABLED=true`.
+- Endpoint HMAC `POST /api/integrations/gmail/intake-notices` (desligado por padrão, depende também de `FUNIX_GMAIL_INTAKE_INGEST_ENABLED=true` e segredo próprio `FUNIX_GMAIL_INTAKE_SECRET`).
+- API autenticada de leitura `GET /api/atualizacoes/avisos-gmail?visao=open|closed` e decisão `POST /api/atualizacoes/avisos-gmail/:id/decisao`; botão habilitado somente com `FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED=true` e schema presente.
+- UI `src/GmailIntakeNotices.tsx` dentro de Atualizações, distinta dos pacotes existentes.
+- Decisões autenticadas e idempotentes apenas registram `authorized` ou `denied`; não despacham nenhum executor.
+- A consulta do Gmail e o classificador conservador **não foram conectados ao novo endpoint**. O workflow existente segue registrando identificadores; classificação real, outbox e recuperação de falhas continuam pendentes.
+- Nenhum ambiente deve configurar essas flags ou segredo em produção sem revisão de testes, autorização e plano de rollback.
+
+### Segurança de operação
+
+**Autorizar processamento de e-mail não aprova execução de alterações**. O despacho futuro deverá verificar a decisão persistida no FunixApp antes de iniciar a triagem. Ativar os botões de decisão antes de construir a etapa de despacho apenas registra decisões; não implementa o processo todo.
+
+A confirmação de `HTTP 202` pelo endpoint do aviso significa somente que o aviso foi registrado; não comprova autorização ou processamento.
