@@ -15,18 +15,18 @@ function exactTotal(rows:PricedLine[]):string|null{
  return sum(decimals).toString()
 }
 export function pieceFinancialSummary(calculation:Calculation):Record<string,PieceCategoryTotals>{
- const grouped:Record<string,PieceCategoryTotals>={}
+ const grouped=new Map<string,{services:PricedLine[];components:PricedLine[];notBilled:number}>()
  for(const line of calculation.lines){
-  const current=grouped[line.pieceId]??{serviceTotal:'0',componentTotal:'0',servicesNonBillableOnly:false}
-  grouped[line.pieceId]=current
+  let piece=grouped.get(line.pieceId)
+  if(!piece){piece={services:[],components:[],notBilled:0};grouped.set(line.pieceId,piece)}
   if(!line.included)continue
-  const rows=calculation.lines.filter(row=>row.pieceId===line.pieceId&&row.included)
-  const services=rows.filter(row=>row.kind==='service')
-  const billed=services.filter(row=>row.billing!=='not_billed')
-  const components=rows.filter(row=>row.kind==='component')
-  current.serviceTotal=exactTotal(billed)
-  current.componentTotal=exactTotal(components)
-  current.servicesNonBillableOnly=services.length>0&&billed.length===0
+  if(line.kind==='component')piece.components.push(line)
+  else if(line.billing==='not_billed')piece.notBilled++
+  else piece.services.push(line)
  }
- return grouped
+ return Object.fromEntries([...grouped].map(([pieceId,piece])=>[pieceId,{
+  serviceTotal:exactTotal(piece.services),
+  componentTotal:exactTotal(piece.components),
+  servicesNonBillableOnly:piece.notBilled>0&&piece.services.length===0,
+ }])) as Record<string,PieceCategoryTotals>
 }
