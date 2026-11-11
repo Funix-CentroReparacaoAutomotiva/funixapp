@@ -105,7 +105,7 @@ test('invalid payloads do not consume attempts or create records',async()=>{
    ['ack',{messageId,leaseToken:randomUUID(),result:'authorize',noticeId:null,errorCode:null}]
   ] as const){
    const item=input(body)
-   await assert.rejects(()=>service(item.req,item.res,operation),{code:'GMAIL_QUEUE_PAYLOAD_INVALID'})
+   await assert.rejects(()=>service(item.req,item.res,operation),{code:operation==='ack'?'GMAIL_QUEUE_INVALID':'GMAIL_QUEUE_PAYLOAD_INVALID'})
   }
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue').get()!.n,0)
  }finally{db.close()}
