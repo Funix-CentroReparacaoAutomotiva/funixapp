@@ -35,9 +35,10 @@ export function classifyConfirmedCodaRows(
     mapped.push({
       rowId:row.id,origin,phoneE164:phone,
       commercialStatus:fieldName(row.at_StatusComercial),
-      name:fieldName(row.at_Nome??row.name),
-      vehicle:fieldName(row.at_Veiculo??row.vehicle),
-      plate:fieldName(row.at_Placa??row.plate),
+      // Names verified in db_Atendimentos, not guessed from legacy fields.
+      name:fieldName(row.funil_Nome??row.at_Nome??row.name),
+      vehicle:fieldName(row.funil_Modelo??row.cliente_Veiculo??row.at_Veiculo??row.vehicle),
+      plate:fieldName(row.funil_Placa??row.at_Placa??row.plate),
     })
   }
   return resolveCodaCommercialContext({...input,candidates:mapped})
