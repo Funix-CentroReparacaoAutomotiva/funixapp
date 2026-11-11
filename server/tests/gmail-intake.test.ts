@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { openDatabase } from '../database.ts'
 import { createGmailIntakeSchema } from '../gmail-intake-schema.ts'
 import { GmailIntakeRepository } from '../gmail-intake.ts'
-import { createGmailIntakeIngest } from '../gmail-intake-ingest.ts'
+import { createGmailIntakeIngest, createGmailCandidateIngest } from '../gmail-intake-ingest.ts'
 
 const message=()=>({
   messageId:'a'.repeat(16),title:'Solicitação de orçamento automotivo',
@@ -115,5 +115,31 @@ test('receptor assinado permanece independente e recusa replay alterado',async()
     const disabled=request(raw)
     await assert.rejects(()=>createGmailIntakeIngest(repo,secret,false,()=>instant)(disabled.req,disabled.res),{code:'GMAIL_INTAKE_INGEST_DISABLED'})
     assert.equal(repo.list('open').total,1)
+  }finally{db.close()}
+})
+
+
+test('receptor de candidatos ignora propaganda e gera aviso de veículo, sem tomar decisões',async()=>{
+  const {db,repo}=setup()
+  try{
+    const ordinary=request(JSON.stringify({
+      messageId:'b'.repeat(16),subject:'Promoção de Natal da Riachuelo',
+      snippet:'Aproveite os descontos de fim de ano'}))
+    const ignored=await createGmailCandidateIngest(repo,secret,true,()=>instant)(ordinary.req,ordinary.res)
+    assert.equal(ignored.status,'ignored')
+    assert.equal(repo.list('open').total,0)
+
+    const candidate={messageId:'c'.repeat(16),subject:'Cotação para veículo ABC1D23',
+      snippet:'Preciso de orçamento para funilaria e pintura no meu carro'}
+    const first=request(JSON.stringify(candidate))
+    const created=await createGmailCandidateIngest(repo,secret,true,()=>instant)(first.req,first.res)
+    assert.equal(created.status,'awaiting_authorization')
+    assert.equal(repo.list('open').total,1)
+    assert.equal(repo.list('open').items[0]?.plateHint,'ABC1D23')
+    const duplicate=request(JSON.stringify(candidate))
+    const again=await createGmailCandidateIngest(repo,secret,true,()=>instant)(duplicate.req,duplicate.res)
+    assert.equal(again.status,'awaiting_authorization')
+    assert.equal(repo.list('open').total,1)
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_decisions").get()!.n,0)
   }finally{db.close()}
 })
