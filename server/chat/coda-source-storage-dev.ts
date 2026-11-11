@@ -21,7 +21,10 @@ export function createDevelopmentSourceLedgerSchema(db:DatabaseSync) {
   ].join('\n'))
 }
 function validate(source:ImmutableWhatsAppSource) {
-  if (!source || source.source !== 'whatsapp' ||
+  const allowed=new Set(['eventId','remoteJid','phoneE164','displayName','occurredAt','instance','source','suppressed'])
+  if (!source || typeof source!=='object' || Array.isArray(source) ||
+      Object.keys(source).length!==allowed.size || Object.keys(source).some(k=>!allowed.has(k)) ||
+      source.source !== 'whatsapp' ||
       source.instance !== 'funix_comercial' || source.suppressed !== false ||
       typeof source.eventId !== 'string' || !eventIdPattern.test(source.eventId) ||
       typeof source.remoteJid !== 'string' || !jidPattern.test(source.remoteJid) ||
