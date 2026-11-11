@@ -25,7 +25,7 @@ export function createGmailQueueEndpoint(
       result=queue.enqueue(input.messageId as string)
     }else if(action==='claim'){
       if(Object.keys(input).sort().join(',')!=='limit,requestId'||
-        !Number.isSafeInteger(input.limit)||Number(input.limit)<1||Number(input.limit)>25||
+        typeof input.limit!=='number'||!Number.isSafeInteger(input.limit)||input.limit<1||input.limit>25||
         typeof input.requestId!=='string'||!requestPattern.test(input.requestId))
         fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Solicitação de lote inválida.')
       result={claims:queue.claim(input.limit as number,input.requestId as string)}
