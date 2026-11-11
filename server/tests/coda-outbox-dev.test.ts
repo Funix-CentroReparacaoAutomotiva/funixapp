@@ -18,7 +18,7 @@ const event = (eventId = 'evo:synthetic:one', codaRowId = 'i-SYNTH_1') => ({
   instance: 'funix_comercial' as const, remoteJid: '5531999990001@s.whatsapp.net',
   phoneE164: '+5531999990001', displayName: 'Pessoa Sintética', occurredAt:1794144000,
 })
-const candidate = (rowId = 'i-SYNTH_1', commercialStatus='Novo Lead', origin:'whatsapp'|'manual'|'unknown'='whatsapp')=>({
+const candidate = (rowId = 'i-SYNTH_1', commercialStatus='Novo lead (30min)', origin:'whatsapp'|'manual'|'unknown'='whatsapp')=>({
   rowId,origin,commercialStatus,phoneE164:'+5531999990001',
   name:'Contato Sintético',vehicle:'Carro de teste',plate:'TEST-0000',
 })
@@ -105,21 +105,27 @@ test('DEV outbox: event delivery can be replayed to receiver without creating du
 
 test('DEV commercial resolver: manual independence, open/closed, ambiguity and suppressed leads',()=>{
   assert.deepEqual(resolveCodaCommercialContext(context([])),{kind:'create',reason:'new'})
-  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-MANUAL_1','Novo Lead','manual')])),{kind:'create',reason:'new'})
-  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Novo Lead') ])),{kind:'direct',codaRowId:'i-SYNTH_1'})
+  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-MANUAL_1','Novo lead (30min)','manual')])),{kind:'create',reason:'new'})
+  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Novo lead (30min)') ])),{kind:'direct',codaRowId:'i-SYNTH_1'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Fim Positivo')])),{kind:'create',reason:'all_closed'})
   assert.deepEqual(resolveCodaCommercialContext(context([
-    candidate('i-SYNTH_1','Fim Negativo'),candidate('i-SYNTH_2','Novo Lead'),
+    candidate('i-SYNTH_1','Fim Negativo'),candidate('i-SYNTH_2','Novo lead (30min)'),
   ])),{kind:'direct',codaRowId:'i-SYNTH_2'})
   const ambiguous=resolveCodaCommercialContext(context([
-    candidate('i-SYNTH_1','Novo Lead'),candidate('i-SYNTH_2','Aguardando Dados'),
+    candidate('i-SYNTH_1','Novo lead (30min)'),candidate('i-SYNTH_2','Aguardando dados (24h)'),
   ]))
   assert.equal(ambiguous.kind,'choose')
   if(ambiguous.kind==='choose')assert.equal(ambiguous.candidates.length,2)
   assert.deepEqual(resolveCodaCommercialContext(context([candidate()],true)),{kind:'suppressed',reason:'commercial_opt_out'})
-  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-UNKNOWN','Novo Lead','unknown')])),{kind:'identity_review',reason:'unknown_record_origin'})
+  assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-UNKNOWN','Novo lead (30min)','unknown')])),{kind:'identity_review',reason:'unknown_record_origin'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','')])),{kind:'identity_review',reason:'unknown_commercial_status'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Status futuro inesperado')])),{kind:'identity_review',reason:'unrecognized_commercial_status'})
+  for (const status of ['Novo lead (30min)','Aguardando dados (24h)','Em negociação (48h)','Morno (3 dias)','Frio (5 dias)','Agendado','Entrou']) {
+    assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1',status)])),{kind:'direct',codaRowId:'i-SYNTH_1'})
+  }
+  for (const status of ['Orçamento rejeitados','Fim negativo','Fim positivo']) {
+    assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1',status)])),{kind:'create',reason:'all_closed'})
+  }
   assert.deepEqual(resolveCodaCommercialContext({...context([candidate()]),remoteJid:'synthetic@lid'}),{kind:'identity_review',reason:'unverified_identity'})
 })
 
@@ -183,12 +189,12 @@ test('DEV outbox: 401 blocks all subsequent sends, while unexpected 200 is quara
 test('DEV Coda row adapter: real classifier field names, strict WhatsApp provenance, no manual replication',()=>{
   const query={remoteJid:'5531999990001@s.whatsapp.net',phoneE164:'+5531999990001',suppressed:false}
   const manual={id:'i-MANUAL_1',fx_UUID:'',funil_contatoE164:query.phoneE164,
-    at_StatusComercial:{name:'Novo Lead'},at_Nome:'Balcão'}
+    at_StatusComercial:{name:'Novo lead (30min)'},at_Nome:'Balcão'}
   assert.deepEqual(classifyConfirmedCodaRows(query,[manual]),{kind:'create',reason:'new'})
   const whatsapp={id:'i-WHATSAPP_1',fx_UUID:'evo:funix_comercial:ABC123',
-    funil_contatoE164:query.phoneE164,at_StatusComercial:{name:'Novo Lead'},at_Nome:'Teste'}
+    funil_contatoE164:query.phoneE164,at_StatusComercial:{name:'Novo lead (30min)'},at_Nome:'Teste'}
   assert.deepEqual(classifyConfirmedCodaRows(query,[manual,whatsapp]),{kind:'direct',codaRowId:'i-WHATSAPP_1'})
-  const second={...whatsapp,id:'i-WHATSAPP_2',fx_UUID:'evo:funix_comercial:DEF456',at_StatusComercial:'Em negociação'}
+  const second={...whatsapp,id:'i-WHATSAPP_2',fx_UUID:'evo:funix_comercial:DEF456',at_StatusComercial:'Em negociação (48h)'}
   const multiple=classifyConfirmedCodaRows(query,[whatsapp,second,manual])
   assert.equal(multiple.kind,'choose')
   if(multiple.kind==='choose')assert.deepEqual(multiple.candidates.map(x=>x.rowId),['i-WHATSAPP_1','i-WHATSAPP_2'])
