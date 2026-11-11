@@ -12,7 +12,9 @@ type QueueRow={message_id:string,state:GmailQueueState,attempts:number,next_atte
 const map=(r:QueueRow):GmailQueueReceipt=>({messageId:r.message_id,state:r.state,attempts:r.attempts,nextAttemptAt:r.next_attempt_at})
 const digest=(v:GmailQueueAck)=>createHash('sha256').update(JSON.stringify({messageId:v.messageId,leaseToken:v.leaseToken,result:v.result,noticeId:v.noticeId,errorCode:v.errorCode})).digest('hex')
 export class GmailIntakeQueue {
-  constructor(private readonly database:DatabaseSync,private readonly now:()=>number=Date.now){}
+  private readonly database:DatabaseSync
+  private readonly now:()=>number
+  constructor(database:DatabaseSync,now:()=>number=Date.now){this.database=database;this.now=now}
   private enabled(){if(!hasGmailIntakeQueueSchema(this.database))fail(503,'GMAIL_QUEUE_DISABLED','Fila de e-mails indisponível.')}
   private one(messageId:string):QueueRow|undefined {return this.database.prepare('SELECT * FROM gmail_intake_queue WHERE message_id=?').get(messageId) as QueueRow|undefined}
   enqueue(messageId:string):GmailQueueReceipt{
