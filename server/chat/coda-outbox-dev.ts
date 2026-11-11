@@ -80,6 +80,12 @@ export class DevelopmentCodaOutbox {
     if (!Number.isSafeInteger(nowMs) || !Number.isSafeInteger(leaseMs) || leaseMs < 1000 || leaseMs > 600000)
       throw new Error('OUTBOX_INVALID_LEASE')
     return transaction(this.db, () => {
+      // A credentials/configuration failure is a global stop, not a queue item
+      // that may be bypassed by the next message.
+      const blocked = this.db.prepare(
+        "SELECT 1 FROM dev_coda_sync_outbox WHERE last_failure IN ('HTTP_401','HTTP_403') LIMIT 1"
+      ).get()
+      if (blocked) return null
       const row = this.db.prepare([
         "SELECT * FROM dev_coda_sync_outbox WHERE (state='pending' AND next_attempt_at<=?)",
         " OR (state='leased' AND lease_until<=?) ORDER BY next_attempt_at,event_id LIMIT 1",
@@ -93,8 +99,9 @@ export class DevelopmentCodaOutbox {
   }
 
   /** Ignore late responses from an expired attempt (fencing by attempt+lease). */
-  complete(claim: {eventId:string;attempts:number;leaseUntil:number}, status: DeliveryReceipt['status'], nowMs: number) {
-    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('OUTBOX_INVALID_CLOCK')
+  complete(claim: {eventId:string;attempts:number;leaseUntil:number}, status: number, nowMs: number) {
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isSafeInteger(status) ||
+      (status !== 0 && (status < 100 || status > 599))) throw new Error('OUTBOX_INVALID_RECEIPT')
     return transaction(this.db, () => {
       const row = this.db.prepare('SELECT * FROM dev_coda_sync_outbox WHERE event_id=?').get(claim.eventId) as DbRow|undefined
       if (!row || row.state !== 'leased' || row.attempts !== claim.attempts || row.lease_until !== claim.leaseUntil || nowMs > row.lease_until)
