@@ -36,8 +36,9 @@ function validatedEvent(event: ConfirmedCodaEvent) {
   if (event.version !== 1 || event.source !== 'coda' || event.instance !== 'funix_comercial' ||
       !eventPattern.test(event.eventId) || !rowPattern.test(event.codaRowId) ||
       !jidPattern.test(event.remoteJid) ||
-      !Number.isSafeInteger(event.occurredAt) ||
+      !Number.isSafeInteger(event.occurredAt) || event.occurredAt < 0 || event.occurredAt > 2147483647 ||
       typeof event.displayName !== 'string' || event.displayName.length > 250 ||
+      /[\\u0000-\\u001f\\u007f]/.test(event.displayName) ||
       (event.phoneE164 !== null && (typeof event.phoneE164 !== 'string' ||
         !/^\+[1-9][0-9]{7,14}$/.test(event.phoneE164))) ||
       (event.remoteJid.endsWith('@s.whatsapp.net') && event.phoneE164 !== null &&
