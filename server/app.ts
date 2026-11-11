@@ -29,6 +29,9 @@ import { UpdatePackageRepository } from './update-packages.ts'
 import { createUpdatePackageIngest } from './update-packages-ingest.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 import { GmailIntakeRepository } from './gmail-intake.ts'
+import { GmailIntakeQueue } from './gmail-intake-queue.ts'
+import { createGmailQueueEndpoint } from './gmail-intake-queue-endpoint.ts'
+import { hasGmailIntakeQueueSchema } from './gmail-intake-queue-schema.ts'
 import { hasGmailIntakeSchema } from './gmail-intake-schema.ts'
 import { createGmailIntakeIngest, createGmailCandidateIngest } from './gmail-intake-ingest.ts'
 import type { GmailIntakeDecisionInput } from '../shared/gmail-intake.ts'
@@ -62,6 +65,12 @@ export function createRequestHandler(options: AppOptions) {
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
   const gmailIntake = new GmailIntakeRepository(options.atendimentos.db)
+  const gmailQueue = new GmailIntakeQueue(options.atendimentos.db,options.now)
+  const gmailQueueEndpoint = createGmailQueueEndpoint(gmailQueue,process.env.FUNIX_GMAIL_QUEUE_SECRET,
+    process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_QUEUE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_QUEUE_API_ENABLED==='true' &&
+    hasGmailIntakeQueueSchema(options.atendimentos.db),options.now)
   const gmailIntakeIngest = createGmailIntakeIngest(gmailIntake,process.env.FUNIX_GMAIL_INTAKE_SECRET,
     process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
     process.env.FUNIX_GMAIL_INTAKE_INGEST_ENABLED==='true',options.now)
@@ -112,6 +121,11 @@ export function createRequestHandler(options: AppOptions) {
       if (url.pathname === '/api/integrations/updates/packages') {
         const result=await updatesIngest(req,res)
         return send(202,result)
+      }
+      const queueRoute=/^\/api\/integrations\/gmail\/queue\/(enqueue|claim|ack)$/.exec(url.pathname)
+      if(queueRoute){
+        const result=await gmailQueueEndpoint(req,res,queueRoute[1] as 'enqueue'|'claim'|'ack')
+        return send(200,result)
       }
       if (url.pathname === '/api/integrations/gmail/intake-notices') {
         const result=await gmailIntakeIngest(req,res)
