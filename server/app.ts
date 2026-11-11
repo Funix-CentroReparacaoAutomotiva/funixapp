@@ -260,7 +260,7 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Resolve the current canonical Atendimento after a stale conversation list.
       // The opaque ID is registered by Evolution; no browser-supplied JID or phone.
-      const activeContextRoute = /^\\/api\\/chat\\/conversations\\/([a-f0-9-]{36})\\/active-atendimento$/.exec(url.pathname)
+      const activeContextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/active-atendimento$/.exec(url.pathname)
       if (activeContextRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
