@@ -12,7 +12,7 @@ function conversationLabel(row: ConversationRow): string {
   return row.displayName || (row.phoneNumber ? '+' + row.phoneNumber : 'Contato não identificado')
 }
 type CandidateAtendimento = { id: string; phone: string; phoneNormalized?: string | null; name: string; vehicle?: string; plate?: string; stage?: string }
-type Choice = { conversationId: string; items: CandidateAtendimento[] }
+type Choice = { items: CandidateAtendimento[] }
 const stageNames: Record<string, string> = {
   'novo-lead': 'Novo lead', 'aguardando-dados': 'Aguardando dados',
   'em-negociacao': 'Em negociação', morno: 'Morno', frio: 'Frio',
@@ -139,7 +139,8 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
     const phone = row.phoneNumber ? comparablePhone(row.phoneNumber) : ''
     const query = phone.length >= 8 ? phone : row.displayName?.trim() || ''
     if (query.length < 2) {
-      setLookupError('Não foi possível identificar o contato. Localize o Atendimento pelo Funil.')
+      setUnlinked(row.conversationId)
+      setLookupError('Não foi possível confirmar a identidade da conversa. A sincronização precisa ser verificada.')
       return
     }
     const controller = new AbortController()
@@ -169,15 +170,15 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       }
       if (controller.signal.aborted) return
       const found = [...matches.values()]
-      // Local stages do not mirror all Coda closure states. A rejected case
-      // cannot be reactivated simply because its phone matches.
-      const eligible = found.filter(item => item.stage !== 'rejeitados')
-      if (phone && !incomplete && eligible.length === 1 && onOpenAtendimento) {
-        onOpenAtendimento(eligible[0]!.id, 'chat')
+      // A phone match is navigation, NOT proof that this record is the
+      // current Coda Atendimento or that its WhatsApp history is linked.
+      // The local stage is not a reliable indication of Coda closure.
+      if (phone && !incomplete && found.length === 1 && onOpenAtendimento) {
+        onOpenAtendimento(found[0]!.id, 'chat')
         return
       }
-      if (phone && !incomplete && eligible.length > 1) {
-        setChoice({ conversationId: row.conversationId, items: eligible })
+      if (phone && !incomplete && found.length > 1) {
+        setChoice({ items: found })
         return
       }
       // Missing canonical events are an integration exception, not a reason
@@ -186,7 +187,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       setLookupError(incomplete
         ? 'Consulta incompleta. Atualize a lista e confira a sincronização.'
         : !found.length
-          ? 'Atendimento ainda não identificado. A sincronização deve recuperar este vínculo; não crie uma ficha duplicada.'
+          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada.'
           : 'Não há Atendimento aberto identificado com segurança para esta conversa. Confira a sincronização.')
     } catch (cause) {
       if (controller.signal.aborted) return
@@ -239,7 +240,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
         <strong id="ev-choice-title">Qual Atendimento deseja abrir?</strong>
         <button type="button" aria-label="Fechar seleção" onClick={() => setChoice(null)}>×</button>
       </header>
-      <p>Existem mais de um Atendimento elegível para este contato.</p>
+      <p>Foram encontradas várias fichas com este telefone. Escolha a correta; essa seleção não vincula o histórico WhatsApp.</p>
       <div className="ev-choice-items">
         {choice.items.map(item => <button key={item.id} type="button" onClick={() => {
           setChoice(null)
@@ -249,7 +250,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
           <span>{[item.vehicle, item.plate, stageNames[item.stage ?? ''] || item.stage].filter(Boolean).join(' · ') || 'Sem detalhes cadastrados'}</span>
         </button>)}
       </div>
-      <p className="ev-links-hint">Escolher uma ficha não cria um novo vínculo com a Evolution.</p>
+      <p className="ev-links-hint">Escolher uma ficha não cria um vínculo com a Evolution; sem associação canônica, o histórico poderá continuar indisponível.</p>
     </dialog>}
   </section>
 }
