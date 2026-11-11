@@ -42,7 +42,9 @@ test('source ledger: cannot recover manual case or absent original message',()=>
     assert.equal(a.queued,0)
     const b=reconcileSourceLedger(q,[coda()],[],t)
     assert.equal(b.unsupportedReuses,1)
-    assert.equal(b.missingSnapshot,1)
+    // Without the inbound ledger there is no verified suppression decision.
+    assert.equal(b.identityReview,1)
+    assert.equal(b.missingSnapshot,0)
     assert.equal(q.stats().pending,0)
   })
 })
