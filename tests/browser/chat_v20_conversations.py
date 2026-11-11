@@ -211,7 +211,10 @@ async def device_case(browser, width, height):
         assert outbound_media == ["image", "video", "audio"], outbound_media
         h.mark(f"{width}px: sends one image/video/audio each with synthetic provider")
         await page.screenshot(path=str(ARTIFACTS / f"{width}-atendimento-chat.png"))
-        assert "/api/chat/conversations/" not in " ".join(sent)
+        # Fresh canonical resolver is expected for the unlinked card; no nested
+        # provider-history route should be queried without an active link.
+        assert not any(path.endswith("/messages") and
+                       path.startswith("/api/chat/conversations/") for path in sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card")
 
