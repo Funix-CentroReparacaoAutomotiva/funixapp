@@ -44,3 +44,19 @@ test('empty pieces and no enabled rows produce zero by category',()=>{
  assert.deepEqual(totals.p,{serviceTotal:'0',componentTotal:'0',servicesNonBillableOnly:false})
  assert.deepEqual(totals.empty,{serviceTotal:'0',componentTotal:'0',servicesNonBillableOnly:false})
 })
+
+test('scenario inclusion controls the total; the global discount is not distributed by piece',async()=>{
+ const f=calculationFixture()
+ const {calculate}=await import('../pricing-engine.ts')
+ const standard=f.run()
+ assert.equal(pieceFinancialSummary(standard).p!.serviceTotal,'300.15')
+ f.scenario.serviceFlags.l=false
+ assert.equal(pieceFinancialSummary(f.run()).p!.serviceTotal,'0')
+ f.scenario.serviceFlags.l=true
+ f.scenario.pieceFlags.p=false
+ assert.equal(pieceFinancialSummary(f.run()).p!.serviceTotal,'0')
+ f.scenario.pieceFlags.p=true
+ const discounted=calculate(f.items,f.components,f.catalog,f.scenario,f.config,f.settings,{mode:'discount',value:'10',acknowledgeResidual:false})
+ assert.equal(discounted.total,'290.15')
+ assert.equal(pieceFinancialSummary(discounted).p!.serviceTotal,'300.15')
+})
