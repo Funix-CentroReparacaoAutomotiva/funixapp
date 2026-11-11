@@ -126,3 +126,31 @@ A confirmação de `HTTP 202` pelo endpoint do aviso significa somente que o avi
 6. Não armazenar corpo/anexos na outbox; persistir apenas ID e metadados mínimos e buscar conteúdo novamente de modo controlado. Revisar limitação de exposição de snippets.
 7. Separar classificação inicial (autorizada automaticamente) de triagem de documentos e atualizações (expressamente dependente da autorização humana no FunixApp).
 8. Implantação da PR, flags e HMAC só mediante liberação específica; não ativar/despachar mensagens reais automaticamente com base nessa simulação.
+
+## 10. API assinada para fila de entrega (desenvolvimento, flags OFF)
+
+Novo backend em `server/gmail-intake-queue-endpoint.ts`, integrado condicionalmente a `server/app.ts`.
+
+- `POST /api/integrations/gmail/queue/enqueue`: `{messageId}`; cria um ID apenas uma vez, sem conteúdo do e-mail.
+- `POST /api/integrations/gmail/queue/claim`: `{limit,requestId}`; reivindica até 25 e-mails com lease de 120 segundos. `requestId` UUID é obrigatório e registrado transacionalmente: reenvio idêntico retorna o mesmo lote, mesmo após timeout da resposta, e divergência de limite recebe 409.
+- `POST /api/integrations/gmail/queue/ack`: `{messageId,leaseToken,result,noticeId,errorCode}`, com `result=notified|ignored|retry|blocked`. Um resultado `notified` exige `noticeId` já existente e pertencente ao mesmo e-mail. Não registra nem substitui decisão humana.
+
+Cada operação exige HMAC SHA-256 do timestamp e do corpo bruto em headers `x-funix-updates-timestamp` e `x-funix-updates-signature`, dentro da janela de 5 minutos e com limite de corpo de 16 KiB. **A chave é exclusiva da fila**: `FUNIX_GMAIL_QUEUE_SECRET` (mínimo 32 caracteres), distinta de `FUNIX_GMAIL_INTAKE_SECRET`. Nenhuma chave deve aparecer no código, no workflow, em pin data ou em documentação.
+
+Todas as rotas são **OFF por padrão**. Exigem simultaneamente `FUNIX_GMAIL_INTAKE_STORAGE_ENABLED=true`, `FUNIX_GMAIL_QUEUE_STORAGE_ENABLED=true`, `FUNIX_GMAIL_QUEUE_API_ENABLED=true`, esquema presente e segredo próprio. As flags não foram ativadas em produção.
+
+A persistência transacional da fila usa `gmail_intake_delivery_queue`, `gmail_intake_delivery_queue_attempts` e `gmail_intake_delivery_queue_claim_requests` (tabela de idempotência de reivindicações); não altera os registros do n8n nem a XP existente.
+
+### Contrato futuro de consumidor n8n (ainda não conectado)
+
+1. `enqueue` deve ser feito apenas com ID válido, após captura do Gmail, sem considerar o e-mail processado.
+2. `claim` usa `requestId` gerado e **persistido para a mesma requisição** em caso de incerteza de rede; não usar novo `requestId` para repetir uma resposta cujo resultado ainda seja desconhecido.
+3. Para cada lease, buscar e-mail por ID, preparar candidato mínimo e enviar pelo endpoint de classificação HMAC `/api/integrations/gmail/intake-candidates`; classificação como irrelevante retorna `ignored`, relevante/incerta retorna `noticeId` para a aba Atualizações.
+4. Somente após receber resposta verificável o consumidor confirma `ack`, reutilizando o mesmo token na repetição. Falhas de rede e estados ambíguos exigem reconciliação com o servidor antes de decidir se repetem o envio; o receptor classificador já deve ser idempotente por `messageId`.
+5. Respostas não-2xx: `408`, `429`, `5xx` e timeout são temporárias, sem confirmar sucesso; `400` e `409` exigem revisão ou bloqueio. Nunca registrar `notified` sem aviso correspondente.
+6. A captura ativa n8n e a fila SQLite do FunixApp são armazenamentos separados: falta mecanismo para reprocessar registros `received`, sem exceção silenciosa, e sincronizar o estado de entrega. Não tratar o ledger do n8n como comprovante de autorização.
+7. O despacho da triagem do assunto **não faz parte** da fila de entrega e somente poderá ocorrer após decisão autenticada do operador na aba Atualizações.
+
+### Testes
+
+Testes adicionados em `server/tests/gmail-intake-queue-endpoint.test.ts`: HMAC errado, timestamp expirado, flag OFF, payload inválido, duas requisições de claim com o mesmo `requestId`, reivindicação duplicada, recibo idempotente e recibo de aviso de outra mensagem. São testes sintéticos locais; nenhum envio Gmail/n8n real foi executado.
