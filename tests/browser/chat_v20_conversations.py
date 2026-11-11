@@ -106,6 +106,8 @@ async def device_case(browser, width, height):
                 payload["reportedTotal"] = len(payload["items"])
                 return await route.fulfill(status=200, json={**payload, "sendTextAvailable": True,
                     "mediaSendAvailable": True, "mediaReadAvailable": True})
+            if parsed.path == f"/api/chat/conversations/{B}/active-atendimento":
+                return await route.fulfill(status=200, json={"atendimentoId": None})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
             if parsed.path.startswith("/api/atendimentos/") and parsed.path.endswith("/evolution-conversation"):
@@ -115,6 +117,7 @@ async def device_case(browser, width, height):
                     "code": "CHAT_NOT_LINKED", "message": "Sem vínculo canônico"}})
             raise AssertionError(f"Unexpected API request: {parsed.path}")
 
+        await context.route("**/api/chat/conversations/*/active-atendimento", mock)
         await context.route("**/api/chat/conversations?*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversation", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
