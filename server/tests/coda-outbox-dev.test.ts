@@ -106,6 +106,7 @@ test('DEV outbox: event delivery can be replayed to receiver without creating du
 test('DEV commercial resolver: manual independence, open/closed, ambiguity and suppressed leads',()=>{
   assert.deepEqual(resolveCodaCommercialContext(context([])),{kind:'create',reason:'new'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-MANUAL_1','Novo lead (30min)','manual')])),{kind:'create',reason:'new'})
+  assert.deepEqual(resolveCodaCommercialContext(context([{...candidate('i-MANUAL_1','Novo lead (30min)','manual'),phoneE164:''}])),{kind:'create',reason:'new'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Novo lead (30min)') ])),{kind:'direct',codaRowId:'i-SYNTH_1'})
   assert.deepEqual(resolveCodaCommercialContext(context([candidate('i-SYNTH_1','Fim Positivo')])),{kind:'create',reason:'all_closed'})
   assert.deepEqual(resolveCodaCommercialContext(context([
