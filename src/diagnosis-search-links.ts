@@ -71,6 +71,7 @@ export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'mod
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
  const normalizedBrand=brand.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
  const make=normalizedBrand==='vw'?'volkswagen':normalizedBrand
- const storeTerm=[model,year,pieceWithPosition,part].filter(Boolean).join(' ')
- return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,storeTerm),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:storeTerm}).toString():manufacturerPartsStores[make]):null}
+ const storeTerm=context?[model,pieceWithPosition,part].filter(Boolean).join(' '):part
+ const manufacturerTerm=context?storeTerm:[part,model,year].filter(Boolean).join(' ')
+ return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,storeTerm),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:manufacturerTerm}).toString():manufacturerPartsStores[make]):null}
 }
