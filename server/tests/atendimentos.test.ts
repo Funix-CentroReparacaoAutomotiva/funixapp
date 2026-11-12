@@ -34,6 +34,7 @@ test('SQLite preserves optional text and independent duplicate-phone UUIDs after
     assert.equal(edited.vehicle, first.vehicle)
     assert.equal(edited.phone, first.phone)
     assert.equal(edited.notes, '')
+    assert.equal(edited.plate, 'PLACA TEXTO')
     db.close()
     assert.equal(statSync(temp.filename).mode & 0o777, 0o600)
   } finally { temp.close() }
@@ -111,4 +112,22 @@ test('newer schema is refused without resetting data', () => {
     assert.equal(db.prepare('SELECT id FROM atendimentos WHERE id=?').get(id)?.id, id)
     db.close()
   } finally { temp.close() }
+})
+
+
+test('Issue #159 normaliza placas no create/PATCH e mantém busca compatível', () => {
+  const db = openDatabase(':memory:')
+  try {
+    const repo = new AtendimentoRepository(db)
+    const mercosul = repo.create({ phone: '31912345678', plate: 'abc1d23' })
+    assert.equal(mercosul.plate, 'ABC1D23')
+    assert.equal(repo.get(mercosul.id).plate, 'ABC1D23')
+    assert.equal(repo.list({ q: 'abc1d23' }).total, 1)
+    const legado = repo.update(mercosul.id, { revision: mercosul.revision, plate: 'abc1234' })
+    assert.equal(legado.plate, 'ABC1234')
+    assert.equal(repo.get(mercosul.id).plate, 'ABC1234')
+    assert.equal(repo.list({ q: 'abc1234' }).total, 1)
+    assert.equal(repo.list({ q: 'abc1d23' }).total, 0)
+    assert.equal(repo.get(mercosul.id).phone, '31912345678')
+  } finally { db.close() }
 })
