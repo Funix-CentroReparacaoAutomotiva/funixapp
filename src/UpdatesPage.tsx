@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { UpdatePackage, UpdatePackageList, UpdatePackageStatus } from '../shared/update-packages'
 import { api } from './api'
+import { GmailIntakeNotices } from './GmailIntakeNotices'
 import './updates.css'
 
 type View = 'open' | 'closed'
@@ -85,6 +86,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     }finally{setBusy(null)}
   }
   return <section className="updates-page" aria-label="Pacotes de atualizações">
+    <GmailIntakeNotices onUnauthorized={onUnauthorized}/>
     <div className="updates-toolbar">
       <label className="fh-search"><span aria-hidden="true">⌕</span>
         <input aria-label="Buscar pacotes por experiência, placa ou origem" value={query}
