@@ -73,3 +73,15 @@ test('DEV decision: duplicate canonical rows fail closed rather than choosing fi
     assert.equal(r.review,1)
   }finally{f.db.close()}
 })
+
+test('DEV decision: modified persisted mapping cannot evade digest verification',()=>{
+  const f=fixture()
+  try{
+    f.source.append(source(),t)
+    f.decisions.append({eventId:ev,codaRowId:'i-ROW_1',remoteJid:jid},t)
+    f.db.prepare('UPDATE dev_whatsapp_confirmed_decisions SET coda_row_id=? WHERE event_id=?')
+      .run('i-MANUAL',ev)
+    assert.throws(()=>reconcileConfirmedDecisions(f.outbox,f.source,f.decisions,[originalRow],t),/DECISION_LEDGER_CORRUPT/)
+    assert.equal(f.outbox.stats().pending,0)
+  }finally{f.db.close()}
+})
