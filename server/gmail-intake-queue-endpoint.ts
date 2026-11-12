@@ -8,7 +8,7 @@ const fail=(status:number,code:string,message:string):never=>{throw new ServiceE
 const messagePattern=/^[0-9a-f]{15,25}$/i
 const requestPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-type Action='enqueue'|'claim'|'ack'
+type Action='enqueue'|'claim'|'ack'|'status'
 export function createGmailQueueEndpoint(
   queue:GmailIntakeQueue,secret:string|undefined,enabled:boolean,now:()=>number=Date.now
 ){
@@ -23,6 +23,11 @@ export function createGmailQueueEndpoint(
         typeof input.messageId!=='string'||!messagePattern.test(input.messageId))
         fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Identificador de mensagem inválido.')
       result=queue.enqueue(input.messageId as string)
+    }else if(action==='status'){
+      if(Object.keys(input).sort().join(',')!=='messageId'||
+        typeof input.messageId!=='string'||!messagePattern.test(input.messageId))
+        fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Identificador de mensagem inválido.')
+      result=queue.status(input.messageId)
     }else if(action==='claim'){
       if(Object.keys(input).sort().join(',')!=='limit,requestId'||
         typeof input.limit!=='number'||!Number.isSafeInteger(input.limit)||input.limit<1||input.limit>25||
