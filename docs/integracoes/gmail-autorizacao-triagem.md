@@ -177,3 +177,9 @@ Contrato de recuperação do consumidor, antes de conectar Gmail real:
 6. **Segurança:** segredos em credenciais/ambiente restrito, nunca em Code nodes, pin data, JSON de exportação ou logs; HTTPS autenticado e mascaramento de assunto, corpo, remetente e headers. Usar credenciais separadas das existentes em produção.
 
 Matriz de ensaio obrigatória: falha antes/depois de `enqueue`, perda da resposta `claim`, interrupção com lease aberto, timeout após candidato aceito, ACK duplicado, `409`, `408/429/5xx`, requisição assinada inválida, worker concorrente, reinício e reprocessamento de pendentes. Registrar evidência de mensagens sintéticas antes de usar qualquer caso real. **Workflow de homologação não deve ser publicado ou agendado automaticamente.**
+
+## 13. Ensaio independente n8n do contrato (12/11/2026)
+
+Foi criado no projeto pessoal administrativo n8n o workflow `FUNIX | DEV | Gmail queue contract — offline manual (OFF)`, ID `Hdld57vlbjOGcqjR`, que permanece **inativo** e só possui disparo manual + dois nós Code sem integrações externas. A execução manual `38642` encerrou com `success`, conferindo **quatro casos sintéticos** (`enqueue`, `claim`, `ack`, `lost-claim-response`) e devolvendo `{mode:'SYNTHETIC_OFFLINE',networkCalls:0,gmailReads:0,sideEffects:0,passed:true}`.
+
+Este ensaio confirma unicamente que o n8n executa as validações locais dos objetos de contrato. **Não é consumidor real**: não autentica, não se comunica com os endpoints, não consulta Gmail, não executa HTTP, não armazena requests e não testa falhas de rede ou concorrência. Para chegar ao merge ainda é necessário concluir a implementação do consumidor real e ensaios de integração em ambiente isolado com chaves e banco próprios, incluindo persistência do `requestId` e reconciliação das respostas ambíguas. O workflow atual não deve ser conectado à captura ativa.
