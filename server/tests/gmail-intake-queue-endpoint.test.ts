@@ -83,6 +83,20 @@ test('receipt must match actual existing notice and cannot authorize human decis
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_decisions').get()!.n,0)
  }finally{db.close()}
 })
+test('n8n style Content-Type with UTF-8 charset retains signed body verification',async()=>{
+ const {db,service}=setup()
+ try{
+  const signed=input({messageId})
+  signed.req.headers['content-type']='application/json; charset=utf-8'
+  assert.equal((await service(signed.req,signed.res,'enqueue') as {state:string}).state,'queued')
+  const unknown=input({messageId})
+  unknown.req.headers['content-type']='text/plain'
+  await assert.rejects(()=>service(unknown.req,unknown.res,'enqueue'),{code:'JSON_REQUIRED'})
+  const forged=input({messageId},'incorrect-but-long-synthetic-queue-secret')
+  forged.req.headers['content-type']='application/json; charset=utf-8'
+  await assert.rejects(()=>service(forged.req,forged.res,'enqueue'),{code:'GMAIL_INTAKE_UNAUTHORIZED'})
+ }finally{db.close()}
+})
 test('bad HMAC, expired request and feature OFF are rejected before any queue write',async()=>{
  const {db,queue,service}=setup()
  try{
