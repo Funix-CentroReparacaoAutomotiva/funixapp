@@ -63,6 +63,32 @@ export class DevelopmentDecisionLedger {
     })
   }
 }
+/**
+ * Check cross-path claims BEFORE either the original-event importer or the
+ * reused-message importer can enqueue. A message that created Coda row A
+ * must never be remapped by a later decision to row B, and a duplicated
+ * Coda origin marker is not a trustworthy canonical row.
+ */
+export function assertNoConflictingCodaOriginClaims(
+  decisionLedger:DevelopmentDecisionLedger,
+  confirmedRows:readonly RecoverableCodaRow[],
+):void {
+  const origins=new Map<string,{rowId:string;count:number}>()
+  for(const row of confirmedRows) {
+    if(!row || typeof row.id!=='string')continue
+    const marker=typeof row.fx_UUID==='string'?row.fx_UUID.trim():''
+    if(!eventPattern.test(marker))continue
+    const existing=origins.get(marker)
+    if(existing) existing.count++
+    else origins.set(marker,{rowId:row.id,count:1})
+  }
+  for(const decision of decisionLedger.readAll()) {
+    const original=origins.get(decision.eventId)
+    if(original?.count && original.count!==1)throw Error('DECISION_ORIGIN_DUPLICATE')
+    if(original && original.rowId!==decision.codaRowId)
+      throw Error('DECISION_ORIGIN_CONFLICT')
+  }
+}
 export function reconcileConfirmedDecisions(
   outbox:DevelopmentCodaOutbox,
   sourceLedger:DevelopmentSourceLedger,
@@ -71,6 +97,7 @@ export function reconcileConfirmedDecisions(
   nowMs:number,
 ) {
   // Fail closed on incomplete source scan or duplicates before queuing anything.
+  assertNoConflictingCodaOriginClaims(decisionLedger,confirmedRows)
   const sources=new Map<string,ReturnType<DevelopmentSourceLedger['readPage']>['entries'][number]>()
   let cursor=''
   for(;;) {
@@ -86,10 +113,13 @@ export function reconcileConfirmedDecisions(
   }
   const decisions=decisionLedger.readAll()
   const rowCount=new Map<string,number>()
+  const originCount=new Map<string,number>()
   const canonical=new Map<string,RecoverableCodaRow>()
   for(const row of confirmedRows){
     if(!row || typeof row.id!=='string')continue
     rowCount.set(row.id,(rowCount.get(row.id)??0)+1)
+    const origin=typeof row.fx_UUID==='string'?row.fx_UUID.trim():''
+    if(eventPattern.test(origin))originCount.set(origin,(originCount.get(origin)??0)+1)
     canonical.set(row.id,row)
   }
   let queued=0,existing=0,review=0,missingSource=0
@@ -103,6 +133,7 @@ export function reconcileConfirmedDecisions(
     const origin=typeof row?.fx_UUID==='string'?row.fx_UUID.trim():''
     if(!row || rowCount.get(row.id)!==1 ||
        !eventPattern.test(origin) ||
+       originCount.get(origin)!==1 ||
        channel!==channelId ||
        row['api_ID Omnichanel']!==src.remoteJid ||
        src.remoteJid!==decision.remoteJid ||
