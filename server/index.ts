@@ -9,6 +9,7 @@ import { createUpdatePackageSchema } from './update-packages-schema.ts'
 import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
 import { parseDevelopmentSourceSecret } from './chat/coda-source-endpoint-dev.ts'
 import { createDevelopmentSourceLedgerSchema, DevelopmentSourceLedger } from './chat/coda-source-storage-dev.ts'
+import { createDevelopmentDecisionLedgerSchema, DevelopmentDecisionLedger } from './chat/coda-decision-ledger-dev.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -43,9 +44,11 @@ const codaSync = codaSyncKey ? (() => {
 const sourceLedgerKey = parseDevelopmentSourceSecret(process.env)
 const sourceLedger = sourceLedgerKey ? (() => {
   createDevelopmentSourceLedgerSchema(db)
-  return { ledger:new DevelopmentSourceLedger(db), secret:sourceLedgerKey }
+  createDevelopmentDecisionLedgerSchema(db)
+  return { ledger:new DevelopmentSourceLedger(db), decisionLedger:new DevelopmentDecisionLedger(db), secret:sourceLedgerKey }
 })() : undefined
-const app = createApp({ codaSync, sourceLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
+const app = createApp({ codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
