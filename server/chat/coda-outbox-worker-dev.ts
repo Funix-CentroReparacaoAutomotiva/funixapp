@@ -12,7 +12,9 @@ export type CodaOutboxTransport = (request: {
 function acknowledged(body: unknown): boolean {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return false
   const r = body as Record<string, unknown>
-  return r.status === 202 && (r.state === 'created' || r.state === 'existing') &&
+  // The API response body is {atendimentoId,state}; HTTP status is checked
+  // separately by the caller. Requiring an absent body.status would retry forever.
+  return (r.state === 'created' || r.state === 'existing') &&
     typeof r.atendimentoId === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.atendimentoId)
 }
