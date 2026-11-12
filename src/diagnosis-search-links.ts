@@ -2,10 +2,18 @@ import type {Atendimento} from '../shared/contracts.ts'
 
 // Only technical terms leave the browser. Never place names, license plates,
 // contacts, notes, VINs or unfiltered free-form vehicle descriptions in links.
-function technical(value:string,max=80):string|null {
+function technical(value:string,max=80,allowPartPunctuation=false):string|null {
  const text=value.normalize('NFKC').trim().replace(/\s+/g,' ')
- if(!text||text.length>max||! /^[\p{L}\p{N} \-/]+$/u.test(text))return null
- if(/\b(?:\d{7,}|[A-Z]{3}[0-9][A-Z0-9][0-9]{2})\b/i.test(text))return null
+ if(!text||text.length>max||!(allowPartPunctuation ? /^[\p{L}\p{N} \-/()%.,+&#]+$/u : /^[\p{L}\p{N} \-/]+$/u).test(text))return null
+ // Descriptions can be pasted from messages. Reject recognizable personal identifiers
+ // even when a phone or plate uses normal separators; search URLs leave FUNIX.
+ if(/\b\d{7,}\b/.test(text))return null
+ if(/\b[A-Z]{3}[ -]?\d[ -]?[A-Z\d][ -]?\d{2}\b/i.test(text))return null
+ if(/\b[A-HJ-NPR-Z0-9]{17}\b/i.test(text))return null
+ // Formatted taxpayer identifiers must never be sent to external shopping/search sites.
+ if(/\b\d{3}[. -]\d{3}[. -]\d{3}[- ]?\d{2}\b/.test(text))return null
+ if(/\b\d{2}[. -]\d{3}[. -]\d{3}[\/-]\d{4}[- ]?\d{2}\b/.test(text))return null
+ if(/(?<!\d)(?:\+?55[ ().-]*)?\(?\d{2}\)?[ ().-]+\d{4,5}[ .-]*\d{4}(?!\d)/.test(text))return null
  return text
 }
 function yearFromVehicle(vehicle:string):string {
@@ -47,7 +55,7 @@ const manufacturerPartsStores:Record<string,string>={
  volkswagen:'https://pecas.vw.com.br/'
 }
 export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string) {
- const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100)
+ const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100,true)
  if(!brand||!model||!part)return null
  const year=yearFromVehicle(vehicle.vehicle)
  const query=[brand,model,year,part].filter(Boolean).join(' ')

@@ -66,3 +66,59 @@ test('verified additional official shops get store-scoped links, with accent nor
   assert.equal(result.montadora,null,'do not show unverified deep link for automaker web store')
  }
 })
+
+
+test('issue 128: part descriptions with technical punctuation remain searchable and correctly encoded',()=>{
+ const vehicle={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'}
+ for(const part of ['Moldura (lado esquerdo)','Bateria 70%','Peça (50%) + suporte','Maçaneta, frente (direita)','Cabo A&B','Fixador #2']){
+  const links=manualComponentSearchLinks(vehicle,part)
+  assert(links,'links missing for '+part)
+  assert.equal(new URL(links.general).protocol,'https:')
+  assert.equal(new URL(links.general).searchParams.get('q'),'Volkswagen Gol 2019 '+part)
+  assert.equal(new URL(links.original).searchParams.get('q'),'Volkswagen Gol 2019 '+part+' original')
+  assert(links.official&&new URL(links.official).protocol==='https:')
+  assert(links.montadora&&new URL(links.montadora).searchParams.get('q')===part+' Gol 2019')
+ }
+ for(const part of ['','   ','https://evil.example','foo?x=1','foo<script>','ABC1D23','123456789']){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'unsafe/empty search must be rejected: '+part)
+ }
+})
+
+
+test('issue 128: external search never exports formatted plates, phone numbers or VINs',()=>{
+ const vehicle={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'}
+ for(const part of [
+  'Farol ABC-1D23','Lanterna ABC 1234','Parachoque ABC1D23',
+  'Moldura (31) 99999-0000','Chicote +55 (31) 99999-0000',
+  'Capô 31999990000','Chicote 9BWZZZ377VT004251',
+ ]){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'must not include private identifier: '+part)
+ }
+ for(const part of [
+  'Moldura (lado esquerdo)','Bateria 70%','Peça (50%) + suporte',
+  'Maçaneta, frente (direita)','Cabo A&B','Fixador #2','Lanterna 2 pinos',
+  'Cabo 12V 4+4','Kit (31 mm) 4 unidades',
+ ]){
+  const result=manualComponentSearchLinks(vehicle,part)
+  assert(result,'legitimate technical description must remain searchable: '+part)
+  assert.equal(new URL(result.general).searchParams.get('q'),'Volkswagen Gol 2019 '+part)
+ }
+})
+
+
+test('issue 128: formatted CPF and CNPJ are never exported to external searches',()=>{
+ const vehicle={brand:'Fiat',model:'Argo',vehicle:'Argo 2022'}
+ for(const part of [
+  'Moldura 123.456.789-09',
+  'Peça 12.345.678/0001-90',
+  'Suporte 123-456-789-09',
+  'Filtro 12-345-678/0001-90',
+ ]){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'identifier leaked: '+part)
+ }
+ for(const part of ['Peça (50%) + suporte','Cabo 12V 4+4','Kit (31 mm) 4 unidades','Moldura 1/4 esquerda']){
+  const links=manualComponentSearchLinks(vehicle,part)
+  assert(links,'legitimate description was rejected: '+part)
+  assert.equal(new URL(links.general).searchParams.get('q'),'Fiat Argo 2022 '+part)
+ }
+})
