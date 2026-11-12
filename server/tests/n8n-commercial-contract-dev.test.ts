@@ -65,6 +65,14 @@ test('DEV n8n draft snapshot: normalized original Evolution message identity and
   assert.equal(x.telefoneE164,source.telefoneE164)
   const missingTimestamp={...body,data:{...body.data,messageTimestamp:undefined}}
   assert.equal(execute('Code in JavaScript',[missingTimestamp],{})[0]!.json.occurredAt,null)
+  for(const invalid of [null,'',false,0,'not-a-timestamp']) {
+    const testBody={...body,data:{...body.data,messageTimestamp:invalid}}
+    assert.equal(execute('Code in JavaScript',[testBody],{})[0]!.json.occurredAt,null)
+  }
+  for(const valid of [1794144000,'1794144000']) {
+    const testBody={...body,data:{...body.data,messageTimestamp:valid}}
+    assert.equal(execute('Code in JavaScript',[testBody],{})[0]!.json.occurredAt,1794144000)
+  }
   assert.equal(execute('Code in JavaScript',[{...body,data:{...body.data,key:{...body.data.key,fromMe:true}}}],{}).length,0)
 })
 test('DEV n8n draft: other WhatsApp customers do not block this JID',()=>{
