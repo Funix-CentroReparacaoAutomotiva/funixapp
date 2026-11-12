@@ -104,3 +104,21 @@ test('issue 128: external search never exports formatted plates, phone numbers o
   assert.equal(new URL(result.general).searchParams.get('q'),'Volkswagen Gol 2019 '+part)
  }
 })
+
+
+test('issue 128: formatted CPF and CNPJ are never exported to external searches',()=>{
+ const vehicle={brand:'Fiat',model:'Argo',vehicle:'Argo 2022'}
+ for(const part of [
+  'Moldura 123.456.789-09',
+  'Peça 12.345.678/0001-90',
+  'Suporte 123-456-789-09',
+  'Filtro 12-345-678/0001-90',
+ ]){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'identifier leaked: '+part)
+ }
+ for(const part of ['Peça (50%) + suporte','Cabo 12V 4+4','Kit (31 mm) 4 unidades','Moldura 1/4 esquerda']){
+  const links=manualComponentSearchLinks(vehicle,part)
+  assert(links,'legitimate description was rejected: '+part)
+  assert.equal(new URL(links.general).searchParams.get('q'),'Fiat Argo 2022 '+part)
+ }
+})
