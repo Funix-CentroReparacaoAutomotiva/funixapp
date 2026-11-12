@@ -92,7 +92,7 @@ export type ReadMessage = {
   media: { reference: string; mimeType: string | null; bytes: number | null; available: false } | null
   statuses: string[]
 }
-export type ReadChat = { remoteJid: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
+export type ReadChat = { remoteJid: string; remoteJidAlt?: string | null; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
 export type MessagePage = {
   items: ReadMessage[]
   currentPage: number
@@ -208,7 +208,24 @@ export class EvolutionReadPoc {
         if (!Number.isFinite(Date.parse(updatedAt)) || new Date(updatedAt).toISOString() !== updatedAt) return fail()
       }
       // Project only safe identification hints; never lastMessage/profile/avatar URLs, provider JID is server-only.
-      items.push({ remoteJid,
+      // The provider's latest message is an explicit alias hint, not a name/phone inference.
+      // Invalid optional aliases are ignored; ambiguous aliases are rejected by the bridge.
+      let remoteJidAlt: string | null = null
+      if (row.lastMessage && typeof row.lastMessage === 'object' && !Array.isArray(row.lastMessage)) {
+        const last = row.lastMessage as Record<string, unknown>
+        if (last.key && typeof last.key === 'object' && !Array.isArray(last.key)) {
+          const messageKey = last.key as Record<string, unknown>
+          const alt = messageKey.remoteJidAlt
+          // A lastMessage belonging to another chat cannot establish an identity alias.
+          if (messageKey.remoteJid === remoteJid && typeof alt === 'string') {
+            try { remoteJidAlt = jid(alt) } catch { remoteJidAlt = null }
+            // Only PN<->LID pairs can bridge the two identity domains.
+            if (remoteJidAlt === remoteJid ||
+                remoteJidAlt?.endsWith('@lid') === remoteJid.endsWith('@lid')) remoteJidAlt = null
+          }
+        }
+      }
+      items.push({ remoteJid, ...(remoteJidAlt ? { remoteJidAlt } : {}),
         displayName: displayName(row.pushName),
         phoneNumber: remoteJid.endsWith('@s.whatsapp.net') ? remoteJid.slice(0, -'@s.whatsapp.net'.length) : null,
         updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) })

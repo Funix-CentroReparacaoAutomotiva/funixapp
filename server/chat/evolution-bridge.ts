@@ -24,8 +24,45 @@ export function createEvolutionChatBridge(
   const byId = new Map<string, { jid: string; at: number }>()
   const byJid = new Map<string, string>()
   const pendingSends = new Set<string>()
+  // Aliases are evidence from findChats.lastMessage.key, never inferred from labels.
+  // Keep the original JID for Evolution history; use the PN alias only for Coda identity.
+  const alternateByPrimary = new Map<string, { jid: string; at: number }>()
+  const primariesByAlternate = new Map<string, Set<string>>()
+  const rememberAlias = (primary: string, alternate?: string | null) => {
+    const previous = alternateByPrimary.get(primary)?.jid
+    if (previous) {
+      const owners = primariesByAlternate.get(previous)
+      owners?.delete(primary)
+      if (!owners?.size) primariesByAlternate.delete(previous)
+    }
+    alternateByPrimary.delete(primary)
+    if (!alternate || alternate === primary) return
+    // Bound identity hints like the ephemeral conversation cache.
+    if (alternateByPrimary.size >= maxEntries) {
+      const oldest = alternateByPrimary.keys().next().value
+      if (oldest !== undefined) rememberAlias(oldest)
+    }
+    alternateByPrimary.set(primary, { jid: alternate, at: now() })
+    const owners = primariesByAlternate.get(alternate) ?? new Set<string>()
+    owners.add(primary)
+    primariesByAlternate.set(alternate, owners)
+  }
+  const canonicalFor = (primary: string): string | null => {
+    if (!codaSync) return null
+    const direct = codaSync.resolveActive(primary)
+    const alternate = alternateByPrimary.get(primary)?.jid
+    if (!alternate) return direct
+    // A conflicting alias must never select a potentially different customer.
+    if (primariesByAlternate.get(alternate)?.size !== 1) return null
+    const linked = codaSync.resolveActive(alternate)
+    if (direct && linked && direct !== linked) return null
+    return direct ?? linked
+  }
 
   const purge = () => {
+    for (const [primary, value] of alternateByPrimary) {
+      if (now() - value.at >= ttlMs) rememberAlias(primary)
+    }
     for (const [id, entry] of byId) {
       if (now() - entry.at >= ttlMs) {
         byId.delete(id)
@@ -33,6 +70,16 @@ export function createEvolutionChatBridge(
       }
     }
   }
+  // Resolve a provider-compatible PN only from an exact, unique alias.
+  // Never ask the Evolution sender to infer the destination from a LID.
+  const sendTarget = (primary: string): string | null => {
+    if (/^[0-9]{8,15}@s\.whatsapp\.net$/.test(primary)) return primary
+    const alias = alternateByPrimary.get(primary)?.jid
+    if (!alias || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(alias) ||
+        primariesByAlternate.get(alias)?.size !== 1) return null
+    return alias
+  }
+
   const register = (jid: string): string => {
     if (associations) return associations.rememberConversation('funix_comercial', jid).conversationId
     const known = byJid.get(jid)
@@ -62,6 +109,8 @@ export function createEvolutionChatBridge(
       purge()
       const take = 50
       const { items: rows, sourceCount } = await provider.findChatsPage({ take, skip })
+      // Scan the entire provider page before resolving any links to detect collisions.
+      for (const row of rows) rememberAlias(row.remoteJid, row.remoteJidAlt)
       return {
         items: rows.map(row => ({
           conversationId: register(row.remoteJid),
@@ -69,7 +118,7 @@ export function createEvolutionChatBridge(
           phoneNumber: row.phoneNumber,
           updatedAt: row.updatedAt,
           unreadCount: row.unreadCount,
-          ...(codaSync ? { atendimentoId: codaSync.resolveActive(row.remoteJid) } : {}),
+          ...(codaSync ? { atendimentoId: canonicalFor(row.remoteJid) } : {}),
         })),
         nextSkip: sourceCount === take && skip + take <= 500000 ? skip + take : null,
         source: 'evolution',
@@ -93,7 +142,7 @@ export function createEvolutionChatBridge(
       const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
       if (!jid) return null
       if (entry) entry.at = now()
-      return codaSync.resolveActive(jid)
+      return canonicalFor(jid)
     },
     /** Never disclose a conversation under a different Atendimento's context.
      * The conversationId stays opaque; the canonical Coda mapping is checked
@@ -109,14 +158,15 @@ export function createEvolutionChatBridge(
       purge()
       const entry = byId.get(conversationId)
       const remoteJid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
-      if (!remoteJid || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(remoteJid) ||
-          codaSync.resolveActive(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
+      const recipient = remoteJid ? sendTarget(remoteJid) : null
+      if (!remoteJid || !recipient || canonicalFor(remoteJid) !== atendimentoId ||
+          codaSync.resolveActive(recipient) !== atendimentoId) return { state: 'unlinked' as const }
       if (pendingSends.has(conversationId)) return { state: 'busy' as const }
       pendingSends.add(conversationId)
       try {
         // Revalidate before any network side effect, including an active-context switch.
-        if (codaSync.resolveActive(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
-        const receipt = await sendText(remoteJid, text)
+        if (canonicalFor(remoteJid) !== atendimentoId || codaSync.resolveActive(recipient) !== atendimentoId) return { state: 'unlinked' as const }
+        const receipt = await sendText(recipient, text)
         return { state: 'accepted' as const, receipt }
       } finally { pendingSends.delete(conversationId) }
     },
@@ -125,13 +175,14 @@ export function createEvolutionChatBridge(
       if(!media||!codaSync)return {state:'invalid' as const}
       const entry=byId.get(conversationId)
       const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
-      if(!jid||!/^[0-9]{8,15}@s\.whatsapp\.net$/.test(jid)||
-        codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
+      const recipient = jid ? sendTarget(jid) : null
+      if(!jid||!recipient||canonicalFor(jid)!==atendimentoId||
+        codaSync.resolveActive(recipient)!==atendimentoId)return {state:'unlinked' as const}
       if(pendingSends.has(conversationId))return {state:'busy' as const}
       pendingSends.add(conversationId)
       try{
-        if(codaSync.resolveActive(jid)!==atendimentoId)return {state:'unlinked' as const}
-        const receipt=await media.send(jid,item)
+        if(canonicalFor(jid)!==atendimentoId||codaSync.resolveActive(recipient)!==atendimentoId)return {state:'unlinked' as const}
+        const receipt=await media.send(recipient,item)
         return {state:'accepted' as const,receipt}
       }finally{pendingSends.delete(conversationId)}
     },
@@ -139,26 +190,26 @@ export function createEvolutionChatBridge(
       if(!media||!codaSync)return null
       const entry=byId.get(conversationId)
       const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
-      if(!jid||codaSync.resolveActive(jid)!==atendimentoId)return null
+      if(!jid||canonicalFor(jid)!==atendimentoId)return null
       // Fetch the full envelope on the server only. Never return raw provider data.
       const item=await provider.findMediaEnvelope?.(jid,messageId,page)
       if(!item)return null
       if(item.bytes!==null&&item.bytes>12*1024*1024)return {state:'too_large' as const}
-      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      if(canonicalFor(jid)!==atendimentoId)return null
       const result=await media.get(item.envelope,item.kind)
-      if(codaSync.resolveActive(jid)!==atendimentoId)return null
+      if(canonicalFor(jid)!==atendimentoId)return null
       return {state:'ready' as const,...result}
     },
     async messagesForAtendimento(atendimentoId: string, conversationId: string, page: number) {
       purge()
       const entry = byId.get(conversationId)
       const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
-      if (!jid || !codaSync || codaSync.resolveActive(jid) !== atendimentoId) return null
+      if (!jid || !codaSync || canonicalFor(jid) !== atendimentoId) return null
       const result = await this.messages(conversationId, page)
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.
-      return codaSync.resolveActive(jid) === atendimentoId && result
-        ? { ...result, sendTextAvailable: Boolean(sendText), mediaSendAvailable: Boolean(media), mediaReadAvailable: Boolean(media) } : null
+      return canonicalFor(jid) === atendimentoId && result
+        ? { ...result, sendTextAvailable: Boolean(sendText && sendTarget(jid) && codaSync.resolveActive(sendTarget(jid)!) === atendimentoId), mediaSendAvailable: Boolean(media && sendTarget(jid) && codaSync.resolveActive(sendTarget(jid)!) === atendimentoId), mediaReadAvailable: Boolean(media) } : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string

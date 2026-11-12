@@ -354,3 +354,23 @@ test('Evolution POC: invalid or ambiguous PN/LID is never silently skipped', asy
     client(response(page)).findChatsPage({ take: 50 }), EvolutionReadError,
   )
 })
+
+test('Evolution findChats preserves only validated lastMessage alternate JID', async () => {
+  const rows = await client(response([
+    { remoteJid: LID, lastMessage: { key: { remoteJid: LID, remoteJidAlt: PN, id: 'secret' }, text: 'PRIVATE' } },
+    { remoteJid: OTHER, lastMessage: { key: { remoteJidAlt: 'invalid' } } },
+  ])).findChats()
+  assert.equal(rows[0]?.remoteJidAlt, PN)
+  assert.equal(rows[1]?.remoteJidAlt, undefined)
+  assert.ok(!JSON.stringify(rows).includes('PRIVATE'))
+  assert.ok(!JSON.stringify(rows).includes('secret'))
+})
+
+test('Evolution findChats never trusts mismatched message scope or same-kind alias', async () => {
+  const rows = await client(response([
+    { remoteJid: LID, lastMessage: { key: { remoteJid: OTHER, remoteJidAlt: PN } } },
+    { remoteJid: PN, lastMessage: { key: { remoteJid: PN, remoteJidAlt: '000000000002@s.whatsapp.net' } } },
+  ])).findChats()
+  assert.equal(rows[0]?.remoteJidAlt, undefined)
+  assert.equal(rows[1]?.remoteJidAlt, undefined)
+})
