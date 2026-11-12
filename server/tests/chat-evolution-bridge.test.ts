@@ -460,3 +460,62 @@ test('Evolution alias conflict and absent alias fail closed for canonical associ
     } finally { f.db.close() }
   }
 })
+
+test('LID listed conversation sends only through its verified canonical PN, never to the LID', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  process.env.FUNIX_EVOLUTION_SEND_ENABLED = 'true'
+  const f = fixture(true, false, true, true, false, [
+    { remoteJid: lid, remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+  ])
+  try {
+    const id = f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:send:1',
+      codaRowId: 'i-ALIAS_SEND', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }).atendimentoId
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    const base = `/api/atendimentos/${id}/evolution-conversations/${conversationId}`
+    const messages = await f.request(base + '/messages', cookie)
+    assert.equal(messages.status, 200)
+    assert.equal((await messages.json()).sendTextAvailable, true)
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'Mensagem sintética' })).status, 200)
+    assert.deepEqual(f.sendCalls, [{ jid, text: 'Mensagem sintética' }])
+    f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:send:2',
+      codaRowId: 'i-ALIAS_SEND_B', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144002 })
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'não enviar' })).status, 404)
+    assert.equal(f.sendCalls.length, 1)
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
+    f.db.close()
+  }
+})
+
+test('LID with colliding alternate JID cannot send or read a canonical Atendimento', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  process.env.FUNIX_EVOLUTION_SEND_ENABLED = 'true'
+  const f = fixture(true, false, true, true, false, [
+    { remoteJid: lid, remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+    { remoteJid: 'conflicting-opaque@lid', remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+  ])
+  try {
+    const id = f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:reject:1',
+      codaRowId: 'i-ALIAS_REJECT', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }).atendimentoId
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    const base = `/api/atendimentos/${id}/evolution-conversations/${conversationId}`
+    assert.equal((await f.request(base + '/messages', cookie)).status, 404)
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'não enviar' })).status, 404)
+    assert.deepEqual(f.sendCalls, [])
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
+    f.db.close()
+  }
+})
