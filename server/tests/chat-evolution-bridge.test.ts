@@ -254,6 +254,34 @@ test('canonical Coda Evolution route requires operator session and matching acti
   } finally { f.db.close() }
 })
 
+test('fresh active-context resolver detects a signed event after conversation listing and rejects wrong inputs', async () => {
+  const f = fixture(true, false, true)
+  try {
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    const path = '/api/chat/conversations/' + conversationId + '/active-atendimento'
+    assert.equal((await f.request(path)).status, 401)
+    assert.equal((await f.request(path, cookie, 'POST')).status, 405)
+    assert.equal((await f.request(path + '?jid=' + encodeURIComponent(jid), cookie)).status, 400)
+    assert.deepEqual(await (await f.request(path, cookie)).json(), { atendimentoId: null })
+    const event = {
+      version: 1, source: 'coda', eventId: 'evo:synthetic:late-1',
+      codaRowId: 'i-LATE_1', instance: 'funix_comercial',
+      remoteJid: jid, phoneE164: null,
+      displayName: 'Contato Sintético', occurredAt: 1794144000,
+    }
+    const first = f.sync!.sync(event).atendimentoId
+    assert.deepEqual(await (await f.request(path, cookie)).json(), { atendimentoId: first })
+    const second = f.sync!.sync({ ...event, eventId: 'evo:synthetic:late-2',
+      codaRowId: 'i-LATE_2', occurredAt: 1794144005 }).atendimentoId
+    assert.notEqual(first, second)
+    assert.deepEqual(await (await f.request(path, cookie)).json(), { atendimentoId: second })
+    assert.equal((await f.request('/api/chat/conversations/00000000-0000-4000-8000-000000000002/active-atendimento', cookie)).status, 200)
+    assert.deepEqual(f.calls, ['chats'])
+  } finally { f.db.close() }
+})
+
 test('direct Funil opens canonical Evolution context without a preceding conversation-list request', async () => {
   const f = fixture(true, false, true)
   try {
