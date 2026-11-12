@@ -214,10 +214,14 @@ export class EvolutionReadPoc {
       if (row.lastMessage && typeof row.lastMessage === 'object' && !Array.isArray(row.lastMessage)) {
         const last = row.lastMessage as Record<string, unknown>
         if (last.key && typeof last.key === 'object' && !Array.isArray(last.key)) {
-          const alt = (last.key as Record<string, unknown>).remoteJidAlt
-          if (typeof alt === 'string') {
+          const messageKey = last.key as Record<string, unknown>
+          const alt = messageKey.remoteJidAlt
+          // A lastMessage belonging to another chat cannot establish an identity alias.
+          if (messageKey.remoteJid === remoteJid && typeof alt === 'string') {
             try { remoteJidAlt = jid(alt) } catch { remoteJidAlt = null }
-            if (remoteJidAlt === remoteJid) remoteJidAlt = null
+            // Only PN<->LID pairs can bridge the two identity domains.
+            if (remoteJidAlt === remoteJid ||
+                remoteJidAlt?.endsWith('@lid') === remoteJid.endsWith('@lid')) remoteJidAlt = null
           }
         }
       }
