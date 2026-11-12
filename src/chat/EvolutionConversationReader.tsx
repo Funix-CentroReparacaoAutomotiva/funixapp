@@ -11,7 +11,13 @@ const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: '
 function conversationLabel(row: ConversationRow): string {
   return row.displayName || (row.phoneNumber ? '+' + row.phoneNumber : 'Contato não identificado')
 }
-type CandidateAtendimento = { id: string; phone: string; phoneNormalized?: string | null; name: string; vehicle?: string; plate?: string }
+type CandidateAtendimento = { id: string; phone: string; phoneNormalized?: string | null; name: string; vehicle?: string; plate?: string; stage?: string }
+type Choice = { items: CandidateAtendimento[] }
+const stageNames: Record<string, string> = {
+  'novo-lead': 'Novo lead', 'aguardando-dados': 'Aguardando dados',
+  'em-negociacao': 'Em negociação', morno: 'Morno', frio: 'Frio',
+  rejeitados: 'Rejeitado',
+}
 type AtendimentoSearch = { items: CandidateAtendimento[]; nextOffset: number | null }
 /** A navigation lookup, NOT a permanent conversation association.
  * A Brazilian +55 prefix is only a formatting difference. Never add a ninth digit.
@@ -46,7 +52,8 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
   const [version, setVersion] = useState(0)
   const [lookupBusy, setLookupBusy] = useState<string | null>(null)
   const [lookupError, setLookupError] = useState('')
-  const [candidates, setCandidates] = useState<CandidateAtendimento[]>([])
+  const [choice, setChoice] = useState<Choice | null>(null)
+  const choiceDialog = useRef<HTMLDialogElement | null>(null)
   const listRequest = useRef<AbortController | null>(null)
   const lookupRequest = useRef<AbortController | null>(null)
   const loadingMore = useRef(false)
@@ -90,10 +97,16 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
 
   useEffect(() => () => lookupRequest.current?.abort(), [])
 
+  useEffect(() => {
+    if (choice && choiceDialog.current && !choiceDialog.current.open) {
+      choiceDialog.current.showModal()
+    }
+  }, [choice])
+
   function refreshList() {
     listRequest.current?.abort()
     lookupRequest.current?.abort()
-    setLookupBusy(null); setCandidates([]); setLookupError('')
+    setLookupBusy(null); setChoice(null); setLookupError('')
     setUnlinked(null); setList([]); setNextSkip(null)
     setAvailable(null); setLinksEnabled(false)
     setVersion(value => value + 1)
@@ -111,20 +124,57 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
 
   async function open(row: ConversationRow) {
     lookupRequest.current?.abort()
-    setLookupBusy(null); setLookupError(''); setCandidates([])
+    setLookupBusy(null); setLookupError(''); setChoice(null)
     if (row.atendimentoId && onOpenAtendimento) {
       setUnlinked(null)
       onOpenAtendimento(row.atendimentoId, 'chat', row.conversationId)
       return
     }
-    if (unlinked === row.conversationId) { setUnlinked(null); return }
-    setUnlinked(row.conversationId)
+    // The list may predate a successful Coda→FunixApp event. Recheck the
+    // canonical mapping before relying on local phone matches as navigation.
+    // A 200/null response is an expected missing link, not permission to
+    // fabricate one or to merge manual records between systems.
+    const canonicalController = new AbortController()
+    lookupRequest.current = canonicalController
+    setLookupBusy(row.conversationId)
+    try {
+      const current = await api<{ atendimentoId: string | null }>(
+        '/api/chat/conversations/' + encodeURIComponent(row.conversationId) + '/active-atendimento',
+        { signal: canonicalController.signal },
+      )
+      if (canonicalController.signal.aborted) return
+      if (current.atendimentoId && onOpenAtendimento) {
+        setLookupBusy(null)
+        onOpenAtendimento(current.atendimentoId, 'chat', row.conversationId)
+        return
+      }
+    } catch (cause) {
+      if (canonicalController.signal.aborted) return
+      const error = cause as RequestFailure
+      if (error.status === 401) { onUnauthorized(); return }
+      // Fail safely if the authoritative lookup is unavailable. Display the
+      // problem instead of using a phone match as proof of an active context.
+      if (error.status !== 404) {
+        setLookupBusy(null)
+        setUnlinked(row.conversationId)
+        setLookupError('Não foi possível conferir o Atendimento vinculado. Tente novamente.')
+        return
+      }
+      // 404 is possible on older servers with the resolver not yet deployed.
+    } finally {
+      if (!canonicalController.signal.aborted) setLookupBusy(null)
+    }
+    // A first tap performs the lookup. The operator should not have to open an
+    // intermediate panel just to discover the only matching Atendimento.
+    // This is navigation only; it MUST NOT create an ERP record or a link.
+    setUnlinked(null)
     // The Funil can contain an Atendimento before this Evolution JID has
     // received a canonical Coda event. Search existing records on click.
     const phone = row.phoneNumber ? comparablePhone(row.phoneNumber) : ''
     const query = phone.length >= 8 ? phone : row.displayName?.trim() || ''
     if (query.length < 2) {
-      setLookupError('Não foi possível identificar o contato. Localize o Atendimento pelo Funil.')
+      setUnlinked(row.conversationId)
+      setLookupError('Não foi possível confirmar a identidade da conversa. A sincronização precisa ser verificada.')
       return
     }
     const controller = new AbortController()
@@ -154,19 +204,29 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       }
       if (controller.signal.aborted) return
       const found = [...matches.values()]
+      // A phone match is navigation, NOT proof that this record is the
+      // current Coda Atendimento or that its WhatsApp history is linked.
+      // The local stage is not a reliable indication of Coda closure.
       if (phone && !incomplete && found.length === 1 && onOpenAtendimento) {
         onOpenAtendimento(found[0]!.id, 'chat')
         return
       }
-      setCandidates(found)
-      setLookupError(!found.length
-        ? 'Não encontrei Atendimento correspondente no Funil. Nenhum registro foi criado.'
-        : incomplete
-          ? 'Há muitos resultados. Selecione o Atendimento correto ou procure pelo Funil.'
-          : 'Selecione qual Atendimento deseja abrir. Nenhum vínculo será criado.')
+      if (phone && !incomplete && found.length > 1) {
+        setChoice({ items: found })
+        return
+      }
+      // Missing canonical events are an integration exception, not a reason
+      // to create another Atendimento through a browser click.
+      setUnlinked(row.conversationId)
+      setLookupError(incomplete
+        ? 'Consulta incompleta. Atualize a lista e confira a sincronização.'
+        : !found.length
+          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada.'
+          : 'Não há Atendimento aberto identificado com segurança para esta conversa. Confira a sincronização.')
     } catch (cause) {
       if (controller.signal.aborted) return
       if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
+      setUnlinked(row.conversationId)
       setLookupError('Não foi possível consultar os Atendimentos. Tente novamente.')
     } finally {
       if (!controller.signal.aborted) setLookupBusy(null)
@@ -193,18 +253,14 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
             aria-expanded={!row.atendimentoId ? unlinked === row.conversationId : undefined}>
             <strong>{conversationLabel(row)}</strong>
             <span>{row.updatedAt ? `Atualização: ${date.format(new Date(row.updatedAt))}` : 'Data não informada'}</span>
-            <small>{row.atendimentoId ? 'Abrir Chat do Atendimento' : 'Localizar Atendimento no Funil'}</small>
+            {lookupBusy === row.conversationId && <small>Localizando Atendimento…</small>}
           </button>
           {unlinked === row.conversationId && !row.atendimentoId && <section className="ev-unlinked" aria-label="Conversa sem Atendimento">
-            <strong>Localizando Atendimento existente no Funil</strong>
-            {lookupBusy === row.conversationId && <p>Consultando os Atendimentos…</p>}
+            <strong>Vínculo pendente</strong>
             {lookupError && <p role="status">{lookupError}</p>}
-            {candidates.map(item => <button key={item.id} type="button" className="fh-filter ev-candidate"
-              onClick={() => onOpenAtendimento?.(item.id, 'chat')}>
-              {item.name || item.phone} · {[item.vehicle, item.plate].filter(Boolean).join(' · ') || item.phone}
-            </button>)}
-            {!lookupBusy && linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
-            <p className="ev-links-hint">A busca só abre uma ficha já cadastrada. Não cria nem vincula Atendimentos, e o Chat continua sujeito à associação confirmada pela Evolution.</p>
+            <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Verificar novamente</button>
+            {linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
+
           </section>}
         </div>)}
       </div>}
@@ -212,5 +268,23 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
         {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
       </button>}
     </div>
+    {choice && <dialog className="ev-choice-dialog" ref={choiceDialog}
+      aria-labelledby="ev-choice-title" onClose={() => setChoice(null)}>
+      <header>
+        <strong id="ev-choice-title">Qual Atendimento deseja abrir?</strong>
+        <button type="button" aria-label="Fechar seleção" onClick={() => setChoice(null)}>×</button>
+      </header>
+      <p>Foram encontradas várias fichas com este telefone. Escolha a correta; essa seleção não vincula o histórico WhatsApp.</p>
+      <div className="ev-choice-items">
+        {choice.items.map(item => <button key={item.id} type="button" onClick={() => {
+          setChoice(null)
+          onOpenAtendimento?.(item.id, 'chat')
+        }}>
+          <strong>{item.name || 'Atendimento sem nome'}</strong>
+          <span>{[item.vehicle, item.plate, stageNames[item.stage ?? ''] || item.stage].filter(Boolean).join(' · ') || 'Sem detalhes cadastrados'}</span>
+        </button>)}
+      </div>
+      <p className="ev-links-hint">Escolher uma ficha não cria um vínculo com a Evolution; sem associação canônica, o histórico poderá continuar indisponível.</p>
+    </dialog>}
   </section>
 }

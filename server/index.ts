@@ -7,6 +7,14 @@ import { createV20AssociationSchema, V20AssociationRepository } from './chat/v20
 import { createCodaEventSchema, CodaEventSyncRepository } from './chat/coda-sync.ts'
 import { createUpdatePackageSchema } from './update-packages-schema.ts'
 import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
+import { parseDevelopmentSourceSecret } from './chat/coda-source-endpoint-dev.ts'
+import { createDevelopmentSourceLedgerSchema, DevelopmentSourceLedger } from './chat/coda-source-storage-dev.ts'
+import { createDevelopmentDecisionLedgerSchema, DevelopmentDecisionLedger } from './chat/coda-decision-ledger-dev.ts'
+import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from './chat/coda-outbox-dev.ts'
+import { createDevelopmentOutboxDrain } from './chat/coda-outbox-drain-dev.ts'
+import { createCodaBackedDevelopmentReconciliationCycle } from './chat/coda-reconciliation-coda-dev.ts'
+import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliation-scheduler-dev.ts'
+import { ServiceError } from './errors.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -38,13 +46,54 @@ const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
-const app = createApp({ codaSync, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const sourceLedgerKey = parseDevelopmentSourceSecret(process.env)
+const sourceLedger = sourceLedgerKey ? (() => {
+  createDevelopmentSourceLedgerSchema(db)
+  createDevelopmentDecisionLedgerSchema(db)
+  return { ledger:new DevelopmentSourceLedger(db), decisionLedger:new DevelopmentDecisionLedger(db), secret:sourceLedgerKey }
+})() : undefined
+const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
+const app = createApp({ codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
-app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
+// Reconciliation is an additional opt-in, not implied by the HTTP intake
+// gates. No Coda API access or scheduled sync occurs when the flag is unset.
+const reconciliationEnabled=process.env.FUNIX_CODA_RECONCILIATION_ENABLED==='true'
+if(reconciliationEnabled && (!sourceLedger || !codaSync || !codaSyncKey))
+  throw Error('RECONCILIATION_REQUIRES_SOURCE_AND_CODA_SYNC')
+const reconciliationToken=process.env.FUNIX_CODA_API_TOKEN ?? ''
+if(reconciliationEnabled && reconciliationToken.length<16)
+  throw Error('RECONCILIATION_REQUIRES_CODA_READ_TOKEN')
+const reconciliationInterval=Number(process.env.FUNIX_CODA_RECONCILIATION_INTERVAL_MS ?? 600_000)
+let reconciliation:ReturnType<typeof startDevelopmentReconciliationScheduler>|undefined
+let deliveryScheduler:ReturnType<typeof startDevelopmentReconciliationScheduler>|undefined
+if(reconciliationEnabled && sourceLedger && codaSync && codaSyncKey) {
+  createDevelopmentOutboxSchema(db)
+  const outbox=new DevelopmentCodaOutbox(db)
+  // Local transaction, not an HTTP callback to the same server.
+  const transport=async(request:{body:string;timestamp:string;signature:string})=>{
+    try {return {status:202,body:codaSync.repo.sync(JSON.parse(request.body))}}
+    catch(error) {return {status:error instanceof ServiceError?error.status:500}}
+  }
+  const cycle=createCodaBackedDevelopmentReconciliationCycle(
+    {token:reconciliationToken},
+    {
+      source:sourceLedger.ledger,decisions:sourceLedger.decisionLedger,
+      outbox,hmacSecret:codaSyncKey,now:Date.now,
+      transport,
+    },
+  )
+  reconciliation=startDevelopmentReconciliationScheduler(cycle,{intervalMs:reconciliationInterval})
+  // Deliver already-confirmed events even when the next Coda scan is blocked.
+  // The SQLite queue owns fencing, retries and duplicate suppression.
+  const drain=createDevelopmentOutboxDrain(outbox,transport,codaSyncKey,Date.now,10)
+  deliveryScheduler=startDevelopmentReconciliationScheduler(drain,{intervalMs:60_000})
+}
+app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
-  app.close(() => { db.close(); process.exit(0) })
+  const stopping=Promise.all([reconciliation?.stop(),deliveryScheduler?.stop()])
+  app.close(async () => { await stopping; db.close(); process.exit(0) })
   app.closeIdleConnections()
   setTimeout(() => process.exit(1), 15_000).unref()
 })

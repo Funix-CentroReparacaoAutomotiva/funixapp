@@ -58,3 +58,18 @@
 .ev-unlinked .ev-links{margin-top:10px}
 
 .ev-unlinked .ev-candidate{display:block;width:100%;margin:6px 0;padding:10px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+
+
+/* #103 — choice only when the contact has multiple exact-number records. */
+.ev-choice-dialog{width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;padding:16px;border:1px solid #c9d7e5;border-radius:12px;background:#fff;color:#25466b;box-shadow:0 16px 48px #0c244450}
+.ev-choice-dialog::backdrop{background:#0b223c88}
+.ev-choice-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ev-choice-dialog>header strong{font-size:16px;line-height:1.35}
+.ev-choice-dialog>header button{flex:none;min-width:44px;min-height:44px;border:0;background:#f0f5fb;border-radius:50%;font-size:23px;color:#244768;cursor:pointer}
+.ev-choice-dialog>p{font-size:12px;line-height:1.5}
+.ev-choice-items{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+.ev-choice-items button{min-height:64px;border:1px solid #d4e1ef;border-radius:10px;background:#f7fafd;color:#244768;cursor:pointer;padding:12px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.ev-choice-items button strong{font-size:14px}
+.ev-choice-items button span{font-size:12px;overflow-wrap:anywhere}
+.ev-choice-items button:hover{background:#ebf3fc}
+.ev-choice-items button:focus-visible,.ev-choice-dialog>header button:focus-visible{outline:2px solid #ff6a00;outline-offset:2px}
