@@ -54,16 +54,33 @@ test('only not-billed activities may emit an actual zero-total budget, without s
  }finally{db.close()}
 })
 
-test('external confirmation belongs to exact line/scenario/scope; copies, shared edits, disabled masks and wrong revisions never inherit authority',()=>{
+test('Issue #158 external inclusion is sufficient across scenarios while historical confirmation metadata stays isolated',()=>{
  const db=openDatabase(':memory:')
- try{const f=curationFixture(db),item=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:[{serviceId:f.ids.third,dimensionId:f.dimensions.third,quantity:'1'}]}),line=item.services[0]!,b=new BudgetRepository(db)
-  let scenario=f.scenarios.list(f.at.id)[0]!;assert(!b.preview(f.at.id,request(scenario.id)).canEmit)
+ try{
+  const f=curationFixture(db),item=f.commercial.updateDiagnosis(f.at.id,f.item.id,{revision:f.item.revision,services:[{serviceId:f.ids.third,dimensionId:f.dimensions.third,quantity:'1'}]}),line=item.services[0]!,b=new BudgetRepository(db)
+  let scenario=f.scenarios.list(f.at.id)[0]!
+  const initial=b.preview(f.at.id,request(scenario.id))
+  assert(initial.canEmit)
+  assert.equal(initial.snapshot.calculation.lines.find(l=>l.id===line.id)!.executionConfirmed,true)
   const payload={revision:scenario.revision,pieceRevision:item.revision,scope:executionScope(line),confirmed:true}
   assert.throws(()=>f.scenarios.confirmService(f.at.id,scenario.id,line.id,{...payload,scope:'wrong'}),e=>errorCode(e,'VERSION_CONFLICT'))
-  scenario=f.scenarios.confirmService(f.at.id,scenario.id,line.id,payload);assert(b.preview(f.at.id,request(scenario.id)).canEmit);assert(f.commercial.list(f.at.id,scenario.id)[0]!.services[0]!.executionConfirmed)
-  const copy=f.scenarios.create(f.at.id,{name:'Outra',duplicateFrom:scenario.id,sourceRevision:scenario.revision});assert(!copy.serviceConfirmations);assert(!b.preview(f.at.id,request(copy.id)).canEmit);assert(b.preview(f.at.id,request(scenario.id)).canEmit)
-  const current=f.commercial.list(f.at.id,scenario.id)[0]!;f.commercial.updateDiagnosis(f.at.id,current.id,{revision:current.revision,scenarioId:scenario.id,scenarioRevision:scenario.revision,services:current.services.map(l=>{const data={...l,quantity:'2'};delete data.executionConfirmed;return data})});assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
-  const changed=f.commercial.list(f.at.id,scenario.id)[0]!,changedLine=changed.services[0]!;scenario=f.scenarios.list(f.at.id)[0]!;scenario=f.scenarios.confirmService(f.at.id,scenario.id,changedLine.id,{revision:scenario.revision,pieceRevision:changed.revision,scope:executionScope(changedLine),confirmed:true});f.scenarios.update(f.at.id,scenario.id,{revision:scenario.revision,serviceFlags:{[line.id]:false}});assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
+  scenario=f.scenarios.confirmService(f.at.id,scenario.id,line.id,payload)
+  assert(b.preview(f.at.id,request(scenario.id)).canEmit)
+  const copy=f.scenarios.create(f.at.id,{name:'Outra',duplicateFrom:scenario.id,sourceRevision:scenario.revision})
+  assert(!copy.serviceConfirmations)
+  assert(b.preview(f.at.id,request(copy.id)).canEmit)
+  const current=f.commercial.list(f.at.id,scenario.id)[0]!
+  f.commercial.updateDiagnosis(f.at.id,current.id,{revision:current.revision,scenarioId:scenario.id,scenarioRevision:scenario.revision,services:current.services.map(l=>{const data={...l,quantity:'2'};delete data.executionConfirmed;return data})})
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
+  const changed=f.commercial.list(f.at.id,scenario.id)[0]!
+  scenario=f.scenarios.list(f.at.id)[0]!
+  const amount=b.preview(f.at.id,request(scenario.id)).snapshot.calculation.total
+  assert(b.preview(f.at.id,request(scenario.id)).canEmit)
+  assert.equal(b.preview(f.at.id,request(copy.id)).snapshot.calculation.total,amount)
+  scenario=f.scenarios.update(f.at.id,scenario.id,{revision:scenario.revision,serviceFlags:{[line.id]:false}})
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
+  assert.equal(b.preview(f.at.id,request(scenario.id)).snapshot.calculation.lines.find(l=>l.id===line.id)!.included,false)
+  assert.equal(b.preview(f.at.id,request(copy.id)).snapshot.calculation.lines.find(l=>l.id===line.id)!.included,true)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
