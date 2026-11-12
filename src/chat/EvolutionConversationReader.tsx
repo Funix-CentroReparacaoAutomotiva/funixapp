@@ -4,6 +4,7 @@ import type { RequestFailure } from '../api'
 import { Notice } from '../ui'
 import { ConversationLinksPanel } from './ConversationLinksPanel'
 import { parseConversationList } from './evolution-read-model'
+import { filterLoadedConversations } from './conversation-search'
 import type { ConversationRow } from './evolution-read-model'
 import './evolution-read.css'
 
@@ -38,13 +39,16 @@ function listErrorLabel(cause: unknown) {
  * A navegação só usa o Atendimento canônico confirmado no servidor;
  * contatos sem vínculo têm uma ação explícita, sem adivinhar por telefone.
  */
-export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento }: {
+export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, onOpenAtendimento }: {
+  searchTerm?: string
   onUnauthorized: () => void
   onOpenAtendimento?: (atendimentoId: string, tab: 'chat' | 'diagnosticos' | 'mapa', conversationId?: string) => void
 }) {
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
   const [list, setList] = useState<ConversationRow[]>([])
+  const matches = filterLoadedConversations(list, searchTerm)
+  const searching = searchTerm.trim().length > 0
   const [nextSkip, setNextSkip] = useState<number | null>(null)
   const [unlinked, setUnlinked] = useState<string | null>(null)
   const [listBusy, setListBusy] = useState(false)
@@ -246,8 +250,11 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
       {!listBusy && available === true && !listError && !list.length &&
         <Notice title="Nenhuma conversa retornada">Atualize a lista para consultar novamente.</Notice>}
-      {list.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
-        {list.map(row => <div key={row.conversationId}>
+      {searching && available === true && <p className="ev-search-scope" role="status">{matches.length} de {list.length} conversas carregadas correspondem à busca. {nextSkip !== null ? 'Há outras páginas ainda não carregadas.' : 'Todas as páginas disponíveis foram carregadas.'}</p>}
+      {searching && !listBusy && available === true && !listError && list.length > 0 && !matches.length &&
+        <Notice title="Nenhuma conversa encontrada nas páginas carregadas">Tente outro nome ou telefone. {nextSkip !== null ? 'Use Carregar mais conversas para consultar outras páginas.' : 'Limpe a busca para retornar à lista.'}</Notice>}
+      {matches.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
+        {matches.map(row => <div key={row.conversationId}>
           <button type="button" className="ev-item" onClick={() => { void open(row) }}
             disabled={lookupBusy !== null}
             aria-expanded={!row.atendimentoId ? unlinked === row.conversationId : undefined}>
