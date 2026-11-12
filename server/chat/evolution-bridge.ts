@@ -154,7 +154,7 @@ export function createEvolutionChatBridge(
       const entry = byId.get(conversationId)
       const remoteJid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
       const recipient = remoteJid ? sendTarget(remoteJid) : null
-      if (!recipient || canonicalFor(remoteJid) !== atendimentoId ||
+      if (!remoteJid || !recipient || canonicalFor(remoteJid) !== atendimentoId ||
           codaSync.resolveActive(recipient) !== atendimentoId) return { state: 'unlinked' as const }
       if (pendingSends.has(conversationId)) return { state: 'busy' as const }
       pendingSends.add(conversationId)
@@ -171,7 +171,7 @@ export function createEvolutionChatBridge(
       const entry=byId.get(conversationId)
       const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
       const recipient = jid ? sendTarget(jid) : null
-      if(!recipient||canonicalFor(jid)!==atendimentoId||
+      if(!jid||!recipient||canonicalFor(jid)!==atendimentoId||
         codaSync.resolveActive(recipient)!==atendimentoId)return {state:'unlinked' as const}
       if(pendingSends.has(conversationId))return {state:'busy' as const}
       pendingSends.add(conversationId)
