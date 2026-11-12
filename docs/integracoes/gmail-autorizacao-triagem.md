@@ -162,3 +162,18 @@ Foi acrescentada a operação **`POST /api/integrations/gmail/queue/status`** co
 **Uso previsto:** após timeout ou perda de resposta de `enqueue`/`ack`, o consumidor poderá verificar o estado persistido antes de decidir repetir. Para `claim`, deve reutilizar o **mesmo `requestId`** para recuperar o lote original; um requestId diferente não é uma reconciliação segura. Um retorno `leased` não prova que o aviso foi criado; a confirmação `notified` exige o vínculo persistido entre aviso e mensagem. O estado resumido não substitui o recibo idempotente de ACK nem fornece o `leaseToken` perdido.
 
 Testes sintéticos adicionados para estado inicial, lease, conclusão, consulta sem mutação, ID inexistente, assinatura inválida e payload extra. **Testes e CI ainda precisam ser confirmados na versão atual.** Sem habilitação do consumidor n8n, merge, deploy ou processamento de mensagens reais.
+
+## 12. Gate para consumidor n8n de homologação
+
+A conexão real exige um **FunixApp de homologação acessível** com banco isolado, endpoint habilitado exclusivamente naquele ambiente e duas chaves HMAC independentes (fila e candidato). Não usar o host de produção como substituto. Nenhum endereço, segredo ou credencial está presumido aqui.
+
+Contrato de recuperação do consumidor, antes de conectar Gmail real:
+
+1. **Enqueue:** persistir ID de origem; em resposta perdida consultar `/queue/status`, e repetir `enqueue` idempotentemente se necessário. Nunca tratar apenas o status `received` do ledger n8n como entrega.
+2. **Claim:** gerar UUID e persistir `requestId` antes do HTTP. Em timeout repetir exatamente `{limit,requestId}` para obter o mesmo lote. Persistir cada `leaseToken` imediatamente antes de iniciar a busca do e-mail. Não criar novo `requestId` durante reconciliação.
+3. **Classificação:** buscar mensagem com anexos desabilitados; enviar somente campos mínimos ao intake-candidates autenticado; validar `ignored` ou um `noticeId` bem formado. Não abrir documentos nem iniciar triagem posterior.
+4. **ACK:** enviar todos os campos obrigatórios, incluindo `noticeId:null`/`errorCode:null` quando aplicável. Se a resposta for perdida, consultar `/queue/status` e repetir o mesmo ACK para obter o recibo idempotente, sem construir um ACK diferente. Erros definitivos vão para investigação.
+5. **Lease expirado:** não afirmar sucesso por inferência. Reconciliar aviso e estado; permitir que o backend controle nova tentativa. Não descartar mensagem `received` do ledger n8n sem reconciliação.
+6. **Segurança:** segredos em credenciais/ambiente restrito, nunca em Code nodes, pin data, JSON de exportação ou logs; HTTPS autenticado e mascaramento de assunto, corpo, remetente e headers. Usar credenciais separadas das existentes em produção.
+
+Matriz de ensaio obrigatória: falha antes/depois de `enqueue`, perda da resposta `claim`, interrupção com lease aberto, timeout após candidato aceito, ACK duplicado, `409`, `408/429/5xx`, requisição assinada inválida, worker concorrente, reinício e reprocessamento de pendentes. Registrar evidência de mensagens sintéticas antes de usar qualquer caso real. **Workflow de homologação não deve ser publicado ou agendado automaticamente.**
