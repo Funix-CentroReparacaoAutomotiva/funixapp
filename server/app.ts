@@ -26,6 +26,7 @@ import type { V20AssociationRepository } from './chat/v20-associations.ts'
 import { createCodaSyncEndpoint } from './chat/coda-sync-endpoint.ts'
 import type { CodaSyncEndpointOptions } from './chat/coda-sync-endpoint.ts'
 import { createDevelopmentSourceIntake, type DevelopmentSourceIntakeConfig } from './chat/coda-source-endpoint-dev.ts'
+import { createDevelopmentDecisionIntake, type DevelopmentDecisionIntakeConfig } from './chat/coda-decision-endpoint-dev.ts'
 import { UpdatePackageRepository } from './update-packages.ts'
 import { createUpdatePackageIngest } from './update-packages-ingest.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
@@ -43,6 +44,7 @@ export interface AppOptions {
   whatsappIngest?: IngestOptions
   codaSync?: Omit<CodaSyncEndpointOptions, 'now'> // separately gated machine-to-machine intake
   sourceLedger?: Omit<DevelopmentSourceIntakeConfig, 'now'> // OFF by default; immutable source only
+  decisionLedger?: Omit<DevelopmentDecisionIntakeConfig, 'now'> // same HMAC trust domain, separate signature prefix
   voiceProvider?:VoiceProvider|null
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
@@ -71,6 +73,7 @@ export function createRequestHandler(options: AppOptions) {
   const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
   const codaIntake = options.codaSync ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
   const sourceIntake = options.sourceLedger ? createDevelopmentSourceIntake({ ...options.sourceLedger, now }) : null
+  const decisionIntake = options.decisionLedger ? createDevelopmentDecisionIntake({...options.decisionLedger,now}) : null
   const origin = options.origin ?? 'http://127.0.0.1:5173'
   const secure = new URL(origin).protocol === 'https:'
   const cookieName = 'funix_session'
@@ -96,6 +99,11 @@ export function createRequestHandler(options: AppOptions) {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
+      if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
+        if (!decisionIntake) return fail(404,'NOT_FOUND','Rota não encontrada.')
+        const result=await decisionIntake(req,res,url)
+        return send(result.status,{state:result.state})
+      }
       if (url.pathname === '/api/integrations/whatsapp/source-ledger') {
         if (!sourceIntake) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
         const result = await sourceIntake(req,res,url)
