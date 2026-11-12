@@ -26,10 +26,10 @@ export function createEvolutionChatBridge(
   const pendingSends = new Set<string>()
   // Aliases are evidence from findChats.lastMessage.key, never inferred from labels.
   // Keep the original JID for Evolution history; use the PN alias only for Coda identity.
-  const alternateByPrimary = new Map<string, string>()
+  const alternateByPrimary = new Map<string, { jid: string; at: number }>()
   const primariesByAlternate = new Map<string, Set<string>>()
   const rememberAlias = (primary: string, alternate?: string | null) => {
-    const previous = alternateByPrimary.get(primary)
+    const previous = alternateByPrimary.get(primary)?.jid
     if (previous) {
       const owners = primariesByAlternate.get(previous)
       owners?.delete(primary)
@@ -37,7 +37,7 @@ export function createEvolutionChatBridge(
     }
     alternateByPrimary.delete(primary)
     if (!alternate || alternate === primary) return
-    alternateByPrimary.set(primary, alternate)
+    alternateByPrimary.set(primary, { jid: alternate, at: now() })
     const owners = primariesByAlternate.get(alternate) ?? new Set<string>()
     owners.add(primary)
     primariesByAlternate.set(alternate, owners)
@@ -45,7 +45,7 @@ export function createEvolutionChatBridge(
   const canonicalFor = (primary: string): string | null => {
     if (!codaSync) return null
     const direct = codaSync.resolveActive(primary)
-    const alternate = alternateByPrimary.get(primary)
+    const alternate = alternateByPrimary.get(primary)?.jid
     if (!alternate) return direct
     // A conflicting alias must never select a potentially different customer.
     if (primariesByAlternate.get(alternate)?.size !== 1) return null
@@ -55,6 +55,9 @@ export function createEvolutionChatBridge(
   }
 
   const purge = () => {
+    for (const [primary, value] of alternateByPrimary) {
+      if (now() - value.at >= ttlMs) rememberAlias(primary)
+    }
     for (const [id, entry] of byId) {
       if (now() - entry.at >= ttlMs) {
         byId.delete(id)
@@ -62,6 +65,16 @@ export function createEvolutionChatBridge(
       }
     }
   }
+  // Resolve a provider-compatible PN only from an exact, unique alias.
+  // Never ask the Evolution sender to infer the destination from a LID.
+  const sendTarget = (primary: string): string | null => {
+    if (/^[0-9]{8,15}@s\\.whatsapp\\.net$/.test(primary)) return primary
+    const alias = alternateByPrimary.get(primary)?.jid
+    if (!alias || !/^[0-9]{8,15}@s\\.whatsapp\\.net$/.test(alias) ||
+        primariesByAlternate.get(alias)?.size !== 1) return null
+    return alias
+  }
+
   const register = (jid: string): string => {
     if (associations) return associations.rememberConversation('funix_comercial', jid).conversationId
     const known = byJid.get(jid)
@@ -146,8 +159,8 @@ export function createEvolutionChatBridge(
       pendingSends.add(conversationId)
       try {
         // Revalidate before any network side effect, including an active-context switch.
-        if (canonicalFor(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
-        const receipt = await sendText(remoteJid, text)
+        if (canonicalFor(remoteJid) !== atendimentoId || codaSync.resolveActive(recipient) !== atendimentoId) return { state: 'unlinked' as const }
+        const receipt = await sendText(recipient, text)
         return { state: 'accepted' as const, receipt }
       } finally { pendingSends.delete(conversationId) }
     },
@@ -161,8 +174,8 @@ export function createEvolutionChatBridge(
       if(pendingSends.has(conversationId))return {state:'busy' as const}
       pendingSends.add(conversationId)
       try{
-        if(canonicalFor(jid)!==atendimentoId)return {state:'unlinked' as const}
-        const receipt=await media.send(jid,item)
+        if(canonicalFor(jid)!==atendimentoId||codaSync.resolveActive(recipient)!==atendimentoId)return {state:'unlinked' as const}
+        const receipt=await media.send(recipient,item)
         return {state:'accepted' as const,receipt}
       }finally{pendingSends.delete(conversationId)}
     },
@@ -189,7 +202,7 @@ export function createEvolutionChatBridge(
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.
       return canonicalFor(jid) === atendimentoId && result
-        ? { ...result, sendTextAvailable: Boolean(sendText), mediaSendAvailable: Boolean(media), mediaReadAvailable: Boolean(media) } : null
+        ? { ...result, sendTextAvailable: Boolean(sendText && sendTarget(jid) && codaSync.resolveActive(sendTarget(jid)!) === atendimentoId), mediaSendAvailable: Boolean(media && sendTarget(jid) && codaSync.resolveActive(sendTarget(jid)!) === atendimentoId), mediaReadAvailable: Boolean(media) } : null
     },
     async messages(conversationId: string, page: number): Promise<{
       conversationId: string
