@@ -140,3 +140,12 @@ Testar com Coda e FunixApp DEV isolados, eventos sintéticos, duplicação 20x, 
 - **Gate não resolvido:** o classificador n8n ainda precisa publicar, depois de QA e credencial exclusiva, os eventos originais e decisões canônicas no FunixApp DEV. Um scan sem essas fontes jamais deve inventar `occurredAt` nem criar Atendimento por telefone. Mecanismo de dupla leitura não é snapshot atômico, e o calendário pode sofrer atrasos quando os dados mudam simultaneamente. Não afirmar reconciliação real já operante.
 
 **Escopo desta rodada:** implementação em branch PR #148 e testes sintéticos. Nenhum merge, deploy, ativação de env, publicação do n8n ou escrita nos dados reais ocorreu.
+
+## Auditoria adicional de identidade — 12/11/2026
+
+- A correção do rascunho n8n `Code in JavaScript1` limita a regra `unknownOrigin` ao mesmo `remoteJid` ou mesmo `fx_UUID`. Antes, uma linha de outro cliente podia bloquear globalmente a classificação. A alteração permanece em rascunho, não publicada.
+- Foi identificado um risco de **conflito entre os dois caminhos de reconciliação**: a recuperação de eventos criadores de fichas já bloqueava duplicações de `fx_UUID`, mas a recuperação de decisões comerciais posteriores não exigia que o marcador de origem fosse único na varredura completa.
+- Foi implementada `assertNoConflictingCodaOriginClaims` em `coda-decision-ledger-dev.ts` e chamada pelo coordenador **antes de qualquer enfileiramento**. Ela impede que uma decisão imutável aponte a mensagem criadora para outra linha ou selecione uma origem duplicada. A reconciliação de decisões verifica também unicidade do marcador da linha, não apenas unicidade de `row.id`.
+- Testes cobrem colisão entre dois registros Coda com a mesma origem e tentativa de remapeamento da mensagem inicial, inclusive no coordenador: nenhum evento é inserido nem enviado quando o pré-check falha.
+- **Limite:** o pré-check verifica o conjunto recebido; continua dependendo de varredura Coda completa e consistente, e da origem autenticada. Não detecta uma linha que a API omitiu, não cria associação por telefone e não substitui confirmação operacional do n8n.
+- Sem merge, deploy, publicação n8n, ativação de feature flag ou escrita em dados Coda. CI deve ser conferido pelo SHA final da branch.
