@@ -232,3 +232,13 @@ Foi criado no projeto pessoal administrativo n8n o workflow manual **`FUNIX | DE
 Consulta ao catálogo de credenciais n8n não encontrou uma credencial crypto exclusiva da fila Gmail. As credenciais HMAC existentes correspondem a outras integrações; **não reutilizar nenhuma delas**. O conector disponível oferece consulta de credenciais, mas não criação ou preenchimento seguro de novo segredo. A configuração de `FUNIX_GMAIL_QUEUE_SECRET` no runtime backend e de uma credencial crypto Gmail exclusiva no n8n continua pendente. Também haverá chave própria para `FUNIX_GMAIL_INTAKE_SECRET`.
 
 **Critério de avanço:** manter PR draft, não efetuar deploy/merge nem habilitar flags nesta etapa; preparar os contratos, testes e workflow inativo sem chaves sensíveis. A primeira comunicação assinada só deverá ocorrer depois da revisão implantada verificada, de configuração segregada de HMAC e do controle de mudanças autorizado. O GET de readiness não é autorização para POST nem prova do fluxo de e-mails.
+
+## 20. Credenciais HMAC independentes verificadas no n8n (12/11/2026)
+
+A direção informou ter configurado `FUNIX_GMAIL_QUEUE_SECRET` e `FUNIX_GMAIL_INTAKE_SECRET` no arquivo privado `/etc/funix/runtime.env` da VPS; esse preenchimento foi reportado pela direção, **não** foi lido ou conferido diretamente no servidor. A consulta ao n8n confirmou a existência de duas credenciais crypto independentes, chamadas `FUNIX | Gmail Queue | HMAC` e `FUNIX | Gmail Intake | HMAC`.
+
+O workflow manual `x0rbN62iosP2DqNb`, agora denominado `FUNIX | DEV | Gmail HMAC Queue e Intake (MANUAL OFF)`, foi atualizado com dois nós Crypto vinculados explicitamente às respectivas credenciais, sem reutilização de credenciais de Atualizações/VPS. A execução **38952** concluiu em `success`; o verificador retornou `passed=true`, `queueHmacValid=true`, `intakeHmacValid=true`, `keysDistinct=true`, `networkCalls=0`, `gmailReads=0`. Nenhuma assinatura ou chave foi exibida pelo verificador.
+
+**Escopo do teste:** comprova a geração de dois HMACs distintos a partir das credenciais do n8n e payload fictício; **não comprova** que essas chaves correspondam aos valores salvos na VPS, nem a aceitação de assinatura pelo backend atual. A revisão implantada anteriormente verificada foi `7ace8292da430aceb4a316bbd561fabd74217557`, anterior à PR. O workflow permanece manual e inativo. Não houve merge, deploy, ativação de flags, leitura Gmail ou comunicação HTTP neste ensaio.
+
+**Próximo critério:** disponibilização autorizada da versão que contém os endpoints da PR #149; comparar assinaturas ponta a ponta usando dados sintéticos, sem expor os segredos, e somente então preparar o consumidor persistente. Manter controles de rollback e a captura Gmail atual separada.
