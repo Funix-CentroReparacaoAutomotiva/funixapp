@@ -4,6 +4,7 @@ import type { CatalogItem,DiagnosisItem,Scenario } from '../../shared/commercial
 import type { ComponentItem,PricingConfig } from '../../shared/pricing.ts'
 import {calculate,negotiation} from '../pricing-engine.ts'
 import {Q} from '../exact.ts'
+import {codaServiceId} from '../../shared/commercial-curation.ts'
 
 export function calculationFixture(){
  const catalog=[['piece','peca','Peça'],['svc','servico','Serviço'],['dim','dimensao','Dimensão']].map(([id,kind,name])=>({id,kind,name,serviceId:kind==='dimensao'?'svc':null,code:kind==='peca'?'provided-code':null,status:'validado',active:true,source:'operador',suggestion:false,side:'',revision:1,createdAt:'test',updatedAt:'test'})) as CatalogItem[]
@@ -97,4 +98,32 @@ test('positive adjustment never discounts last service to offset earlier ceiling
  assert(approved.lines.filter(l=>l.included).every(l=>Q.from(l.finalUnit!).cmp(Q.from(l.unit!))>=0))
  assert.equal(approved.total,'11.5')
  assert.equal(approved.residual,'-0.4')
+})
+
+test('Issue #158: adding an external service suffices; old confirmation is not an emission gate',()=>{
+ const f=calculationFixture(),externalId=codaServiceId('i-6FW6UIOr8H')
+ f.catalog.find(c=>c.id==='svc')!.id=externalId
+ f.catalog.find(c=>c.id==='dim')!.serviceId=externalId
+ f.items[0]!.services[0]!.serviceId=externalId
+ f.config.services[0]!.serviceId=externalId
+ const active=f.run()
+ assert.deepEqual(active.errors,[])
+ assert.equal(active.lines[0]!.execution,'external_confirmation')
+ assert.equal(active.lines[0]!.executionConfirmed,true)
+ assert.equal(active.total,'300.15')
+ assert.equal(active.energy,'15')
+ assert.equal(active.days,'4')
+ // Historical mismatching confirmations do not change amounts or prevent emission.
+ f.scenario.serviceConfirmations={l:'legacy-stale-scope'}
+ const legacy=f.run()
+ assert.deepEqual(legacy,active)
+ // Inclusion flags still govern all scenario-local calculations.
+ f.scenario.serviceFlags.l=false
+ const disabled=f.run()
+ assert.equal(disabled.lines[0]!.included,false)
+ assert.equal(disabled.total,'0')
+ assert.equal(disabled.energy,'0')
+ f.scenario.serviceFlags.l=true
+ f.scenario.pieceFlags.p=false
+ assert.equal(f.run().lines[0]!.included,false)
 })
