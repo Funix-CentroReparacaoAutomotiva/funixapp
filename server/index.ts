@@ -11,6 +11,7 @@ import { parseDevelopmentSourceSecret } from './chat/coda-source-endpoint-dev.ts
 import { createDevelopmentSourceLedgerSchema, DevelopmentSourceLedger } from './chat/coda-source-storage-dev.ts'
 import { createDevelopmentDecisionLedgerSchema, DevelopmentDecisionLedger } from './chat/coda-decision-ledger-dev.ts'
 import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from './chat/coda-outbox-dev.ts'
+import { createDevelopmentOutboxDrain } from './chat/coda-outbox-drain-dev.ts'
 import { createCodaBackedDevelopmentReconciliationCycle } from './chat/coda-reconciliation-coda-dev.ts'
 import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliation-scheduler-dev.ts'
 import { ServiceError } from './errors.ts'
@@ -66,27 +67,32 @@ if(reconciliationEnabled && reconciliationToken.length<16)
   throw Error('RECONCILIATION_REQUIRES_CODA_READ_TOKEN')
 const reconciliationInterval=Number(process.env.FUNIX_CODA_RECONCILIATION_INTERVAL_MS ?? 600_000)
 let reconciliation:ReturnType<typeof startDevelopmentReconciliationScheduler>|undefined
+let deliveryScheduler:ReturnType<typeof startDevelopmentReconciliationScheduler>|undefined
 if(reconciliationEnabled && sourceLedger && codaSync && codaSyncKey) {
   createDevelopmentOutboxSchema(db)
   const outbox=new DevelopmentCodaOutbox(db)
+  // Local transaction, not an HTTP callback to the same server.
+  const transport=async(request:{body:string;timestamp:string;signature:string})=>{
+    try {return {status:202,body:codaSync.repo.sync(JSON.parse(request.body))}}
+    catch(error) {return {status:error instanceof ServiceError?error.status:500}}
+  }
   const cycle=createCodaBackedDevelopmentReconciliationCycle(
     {token:reconciliationToken},
     {
       source:sourceLedger.ledger,decisions:sourceLedger.decisionLedger,
       outbox,hmacSecret:codaSyncKey,now:Date.now,
-      // Local receptor reuses the same validated transaction as the HMAC
-      // endpoint; no unnecessary HTTP loopback or third-party credentials.
-      transport:async request=>{
-        try {return {status:202,body:codaSync.repo.sync(JSON.parse(request.body))}}
-        catch(error) {return {status:error instanceof ServiceError?error.status:500}}
-      },
+      transport,
     },
   )
   reconciliation=startDevelopmentReconciliationScheduler(cycle,{intervalMs:reconciliationInterval})
+  // Deliver already-confirmed events even when the next Coda scan is blocked.
+  // The SQLite queue owns fencing, retries and duplicate suppression.
+  const drain=createDevelopmentOutboxDrain(outbox,transport,codaSyncKey,Date.now,10)
+  deliveryScheduler=startDevelopmentReconciliationScheduler(drain,{intervalMs:60_000})
 }
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
-  const stopping=reconciliation?.stop()
+  const stopping=Promise.all([reconciliation?.stop(),deliveryScheduler?.stop()])
   app.close(async () => { await stopping; db.close(); process.exit(0) })
   app.closeIdleConnections()
   setTimeout(() => process.exit(1), 15_000).unref()
