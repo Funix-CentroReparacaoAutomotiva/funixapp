@@ -97,3 +97,54 @@ test('Coda DEV double scan: duplicate row and incomplete page are never accepted
   }))
   await assert.rejects(incomplete(null),/CODA_UNVERIFIED_SCAN/)
 })
+
+test('Coda DEV provider: 429 with Retry-After and transient 503 retry with bounded delay',async()=>{
+  const sleeps:number[]=[]
+  let count=0
+  const api=createCodaApiPageProvider({
+    token,
+    sleep:async ms=>{sleeps.push(ms)},
+    fetchImpl:(async()=>{
+      count++
+      if(count===1)return new Response('',{status:429,headers:{'Retry-After':'2'}})
+      if(count===2)return new Response('',{status:503})
+      return new Response(JSON.stringify({items:[row()]}),{status:200})
+    }) as typeof fetch,
+  })
+  const result=await api(null)
+  assert.equal(result.complete,true)
+  assert.equal(result.rows.length,1)
+  assert.equal(count,3)
+  assert.deepEqual(sleeps,[2000,1000])
+})
+test('Coda DEV provider: exhaustion and non-retryable 403 cannot enqueue from partial scan',async()=>{
+  let calls=0
+  const sleeps:number[]=[]
+  const retry=createCodaApiPageProvider({
+    token,sleep:async ms=>{sleeps.push(ms)},
+    fetchImpl:(async()=>{calls++;return new Response('',{status:429})}) as typeof fetch,
+  })
+  await assert.rejects(retry(null),/CODA_HTTP_429/)
+  assert.equal(calls,3)
+  assert.deepEqual(sleeps,[500,1000])
+  calls=0
+  const unauthorized=createCodaApiPageProvider({
+    token,sleep:async()=>{throw Error('Unexpected retry')},
+    fetchImpl:(async()=>{calls++;return new Response('',{status:403})}) as typeof fetch,
+  })
+  await assert.rejects(unauthorized(null),/CODA_HTTP_403/)
+  assert.equal(calls,1)
+})
+test('Coda DEV provider: fetch/network exceptions are retried without printing credentials',async()=>{
+  let calls=0
+  const api=createCodaApiPageProvider({
+    token,sleep:async()=>{},
+    fetchImpl:(async()=>{
+      calls++
+      if(calls<=2)throw Error('private-token-body-or-query')
+      return new Response(JSON.stringify({items:[row()]}),{status:200})
+    }) as typeof fetch,
+  })
+  assert.equal((await api(null)).complete,true)
+  assert.equal(calls,3)
+})
