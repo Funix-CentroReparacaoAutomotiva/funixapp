@@ -68,9 +68,9 @@ export function createEvolutionChatBridge(
   // Resolve a provider-compatible PN only from an exact, unique alias.
   // Never ask the Evolution sender to infer the destination from a LID.
   const sendTarget = (primary: string): string | null => {
-    if (/^[0-9]{8,15}@s\\.whatsapp\\.net$/.test(primary)) return primary
+    if (/^[0-9]{8,15}@s\.whatsapp\.net$/.test(primary)) return primary
     const alias = alternateByPrimary.get(primary)?.jid
-    if (!alias || !/^[0-9]{8,15}@s\\.whatsapp\\.net$/.test(alias) ||
+    if (!alias || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(alias) ||
         primariesByAlternate.get(alias)?.size !== 1) return null
     return alias
   }
