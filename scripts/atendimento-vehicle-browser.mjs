@@ -42,6 +42,7 @@ try{
    await vehicle.fill('Punto')
    await year.fill('2019/2020')
    await dialog.getByRole('textbox',{name:'Telefone *'}).fill('31999990000')
+   await dialog.getByRole('textbox',{name:'Nome do contato'}).fill('Contato Sintético')
    await dialog.getByRole('button',{name:'Criar Atendimento'}).click()
    await dialog.waitFor({state:'hidden',timeout:6000})
    const list=fixture.atendimentos.list({q:'31999990000'});assert.equal(list.total,1)
@@ -49,6 +50,16 @@ try{
    assert.equal(record.brand,'Fiat')
    assert.equal(record.model,'Punto')
    assert.equal(record.vehicle,'Punto 2019/2020')
+   const phoneLine=page.locator('.detail-phone')
+   await phoneLine.waitFor()
+   assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+   for(const tab of ['Diagnósticos','Mapa','Chat']){
+    await page.getByRole('button',{name:tab,exact:true}).click()
+    assert.equal(await phoneLine.isVisible(),true,`${width}px: telefone oculto na aba ${tab}`)
+    assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+   }
+   assert.equal(await phoneLine.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true,`${width}px: faixa transborda`)
+   console.log('PASS telefone',width,'visível nas três abas')
    await page.getByRole('button',{name:'Editar Atendimento'}).click()
    const edit=page.getByRole('dialog',{name:'Editar Atendimento'});await edit.waitFor()
    assert.equal(await edit.getByRole('combobox',{name:'Montadora'}).inputValue(),'Fiat')
@@ -84,6 +95,12 @@ try{
    await restored.getByRole('button',{name:/Negociação comercial/}).click()
    assert.match(await restored.getByRole('textbox',{name:'Valor em reais'}).inputValue(),/125/)
    console.log('PASS financial draft',width,'scenario autosave and reload')
+   // LID-only / missing phone is displayed as absent, never inferred.
+   db.prepare("UPDATE atendimentos SET phone='',phone_normalized=NULL WHERE id=?").run(record.id)
+   await page.reload();await phoneLine.waitFor()
+   assert.match(await phoneLine.innerText(),/Telefone\s+Não informado/)
+   assert.equal((await phoneLine.innerText()).includes('31999990000'),false)
+   console.log('PASS sem telefone',width)
 
    assert.deepEqual(errors,[])
    await page.screenshot({path:artifacts+'/vehicle-'+width+'.png'})

@@ -82,6 +82,19 @@ export function createEvolutionChatBridge(
       if (!jid) return null
       return { conversationId: register(jid) }
     },
+    /** Refreshes the authoritative active context for an opaque conversation ID.
+     * A list may be stale when the signed Coda event arrives after its response.
+     * This check never guesses by phone and never creates or changes links.
+     */
+    activeAtendimentoForConversation(conversationId: string): string | null {
+      if (!codaSync) return null
+      purge()
+      const entry = byId.get(conversationId)
+      const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
+      if (!jid) return null
+      if (entry) entry.at = now()
+      return codaSync.resolveActive(jid)
+    },
     /** Never disclose a conversation under a different Atendimento's context.
      * The conversationId stays opaque; the canonical Coda mapping is checked
      * server-side at the exact time of the read, not merely in the browser list.

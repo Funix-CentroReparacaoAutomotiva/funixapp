@@ -66,3 +66,20 @@ test('verified additional official shops get store-scoped links, with accent nor
   assert.equal(result.montadora,null,'do not show unverified deep link for automaker web store')
  }
 })
+
+
+test('issue 128: part descriptions with technical punctuation remain searchable and correctly encoded',()=>{
+ const vehicle={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'}
+ for(const part of ['Moldura (lado esquerdo)','Bateria 70%','Peça (50%) + suporte','Maçaneta, frente (direita)','Cabo A&B','Fixador #2']){
+  const links=manualComponentSearchLinks(vehicle,part)
+  assert(links,'links missing for '+part)
+  assert.equal(new URL(links.general).protocol,'https:')
+  assert.equal(new URL(links.general).searchParams.get('q'),'Volkswagen Gol 2019 '+part)
+  assert.equal(new URL(links.original).searchParams.get('q'),'Volkswagen Gol 2019 '+part+' original')
+  assert(links.official&&new URL(links.official).protocol==='https:')
+  assert(links.montadora&&new URL(links.montadora).searchParams.get('q')===part+' Gol 2019')
+ }
+ for(const part of ['','   ','https://evil.example','foo?x=1','foo<script>','ABC1D23','123456789']){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'unsafe/empty search must be rejected: '+part)
+ }
+})

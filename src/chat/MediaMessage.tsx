@@ -27,7 +27,9 @@ export function MediaMessage({ atendimentoId, conversationId, messageId, page, k
       setError(failure.status===413 ? 'Arquivo acima do limite de 12 MB do Chat.' :
         failure.status===415 ? 'Formato de mídia não compatível com este Chat.' :
         failure.status===422 ? 'A Evolution retornou dados que não correspondem ao formato do arquivo.' :
-        failure.status===504 ? 'A Evolution não respondeu a tempo. Tente abrir o vídeo novamente.' :
+        failure.code==='CHAT_MEDIA_PROVIDER_REJECTED' ? 'A Evolution recusou a recuperação do arquivo. Tente novamente; se persistir, informe o suporte.' :
+        failure.code==='CHAT_MEDIA_PROVIDER_INVALID' ? 'A Evolution retornou uma resposta incompleta para este arquivo. Informe o suporte.' :
+        failure.status===504 ? 'A Evolution não respondeu a tempo. Tente abrir o arquivo novamente.' :
         failure.status===404 ? 'Mídia não encontrada nesta conversa. Atualize as mensagens e tente novamente.' :
         'Não foi possível carregar esta mídia pela Evolution. O WhatsApp pode continuar reproduzindo normalmente.')
     }finally{setBusy(false)}

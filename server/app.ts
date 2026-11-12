@@ -13,6 +13,7 @@ import { BudgetRepository } from './budgets.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
 import { calculate } from './pricing-engine.ts'
+import {pieceFinancialSummary} from './piece-financial-summary.ts'
 import { ScenarioRepository, selectedScenario } from './scenarios.ts'
 import { CommercialRepository } from './commercial.ts'
 import { ServiceError } from './errors.ts'
@@ -258,6 +259,14 @@ export function createRequestHandler(options: AppOptions) {
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
       }
+      // Refresh canonical context for an opaque conversation ID; never match by phone.
+      const activeContextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/active-atendimento$/.exec(url.pathname)
+      if (activeContextRoute && options.evolutionChat && options.codaSync) {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const atendimentoId = options.evolutionChat.activeAtendimentoForConversation(activeContextRoute[1]!)
+        return send(200, { atendimentoId })
+      }
       // Resolve the unique active Coda-linked conversation for direct Funil navigation.
       // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
       const canonicalConversationRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversation$/.exec(url.pathname)
@@ -348,6 +357,8 @@ export function createRequestHandler(options: AppOptions) {
           if(code==='MEDIA_FORMAT_UNSUPPORTED')return fail(415,'CHAT_MEDIA_UNSUPPORTED','Formato de vídeo, imagem ou áudio não compatível com o Chat.')
           if(code==='MEDIA_CONTENT_INVALID')return fail(422,'CHAT_MEDIA_INVALID_CONTENT','O arquivo recuperado não corresponde ao formato informado.')
           if(code==='MEDIA_PROVIDER_TIMEOUT')return fail(504,'CHAT_MEDIA_TIMEOUT','A Evolution não respondeu a tempo para esta mídia.')
+          if(code==='MEDIA_PROVIDER_REJECTED')return fail(502,'CHAT_MEDIA_PROVIDER_REJECTED','A Evolution recusou a recuperação desta mídia.')
+          if(code==='MEDIA_PROVIDER_INVALID')return fail(502,'CHAT_MEDIA_PROVIDER_INVALID','A Evolution retornou uma resposta de mídia incompleta ou inválida.')
           return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar a mídia pela Evolution.')
         }
       }
@@ -519,8 +530,9 @@ export function createRequestHandler(options: AppOptions) {
         const workspace = (selected?: string) => {
           const all = scenarios.list(at), selectedId = selectedScenario(options.atendimentos.db,at,all.some(s=>s.id===selected)?selected:undefined)
           const items = commercial.list(at,selectedId), parts = components.list(at), configured = pricing.get(), state = pricing.settings(at), catalog = commercial.catalogs().items
+          const calculations=all.map(s=>calculate(items,parts,catalog,s,configured.config,state.settings))
           return { scenarios: all, selectedId, items, revision: state.revision, components: parts, settings: state.settings, configurationRevision: configured.revision,
-            calculations: all.map(s=>calculate(items,parts,catalog,s,configured.config,state.settings)) }
+            calculations, pieceCategoryTotals:Object.fromEntries(calculations.map(c=>[c.scenarioId,pieceFinancialSummary(c,items.map(item=>item.id))])) }
         }
         if (req.method === 'GET' && !id) return send(200,workspace(url.searchParams.get('scenarioId') ?? undefined))
         if ((req.method !== 'POST' || id) && (req.method !== 'PATCH' || !id) && (req.method !== 'DELETE' || !id)) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
