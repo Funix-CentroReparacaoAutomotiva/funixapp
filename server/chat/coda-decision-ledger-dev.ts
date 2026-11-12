@@ -52,10 +52,15 @@ export class DevelopmentDecisionLedger {
   }
   readAll(limit=10000):ConfirmedWhatsAppDecision[]{
     if(!Number.isInteger(limit)||limit<1||limit>10000)throw Error('DECISION_SCAN_LIMIT')
-    const rows=this.db.prepare('SELECT event_id,coda_row_id,remote_jid FROM dev_whatsapp_confirmed_decisions ORDER BY event_id LIMIT ?')
-      .all(limit+1) as Array<{event_id:string,coda_row_id:string,remote_jid:string}>
+    const rows=this.db.prepare('SELECT event_id,coda_row_id,remote_jid,digest FROM dev_whatsapp_confirmed_decisions ORDER BY event_id LIMIT ?')
+      .all(limit+1) as Array<{event_id:string,coda_row_id:string,remote_jid:string,digest:string}>
     if(rows.length>limit)throw Error('DECISION_SCAN_LIMIT')
-    return rows.map(r=>({eventId:r.event_id,codaRowId:r.coda_row_id,remoteJid:r.remote_jid}))
+    return rows.map(r=>{
+      const data={eventId:r.event_id,codaRowId:r.coda_row_id,remoteJid:r.remote_jid}
+      const digest=createHash('sha256').update(JSON.stringify(data)).digest('hex')
+      if(digest!==r.digest)throw Error('DECISION_LEDGER_CORRUPT')
+      return data
+    })
   }
 }
 export function reconcileConfirmedDecisions(
