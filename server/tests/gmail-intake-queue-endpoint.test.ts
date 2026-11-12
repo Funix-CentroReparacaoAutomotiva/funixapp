@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {createHmac,randomUUID} from 'node:crypto'
 import {Readable} from 'node:stream'
+import {createServer} from 'node:http'
 import type {IncomingMessage,ServerResponse} from 'node:http'
 import {openDatabase} from '../database.ts'
 import {createGmailIntakeSchema} from '../gmail-intake-schema.ts'
@@ -133,4 +134,40 @@ test('signed status reconciles a lost response without claiming or modifying a m
   const invalid=input({messageId,extra:true})
   await assert.rejects(()=>service(invalid.req,invalid.res,'status'),{code:'GMAIL_QUEUE_PAYLOAD_INVALID'})
  }finally{db.close()}
+})
+
+test('HTTP localhost: status signed round-trip works and invalid signature is rejected',async()=>{
+ const {db,service}=setup()
+ const server=createServer(async(req,res)=>{
+  try{
+   const result=await service(req,res,'status')
+   res.statusCode=200
+   res.setHeader('Content-Type','application/json')
+   res.end(JSON.stringify(result))
+  }catch(error){
+   const code=(error as {status?:number}).status??500
+   res.statusCode=code
+   res.end(JSON.stringify({code:(error as {code?:string}).code??'UNEXPECTED'}))
+  }
+ })
+ try{
+  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve))
+  const addr=server.address()
+  assert.ok(addr&&typeof addr!=='string')
+  const endpoint='http://127.0.0.1:'+addr.port+'/'
+  const body=JSON.stringify({messageId})
+  const ts=String(millis)
+  const signature=createHmac('sha256',secret).update(ts+'.'+body).digest('hex')
+  const send=(sig:string)=>fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-funix-updates-timestamp':ts,'x-funix-updates-signature':sig},body})
+  const missing=await send(signature)
+  assert.equal(missing.status,404)
+  const missingBody=await missing.json() as {code:string}
+  assert.equal(missingBody.code,'GMAIL_QUEUE_NOT_FOUND')
+  const invalid=await send('0'.repeat(64))
+  assert.equal(invalid.status,401)
+  assert.equal((await invalid.json() as {code:string}).code,'GMAIL_INTAKE_UNAUTHORIZED')
+ }finally{
+  await new Promise<void>((resolve,reject)=>server.close(err=>err?reject(err):resolve()))
+  db.close()
+ }
 })
