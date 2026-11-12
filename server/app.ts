@@ -31,6 +31,13 @@ import { createDevelopmentDecisionIntake, type DevelopmentDecisionIntakeConfig }
 import { UpdatePackageRepository } from './update-packages.ts'
 import { createUpdatePackageIngest } from './update-packages-ingest.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
+import { GmailIntakeRepository } from './gmail-intake.ts'
+import { GmailIntakeQueue } from './gmail-intake-queue.ts'
+import { createGmailQueueEndpoint } from './gmail-intake-queue-endpoint.ts'
+import { hasGmailIntakeQueueSchema } from './gmail-intake-queue-schema.ts'
+import { hasGmailIntakeSchema } from './gmail-intake-schema.ts'
+import { createGmailIntakeIngest, createGmailCandidateIngest } from './gmail-intake-ingest.ts'
+import type { GmailIntakeDecisionInput } from '../shared/gmail-intake.ts'
 import type { UpdatePackageDecision, UpdatePackageClarification } from '../shared/update-packages.ts'
 import { createIngestEndpoint } from './chat/ingest.ts'
 import type { IngestOptions } from './chat/ingest-config.ts'
@@ -62,6 +69,19 @@ export function createRequestHandler(options: AppOptions) {
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
+  const gmailIntake = new GmailIntakeRepository(options.atendimentos.db)
+  const gmailQueue = new GmailIntakeQueue(options.atendimentos.db,options.now)
+  const gmailQueueEndpoint = createGmailQueueEndpoint(gmailQueue,process.env.FUNIX_GMAIL_QUEUE_SECRET,
+    process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_QUEUE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_QUEUE_API_ENABLED==='true' &&
+    hasGmailIntakeQueueSchema(options.atendimentos.db),options.now)
+  const gmailIntakeIngest = createGmailIntakeIngest(gmailIntake,process.env.FUNIX_GMAIL_INTAKE_SECRET,
+    process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_INTAKE_INGEST_ENABLED==='true',options.now)
+  const gmailCandidateIngest = createGmailCandidateIngest(gmailIntake,process.env.FUNIX_GMAIL_INTAKE_SECRET,
+    process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+    process.env.FUNIX_GMAIL_INTAKE_INGEST_ENABLED==='true',options.now)
   const updatesIngest = createUpdatePackageIngest(updates,process.env.FUNIX_UPDATES_INGEST_SECRET,
     process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true' && process.env.FUNIX_UPDATES_INGEST_ENABLED==='true',options.now)
   const scenarios = new ScenarioRepository(options.atendimentos.db)
@@ -119,6 +139,19 @@ export function createRequestHandler(options: AppOptions) {
         const result=await updatesIngest(req,res)
         return send(202,result)
       }
+      const queueRoute=/^\/api\/integrations\/gmail\/queue\/(enqueue|claim|ack|status)$/.exec(url.pathname)
+      if(queueRoute){
+        const result=await gmailQueueEndpoint(req,res,queueRoute[1] as 'enqueue'|'claim'|'ack'|'status')
+        return send(200,result)
+      }
+      if (url.pathname === '/api/integrations/gmail/intake-notices') {
+        const result=await gmailIntakeIngest(req,res)
+        return send(202,result)
+      }
+      if (url.pathname === '/api/integrations/gmail/intake-candidates') {
+        const result=await gmailCandidateIngest(req,res)
+        return send(202,result)
+      }
       if (req.method === 'GET' && url.pathname === '/api/health') return send(200, { status: 'ok', source: { system: 'app', storage: 'sqlite' }, capabilities: { atendimentos: true, messages: false, ai: false, erp: false } })
       if (req.method === 'GET' && url.pathname === '/api/ready') {
         if (!configured) return fail(503, 'AUTH_NOT_CONFIGURED', 'O acesso ainda não foi configurado.')
@@ -165,6 +198,30 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      // Intake authorization only permits analysis, never changes in the ERP or Drive.
+      const intakeDecisionMatch=/^\/api\/atualizacoes\/avisos-gmail\/([0-9a-f-]{36})\/decisao$/.exec(url.pathname)
+      if(url.pathname==='/api/atualizacoes/avisos-gmail' || intakeDecisionMatch){
+        if(req.method==='GET' && !intakeDecisionMatch){
+          if([...url.searchParams.keys()].some(k=>k!=='visao'))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
+          const view=url.searchParams.get('visao')??'open'
+          if(!['open','closed'].includes(view))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
+          const available=process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
+            hasGmailIntakeSchema(options.atendimentos.db)
+          return send(200,{...gmailIntake.list(view as 'open'|'closed'),
+            decisionsEnabled:available && process.env.FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED==='true'})
+        }
+        if(req.method!=='POST'||!intakeDecisionMatch)return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED!=='true'||
+          process.env.FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED!=='true'||
+          !hasGmailIntakeSchema(options.atendimentos.db))
+          return fail(503,'GMAIL_INTAKE_DECISIONS_DISABLED','Autorização de triagem indisponível.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))
+          return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,4096)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
+        return send(200,gmailIntake.decide(intakeDecisionMatch[1]!,body as GmailIntakeDecisionInput,'funix_operator'))
+      }
       // Operator decisions and clarifications require authenticated same-origin sessions.
       // Preparing a proposal or authorizing it does not execute an external action.
       const decisionMatch = new RegExp('^/api/atualizacoes/([0-9a-f-]{36})/decisao$').exec(url.pathname)
