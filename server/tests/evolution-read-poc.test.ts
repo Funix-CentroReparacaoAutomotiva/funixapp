@@ -369,7 +369,7 @@ test('Evolution findChats preserves only validated lastMessage alternate JID', a
 test('Evolution findChats never trusts mismatched message scope or same-kind alias', async () => {
   const rows = await client(response([
     { remoteJid: LID, lastMessage: { key: { remoteJid: OTHER, remoteJidAlt: PN } } },
-    { remoteJid: PN, lastMessage: { key: { remoteJid: PN, remoteJidAlt: OTHER } } },
+    { remoteJid: PN, lastMessage: { key: { remoteJid: PN, remoteJidAlt: '000000000002@s.whatsapp.net' } } },
   ])).findChats()
   assert.equal(rows[0]?.remoteJidAlt, undefined)
   assert.equal(rows[1]?.remoteJidAlt, undefined)
