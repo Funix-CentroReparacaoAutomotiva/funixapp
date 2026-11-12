@@ -89,8 +89,8 @@ test('DEV decision: modified persisted mapping cannot evade digest verification'
 test('DEV decision: two Coda rows sharing one origin marker cannot be selected',()=>{
   const f=fixture()
   try{
-    f.source.append(source(),t)
-    f.decisions.append({eventId:ev,codaRowId:'i-ROW_1',remoteJid:jid},t)
+    f.source.append(source(orig),t)
+    f.decisions.append({eventId:orig,codaRowId:'i-ROW_1',remoteJid:jid},t)
     const duplicate={...originalRow,id:'i-ROW_2'}
     assert.throws(
       ()=>reconcileConfirmedDecisions(f.outbox,f.source,f.decisions,[originalRow,duplicate],t),
