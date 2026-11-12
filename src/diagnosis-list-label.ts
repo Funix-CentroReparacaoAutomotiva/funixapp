@@ -1,4 +1,4 @@
-import type { DiagnosisIntensity } from '../shared/commercial'
+import type { DiagnosisIntensity } from '../shared/commercial.js'
 
 /** Formata somente a apresentação; nunca modifica IDs ou nomes persistidos. */
 export function diagnosisListLabel(pieceName: string, diagnosisName: string | null, intensity: DiagnosisIntensity | null | undefined) {
