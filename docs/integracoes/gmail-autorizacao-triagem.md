@@ -165,7 +165,7 @@ Testes sintéticos adicionados para estado inicial, lease, conclusão, consulta 
 
 ## 12. Gate para consumidor n8n de homologação
 
-A conexão real exige um **FunixApp de homologação acessível** com banco isolado, endpoint habilitado exclusivamente naquele ambiente e duas chaves HMAC independentes (fila e candidato). Não usar o host de produção como substituto. Nenhum endereço, segredo ou credencial está presumido aqui.
+A direção definiu em 12/11/2026 que **a instância atual do FunixApp é o ambiente de homologação**, sem exigência de outra implantação. Essa decisão substitui a exigência anterior de um host separado; não dispensa controles de dados, autenticação e rollback. A configuração versionada em `compose.yaml` utiliza domínio público e banco SQLite persistente (`/data/funix.sqlite`), então os testes precisam usar identificadores sintéticos, não afetar registros existentes e preservar os fluxos n8n ativos. Antes de qualquer comunicação n8n → FunixApp, confirmar a revisão realmente implantada e disponibilizar, por autorização de deploy distinta, os endpoints da PR e chaves HMAC exclusivas, mantendo as flags OFF até habilitação controlada. O endereço não prova sozinho a revisão em execução.
 
 Contrato de recuperação do consumidor, antes de conectar Gmail real:
 
@@ -182,7 +182,7 @@ Matriz de ensaio obrigatória: falha antes/depois de `enqueue`, perda da respost
 
 Foi criado no projeto pessoal administrativo n8n o workflow `FUNIX | DEV | Gmail queue contract — offline manual (OFF)`, ID `Hdld57vlbjOGcqjR`, que permanece **inativo** e só possui disparo manual + dois nós Code sem integrações externas. A execução manual `38642` encerrou com `success`, conferindo **quatro casos sintéticos** (`enqueue`, `claim`, `ack`, `lost-claim-response`) e devolvendo `{mode:'SYNTHETIC_OFFLINE',networkCalls:0,gmailReads:0,sideEffects:0,passed:true}`.
 
-Este ensaio confirma unicamente que o n8n executa as validações locais dos objetos de contrato. **Não é consumidor real**: não autentica, não se comunica com os endpoints, não consulta Gmail, não executa HTTP, não armazena requests e não testa falhas de rede ou concorrência. Para chegar ao merge ainda é necessário concluir a implementação do consumidor real e ensaios de integração em ambiente isolado com chaves e banco próprios, incluindo persistência do `requestId` e reconciliação das respostas ambíguas. O workflow atual não deve ser conectado à captura ativa.
+Este ensaio confirma unicamente que o n8n executa as validações locais dos objetos de contrato. **Não é consumidor real**: não autentica, não se comunica com os endpoints, não consulta Gmail, não executa HTTP, não armazena requests e não testa falhas de rede ou concorrência. Para chegar ao merge ainda é necessário concluir a implementação do consumidor real e ensaios de integração controlados na instância atual de homologação, com chaves próprias e dados sintéticos protegidos, incluindo persistência do `requestId` e reconciliação das respostas ambíguas. Nenhuma implantação ou ativação decorre automaticamente dessa decisão. O workflow atual não deve ser conectado à captura ativa.
 
 ## 14. Ensaio HTTP integrado local (12/11/2026)
 
@@ -194,7 +194,7 @@ Limite de evidência: essa suíte valida serviços e assinatura em uma única m�
 
 O commit `e5b6156` concluiu as oito verificações do GitHub Actions com sucesso, incluindo o CI principal. Foi iniciado um protótipo manual de preparação de payload no n8n (`x0rbN62iosP2DqNb`), mas a plataforma associou automaticamente uma **credencial HMAC já existente** ao nó criptográfico, em vez de criar uma chave exclusiva de homologação. Por segurança, o nó de assinatura foi removido antes de qualquer execução e foi conferido que o workflow remanescente possui **somente trigger manual e montagem de payload sintético, sem credenciais ou saída HTTP**, e segue inativo.
 
-**Restrição explícita:** nenhuma credencial HMAC de Atualizações, WhatsApp, VPS ou de outros domínios deve ser reaproveitada na fila Gmail. O consumidor real depende de configuração de credencial própria, endpoint de homologação isolado, garantia de assinatura sobre os mesmos bytes do corpo HTTP e persistência durável de `requestId`/recibos. O fluxo `x0rbN62iosP2DqNb` não é um consumidor conectado e não deve ser tratado como tal.
+**Restrição explícita:** nenhuma credencial HMAC de Atualizações, WhatsApp, VPS ou de outros domínios deve ser reaproveitada na fila Gmail. O consumidor real depende de configuração de credencial própria, endpoints da PR efetivamente disponíveis na instância atual de homologação, garantia de assinatura sobre os mesmos bytes do corpo HTTP e persistência durável de `requestId`/recibos. O fluxo `x0rbN62iosP2DqNb` não é um consumidor conectado e não deve ser tratado como tal.
 
 ## 16. Diário durável sintético no n8n (12/11/2026)
 
@@ -202,4 +202,15 @@ Criada a Data Table **`FUNIX_DEV_GMAIL_CLAIM_JOURNAL_OFF`** (`TlCcJn9x8WbvqkKp`)
 
 Execuções manuais **38644 e 38645** retornaram `success`, `passed=true`, `records=1`, `requestIdStable=true`, `networkCalls=0`, `gmailReads=0`. A releitura da tabela após a segunda execução confirmou **uma única linha** (id 1) com mesmo `request_id`, `phase=prepared` e `claim_limit=1`. A tabela e o workflow estão restritos à homologação sintética; o workflow permanece inativo.
 
-**Limitação decisiva:** `upsert` por chave de caso e `requestId` fixo são apenas demonstração de persistência e repetição sequencial. NÃO constituem controle atômico de concorrência, armazenamento de token/resposta de claim após envio, nem recuperação segura de requisição em voo. Um consumidor real precisa gerar UUID novo para cada requisição inédita, persistir o UUID antes do envio, não substituí-lo durante replay, registrar `leaseToken`/recibo após resposta e prevenir reescritas de estados finais/leased em corridas. Não conectar esse ensaio ao Gmail ativo, não adicionar agendamento ou chave de outra integração. Continua pendente backend de homologação autorizado e chave HMAC exclusiva para validação entre hosts.
+**Limitação decisiva:** `upsert` por chave de caso e `requestId` fixo são apenas demonstração de persistência e repetição sequencial. NÃO constituem controle atômico de concorrência, armazenamento de token/resposta de claim após envio, nem recuperação segura de requisição em voo. Um consumidor real precisa gerar UUID novo para cada requisição inédita, persistir o UUID antes do envio, não substituí-lo durante replay, registrar `leaseToken`/recibo após resposta e prevenir reescritas de estados finais/leased em corridas. Não conectar esse ensaio ao Gmail ativo, não adicionar agendamento ou chave de outra integração. Continua pendente verificar/autorizar a disponibilidade dos endpoints da PR no FunixApp atual, configurar chaves HMAC exclusivas e validar a comunicação n8n ↔ FunixApp sem atingir mensagens ou registros reais.
+
+
+## 17. Definição de ambiente pela direção — 12/11/2026
+
+**Decisão expressa do gestor:** "O sistema do FunixApp atual já é o de homologação." Não exigir novo servidor, domínio ou banco separado como pré-condição arquitetural para a PR #149. Essa classificação é uma decisão de uso do ambiente, não a comprovação de isolamento técnico.
+
+**Fatos verificados no repositório:** `compose.yaml` define `NODE_ENV: production`, `FUNIX_APP_ORIGIN: https://app.funix.com.br` e o SQLite persistente `/data/funix.sqlite`. `server/index.ts` só cria a estrutura Gmail quando as respectivas flags estão `true`; a PR #149 está em draft e não foi implantada por este trabalho. Não há verificação de qual revisão está realmente em execução em `app.funix.com.br`, nem do conteúdo atual do banco.
+
+**Plano ajustado:** preparar e testar o consumidor n8n desligado, sem tocar no monitor Gmail ativo; preservar HMAC exclusivo da fila e do classificador; validar primeiramente com IDs e avisos sintéticos reversíveis e controles de rollback na instância atual, **somente depois de autorização explícita da implantação necessária**. Sem merge, deploy, nova flag, Gmail real, escrita em ERP/Drive ou decisão automática como consequência desta atualização documental. A comunicação real depende de os endpoints da PR existirem na revisão implantada; o nome "homologação" não os disponibiliza por si só.
+
+**Critérios para o teste integrado:** revisão e flags conferidas, backup/rollback definidos, credenciais segregadas, origem n8n controlada, casos sintéticos sem colisão, validação de replays/concorrência, nenhum envio externo e retorno das flags ao estado desligado. Bloquear avanço se houver risco de afetar registros operacionais existentes.
