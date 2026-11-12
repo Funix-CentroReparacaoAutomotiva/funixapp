@@ -53,6 +53,31 @@ export function createEvolutionChatBridge(
     return id
   }
 
+  /**
+   * The Evolution chat list can use an opaque @lid while the signed Coda event
+   * was confirmed for a PN @s.whatsapp.net. A display name or comparable phone
+   * is never sufficient to join them. Only a message from the requested LID
+   * with an explicit remoteJidAlt PN is eligible for read-only navigation.
+   */
+  const resolveConfirmedContext = async (conversationJid: string): Promise<string | null> => {
+    if (!codaSync) return null
+    const direct = codaSync.resolveActive(conversationJid)
+    if (direct) return direct
+    if (!/^[A-Za-z0-9_-]{1,100}@lid$/.test(conversationJid)) return null
+    const page = await provider.findMessages(conversationJid, { page: 1 })
+    let verifiedPn: string | null = null
+    for (const message of page.items) {
+      const pair =
+        message.remoteJid === conversationJid ? message.remoteJidAlt
+          : message.remoteJidAlt === conversationJid ? message.remoteJid
+            : null
+      if (!pair || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(pair)) continue
+      if (verifiedPn && verifiedPn !== pair) return null
+      verifiedPn = pair
+    }
+    return verifiedPn ? codaSync.resolveActive(verifiedPn) : null
+  }
+
   return {
     async list(skip: number): Promise<{
       items: Array<{ conversationId: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null; atendimentoId?: string | null }>
@@ -86,14 +111,14 @@ export function createEvolutionChatBridge(
      * A list may be stale when the signed Coda event arrives after its response.
      * This check never guesses by phone and never creates or changes links.
      */
-    activeAtendimentoForConversation(conversationId: string): string | null {
+    async activeAtendimentoForConversation(conversationId: string): Promise<string | null> {
       if (!codaSync) return null
       purge()
       const entry = byId.get(conversationId)
       const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
       if (!jid) return null
       if (entry) entry.at = now()
-      return codaSync.resolveActive(jid)
+      return resolveConfirmedContext(jid)
     },
     /** Never disclose a conversation under a different Atendimento's context.
      * The conversationId stays opaque; the canonical Coda mapping is checked
@@ -153,11 +178,11 @@ export function createEvolutionChatBridge(
       purge()
       const entry = byId.get(conversationId)
       const jid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
-      if (!jid || !codaSync || codaSync.resolveActive(jid) !== atendimentoId) return null
+      if (!jid || !codaSync || await resolveConfirmedContext(jid) !== atendimentoId) return null
       const result = await this.messages(conversationId, page)
-      // The canonical active Atendimento may change while Evolution responds.
-      // Never return a stale conversation under a different Atendimento.
-      return codaSync.resolveActive(jid) === atendimentoId && result
+      // Recheck the proof and the Coda active context after the provider read.
+      // This is read-only: sending continues to require the exact canonical PN.
+      return await resolveConfirmedContext(jid) === atendimentoId && result
         ? { ...result, sendTextAvailable: Boolean(sendText), mediaSendAvailable: Boolean(media), mediaReadAvailable: Boolean(media) } : null
     },
     async messages(conversationId: string, page: number): Promise<{

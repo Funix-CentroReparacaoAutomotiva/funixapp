@@ -280,8 +280,13 @@ export function createRequestHandler(options: AppOptions) {
       if (activeContextRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
-        const atendimentoId = options.evolutionChat.activeAtendimentoForConversation(activeContextRoute[1]!)
-        return send(200, { atendimentoId })
+        try {
+          const atendimentoId = await options.evolutionChat.activeAtendimentoForConversation(activeContextRoute[1]!)
+          if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
+          return send(200, { atendimentoId })
+        } catch {
+          return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível verificar o vínculo agora.')
+        }
       }
       // Resolve the unique active Coda-linked conversation for direct Funil navigation.
       // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
