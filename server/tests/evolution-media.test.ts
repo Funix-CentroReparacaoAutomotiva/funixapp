@@ -85,3 +85,57 @@ test('video failure categories do not expose provider response bodies',async()=>
     new Response(JSON.stringify({mimetype:'video/mp4',base64:jpeg}),{status:200})})
   await assert.rejects(invalidFile.get(envelope,'video'),/MEDIA_CONTENT_INVALID/)
 })
+
+
+test('issue 141: outbound image envelope from the same chat remains retrievable',async()=>{
+  const calls:Array<{endpoint:string;payload:Record<string,unknown>}>=[]
+  const gateway=createMediaGateway({origin,apiKey:key,instance,fetcher:async(input,init)=>{
+    const endpoint=String(input),payload=JSON.parse(String(init?.body)) as Record<string,unknown>
+    calls.push({endpoint,payload})
+    if(endpoint.includes('/message/sendMedia/'))
+      return new Response(JSON.stringify({key:{id:'OUTBOUND-IMAGE-1'}}),{status:201})
+    return new Response(JSON.stringify({data:{mimetype:'image/jpeg',base64:jpeg}}),{status:200})
+  }})
+  const result=await gateway.send(jid,{kind:'image',mimeType:'image/jpeg',base64:jpeg})
+  const envelope={key:{id:result.messageId,remoteJid:jid,fromMe:true},
+    messageType:'imageMessage',message:{imageMessage:{mimetype:'image/jpeg',fileLength:8}}}
+  assert.deepEqual(await gateway.get(envelope,'image'),{kind:'image',mimeType:'image/jpeg',base64:jpeg})
+  assert.equal(calls.length,2)
+  assert.equal(calls[0]!.payload.mediatype,'image')
+  assert.equal(calls[1]!.endpoint,origin+'/chat/getBase64FromMediaMessage/'+instance)
+  assert.deepEqual(calls[1]!.payload.message,envelope)
+  assert.equal(calls[1]!.payload.convertToMp4,false)
+})
+
+test('issue 141: image retrieval handles incoming, data URL and verified generic MIME',async()=>{
+  const envelope={key:{id:'INBOUND-IMAGE-1',remoteJid:jid,fromMe:false},
+    messageType:'imageMessage',message:{imageMessage:{mimetype:'image/jpeg',fileLength:8}}}
+  for(const body of [
+    {mimetype:'image/jpeg',base64:jpeg},
+    {data:{mimetype:'image/jpeg',base64:jpeg}},
+    {data:{mimetype:'application/octet-stream',base64:jpeg}},
+    {data:{base64:'data:image/jpeg;base64,'+jpeg}},
+  ]){
+    const gateway=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>new Response(JSON.stringify(body),{status:200})})
+    assert.deepEqual(await gateway.get(envelope,'image'),{kind:'image',mimeType:'image/jpeg',base64:jpeg})
+  }
+})
+
+test('issue 141: image retrieval failures are classified without surfacing provider secrets',async()=>{
+  const envelope={key:{id:'OUTBOUND-IMAGE-2',remoteJid:jid,fromMe:true},
+    messageType:'imageMessage',message:{imageMessage:{mimetype:'image/jpeg'}}}
+  const scenarios=[
+    {response:new Response('private-provider-body',{status:500}),expected:'MEDIA_PROVIDER_REJECTED'},
+    {response:new Response(JSON.stringify({mimetype:'image/png',base64:jpeg}),{status:200}),expected:'MEDIA_CONTENT_INVALID'},
+    {response:new Response(JSON.stringify({mimetype:'image/heic',base64:jpeg}),{status:200}),expected:'MEDIA_FORMAT_UNSUPPORTED'},
+    {response:new Response(JSON.stringify({data:{mimetype:'image/jpeg'}}),{status:200}),expected:'MEDIA_PROVIDER_INVALID'},
+  ]
+  for(const scenario of scenarios){
+    const gateway=createMediaGateway({origin,apiKey:key,instance,fetcher:async()=>scenario.response})
+    await assert.rejects(gateway.get(envelope,'image'),(error:unknown)=>{
+      assert.equal((error as Error).message,scenario.expected)
+      assert.equal(String(error).includes('private-provider-body'),false)
+      return true
+    })
+  }
+})
