@@ -95,3 +95,10 @@ Testar com Coda e FunixApp DEV isolados, eventos sintéticos, duplicação 20x, 
 
 - Em leitura posterior do rascunho, constatou-se que o n8n associou automaticamente ao novo nó HMAC de origem a credencial existente **`FUNIX | VPS ↔ n8n | HMAC`**, também utilizada pelo caminho antigo. Não se deve considerar essa credencial uma chave independente para a nova rota.
 - Como contenção, os nós `DEV | Fonte WhatsApp | HMAC independente` e `DEV | Fonte WhatsApp | POST FunixApp` foram explicitamente **desabilitados** no rascunho, que permanece desconectado do fluxo de classificação principal. Nenhum envio real foi feito. Antes de testar a integração, substituir por uma credencial exclusiva e verificar separação de segredos entre emissor e receptor.
+
+## Incremento — decisões imutáveis para reaproveitamento comercial
+
+- `coda-decision-ledger-dev.ts`: nova estrutura SQLite de desenvolvimento **opt-in**, append-only, que registra a decisão comprovada `eventId da mensagem → codaRowId canônico + remoteJid`. O mesmo evento não pode mudar de linha sem produzir conflito. A tabela **não** é habilitada no bootstrap da aplicação, nem fornece endpoint público.
+- `reconcileConfirmedDecisions` cruza essa decisão persistida com a fonte original imutável e com o conjunto comprovadamente confirmado de linhas Coda. Só prepara eventos para outbox quando o Coda conserva origem WhatsApp, canal correto e mesmo JID, com supressão já validada na origem. Duplicação da linha canônica, origem ausente ou divergência de identidade falham fechado; registros manuais não entram por coincidência de telefone.
+- A implementação separa o **evento original que criou a ficha** de **mensagens posteriores que reutilizam a mesma ficha**. A associação posterior deve ser produzida depois da revalidação do classificador no Coda, ainda não conectada ao n8n.
+- Testes sintéticos cobrem confirmação/replay, conflitos de mapeamento, ausência de fonte, rejeição de linha manual e múltiplas linhas com mesmo ID. Não afirmar sincronização real até existir o produtor autenticado de decisões e reconciliador integrado com operação.
