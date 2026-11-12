@@ -11,7 +11,9 @@ const fail=(status:number,code:string,message:string):never=>{throw new ServiceE
 export async function verifySignedGmailPayload(req:IncomingMessage,secret:string|undefined,enabled:boolean,now:()=>number):Promise<unknown>{
   if(req.method!=='POST')fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
   if(!enabled||!secret||secret.length<32)fail(503,'GMAIL_INTAKE_INGEST_DISABLED','Recepção de avisos desabilitada.')
-  if(req.headers['content-type']!=='application/json')fail(415,'JSON_REQUIRED','Envie JSON.')
+  const contentType=req.headers['content-type']
+  if(typeof contentType!=='string'||!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(contentType))
+    fail(415,'JSON_REQUIRED','Envie JSON UTF-8.')
   const ts=req.headers['x-funix-updates-timestamp']
   const signature=req.headers['x-funix-updates-signature']
   if(typeof ts!=='string'||!/^[0-9]{13}$/.test(ts)||
