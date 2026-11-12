@@ -5,7 +5,12 @@ import type {Atendimento} from '../shared/contracts.ts'
 function technical(value:string,max=80,allowPartPunctuation=false):string|null {
  const text=value.normalize('NFKC').trim().replace(/\s+/g,' ')
  if(!text||text.length>max||!(allowPartPunctuation ? /^[\p{L}\p{N} \-/()%.,+&#]+$/u : /^[\p{L}\p{N} \-/]+$/u).test(text))return null
- if(/\b(?:\d{7,}|[A-Z]{3}[0-9][A-Z0-9][0-9]{2})\b/i.test(text))return null
+ // Descriptions can be pasted from messages. Reject recognizable personal identifiers
+ // even when a phone or plate uses normal separators; search URLs leave FUNIX.
+ if(/\b\d{7,}\b/.test(text))return null
+ if(/\b[A-Z]{3}[ -]?\d[ -]?[A-Z\d][ -]?\d{2}\b/i.test(text))return null
+ if(/\b[A-HJ-NPR-Z0-9]{17}\b/i.test(text))return null
+ if(/(?<!\d)(?:\+?55[ ().-]*)?\(?\d{2}\)?[ ().-]+\d{4,5}[ .-]*\d{4}(?!\d)/.test(text))return null
  return text
 }
 function yearFromVehicle(vehicle:string):string {
