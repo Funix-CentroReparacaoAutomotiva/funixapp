@@ -154,3 +154,11 @@ A persistência transacional da fila usa `gmail_intake_delivery_queue`, `gmail_i
 ### Testes
 
 Testes adicionados em `server/tests/gmail-intake-queue-endpoint.test.ts`: HMAC errado, timestamp expirado, flag OFF, payload inválido, duas requisições de claim com o mesmo `requestId`, reivindicação duplicada, recibo idempotente e recibo de aviso de outra mensagem. São testes sintéticos locais; nenhum envio Gmail/n8n real foi executado.
+
+## 11. Reconciliação autenticada de entrega (incremento posterior)
+
+Foi acrescentada a operação **`POST /api/integrations/gmail/queue/status`** com payload exato `{ "messageId": "..." }`, a mesma assinatura HMAC própria da fila e as mesmas flags OFF por padrão. Retorna `messageId`, `state`, `attempts` e `nextAttemptAt`; não faz claim, não confirma ACK, não classifica e não autoriza e-mail. Um ID ausente retorna 404, e payload inválido ou HMAC incorreto são rejeitados.
+
+**Uso previsto:** após timeout ou perda de resposta de `enqueue`/`ack`, o consumidor poderá verificar o estado persistido antes de decidir repetir. Para `claim`, deve reutilizar o **mesmo `requestId`** para recuperar o lote original; um requestId diferente não é uma reconciliação segura. Um retorno `leased` não prova que o aviso foi criado; a confirmação `notified` exige o vínculo persistido entre aviso e mensagem. O estado resumido não substitui o recibo idempotente de ACK nem fornece o `leaseToken` perdido.
+
+Testes sintéticos adicionados para estado inicial, lease, conclusão, consulta sem mutação, ID inexistente, assinatura inválida e payload extra. **Testes e CI ainda precisam ser confirmados na versão atual.** Sem habilitação do consumidor n8n, merge, deploy ou processamento de mensagens reais.
