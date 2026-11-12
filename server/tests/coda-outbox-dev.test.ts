@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { classifyConfirmedCodaRows } from '../chat/coda-eligibility-adapter-dev.ts'
 
 const t0 = 1794150000000
-const validReceipt = {status:202, state:'created' as const, atendimentoId:'00000000-0000-4000-8000-000000000001'}
+const validReceipt = {state:'created' as const, atendimentoId:'00000000-0000-4000-8000-000000000001'}
 const event = (eventId = 'evo:synthetic:one', codaRowId = 'i-SYNTH_1') => ({
   version: 1 as const, source: 'coda' as const, eventId, codaRowId,
   instance: 'funix_comercial' as const, remoteJid: '5531999990001@s.whatsapp.net',
