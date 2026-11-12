@@ -109,3 +109,23 @@ test('DEV cycle: explicitly confirmed reuse of existing Coda row resolves only w
     assert.equal(f.getCalls(),2)
   }finally{f.db.close()}
 })
+
+test('DEV cycle: conflicting original/decision target aborts before enqueuing unrelated valid events',async()=>{
+  const f=setup(async()=>({rows:[row],nextCursor:null,complete:true}))
+  try{
+    f.decisions.append({eventId:firstId,codaRowId:'i-OTHER_ROW',remoteJid:jid},now)
+    await assert.rejects(f.cycle(),/DECISION_ORIGIN_CONFLICT/)
+    assert.deepEqual(f.outbox.stats(),{pending:0,leased:0,delivered:0,quarantined:0})
+    assert.equal(f.getCalls(),0)
+  }finally{f.db.close()}
+})
+test('DEV cycle: duplicate original source marker aborts before any delivery',async()=>{
+  const second={...row,id:'i-SYNTH_ROW_02'}
+  const f=setup(async()=>({rows:[row,second],nextCursor:null,complete:true}))
+  try{
+    f.decisions.append({eventId:firstId,codaRowId:row.id,remoteJid:jid},now)
+    await assert.rejects(f.cycle(),/DECISION_ORIGIN_DUPLICATE/)
+    assert.deepEqual(f.outbox.stats(),{pending:0,leased:0,delivered:0,quarantined:0})
+    assert.equal(f.getCalls(),0)
+  }finally{f.db.close()}
+})
