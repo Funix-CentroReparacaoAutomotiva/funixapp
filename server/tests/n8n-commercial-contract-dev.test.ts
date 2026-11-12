@@ -141,3 +141,15 @@ test('DEV n8n draft: initial and confirmed Coda queries use the exact WhatsApp J
     assert.doesNotMatch(query,/funil_contatoE164|telefoneE164/)
   }
 })
+
+test('DEV n8n draft: same JID reuses existing opportunity despite normalized phone difference',()=>{
+  // The Coda query must not hide this row before the resolver can inspect it.
+  const existing=coda({funil_contatoE164:'+5531999990002'})
+  const d=classify([existing])
+  assert.equal(d.motivo,'Atendimento em aberto')
+  assert.equal(d.atendimentosAbertos,1)
+  assert.equal(d.criarCard,false)
+  // Final confirmation still rejects an unresolved phone conflict instead
+  // of forging a verified source-to-canonical event.
+  assert.equal(execute('Evento | Validar vínculo (RASCUNHO sem envio)',[existing],refs(d)).length,0)
+})
