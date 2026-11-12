@@ -414,3 +414,76 @@ test('media routes require canonical Atendimento; reject spoofing and return onl
     f.db.close()
   }
 })
+
+test('read-only LID alias resolves only explicit Evolution remoteJidAlt proof to canonical PN',async()=>{
+  const db=openDatabase(':memory:')
+  const lid='syntheticLid001@lid'
+  const pn='000000000001@s.whatsapp.net'
+  try {
+    new AtendimentoRepository(db)
+    createCodaEventSchema(db)
+    const sync=new CodaEventSyncRepository(db)
+    const expected=sync.sync({
+      version:1,source:'coda',eventId:'evo:synthetic:lid-proof',
+      codaRowId:'i-LID_PROOF',instance:'funix_comercial',
+      remoteJid:pn,phoneE164:null,displayName:'Synthetic',occurredAt:1794144000,
+    }).atendimentoId
+    let pageCalls=0
+    const bridge=createEvolutionChatBridge({
+      async findChatsPage(){return {items:[{
+        remoteJid:lid,displayName:'Same Name',phoneNumber:null,updatedAt:null,unreadCount:0,
+      }],sourceCount:1}},
+      async findMessages(jid,{page}={}){
+        assert.equal(jid,lid);pageCalls++
+        return {
+          items:[{
+            recordId:'synthetic-record',instanceId:'synthetic-instance',messageId:'synthetic-message',
+            remoteJid:lid,remoteJidAlt:pn,timestamp:1794144000,fromMe:false,
+            origin:'unknown' as const,kind:'text' as const,text:'Synthetic only',media:null,statuses:[],
+          }],
+          currentPage:page??1,reportedTotal:1,reportedPages:1,
+          nextPage:null,consistency:'offset-not-snapshot' as const,
+        }
+      },
+    },Date.now,undefined,sync)
+    const listed=await bridge.list(0)
+    assert.equal(listed.items[0]?.atendimentoId,null)
+    const conversationId=listed.items[0]!.conversationId
+    assert.equal(await bridge.activeAtendimentoForConversation(conversationId),expected)
+    const messages=await bridge.messagesForAtendimento(expected,conversationId,1)
+    assert.equal(messages?.items[0]?.text,'Synthetic only')
+    assert.ok(pageCalls>=3)
+    assert.equal(await bridge.activeAtendimentoForConversation('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),null)
+  }finally{db.close()}
+})
+
+test('LID without unique provider-confirmed PN alias never links by display name or phone',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    new AtendimentoRepository(db)
+    createCodaEventSchema(db)
+    const sync=new CodaEventSyncRepository(db)
+    const pn='000000000001@s.whatsapp.net',lid='syntheticLid001@lid'
+    sync.sync({version:1,source:'coda',eventId:'evo:synthetic:alias-blocked',
+      codaRowId:'i-LID_REVIEW',instance:'funix_comercial',
+      remoteJid:pn,phoneE164:null,displayName:'Same Name',occurredAt:1794144000})
+    for(const aliases of [[],[null],['000000000002@s.whatsapp.net'],[pn,'000000000002@s.whatsapp.net']]){
+      const bridge=createEvolutionChatBridge({
+        async findChatsPage(){return {items:[{
+          remoteJid:lid,displayName:'Same Name',phoneNumber:null,updatedAt:null,unreadCount:0,
+        }],sourceCount:1}},
+        async findMessages(){
+          return {items:aliases.map((alias,i)=>({
+            recordId:'rec'+i,instanceId:'synthetic-instance',messageId:'msg'+i,
+            remoteJid:lid,remoteJidAlt:alias,timestamp:1794144000,fromMe:false,
+            origin:'unknown' as const,kind:'text' as const,text:'Synthetic only',media:null,statuses:[],
+          })),currentPage:1,reportedTotal:aliases.length,reportedPages:1,
+          nextPage:null,consistency:'offset-not-snapshot' as const}
+        },
+      },Date.now,undefined,sync)
+      const listed=await bridge.list(0)
+      const resolved=await bridge.activeAtendimentoForConversation(listed.items[0]!.conversationId)
+      assert.equal(resolved,null,'unexpected cross-customer alias link')
+    }
+  }finally{db.close()}
+})
