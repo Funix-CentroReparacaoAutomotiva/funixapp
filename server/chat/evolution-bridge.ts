@@ -37,6 +37,11 @@ export function createEvolutionChatBridge(
     }
     alternateByPrimary.delete(primary)
     if (!alternate || alternate === primary) return
+    // Bound identity hints like the ephemeral conversation cache.
+    if (alternateByPrimary.size >= maxEntries) {
+      const oldest = alternateByPrimary.keys().next().value
+      if (oldest !== undefined) rememberAlias(oldest)
+    }
     alternateByPrimary.set(primary, { jid: alternate, at: now() })
     const owners = primariesByAlternate.get(alternate) ?? new Set<string>()
     owners.add(primary)
