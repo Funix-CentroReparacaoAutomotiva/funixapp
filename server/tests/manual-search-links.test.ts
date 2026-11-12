@@ -83,3 +83,24 @@ test('issue 128: part descriptions with technical punctuation remain searchable 
   assert.equal(manualComponentSearchLinks(vehicle,part),null,'unsafe/empty search must be rejected: '+part)
  }
 })
+
+
+test('issue 128: external search never exports formatted plates, phone numbers or VINs',()=>{
+ const vehicle={brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'}
+ for(const part of [
+  'Farol ABC-1D23','Lanterna ABC 1234','Parachoque ABC1D23',
+  'Moldura (31) 99999-0000','Chicote +55 (31) 99999-0000',
+  'Capô 31999990000','Chicote 9BWZZZ377VT004251',
+ ]){
+  assert.equal(manualComponentSearchLinks(vehicle,part),null,'must not include private identifier: '+part)
+ }
+ for(const part of [
+  'Moldura (lado esquerdo)','Bateria 70%','Peça (50%) + suporte',
+  'Maçaneta, frente (direita)','Cabo A&B','Fixador #2','Lanterna 2 pinos',
+  'Cabo 12V 4+4','Kit (31 mm) 4 unidades',
+ ]){
+  const result=manualComponentSearchLinks(vehicle,part)
+  assert(result,'legitimate technical description must remain searchable: '+part)
+  assert.equal(new URL(result.general).searchParams.get('q'),'Volkswagen Gol 2019 '+part)
+ }
+})
