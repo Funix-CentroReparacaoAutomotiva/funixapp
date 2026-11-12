@@ -106,6 +106,8 @@ async def device_case(browser, width, height):
                 payload["reportedTotal"] = len(payload["items"])
                 return await route.fulfill(status=200, json={**payload, "sendTextAvailable": True,
                     "mediaSendAvailable": True, "mediaReadAvailable": True})
+            if parsed.path == f"/api/chat/conversations/{B}/active-atendimento":
+                return await route.fulfill(status=200, json={"atendimentoId": None})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
             if parsed.path.startswith("/api/atendimentos/") and parsed.path.endswith("/evolution-conversation"):
@@ -115,6 +117,7 @@ async def device_case(browser, width, height):
                     "code": "CHAT_NOT_LINKED", "message": "Sem vínculo canônico"}})
             raise AssertionError(f"Unexpected API request: {parsed.path}")
 
+        await context.route("**/api/chat/conversations/*/active-atendimento", mock)
         await context.route("**/api/chat/conversations?*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversation", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages*", mock)
@@ -130,7 +133,7 @@ async def device_case(browser, width, height):
         assert page.url.endswith("/conversas")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
         assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
-        await expect(page.get_by_text("Não encontrei Atendimento correspondente no Funil.", exact=False)).to_be_visible()
+        await expect(page.get_by_text("Atendimento não identificado nesta consulta.", exact=False)).to_be_visible()
         h.mark(f"{width}px: unlinked conversation searches Funil without guessing or creating a record")
 
         await page.get_by_role("button", name="Contato Vinculado").click()
@@ -208,7 +211,10 @@ async def device_case(browser, width, height):
         assert outbound_media == ["image", "video", "audio"], outbound_media
         h.mark(f"{width}px: sends one image/video/audio each with synthetic provider")
         await page.screenshot(path=str(ARTIFACTS / f"{width}-atendimento-chat.png"))
-        assert "/api/chat/conversations/" not in " ".join(sent)
+        # Fresh canonical resolver is expected for the unlinked card; no nested
+        # provider-history route should be queried without an active link.
+        assert not any(path.endswith("/messages") and
+                       path.startswith("/api/chat/conversations/") for path in sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card")
 
@@ -234,10 +240,12 @@ async def device_case(browser, width, height):
         second_id = (await duplicated.json())["id"]
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Contato Sem Vínculo").click()
-        await expect(page.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
-        await expect(page.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
+        dialog = page.get_by_role("dialog", name="Qual Atendimento deseja abrir?")
+        await expect(dialog).to_be_visible()
+        await expect(dialog.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
+        await expect(dialog.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
         assert page.url.endswith("/conversas")
-        await page.get_by_role("button", name="Segundo Atendimento", exact=False).click()
+        await dialog.get_by_role("button", name="Segundo Atendimento", exact=False).click()
         await page.wait_for_url(f"**/atendimentos/{second_id}?aba=chat")
         await expect(page.locator(".detail-header")).to_contain_text("Segundo Atendimento")
         h.mark(f"{width}px: duplicate phone requires explicit Atendimento selection")

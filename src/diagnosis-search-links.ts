@@ -2,9 +2,9 @@ import type {Atendimento} from '../shared/contracts.ts'
 
 // Only technical terms leave the browser. Never place names, license plates,
 // contacts, notes, VINs or unfiltered free-form vehicle descriptions in links.
-function technical(value:string,max=80):string|null {
+function technical(value:string,max=80,allowPartPunctuation=false):string|null {
  const text=value.normalize('NFKC').trim().replace(/\s+/g,' ')
- if(!text||text.length>max||! /^[\p{L}\p{N} \-/]+$/u.test(text))return null
+ if(!text||text.length>max||!(allowPartPunctuation ? /^[\p{L}\p{N} \-/()%.,+&#]+$/u : /^[\p{L}\p{N} \-/]+$/u).test(text))return null
  if(/\b(?:\d{7,}|[A-Z]{3}[0-9][A-Z0-9][0-9]{2})\b/i.test(text))return null
  return text
 }
@@ -47,7 +47,7 @@ const manufacturerPartsStores:Record<string,string>={
  volkswagen:'https://pecas.vw.com.br/'
 }
 export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string) {
- const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100)
+ const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100,true)
  if(!brand||!model||!part)return null
  const year=yearFromVehicle(vehicle.vehicle)
  const query=[brand,model,year,part].filter(Boolean).join(' ')
