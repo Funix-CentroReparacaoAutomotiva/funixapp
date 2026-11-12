@@ -26,6 +26,8 @@ export type CodaReadConfig = {
   tableId?: string
   fetchImpl?: typeof fetch
   pageSize?: number
+  /** Injected in tests; bounded backoff on Coda 429 and transient 5xx. */
+  sleep?: (ms: number) => Promise<void>
 }
 const rowIdPattern = /^i-[A-Za-z0-9_-]{1,100}$/
 const refPattern = /^i-[A-Za-z0-9_-]{1,100}$/
@@ -62,7 +64,7 @@ function projectRow(raw:unknown):RecoverableCodaRow {
     funil_contatoE164:stringOrEmpty(values[columns.phone]),
   }
 }
-/** Single Coda API page, no retries inside the adapter (retry upstream). */
+/** Read-only Coda page with bounded retries for 429 / transient 5xx. */
 export function createCodaApiPageProvider(config:CodaReadConfig):ConfirmedCodaPageProvider {
   const docId=config.docId??funixCodaAtendimentos.docId
   const tableId=config.tableId??funixCodaAtendimentos.tableId
@@ -75,6 +77,7 @@ export function createCodaApiPageProvider(config:CodaReadConfig):ConfirmedCodaPa
      !Number.isInteger(pageSize)||pageSize<1||pageSize>100)
     throw Error('CODA_INVALID_CONFIG')
   const fetchImpl=config.fetchImpl??fetch
+  const sleep=config.sleep??((ms:number)=>new Promise<void>(resolve=>{setTimeout(resolve,ms)}))
   return async (cursor:string|null):Promise<ConfirmedCodaPage> => {
     if(cursor!==null && (typeof cursor!=='string'||cursor.length===0||cursor.length>512))
       throw Error('CODA_INVALID_CURSOR')
@@ -92,21 +95,42 @@ export function createCodaApiPageProvider(config:CodaReadConfig):ConfirmedCodaPa
       url.searchParams.set('pageToken',cursor)
     }
     let raw:unknown
-    try {
-      const response=await fetchImpl(url.toString(),{
-        method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/json'},
-        cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000),
-      })
+    let completed=false
+    for(let attempt=0;attempt<3;attempt++){
+      let response:Response
+      try {
+        response=await fetchImpl(url.toString(),{
+          method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/json'},
+          cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000),
+        })
+      }catch{
+        // No request or response data is logged; it may contain a bearer token.
+        if(attempt===2)throw Error('CODA_REQUEST_FAILED')
+        await sleep(500*(attempt+1))
+        continue
+      }
+      if(response.status===429 || (response.status>=500 && response.status<=599)){
+        if(attempt===2)throw Error('CODA_HTTP_'+response.status)
+        const retryAfter=Number(response.headers.get('retry-after'))
+        const delay=Number.isFinite(retryAfter) && retryAfter>0
+          ? Math.min(5000,Math.ceil(retryAfter*1000))
+          : 500*(attempt+1)
+        await sleep(delay)
+        continue
+      }
       if(response.status!==200)throw Error('CODA_HTTP_'+response.status)
-      const body=await response.text()
-      if(body.length>8_000_000)throw Error('CODA_BODY_TOO_LARGE')
-      raw=JSON.parse(body) as unknown
-    }catch(err){
-      // Never include URLs, bearer token or potentially identifying payloads.
-      if(err instanceof Error && /^CODA_(HTTP_|BODY_TOO_LARGE)/.test(err.message))
-        throw err
-      throw Error('CODA_REQUEST_FAILED')
+      try {
+        const body=await response.text()
+        if(body.length>8_000_000)throw Error('CODA_BODY_TOO_LARGE')
+        raw=JSON.parse(body) as unknown
+        completed=true
+        break
+      }catch(err){
+        if(err instanceof Error && err.message==='CODA_BODY_TOO_LARGE')throw err
+        throw Error('CODA_INVALID_JSON')
+      }
     }
+    if(!completed)throw Error('CODA_REQUEST_FAILED')
     if(!isObject(raw)||!Array.isArray(raw.items)||
        raw.items.length>pageSize ||
        (raw.nextPageToken!==undefined &&
