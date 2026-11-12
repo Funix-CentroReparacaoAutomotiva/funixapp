@@ -110,3 +110,27 @@ test('invalid payloads do not consume attempts or create records',async()=>{
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue').get()!.n,0)
  }finally{db.close()}
 })
+
+test('signed status reconciles a lost response without claiming or modifying a message',async()=>{
+ const {db,service,queue}=setup()
+ try{
+  queue.enqueue(messageId)
+  const pending=input({messageId})
+  assert.deepEqual(await service(pending.req,pending.res,'status'),{messageId,state:'queued',attempts:0,nextAttemptAt:new Date(millis).toISOString()})
+  const claim=input({limit:1,requestId:randomUUID()})
+  const {claims}=await service(claim.req,claim.res,'claim') as {claims:Array<{leaseToken:string}>}
+  const inFlight=input({messageId})
+  assert.equal((await service(inFlight.req,inFlight.res,'status') as {state:string}).state,'leased')
+  const ack=input({messageId,leaseToken:claims[0]!.leaseToken,result:'ignored',noticeId:null,errorCode:null})
+  await service(ack.req,ack.res,'ack')
+  const completed=input({messageId})
+  assert.equal((await service(completed.req,completed.res,'status') as {state:string}).state,'ignored')
+  assert.equal(queue.status(messageId).attempts,1)
+  const unknown=input({messageId:'aaaaaaaaaaaaaaaa'})
+  await assert.rejects(()=>service(unknown.req,unknown.res,'status'),{code:'GMAIL_QUEUE_NOT_FOUND'})
+  const forged=input({messageId},'incorrect-but-long-synthetic-queue-secret')
+  await assert.rejects(()=>service(forged.req,forged.res,'status'),{code:'GMAIL_INTAKE_UNAUTHORIZED'})
+  const invalid=input({messageId,extra:true})
+  await assert.rejects(()=>service(invalid.req,invalid.res,'status'),{code:'GMAIL_QUEUE_PAYLOAD_INVALID'})
+ }finally{db.close()}
+})
