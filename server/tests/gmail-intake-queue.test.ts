@@ -157,3 +157,50 @@ test('dois handles SQLite independentes compartilham claim e recuperam após int
   rmSync(dir,{recursive:true,force:true})
  }
 })
+
+test('aviso persistido antes de crash é reaproveitado em novo lease sem duplicação',()=>{
+ const {db,queue,next}=setup()
+ try{
+  queue.enqueue(msg)
+  const [first]=queue.claim(1,'00000000-0000-4000-8000-000000000011')
+  assert.ok(first)
+  const notices=new GmailIntakeRepository(db)
+  const payload={
+   messageId:msg,title:'Reparo de veículo',summary:'Solicitação de reparo.',
+   relevance:'relevant' as const,reason:'REPAIR_SERVICE_CONTEXT',plateHint:null,xpHint:null
+  }
+  const original=notices.ingest(payload)
+  next(120001)
+  const [recovered]=queue.claim(1,'00000000-0000-4000-8000-000000000012')
+  assert.ok(recovered)
+  assert.equal(recovered.attempt,2)
+  const duplicate=notices.ingest(payload)
+  assert.equal(duplicate.id,original.id)
+  assert.throws(()=>queue.acknowledge({
+   messageId:msg,leaseToken:first.leaseToken,result:'notified',noticeId:original.id,errorCode:null
+  }),{code:'GMAIL_QUEUE_STALE'})
+  const receipt=queue.acknowledge({
+   messageId:msg,leaseToken:recovered.leaseToken,result:'notified',noticeId:original.id,errorCode:null
+  })
+  assert.equal(receipt.state,'notified')
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_notices').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_decisions').get()!.n,0)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get()!.n,2)
+ }finally{db.close()}
+})
+test('cinco leases expirados bloqueiam a fila sem sexto processamento',()=>{
+ const {db,queue,next}=setup()
+ try{
+  queue.enqueue(msg)
+  for(let attempt=1;attempt<=5;attempt++){
+   const [lease]=queue.claim(1)
+   assert.ok(lease)
+   assert.equal(lease.attempt,attempt)
+   next(120001)
+  }
+  assert.deepEqual(queue.claim(1),[])
+  assert.equal(queue.status(msg).state,'blocked')
+  assert.equal(queue.status(msg).attempts,5)
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts WHERE outcome='expired'").get()!.n,5)
+ }finally{db.close()}
+})
