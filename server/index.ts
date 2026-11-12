@@ -10,6 +10,10 @@ import { parseCodaSyncSecret } from './chat/coda-sync-endpoint.ts'
 import { parseDevelopmentSourceSecret } from './chat/coda-source-endpoint-dev.ts'
 import { createDevelopmentSourceLedgerSchema, DevelopmentSourceLedger } from './chat/coda-source-storage-dev.ts'
 import { createDevelopmentDecisionLedgerSchema, DevelopmentDecisionLedger } from './chat/coda-decision-ledger-dev.ts'
+import { createDevelopmentOutboxSchema, DevelopmentCodaOutbox } from './chat/coda-outbox-dev.ts'
+import { createCodaBackedDevelopmentReconciliationCycle } from './chat/coda-reconciliation-coda-dev.ts'
+import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliation-scheduler-dev.ts'
+import { ServiceError } from './errors.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -52,9 +56,38 @@ const app = createApp({ codaSync, sourceLedger, decisionLedger, atendimentos, pa
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
-app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\n`) })
+// Reconciliation is an additional opt-in, not implied by the HTTP intake
+// gates. No Coda API access or scheduled sync occurs when the flag is unset.
+const reconciliationEnabled=process.env.FUNIX_CODA_RECONCILIATION_ENABLED==='true'
+if(reconciliationEnabled && (!sourceLedger || !codaSync || !codaSyncKey))
+  throw Error('RECONCILIATION_REQUIRES_SOURCE_AND_CODA_SYNC')
+const reconciliationToken=process.env.FUNIX_CODA_API_TOKEN ?? ''
+if(reconciliationEnabled && reconciliationToken.length<16)
+  throw Error('RECONCILIATION_REQUIRES_CODA_READ_TOKEN')
+const reconciliationInterval=Number(process.env.FUNIX_CODA_RECONCILIATION_INTERVAL_MS ?? 600_000)
+let reconciliation:ReturnType<typeof startDevelopmentReconciliationScheduler>|undefined
+if(reconciliationEnabled && sourceLedger && codaSync && codaSyncKey) {
+  createDevelopmentOutboxSchema(db)
+  const outbox=new DevelopmentCodaOutbox(db)
+  const cycle=createCodaBackedDevelopmentReconciliationCycle(
+    {token:reconciliationToken},
+    {
+      source:sourceLedger.ledger,decisions:sourceLedger.decisionLedger,
+      outbox,hmacSecret:codaSyncKey,now:Date.now,
+      // Local receptor reuses the same validated transaction as the HMAC
+      // endpoint; no unnecessary HTTP loopback or third-party credentials.
+      transport:async request=>{
+        try {return {status:202,body:codaSync.repo.sync(JSON.parse(request.body))}}
+        catch(error) {return {status:error instanceof ServiceError?error.status:500}}
+      },
+    },
+  )
+  reconciliation=startDevelopmentReconciliationScheduler(cycle,{intervalMs:reconciliationInterval})
+}
+app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
-  app.close(() => { db.close(); process.exit(0) })
+  const stopping=reconciliation?.stop()
+  app.close(async () => { await stopping; db.close(); process.exit(0) })
   app.closeIdleConnections()
   setTimeout(() => process.exit(1), 15_000).unref()
 })
