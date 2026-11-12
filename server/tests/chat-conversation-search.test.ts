@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { filterLoadedConversations } from '../../src/chat/conversation-search'
-import type { ConversationRow } from '../../src/chat/evolution-read-model'
+import { filterLoadedConversations } from '../../src/chat/conversation-search.ts'
+import type { ConversationRow } from '../../src/chat/evolution-read-model.ts'
 
 const row = (id: string, name: string | null, phone: string | null): ConversationRow => ({
   conversationId: id, displayName: name, phoneNumber: phone, updatedAt: null, unreadCount: 0,
