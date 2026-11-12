@@ -136,7 +136,8 @@ test('DEV n8n draft: initial and confirmed Coda queries use the exact WhatsApp J
   for(const name of ['Get all rows','Coda | Confirmar linha canônica (RASCUNHO)']){
     const query=fixture.codaQueries[name]
     assert.ok(query,'Expected Coda query for '+name)
-    assert.match(query,/api_ID Omnichanel/)
+    assert.match(query,/c-rAEurF2Nmz/)
+    assert.doesNotMatch(query,/api_ID Omnichanel/)
     assert.match(query,/whatsappJid/)
     assert.doesNotMatch(query,/funil_contatoE164|telefoneE164/)
   }
