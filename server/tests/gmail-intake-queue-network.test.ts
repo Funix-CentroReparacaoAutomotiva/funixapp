@@ -100,3 +100,73 @@ test('integração HTTP local: enqueue, claim, classificador, ack e replays sem 
     db.close()
   }
 })
+
+test('resposta perdida do classificador e do ACK não duplica avisos ou decisões',async()=>{
+  const db=openDatabase(':memory:')
+  createGmailIntakeSchema(db)
+  createGmailIntakeQueueSchema(db)
+  const queue=new GmailIntakeQueue(db,now)
+  const repository=new GmailIntakeRepository(db)
+  const queueApi=createGmailQueueEndpoint(queue,queueSecret,true,now)
+  const classifyApi=createGmailCandidateIngest(repository,intakeSecret,true,now)
+  const server=createServer(async(req,res)=>{
+    try{
+      const path=new URL(req.url??'/', 'http://localhost').pathname
+      const result=path.endsWith('/intake-candidates')
+        ? await classifyApi(req,res)
+        : await queueApi(req,res,path.endsWith('/enqueue')?'enqueue':path.endsWith('/claim')?'claim':path.endsWith('/ack')?'ack':'status')
+      res.writeHead(path.endsWith('/intake-candidates')?202:200,{'content-type':'application/json'})
+      res.end(JSON.stringify(result))
+    }catch(error){
+      const e=error as {status?:number,code?:string}
+      res.writeHead(e.status??500,{'content-type':'application/json'})
+      res.end(JSON.stringify({code:e.code??'UNEXPECTED'}))
+    }
+  })
+  try{
+    await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve))
+    const address=server.address()
+    assert.ok(address&&typeof address!=='string')
+    const base='http://127.0.0.1:'+address.port
+    async function post(path:string,data:unknown,secret=queueSecret){
+      const raw=JSON.stringify(data),ts=String(now())
+      const signature=createHmac('sha256',secret).update(ts+'.'+raw).digest('hex')
+      const res=await fetch(base+path,{method:'POST',headers:{
+        'content-type':'application/json','x-funix-updates-timestamp':ts,'x-funix-updates-signature':signature
+      },body:raw})
+      return {status:res.status,body:await res.json() as Record<string,unknown>}
+    }
+    const root='/api/integrations/gmail/'
+    await post(root+'queue/enqueue',{messageId:relevant})
+    const requestId=randomUUID()
+    const first=await post(root+'queue/claim',{limit:1,requestId})
+    const lostClaimResponse=await post(root+'queue/claim',{limit:1,requestId})
+    assert.deepEqual(lostClaimResponse.body,first.body)
+    const claims=first.body.claims as Array<{messageId:string,leaseToken:string}>
+    assert.equal(claims.length,1)
+    const candidate={messageId:relevant,subject:'Autorização do orçamento',snippet:'Reparo de veículo aguardando análise'}
+    const acceptedButResponseLost=await post(root+'intake-candidates',candidate,intakeSecret)
+    assert.equal(acceptedButResponseLost.status,202)
+    const replayed=await post(root+'intake-candidates',candidate,intakeSecret)
+    assert.equal(replayed.status,202)
+    assert.deepEqual(replayed.body,acceptedButResponseLost.body)
+    const receipt={
+      messageId:relevant,leaseToken:claims[0]!.leaseToken,
+      result:'notified',noticeId:replayed.body.noticeId,errorCode:null
+    }
+    const committedButResponseLost=await post(root+'queue/ack',receipt)
+    assert.equal(committedButResponseLost.status,200)
+    const status=await post(root+'queue/status',{messageId:relevant})
+    assert.equal(status.body.state,'notified')
+    const repeatedReceipt=await post(root+'queue/ack',receipt)
+    assert.deepEqual(repeatedReceipt.body,committedButResponseLost.body)
+    const conflictingAck=await post(root+'queue/ack',{...receipt,result:'ignored',noticeId:null})
+    assert.equal(conflictingAck.status,409)
+    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_notices').get() as {n:number}).n,1)
+    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get() as {n:number}).n,1)
+    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_decisions').get() as {n:number}).n,0)
+  }finally{
+    await new Promise<void>((resolve,reject)=>server.close(err=>err?reject(err):resolve()))
+    db.close()
+  }
+})
