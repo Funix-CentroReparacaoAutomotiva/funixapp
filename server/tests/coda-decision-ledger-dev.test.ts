@@ -85,3 +85,29 @@ test('DEV decision: modified persisted mapping cannot evade digest verification'
     assert.equal(f.outbox.stats().pending,0)
   }finally{f.db.close()}
 })
+
+test('DEV decision: two Coda rows sharing one origin marker cannot be selected',()=>{
+  const f=fixture()
+  try{
+    f.source.append(source(),t)
+    f.decisions.append({eventId:ev,codaRowId:'i-ROW_1',remoteJid:jid},t)
+    const duplicate={...originalRow,id:'i-ROW_2'}
+    assert.throws(
+      ()=>reconcileConfirmedDecisions(f.outbox,f.source,f.decisions,[originalRow,duplicate],t),
+      /DECISION_ORIGIN_DUPLICATE/,
+    )
+    assert.equal(f.outbox.stats().pending,0)
+  }finally{f.db.close()}
+})
+test('DEV decision: original message cannot be remapped to a different canonical row',()=>{
+  const f=fixture()
+  try{
+    f.source.append(source(orig),t)
+    f.decisions.append({eventId:orig,codaRowId:'i-ROW_2',remoteJid:jid},t)
+    assert.throws(
+      ()=>reconcileConfirmedDecisions(f.outbox,f.source,f.decisions,[originalRow],t),
+      /DECISION_ORIGIN_CONFLICT/,
+    )
+    assert.equal(f.outbox.stats().pending,0)
+  }finally{f.db.close()}
+})
