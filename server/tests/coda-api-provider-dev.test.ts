@@ -27,6 +27,13 @@ test('Coda DEV provider: projects stable column IDs and rich row reference, obey
   assert.equal(a.complete,false)
   assert.equal(a.nextCursor,'opaque.token-2')
   assert.equal(a.rows[0]?.funil_Canal,'i-O01Tgl0bN2')
+  const actualConnectorRef={...row(),values:{...row().values,
+    'c-PHvyLm0gyd':{type:'ref',rowId:'i-O01Tgl0bN2',targetTableId:'grid-SYNTHETIC'},
+  }}
+  const refPage=createCodaApiPageProvider({
+    token,fetchImpl:(async()=>new Response(JSON.stringify({items:[actualConnectorRef]}),{status:200})) as typeof fetch,
+  })
+  assert.equal((await refPage(null)).rows[0]?.funil_Canal,'i-O01Tgl0bN2')
   assert.equal(a.rows[0]?.fx_UUID,'evo:funix_comercial:SYNTH_1')
   const b=await next(a.nextCursor)
   assert.equal(b.complete,true)
