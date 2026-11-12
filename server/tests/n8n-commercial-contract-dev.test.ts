@@ -6,7 +6,7 @@ import { test } from 'node:test'
 
 type Item={json:Record<string,any>}
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/n8n-comercial-draft.json',import.meta.url),'utf8')) as {
-  workflowId:string;draftVersion:string;code:Record<string,string>
+  workflowId:string;draftVersion:string;code:Record<string,string>;codaQueries:Record<string,string>
 }
 const JID='5531999990001@s.whatsapp.net'
 const OTHER='5531888880000@s.whatsapp.net'
@@ -130,4 +130,14 @@ test('DEV n8n draft: blocked opt-out and ambiguous Coda rows prevent source and 
   const d=classify([coda(),coda({id:'i-CANONICAL_02',fx_UUID:'evo:funix_comercial:ORIGINAL_002'})])
   assert.equal(execute('Evento | Validar vínculo (RASCUNHO sem envio)',[coda()],refs(d)).length,0)
   assert.equal(execute('DEV | Decisão Coda | Preparar',[],refs(d,{status:'not-ready'})).length,0)
+})
+
+test('DEV n8n draft: initial and confirmed Coda queries use the exact WhatsApp JID',()=>{
+  for(const name of ['Get all rows','Coda | Confirmar linha canônica (RASCUNHO)']){
+    const query=fixture.codaQueries[name]
+    assert.ok(query,'Expected Coda query for '+name)
+    assert.match(query,/api_ID Omnichanel/)
+    assert.match(query,/whatsappJid/)
+    assert.doesNotMatch(query,/funil_contatoE164|telefoneE164/)
+  }
 })
