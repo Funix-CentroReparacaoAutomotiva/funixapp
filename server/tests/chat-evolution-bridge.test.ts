@@ -11,7 +11,7 @@ import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-syn
 const origin = 'http://localhost:5173', password = 'synthetic-owner-password'
 const jid = '000000000001@s.whatsapp.net'
 
-function fixture(enabled = true, fail = false, canonical = false, sendEnabled = false, mediaEnabled = false) {
+function fixture(enabled = true, fail = false, canonical = false, sendEnabled = false, mediaEnabled = false, mediaGetError?: string) {
   const db = openDatabase(':memory:')
   if (canonical) createCodaEventSchema(db)
   const sync = canonical ? new CodaEventSyncRepository(db) : undefined
@@ -63,6 +63,7 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
       assert.equal(envelope.key && typeof envelope.key === 'object' && (envelope.key as {id:string}).id,'MEDIA-1')
       assert.equal(kind,'image')
       mediaCalls.push('get:'+kind)
+      if(mediaGetError)throw new Error(mediaGetError)
       return {kind,mimeType:'image/jpeg',base64:Buffer.from([255,216,255,0,1,2,3]).toString('base64')}
     },
   } : undefined)
@@ -384,5 +385,45 @@ test('media routes require canonical Atendimento; reject spoofing and return onl
     if(prior===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
     else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=prior
     f.db.close()
+  }
+})
+
+
+test('issue 141: authenticated canonical media errors distinguish provider failure without exposing provider data',async()=>{
+  const prior=process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+  process.env.FUNIX_EVOLUTION_MEDIA_ENABLED='true'
+  try{
+    for(const [providerError,expectedStatus,expectedCode] of [
+      ['MEDIA_PROVIDER_REJECTED',502,'CHAT_MEDIA_PROVIDER_REJECTED'],
+      ['MEDIA_PROVIDER_INVALID',502,'CHAT_MEDIA_PROVIDER_INVALID'],
+      ['MEDIA_PROVIDER_TIMEOUT',504,'CHAT_MEDIA_TIMEOUT'],
+      ['MEDIA_CONTENT_INVALID',422,'CHAT_MEDIA_INVALID_CONTENT'],
+      ['MEDIA_FORMAT_UNSUPPORTED',415,'CHAT_MEDIA_UNSUPPORTED'],
+      ['PRIVATE_SECRET_PROVIDER_ERROR',503,'CHAT_MEDIA_UNAVAILABLE'],
+    ] as const){
+      const f=fixture(true,false,true,false,true,providerError)
+      try{
+        const event={version:1,source:'coda',eventId:'evo:synthetic:media-error',
+          codaRowId:'i-ERROR_A',instance:'funix_comercial',remoteJid:jid,
+          phoneE164:null,displayName:'Contato Sintético',occurredAt:1794144000}
+        const atendimentoId=f.sync!.sync(event).atendimentoId
+        const cookie=await f.login()
+        const conv=(await(await f.request('/api/chat/conversations',cookie)).json()).items[0].conversationId
+        const path='/api/atendimentos/'+atendimentoId+'/evolution-conversations/'+conv+'/messages/MEDIA-1/media?page=1'
+        assert.equal((await f.request(path)).status,401)
+        assert.equal((await f.request(path.replace(atendimentoId,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),cookie)).status,404)
+        assert.deepEqual(f.mediaCalls,[])
+        const response=await f.request(path,cookie)
+        assert.equal(response.status,expectedStatus,providerError)
+        const body=await response.json()
+        assert.equal(body.error.code,expectedCode)
+        assert(!JSON.stringify(body).includes('PRIVATE_SECRET'))
+        assert(!JSON.stringify(body).includes(jid))
+        assert.deepEqual(f.mediaCalls,['find:MEDIA-1:1','get:image'])
+      }finally{f.db.close()}
+    }
+  }finally{
+    if(prior===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+    else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=prior
   }
 })

@@ -348,6 +348,8 @@ export function createRequestHandler(options: AppOptions) {
           if(code==='MEDIA_FORMAT_UNSUPPORTED')return fail(415,'CHAT_MEDIA_UNSUPPORTED','Formato de vídeo, imagem ou áudio não compatível com o Chat.')
           if(code==='MEDIA_CONTENT_INVALID')return fail(422,'CHAT_MEDIA_INVALID_CONTENT','O arquivo recuperado não corresponde ao formato informado.')
           if(code==='MEDIA_PROVIDER_TIMEOUT')return fail(504,'CHAT_MEDIA_TIMEOUT','A Evolution não respondeu a tempo para esta mídia.')
+          if(code==='MEDIA_PROVIDER_REJECTED')return fail(502,'CHAT_MEDIA_PROVIDER_REJECTED','A Evolution recusou a recuperação desta mídia.')
+          if(code==='MEDIA_PROVIDER_INVALID')return fail(502,'CHAT_MEDIA_PROVIDER_INVALID','A Evolution retornou uma resposta de mídia incompleta ou inválida.')
           return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar a mídia pela Evolution.')
         }
       }
