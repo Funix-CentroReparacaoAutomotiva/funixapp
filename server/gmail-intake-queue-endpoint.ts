@@ -27,7 +27,7 @@ export function createGmailQueueEndpoint(
       if(Object.keys(input).sort().join(',')!=='messageId'||
         typeof input.messageId!=='string'||!messagePattern.test(input.messageId))
         fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Identificador de mensagem inválido.')
-      result=queue.status(input.messageId)
+      result=queue.status(input.messageId as string)
     }else if(action==='claim'){
       if(Object.keys(input).sort().join(',')!=='limit,requestId'||
         typeof input.limit!=='number'||!Number.isSafeInteger(input.limit)||input.limit<1||input.limit>25||
