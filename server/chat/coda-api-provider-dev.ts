@@ -36,7 +36,8 @@ function stringOrEmpty(x:unknown):string {
 }
 function lookupId(x:unknown):unknown {
   // Rich Coda lookup value: {@type:"StructuredValue",additionalType:"row",rowId:"i-..."}
-  if (isObject(x) && x.additionalType==='row' &&
+  if (isObject(x) &&
+      (x.additionalType==='row'||x.type==='ref'||x.type==='row') &&
       typeof x.rowId==='string' && refPattern.test(x.rowId)) return x.rowId
   // Coda may deliver a plain reference ID for an ordinary value.
   if (typeof x==='string' && refPattern.test(x)) return x
