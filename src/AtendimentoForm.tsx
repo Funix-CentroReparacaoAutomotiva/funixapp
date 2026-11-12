@@ -5,6 +5,7 @@ import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
 import {montadoraSuggestions,vehicleSuggestions,composeVehicleDescription,readVehicleRegistration,validVehicleYear,yearSuggestions} from './vehicle-registration'
+import { formatPhoneDraft, phoneCursorPosition } from './phone-mask'
 import './vehicle-registration.css'
 
 function initialFields(record?: Atendimento): AtendimentoInput {
@@ -64,7 +65,19 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
       if (error.status === 401) onAuthRequired()
     } finally { setBusy(false); onBusy(false) }
   }
-  const textField = (name: 'phone' | 'name' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => update(name, event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'phone'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
+  function updatePhone(value: string, caret: number | null, input: HTMLInputElement) {
+    const formatted = formatPhoneDraft(value)
+    const count = (value.slice(0, caret ?? value.length).match(/\\d/g) ?? []).length
+    update('phone', formatted)
+    // React atualiza o input controlado no próximo commit.
+    requestAnimationFrame(() => {
+      if (document.activeElement === input) {
+        const position = phoneCursorPosition(formatted, count)
+        input.setSelectionRange(position, position)
+      }
+    })
+  }
+  const textField = (name: 'phone' | 'name' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => name === 'phone' ? updatePhone(event.target.value, event.target.selectionStart, event.target) : update(name, event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'phone'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
   const suggestionField=(name:'brand'|'model',label:string,choices:readonly string[],onValue:(next:string)=>void)=>
     <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label>
       <input id={`at-${name}`} name={name} value={name==='model'?vehicleName:fields.brand??''} onChange={event=>onValue(event.target.value)}
