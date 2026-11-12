@@ -1,4 +1,4 @@
-import type { ConversationRow } from './evolution-read-model'
+import type { ConversationRow } from './evolution-read-model.ts'
 
 /** Display-only search among pages already retrieved from the authenticated API.
  * Names here are labels, never evidence of a customer's identity or linkage.
