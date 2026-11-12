@@ -72,7 +72,6 @@ test('Issue #158 external inclusion is sufficient across scenarios while histori
   const current=f.commercial.list(f.at.id,scenario.id)[0]!
   f.commercial.updateDiagnosis(f.at.id,current.id,{revision:current.revision,scenarioId:scenario.id,scenarioRevision:scenario.revision,services:current.services.map(l=>{const data={...l,quantity:'2'};delete data.executionConfirmed;return data})})
   assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
-  const changed=f.commercial.list(f.at.id,scenario.id)[0]!
   scenario=f.scenarios.list(f.at.id)[0]!
   const amount=b.preview(f.at.id,request(scenario.id)).snapshot.calculation.total
   assert(b.preview(f.at.id,request(scenario.id)).canEmit)
