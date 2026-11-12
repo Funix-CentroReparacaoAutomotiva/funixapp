@@ -66,6 +66,9 @@ async def device_case(browser, width, height):
                          "phoneNumber": "5531999990002", "updatedAt": None, "unreadCount": 0},
                     ],
                 }))
+            if path in [f"/api/chat/conversations/{A}/active-atendimento",
+                        f"/api/chat/conversations/{B}/active-atendimento"] and method == "GET":
+                return await route.fulfill(**response(200, {"atendimentoId": None}))
             if path == "/api/atendimentos" and method == "GET":
                 if state["fail_search"]:
                     return await route.fulfill(**response(503, {"error": {"code": "SYNTHETIC_TEMPORARY_ERROR"}}))
