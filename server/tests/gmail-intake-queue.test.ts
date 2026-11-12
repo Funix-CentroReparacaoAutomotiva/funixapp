@@ -1,4 +1,8 @@
 import test from 'node:test'
+import {mkdtempSync,rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {randomUUID} from 'node:crypto'
 import assert from 'node:assert/strict'
 import {openDatabase} from '../database.ts'
 import {createGmailIntakeSchema} from '../gmail-intake-schema.ts'
@@ -118,4 +122,38 @@ test('duas instâncias no mesmo banco não reclamam o mesmo evento',()=>{
   assert.equal(claims[0]?.messageId,msg)
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts WHERE outcome='leased'").get()!.n,1)
  }finally{db.close()}
+})
+
+test('dois handles SQLite independentes compartilham claim e recuperam após interrupção',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'funix-gmail-queue-'))
+ const path=join(dir,'queue.sqlite')
+ const firstDb=openDatabase(path)
+ const secondDb=openDatabase(path)
+ let time=Date.UTC(2026,10,11,5,0)
+ const now=()=>time
+ try{
+  createGmailIntakeSchema(firstDb)
+  createGmailIntakeQueueSchema(firstDb)
+  const first=new GmailIntakeQueue(firstDb,now)
+  const second=new GmailIntakeQueue(secondDb,now)
+  first.enqueue(msg)
+  const requestId=randomUUID()
+  const original=first.claim(1,requestId)
+  assert.equal(original.length,1)
+  assert.deepEqual(second.claim(1,requestId),original)
+  assert.deepEqual(second.claim(1,randomUUID()),[])
+  time+=120001
+  const [recovered]=second.claim(1,randomUUID())
+  assert.ok(recovered)
+  assert.equal(recovered.attempt,2)
+  assert.notEqual(recovered.leaseToken,original[0]!.leaseToken)
+  assert.throws(()=>first.acknowledge({messageId:msg,leaseToken:original[0]!.leaseToken,result:'ignored',noticeId:null,errorCode:null}),{code:'GMAIL_QUEUE_STALE'})
+  assert.equal(second.acknowledge({messageId:msg,leaseToken:recovered.leaseToken,result:'ignored',noticeId:null,errorCode:null}).state,'ignored')
+  assert.equal(first.status(msg).state,'ignored')
+  assert.equal(firstDb.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get()!.n,2)
+ }finally{
+  secondDb.close()
+  firstDb.close()
+  rmSync(dir,{recursive:true,force:true})
+ }
 })
