@@ -17,7 +17,7 @@ export function startDevelopmentReconciliationScheduler(
   let active:Promise<'busy'|'completed'|'failed'>|null=null
   const trigger=():Promise<'busy'|'completed'|'failed'>=>{
     if(stopping||active)return Promise.resolve('busy')
-    const work=(async():'Promise<"completed"|"failed">'=>{
+    const work=(async():Promise<'completed'|'failed'>=>{
       try{
         const result=await run()
         if(result.status!=='completed')return 'failed'
