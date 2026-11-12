@@ -153,8 +153,9 @@ export function createEvolutionChatBridge(
       purge()
       const entry = byId.get(conversationId)
       const remoteJid = associations?.resolveRemoteJid(conversationId, 'funix_comercial') ?? entry?.jid
-      if (!remoteJid || !/^[0-9]{8,15}@s\.whatsapp\.net$/.test(remoteJid) ||
-          canonicalFor(remoteJid) !== atendimentoId) return { state: 'unlinked' as const }
+      const recipient = remoteJid ? sendTarget(remoteJid) : null
+      if (!recipient || canonicalFor(remoteJid) !== atendimentoId ||
+          codaSync.resolveActive(recipient) !== atendimentoId) return { state: 'unlinked' as const }
       if (pendingSends.has(conversationId)) return { state: 'busy' as const }
       pendingSends.add(conversationId)
       try {
@@ -169,8 +170,9 @@ export function createEvolutionChatBridge(
       if(!media||!codaSync)return {state:'invalid' as const}
       const entry=byId.get(conversationId)
       const jid=associations?.resolveRemoteJid(conversationId,'funix_comercial')??entry?.jid
-      if(!jid||!/^[0-9]{8,15}@s\.whatsapp\.net$/.test(jid)||
-        canonicalFor(jid)!==atendimentoId)return {state:'unlinked' as const}
+      const recipient = jid ? sendTarget(jid) : null
+      if(!recipient||canonicalFor(jid)!==atendimentoId||
+        codaSync.resolveActive(recipient)!==atendimentoId)return {state:'unlinked' as const}
       if(pendingSends.has(conversationId))return {state:'busy' as const}
       pendingSends.add(conversationId)
       try{
