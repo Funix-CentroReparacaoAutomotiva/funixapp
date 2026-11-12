@@ -2,7 +2,7 @@ import type { DevelopmentCodaOutbox } from './coda-outbox-dev.ts'
 import { deliverDevelopmentCodaEvent, type CodaOutboxTransport } from './coda-outbox-worker-dev.ts'
 import type { DevelopmentSourceLedger } from './coda-source-storage-dev.ts'
 import type { DevelopmentDecisionLedger } from './coda-decision-ledger-dev.ts'
-import { reconcileConfirmedDecisions } from './coda-decision-ledger-dev.ts'
+import { reconcileConfirmedDecisions, assertNoConflictingCodaOriginClaims } from './coda-decision-ledger-dev.ts'
 import { reconcilePersistedSourceLedger } from './coda-source-ledger-dev.ts'
 import type { RecoverableCodaRow } from './coda-recovery-dev.ts'
 
@@ -80,6 +80,9 @@ export function createDevelopmentReconciliationCycle(config: ReconciliationConfi
         cursor=page.nextCursor
       }
       if(!complete) throw Error('RECONCILIATION_PAGE_LIMIT')
+      // Fail the entire cycle before ANY enqueue when an immutable decision
+      // contradicts a Coda creation marker or the origin is duplicated.
+      assertNoConflictingCodaOriginClaims(config.decisions,rows)
       // Identical source events queued via both paths are idempotent. A crash
       // after partial enqueue is harmless; the following complete scan retries.
       const original=reconcilePersistedSourceLedger(config.outbox,config.source,rows,config.now())
