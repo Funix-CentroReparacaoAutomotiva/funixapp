@@ -74,12 +74,12 @@ test('Fase4 capacity and actual write failure roll back all inserts/flags/origin
   }finally{db.close()}
  }
 })
-test('Fase4 new suggestions do not alter financial rules, component MR, technical totals or frozen budgets/PDF; third parties require explicit confirmation',async ()=>{
+test('Fase4 new suggestions do not alter financial rules, component MR, technical totals or frozen budgets/PDF; third-party inclusion needs no second confirmation',async ()=>{
  const db=openDatabase(':memory:')
  try{
   const f=fase4Fixture(db,false),b=new BudgetRepository(db);new ComponentRepository(db).save(f.at.id,{pieceId:f.item.id,name:'QA componente',manualPrice:'10.01',quantity:'0.25',notes:''});const s=f.scenarios.list(f.at.id)[0]!,input={scenarioId:s.id,negotiation:{mode:'none'}},preview=b.preview(f.at.id,input),v=(await b.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})),pdf=b.pdf(f.at.id,v.id)
   ready(f);const req=request(f,'assisted',recommendations(db,f.diagnosis.id,'leve').map(r=>r.id)),settings=f.pricing.settings(f.at.id).settings,r=applySuggestedServices(db,f.at.id,f.item.id,req);assert(r.item.services.at(-1)!.executionConfirmed===false);assert.equal(db.prepare('SELECT COUNT(*)n FROM scenario_service_confirmations').get()!.n,0)
-  assert(b.preview(f.at.id,input).snapshot.calculation.errors.some(e=>e.toLowerCase().includes('confirm')));assert.equal(b.preview(f.at.id,input).snapshot.calculation.componentSubtotal,preview.snapshot.calculation.componentSubtotal);assert.deepEqual(f.pricing.settings(f.at.id).settings,settings);assert.deepEqual(b.get(f.at.id,v.id),v);assert.deepEqual(b.pdf(f.at.id,v.id),pdf)
+  assert(!b.preview(f.at.id,input).snapshot.calculation.errors.some(e=>e.toLowerCase().includes('confirm')));assert(b.preview(f.at.id,input).snapshot.calculation.lines.some(l=>l.included&&l.execution==='external_confirmation'&&l.executionConfirmed===true));assert.equal(b.preview(f.at.id,input).snapshot.calculation.componentSubtotal,preview.snapshot.calculation.componentSubtotal);assert.deepEqual(f.pricing.settings(f.at.id).settings,settings);assert.deepEqual(b.get(f.at.id,v.id),v);assert.deepEqual(b.pdf(f.at.id,v.id),pdf)
   const scene=f.scenarios.list(f.at.id)[0]!,external=r.item.services.find(l=>l.serviceId===f.entries[5]!.serviceId)!;f.scenarios.update(f.at.id,scene.id,{revision:scene.revision,serviceFlags:{[external.id]:false}});const p=b.preview(f.at.id,input);assert(p.canEmit);assert.equal(p.snapshot.calculation.energy,'21');assert.equal(p.snapshot.calculation.days,'6')
  }finally{db.close()}
 })

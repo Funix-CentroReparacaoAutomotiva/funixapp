@@ -12,6 +12,7 @@ import {calculate,negotiation} from './pricing-engine.ts'
 import {ServiceError} from './errors.ts'
 import {Q} from './exact.ts'
 import{InstallmentRepository,executionDeadline,installmentSnapshot,budgetBlockingErrors}from'./budget-terms.ts'
+import{hasIncludedPainting}from'../shared/budget-terms.ts'
 import{toJsreportData,frozenTerms}from'./jsreport-adapter.ts'
 import{configuredJsreport,renderJsreportPdf,validatePdf}from'./jsreport-client.ts'
 import {scenarioLabel} from '../shared/commercial.ts'
@@ -58,7 +59,7 @@ export class BudgetRepository {
   const referenced=new Set(items.flatMap(item=>[item.pieceId,item.diagnosisId,...item.services.flatMap(l=>[l.serviceId,l.dimensionId,l.diagnosisId])]).filter((v):v is string=>typeof v==='string'))
   const snapshot:BudgetSnapshot={schema:1,...(scenario.serviceConfirmations?{serviceConfirmations:structuredClone(scenario.serviceConfirmations)}:{}),commercialCuration:{...CURATION_STAMP},...(requestedTotal!==undefined?{requestedTotal}:{}),atendimento,composition:{items,components,catalog:catalog.filter(item=>referenced.has(item.id))},scenarioId:scenario.id,scenarioName:scenarioLabel(scenario),compositionRevision:state.revision,scenarioRevision:scenario.revision,configuration,settings:state.settings,calculation,conditions:configuration.config.conditions}
   snapshot.pdfPresentation={version:"technical-stage-v1",errors:technicalGroups(snapshot).errors}
-  snapshot.executionDeadline=executionDeadline(scenario.deadline,calculation.days)
+  snapshot.executionDeadline=executionDeadline(scenario.deadline,calculation.days,hasIncludedPainting(items,scenario))
   if(calculation.total!==null)snapshot.installments=installmentSnapshot(calculation.total,new InstallmentRepository(this.db).get())
   return {snapshot,token:hash(snapshot),canEmit:budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}
  }
