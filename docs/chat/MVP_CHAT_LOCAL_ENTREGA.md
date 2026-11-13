@@ -101,6 +101,22 @@ O modo de observação registra eventos e páginas lidas, mas mantém a Evolutio
 
 A ligação do produtor ainda é uma operação de implantação; o workflow publicado não foi alterado nesta tarefa.
 
+Releitura final somente de leitura: workflow `21wpOido7t5OHb7i`, versão publicada `e67f2d3d-77df-41b2-a144-6c907eba17c6`, 55 nós. O draft tem 63 nós e outra versão: não publicar o draft inteiro como parte desta entrega. O grafo publicado liga `Webhook` a `Code in JavaScript`, que já faz o filtro comercial; o emissor existente confirma Atendimento e não constitui relay de todas as mensagens. As configurações retornadas não explicitam retenção de falhas, portanto não comprovam entrega durável.
+
+Mudança delimitada para revisão na implantação: anexar a entrega de Chat ao evento original, antes do filtro comercial, conservando todas as conexões atuais. Preparar/assinar o mesmo corpo, enviar somente `/api/integrations/whatsapp/events` e conferir o recibo pelo contrato implementado em `conversation-relay.ts`. O ramo comercial continua independente. Não reutilizar o payload de confirmação Coda como mensagem nem publicar os nós DEV já existentes no draft. A política de retenção/reprocessamento do produtor precisa ser comprovada antes da ativação; três tentativas HTTP em memória não a substituem.
+
+```mermaid
+flowchart LR
+  E[Evolution: evento original] --> N[n8n: entrada existente]
+  N --> R[Relay autenticado de Chat]
+  R --> I[FunixApp: inbox e mensagens locais]
+  N --> B[Regras comerciais atuais]
+  B --> C[Coda: criar ou reutilizar]
+  C --> A[Confirmação canônica no FunixApp]
+  I --> Q[Leitura e envio com contexto validado]
+  A --> Q
+```
+
 Ao preparar a alteração autorizada, ler a versão publicada mais recente e alterar somente a entrega dos eventos de Chat. Preservar classificação, preferências, criação/reuso Coda e demais automações. A entrega de Chat precisa observar também saídas do celular e os eventos de atualização; não ficar dentro do filtro de entradas elegíveis para gerar lead.
 
 O produtor deve manter eventos não confirmados em execução/fila durável até receber recibo correspondente. Conferir a política real de retenção/retry do n8n; não considerar um ramo com erro ignorado e execução descartada como entrega confiável. A indisponibilidade do Chat não pode interromper o processamento comercial existente. Não criar um segundo webhook/sessão WhatsApp nem outro banco para fazer esse transporte.

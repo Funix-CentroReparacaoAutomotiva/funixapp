@@ -1,0 +1,82 @@
+{
+  "implementationCommit": "c0837c0153d90573cd9b7ee4a9bcf89ecfe2f4ed",
+  "base": "0a67cce35e11f2647be657ed487024aeefc78a91",
+  "npmCheck": {
+    "passed": true,
+    "serverTests": 948,
+    "voiceCostTests": 8,
+    "failures": 0,
+    "build": true,
+    "serverTypecheck": true,
+    "lint": true,
+    "lintWarningLines": 39,
+    "bundleSizeWarning": true
+  },
+  "browser": [
+    {
+      "script": "tests/browser/chat_mvp_local.py",
+      "passed": true,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "assertionGroups": 15
+    },
+    {
+      "script": "tests/browser/chat_v20_conversations.py",
+      "passed": true,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "assertionGroups": 30
+    },
+    {
+      "script": "tests/browser/chat_v20_links.py",
+      "passed": true,
+      "widths": [
+        320,
+        390,
+        1440
+      ],
+      "assertionGroups": 24
+    }
+  ],
+  "environment": {
+    "node": "v24.22.1",
+    "networkDuringBrowser": "localhost only",
+    "database": "temporary synthetic SQLite",
+    "provider": "synthetic/offline; sends simulated"
+  },
+  "coveredRegressions": [
+    "all 16 original requirements; see IDENTIDADE_PN_LID_REVISAO.md matrix",
+    "generic history authorization and same-timestamp canonical conflict reproduced before fixes",
+    "real edited-null history structure: 18 sanitized envelopes",
+    "actual webhook upsert without provider database row ID",
+    "durable pending messages, late confirmation, exact quarantine replay after newer confirmation",
+    "edits/deletions/status out of order, lost provider edit and rendered older-message refresh",
+    "125-message keyset paging across refresh, SQLite reopen and stable PN/LID handle",
+    "durable send receipt, lost HTTP ACK, uncertain/interrupted operation and A-B-A context revision",
+    "media deletion before and during retrieval prevents content exposure",
+    "commit failure never acknowledges or leaves partial projection"
+  ],
+  "providerReadOnlyEvidence": "validation.json (historic initial diagnostic, not final suite count)",
+  "publishedWorkflowObserved": {
+    "id": "21wpOido7t5OHb7i",
+    "version": "e67f2d3d-77df-41b2-a144-6c907eba17c6",
+    "nodes": 55,
+    "draftDiffers": true,
+    "modified": false
+  },
+  "limitations": [
+    "Installed SQLite not queried; Drico repair not executed",
+    "Producer relay not connected/published; durable retention and installed edit/delete/status subscriptions require authorized rollout validation",
+    "Historical Evolution offset pages are not a snapshot; no complete import promised",
+    "One existing timing-sensitive quotation regression failed under a concurrent earlier run; passed isolated and in the final complete suite; unrelated module unchanged",
+    "Lint and bundle warnings remain"
+  ],
+  "productionChanges": false,
+  "realWhatsAppSends": 0
+}
