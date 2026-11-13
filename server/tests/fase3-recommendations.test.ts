@@ -83,7 +83,7 @@ test('Fase3 CLI dry-run opens existing V9 read-only, preserves hash/mode, requir
   const applied=run([...args,'--confirm-plan',p.planHash]);assert.equal(applied.status,0,applied.stderr);const repeat=run(args);assert.equal(JSON.parse(repeat.stdout).inserts,0);assert.equal(run([...args,'--confirm-plan',p.planHash]).status,1)
   assert.equal(run(['--source',sourceFile,'--database',join(dir,'absent.sqlite')]).status,1)
   writeFileSync(sourceFile,'synthetic-sensitive-placeholder');const malformed=run(args);assert.equal(malformed.status,1);assert(!malformed.stderr.includes('synthetic-sensitive-placeholder'));writeFileSync(sourceFile,JSON.stringify(f.source))
-  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(16,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=13');db.close()
+  db=new DatabaseSync(file);db.exec('INSERT INTO schema_migrations VALUES(17,\'synthetic future\')');db.close();assert.equal(run(args).status,1);db=new DatabaseSync(file);db.exec('DELETE FROM schema_migrations WHERE version=13');db.close()
   const old=join(dir,'v8.sqlite');db=new DatabaseSync(old);migrateV8(db);assert.throws(()=>planRecommendations(db,f.source),/exatamente V9/);db.close()
  }finally{try{db.close()}catch{}rmSync(dir,{recursive:true,force:true})}
 })
