@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 // Issue #71: offline spike. No default transport, environment, bootstrap or route.
 export type ReadRequest = {
   method: 'POST'
@@ -68,7 +69,7 @@ function input<T>(parse: () => T): T { try { return parse() } catch { return fai
  * A provider pushName is a presentation hint, not verified person identity.
  * Ignore invalid/malformed names instead of leaking JIDs or failing all chats.
  */
-function displayName(value: unknown): string | null {
+export function displayName(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   if (!trimmed || [...trimmed].length > 80 ||
@@ -92,7 +93,7 @@ export type ReadMessage = {
   media: { reference: string; mimeType: string | null; bytes: number | null; available: false } | null
   statuses: string[]
 }
-export type ReadChat = { remoteJid: string; remoteJidAlt?: string | null; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
+export type ReadChat = { remoteJid: string; remoteJidAlt?: string | null; identityEvidenceRef?: string; displayName: string | null; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }
 export type MessagePage = {
   items: ReadMessage[]
   currentPage: number
@@ -211,6 +212,7 @@ export class EvolutionReadPoc {
       // The provider's latest message is an explicit alias hint, not a name/phone inference.
       // Invalid optional aliases are ignored; ambiguous aliases are rejected by the bridge.
       let remoteJidAlt: string | null = null
+      let identityEvidenceRef: string | undefined
       if (row.lastMessage && typeof row.lastMessage === 'object' && !Array.isArray(row.lastMessage)) {
         const last = row.lastMessage as Record<string, unknown>
         if (last.key && typeof last.key === 'object' && !Array.isArray(last.key)) {
@@ -218,6 +220,7 @@ export class EvolutionReadPoc {
           const alt = messageKey.remoteJidAlt
           // A lastMessage belonging to another chat cannot establish an identity alias.
           if (messageKey.remoteJid === remoteJid && (last.instanceId == null || last.instanceId === this.instanceId) && typeof alt === 'string') {
+            if(typeof messageKey.id==='string'&&messageKey.id.length<=200&&!/[\u0000-\u001f\u007f]/.test(messageKey.id))identityEvidenceRef='sha256:'+createHash('sha256').update(messageKey.id).digest('hex')
             try { remoteJidAlt = jid(alt) } catch { remoteJidAlt = null }
             // Only PN<->LID pairs can bridge the two identity domains.
             if (remoteJidAlt === remoteJid ||
@@ -225,7 +228,7 @@ export class EvolutionReadPoc {
           }
         }
       }
-      items.push({ remoteJid, ...(remoteJidAlt ? { remoteJidAlt } : {}),
+      items.push({ remoteJid, ...(remoteJidAlt ? { remoteJidAlt, ...(identityEvidenceRef?{identityEvidenceRef}:{}) } : {}),
         displayName: displayName(row.pushName),
         phoneNumber: remoteJid.endsWith('@s.whatsapp.net') ? remoteJid.slice(0, -'@s.whatsapp.net'.length) : null,
         updatedAt, unreadCount: row.unreadCount == null ? null : integer(row.unreadCount) })
@@ -258,13 +261,13 @@ export class EvolutionReadPoc {
     envelope:Record<string,unknown>;kind:'image'|'video'|'audio';bytes:number|null
   }|null>{
     const requested=input(()=>jid(remoteJid))
-    const p=input(()=>integer(page,1,1000))
+    input(()=>integer(page,1,1000))
     if(typeof messageId!=='string'||messageId.length<1||messageId.length>200)return fail('INPUT')
     const raw=object(await this.request('findMessages',{
-      where:{key:{remoteJid:requested,remoteJidAlt:requested}},page:p,offset:50,
+      where:{key:{id:messageId,remoteJid:requested,remoteJidAlt:requested}},page:1,offset:50,
     }))
     const messages=object(raw.messages)
-    if(!Array.isArray(messages.records)||messages.records.length>50||messages.currentPage!==p)return fail()
+    if(!Array.isArray(messages.records)||messages.records.length>50||messages.currentPage!==1)return fail()
     for(const value of messages.records){
       const parsed=this.message(value,requested)
       if(parsed.messageId!==messageId)continue

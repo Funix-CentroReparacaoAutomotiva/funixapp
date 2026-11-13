@@ -236,3 +236,30 @@ test('durable identity: conflict discovered within history cannot disclose or en
     assert.deepEqual(f.sends,[])
   } finally { f.db.close() }
 })
+
+test('conflicting same-time ERP confirmation durably blocks prior context and generic read until newer confirmation', async () => {
+  const f=fixture()
+  try {
+    const first=f.repo.sync(f.event()).atendimentoId, bridge=f.bridge()
+    const item=(await bridge.list(0)).items[0]!
+    assert.throws(()=>f.repo.sync(f.event('i-SYNTH_B',PN,100)), /inconsistente/)
+    assert.equal(f.repo.resolveIdentityActive(PN),null)
+    assert.equal(await bridge.messages(item.conversationId,1),null)
+    assert.equal((await bridge.sendTextForAtendimento(first,item.conversationId,'Bloquear')).state,'unlinked')
+    f.repo.sync(f.event()) // replay must not remove a known conflict
+    assert.equal(f.repo.resolveIdentityActive(PN),null)
+    const latest=f.repo.sync(f.event('i-SYNTH_A',PN,101)).atendimentoId
+    assert.equal(f.repo.resolveIdentityActive(PN),latest)
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n),1)
+  }finally{f.db.close()}
+})
+
+test('generic history cannot bypass PN/LID quarantine even with a known stable conversation handle', async()=>{
+  const f=fixture()
+  try{
+    f.repo.sync(f.event());const bridge=f.bridge(),item=(await bridge.list(0)).items[0]!
+    f.repo.rememberProviderAliases([row(LID2,PN)])
+    assert.equal(await bridge.messages(item.conversationId,1),null)
+    assert.deepEqual(f.reads,[])
+  }finally{f.db.close()}
+})

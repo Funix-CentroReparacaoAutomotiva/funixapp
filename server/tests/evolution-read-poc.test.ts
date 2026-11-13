@@ -405,3 +405,12 @@ test('Norte Sul Fabio sanitized provider history: all 18 envelopes survive, edit
   assert.equal(unavailable.text,null)
   assert.deepEqual(unavailable.statuses,['EDITED','SERVER_ACK'])
 })
+
+test('media lookup uses exact WhatsApp message key and conversation, independent of old offset page',async()=>{
+  const message=syntheticMessage(7,{messageType:'imageMessage',message:{imageMessage:{mimetype:'image/jpeg'}},key:{id:'target-7',fromMe:false,remoteJid:PN}})
+  let requestBody:unknown
+  const provider=new EvolutionReadPoc({instance:'synthetic',instanceId:INSTANCE,transport:async request=>{requestBody=request.body;return {status:200,body:envelope([message])}}})
+  const result=await provider.findMediaEnvelope(PN,'target-7',9)
+  assert.equal(result?.kind,'image')
+  assert.deepEqual(requestBody,{where:{key:{id:'target-7',remoteJid:PN,remoteJidAlt:PN}},page:1,offset:50})
+})

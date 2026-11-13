@@ -1,3 +1,4 @@
+import type { ConversationRuntime } from './conversation-runtime.ts'
 import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution-bridge.ts'
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
 import { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
@@ -18,6 +19,7 @@ export function loadEvolutionChat(
   env: NodeJS.ProcessEnv,
   associations?: V20AssociationRepository,
   codaSync?: CodaEventSyncRepository,
+  local?: ConversationRuntime,
 ): EvolutionChatBridge | undefined {
   if (env.FUNIX_EVOLUTION_READ_ENABLED !== 'true') return undefined
   const key = env.FUNIX_EVOLUTION_READ_API_KEY
@@ -43,5 +45,5 @@ export function loadEvolutionChat(
   const media = env.FUNIX_EVOLUTION_MEDIA_ENABLED === 'true'
     ? createMediaGateway({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
     : undefined
-  return createEvolutionChatBridge(provider, Date.now, associations, codaSync, sender, media)
+  return createEvolutionChatBridge(provider, Date.now, associations, codaSync, sender, media, local)
 }

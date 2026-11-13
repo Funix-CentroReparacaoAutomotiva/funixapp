@@ -1,3 +1,6 @@
+import { normalizeEvolutionEvent } from './evolution-normalize.ts'
+import { parseConversationEvent } from './conversation-event.ts'
+import type { ConversationStore } from './conversation-store.ts'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { ServiceError } from '../errors.ts'
@@ -47,7 +50,7 @@ function rawBody(req: IncomingMessage): Promise<Buffer> {
 }
 
 /** Dedicated relay seam. It neither registers instances nor creates links. */
-export function createIngestEndpoint(chat: ChatRepository, options?: IngestOptions, now = Date.now) {
+export function createIngestEndpoint(chat: ChatRepository, options?: IngestOptions, now = Date.now, local?:ConversationStore, providerIdentity?:{instance:string;instanceId:string}) {
   const keys = ingestKeys(options)
   const dummySecret = Buffer.alloc(32)
   let active = 0, window = -1, attempts = 0
@@ -82,16 +85,22 @@ export function createIngestEndpoint(chat: ChatRepository, options?: IngestOptio
       catch { throw new ServiceError(422, 'CHAT_INVALID_EVENT', 'Evento de Chat inválido.') }
       // Schema and allowlist are checked only after raw-body authentication.
       // The repository independently checks explicit local registration and commit.
-      const event = parseEvent(raw)
+      let schema:unknown
+      try{schema=JSON.parse(raw)}catch{throw new ServiceError(422,'CHAT_INVALID_EVENT','Evento inválido.')}
+      const rawProvider=!!providerIdentity&&!!local&&!!schema&&typeof schema==='object'&&'event' in schema
+      const normalized=rawProvider?await normalizeEvolutionEvent(schema,providerIdentity!):null
+      const v2=rawProvider||!!schema&&typeof schema==='object'&&(schema as {schemaVersion?:unknown}).schemaVersion===2
+      const event = normalized??(v2 ? parseConversationEvent(raw) : parseEvent(raw))
+      if(v2&&!local)throw new ServiceError(503,'CHAT_LOCAL_DISABLED','Recebimento local não habilitado.')
       if (!key.instances.has(event.instance)) throw new ServiceError(403, 'WHATSAPP_INSTANCE_DENIED', 'Instância não autorizada.')
       let receipt
-      try { receipt = chat.ingest(raw) }
+      try { receipt = v2 ? local!.ingest(normalized?JSON.stringify(normalized):raw) : chat.ingest(raw) }
       catch (cause) {
         if (cause instanceof ServiceError) throw cause
         throw new ServiceError(503, 'WHATSAPP_EVENT_STORAGE', 'Persistência temporariamente indisponível.')
       }
       status = 202
-      return { receiptId: receipt.receiptId, state: receipt.state, disposition: receipt.disposition }
+      return { receiptId: receipt.receiptId, state: receipt.state, disposition: receipt.disposition, ...(v2?{eventId:receipt.eventId}:{}) }
     } catch (cause) {
       status = cause instanceof ServiceError ? cause.status : 500
       closeAfterResponse(req, res)

@@ -149,6 +149,19 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const restore = useRef<{ bottom: true } | { id: string; offset: number } | { top: number } | null>(null)
   const [autoError, setAutoError] = useState(false)
   const [newMessages, setNewMessages] = useState(0)
+  const contextToken=useRef<string|null>(null)
+  const sendOperation=useRef<{fingerprint:string;id:string}|null>(null)
+  const cursors=useRef(new Map<number,string>())
+  const [localHistory,setLocalHistory]=useState(false)
+  const [syncBusy,setSyncBusy]=useState(false)
+  const [syncFailure,setSyncFailure]=useState('')
+  const [olderProviderPage,setOlderProviderPage]=useState<number|null>(1)
+  function command(fingerprint:string){
+    if(!contextToken.current)return {}
+    if(sendOperation.current?.fingerprint!==fingerprint)sendOperation.current={fingerprint,id:crypto.randomUUID()}
+    return {requestId:sendOperation.current.id,contextToken:contextToken.current}
+  }
+
 
   const readingPosition = useCallback(() => {
     const element = scroll.current
@@ -185,11 +198,15 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     lastCheckedAt.current = Date.now()
     if (!silent) { autoPaused.current = false; setAutoError(false); setBusy(true); setFailure('') }
     try {
-      const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}`, { signal: controller.signal })
+      const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
       setCanSendText((raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
       setCanMedia((raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
+      contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
+      setLocalHistory(result.source==='local')
+      if(page===1)cursors.current.clear()
+      if(result.nextCursor)cursors.current.set(page+1,result.nextCursor)
       const pageItems = result.items.map(m => ({ ...m, page }))
       const old = itemsRef.current
       const position = old.length ? readingPosition() : { bottom: true } as const
@@ -219,7 +236,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       // Revoke composer capabilities on every failed authorization/refresh.
       setCanSendText(false)
       setCanMedia(false)
-      if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE') {
+      contextToken.current=null
+      if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
         itemsRef.current = []
         setItems([])
         setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
@@ -285,7 +303,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         '/api/atendimentos/'+encodeURIComponent(atendimentoId)+
         '/evolution-conversations/'+encodeURIComponent(conversationId)+'/send-media',
         {method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({kind,mimeType:file.type,base64,...(kind!=='audio'?{caption:draft}: {})})})
+          body:JSON.stringify({kind,mimeType:file.type,base64,...command(JSON.stringify(['media',file.type,base64,draft])),...(kind!=='audio'?{caption:draft}: {})})})
+      sendOperation.current=null
       setFile(null);setDraft('')
       setSendNotice('Arquivo aceito pela Evolution. Confira no WhatsApp antes de reenviar.')
       void load(1)
@@ -301,8 +320,9 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     try {
       await api<{ state: 'accepted'; messageId: string }>(
         `/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/send-text`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) },
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text,...command(JSON.stringify(['text',text])) }) },
       )
+      sendOperation.current=null
       setDraft('')
       setSendNotice('Mensagem aceita pelo WhatsApp. Confira o histórico antes de enviar novamente.')
       void load(1)
@@ -311,28 +331,48 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       setSendFailure('Envio não confirmado. Verifique a conversa antes de tentar outra vez, para evitar mensagem duplicada.')
     } finally { sendingRef.current = false; setSending(false) }
   }
+  async function syncHistory(page=1){
+    if(syncBusy)return
+    setSyncBusy(true);setSyncFailure('')
+    try{
+      const result=await api<{nextPage:number|null}>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/sync-history`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page})})
+      setOlderProviderPage(result.nextPage)
+      if(page===1)loadedOlderPage.current=false
+      await load(1)
+    }catch(cause){
+      const error=cause as RequestFailure
+      if(error.status===401){onUnauthorized();return}
+      setSyncFailure('Não foi possível sincronizar com o WhatsApp. As mensagens já recebidas permanecem salvas.')
+      if(error.status===404||error.code==='CHAT_PROVIDER_SCOPE'){itemsRef.current=[];setItems([]);setCanSendText(false);setCanMedia(false);contextToken.current=null}
+    }finally{setSyncBusy(false)}
+  }
+
   return <div className="detail-page chat-page chat-readonly chat-evolution">
     <div className="chat-stage"><div className="at-chat-scroll" ref={scroll}>
       <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
         <div className="chat-read-toolbar">
           {autoError && <span className="chat-auto-state" role="status">Atualização pausada</span>}
-          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy} onClick={() => void load(1)}>↻</button>
+          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy||syncBusy} onClick={() => void (localHistory?syncHistory(1):load(1))}>↻</button>
         </div>
         {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
           const element = scroll.current
           if (element) element.scrollTop = element.scrollHeight
           setNewMessages(0)
         }}>Ver {newMessages} {newMessages === 1 ? 'nova mensagem' : 'novas mensagens'}</button>}
+        {syncFailure && <p role="status">{syncFailure}</p>}
+        {localHistory && <small className="chat-auto-state">Histórico salvo no FunixApp · histórico anterior pode estar incompleto</small>}
         {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           
-          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>Mídia indisponível</span>}</div>}
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time></footer>
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
+        {localHistory && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
       </section>
     </div></div>
     {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void (file ? sendMedia() : sendText()) }}>
