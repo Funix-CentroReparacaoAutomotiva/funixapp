@@ -64,7 +64,7 @@
 .detail-avatar{width:27px;height:27px;flex:0 0 27px;border-radius:8px;background:#fff;color:#061e65;display:grid;place-items:center;font-size:10px;font-weight:800}
 .detail-contact-lines{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:3px;max-width:100%}
 .detail-contact-lines strong{font-size:11px;line-height:1.2;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.detail-contact-lines .detail-phone{font-size:10px;line-height:1.2;font-weight:400;color:#e2eaff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-contact-lines .detail-phone{font-size:10px;line-height:1.2;font-weight:400;color:#e2eaff;min-width:0;white-space:normal;overflow-wrap:anywhere}
 .detail-identity{border:1px solid #51669b;border-radius:14px;background:#ffffff14;padding:6px 9px;max-width:49%;text-align:center;min-width:104px}
 .detail-identity strong{display:block;font-size:11px}
 .detail-identity span{display:block;font-size:8px;color:#c4d0ec;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

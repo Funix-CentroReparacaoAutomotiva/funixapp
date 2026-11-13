@@ -25,7 +25,7 @@ function validate(input: unknown, patch: boolean) {
   for (const [key, limit] of Object.entries(textLimits)) {
     if (source[key] === undefined) continue
     if (typeof source[key] !== 'string' || source[key].length > limit) invalid(`Campo ${key} inválido ou maior que ${limit} caracteres.`)
-    output[key] = source[key].trim()
+    output[key] = key === 'plate' ? source[key].trim().toUpperCase() : source[key].trim()
   }
   if (!patch || source.phone !== undefined) {
     if (typeof output.phone !== 'string' || !output.phone || !/\d/.test(output.phone)) invalid('Informe um telefone de contato.')
