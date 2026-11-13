@@ -59,7 +59,7 @@ export type ComponentSearchContext={pieceName:string;position?:string}
 // Existing two-argument calls retain their legacy behavior for compatibility.
 export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string,context?:ComponentSearchContext) {
  const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100,true)
- const piece=context?technical(context.pieceName,100,true):null
+ const piece=context?technical(context.pieceName.replace(/\s*·\s*/g,' '),100,true):null
  const position=context?.position?.trim()?technical(context.position,40):null
  if(!brand||!model||!part||(context&&!piece)||(context?.position?.trim()&&!position))return null
  // Catalog names sometimes already contain the side. Do not repeat "Passageiro".
