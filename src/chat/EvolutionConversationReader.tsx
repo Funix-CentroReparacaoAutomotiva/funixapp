@@ -175,12 +175,16 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
     // The Funil can contain an Atendimento before this Evolution JID has
     // received a canonical Coda event. Search existing records on click.
     const phone = row.phoneNumber ? comparablePhone(row.phoneNumber) : ''
-    const query = phone.length >= 8 ? phone : row.displayName?.trim() || ''
-    if (query.length < 2) {
+    // Never search by display name: it is not identity evidence. A LID-only
+    // conversation stays pending until a trusted PN/canonical mapping exists.
+    // Require an unambiguous Brazilian DDD + subscriber number for this
+    // legacy navigation lookup; never synthesize digits from a LID.
+    if (!/^[1-9][0-9][0-9]{8,9}$/.test(phone)) {
       setUnlinked(row.conversationId)
-      setLookupError('Não foi possível confirmar a identidade da conversa. A sincronização precisa ser verificada.')
+      setLookupError('Telefone confiável indisponível. A identidade da conversa precisa ser confirmada antes de abrir um Atendimento.')
       return
     }
+    const query = phone
     const controller = new AbortController()
     lookupRequest.current = controller
     setLookupBusy(row.conversationId)
@@ -198,7 +202,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
         for (const item of result.items) {
           if (!item || typeof item.id !== 'string' || typeof item.phone !== 'string') continue
           // Exact telephone match allows automatic NAVIGATION, never a new link.
-          if (!phone || comparablePhone(item.phoneNormalized || item.phone) === phone)
+          if (comparablePhone(item.phoneNormalized || item.phone) === phone)
             matches.set(item.id, item)
         }
         if (result.nextOffset === null) break
