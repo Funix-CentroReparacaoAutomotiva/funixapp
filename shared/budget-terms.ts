@@ -32,7 +32,7 @@ export function hasIncludedPainting(items:DiagnosisItem[],scenario:Scenario):boo
 }
 export function executionDeadline(setting:ScenarioDeadline|undefined,technicalDays:string|null,paintingIncluded=false):ExecutionDeadline{
  const configured=setting??{mode:'automatic',manualDays:null}
- const suggestion=technicalDays&&/^\\d+$/.test(technicalDays)&&Number.isSafeInteger(Number(technicalDays))&&Number(technicalDays)>0?Number(technicalDays):null
+ const suggestion=technicalDays&&/^\d+$/.test(technicalDays)&&Number.isSafeInteger(Number(technicalDays))&&Number(technicalDays)>0?Number(technicalDays):null
  const requested=configured.mode==='manual'?configured.manualDays:suggestion
  // Do not invent a technical estimate when energy/capacity is missing.
  const effectiveDays=requested===null?null:paintingIncluded?Math.max(requested,5):requested
