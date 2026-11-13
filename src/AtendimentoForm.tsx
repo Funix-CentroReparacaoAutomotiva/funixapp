@@ -12,6 +12,8 @@ function initialFields(record?: Atendimento): AtendimentoInput {
   return {
     phone: record?.phone ?? '', name: record?.name ?? '', vehicle: record?.vehicle ?? '',
     brand: record?.brand ?? '', model: record?.model ?? '', plate: record?.plate ?? '',
+    fabricationYear: record?.fabricationYear ?? (record ? null : ''),
+    modelYear: record?.modelYear ?? (record ? null : ''),
     reason: record?.reason ?? '', notes: record?.notes ?? '', stage: record?.stage ?? 'novo-lead',
     rejectionReason: record?.rejectionReason ?? '', explicitRefusal: record?.explicitRefusal ?? false,
   }
@@ -27,7 +29,6 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   const initial = useMemo(() => initialFields(record), [record])
   const [fields, setFields] = useState(initial)
   const [vehicleName,setVehicleName]=useState(()=>readVehicleRegistration(initial as {vehicle:string;model:string;brand:string}).name)
-  const [year, setYear] = useState(() => readVehicleRegistration(initial as {vehicle:string;model:string;brand:string}).year)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const [conflict, setConflict] = useState(false)
@@ -38,19 +39,26 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   function update<K extends keyof AtendimentoInput>(name: K, value: AtendimentoInput[K]) {
     setFields(previous => ({ ...previous, [name]: value }))
   }
+  function description(name:string, fabrication:string|null|undefined, model:string|null|undefined):string {
+    const year=fabrication&&model?fabrication+'/'+model:model||fabrication||''
+    return composeVehicleDescription(name,year)
+  }
   function updateVehicleName(value:string){
     setVehicleName(value)
-    setFields(previous=>({...previous,model:value,vehicle:composeVehicleDescription(value,year)}))
+    setFields(previous=>({...previous,model:value,
+      vehicle:description(value,previous.fabricationYear,previous.modelYear)}))
   }
-  function updateYear(value:string){
-    setYear(value)
-    setFields(previous=>({...previous,model:vehicleName,vehicle:composeVehicleDescription(vehicleName,value)}))
+  function updateYear(key:'fabricationYear'|'modelYear', value:string){
+    setFields(previous=>{
+      const next={...previous,[key]:value}
+      return {...next,model:vehicleName,vehicle:description(vehicleName,next.fabricationYear,next.modelYear)}
+    })
   }
   async function save(event: FormEvent) {
     event.preventDefault()
     if (busy || conflict) return
     if (!fields.phone.trim()) { setFailure('Informe o telefone para abrir o Atendimento.'); return }
-    if (!validVehicleYear(year)) { setFailure('Ano de fabricação/modelo inválido. Use 2020 ou 2019/2020.'); return }
+    if (!validVehicleYear(fields.fabricationYear ?? '') || !validVehicleYear(fields.modelYear ?? '')) { setFailure('Informe anos válidos com quatro dígitos ou deixe os campos vazios.'); return }
     setBusy(true); onBusy(true); setFailure('')
     try {
       const saved = await api<Atendimento>(record ? `/api/atendimentos/${encodeURIComponent(record.id)}` : '/api/atendimentos', {
@@ -90,15 +98,16 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
       <div className="at-vehicle-fields" aria-label="Identificação do veículo">
         {suggestionField('brand','Montadora',montadoraSuggestions,next=>update('brand',next))}
         {suggestionField('model','Veículo',vehicleSuggestions(fields.brand??''),updateVehicleName)}
-        <div className="at-field"><label htmlFor="at-year">Ano fabricação/modelo</label>
-          <input id="at-year" name="year" list="at-year-choices" inputMode="text" placeholder="Ex.: 2019/2020"
-           maxLength={15} value={year} onChange={event=>updateYear(event.target.value)} autoComplete="off" disabled={busy}/>
-          <datalist id="at-year-choices">{yearSuggestions().map(value=><option key={value} value={value}/>)}</datalist>
-        </div>
+        {(['fabricationYear','modelYear'] as const).map(key=><div className="at-field" key={key}>
+          <label htmlFor={`at-${key}`}>{key==='fabricationYear'?'Ano de fabricação':'Ano do modelo'}</label>
+          <input id={`at-${key}`} name={key} list="at-year-choices" inputMode="numeric" placeholder="Ex.: 2020"
+           maxLength={4} value={fields[key]??''} onChange={event=>updateYear(key,event.target.value)} autoComplete="off" disabled={busy}/>
+        </div>)}
+        <datalist id="at-year-choices">{yearSuggestions().filter(value=>/^\\d{4}$/.test(value)).map(value=><option key={value} value={value}/>)}</datalist>
       </div>
       <p className="at-form-hint at-vehicle-hint">Selecione uma sugestão ou digite livremente. Ex.: Fiat · Punto · 2019/2020.</p>
-      {record&&readVehicleRegistration(record).legacy&&fields.vehicle===record.vehicle&&fields.model===record.model&&
-       <p className="at-form-hint at-legacy-vehicle">Registro antigo: os campos originais serão preservados até você editar Veículo ou Ano.</p>}
+      {record&&record.fabricationYear===null&&record.modelYear===null&&readVehicleRegistration(record).year&&
+       <p className="at-form-hint at-legacy-vehicle">Ano no cadastro antigo: {readVehicleRegistration(record).year}. Confirme separadamente os anos de fabricação e modelo. Nenhum ano será atribuído automaticamente.</p>}
       {textField('plate', 'Placa', 100)}
       <div className="at-field"><label htmlFor="at-reason">Motivo / descrição do ocorrido</label><textarea id="at-reason" value={fields.reason} onChange={event => update('reason', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
       <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy} /></div>
