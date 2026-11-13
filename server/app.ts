@@ -1,3 +1,4 @@
+import { EvolutionReadError } from './experimental/evolution-read/client.ts'
 import{createVoiceEndpoint}from'./voice-endpoint.ts'
 import{openAIVoiceProvider}from'./voice-provider.ts'
 import type{VoiceProvider}from'./voice-provider.ts'
@@ -116,6 +117,20 @@ export function createRequestHandler(options: AppOptions) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     const send = (status: number, value: unknown) => { res.writeHead(status); res.end(JSON.stringify(value)) }
     const fail = (status: number, code: string, message: string) => send(status, { error: { code, message, requestId } })
+    const providerFailure = (cause: unknown, operation: 'list' | 'history') => {
+      const reason = cause instanceof EvolutionReadError ? cause.code : 'UNKNOWN'
+      const providerStatus = cause instanceof EvolutionReadError ? cause.httpStatus : undefined
+      console.warn(JSON.stringify({ event: 'chat_provider_failure', requestId, operation, reason, providerStatus }))
+      if (reason === 'HTTP' && (providerStatus === 401 || providerStatus === 403))
+        return fail(503, 'CHAT_PROVIDER_AUTH', 'A integração WhatsApp precisa de revisão de acesso. Informe o código de referência ao suporte.')
+      if (reason === 'SCOPE' || reason === 'CONFLICT')
+        return fail(503, 'CHAT_PROVIDER_SCOPE', 'O histórico foi bloqueado por inconsistência de identidade. Solicite revisão do vínculo.')
+      if (reason === 'RESPONSE')
+        return fail(503, 'CHAT_PROVIDER_RESPONSE', 'A Evolution retornou uma resposta incompatível. Informe o código de referência ao suporte.')
+      if (reason === 'TIMEOUT')
+        return fail(503, 'CHAT_PROVIDER_TIMEOUT', 'A Evolution demorou para responder. Tente atualizar o histórico.')
+      return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar o WhatsApp agora. Tente novamente.')
+    }
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
@@ -448,7 +463,7 @@ export function createRequestHandler(options: AppOptions) {
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page))
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
-        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
+        } catch (cause) { return providerFailure(cause, 'history') }
       }
       // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
       if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
@@ -465,7 +480,7 @@ export function createRequestHandler(options: AppOptions) {
             const result = await options.evolutionChat.list(Number(skip))
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
             return send(200, options.v20Associations ? { ...result, linksEnabled: true } : result)
-          } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as conversas agora.') }
+          } catch (cause) { return providerFailure(cause, 'list') }
         }
         if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const page = url.searchParams.get('page') ?? '1'
@@ -474,7 +489,7 @@ export function createRequestHandler(options: AppOptions) {
           const result = await options.evolutionChat.messages(messagesRoute![1]!, Number(page))
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
-        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
+        } catch (cause) { return providerFailure(cause, 'history') }
       }
       const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
       if (chatReadRoute) {

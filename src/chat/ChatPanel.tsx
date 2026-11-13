@@ -216,12 +216,18 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       if (controller.signal.aborted) return
       const error = cause as RequestFailure
       if (error.status === 401) { itemsRef.current = []; setItems([]); onUnauthorized(); return }
-      if (silent) { autoPaused.current = true; setAutoError(true); return }
-      if (error.status === 404) {
+      // Revoke composer capabilities on every failed authorization/refresh.
+      setCanSendText(false)
+      setCanMedia(false)
+      if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE') {
         itemsRef.current = []
         setItems([])
         setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
-      } else setFailure('Não foi possível carregar o histórico Evolution. Tente novamente.')
+      } else if (silent) { autoPaused.current = true; setAutoError(true); return }
+      else {
+        const detail = error.code?.startsWith('CHAT_PROVIDER_') ? error.message : 'Não foi possível carregar o histórico Evolution. Tente novamente.'
+        setFailure(detail + (error.requestId ? ` Referência: ${error.requestId}` : ''))
+      }
       autoPaused.current = true
       setAutoError(true)
     } finally {
@@ -385,13 +391,13 @@ function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
   if (resolution.state==='error') return <Notice title="Não foi possível verificar o vínculo do Chat">Atualize o Atendimento para tentar novamente. Nenhuma conversa foi selecionada por aproximação.</Notice>
   if (resolution.state==='unlinked') return <div className="detail-page chat-page chat-readonly"><div className="chat-unlinked"><Notice title="Conversa da Evolution não vinculada a este Atendimento">Este registro ainda não tem uma conversa canônica única confirmada. Abra Conversas, selecione o contato e utilize o botão de Atendimento vinculado quando disponível. Não vinculamos históricos apenas pelo telefone.</Notice><a className="fh-filter" href="/conversas">Abrir Conversas</a></div></div>
   return resolution.state==='linked' && resolution.id
-    ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${resolution.id}`} atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
     : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
 }
 export function ChatPanel({ atendimentoId, evolutionConversationId, onUnauthorized, children }: {
   atendimentoId: string; evolutionConversationId?: string | null; onUnauthorized: () => void; children: ReactNode
 }) {
   return evolutionConversationId
-    ? <EvolutionAtendimentoChat atendimentoId={atendimentoId} conversationId={evolutionConversationId} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
-    : <ResolvedAtendimentoChat atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
+    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${evolutionConversationId}`} atendimentoId={atendimentoId} conversationId={evolutionConversationId} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    : <ResolvedAtendimentoChat key={atendimentoId} atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
 }

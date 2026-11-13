@@ -61,6 +61,13 @@ export function createCodaEventSchema(db: DatabaseSync) {
       ' coda_row_id TEXT NOT NULL REFERENCES coda_sync_atendimentos(coda_row_id) ON DELETE RESTRICT,',
       ' occurred_at INTEGER NOT NULL, event_id TEXT NOT NULL,',
       ' PRIMARY KEY(instance,remote_jid));',
+      'CREATE TABLE IF NOT EXISTS chat_provider_conversations (',
+      ' id TEXT PRIMARY KEY, instance TEXT NOT NULL, remote_jid TEXT NOT NULL,',
+      ' UNIQUE(instance,remote_jid));',
+      'CREATE TABLE IF NOT EXISTS chat_provider_alias_evidence (',
+      ' instance TEXT NOT NULL, pn TEXT NOT NULL, lid TEXT NOT NULL, first_seen_at TEXT NOT NULL,',
+      ' PRIMARY KEY(instance,pn,lid));',
+      'CREATE INDEX IF NOT EXISTS chat_provider_alias_lid ON chat_provider_alias_evidence(instance,lid);',
       'CREATE TABLE IF NOT EXISTS coda_sync_receipts (',
       ' event_id TEXT PRIMARY KEY, digest TEXT NOT NULL,',
       ' atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,',
@@ -131,6 +138,77 @@ export class CodaEventSyncRepository {
       this.db.exec('COMMIT')
       return { atendimentoId, state }
     } catch (error) { this.db.exec('ROLLBACK'); throw error }
+  }
+
+  /** Provider-only evidence. Missing latest aliases never erase prior evidence.
+   * Contradictory evidence is retained and quarantines BOTH sides, across pages/restarts.
+   * This records identity, never creates an Atendimento or a Coda association.
+   */
+  rememberProviderAliases(rows: Array<{ remoteJid: string; remoteJidAlt?: string | null }>): void {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      for (const row of rows) {
+        if (!jid.test(row.remoteJid)) return invalid()
+        const alt = row.remoteJidAlt
+        if (!alt || !jid.test(alt) || alt.endsWith('@lid') === row.remoteJid.endsWith('@lid')) continue
+        const [pn, lid] = row.remoteJid.endsWith('@lid') ? [alt, row.remoteJid] : [row.remoteJid, alt]
+        this.db.prepare('INSERT OR IGNORE INTO chat_provider_alias_evidence VALUES(?,?,?,?)')
+          .run(instance,pn,lid,this.now())
+      }
+      this.db.exec('COMMIT')
+    } catch (error) { this.db.exec('ROLLBACK'); throw error }
+  }
+
+  /** At most one PN and one LID. No transitive merging or last-write-wins identity. */
+  identityJids(remoteJid: string): string[] | null {
+    if (!jid.test(remoteJid)) return null
+    const rows = this.db.prepare(
+      'SELECT pn,lid FROM chat_provider_alias_evidence WHERE instance=? AND (pn=? OR lid=?)',
+    ).all(instance,remoteJid,remoteJid)
+    if (!rows.length) return [remoteJid]
+    if (rows.length !== 1) return null
+    const pn = String(rows[0]!.pn), lid = String(rows[0]!.lid)
+    const count = this.db.prepare(
+      'SELECT COUNT(*) AS n FROM chat_provider_alias_evidence WHERE instance=? AND (pn=? OR lid=?)',
+    ).get(instance,pn,lid)!
+    return Number(count.n) === 1 ? [lid,pn] : null
+  }
+
+  rememberProviderConversation(remoteJid: string): string {
+    if (!jid.test(remoteJid)) return invalid()
+    this.db.prepare('INSERT OR IGNORE INTO chat_provider_conversations VALUES(?,?,?)')
+      .run(randomUUID(),instance,remoteJid)
+    return String(this.db.prepare('SELECT id FROM chat_provider_conversations WHERE instance=? AND remote_jid=?')
+      .get(instance,remoteJid)!.id)
+  }
+
+  providerJid(conversationId: string): string | null {
+    const row = this.db.prepare('SELECT remote_jid FROM chat_provider_conversations WHERE instance=? AND id=?')
+      .get(instance,conversationId)
+    return row ? String(row.remote_jid) : null
+  }
+
+  resolveIdentityActive(remoteJid: string): string | null {
+    const members = this.identityJids(remoteJid)
+    if (!members) return null
+    const active = new Set(members.map(value => this.resolveActive(value)).filter((value): value is string => value !== null))
+    return active.size === 1 ? [...active][0]! : null
+  }
+
+  /** One shared resolution for Funil and list. Prefer the provider's LID domain.
+   * Multiple unrelated conversations and divergent active contexts remain blocked.
+   */
+  resolveIdentityJid(atendimentoId: string): string | null {
+    const rows = this.db.prepare(
+      'SELECT c.remote_jid FROM coda_sync_active_conversations c JOIN coda_sync_atendimentos a ON a.coda_row_id=c.coda_row_id WHERE c.instance=? AND a.atendimento_id=?',
+    ).all(instance,atendimentoId)
+    const preferred = new Set<string>()
+    for (const row of rows) {
+      const remoteJid = String(row.remote_jid), members = this.identityJids(remoteJid)
+      if (!members || this.resolveIdentityActive(remoteJid) !== atendimentoId) return null
+      preferred.add(members[0]!)
+    }
+    return preferred.size === 1 ? [...preferred][0]! : null
   }
 
   /** Never select an arbitrary conversation when multiple PN/LID contexts are active. */

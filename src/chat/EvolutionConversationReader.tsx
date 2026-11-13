@@ -229,7 +229,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
       setLookupError(incomplete
         ? 'Consulta incompleta. Atualize a lista e confira a sincronização.'
         : !found.length
-          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada.'
+          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada. Solicite a conferência do evento confirmado Coda/n8n e use Verificar novamente após a recuperação.'
           : 'Não há Atendimento aberto identificado com segurança para esta conversa. Confira a sincronização.')
     } catch (cause) {
       if (controller.signal.aborted) return

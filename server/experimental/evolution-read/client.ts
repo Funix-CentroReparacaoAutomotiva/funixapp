@@ -217,7 +217,7 @@ export class EvolutionReadPoc {
           const messageKey = last.key as Record<string, unknown>
           const alt = messageKey.remoteJidAlt
           // A lastMessage belonging to another chat cannot establish an identity alias.
-          if (messageKey.remoteJid === remoteJid && typeof alt === 'string') {
+          if (messageKey.remoteJid === remoteJid && (last.instanceId == null || last.instanceId === this.instanceId) && typeof alt === 'string') {
             try { remoteJidAlt = jid(alt) } catch { remoteJidAlt = null }
             // Only PN<->LID pairs can bridge the two identity domains.
             if (remoteJidAlt === remoteJid ||
@@ -275,7 +275,10 @@ export class EvolutionReadPoc {
     return null
   }
   private message(value: unknown, requested: string): ReadMessage {
-    const row = object(value), key = object(row.key), payload = object(row.message)
+    const row = object(value), key = object(row.key)
+    // Evolution retains some edited/unavailable envelopes with message=null.
+    // Identity and instance remain mandatory; missing content is never fabricated.
+    const payload = row.message === null ? null : object(row.message)
     const instanceId = string(row.instanceId), remoteJid = jid(key.remoteJid)
     const remoteJidAlt = key.remoteJidAlt == null ? null : jid(key.remoteJidAlt)
     if (instanceId !== this.instanceId || (remoteJid !== requested && remoteJidAlt !== requested)) return fail('SCOPE')
@@ -283,14 +286,14 @@ export class EvolutionReadPoc {
     const timestamp = integer(row.messageTimestamp, 0, 2147483647)
     const messageType = string(row.messageType, 100)
     let kind: ReadMessage['kind'] = 'unsupported', text: string | null = null, media: ReadMessage['media'] = null
-    if (messageType === 'conversation') {
+    if (payload && messageType === 'conversation') {
       if (typeof payload.conversation !== 'string' || payload.conversation.length > 16384) return fail()
       kind = 'text'; text = payload.conversation
-    } else if (messageType === 'extendedTextMessage') {
+    } else if (payload && messageType === 'extendedTextMessage') {
       const extended = object(payload.extendedTextMessage)
       if (typeof extended.text !== 'string' || extended.text.length > 16384) return fail()
       kind = 'text'; text = extended.text
-    } else {
+    } else if (payload) {
       const mediaTypes = { imageMessage: 'image', audioMessage: 'audio', videoMessage: 'video', documentMessage: 'document' } as const
       if (Object.hasOwn(mediaTypes, messageType)) {
         kind = mediaTypes[messageType as keyof typeof mediaTypes]
@@ -301,7 +304,7 @@ export class EvolutionReadPoc {
       }
     }
     if (!Array.isArray(row.MessageUpdate) || row.MessageUpdate.length > 100) return fail()
-    const allowed = new Set(['ERROR', 'PENDING', 'SERVER_ACK', 'DELIVERY_ACK', 'READ', 'PLAYED'])
+    const allowed = new Set(['ERROR', 'PENDING', 'SERVER_ACK', 'DELIVERY_ACK', 'READ', 'PLAYED', 'EDITED'])
     const statuses = row.MessageUpdate.map(value => {
       const status = string(object(value).status, 30)
       if (!allowed.has(status)) return fail()

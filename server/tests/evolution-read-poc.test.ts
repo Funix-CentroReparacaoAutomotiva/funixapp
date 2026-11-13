@@ -1,3 +1,4 @@
+import { sanitizedFabioHistory } from './fixtures/evolution-edited-history.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EvolutionReadError, EvolutionReadPoc, reconcileReadBatches } from '../experimental/evolution-read/client.ts'
@@ -373,4 +374,34 @@ test('Evolution findChats never trusts mismatched message scope or same-kind ali
   ])).findChats()
   assert.equal(rows[0]?.remoteJidAlt, undefined)
   assert.equal(rows[1]?.remoteJidAlt, undefined)
+})
+
+
+test('Evolution observed edited envelope: null content and EDITED status do not discard valid neighboring history', async () => {
+  const unavailable = syntheticMessage(2, { message: null, MessageUpdate: [{status:'EDITED'},{status:'SERVER_ACK'}] })
+  const result = await client(response(envelope([syntheticMessage(1),unavailable,syntheticMessage(3)]))).findMessages(PN)
+  assert.equal(result.items.length,3)
+  const item = result.items.find(m=>m.messageId==='msg-2')!
+  assert.equal(item.kind,'unsupported'); assert.equal(item.text,null); assert.equal(item.media,null)
+  assert.deepEqual(item.statuses,['EDITED','SERVER_ACK'])
+  assert.equal(result.items[0]?.text,'Synthetic 1')
+})
+
+test('Evolution null content never weakens scope, instance, key or status validation', async () => {
+  const unavailable = syntheticMessage(2, { message: null, MessageUpdate: [{status:'EDITED'}] })
+  await assert.rejects(client(response(envelope([{...unavailable,instanceId:'other-instance'}]))).findMessages(PN),errorCode('SCOPE'))
+  await assert.rejects(client(response(envelope([{...unavailable,key:{id:'msg-2',remoteJid:OTHER,fromMe:false}}]))).findMessages(PN),errorCode('SCOPE'))
+  await assert.rejects(client(response(envelope([{...unavailable,key:{id:'msg-2',remoteJid:PN,fromMe:'false'}}]))).findMessages(PN),errorCode('RESPONSE'))
+  await assert.rejects(client(response(envelope([{...unavailable,MessageUpdate:[{status:'UNKNOWN'}]}]))).findMessages(PN),errorCode('RESPONSE'))
+})
+
+
+test('Norte Sul Fabio sanitized provider history: all 18 envelopes survive, edited content remains unavailable', async () => {
+  const result=await client(response(envelope(sanitizedFabioHistory))).findMessages('synthetic-fabio@lid')
+  assert.equal(result.items.length,18)
+  assert.equal(result.reportedTotal,18)
+  const unavailable=result.items.find(row=>row.messageId==='sanitized-message-16')!
+  assert.equal(unavailable.kind,'unsupported')
+  assert.equal(unavailable.text,null)
+  assert.deepEqual(unavailable.statuses,['EDITED','SERVER_ACK'])
 })

@@ -43,6 +43,7 @@ async def device_case(browser, width, height):
     added_messages = []
     outbound = []
     outbound_media = []
+    history_error = None
     photo_bytes = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/ub8AAAAASUVORK5CYII=')
     video_bytes = bytes.fromhex('000000186674797069736f6d00000000')
     audio_bytes = b'OggS' + bytes(15)
@@ -113,6 +114,9 @@ async def device_case(browser, width, height):
                     "nextSkip": 3, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
                 poll_calls.append(parsed.query)
+                if history_error:
+                    return await route.fulfill(status=history_error[0], json={"error": {
+                        "code": history_error[1], "message": "Resposta incompatível da Evolution.", "requestId": "synthetic-reference"}})
                 payload = messages_payload(A)
                 payload["items"].extend(added_messages)
                 payload["reportedTotal"] = len(payload["items"])
@@ -261,6 +265,24 @@ async def device_case(browser, width, height):
                        path.startswith("/api/chat/conversations/") for path in sent)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         h.mark(f"{width}px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card")
+
+        # Provider response errors are distinct from empty history and permit a manual retry.
+        history_error = (503, "CHAT_PROVIDER_RESPONSE")
+        await page.get_by_role("button", name="Atualizar mensagens").click()
+        await expect(page.get_by_text("Referência: synthetic-reference", exact=False)).to_be_visible()
+        await expect(page.locator(".chat-composer-row")).to_have_count(0)
+        history_error = None
+        await page.get_by_role("button", name="Atualizar mensagens").click()
+        await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_be_visible()
+        await expect(page.locator(".chat-composer-row")).to_be_visible()
+        # Losing the active canonical context on a silent poll revokes displayed data and send rights.
+        history_error = (404, "CHAT_NOT_LINKED")
+        await page.clock.fast_forward(20_000)
+        await expect(page.get_by_text("O vínculo entre conversa e Atendimento não foi confirmado.", exact=False)).to_be_visible()
+        await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_have_count(0)
+        await expect(page.locator(".chat-composer-row")).to_have_count(0)
+        history_error = None
+        h.mark(f"{width}px: provider error reference/retry and silent context revocation clear history/composer")
 
         # Earlier Funil records can exist without an Evolution Coda mapping.
         # The same card must open the existing Atendimento by exact phone.
