@@ -32,7 +32,8 @@ function fixture(path = ':memory:', read = true) {
   let fail = false,
     after: undefined | (() => void),
     calls = 0,
-    sends = 0
+    sends = 0,
+    mediaReads = 0
   let rows = [
     syntheticMessage(1, { key: { id: 'msg-1', fromMe: false, remoteJid: LID, remoteJidAlt: PN } }),
   ]
@@ -65,6 +66,15 @@ function fixture(path = ':memory:', read = true) {
         }
       },
       findMessages: provider.findMessages.bind(provider),
+      findMediaEnvelope: async (_jid, _id) => {
+        mediaReads++
+        after?.()
+        return {
+          envelope: { key: { id: _id, remoteJid: LID, remoteJidAlt: PN } },
+          kind: 'image' as const,
+          bytes: 4,
+        }
+      },
     },
     Date.now,
     undefined,
@@ -119,6 +129,9 @@ function fixture(path = ':memory:', read = true) {
     bridge,
     event,
     confirm,
+    get mediaReads() {
+      return mediaReads
+    },
     get calls() {
       return calls
     },
@@ -629,6 +642,160 @@ test('provider EDITED version repairs lost edits; missing edited body is hidden 
     )
     await snapshot('Old provider copy', 1794528003)
     assert.equal(f.local.store.page(LID, 1).items[0]!.text, 'Newer live edit')
+  } finally {
+    f.db.close()
+  }
+})
+
+test('PN handle created before LID evidence stays canonical after reconciliation; both raw domains share public identity', async () => {
+  const f = fixture()
+  try {
+    const id = f.confirm(),
+      before = f.identities.rememberProviderConversation(PN)
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(1, { message: { ...f.event().message, remoteJid: PN, remoteJidAlt: null } }),
+      ),
+    )
+    f.local.store.ingest(JSON.stringify(f.event(2)))
+    assert.equal(f.identities.rememberProviderConversation(LID), before)
+    assert.equal(f.identities.rememberProviderConversation(PN), before)
+    assert.deepEqual(f.bridge.conversationForAtendimento(id), { conversationId: before })
+    const history = await f.bridge.messagesForAtendimento(id, before, 1)
+    assert.equal(history?.items.length, 2)
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n), 1)
+    assert.equal(f.db.prepare('PRAGMA foreign_key_check').all().length, 0)
+  } finally {
+    f.db.close()
+  }
+})
+
+test('healthy provider page cannot hide an independently received conversation from the local list', async () => {
+  const f = fixture()
+  try {
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(4, {
+          displayName: 'Outro contato sintético',
+          message: {
+            ...f.event(4).message,
+            remoteJid: 'independent@lid',
+            remoteJidAlt: '000000000002@s.whatsapp.net',
+          },
+        }),
+      ),
+    )
+    const listed = await f.bridge.list(0)
+    assert.equal(listed.source, 'local')
+    assert.equal(listed.providerUnavailable, false)
+    assert(listed.items.some((row) => row.displayName === 'Outro contato sintético'))
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n), 0)
+  } finally {
+    f.db.close()
+  }
+})
+
+test('rendered older message refresh returns edits/deletions outside newest page, filters unchanged versions and isolates another peer', async () => {
+  const f = fixture()
+  try {
+    for (let n = 1; n <= 65; n++) f.local.store.ingest(JSON.stringify(f.event(n)))
+    const id = f.confirm(),
+      handle = f.identities.rememberProviderConversation(LID)
+    const older = f.local.store.states(LID, [{ messageId: 'msg-1' }])[0]!
+    assert.equal(
+      (await f.bridge.messagesForAtendimento(id, handle, 1))!.items.some(
+        (item) => item.messageId === 'msg-1',
+      ),
+      false,
+    )
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(66, {
+          type: 'message.edit',
+          occurredAt: '2026-11-13T00:02:00.000Z',
+          message: { ...f.event().message, text: 'Older edited message' },
+        }),
+      ),
+    )
+    const refreshed = await f.bridge.messageStates(id, handle, [
+      { messageId: 'msg-1', version: older.version },
+    ])
+    assert.equal(refreshed?.items[0]?.text, 'Older edited message')
+    assert.deepEqual(
+      (
+        await f.bridge.messageStates(id, handle, [
+          { messageId: 'msg-1', version: refreshed!.items[0]!.version },
+        ])
+      )?.items,
+      [],
+    )
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(67, {
+          type: 'message.delete',
+          occurredAt: '2026-11-13T00:03:00.000Z',
+          message: { remoteJid: LID, remoteJidAlt: PN, messageId: 'msg-1' },
+        }),
+      ),
+    )
+    assert.equal(
+      (await f.bridge.messageStates(id, handle, [{ messageId: 'msg-1' }]))?.items[0]?.text,
+      null,
+    )
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(68, {
+          message: {
+            ...f.event(68).message,
+            remoteJid: 'another@lid',
+            remoteJidAlt: '000000000002@s.whatsapp.net',
+          },
+        }),
+      ),
+    )
+    assert.deepEqual(
+      (await f.bridge.messageStates(id, handle, [{ messageId: 'msg-68' }]))?.items,
+      [],
+    )
+    f.confirm('i-LOCAL_B', 200)
+    assert.equal(await f.bridge.messageStates(id, handle, [{ messageId: 'msg-1' }]), null)
+  } finally {
+    f.db.close()
+  }
+})
+
+test('deleted media is blocked before provider access and a deletion during retrieval withholds the file', async () => {
+  const f = fixture()
+  try {
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(1, {
+          message: {
+            ...f.event().message,
+            kind: 'image',
+            text: null,
+            media: { mimeType: 'image/jpeg', bytes: 4 },
+          },
+        }),
+      ),
+    )
+    const id = f.confirm(),
+      handle = f.identities.rememberProviderConversation(LID)
+    assert.equal((await f.bridge.mediaForAtendimento(id, handle, 'msg-1', 1))?.state, 'ready')
+    const remove = () =>
+      f.local.store.ingest(
+        JSON.stringify(
+          f.event(2, {
+            type: 'message.delete',
+            message: { remoteJid: LID, remoteJidAlt: PN, messageId: 'msg-1' },
+          }),
+        ),
+      )
+    f.during(remove)
+    assert.equal(await f.bridge.mediaForAtendimento(id, handle, 'msg-1', 1), null)
+    const reads = f.mediaReads
+    assert.equal(await f.bridge.mediaForAtendimento(id, handle, 'msg-1', 1), null)
+    assert.equal(f.mediaReads, reads)
   } finally {
     f.db.close()
   }

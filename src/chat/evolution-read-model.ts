@@ -11,13 +11,14 @@ export type ConversationRow = {
   unreadCount: number | null
   atendimentoId?: string | null
 }
-export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'|'local'; linksEnabled?: true }
+export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'|'local'; linksEnabled?: true; providerUnavailable?:boolean }
 export type ReadUiMessage = {
   messageId: string
   timestamp: number
   fromMe: boolean
   kind: 'text' | 'image' | 'audio' | 'video' | 'document' | 'unsupported'
   text: string | null
+  version?:string // local mutation fingerprint, never authorization
   page?: number // client-only: provider page containing this media ID
 }
 export type ConversationMessages = {
@@ -82,7 +83,7 @@ export function parseConversationList(raw: unknown): ConversationList {
     return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount), ...(Object.hasOwn(row, 'atendimentoId') ? { atendimentoId: row.atendimentoId === null ? null : opaqueId(row.atendimentoId) } : {}) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
-  return data.linksEnabled === true ? { items, nextSkip, source: data.source as 'evolution'|'local', linksEnabled: true } : { items, nextSkip, source: data.source as 'evolution'|'local' }
+  return {items,nextSkip,source:data.source as 'evolution'|'local',...(data.linksEnabled===true?{linksEnabled:true as const}:{}),...(data.source==='local'?{providerUnavailable:data.providerUnavailable===true}:{})}
 }
 
 export function parseConversationMessages(raw: unknown, expectedId: string): ConversationMessages {
@@ -102,7 +103,7 @@ export function parseConversationMessages(raw: unknown, expectedId: string): Con
     const timestamp = count(row.timestamp, 2_147_483_647)
     const text = row.text === null ? null : row.text
     if (text !== null && (typeof text !== 'string' || text.length > 16_384)) return invalid()
-    return { messageId: row.messageId, timestamp, fromMe: row.fromMe, kind: row.kind as ReadUiMessage['kind'], text: text as string | null }
+    return { messageId: row.messageId, timestamp, fromMe: row.fromMe, kind: row.kind as ReadUiMessage['kind'], text: text as string | null, ...(row.version===undefined?{}:typeof row.version==='string'&&/^[a-f0-9]{64}$/.test(row.version)?{version:row.version}:invalid()) }
   })
   return {
     conversationId: expectedId, items, page, nextPage,

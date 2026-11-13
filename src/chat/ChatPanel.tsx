@@ -205,16 +205,27 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       setCanMedia((raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
       setLocalHistory(result.source==='local')
-      if(page===1)cursors.current.clear()
       if(result.nextCursor)cursors.current.set(page+1,result.nextCursor)
-      const pageItems = result.items.map(m => ({ ...m, page }))
+      const refreshed:ReadUiMessage[]=[]
+      if(result.source==='local'&&page===1){
+        const recent=new Set(result.items.map(item=>item.messageId))
+        const older=itemsRef.current.filter(item=>!recent.has(item.messageId))
+        for(let i=0;i<older.length;i+=50){
+          const batch=older.slice(i,i+50)
+          const rawStates=await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/message-states`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:batch.map(item=>({messageId:item.messageId,...(item.version?{version:item.version}:{})}))}),signal:controller.signal})
+          const updates=parseConversationMessages(rawStates,conversationId)
+          refreshed.push(...updates.items.map(item=>({...item,page:batch.find(old=>old.messageId===item.messageId)?.page})))
+        }
+        if(controller.signal.aborted)return
+      }
+      const pageItems = [...result.items.map(m => ({ ...m, page })),...refreshed]
       const old = itemsRef.current
       const position = old.length ? readingPosition() : { bottom: true } as const
       const next = mergeReadMessages(old, pageItems)
       const changed = next.length !== old.length || next.some((item, index) => {
         const before = old[index]
         return !before || before.messageId !== item.messageId || before.timestamp !== item.timestamp ||
-          before.kind !== item.kind || before.text !== item.text || before.fromMe !== item.fromMe || before.page !== item.page
+          before.version !== item.version || before.kind !== item.kind || before.text !== item.text || before.fromMe !== item.fromMe || before.page !== item.page
       })
       if (changed) {
         restore.current = position

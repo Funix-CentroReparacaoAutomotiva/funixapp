@@ -33,12 +33,17 @@ async def case(browser, width):
         await h.login(page)
         await expect(page.get_by_text("Mostrando conversas salvas", exact=False)).to_be_visible()
         await page.get_by_role("button", name="Cliente Sintético Local").click()
-        await expect(page.get_by_text("Mensagem local 65", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Mensagem local 125", exact=True)).to_be_visible()
         assert await page.locator(".chat-message").count() == 50
         await page.get_by_role("button", name="Carregar mensagens anteriores", exact=True).click()
+        await expect(page.get_by_text("Mensagem local 26", exact=True)).to_be_visible()
+        assert await page.locator(".chat-message").count() == 100
+        async with page.expect_response(lambda r: "/message-states" in r.url):
+            await page.clock.fast_forward(21000)
+        await page.get_by_role("button", name="Carregar mensagens anteriores", exact=True).click()
         await expect(page.get_by_text("Mensagem local 1", exact=True)).to_be_visible()
-        assert await page.locator(".chat-message").count() == 65
-        h.mark(f"{width}px: offline list and 65 local messages with keyset pagination")
+        assert await page.locator(".chat-message").count() == 125
+        h.mark(f"{width}px: offline list and 125 local messages; silent refresh preserves older cursor")
         await page.get_by_role("button", name="Atualizar mensagens", exact=True).click()
         await expect(page.get_by_text("As mensagens já recebidas permanecem salvas.", exact=False)).to_be_visible()
         await expect(page.get_by_text("Mensagem local 1", exact=True)).to_be_visible()
@@ -63,14 +68,39 @@ async def case(browser, width):
         assert replay.status == 200 and (await replay.json())["messageId"] == "fixture-send-1"
         h.mark(f"{width}px: lost send response retries same operation and returns first receipt")
 
+        async def receive_event(event):
+            raw = json.dumps(event, separators=(",", ":"))
+            stamp = str(int(time.time()))
+            signature = hmac.new(bytes([1])*32, ("v1\nsynthetic\n" + stamp + "\n" + raw).encode(), hashlib.sha256).hexdigest()
+            response = await context.request.post(ORIGIN + "/api/integrations/whatsapp/events", data=raw, headers={"Content-Type": "application/json", "x-funix-key-id": "synthetic", "x-funix-timestamp": stamp, "x-funix-signature": "sha256=" + signature})
+            assert response.status == 202
+        async def advance_until(assertion):
+            # A poll already in flight may legitimately finish before the event;
+            # let the next scheduled poll observe it instead of freezing at that race.
+            for attempt in range(3):
+                await page.clock.fast_forward(21000)
+                try:
+                    await assertion()
+                    return
+                except AssertionError:
+                    if attempt == 2:
+                        raise
+        mutation = {"schemaVersion": 2, "instance": "funix_comercial", "eventId": "browser:older-edit", "occurredAt": "2026-11-13T00:00:00.000Z", "type": "message.edit", "message": {"remoteJid": "browser-synthetic@lid", "remoteJidAlt": "000000000001@s.whatsapp.net", "messageId": "fixture-1", "timestamp": 1700000001, "fromMe": False, "kind": "text", "text": "Mensagem antiga editada ao vivo", "media": None}}
+        await receive_event(mutation)
+        await advance_until(lambda: expect(page.get_by_text("Mensagem antiga editada ao vivo", exact=True)).to_be_visible(timeout=1500))
+        mutation = {**mutation, "eventId": "browser:older-delete", "occurredAt": "2026-11-13T00:00:01.000Z", "type": "message.delete", "message": {"remoteJid": "browser-synthetic@lid", "remoteJidAlt": "000000000001@s.whatsapp.net", "messageId": "fixture-1"}}
+        await receive_event(mutation)
+        await advance_until(lambda: expect(page.get_by_text("Mensagem antiga editada ao vivo", exact=True)).to_have_count(0, timeout=1500))
+        assert await page.locator(".chat-message").count() == 125
+        h.mark(f"{width}px: edit/delete older than newest page updates already-rendered history")
+
         # A newer signed ERP event changes canonical context while the old Chat remains open.
         body = json.dumps({"version": 1, "source": "coda", "eventId": "browser:changed", "codaRowId": "i-BROWSER_NEXT", "instance": "funix_comercial", "remoteJid": "000000000001@s.whatsapp.net", "phoneE164": None, "displayName": "Outro Atendimento Sintético", "occurredAt": 200}, separators=(",", ":"))
         stamp = str(int(time.time()))
         signature = hmac.new(bytes([1])*32, ("coda-sync-v1\n" + stamp + "\n" + body).encode(), hashlib.sha256).hexdigest()
         response = await context.request.post(ORIGIN + "/api/integrations/coda/atendimentos", data=body, headers={"Content-Type": "application/json", "x-funix-timestamp": stamp, "x-funix-signature": "sha256=" + signature})
         assert response.status == 202
-        await page.clock.fast_forward(21000)
-        await expect(page.locator(".chat-message")).to_have_count(0)
+        await advance_until(lambda: expect(page.locator(".chat-message")).to_have_count(0, timeout=1500))
         await expect(page.locator(".chat-composer-row")).to_have_count(0)
         h.mark(f"{width}px: signed ERP context change removes cached history and composer")
         assert not h.external and not h.page_errors, (h.external, h.page_errors)

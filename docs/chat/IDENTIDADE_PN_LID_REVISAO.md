@@ -1,5 +1,7 @@
 # WhatsApp ↔ Atendimento — investigação e correção PN/LID
 
+**Registro da primeira etapa.** A PR #200 evoluiu para o núcleo local de Chat: consultar `MVP_CHAT_LOCAL_ENTREGA.md` para implementação, migrações, configuração e validação atuais.
+
 Estado: correção de desenvolvimento, sem merge/deploy nem reparo de registros reais. Base atualizada com `0dce977` (inclui navegação segura/busca #152/#154 e a frente de Diagnósticos #197). Nenhum módulo financeiro foi alterado por esta branch.
 
 ## Evidências e diagnóstico

@@ -14,7 +14,7 @@ export function createConversationIdentitySchema(db: DatabaseSync) {
     id TEXT PRIMARY KEY, instance TEXT NOT NULL, remote_jid TEXT NOT NULL, UNIQUE(instance,remote_jid));
     CREATE TABLE IF NOT EXISTS chat_provider_alias_evidence (
     instance TEXT NOT NULL,pn TEXT NOT NULL,lid TEXT NOT NULL,first_seen_at TEXT NOT NULL,
-    last_seen_at TEXT,evidence_source TEXT NOT NULL DEFAULT 'legacy',evidence_reference TEXT,
+    last_seen_at TEXT,evidence_source TEXT NOT NULL DEFAULT 'legacy',evidence_reference TEXT,canonical_id TEXT REFERENCES chat_provider_conversations(id),
     PRIMARY KEY(instance,pn,lid));
     CREATE INDEX IF NOT EXISTS chat_provider_alias_lid ON chat_provider_alias_evidence(instance,lid);`)
   const columns = new Set(
@@ -27,6 +27,7 @@ export function createConversationIdentitySchema(db: DatabaseSync) {
     ['last_seen_at', 'TEXT'],
     ['evidence_source', "TEXT NOT NULL DEFAULT 'legacy'"],
     ['evidence_reference', 'TEXT'],
+    ['canonical_id', 'TEXT REFERENCES chat_provider_conversations(id)'],
   ] as const)
     if (!columns.has(column))
       db.exec(`ALTER TABLE chat_provider_alias_evidence ADD COLUMN ${column} ${ddl}`)
@@ -107,7 +108,47 @@ export class ConversationIdentities {
     return Number(count.n) === 1 ? [lid, pn] : null
   }
 
+  /** A verified pair receives one public handle. Existing exact handles remain resolvable. */
   rememberProviderConversation(remoteJid: string): string {
+    if (!jid.test(remoteJid)) return invalid()
+    const members = this.identityJids(remoteJid)
+    if (members?.length === 2) {
+      const [lid, pn] = members
+      const evidence = this.db
+        .prepare(
+          'SELECT canonical_id FROM chat_provider_alias_evidence WHERE instance=? AND pn=? AND lid=?',
+        )
+        .get(instance, pn!, lid!)!
+      if (evidence.canonical_id) return String(evidence.canonical_id)
+      let known = this.db
+        .prepare(
+          'SELECT id FROM chat_provider_conversations WHERE instance=? AND remote_jid IN (?,?) ORDER BY rowid LIMIT 1',
+        )
+        .get(instance, lid!, pn!)?.id
+      if (!known) {
+        const legacy = this.db
+          .prepare(
+            'SELECT remote_jid FROM chat_conversations WHERE instance=? AND remote_jid IN (?,?) ORDER BY rowid LIMIT 1',
+          )
+          .get(instance, lid!, pn!)
+        known = this.rememberExact(legacy ? String(legacy.remote_jid) : lid!)
+      }
+      this.db
+        .prepare(
+          'UPDATE chat_provider_alias_evidence SET canonical_id=COALESCE(canonical_id,?) WHERE instance=? AND pn=? AND lid=?',
+        )
+        .run(String(known), instance, pn!, lid!)
+      return String(
+        this.db
+          .prepare(
+            'SELECT canonical_id FROM chat_provider_alias_evidence WHERE instance=? AND pn=? AND lid=?',
+          )
+          .get(instance, pn!, lid!)!.canonical_id,
+      )
+    }
+    return this.rememberExact(remoteJid)
+  }
+  private rememberExact(remoteJid: string): string {
     if (!jid.test(remoteJid)) return invalid()
     const legacy = this.db
       .prepare('SELECT id FROM chat_conversations WHERE instance=? AND remote_jid=?')

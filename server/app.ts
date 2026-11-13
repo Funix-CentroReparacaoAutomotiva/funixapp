@@ -1,3 +1,4 @@
+import { identifier as chatIdentifier } from './chat/events.ts'
 import type { ConversationRuntime } from './chat/conversation-runtime.ts'
 import { EvolutionReadError } from './experimental/evolution-read/client.ts'
 import{createVoiceEndpoint}from'./voice-endpoint.ts'
@@ -120,6 +121,7 @@ export function createRequestHandler(options: AppOptions) {
     const send = (status: number, value: unknown) => { res.writeHead(status); res.end(JSON.stringify(value)) }
     const fail = (status: number, code: string, message: string) => send(status, { error: { code, message, requestId } })
     const providerFailure = (cause: unknown, operation: 'list' | 'history') => {
+      if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message)
       const reason = cause instanceof EvolutionReadError ? cause.code : 'UNKNOWN'
       const providerStatus = cause instanceof EvolutionReadError ? cause.httpStatus : undefined
       console.warn(JSON.stringify({ event: 'chat_provider_failure', requestId, operation, reason, providerStatus }))
@@ -351,6 +353,19 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Resolve the current canonical Atendimento after a stale conversation list.
       // The opaque ID is registered by Evolution; no browser-supplied JID or phone.
+      const statesRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/message-states$/.exec(url.pathname)
+      if(statesRoute&&options.evolutionChat&&options.conversationRuntime?.read){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(url.search)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const body=await readJson(req,32*1024) as {messages?:unknown}
+        if(!body||Object.keys(body).length!==1||!Array.isArray(body.messages)||body.messages.length<1||body.messages.length>50||body.messages.some(item=>!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).some(key=>!['messageId','version'].includes(key))||!chatIdentifier(item.messageId,200)||(item.version!==undefined&&(typeof item.version!=='string'||!/^[a-f0-9]{64}$/.test(item.version))))||new Set(body.messages.map(item=>item.messageId)).size!==body.messages.length)return fail(400,'CHAT_INVALID_QUERY','Mensagens inválidas.')
+        try{const result=await options.evolutionChat.messageStates(statesRoute[1]!,statesRoute[2]!,body.messages)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          return result?send(200,result):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada.')
+        }catch(cause){return providerFailure(cause,'history')}
+      }
       const recoveryRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/sync-history$/.exec(url.pathname)
       if(recoveryRoute&&options.evolutionChat&&options.conversationRuntime){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')

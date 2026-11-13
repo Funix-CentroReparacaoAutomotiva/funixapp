@@ -31,7 +31,7 @@ const runtime = loadConversationRuntime(
 )!
 const pn = '000000000001@s.whatsapp.net',
   lid = 'browser-synthetic@lid'
-for (let n = 1; n <= 65; n++)
+for (let n = 1; n <= 125; n++)
   runtime.store.ingest(
     JSON.stringify({
       schemaVersion: 2,

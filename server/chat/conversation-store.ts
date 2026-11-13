@@ -71,14 +71,23 @@ export class ConversationStore {
       return value
     } catch (error) {
       this.db.exec('ROLLBACK')
-      throw error
+      if (error instanceof ServiceError || error instanceof EvolutionReadError) throw error
+      throw new ServiceError(
+        503,
+        'CHAT_STORAGE_UNAVAILABLE',
+        'Não foi possível persistir a conversa local. Tente novamente.',
+      )
     }
   }
   private ensure(jid: string): string {
     const handle = this.identities.rememberProviderConversation(jid)
+    const owner = this.db
+      .prepare('SELECT remote_jid FROM chat_conversations WHERE id=?')
+      .get(handle)
+    const storageId = owner && owner.remote_jid !== jid ? randomUUID() : handle
     this.db
       .prepare('INSERT OR IGNORE INTO chat_conversations(id,instance,remote_jid) VALUES(?,?,?)')
-      .run(handle, instance, jid)
+      .run(storageId, instance, jid)
     const id = String(
       this.db
         .prepare('SELECT id FROM chat_conversations WHERE instance=? AND remote_jid=?')
@@ -413,6 +422,55 @@ export class ConversationStore {
       providerUnavailable: rows.some((r) => r.provider_error !== null),
     }
   }
+  private projectMessage(r: Record<string, unknown>) {
+    return {
+      messageId: String(r.message_id),
+      timestamp: Date.parse(String(r.occurred_at)) / 1000,
+      fromMe: r.from_me === 1,
+      origin: 'unknown' as const,
+      kind: (r.content_available === 0 ? 'unsupported' : r.kind) as ReadMessage['kind'],
+      text: r.content_available === 0 || r.text === null ? null : String(r.text),
+      media:
+        r.content_available !== 0 && r.media && r.media !== 'null'
+          ? { reference: 'local', ...JSON.parse(String(r.media)), available: false }
+          : null,
+      statuses: r.statuses ? JSON.parse(String(r.statuses)) : [],
+      version: hash([
+        r.content_digest,
+        r.occurred_at,
+        r.revision_at ?? '',
+        r.deleted ?? 0,
+        r.content_available ?? 1,
+        r.statuses ?? '[]',
+      ]),
+    }
+  }
+  /** Refresh only rendered messages, including edits/deletions outside the newest page. */
+  states(jid: string, known: Array<{ messageId: string; version?: string }>) {
+    const members = this.identities.identityJids(jid)
+    if (!members) throw new EvolutionReadError('CONFLICT')
+    const scope = members.map(() => '?').join(','),
+      ids = known.map(() => '?').join(',')
+    const base = `FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id LEFT JOIN chat_message_state s ON s.conversation_id=m.conversation_id AND s.message_id=m.message_id WHERE c.instance=? AND c.remote_jid IN (${scope}) AND m.message_id IN (${ids})`
+    const args = [instance, ...members, ...known.map((item) => item.messageId)]
+    if (
+      this.db
+        .prepare(
+          `SELECT 1 ${base} AND COALESCE(s.content_available,1)=1 GROUP BY m.message_id,COALESCE(s.revision_at,'') HAVING COUNT(DISTINCT json_array(m.from_me,m.kind,m.text,m.occurred_at))>1 LIMIT 1`,
+        )
+        .get(...args)
+    )
+      throw new EvolutionReadError('CONFLICT')
+    const rows = this.db
+      .prepare(
+        `WITH ranked AS (SELECT m.*,s.statuses,s.deleted,s.revision_at,s.content_available,ROW_NUMBER() OVER(PARTITION BY m.message_id ORDER BY COALESCE(s.revision_at,'') DESC,COALESCE(s.content_available,1) ASC,m.sequence DESC) AS n ${base}) SELECT * FROM ranked WHERE n=1`,
+      )
+      .all(...args)
+    const versions = new Map(known.map((item) => [item.messageId, item.version]))
+    return rows
+      .map((row) => this.projectMessage(row))
+      .filter((item) => versions.get(item.messageId) !== item.version)
+  }
   page(jid: string, page: number, cursor?: string) {
     const members = this.identities.identityJids(jid)
     if (!members) throw new EvolutionReadError('CONFLICT')
@@ -490,19 +548,7 @@ export class ConversationStore {
           ).toString('base64url')
         : null
     return {
-      items: selected.reverse().map((r) => ({
-        messageId: String(r.message_id),
-        timestamp: Date.parse(String(r.occurred_at)) / 1000,
-        fromMe: r.from_me === 1,
-        origin: 'unknown' as const,
-        kind: (r.content_available === 0 ? 'unsupported' : r.kind) as ReadMessage['kind'],
-        text: r.content_available === 0 || r.text === null ? null : String(r.text),
-        media:
-          r.content_available !== 0 && r.media && r.media !== 'null'
-            ? { reference: 'local', ...JSON.parse(String(r.media)), available: false }
-            : null,
-        statuses: r.statuses ? JSON.parse(String(r.statuses)) : [],
-      })),
+      items: selected.reverse().map((r) => this.projectMessage(r)),
       page,
       reportedTotal: total,
       reportedPages: Math.ceil(total / 50),

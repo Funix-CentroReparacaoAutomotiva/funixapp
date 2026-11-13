@@ -1,6 +1,6 @@
 # Decisão de arquitetura — Chat e Atendimento no MVP com ERP vigente
 
-Direção confirmada em 13/11/2026, America/Sao_Paulo. Este documento registra o escopo acordado; não declara a nova arquitetura implementada nem autoriza merge, deploy, alteração de workflows publicados ou dados reais. Complementa a investigação `IDENTIDADE_PN_LID_REVISAO.md` e delimita a implementação seguinte.
+Direção confirmada em 13/11/2026, America/Sao_Paulo. Este documento registra o escopo acordado. A implementação de desenvolvimento está descrita em `MVP_CHAT_LOCAL_ENTREGA.md`; implantação e homologação instalada continuam separadas e não autorizadas por este documento. Complementa a investigação `IDENTIDADE_PN_LID_REVISAO.md` e delimita a implementação seguinte.
 
 ## Objetivo e limites
 
