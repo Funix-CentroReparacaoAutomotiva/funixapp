@@ -53,3 +53,9 @@
 .approved-editor .piece-summary-heading>.piece-category-amount{font-size:12px;font-weight:650;color:#243756;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .approved-editor .piece-summary-bar>.add{flex:none}
 @media(max-width:390px){.approved-editor .piece-summary-heading{column-gap:7px}.approved-editor .piece-summary-heading>.piece-category-amount{font-size:11px}}
+
+/* #119: ação identificável depois da primeira linha, mantendo o CTA vazio existente. */
+.approved-editor .section-bar .add-labeled{width:auto;max-width:55%;min-height:38px;padding:6px 10px;gap:6px;white-space:normal;text-align:center;font-size:12px;font-weight:600;line-height:1.15}
+.approved-editor .section-bar .add-labeled .icon{flex:none;width:15px;height:15px}
+.approved-editor .section-bar .add-labeled:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+@media(max-width:390px){.approved-editor .section-bar .add-labeled{max-width:50%;padding:6px 8px;font-size:11px}}
