@@ -43,6 +43,11 @@ try{
    const serviceHeading=editor.locator('.piece-summary-bar').first(),componentHeading=editor.locator('.piece-summary-bar').nth(1)
    assert.match(await serviceHeading.innerText(),/Serviços\s+0\/0/)
    assert.match(await componentHeading.innerText(),/Componentes\s+[01]\/1/)
+   // #120: divisória estrutural perceptível independentemente de cores.
+   const separation=await componentHeading.evaluate(el=>{const s=getComputedStyle(el);return{border:parseFloat(s.borderTopWidth),margin:parseFloat(s.marginTop),padding:parseFloat(s.paddingTop),label:el.textContent??'',overflow:el.scrollWidth>el.clientWidth+2}})
+   assert(separation.border>=2&&separation.margin>=20&&separation.padding>=16,'component section separator at '+width)
+   assert(separation.label.includes('Componentes')&&!separation.overflow,'component section heading at '+width)
+
    await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    const toggle=component.getByRole('button',{name:'Habilitar componente neste cenário'})
    if((await toggle.getAttribute('aria-pressed'))==='false'){
