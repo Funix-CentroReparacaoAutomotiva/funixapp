@@ -61,7 +61,8 @@ export class BudgetRepository {
   snapshot.pdfPresentation={version:"technical-stage-v1",errors:technicalGroups(snapshot).errors}
   snapshot.executionDeadline=executionDeadline(scenario.deadline,calculation.days,hasIncludedPainting(items,scenario))
   if(calculation.total!==null)snapshot.installments=installmentSnapshot(calculation.total,new InstallmentRepository(this.db).get())
-  return {snapshot,token:hash(snapshot),canEmit:budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}
+  const pendingTechnicalReview=items.some(item=>item.pieceReviewPending&&scenario.pieceFlags[item.id]!==false)
+  return {snapshot,token:hash(snapshot),canEmit:!pendingTechnicalReview && budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}
  }
  preview(at:string,input:unknown):BudgetPreview{
   const data=inputObject(input,['scenarioId','negotiation'])
