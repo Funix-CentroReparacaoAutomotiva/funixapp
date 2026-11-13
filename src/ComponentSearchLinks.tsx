@@ -5,7 +5,7 @@ import {manualComponentSearchLinks, type ComponentSearchContext} from './diagnos
 import './component-search-links.css'
 
 // Display-only navigation. No automatic external searches, quote API or price mutations.
-export function ComponentSearchLinks({atendimentoId,componentName,context,className=''}:{atendimentoId:string;componentName:string;context:ComponentSearchContext;className?:string}){
+export function ComponentSearchLinks({atendimentoId,componentName,context,className=''}:{atendimentoId:string;componentName:string;context?:ComponentSearchContext;className?:string}){
  const [state,setState]=useState<{links:ReturnType<typeof manualComponentSearchLinks>;error:string}>({links:null,error:''})
  useEffect(()=>{
   let active=true
@@ -14,7 +14,7 @@ export function ComponentSearchLinks({atendimentoId,componentName,context,classN
    .then(vehicle=>{if(active)setState({links:manualComponentSearchLinks(vehicle,componentName,context),error:''})})
    .catch(()=>{if(active)setState({links:null,error:'Não foi possível consultar o veículo.'})})
   return()=>{active=false}
- },[atendimentoId,componentName,context.pieceName,context.position])
+ },[atendimentoId,componentName,context?.pieceName,context?.position])
  const options=[
   {key:'general',label:'Geral',url:state.links?.general??null},
   {key:'original',label:'Original',url:state.links?.original??null},
