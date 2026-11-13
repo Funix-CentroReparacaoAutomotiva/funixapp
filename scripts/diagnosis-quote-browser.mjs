@@ -64,7 +64,7 @@ try{
    await page.getByRole('button',{name:'Voltar aos Diagnósticos'}).click()
    const overview=page.locator('.diagnosis-card').filter({hasText:catalog.name})
    await overview.waitFor()
-   await page.waitForFunction(()=>document.querySelector('.diagnosis-card .diagnosis-category-summary')?.textContent?.includes('Componentes 1/1'))
+   await page.waitForFunction(pieceName=>[...document.querySelectorAll('.diagnosis-card')].some(card=>card.textContent?.includes(pieceName)&&card.querySelector('.diagnosis-category-summary')?.textContent?.includes('Componentes 1/1')),catalog.name)
    assert.match(await overview.locator('.diagnosis-category-summary').innerText(),/Serviços 0\/0/)
    assert.match(await overview.locator('.diagnosis-category-summary').innerText(),/Componentes 1\/1/)
    assert.match(await overview.locator('.diagnosis-category-summary').innerText(),/R\$ 40,00/)
