@@ -1,5 +1,5 @@
 import{resolveMR}from'../shared/mr.ts'
-import{servicePolicy,executionScope,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
+import{servicePolicy,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
 import { catalogItemUsable, scenarioLabel } from '../shared/commercial.ts'
 import type { Calculation, ComponentItem, Negotiation, PricedLine, PricingConfig, PricingSettings } from '../shared/pricing.ts'
@@ -34,8 +34,9 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
     const dimension=eligible(service.dimensionId,'dimensao')
     if(dimension.serviceId!==service.serviceId)throw new Error('Dimensão não pertence ao serviço.')
     if(service.diagnosisId || item.diagnosisId)eligible(service.diagnosisId ?? item.diagnosisId,'diagnostico')
-    if(policy?.execution==='external_confirmation')line.executionConfirmed=scenario.serviceConfirmations?.[service.id]===executionScope(service)
-    if(policy?.execution==='external_confirmation' && !line.executionConfirmed)errors.push(`${line.pieceName} / ${line.name}: confirme a execução/contratação do terceiro neste cenário para esta linha e escopo.`)
+    // Including an external service is the commercial decision to use a third party.
+    // Legacy confirmations remain readable, but never gate calculation or PDF emission.
+    if(policy?.execution==='external_confirmation')line.executionConfirmed=true
     if(policy?.billing!=='not_billed' && !table)throw new Error('Tabela comercial não selecionada/configurada.')
     const special=config.specialPrices.filter(p=>p.tableId===table?.id && p.serviceId===service.serviceId && p.dimensionId===service.dimensionId)
     if(special.length>1)throw new Error('Preço especial duplicado para a chave exata.')
