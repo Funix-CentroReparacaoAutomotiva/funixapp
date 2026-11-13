@@ -10,8 +10,10 @@ import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-syn
 
 const origin = 'http://localhost:5173', password = 'synthetic-owner-password'
 const jid = '000000000001@s.whatsapp.net'
+const lid = 'synthetic-opaque@lid'
 
-function fixture(enabled = true, fail = false, canonical = false, sendEnabled = false, mediaEnabled = false) {
+function fixture(enabled = true, fail = false, canonical = false, sendEnabled = false, mediaEnabled = false,
+  chatRows?: Array<{ remoteJid: string; remoteJidAlt?: string | null; displayName: string; phoneNumber: string | null; updatedAt: string | null; unreadCount: number | null }>) {
   const db = openDatabase(':memory:')
   if (canonical) createCodaEventSchema(db)
   const sync = canonical ? new CodaEventSyncRepository(db) : undefined
@@ -24,8 +26,8 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
       calls.push('chats')
       if (fail) throw new Error('private provider error / apikey')
       return {
-        items: [{ remoteJid: jid, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }],
-        sourceCount: 1,
+        items: chatRows ?? [{ remoteJid: jid, displayName: 'Contato Sintético', phoneNumber: '000000000001', updatedAt: '2026-11-07T10:00:00.000Z', unreadCount: 0 }],
+        sourceCount: chatRows?.length ?? 1,
       }
     },
     async findMediaEnvelope(requested:string,id:string,page:number){
@@ -37,7 +39,7 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
     },
     async findMessages(requested, { page } = {}) {
       calls.push('messages:' + page)
-      assert.equal(requested, jid)
+      assert.equal(requested, chatRows?.[0]?.remoteJid ?? jid)
       if (fail) throw new Error('private provider message body')
       return {
         items: [{
@@ -411,6 +413,109 @@ test('media routes require canonical Atendimento; reject spoofing and return onl
   }finally{
     if(prior===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
     else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=prior
+    f.db.close()
+  }
+})
+
+test('Evolution LID list resolves signed PN Coda context without replacing history JID', async () => {
+  const f = fixture(true, false, true, false, false, [
+    { remoteJid: lid, remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+  ])
+  try {
+    const id = f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:safe:1',
+      codaRowId: 'i-ALIAS_A', instance: 'funix_comercial',
+      remoteJid: jid, phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }).atendimentoId
+    const cookie = await f.login()
+    const listed = await (await f.request('/api/chat/conversations', cookie)).json()
+    assert.equal(listed.items[0].atendimentoId, id)
+    const conversationId = listed.items[0].conversationId
+    assert.ok(!JSON.stringify(listed).includes(lid))
+    assert.ok(!JSON.stringify(listed).includes(jid))
+    const path = `/api/atendimentos/${id}/evolution-conversations/${conversationId}/messages`
+    const result = await f.request(path, cookie)
+    assert.equal(result.status, 200)
+    assert.equal((await result.json()).items[0].text, 'SYNTHETIC ONLY')
+    assert.deepEqual(f.calls, ['chats', 'messages:1'])
+  } finally { f.db.close() }
+})
+
+test('Evolution alias conflict and absent alias fail closed for canonical association', async () => {
+  for (const rows of [
+    [{ remoteJid: lid }],
+    [{ remoteJid: lid, remoteJidAlt: jid }, { remoteJid: 'other-opaque@lid', remoteJidAlt: jid }],
+  ]) {
+    const f = fixture(true, false, true, false, false, rows.map(row => ({
+      ...row, displayName: 'Contato Sintético', phoneNumber: null,
+      updatedAt: null, unreadCount: 0,
+    })))
+    try {
+      f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:conflict:' + rows.length,
+        codaRowId: 'i-ALIAS_B', instance: 'funix_comercial',
+        remoteJid: jid, phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 })
+      const cookie = await f.login()
+      const listed = await (await f.request('/api/chat/conversations', cookie)).json()
+      assert.ok(listed.items.every((row: { atendimentoId: string | null }) => row.atendimentoId === null))
+      assert.deepEqual(f.calls, ['chats'])
+    } finally { f.db.close() }
+  }
+})
+
+test('LID listed conversation sends only through its verified canonical PN, never to the LID', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  process.env.FUNIX_EVOLUTION_SEND_ENABLED = 'true'
+  const f = fixture(true, false, true, true, false, [
+    { remoteJid: lid, remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+  ])
+  try {
+    const id = f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:send:1',
+      codaRowId: 'i-ALIAS_SEND', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }).atendimentoId
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    const base = `/api/atendimentos/${id}/evolution-conversations/${conversationId}`
+    const messages = await f.request(base + '/messages', cookie)
+    assert.equal(messages.status, 200)
+    assert.equal((await messages.json()).sendTextAvailable, true)
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'Mensagem sintética' })).status, 200)
+    assert.deepEqual(f.sendCalls, [{ jid, text: 'Mensagem sintética' }])
+    f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:send:2',
+      codaRowId: 'i-ALIAS_SEND_B', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144002 })
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'não enviar' })).status, 404)
+    assert.equal(f.sendCalls.length, 1)
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
+    f.db.close()
+  }
+})
+
+test('LID with colliding alternate JID cannot send or read a canonical Atendimento', async () => {
+  const previous = process.env.FUNIX_EVOLUTION_SEND_ENABLED
+  process.env.FUNIX_EVOLUTION_SEND_ENABLED = 'true'
+  const f = fixture(true, false, true, true, false, [
+    { remoteJid: lid, remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+    { remoteJid: 'conflicting-opaque@lid', remoteJidAlt: jid, displayName: 'Contato Sintético',
+      phoneNumber: null, updatedAt: null, unreadCount: 0 },
+  ])
+  try {
+    const id = f.sync!.sync({ version: 1, source: 'coda', eventId: 'alias:reject:1',
+      codaRowId: 'i-ALIAS_REJECT', instance: 'funix_comercial', remoteJid: jid,
+      phoneE164: null, displayName: 'Contato Sintético', occurredAt: 1794144000 }).atendimentoId
+    const cookie = await f.login()
+    const list = await (await f.request('/api/chat/conversations', cookie)).json()
+    const conversationId = list.items[0].conversationId
+    const base = `/api/atendimentos/${id}/evolution-conversations/${conversationId}`
+    assert.equal((await f.request(base + '/messages', cookie)).status, 404)
+    assert.equal((await f.request(base + '/send-text', cookie, 'POST', { text: 'não enviar' })).status, 404)
+    assert.deepEqual(f.sendCalls, [])
+  } finally {
+    if (previous === undefined) delete process.env.FUNIX_EVOLUTION_SEND_ENABLED
+    else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
     f.db.close()
   }
 })
