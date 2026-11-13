@@ -46,17 +46,18 @@ try{
    await dialog.getByRole('button',{name:'Criar Atendimento'}).click()
    await dialog.waitFor({state:'hidden',timeout:6000})
    const list=fixture.atendimentos.list({q:'31999990000'});assert.equal(list.total,1)
+   assert.equal(await dialog.count(),0)
    const record=list.items[0]
    assert.equal(record.brand,'Fiat')
    assert.equal(record.model,'Punto')
    assert.equal(record.vehicle,'Punto 2019/2020')
    const phoneLine=page.locator('.detail-phone')
    await phoneLine.waitFor()
-   assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+   assert.match(await phoneLine.innerText(),/Telefone\s+\(31\) 99999-0000/)
    for(const tab of ['Diagnósticos','Mapa','Chat']){
     await page.getByRole('button',{name:tab,exact:true}).click()
     assert.equal(await phoneLine.isVisible(),true,`${width}px: telefone oculto na aba ${tab}`)
-    assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+    assert.match(await phoneLine.innerText(),/Telefone\s+\(31\) 99999-0000/)
    }
    assert.equal(await phoneLine.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true,`${width}px: faixa transborda`)
    console.log('PASS telefone',width,'visível nas três abas')
