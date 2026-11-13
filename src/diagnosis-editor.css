@@ -59,3 +59,18 @@
 .approved-editor .section-bar .add-labeled .icon{flex:none;width:15px;height:15px}
 .approved-editor .section-bar .add-labeled:focus-visible{outline:2px solid #142c60;outline-offset:2px}
 @media(max-width:390px){.approved-editor .section-bar .add-labeled{max-width:50%;padding:6px 8px;font-size:11px}}
+
+/* #168: confirmação explícita e legível para troca da peça mestre. */
+.approved-editor .piece-replace{margin:-3px 0 10px}
+.approved-editor .piece-replace>button{min-height:40px;border:1px solid #b8c8e2;border-radius:8px;background:#f7faff;color:#315a84;padding:7px 13px;font-size:12px;font-weight:650}
+.approved-editor .piece-replacement{padding:13px;margin:0 0 12px;border:1px solid #9eb3cc;border-radius:10px;background:#f7faff;font-size:12px}
+.approved-editor .piece-replacement>label:first-child{display:grid;gap:6px;font-weight:650}
+.approved-editor .piece-replacement select{width:100%;min-height:44px;min-width:0}
+.approved-editor .piece-replacement p{line-height:1.45}
+.approved-editor .piece-replacement-confirm{display:flex;align-items:flex-start;gap:9px;line-height:1.45}
+.approved-editor .piece-replacement-confirm input{width:20px;height:20px;flex:none}
+.approved-editor .piece-replacement-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.approved-editor .piece-replacement-actions button{min-height:44px;padding:8px 12px;border:1px solid #9eb3cc;border-radius:8px}
+.approved-editor .piece-replacement-notice{padding:10px;border:1px solid #dab77f;border-radius:8px;background:#fff8ec;font-size:12px;line-height:1.45}
+.approved-editor .piece-replace button:focus-visible,.approved-editor .piece-replacement button:focus-visible{outline:2px solid #142c60;outline-offset:2px}
+@media(max-width:390px){.approved-editor .piece-replacement{padding:10px}.approved-editor .piece-replacement-actions button{flex:1 1 120px}}
