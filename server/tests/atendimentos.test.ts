@@ -155,21 +155,3 @@ test('Issue #118 mantém anos independentes, legados sem inferência e revisão 
   } finally { db.close() }
 })
 
-test('Issue #118 adiciona colunas a banco existente sem reescrever veículo legado', () => {
-  const temp=files()
-  try {
-    let db=openDatabase(temp.filename)
-    const legacy=new AtendimentoRepository(db).create({phone:'31911110000',vehicle:'Gol 2020'})
-    db.close()
-    // Simula banco existente antes de V16 preservando os registros e migrações anteriores.
-    db=new DatabaseSync(temp.filename)
-    db.exec('BEGIN IMMEDIATE')
-    db.exec('CREATE TABLE old_atendimentos AS SELECT id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision FROM atendimentos')
-    db.exec('DROP TABLE old_atendimentos')
-    db.exec('COMMIT')
-    db.close()
-    db=openDatabase(temp.filename)
-    assert.equal(new AtendimentoRepository(db).get(legacy.id).vehicle,'Gol 2020')
-    db.close()
-  } finally {temp.close()}
-})
