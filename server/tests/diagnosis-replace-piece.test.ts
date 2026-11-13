@@ -9,6 +9,9 @@ import {ServiceError} from '../errors.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {randomUUID} from 'node:crypto'
+import {mkdtempSync,rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
 
 test('#168: troca mantém o mestre, componentes e flags de dois cenários',()=>{
  const db=openDatabase(':memory:')
@@ -86,4 +89,31 @@ test('#168: troca preserva IDs de serviços e não reescreve orçamento ou PDF e
   assert.deepEqual(Buffer.from(budgets.pdf(f.at.id,issued.id)),pdf)
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0)
  }finally{db.close()}
+})
+
+
+test('#168: troca permanece após fechar e reabrir SQLite sintético',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'funix-replace-piece-')),file=join(dir,'test.sqlite')
+ let db=openDatabase(file)
+ try{
+  const repo=new CommercialRepository(db),at=new AtendimentoRepository(db).create({phone:'123'})
+  const initial=new ScenarioRepository(db).list(at.id)[0]!
+  const from=repo.add(at.id,{pieceCodes:['capo'],scenarioId:initial.id,scenarioRevision:initial.revision})[0]!
+  const selected=new ScenarioRepository(db).list(at.id)[0]!
+  const part=new ComponentRepository(db).save(at.id,{pieceId:from.id,name:'Peça de teste',quantity:'1',manualPrice:'10',notes:'Reter',scenarioId:selected.id,scenarioRevision:selected.revision})
+  const destination=repo.catalogs().items.find(c=>c.code==='para_choque_traseiro')!
+  const request={pieceId:destination.id,revision:from.revision,compositionRevision:Number(db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(at.id)!.revision),scenarios:new ScenarioRepository(db).list(at.id).map(s=>({id:s.id,revision:s.revision}))}
+  const changed=repo.replacePiece(at.id,from.id,request)
+  db.close()
+  db=openDatabase(file)
+  const stored=new CommercialRepository(db).list(at.id)[0]!
+  assert.equal(stored.id,from.id)
+  assert.equal(stored.pieceId,destination.id)
+  assert.equal(stored.revision,changed.revision)
+  const savedPart=new ComponentRepository(db).list(at.id)[0]!
+  assert.equal(savedPart.id,part.id)
+  assert.equal(savedPart.pieceId,from.id)
+  assert.equal(savedPart.manualPrice,'10')
+  assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0)
+ }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
