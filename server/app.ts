@@ -613,6 +613,14 @@ export function createRequestHandler(options: AppOptions) {
         const body = await readJson(req,64*1024)
         return send(req.method === 'POST' ? 201 : 200,req.method === 'POST' ? scenarios.create(at,body) : req.method === 'DELETE' ? scenarios.remove(at,id!,body) : scenarios.update(at,id!,body))
       }
+      // Explicit review acknowledgment; shared diagnosis identity, guarded revisions.
+      const reviewRoute=/^\\/api\\/atendimentos\\/([^/]{1,100})\\/diagnosticos\\/([^/]{1,100})\\/confirmar-revisao$/.exec(url.pathname)
+      if(reviewRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem da solicitação não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie um objeto JSON.')
+        return send(200,commercial.confirmPieceReview(reviewRoute[1]!,reviewRoute[2]!,await readJson(req,64*1024)))
+      }
       // #168: dedicated authenticated mutation; never re-create or merge a diagnosis.
       const replacement = /^\/api\/atendimentos\/([^/]{1,100})\/diagnosticos\/([^/]{1,100})\/trocar-peca$/.exec(url.pathname)
       if(replacement){
