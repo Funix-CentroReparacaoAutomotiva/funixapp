@@ -4,6 +4,7 @@ import type { RequestFailure } from '../api'
 import { Notice } from '../ui'
 import { ConversationLinksPanel } from './ConversationLinksPanel'
 import { parseConversationList } from './evolution-read-model'
+import { filterLoadedConversations } from './conversation-search'
 import type { ConversationRow } from './evolution-read-model'
 import './evolution-read.css'
 
@@ -38,13 +39,16 @@ function listErrorLabel(cause: unknown) {
  * A navegação só usa o Atendimento canônico confirmado no servidor;
  * contatos sem vínculo têm uma ação explícita, sem adivinhar por telefone.
  */
-export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento }: {
+export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, onOpenAtendimento }: {
+  searchTerm?: string
   onUnauthorized: () => void
   onOpenAtendimento?: (atendimentoId: string, tab: 'chat' | 'diagnosticos' | 'mapa', conversationId?: string) => void
 }) {
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
   const [list, setList] = useState<ConversationRow[]>([])
+  const matches = filterLoadedConversations(list, searchTerm)
+  const searching = searchTerm.trim().length > 0
   const [nextSkip, setNextSkip] = useState<number | null>(null)
   const [unlinked, setUnlinked] = useState<string | null>(null)
   const [listBusy, setListBusy] = useState(false)
@@ -171,12 +175,16 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
     // The Funil can contain an Atendimento before this Evolution JID has
     // received a canonical Coda event. Search existing records on click.
     const phone = row.phoneNumber ? comparablePhone(row.phoneNumber) : ''
-    const query = phone.length >= 8 ? phone : row.displayName?.trim() || ''
-    if (query.length < 2) {
+    // Never search by display name: it is not identity evidence. A LID-only
+    // conversation stays pending until a trusted PN/canonical mapping exists.
+    // Require an unambiguous Brazilian DDD + subscriber number for this
+    // legacy navigation lookup; never synthesize digits from a LID.
+    if (!/^[1-9][0-9][0-9]{8,9}$/.test(phone)) {
       setUnlinked(row.conversationId)
-      setLookupError('Não foi possível confirmar a identidade da conversa. A sincronização precisa ser verificada.')
+      setLookupError('Telefone confiável indisponível. A identidade da conversa precisa ser confirmada antes de abrir um Atendimento.')
       return
     }
+    const query = phone
     const controller = new AbortController()
     lookupRequest.current = controller
     setLookupBusy(row.conversationId)
@@ -194,7 +202,7 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
         for (const item of result.items) {
           if (!item || typeof item.id !== 'string' || typeof item.phone !== 'string') continue
           // Exact telephone match allows automatic NAVIGATION, never a new link.
-          if (!phone || comparablePhone(item.phoneNormalized || item.phone) === phone)
+          if (comparablePhone(item.phoneNormalized || item.phone) === phone)
             matches.set(item.id, item)
         }
         if (result.nextOffset === null) break
@@ -246,8 +254,11 @@ export function EvolutionConversationReader({ onUnauthorized, onOpenAtendimento 
       {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
       {!listBusy && available === true && !listError && !list.length &&
         <Notice title="Nenhuma conversa retornada">Atualize a lista para consultar novamente.</Notice>}
-      {list.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
-        {list.map(row => <div key={row.conversationId}>
+      {searching && available === true && <p className="ev-search-scope" role="status">{matches.length} de {list.length} conversas carregadas correspondem à busca. {nextSkip !== null ? 'Há outras páginas ainda não carregadas.' : 'Todas as páginas disponíveis foram carregadas.'}</p>}
+      {searching && !listBusy && available === true && !listError && list.length > 0 && !matches.length &&
+        <Notice title="Nenhuma conversa encontrada nas páginas carregadas">Tente outro nome ou telefone. {nextSkip !== null ? 'Use Carregar mais conversas para consultar outras páginas.' : 'Limpe a busca para retornar à lista.'}</Notice>}
+      {matches.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
+        {matches.map(row => <div key={row.conversationId}>
           <button type="button" className="ev-item" onClick={() => { void open(row) }}
             disabled={lookupBusy !== null}
             aria-expanded={!row.atendimentoId ? unlinked === row.conversationId : undefined}>

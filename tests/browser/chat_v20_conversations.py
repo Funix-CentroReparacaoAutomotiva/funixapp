@@ -15,6 +15,8 @@ from m1_atendimentos import Harness, ROOT, ORIGIN
 ARTIFACTS = ROOT / "docs/evidencias/issue71-chat-v20-browser"
 A = "11111111-1111-4111-8111-111111111111"
 B = "22222222-2222-4222-8222-222222222222"
+C = "33333333-3333-4333-8333-333333333333"
+D = "44444444-4444-4444-8444-444444444444"
 
 
 def messages_payload(conversation):
@@ -90,6 +92,13 @@ async def device_case(browser, width, height):
                     "base64": base64.b64encode(kind[2]).decode()})
             assert route.request.method == "GET"
             if parsed.path == "/api/chat/conversations":
+                if parsed.query == "skip=3":
+                    return await route.fulfill(status=200, json={"source": "evolution",
+                        "items": [{"conversationId": D, "displayName": "Contato Página Dois",
+                                   "phoneNumber": "5531966660004", "updatedAt": None,
+                                   "unreadCount": 0, "atendimentoId": None}],
+                        "nextSkip": None, "linksEnabled": False})
+                assert parsed.query == "skip=0", parsed.query
                 return await route.fulfill(status=200, json={"source": "evolution",
                     "items": [
                         {"conversationId": A, "displayName": "Contato Vinculado",
@@ -97,8 +106,11 @@ async def device_case(browser, width, height):
                          "unreadCount": 0, "atendimentoId": atendimento_id},
                         {"conversationId": B, "displayName": "Contato Sem Vínculo",
                          "phoneNumber": "5531999990002", "updatedAt": None,
+                         "unreadCount": 0, "atendimentoId": None},
+                        {"conversationId": C, "displayName": "Atendimento Sintético",
+                         "phoneNumber": None, "updatedAt": None,
                          "unreadCount": 0, "atendimentoId": None}],
-                    "nextSkip": None, "linksEnabled": False})
+                    "nextSkip": 3, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
                 poll_calls.append(parsed.query)
                 payload = messages_payload(A)
@@ -107,6 +119,8 @@ async def device_case(browser, width, height):
                 return await route.fulfill(status=200, json={**payload, "sendTextAvailable": True,
                     "mediaSendAvailable": True, "mediaReadAvailable": True})
             if parsed.path == f"/api/chat/conversations/{B}/active-atendimento":
+                return await route.fulfill(status=200, json={"atendimentoId": None})
+            if parsed.path == f"/api/chat/conversations/{C}/active-atendimento":
                 return await route.fulfill(status=200, json={"atendimentoId": None})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
@@ -126,6 +140,36 @@ async def device_case(browser, width, height):
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
         await page.goto(ORIGIN + "/conversas")
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        # #152: search is display-only; filtering must not create links or
+        # contact-identity matches. Use the existing synthetic Evolution list.
+        search = page.get_by_role("textbox", name="Buscar conversas carregadas por nome ou telefone")
+        await expect(search).to_be_enabled()
+        await search.fill("sem vínculo")
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_have_count(0)
+        await search.fill("99990001")
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_have_count(0)
+        await search.fill("inexistente")
+        await expect(page.get_by_text("Nenhuma conversa encontrada nas páginas carregadas")).to_be_visible()
+        # Search is intentionally limited to downloaded Evolution pages.
+        await search.fill("pagina dois")
+        await expect(page.get_by_text("Há outras páginas ainda não carregadas.", exact=False)).to_be_visible()
+        await page.get_by_role("button", name="Carregar mais conversas").click()
+        await expect(page.get_by_role("button", name="Contato Página Dois")).to_be_visible()
+        await expect(page.get_by_text("Todas as páginas disponíveis foram carregadas.", exact=False)).to_be_visible()
+        await search.fill("")
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
+        h.mark(f"{width}px: search by label and phone, empty result, clear restores loaded list")
+        # #154: a LID-only conversation with a display name identical to an
+        # existing Atendimento must remain unlinked, with no search by name.
+        previous_searches = sent.count("/api/atendimentos")
+        await page.get_by_role("button", name="Atendimento Sintético").click()
+        await expect(page.get_by_text("Telefone confiável indisponível.", exact=False)).to_be_visible()
+        assert sent.count("/api/atendimentos") == previous_searches
+        assert page.url.endswith("/conversas")
+        h.mark(f"{width}px: LID-only homonym does not search or navigate by display name")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
 
         await page.get_by_role("button", name="Contato Sem Vínculo").click()
