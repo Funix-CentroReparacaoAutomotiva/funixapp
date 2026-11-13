@@ -27,7 +27,7 @@ export type DiagnosisIntensity=typeof DIAGNOSIS_INTENSITIES[number]
 export interface DiagnosisRecommendation {id:string;sourceRowId:string;sourceTable:string;serviceId:string;dimensionId:string;selectedByDefault:boolean}
 export interface DiagnosisItem {
   id: string; atendimentoId: string; pieceId: string; diagnosisId: string | null; intensity?:DiagnosisIntensity|null
-  notes: string; enabled: boolean; revision: number; createdAt: string; updatedAt: string
+  notes: string; enabled: boolean; revision: number; pieceReviewPending?: boolean; createdAt: string; updatedAt: string
   services: DiagnosisService[]
 }
 
