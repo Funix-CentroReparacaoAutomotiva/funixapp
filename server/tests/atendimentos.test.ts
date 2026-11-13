@@ -155,3 +155,25 @@ test('Issue #118 mantém anos independentes, legados sem inferência e revisão 
   } finally { db.close() }
 })
 
+
+test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', () => {
+  const temp=files()
+  try {
+    let db=openDatabase(temp.filename)
+    const original=new AtendimentoRepository(db).create({phone:'31911112222',model:'Gol',vehicle:'Gol 2019/2020'})
+    db.close()
+    // Reconstrói em arquivo sintético o formato imediatamente anterior à migração V16.
+    db=new DatabaseSync(temp.filename)
+    db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year')
+    db.exec('ALTER TABLE atendimentos DROP COLUMN model_year')
+    db.exec('DELETE FROM schema_migrations WHERE version=16')
+    db.close()
+    db=openDatabase(temp.filename)
+    const restored=new AtendimentoRepository(db).get(original.id)
+    assert.equal(restored.vehicle,'Gol 2019/2020')
+    assert.equal(restored.fabricationYear,null)
+    assert.equal(restored.modelYear,null)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),16)
+    db.close()
+  } finally { temp.close() }
+})
