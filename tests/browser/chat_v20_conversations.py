@@ -97,7 +97,7 @@ async def device_case(browser, width, height):
                         "items": [{"conversationId": D, "displayName": "Contato Página Dois",
                                    "phoneNumber": "5531966660004", "updatedAt": None,
                                    "unreadCount": 0, "atendimentoId": None}],
-                        "nextSkip": 3, "linksEnabled": False})
+                        "nextSkip": None, "linksEnabled": False})
                 assert parsed.query == "skip=0", parsed.query
                 return await route.fulfill(status=200, json={"source": "evolution",
                     "items": [
@@ -110,7 +110,7 @@ async def device_case(browser, width, height):
                         {"conversationId": C, "displayName": "Atendimento Sintético",
                          "phoneNumber": None, "updatedAt": None,
                          "unreadCount": 0, "atendimentoId": None}],
-                    "nextSkip": None, "linksEnabled": False})
+                    "nextSkip": 3, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
                 poll_calls.append(parsed.query)
                 payload = messages_payload(A)
