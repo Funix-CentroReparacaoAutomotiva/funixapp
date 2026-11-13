@@ -53,4 +53,13 @@ test('Issue #177: only catalog ID and effective scenario flags trigger the deadl
  assert.equal(hasIncludedPainting(f.items,f.scenario),true)
  f.scenario.serviceFlags.l=false
  assert.equal(hasIncludedPainting(f.items,f.scenario),false)
+ f.scenario.serviceFlags.l=true
+ const calculation={lines:[{id:'l',kind:'service',included:false}]}
+ assert.equal(hasIncludedPainting(f.items,f.scenario,calculation as never),false)
+ calculation.lines[0]!.included=true
+ assert.equal(hasIncludedPainting(f.items,f.scenario,calculation as never),true)
+ assert.equal(executionDeadline(undefined,'3',hasIncludedPainting(f.items,f.scenario,calculation as never)).effectiveDays,5)
+ calculation.lines[0]!.included=false
+ assert.equal(executionDeadline(undefined,'3',hasIncludedPainting(f.items,f.scenario,calculation as never)).effectiveDays,3)
+ assert.equal(executionDeadline(undefined,'5',false).effectiveDays,5) // Technical 5, not a paint floor.
 })
