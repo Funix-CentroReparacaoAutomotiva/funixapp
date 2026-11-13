@@ -2,7 +2,7 @@
   "base": "0dce977a54de9cfed76e762ad952a053b7ef72ba",
   "npmCheck": {
     "passed": true,
-    "serverTests": 911,
+    "serverTests": 912,
     "voiceCostTests": 8,
     "failures": 0,
     "build": true,
@@ -10,7 +10,7 @@
     "lint": true,
     "lintWarningLines": 40
   },
-  "focusedTests": 61,
+  "focusedTests": 69,
   "browser": {
     "widths": [
       320,
