@@ -6,6 +6,9 @@ import {ScenarioRepository} from '../scenarios.ts'
 import {ComponentRepository} from '../components.ts'
 import {AtendimentoRepository} from '../atendimentos.ts'
 import {ServiceError} from '../errors.ts'
+import {commercialFixture} from './fixtures/commercial.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
+import {randomUUID} from 'node:crypto'
 
 test('#168: troca mantém o mestre, componentes e flags de dois cenários',()=>{
  const db=openDatabase(':memory:')
@@ -56,5 +59,31 @@ test('#168: destino já selecionado, revisão obsoleta e catálogo inválido nã
   assert.equal(state(),before)
   assert.throws(()=>repo.replacePiece(at.id,from.id,{...request,compositionRevision:request.compositionRevision-1}),(e:unknown)=>e instanceof ServiceError&&e.status===409)
   assert.equal(state(),before)
+ }finally{db.close()}
+})
+
+
+test('#168: troca preserva IDs de serviços e não reescreve orçamento ou PDF emitido',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const f=commercialFixture(db),budgets=new BudgetRepository(db)
+  const scenario=f.scenarios.list(f.at.id)[0]!
+  const request={scenarioId:scenario.id,negotiation:{mode:'none' as const}}
+  const preview=budgets.preview(f.at.id,request)
+  assert.equal(preview.canEmit,true)
+  const issued=await budgets.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:randomUUID()})
+  const frozen=structuredClone(budgets.get(f.at.id,issued.id))
+  const pdf=Buffer.from(budgets.pdf(f.at.id,issued.id))
+  const before=f.commercial.list(f.at.id)[0]!
+  assert.equal(before.id,f.item.id)
+  const dest=f.commercial.catalogs().items.find(i=>i.code==='para_choque_traseiro')!
+  const state=db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!
+  const changed=f.commercial.replacePiece(f.at.id,before.id,{pieceId:dest.id,revision:before.revision,compositionRevision:Number(state.revision),scenarios:f.scenarios.list(f.at.id).map(s=>({id:s.id,revision:s.revision}))})
+  assert.equal(changed.id,before.id)
+  assert.deepEqual(changed.services.map(s=>s.id),before.services.map(s=>s.id))
+  assert.deepEqual(changed.services.map(s=>({serviceId:s.serviceId,dimensionId:s.dimensionId,quantity:s.quantity,notes:s.notes,enabled:s.enabled})),before.services.map(s=>({serviceId:s.serviceId,dimensionId:s.dimensionId,quantity:s.quantity,notes:s.notes,enabled:s.enabled})))
+  assert.deepEqual(budgets.get(f.at.id,issued.id),frozen)
+  assert.deepEqual(Buffer.from(budgets.pdf(f.at.id,issued.id)),pdf)
+  assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0)
  }finally{db.close()}
 })
