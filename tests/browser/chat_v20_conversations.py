@@ -15,6 +15,7 @@ from m1_atendimentos import Harness, ROOT, ORIGIN
 ARTIFACTS = ROOT / "docs/evidencias/issue71-chat-v20-browser"
 A = "11111111-1111-4111-8111-111111111111"
 B = "22222222-2222-4222-8222-222222222222"
+C = "33333333-3333-4333-8333-333333333333"
 
 
 def messages_payload(conversation):
@@ -97,6 +98,9 @@ async def device_case(browser, width, height):
                          "unreadCount": 0, "atendimentoId": atendimento_id},
                         {"conversationId": B, "displayName": "Contato Sem Vínculo",
                          "phoneNumber": "5531999990002", "updatedAt": None,
+                         "unreadCount": 0, "atendimentoId": None},
+                        {"conversationId": C, "displayName": "Atendimento Sintético",
+                         "phoneNumber": None, "updatedAt": None,
                          "unreadCount": 0, "atendimentoId": None}],
                     "nextSkip": None, "linksEnabled": False})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversations/{A}/messages":
@@ -107,6 +111,8 @@ async def device_case(browser, width, height):
                 return await route.fulfill(status=200, json={**payload, "sendTextAvailable": True,
                     "mediaSendAvailable": True, "mediaReadAvailable": True})
             if parsed.path == f"/api/chat/conversations/{B}/active-atendimento":
+                return await route.fulfill(status=200, json={"atendimentoId": None})
+            if parsed.path == f"/api/chat/conversations/{C}/active-atendimento":
                 return await route.fulfill(status=200, json={"atendimentoId": None})
             if parsed.path == f"/api/atendimentos/{atendimento_id}/evolution-conversation":
                 return await route.fulfill(status=200, json={"conversationId": A})
@@ -142,6 +148,14 @@ async def device_case(browser, width, height):
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
         await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
         h.mark(f"{width}px: search by label and phone, empty result, clear restores loaded list")
+        # #154: a LID-only conversation with a display name identical to an
+        # existing Atendimento must remain unlinked, with no search by name.
+        previous_searches = sent.count("/api/atendimentos")
+        await page.get_by_role("button", name="Atendimento Sintético").click()
+        await expect(page.get_by_text("Telefone confiável indisponível.", exact=False)).to_be_visible()
+        assert sent.count("/api/atendimentos") == previous_searches
+        assert page.url.endswith("/conversas")
+        h.mark(f"{width}px: LID-only homonym does not search or navigate by display name")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
 
         await page.get_by_role("button", name="Contato Sem Vínculo").click()
