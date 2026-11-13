@@ -40,6 +40,20 @@ test('#168: rota exige sessão/origem, valida revisões e preserva composição 
   assert.equal(done.body.id,f.item.id)
   assert.equal(done.body.pieceId,dest.id)
   assert.equal(done.body.services[0].id,f.item.services[0]!.id)
+  assert.equal(done.body.pieceReviewPending,true)
+  const reviewPath='/api/atendimentos/'+f.at.id+'/diagnosticos/'+f.item.id+'/confirmar-revisao'
+  const afterSwap=f.scenarios.list(f.at.id)[0]!
+  const review={confirmed:true,revision:done.body.revision,compositionRevision:Number(db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!.revision),scenarios:[{id:afterSwap.id,revision:afterSwap.revision}]}
+  assert.equal((await request(reviewPath,'POST',review,json)).status,401)
+  assert.equal((await request(reviewPath,'POST',review,{...json,cookie,origin:'https://invalid.example'})).status,403)
+  assert.equal((await request(reviewPath,'POST',{...review,confirmed:false},{...json,cookie})).status,400)
+  assert.equal(f.commercial.list(f.at.id)[0]!.pieceReviewPending,true)
+  const verified=await request(reviewPath,'POST',review,{...json,cookie})
+  assert.equal(verified.status,200)
+  assert.equal(verified.body.pieceReviewPending,false)
+  assert.equal(verified.body.revision,done.body.revision+1)
+  assert.equal((await request(reviewPath,'POST',review,{...json,cookie})).status,409)
+  
   const revisioned=await request(path,'POST',data,{...json,cookie})
   assert.equal(revisioned.status,409)
   assert.equal(f.commercial.list(f.at.id)[0]!.pieceId,dest.id)
