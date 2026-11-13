@@ -56,6 +56,8 @@ export interface Atendimento {
   vehicle: string
   brand: string
   model: string
+  fabricationYear: string | null
+  modelYear: string | null
   plate: string
   reason: string
   notes: string
@@ -75,6 +77,6 @@ export interface AtendimentoList {
 }
 
 export type AtendimentoInput = Pick<Atendimento, 'phone'> & Partial<Pick<Atendimento,
-  'name' | 'vehicle' | 'brand' | 'model' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
+  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }
