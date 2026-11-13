@@ -122,3 +122,32 @@ test('issue 128: formatted CPF and CNPJ are never exported to external searches'
   assert.equal(new URL(links.general).searchParams.get('q'),'Fiat Argo 2022 '+part)
  }
 })
+
+
+test('homologação: vehicle, catalog piece, side and component are included in that order',()=>{
+ const vehicle={brand:'Fiat',model:'Palio',vehicle:'Palio 2014/2015'}
+ const context={pieceName:'Porta Dianteira',position:'Passageiro'}
+ const result=manualComponentSearchLinks(vehicle,'Maçaneta',context)
+ assert(result)
+ assert.equal(new URL(result.general).searchParams.get('q'),'Fiat Palio Porta Dianteira Passageiro Maçaneta')
+ assert.equal(new URL(result.original).searchParams.get('q'),'Fiat Palio Porta Dianteira Passageiro Maçaneta original')
+ assert.equal(result.official,'https://lista.mercadolivre.com.br/loja/fiat/palio-porta-dianteira-passageiro-macaneta?sb=storefront_url')
+ assert.equal(result.montadora,null)
+ const alreadyNamed=manualComponentSearchLinks(vehicle,'Maçaneta',{pieceName:'Porta Dianteira · Passageiro',position:'Passageiro'})
+ assert.equal(new URL(alreadyNamed!.general).searchParams.get('q'),'Fiat Palio Porta Dianteira Passageiro Maçaneta')
+ const vw=manualComponentSearchLinks({brand:'Volkswagen',model:'Gol',vehicle:'Gol 2019'},'Friso',{pieceName:'Porta Traseira',position:'Motorista'})
+ assert.equal(new URL(vw!.montadora!).searchParams.get('q'),'Gol Porta Traseira Motorista Friso')
+})
+
+test('homologação: contextual search rejects personal identifiers in piece or position',()=>{
+ const vehicle={brand:'Fiat',model:'Palio',vehicle:'Palio'}
+ for(const context of [
+  {pieceName:'Porta ABC1D23',position:'Passageiro'},
+  {pieceName:'Porta Dianteira',position:'ABC-1D23'},
+  {pieceName:'Porta (31) 99999-0000',position:'Passageiro'},
+  {pieceName:'',position:'Passageiro'},
+ ]){
+  assert.equal(manualComponentSearchLinks(vehicle,'Maçaneta',context),null)
+ }
+ assert.equal(manualComponentSearchLinks(vehicle,'ABC1D23',{pieceName:'Porta Dianteira',position:'Passageiro'}),null)
+})
