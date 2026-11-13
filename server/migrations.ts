@@ -250,7 +250,13 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   `)},
   {version:14,apply:createChatSchema},
   // Scenario-local drafts are separate from immutable emitted budget snapshots.
-  {version:15,apply:db=>db.exec(`ALTER TABLE scenarios ADD COLUMN negotiation_draft_json TEXT NOT NULL DEFAULT '{"mode":"none","value":""}';`)}
+  {version:15,apply:db=>db.exec(`ALTER TABLE scenarios ADD COLUMN negotiation_draft_json TEXT NOT NULL DEFAULT '{"mode":"none","value":""}';`)},
+  // NULL means the historic single vehicle description was not independently verified.
+  // Do not backfill a single year into either field by guessing.
+  {version:16,apply:db=>db.exec(`
+    ALTER TABLE atendimentos ADD COLUMN fabrication_year TEXT;
+    ALTER TABLE atendimentos ADD COLUMN model_year TEXT;
+  `)}
 ]
 
 export function migrate(db: DatabaseSync) {
