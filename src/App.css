@@ -62,12 +62,12 @@
 .back-detail{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border:0;border-radius:9px;background:#eef3fb;color:#173b81;font-size:20px;line-height:1}
 .detail-contact{display:flex;gap:7px;align-items:center;flex:1;min-width:0}
 .detail-avatar{width:27px;height:27px;flex:0 0 27px;border-radius:8px;background:#fff;color:#061e65;display:grid;place-items:center;font-size:10px;font-weight:800}
-.detail-contact strong{font-size:10px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;max-height:36px}
+.detail-contact-lines{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:3px;max-width:100%}
+.detail-contact-lines strong{font-size:11px;line-height:1.2;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-contact-lines .detail-phone{font-size:10px;line-height:1.2;font-weight:400;color:#e2eaff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .detail-identity{border:1px solid #51669b;border-radius:14px;background:#ffffff14;padding:6px 9px;max-width:49%;text-align:center;min-width:104px}
 .detail-identity strong{display:block;font-size:11px}
 .detail-identity span{display:block;font-size:8px;color:#c4d0ec;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.detail-phone{display:flex;align-items:baseline;gap:8px;padding:5px 12px;min-height:29px;flex:none;background:#f2f6fb;border-bottom:1px solid #d5deeb;color:#496381;font-size:11px}
-.detail-phone strong{color:#20395a;font-size:12px;font-weight:750;min-width:0;overflow-wrap:anywhere}
 .view-switch{display:flex;flex:none;height:46px;align-items:center;padding:5px 9px;gap:3px;border-bottom:1px solid #d5deeb;background:#fff}
 .view-tab{border:0;background:transparent;height:36px;min-width:0;flex:1;display:flex;align-items:center;justify-content:center;gap:5px;color:#6e839a;font-weight:780;font-size:11.5px;position:relative}
 .view-tab svg{width:15px;height:15px}.view-tab.active{color:#061e65}
