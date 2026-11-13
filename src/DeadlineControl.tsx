@@ -9,9 +9,9 @@ const setting=(s:Scenario)=>s.deadline??{mode:'automatic' as const,manualDays:nu
 const signature=(s:ScenarioDeadline)=>JSON.stringify(s)
 const days=(v:string)=>/^\d+$/.test(v)&&Number.isSafeInteger(Number(v))&&Number(v)>0?Number(v):null
 export function DeadlineControl({at,scenario,technicalDays,paintingIncluded,externalBusy,onDirty,onBusy,onSync,onAuthRequired}:{at:string;scenario:Scenario;technicalDays:string|null;paintingIncluded:boolean;externalBusy:boolean;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onSync:()=>Promise<CommercialWorkspace|void>;onAuthRequired:()=>void}){
- const effective=executionDeadline(setting(scenario),technicalDays,paintingIncluded)
  const [baseline,setBaseline]=useState(()=>setting(scenario)),[draft,setDraft]=useState(()=>({mode:setting(scenario).mode,text:setting(scenario).manualDays?.toString()??''})),[busy,setBusy]=useState(false),[error,setError]=useState(''),[blocked,setBlocked]=useState(false),[recovered,setRecovered]=useState<number|null>(null)
  const running=useRef(false),desired:ScenarioDeadline={mode:draft.mode,manualDays:draft.mode==='manual'?days(draft.text):null},valid=draft.mode==='automatic'||desired.manualDays!==null,dirty=!valid||signature(desired)!==signature(baseline)
+ const effective=executionDeadline(desired,technicalDays,paintingIncluded)
  const incoming=setting(scenario),syncIncoming=useEffectEvent(()=>{if(!dirty&&!blocked){setBaseline(incoming);setDraft({mode:incoming.mode,text:incoming.manualDays?.toString()??''})}})
  useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)syncIncoming()});return()=>{active=false}},[scenario.revision,incoming.mode,incoming.manualDays])
  useEffect(()=>{onDirty(dirty||blocked);return()=>onDirty(false)},[dirty,blocked,onDirty])
