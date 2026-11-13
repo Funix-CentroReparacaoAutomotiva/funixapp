@@ -50,15 +50,19 @@ try{
    assert.equal(record.brand,'Fiat')
    assert.equal(record.model,'Punto')
    assert.equal(record.vehicle,'Punto 2019/2020')
-   const phoneLine=page.locator('.detail-phone')
+   const phoneLine=page.locator('.detail-header .detail-contact-lines .detail-phone')
    await phoneLine.waitFor()
-   assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+   assert.equal((await phoneLine.innerText()).trim(),'31999990000')
    for(const tab of ['Diagnósticos','Mapa','Chat']){
     await page.getByRole('button',{name:tab,exact:true}).click()
     assert.equal(await phoneLine.isVisible(),true,`${width}px: telefone oculto na aba ${tab}`)
-    assert.match(await phoneLine.innerText(),/Telefone\s+31999990000/)
+    assert.equal((await phoneLine.innerText()).trim(),'31999990000')
    }
-   assert.equal(await phoneLine.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true,`${width}px: faixa transborda`)
+   assert.equal(await phoneLine.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true,`${width}px: telefone transborda`)
+   assert.equal(await page.locator('.detail-contact-lines strong').evaluate(el=>getComputedStyle(el).fontWeight),'800')
+   assert.equal(await phoneLine.evaluate(el=>getComputedStyle(el).fontWeight),'400')
+   assert.equal(await page.locator('.detail-header').count(),1)
+   assert.equal(await page.locator('.detail-viewport>.detail-phone').count(),0)
    console.log('PASS telefone',width,'visível nas três abas')
    await page.getByRole('button',{name:'Editar Atendimento'}).click()
    const edit=page.getByRole('dialog',{name:'Editar Atendimento'});await edit.waitFor()
@@ -98,7 +102,7 @@ try{
    // LID-only / missing phone is displayed as absent, never inferred.
    db.prepare("UPDATE atendimentos SET phone='',phone_normalized=NULL WHERE id=?").run(record.id)
    await page.reload();await phoneLine.waitFor()
-   assert.match(await phoneLine.innerText(),/Telefone\s+Não informado/)
+   assert.equal((await phoneLine.innerText()).trim(),'Não informado')
    assert.equal((await phoneLine.innerText()).includes('31999990000'),false)
    console.log('PASS sem telefone',width)
 

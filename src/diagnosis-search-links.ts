@@ -54,13 +54,24 @@ function officialMarketplaceSearch(make:string,part:string):string|null {
 const manufacturerPartsStores:Record<string,string>={
  volkswagen:'https://pecas.vw.com.br/'
 }
-export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string) {
+export type ComponentSearchContext={pieceName:string;position?:string}
+// Context comes exclusively from the commercial catalog (not from customer notes).
+// Existing two-argument calls retain their legacy behavior for compatibility.
+export function manualComponentSearchLinks(vehicle:Pick<Atendimento,'brand'|'model'|'vehicle'>,component:string,context?:ComponentSearchContext) {
  const brand=technical(vehicle.brand,40),model=technical(vehicle.model,60),part=technical(component,100,true)
- if(!brand||!model||!part)return null
- const year=yearFromVehicle(vehicle.vehicle)
- const query=[brand,model,year,part].filter(Boolean).join(' ')
+ const piece=context?technical(context.pieceName.replace(/\s*·\s*/g,' '),100,true):null
+ const position=context?.position?.trim()?technical(context.position,40):null
+ if(!brand||!model||!part||(context&&!piece)||(context?.position?.trim()&&!position))return null
+ // Catalog names sometimes already contain the side. Do not repeat "Passageiro".
+ const pieceWithPosition=piece&&position&&!piece.toLocaleLowerCase('pt-BR').includes(position.toLocaleLowerCase('pt-BR'))
+   ?piece+' '+position:piece
+ const year=context? '':yearFromVehicle(vehicle.vehicle)
+ const terms=[brand,model,year,pieceWithPosition,part].filter(Boolean)
+ const query=terms.join(' ')
  const google=(value:string)=>'https://www.google.com/search?'+new URLSearchParams({tbm:'shop',q:value}).toString()
  const normalizedBrand=brand.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
  const make=normalizedBrand==='vw'?'volkswagen':normalizedBrand
- return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,part),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:[part,model,year].filter(Boolean).join(' ')}).toString():manufacturerPartsStores[make]):null}
+ const storeTerm=context?[model,pieceWithPosition,part].filter(Boolean).join(' '):part
+ const manufacturerTerm=context?storeTerm:[part,model,year].filter(Boolean).join(' ')
+ return {general:google(query),original:google(query+' original'),official:officialMarketplaceSearch(make,storeTerm),montadora:manufacturerPartsStores[make]?(make==='volkswagen'?manufacturerPartsStores[make]+'todas-categorias?'+new URLSearchParams({q:manufacturerTerm}).toString():manufacturerPartsStores[make]):null}
 }
