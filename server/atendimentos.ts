@@ -52,8 +52,8 @@ function map(row: Record<string, SQLOutputValue>): Atendimento {
   return {
     id: String(row.id), phone: String(row.phone), phoneNormalized: row.phone_normalized === null ? null : String(row.phone_normalized),
     name: String(row.name), vehicle: String(row.vehicle), brand: String(row.brand), model: String(row.model),
-    fabricationYear: row.fabrication_year === null ? null : String(row.fabrication_year),
-    modelYear: row.model_year === null ? null : String(row.model_year), plate: String(row.plate),
+    fabricationYear: row.fabrication_year == null ? null : String(row.fabrication_year),
+    modelYear: row.model_year == null ? null : String(row.model_year), plate: String(row.plate),
     reason: String(row.reason), notes: String(row.notes), stage: String(row.stage) as AtendimentoStage,
     rejectionReason: String(row.rejection_reason), explicitRefusal: row.explicit_refusal === 1,
     createdAt: String(row.created_at), updatedAt: String(row.updated_at), revision: Number(row.revision),
@@ -66,7 +66,11 @@ function checkRefusal(record: Atendimento) {
 
 export class AtendimentoRepository {
   readonly db: DatabaseSync
-  constructor(db: DatabaseSync) { this.db = db }
+  readonly hasSplitYears: boolean
+  constructor(db: DatabaseSync) {
+    this.db = db
+    this.hasSplitYears = db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='model_year'").get() !== undefined
+  }
 
   ready() { this.db.prepare('SELECT 1 FROM atendimentos LIMIT 1').get() }
 
@@ -92,12 +96,18 @@ export class AtendimentoRepository {
   create(input: unknown): Atendimento {
     const { fields } = validate(input, false)
     const now = new Date().toISOString()
+    if(!this.hasSplitYears && ((fields.fabricationYear??null)!==null || (fields.modelYear??null)!==null)) invalid('Banco antigo não aceita anos independentes; migração necessária.')
     const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', fabricationYear: null, modelYear: null, plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
     record.phoneNormalized = normalizePhone(record.phone)
     checkRefusal(record)
     this.db.exec('BEGIN IMMEDIATE')
     try{
-    this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,fabrication_year,model_year,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.fabricationYear, record.modelYear, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
+    if(this.hasSplitYears) {
+      this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,fabrication_year,model_year,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.fabricationYear, record.modelYear, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
+    } else {
+      // Leitura de bancos históricos em testes de migração; não grava anos novos em schema antigo.
+      this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
+    }
       if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
       this.db.exec('COMMIT')
     }catch(error){this.db.exec('ROLLBACK');throw error}
@@ -107,10 +117,13 @@ export class AtendimentoRepository {
   update(id: string, input: unknown): Atendimento {
     const { fields, revision } = validate(input, true)
     const old = this.get(id)
+    if(!this.hasSplitYears && (fields.fabricationYear!==undefined || fields.modelYear!==undefined)) invalid('Banco antigo não aceita anos independentes; migração necessária.')
     const record: Atendimento = { ...old, ...fields, revision: revision + 1, updatedAt: new Date().toISOString() }
     record.phoneNormalized = normalizePhone(record.phone)
     checkRefusal(record)
-    const result = this.db.prepare(`UPDATE atendimentos SET phone=?,phone_normalized=?,name=?,vehicle=?,brand=?,model=?,fabrication_year=?,model_year=?,plate=?,reason=?,notes=?,search_text=?,stage=?,rejection_reason=?,explicit_refusal=?,updated_at=?,revision=revision+1 WHERE id=? AND revision=?`).run(record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.fabricationYear, record.modelYear, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, record.updatedAt, id, revision)
+    const result = this.hasSplitYears
+      ? this.db.prepare(`UPDATE atendimentos SET phone=?,phone_normalized=?,name=?,vehicle=?,brand=?,model=?,fabrication_year=?,model_year=?,plate=?,reason=?,notes=?,search_text=?,stage=?,rejection_reason=?,explicit_refusal=?,updated_at=?,revision=revision+1 WHERE id=? AND revision=?`).run(record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.fabricationYear, record.modelYear, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, record.updatedAt, id, revision)
+      : this.db.prepare(`UPDATE atendimentos SET phone=?,phone_normalized=?,name=?,vehicle=?,brand=?,model=?,plate=?,reason=?,notes=?,search_text=?,stage=?,rejection_reason=?,explicit_refusal=?,updated_at=?,revision=revision+1 WHERE id=? AND revision=?`).run(record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, record.updatedAt, id, revision)
     if (!result.changes) throw new ServiceError(409, 'VERSION_CONFLICT', 'Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
     return this.get(id)
   }
