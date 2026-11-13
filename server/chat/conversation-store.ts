@@ -293,11 +293,27 @@ export class ConversationStore {
           .get(instance, e.eventId)
       if (prior) {
         if (prior.digest !== digest) conflict()
+        let disposition = prior.disposition as ChatReceipt['disposition']
+        // A quarantined receipt did not retain message content. Recovery requires
+        // the authenticated, identical source event AND a resolved current link.
+        if (
+          disposition === 'quarantined' &&
+          (prior.reason === 'context_conflict' || prior.reason === 'identity_conflict') &&
+          this.identities.identityState(e.message.remoteJid) === 'linked'
+        ) {
+          this.apply(e, this.ensure(e.message.remoteJid))
+          this.db
+            .prepare(
+              "UPDATE chat_events SET disposition='projected',reason='RECONCILED_AFTER_CONFIRMATION' WHERE instance=? AND event_id=?",
+            )
+            .run(instance, e.eventId)
+          disposition = 'projected'
+        }
         return {
           receiptId: String(prior.receipt_id),
           eventId: e.eventId,
           state: 'persisted',
-          disposition: prior.disposition,
+          disposition,
         } as ChatReceipt
       }
       this.identities.rememberProviderAliases([e.message], true, 'webhook')

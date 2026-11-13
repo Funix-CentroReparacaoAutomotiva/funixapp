@@ -50,7 +50,11 @@ export async function deliverConversationEvent(
     receipt?.state === 'persisted' &&
     receipt.eventId === event.eventId &&
     typeof receipt.receiptId === 'string' &&
-    /^[a-f0-9-]{36}$/.test(receipt.receiptId)
+    /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
+      receipt.receiptId,
+    ) &&
+    ['projected', 'pending', 'quarantined'].includes(String(receipt.disposition)) &&
+    typeof receipt.disposition === 'string'
   ) {
     return {
       state: receipt.disposition === 'quarantined' ? ('review' as const) : ('persisted' as const),

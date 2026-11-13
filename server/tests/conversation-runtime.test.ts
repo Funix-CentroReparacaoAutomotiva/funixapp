@@ -175,6 +175,65 @@ test('local pending event is durable/idempotent without Atendimento; late ERP co
   }
 })
 
+test('exact quarantined replay recovers only after a newer ERP confirmation, retains receipt and creates no duplicate Atendimento', () => {
+  const f = fixture()
+  try {
+    f.confirm()
+    assert.throws(() => f.confirm('i-LOCAL_B'), code('CODA_SYNC_CONFLICT'))
+    const raw = JSON.stringify(f.event()),
+      receipt = f.local.store.ingest(raw)
+    assert.equal(receipt.disposition, 'quarantined')
+    assert.equal(f.local.store.page(LID, 1).items.length, 0)
+    assert.deepEqual(f.local.store.ingest(raw), receipt)
+    f.confirm('i-LOCAL_A', 101)
+    const recovered = f.local.store.ingest(raw)
+    assert.equal(recovered.receiptId, receipt.receiptId)
+    assert.equal(recovered.disposition, 'projected')
+    assert.equal(f.local.store.page(LID, 1).items[0]?.text, 'Synthetic 1')
+    assert.deepEqual(f.local.store.ingest(raw), recovered)
+    assert.throws(
+      () =>
+        f.local.store.ingest(
+          JSON.stringify({ ...f.event(), message: { ...f.event().message, text: 'Changed' } }),
+        ),
+      code('CHAT_IDENTITY_CONFLICT'),
+    )
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n), 1)
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM chat_events').get()!.n), 1)
+    assert.equal(Number(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n), 1)
+  } finally {
+    f.db.close()
+  }
+})
+
+test('recovery of an old quarantined event cannot undo a later deletion', () => {
+  const f = fixture()
+  try {
+    f.confirm()
+    assert.throws(() => f.confirm('i-LOCAL_B'), code('CODA_SYNC_CONFLICT'))
+    const raw = JSON.stringify(f.event())
+    f.local.store.ingest(raw)
+    f.confirm('i-LOCAL_A', 101)
+    f.local.store.ingest(
+      JSON.stringify(
+        f.event(2, {
+          type: 'message.delete',
+          message: { remoteJid: LID, remoteJidAlt: PN, messageId: 'msg-1' },
+        }),
+      ),
+    )
+    assert.equal(f.local.store.ingest(raw).disposition, 'projected')
+    assert.equal(f.local.store.page(LID, 1).items.length, 0)
+    assert.equal(
+      f.db.prepare('SELECT deleted FROM chat_message_state WHERE message_id=?').get('msg-1')!
+        .deleted,
+      1,
+    )
+  } finally {
+    f.db.close()
+  }
+})
+
 test('edit, delayed original, deletion and later edit never duplicate or resurrect a message', () => {
   const f = fixture()
   try {
@@ -494,6 +553,26 @@ test('lost relay ACK retries event only and requires a matching receipt, without
       (await deliverConversationEvent(raw, config, async () => ({ status: 401 }))).state,
       'review',
     )
+    for (const body of [
+      { state: 'persisted', eventId: f.event().eventId, receiptId: randomUUID() },
+      {
+        state: 'persisted',
+        eventId: f.event().eventId,
+        receiptId: '-'.repeat(36),
+        disposition: 'projected',
+      },
+      {
+        state: 'persisted',
+        eventId: f.event().eventId,
+        receiptId: randomUUID(),
+        disposition: ['projected'],
+      },
+    ]) {
+      assert.equal(
+        (await deliverConversationEvent(raw, config, async () => ({ status: 202, body }))).state,
+        'retry',
+      )
+    }
   } finally {
     f.db.close()
   }
