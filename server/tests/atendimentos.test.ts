@@ -131,3 +131,45 @@ test('Issue #159 normaliza placas no create/PATCH e mantém busca compatível', 
     assert.equal(repo.get(mercosul.id).phone, '31912345678')
   } finally { db.close() }
 })
+
+test('Issue #118 mantém anos independentes, legados sem inferência e revisão otimista', () => {
+  const db = openDatabase(':memory:')
+  try {
+    const repo = new AtendimentoRepository(db)
+    const legacy = repo.create({phone:'31911112222',model:'Punto',vehicle:'Punto 2019/2020'})
+    assert.equal(legacy.fabricationYear,null)
+    assert.equal(legacy.modelYear,null)
+    const untouched = repo.update(legacy.id,{revision:legacy.revision,name:'Legado preservado'})
+    assert.equal(untouched.fabricationYear,null)
+    assert.equal(untouched.modelYear,null)
+    assert.equal(untouched.vehicle,'Punto 2019/2020')
+    const split = repo.update(legacy.id,{revision:untouched.revision,fabricationYear:'2019',modelYear:'2020'})
+    assert.equal(split.fabricationYear,'2019')
+    assert.equal(split.modelYear,'2020')
+    assert.throws(()=>repo.update(legacy.id,{revision:untouched.revision,modelYear:'2021'}),/mudou em outra edição/)
+    assert.throws(()=>repo.update(legacy.id,{revision:split.revision,modelYear:'2020/2021'}),/quatro dígitos/)
+    assert.equal(repo.get(legacy.id).modelYear,'2020')
+    const onlyFabrication=repo.create({phone:'31911113333',fabricationYear:'2017',modelYear:''})
+    assert.equal(onlyFabrication.fabricationYear,'2017')
+    assert.equal(onlyFabrication.modelYear,'')
+  } finally { db.close() }
+})
+
+test('Issue #118 adiciona colunas a banco existente sem reescrever veículo legado', () => {
+  const temp=files()
+  try {
+    let db=openDatabase(temp.filename)
+    const legacy=new AtendimentoRepository(db).create({phone:'31911110000',vehicle:'Gol 2020'})
+    db.close()
+    // Simula banco existente antes de V16 preservando os registros e migrações anteriores.
+    db=new DatabaseSync(temp.filename)
+    db.exec('BEGIN IMMEDIATE')
+    db.exec('CREATE TABLE old_atendimentos AS SELECT id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision FROM atendimentos')
+    db.exec('DROP TABLE old_atendimentos')
+    db.exec('COMMIT')
+    db.close()
+    db=openDatabase(temp.filename)
+    assert.equal(new AtendimentoRepository(db).get(legacy.id).vehicle,'Gol 2020')
+    db.close()
+  } finally {temp.close()}
+})
