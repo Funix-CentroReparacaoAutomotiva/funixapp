@@ -126,6 +126,22 @@ async def device_case(browser, width, height):
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
         await page.goto(ORIGIN + "/conversas")
         await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        # #152: search is display-only; filtering must not create links or
+        # contact-identity matches. Use the existing synthetic Evolution list.
+        search = page.get_by_role("textbox", name="Buscar conversas carregadas por nome ou telefone")
+        await expect(search).to_be_enabled()
+        await search.fill("sem vínculo")
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_have_count(0)
+        await search.fill("99990001")
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_have_count(0)
+        await search.fill("inexistente")
+        await expect(page.get_by_text("Nenhuma conversa encontrada nas páginas carregadas")).to_be_visible()
+        await search.fill("")
+        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
+        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
+        h.mark(f"{width}px: search by label and phone, empty result, clear restores loaded list")
         assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
 
         await page.get_by_role("button", name="Contato Sem Vínculo").click()
