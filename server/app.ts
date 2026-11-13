@@ -1,3 +1,6 @@
+import { identifier as chatIdentifier } from './chat/events.ts'
+import type { ConversationRuntime } from './chat/conversation-runtime.ts'
+import { EvolutionReadError } from './experimental/evolution-read/client.ts'
 import{createVoiceEndpoint}from'./voice-endpoint.ts'
 import{openAIVoiceProvider}from'./voice-provider.ts'
 import type{VoiceProvider}from'./voice-provider.ts'
@@ -46,6 +49,7 @@ import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
 export interface AppOptions {
+  conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
   evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
   v20Associations?: V20AssociationRepository // independent opt-in: never read legacy chat_links
@@ -91,7 +95,7 @@ export function createRequestHandler(options: AppOptions) {
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
-  const ingest = createIngestEndpoint(chat, options.whatsappIngest, now)
+  const ingest = createIngestEndpoint(chat, options.whatsappIngest, now, options.conversationRuntime?.store, options.conversationRuntime?.providerIdentity)
   const codaIntake = options.codaSync ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
   const sourceIntake = options.sourceLedger ? createDevelopmentSourceIntake({ ...options.sourceLedger, now }) : null
   const decisionIntake = options.decisionLedger ? createDevelopmentDecisionIntake({...options.decisionLedger,now}) : null
@@ -116,6 +120,21 @@ export function createRequestHandler(options: AppOptions) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     const send = (status: number, value: unknown) => { res.writeHead(status); res.end(JSON.stringify(value)) }
     const fail = (status: number, code: string, message: string) => send(status, { error: { code, message, requestId } })
+    const providerFailure = (cause: unknown, operation: 'list' | 'history') => {
+      if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message)
+      const reason = cause instanceof EvolutionReadError ? cause.code : 'UNKNOWN'
+      const providerStatus = cause instanceof EvolutionReadError ? cause.httpStatus : undefined
+      console.warn(JSON.stringify({ event: 'chat_provider_failure', requestId, operation, reason, providerStatus }))
+      if (reason === 'HTTP' && (providerStatus === 401 || providerStatus === 403))
+        return fail(503, 'CHAT_PROVIDER_AUTH', 'A integração WhatsApp precisa de revisão de acesso. Informe o código de referência ao suporte.')
+      if (reason === 'SCOPE' || reason === 'CONFLICT')
+        return fail(503, 'CHAT_PROVIDER_SCOPE', 'O histórico foi bloqueado por inconsistência de identidade. Solicite revisão do vínculo.')
+      if (reason === 'RESPONSE')
+        return fail(503, 'CHAT_PROVIDER_RESPONSE', 'A Evolution retornou uma resposta incompatível. Informe o código de referência ao suporte.')
+      if (reason === 'TIMEOUT')
+        return fail(503, 'CHAT_PROVIDER_TIMEOUT', 'A Evolution demorou para responder. Tente atualizar o histórico.')
+      return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar o WhatsApp agora. Tente novamente.')
+    }
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
@@ -292,7 +311,7 @@ export function createRequestHandler(options: AppOptions) {
       }
       // V20 N:N associations: opt-in, single authenticated operator and explicit Origin on writes.
       // These operations NEVER contact Evolution or change legacy chat/messages.
-      if (options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
+      if (!options.conversationRuntime && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         if (associationRoute || contextRoute) {
@@ -334,12 +353,38 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Resolve the current canonical Atendimento after a stale conversation list.
       // The opaque ID is registered by Evolution; no browser-supplied JID or phone.
+      const statesRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/message-states$/.exec(url.pathname)
+      if(statesRoute&&options.evolutionChat&&options.conversationRuntime?.read){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(url.search)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const body=await readJson(req,32*1024) as {messages?:unknown}
+        if(!body||Object.keys(body).length!==1||!Array.isArray(body.messages)||body.messages.length<1||body.messages.length>50||body.messages.some(item=>!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).some(key=>!['messageId','version'].includes(key))||!chatIdentifier(item.messageId,200)||(item.version!==undefined&&(typeof item.version!=='string'||!/^[a-f0-9]{64}$/.test(item.version))))||new Set(body.messages.map(item=>item.messageId)).size!==body.messages.length)return fail(400,'CHAT_INVALID_QUERY','Mensagens inválidas.')
+        try{const result=await options.evolutionChat.messageStates(statesRoute[1]!,statesRoute[2]!,body.messages)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          return result?send(200,result):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada.')
+        }catch(cause){return providerFailure(cause,'history')}
+      }
+      const recoveryRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/sync-history$/.exec(url.pathname)
+      if(recoveryRoute&&options.evolutionChat&&options.conversationRuntime){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(url.search)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const body=await readJson(req,1024) as {page?:unknown}
+        if(!body||Object.keys(body).length!==1||!Number.isInteger(body.page)||Number(body.page)<1||Number(body.page)>1000)return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
+        try{const result=await options.evolutionChat.recoverHistory(recoveryRoute[1]!,recoveryRoute[2]!,Number(body.page))
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          return result?send(200,result):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada.')
+        }catch(cause){return providerFailure(cause,'history')}
+      }
       const activeContextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/active-atendimento$/.exec(url.pathname)
       if (activeContextRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const atendimentoId = options.evolutionChat.activeAtendimentoForConversation(activeContextRoute[1]!)
-        return send(200, { atendimentoId })
+        return send(200, { atendimentoId, ...(options.conversationRuntime?{state:options.evolutionChat.conversationState(activeContextRoute[1]!)}:{}) })
       }
       // Resolve the unique active Coda-linked conversation for direct Funil navigation.
       // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
@@ -362,19 +407,22 @@ export function createRequestHandler(options: AppOptions) {
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const data = await readJson(req, 8192)
         if (!data || typeof data !== 'object' || Array.isArray(data) ||
-            Object.keys(data).length !== 1 || typeof (data as Record<string, unknown>).text !== 'string')
+            Object.keys(data).some(key=>!['text','requestId','contextToken'].includes(key)) || typeof (data as Record<string, unknown>).text !== 'string')
           return fail(400, 'CHAT_SEND_INVALID', 'Envie somente o texto da mensagem.')
-        const text = (data as { text: string }).text
+        const command=data as {text:string;requestId?:string;contextToken?:string}
+        if(options.conversationRuntime&&(typeof command.requestId!=='string'||typeof command.contextToken!=='string'))return fail(400,'CHAT_SEND_COMMAND_REQUIRED','Atualize a conversa antes de enviar.')
+        const text = command.text
         if (!text.trim() || [...text].length > 4096 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))
           return fail(400, 'CHAT_SEND_INVALID', 'Mensagem vazia, inválida ou muito longa.')
         try {
-          const result = await options.evolutionChat.sendTextForAtendimento(sendEvolutionRoute[1]!, sendEvolutionRoute[2]!, text)
+          const result = await options.evolutionChat.sendTextForAtendimento(sendEvolutionRoute[1]!, sendEvolutionRoute[2]!, text, command.requestId&&command.contextToken?{requestId:command.requestId,contextToken:command.contextToken}:undefined)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante o envio. Confira o WhatsApp antes de reenviar.')
           if (result.state === 'unlinked') return fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada ao Atendimento.')
           if (result.state === 'busy') return fail(409, 'CHAT_SEND_IN_PROGRESS', 'Há um envio em andamento nesta conversa.')
           if (result.state !== 'accepted') return fail(400, 'CHAT_SEND_INVALID', 'Mensagem inválida ou envio desativado.')
           return send(200, { state: 'accepted', messageId: result.receipt.messageId })
-        } catch {
+        } catch (cause) {
+          if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message)
           return fail(502, 'CHAT_SEND_UNCERTAIN', 'Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.')
         }
       }
@@ -390,22 +438,23 @@ export function createRequestHandler(options: AppOptions) {
         const raw=await readJson(req,17*1024*1024)
         if(!raw||typeof raw!=='object'||Array.isArray(raw))return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
         const data=raw as Record<string,unknown>,keys=Object.keys(data)
-        if(keys.some(key=>!['kind','mimeType','base64','caption'].includes(key))||
+        if(keys.some(key=>!['kind','mimeType','base64','caption','requestId','contextToken'].includes(key))||
           typeof data.kind!=='string'||!['image','video','audio'].includes(data.kind)||
           typeof data.mimeType!=='string'||typeof data.base64!=='string'||
           (data.caption!==undefined&&typeof data.caption!=='string'))return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
+        if(options.conversationRuntime&&(typeof data.requestId!=='string'||typeof data.contextToken!=='string'))return fail(400,'CHAT_SEND_COMMAND_REQUIRED','Atualize a conversa antes de enviar.')
         const item={kind:data.kind as MediaKind,mimeType:data.mimeType,base64:data.base64,
           ...(typeof data.caption==='string'?{caption:data.caption}:{})} as MediaInput
         try{validateMedia(item.kind,item.mimeType,item.base64)}
         catch{return fail(400,'CHAT_MEDIA_INVALID','Formato ou tamanho de mídia não suportado.')}
         try{
-          const result=await options.evolutionChat.sendMediaForAtendimento(mediaSendRoute[1]!,mediaSendRoute[2]!,item)
+          const result=await options.evolutionChat.sendMediaForAtendimento(mediaSendRoute[1]!,mediaSendRoute[2]!,item,typeof data.requestId==='string'&&typeof data.contextToken==='string'?{requestId:data.requestId,contextToken:data.contextToken}:undefined)
           if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada; confira o WhatsApp antes de reenviar.')
           if(result.state==='unlinked')return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada ao Atendimento.')
           if(result.state==='busy')return fail(409,'CHAT_SEND_IN_PROGRESS','Outro envio está em andamento.')
           if(result.state!=='accepted')return fail(400,'CHAT_MEDIA_INVALID','Mídia inválida.')
           return send(200,{state:'accepted',messageId:result.receipt.messageId})
-        }catch{return fail(502,'CHAT_MEDIA_SEND_UNCERTAIN','Envio não confirmado. Confira o WhatsApp antes de tentar outra vez.')}
+        }catch(cause){if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message);return fail(502,'CHAT_MEDIA_SEND_UNCERTAIN','Envio não confirmado. Confira o WhatsApp antes de tentar outra vez.')}
       }
       const mediaReadRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
       if(mediaReadRoute){
@@ -439,16 +488,18 @@ export function createRequestHandler(options: AppOptions) {
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
       if (syncedEvolutionRoute && options.evolutionChat && options.codaSync) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
-        if ([...url.searchParams.keys()].some(key => key !== 'page') || url.searchParams.getAll('page').length > 1)
+        if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const cursor=url.searchParams.get('cursor')??undefined
+        if(cursor&&(!options.conversationRuntime?.read||! /^[A-Za-z0-9_-]{1,900}$/.test(cursor)))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
         const page = url.searchParams.get('page') ?? '1'
         if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         try {
-          const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page))
+          const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
-        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
+        } catch (cause) { if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message);return providerFailure(cause, 'history') }
       }
       // Opt-in only. Existing bootstrap does not inject a bridge; no new route in production.
       if (options.evolutionChat && (url.pathname === '/api/chat/conversations' || url.pathname.startsWith('/api/chat/conversations/'))) {
@@ -464,8 +515,8 @@ export function createRequestHandler(options: AppOptions) {
           try {
             const result = await options.evolutionChat.list(Number(skip))
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-            return send(200, options.v20Associations ? { ...result, linksEnabled: true } : result)
-          } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as conversas agora.') }
+            return send(200, options.v20Associations && !options.conversationRuntime ? { ...result, linksEnabled: true } : result)
+          } catch (cause) { return providerFailure(cause, 'list') }
         }
         if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const page = url.searchParams.get('page') ?? '1'
@@ -474,10 +525,11 @@ export function createRequestHandler(options: AppOptions) {
           const result = await options.evolutionChat.messages(messagesRoute![1]!, Number(page))
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
-        } catch { return fail(503, 'CHAT_PROVIDER_UNAVAILABLE', 'Não foi possível consultar as mensagens agora.') }
+        } catch (cause) { if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message);return providerFailure(cause, 'history') }
       }
       const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
       if (chatReadRoute) {
+        if(options.conversationRuntime)return fail(410,'CHAT_LEGACY_DISABLED','Abra o Chat pela conversa confirmada.')
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         return send(200, readMessages(chat, chatReadRoute[1]!, url.searchParams))
       }

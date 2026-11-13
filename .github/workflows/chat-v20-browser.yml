@@ -7,6 +7,8 @@ on:
       - 'server/chat/**'
       - 'server/experimental/evolution-read/**'
       - 'tests/browser/chat_v20_conversations.py'
+      - 'tests/browser/chat_mvp_local.py'
+      - 'server/tests/fixtures/chat-local-runtime-server.ts'
       - 'tests/browser/chat_v20_links.py'
       - '.github/workflows/chat-v20-browser.yml'
   workflow_dispatch:
@@ -38,6 +40,7 @@ jobs:
       - run: python tests/browser/chat_v20_conversations.py
         env:
           FUNIX_EVOLUTION_READ_ENABLED: 'false'
+      - run: python tests/browser/chat_mvp_local.py
       - run: python tests/browser/chat_v20_links.py
         env:
           FUNIX_EVOLUTION_READ_ENABLED: 'false'
@@ -49,4 +52,5 @@ jobs:
           path: |
             docs/evidencias/issue71-chat-v20-browser/
             docs/evidencias/issue98-chat-v20-links-browser/
+            work/chat-mvp-browser/
           if-no-files-found: ignore

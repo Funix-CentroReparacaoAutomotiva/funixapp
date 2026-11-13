@@ -1,3 +1,4 @@
+import { EvolutionReadError } from './client.ts'
 import type { ReadRequest, ReadTransport } from './client.ts'
 
 /**
@@ -18,7 +19,7 @@ const MAX_REQUEST_BYTES = 2048
 const ALLOWED_PATH = /^\/chat\/(?:findChats|findMessages)\/[A-Za-z0-9_-]{1,80}$/
 
 function invalidConfiguration(): never { throw new Error('Evolution HTTP transport configuration invalid') }
-function invalidResponse(): never { throw new Error('Evolution HTTP transport response invalid') }
+function invalidResponse(): never { throw new EvolutionReadError('RESPONSE') }
 
 /** Response and error messages never include provider bodies, URLs, credentials or headers. */
 export function createEvolutionHttpTransport(options: HttpTransportOptions): ReadTransport {

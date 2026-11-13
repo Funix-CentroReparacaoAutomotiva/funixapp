@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
+import { EvolutionReadError } from '../experimental/evolution-read/client.ts'
 import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
@@ -18,6 +19,7 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
   if (canonical) createCodaEventSchema(db)
   const sync = canonical ? new CodaEventSyncRepository(db) : undefined
   let clock = Date.parse('2026-11-07T10:00:00Z')
+  let messageFailure: Error | null = null
   const calls: string[] = []
   const sendCalls: Array<{ jid: string; text: string }> = []
   const mediaCalls: string[] = []
@@ -39,6 +41,7 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
     },
     async findMessages(requested, { page } = {}) {
       calls.push('messages:' + page)
+      if (messageFailure) throw messageFailure
       assert.equal(requested, chatRows?.[0]?.remoteJid ?? jid)
       if (fail) throw new Error('private provider message body')
       return {
@@ -92,7 +95,7 @@ function fixture(enabled = true, fail = false, canonical = false, sendEnabled = 
     assert.equal(res.status, 200)
     return res.headers.get('set-cookie')!.split(';')[0]!
   }
-  return { db, sync, calls, sendCalls, mediaCalls, request, login, advance: (ms: number) => { clock += ms } }
+  return { db, sync, calls, sendCalls, mediaCalls, request, login, failMessages: (error: Error | null) => { messageFailure = error }, advance: (ms: number) => { clock += ms } }
 }
 
 test('Chat bridge disabled: existing routes and capabilities are unchanged', async () => {
@@ -518,4 +521,37 @@ test('LID with colliding alternate JID cannot send or read a canonical Atendimen
     else process.env.FUNIX_EVOLUTION_SEND_ENABLED = previous
     f.db.close()
   }
+})
+
+
+test('canonical history HTTP errors distinguish auth, timeout, scope and invalid response with safe correlated logs', async context => {
+  const f = fixture(true,false,true)
+  const logs: string[] = []
+  context.mock.method(console,'warn',(value: string) => logs.push(value))
+  try {
+    const id=f.sync!.sync({version:1,source:'coda',eventId:'safe:errors',codaRowId:'i-SAFE_ERRORS',
+      instance:'funix_comercial',remoteJid:jid,phoneE164:null,displayName:'Sintético',occurredAt:100}).atendimentoId
+    const cookie=await f.login()
+    const conversationId=(await (await f.request('/api/chat/conversations',cookie)).json()).items[0].conversationId
+    const path=`/api/atendimentos/${id}/evolution-conversations/${conversationId}/messages`
+    for (const [error,code] of [
+      [new EvolutionReadError('HTTP',401),'CHAT_PROVIDER_AUTH'],
+      [new EvolutionReadError('HTTP',403),'CHAT_PROVIDER_AUTH'],
+      [new EvolutionReadError('TIMEOUT'),'CHAT_PROVIDER_TIMEOUT'],
+      [new EvolutionReadError('SCOPE'),'CHAT_PROVIDER_SCOPE'],
+      [new EvolutionReadError('RESPONSE'),'CHAT_PROVIDER_RESPONSE'],
+      [new Error('private token / message content'),'CHAT_PROVIDER_UNAVAILABLE'],
+    ] as const) {
+      f.failMessages(error)
+      const response=await f.request(path,cookie)
+      assert.equal(response.status,503)
+      const body=await response.json()
+      assert.equal(body.error.code,code)
+      assert.equal(JSON.parse(logs.at(-1)!).requestId,body.error.requestId)
+      assert(!JSON.stringify(body).includes('private'))
+      assert(!logs.at(-1)!.includes(jid)); assert(!logs.at(-1)!.includes('private'))
+    }
+    f.failMessages(null)
+    assert.equal((await f.request(path,cookie)).status,200)
+  } finally { f.db.close() }
 })

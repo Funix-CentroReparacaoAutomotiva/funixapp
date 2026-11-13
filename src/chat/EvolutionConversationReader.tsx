@@ -44,6 +44,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
   onUnauthorized: () => void
   onOpenAtendimento?: (atendimentoId: string, tab: 'chat' | 'diagnosticos' | 'mapa', conversationId?: string) => void
 }) {
+  const [localList,setLocalList]=useState(false)
   const [available, setAvailable] = useState<boolean | null>(null)
   const [linksEnabled, setLinksEnabled] = useState(false)
   const [list, setList] = useState<ConversationRow[]>([])
@@ -67,6 +68,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
       const result = parseConversationList(await api<unknown>(`/api/chat/conversations?skip=${skip}`, { signal: controller.signal }))
       if (controller.signal.aborted) return
       setAvailable(true)
+      setLocalList(result.source==='local'&&result.providerUnavailable===true)
       setLinksEnabled(result.linksEnabled === true)
       setList(previous => skip === 0 ? result.items : [
         ...previous, ...result.items.filter(row => !previous.some(known => known.conversationId === row.conversationId)),
@@ -111,7 +113,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
     listRequest.current?.abort()
     lookupRequest.current?.abort()
     setLookupBusy(null); setChoice(null); setLookupError('')
-    setUnlinked(null); setList([]); setNextSkip(null)
+    setUnlinked(null); setList([]); setNextSkip(null);setLocalList(false)
     setAvailable(null); setLinksEnabled(false)
     setVersion(value => value + 1)
   }
@@ -142,11 +144,14 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
     lookupRequest.current = canonicalController
     setLookupBusy(row.conversationId)
     try {
-      const current = await api<{ atendimentoId: string | null }>(
+      const current = await api<{ atendimentoId: string | null; state?: string }>(
         '/api/chat/conversations/' + encodeURIComponent(row.conversationId) + '/active-atendimento',
         { signal: canonicalController.signal },
       )
       if (canonicalController.signal.aborted) return
+      if(current.state==='identity_conflict'||current.state==='context_conflict'){
+        setUnlinked(row.conversationId);setLookupError('Há uma divergência na identidade ou no Atendimento confirmado. Histórico e envio estão bloqueados até a revisão da sincronização. Não crie outra ficha.');return
+      }
       if (current.atendimentoId && onOpenAtendimento) {
         setLookupBusy(null)
         onOpenAtendimento(current.atendimentoId, 'chat', row.conversationId)
@@ -229,7 +234,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
       setLookupError(incomplete
         ? 'Consulta incompleta. Atualize a lista e confira a sincronização.'
         : !found.length
-          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada.'
+          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada. Solicite a conferência do evento confirmado Coda/n8n e use Verificar novamente após a recuperação.'
           : 'Não há Atendimento aberto identificado com segurança para esta conversa. Confira a sincronização.')
     } catch (cause) {
       if (controller.signal.aborted) return
@@ -250,6 +255,7 @@ export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, o
       <div className="ev-header"><strong>Conversas</strong>
         <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
       </div>
+      {localList && <p role="status">Mostrando conversas salvas no FunixApp. A Evolution está indisponível; a lista pode estar incompleta.</p>}
       {listBusy && !list.length && <Notice title="Carregando conversas…" />}
       {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
       {!listBusy && available === true && !listError && !list.length &&
