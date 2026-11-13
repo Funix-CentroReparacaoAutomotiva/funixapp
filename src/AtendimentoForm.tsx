@@ -50,7 +50,8 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   }
   function updateYear(key:'fabricationYear'|'modelYear', value:string){
     setFields(previous=>{
-      const next={...previous,[key]:value}
+      // Ao editar um dos anos, deixa de tratar ambos como informação legada implícita.
+      const next={...previous,fabricationYear:previous.fabricationYear??'',modelYear:previous.modelYear??'',[key]:value}
       return {...next,model:vehicleName,vehicle:description(vehicleName,next.fabricationYear,next.modelYear)}
     })
   }
