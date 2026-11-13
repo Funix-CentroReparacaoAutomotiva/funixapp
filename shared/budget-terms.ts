@@ -1,4 +1,5 @@
 import type {DiagnosisItem,Scenario} from './commercial.ts'
+import type {Calculation} from './pricing.ts'
 import {codaServiceId} from './commercial-curation.ts'
 export const INSTALLMENT_PLANS = [['tres',3],['seis',6],['nove',9],['doze',12]] as const
 export type InstallmentKey = typeof INSTALLMENT_PLANS[number][0]
@@ -27,8 +28,11 @@ export interface JsreportDocument{
 
 // Only the curated commercial service ID, never a textual name or a technical stage.
 const PAINT_SERVICE_ID=codaServiceId('i-XDTMBmueos')
-export function hasIncludedPainting(items:DiagnosisItem[],scenario:Scenario):boolean{
- return items.some(piece=>scenario.pieceFlags[piece.id]===true&&piece.services.some(service=>scenario.serviceFlags[service.id]===true&&service.serviceId===PAINT_SERVICE_ID))
+export function hasIncludedPainting(items:DiagnosisItem[],scenario:Scenario,calculation?:Calculation):boolean{
+ // The official calculated inclusion is authoritative whenever available.
+ // This prevents a stale or different-scenario mask from triggering the floor.
+ const effective=calculation?new Set(calculation.lines.filter(line=>line.kind==='service'&&line.included).map(line=>line.id)):null
+ return items.some(piece=>scenario.pieceFlags[piece.id]===true&&piece.services.some(service=>service.serviceId===PAINT_SERVICE_ID&&scenario.serviceFlags[service.id]===true&&(!effective||effective.has(service.id))))
 }
 export function executionDeadline(setting:ScenarioDeadline|undefined,technicalDays:string|null,paintingIncluded=false):ExecutionDeadline{
  const configured=setting??{mode:'automatic',manualDays:null}
