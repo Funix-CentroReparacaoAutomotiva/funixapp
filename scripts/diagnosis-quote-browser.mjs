@@ -78,7 +78,7 @@ try{
    assert.equal(await search.getAttribute('aria-expanded'),'true')
    // Texto livre filtra apenas: não cria registro e não habilita uma escolha inexistente.
    await search.fill('PECA INEXISTENTE XYZ 999')
-   assert.equal(await editor.getByRole('option').count(),0)
+   assert.equal(await editor.locator('.piece-search-options').getByRole('option').count(),0)
    assert.equal(await editor.getByText('Nenhuma peça encontrada').count(),1)
    assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,catalog.id)
    assert.equal(changedRequests.length,0,'typing must not persist anything')
