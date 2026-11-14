@@ -30,6 +30,9 @@ test('lead sem XP é notificado sem gerar proposta de execução',()=>{
     assert.equal(created.revision,1)
     assert.equal(created.snapshotHash.length,64)
     assert.equal(repo.list('open').total,1)
+    assert.equal(repo.list('all').total,1)
+    assert.equal(repo.list('all','orcamento').total,0)
+    assert.equal(repo.list('all','orçamento').total,1)
     assert.equal(repo.list('closed').total,0)
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='update_packages'").get(),undefined)
   }finally{db.close()}
@@ -57,6 +60,8 @@ test('autorizar triagem registra decisão humana sem executar alterações',()=>
     assert.equal(result.revision,2)
     assert.equal(repo.list('open').total,0)
     assert.equal(repo.list('closed').total,1)
+    assert.equal(repo.list('all').total,1)
+    assert.equal(repo.list('all').items[0]?.status,'authorized')
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_decisions').get()!.n,1)
     assert.equal(repo.decide(notice.id,{decision:'authorize',revision:1,snapshotHash:notice.snapshotHash,requestId},'funix_operator').revision,2)
     assert.throws(()=>repo.decide(notice.id,{decision:'deny',revision:1,snapshotHash:notice.snapshotHash,requestId},'funix_operator'),{code:'GMAIL_INTAKE_REQUEST_CONFLICT'})
