@@ -43,7 +43,24 @@ try{
    await year.fill('2019/2020')
    assert.equal(await dialog.getByRole('textbox',{name:'Nome',exact:true}).getAttribute('required'),null)
    assert.notEqual(await dialog.getByRole('textbox',{name:'Telefone *'}).getAttribute('required'),null)
-   await dialog.getByRole('textbox',{name:'Telefone *'}).fill('31999990000')
+   // Reproduce regression: typing each digit must NOT move the caret to position 0.
+   const phoneInput=dialog.getByRole('textbox',{name:'Telefone *'})
+   await phoneInput.fill('')
+   await phoneInput.focus()
+   for(const digit of '31999990000'){
+     await phoneInput.press(digit)
+     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+     const current=await phoneInput.inputValue()
+     assert.equal(await phoneInput.evaluate(el=>el.selectionStart),current.length,'phone caret must remain at end after typing '+digit)
+   }
+   assert.equal(await phoneInput.inputValue(),'(31) 99999-0000')
+   // Insertion/deletion in the middle should retain logical digit position.
+   await phoneInput.evaluate(el=>el.setSelectionRange(8,8))
+   await phoneInput.press('Backspace')
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+   assert.equal(await phoneInput.evaluate(el=>el.selectionStart),7)
+   await phoneInput.fill('31999990000')
+
    await dialog.getByRole('textbox',{name:'Nome',exact:true}).fill('Contato Sintético')
    await dialog.getByRole('button',{name:'Criar Atendimento'}).click()
    await dialog.waitFor({state:'hidden',timeout:6000})
