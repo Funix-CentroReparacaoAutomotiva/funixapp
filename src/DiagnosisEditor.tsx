@@ -191,7 +191,7 @@ export function DiagnosisEditor({initial,workspace,catalog,noteSlot,onDirty,onBu
   catch(cause){needsReconcile.current=true;dirty.current=true;onDirty(true);setStatus('Erro — campos preservados');setError((cause as Error).message)}finally{running.current=false;onBusy(false);tick(g=>g+1)}
  }
  async function replaceCurrentPiece(targetId:string){
-  if(!targetId||targetId===piece.pieceId||running.current||dirty.current||needsReconcile.current||status!=='Salvo'||error||applying||applicationUncertainreturn
+  if(!targetId||targetId===piece.pieceId||running.current||dirty.current||needsReconcile.current||status!=='Salvo'||error||applying||applicationUncertain)return
   const destination=catalog.find(c=>c.id===targetId)
   if(!destination||destination.kind!=='peca'||!catalogItemUsable(destination))return
   running.current=true;onBusy(true);setStatus('Salvando…')
