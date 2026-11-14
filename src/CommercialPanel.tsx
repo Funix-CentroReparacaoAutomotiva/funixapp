@@ -380,7 +380,7 @@ export function CommercialPanel({ atendimentoId, tab, onDirty, onBusy, scenarioC
     })
   },[geographicRoots,validPieces,selectedCode,selectionState.intents])
   const differs = (values: boolean[]) => values.some(value=>value!==values[0])
-  const matrixValue = (scenarioId:string,lineId:string) => {const line=workspace?.calculations.find(c=>c.scenarioId===scenarioId)?.lines.find(l=>l.id===lineId);return line?.included?line.billing==='not_billed'?'Sem cobrança':line.execution==='external_confirmation'&&!line.executionConfirmed?'Confirmar terceiro':money(line.total):'Não incluído'}
+  const matrixValue = (scenarioId:string,lineId:string) => {const line=workspace?.calculations.find(c=>c.scenarioId===scenarioId)?.lines.find(l=>l.id===lineId);return line?.included?line.billing==='not_billed'?'Sem cobrança':money(line.total):'Não incluído'}
   const comparison = <div className="scenario-matrix" role="region" aria-label="Matriz de cenários" tabIndex={0}><table><thead><tr><th>Composição mestre</th>{scenarios.map(s=><th key={s.id}>{scenarioLabel(s)}</th>)}</tr></thead><tbody>{items.map(item=>{
     const parentDiff = differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id])))
     const lines = item.services.filter(line=>!differences || differs(scenarios.map(s=>Boolean(s.pieceFlags[item.id] && s.serviceFlags[line.id]))))

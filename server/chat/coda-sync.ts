@@ -1,3 +1,4 @@
+import { ConversationIdentities, createConversationIdentitySchema } from './conversation-identities.ts'
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { initializeFinancialSettings } from '../financial-initialization.ts'
@@ -61,11 +62,18 @@ export function createCodaEventSchema(db: DatabaseSync) {
       ' coda_row_id TEXT NOT NULL REFERENCES coda_sync_atendimentos(coda_row_id) ON DELETE RESTRICT,',
       ' occurred_at INTEGER NOT NULL, event_id TEXT NOT NULL,',
       ' PRIMARY KEY(instance,remote_jid));',
+      'CREATE TABLE IF NOT EXISTS coda_sync_context_revisions (',
+      ' instance TEXT NOT NULL, remote_jid TEXT NOT NULL, revision INTEGER NOT NULL, PRIMARY KEY(instance,remote_jid));',
+      'CREATE TABLE IF NOT EXISTS coda_sync_context_conflicts (',
+      ' instance TEXT NOT NULL, remote_jid TEXT NOT NULL, occurred_at INTEGER NOT NULL,',
+      ' PRIMARY KEY(instance,remote_jid));',
       'CREATE TABLE IF NOT EXISTS coda_sync_receipts (',
       ' event_id TEXT PRIMARY KEY, digest TEXT NOT NULL,',
       ' atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,',
       ' created_at TEXT NOT NULL);',
     ].join('\n'))
+    db.exec('INSERT OR IGNORE INTO coda_sync_context_revisions SELECT instance,remote_jid,1 FROM coda_sync_active_conversations')
+    createConversationIdentitySchema(db)
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw Error('CODA_SYNC_FK_INVALID')
     db.exec('COMMIT')
   } catch (error) { db.exec('ROLLBACK'); throw error }
@@ -74,16 +82,22 @@ export function createCodaEventSchema(db: DatabaseSync) {
 /** One Coda row maps to one local Atendimento; n8n owns commercial classification.
  * No match by phone, name or inferred PN/LID equivalence, ever.
  */
-export class CodaEventSyncRepository {
-  private readonly db: DatabaseSync
-  private readonly now: () => string
-  constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) { this.db = db; this.now = now }
+export class CodaEventSyncRepository extends ConversationIdentities {
+  constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) { super(db,now) }
 
   sync(raw: unknown): { atendimentoId: string; state: 'created' | 'existing' } {
     const event = validate(raw)
     const digest = createHash('sha256').update(JSON.stringify(event)).digest('hex')
     this.db.exec('BEGIN IMMEDIATE')
+    let open = true
     try {
+      const active = this.db.prepare('SELECT coda_row_id,occurred_at FROM coda_sync_active_conversations WHERE instance=? AND remote_jid=?').get(event.instance,event.remoteJid)
+      const blockedBefore=this.contextConflict(event.remoteJid)
+      if (active && Number(active.occurred_at) === event.occurredAt && String(active.coda_row_id) !== event.codaRowId) {
+        this.db.prepare('INSERT INTO coda_sync_context_conflicts VALUES(?,?,?) ON CONFLICT(instance,remote_jid) DO UPDATE SET occurred_at=MAX(occurred_at,excluded.occurred_at)').run(event.instance,event.remoteJid,event.occurredAt)
+        this.db.exec('COMMIT'); open = false
+        return conflict()
+      }
       const receipt = this.db.prepare('SELECT digest,atendimento_id FROM coda_sync_receipts WHERE event_id=?').get(event.eventId)
       if (receipt) {
         if (receipt.digest !== digest) return conflict()
@@ -110,14 +124,6 @@ export class CodaEventSyncRepository {
       this.db.prepare(
         'INSERT OR IGNORE INTO coda_sync_conversation_links VALUES(?,?,?,?)',
       ).run(event.instance,event.remoteJid,event.codaRowId,at)
-      // Equal timestamps from different canonical Coda records do not carry
-      // enough causal information to select one. Fail closed instead of
-      // lexicographically choosing a possibly incorrect customer context.
-      const active = this.db.prepare(
-        'SELECT coda_row_id,occurred_at FROM coda_sync_active_conversations WHERE instance=? AND remote_jid=?',
-      ).get(event.instance, event.remoteJid)
-      if (active && Number(active.occurred_at) === event.occurredAt &&
-          String(active.coda_row_id) !== event.codaRowId) return conflict()
       // A delayed old event cannot replace the newest confirmed Atendimento.
       this.db.prepare([
         'INSERT INTO coda_sync_active_conversations VALUES(?,?,?,?,?)',
@@ -127,10 +133,36 @@ export class CodaEventSyncRepository {
         ' OR (excluded.occurred_at=coda_sync_active_conversations.occurred_at',
         ' AND excluded.event_id>coda_sync_active_conversations.event_id)',
       ].join('')).run(event.instance,event.remoteJid,event.codaRowId,event.occurredAt,event.eventId)
+      if(!active||((String(active.coda_row_id)!==event.codaRowId||blockedBefore)&&event.occurredAt>Number(active.occurred_at))){
+        this.db.prepare('INSERT INTO coda_sync_context_revisions VALUES(?,?,1) ON CONFLICT(instance,remote_jid) DO UPDATE SET revision=revision+1').run(instance,event.remoteJid)
+      }
       this.db.prepare('INSERT INTO coda_sync_receipts VALUES(?,?,?,?)').run(event.eventId,digest,atendimentoId,at)
       this.db.exec('COMMIT')
       return { atendimentoId, state }
-    } catch (error) { this.db.exec('ROLLBACK'); throw error }
+    } catch (error) { if (open) this.db.exec('ROLLBACK'); throw error }
+  }
+
+  resolveIdentityActive(remoteJid: string): string | null {
+    const members = this.identityJids(remoteJid)
+    if (!members || members.some(value => this.contextConflict(value))) return null
+    const active = new Set(members.map(value => this.resolveActive(value)).filter((value): value is string => value !== null))
+    return active.size === 1 ? [...active][0]! : null
+  }
+
+  /** One shared resolution for Funil and list. Prefer the provider's LID domain.
+   * Multiple unrelated conversations and divergent active contexts remain blocked.
+   */
+  resolveIdentityJid(atendimentoId: string): string | null {
+    const rows = this.db.prepare(
+      'SELECT c.remote_jid FROM coda_sync_active_conversations c JOIN coda_sync_atendimentos a ON a.coda_row_id=c.coda_row_id WHERE c.instance=? AND a.atendimento_id=?',
+    ).all(instance,atendimentoId)
+    const preferred = new Set<string>()
+    for (const row of rows) {
+      const remoteJid = String(row.remote_jid), members = this.identityJids(remoteJid)
+      if (!members || this.resolveIdentityActive(remoteJid) !== atendimentoId) return null
+      preferred.add(members[0]!)
+    }
+    return preferred.size === 1 ? [...preferred][0]! : null
   }
 
   /** Never select an arbitrary conversation when multiple PN/LID contexts are active. */
@@ -143,8 +175,28 @@ export class CodaEventSyncRepository {
     return rows.length === 1 ? String(rows[0]!.remote_jid) : null
   }
 
+  contextConflict(remoteJid: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM coda_sync_context_conflicts x JOIN coda_sync_active_conversations a ON a.instance=x.instance AND a.remote_jid=x.remote_jid WHERE x.instance=? AND x.remote_jid=? AND x.occurred_at>=a.occurred_at').get(instance,remoteJid))
+  }
+
+  identityState(remoteJid: string): 'linked' | 'missing_confirmation' | 'identity_conflict' | 'context_conflict' {
+    const members=this.identityJids(remoteJid)
+    if (!members) return 'identity_conflict'
+    if (members.some(value=>this.contextConflict(value))) return 'context_conflict'
+    const values=new Set(members.map(value=>this.resolveActive(value)).filter(Boolean))
+    return values.size>1 ? 'context_conflict' : values.size===1 ? 'linked' : 'missing_confirmation'
+  }
+
+  /** Opaque revision of all authoritative context and alias evidence. */
+  contextToken(remoteJid: string): string | null {
+    const members=this.identityJids(remoteJid)
+    if (!members || !this.resolveIdentityActive(remoteJid)) return null
+    const state=members.map(value=>this.db.prepare('SELECT a.coda_row_id,COALESCE(r.revision,1) AS revision FROM coda_sync_active_conversations a LEFT JOIN coda_sync_context_revisions r ON r.instance=a.instance AND r.remote_jid=a.remote_jid WHERE a.instance=? AND a.remote_jid=?').get(instance,value) ?? null)
+    return createHash('sha256').update(JSON.stringify([members,state])).digest('hex')
+  }
+
   resolveActive(remoteJid: string): string | null {
-    if (!jid.test(remoteJid)) return null
+    if (!jid.test(remoteJid) || this.contextConflict(remoteJid)) return null
     const row = this.db.prepare([
       'SELECT a.atendimento_id FROM coda_sync_active_conversations c',
       ' JOIN coda_sync_atendimentos a ON a.coda_row_id=c.coda_row_id',

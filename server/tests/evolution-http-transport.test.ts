@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
+import { EvolutionReadError, EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { ReadRequest } from '../experimental/evolution-read/client.ts'
 
 const read: ReadRequest = {
@@ -67,7 +68,7 @@ test('HTTP adapter: rejects oversized response before JSON parsing', async () =>
     origin: 'http://internal:8080', apiKey: 'fake', maxResponseBytes: 12,
     fetcher: stub(() => new Response('{"private":"a long message"}', { status: 200 })),
   })
-  await assert.rejects(transport(read), /response invalid/)
+  await assert.rejects(transport(read), (error: unknown) => error instanceof EvolutionReadError && error.code === 'RESPONSE')
 })
 
 test('HTTP adapter: rejects malformed JSON without exposing body', async () => {
@@ -75,7 +76,7 @@ test('HTTP adapter: rejects malformed JSON without exposing body', async () => {
     origin: 'http://internal:8080', apiKey: 'fake',
     fetcher: stub(() => new Response('{private', { status: 200 })),
   })
-  await assert.rejects(transport(read), /response invalid/)
+  await assert.rejects(transport(read), (error: unknown) => error instanceof EvolutionReadError && error.code === 'RESPONSE')
 })
 
 test('HTTP adapter: handles chat list operation and tiny bounded response', async () => {
@@ -87,4 +88,15 @@ test('HTTP adapter: handles chat list operation and tiny bounded response', asyn
     }),
   })
   assert.deepEqual(await transport({ ...read, path: '/chat/findChats/funix_comercial', body: { take: 1, skip: 0 } }), { status: 200, body: [] })
+})
+
+
+test('HTTP adapter and reader preserve invalid JSON as RESPONSE rather than transport outage', async () => {
+  let calls=0
+  const transport=createEvolutionHttpTransport({origin:'http://internal:8080',apiKey:'fake',
+    fetcher:stub(()=>{calls++;return new Response('{private provider data',{status:200})})})
+  const provider=new EvolutionReadPoc({transport,instance:'funix_comercial',instanceId:'synthetic-instance'})
+  await assert.rejects(provider.findMessages('000000000001@s.whatsapp.net'),(error:unknown)=>
+    error instanceof EvolutionReadError && error.code==='RESPONSE' && !error.message.includes('private'))
+  assert.equal(calls,1)
 })

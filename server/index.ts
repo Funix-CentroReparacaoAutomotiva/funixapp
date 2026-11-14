@@ -1,3 +1,4 @@
+import { loadConversationRuntime } from './chat/conversation-runtime.ts'
 import { createApp } from './app.ts'
 import { openDatabase } from './database.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
@@ -50,6 +51,7 @@ const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
+const conversationRuntime=loadConversationRuntime(process.env,db,codaSync?.repo)
 const sourceLedgerKey = parseDevelopmentSourceSecret(process.env)
 const sourceLedger = sourceLedgerKey ? (() => {
   createDevelopmentSourceLedgerSchema(db)
@@ -57,7 +59,7 @@ const sourceLedger = sourceLedgerKey ? (() => {
   return { ledger:new DevelopmentSourceLedger(db), decisionLedger:new DevelopmentDecisionLedger(db), secret:sourceLedgerKey }
 })() : undefined
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
-const app = createApp({ codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const app = createApp({ conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000

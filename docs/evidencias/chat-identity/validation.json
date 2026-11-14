@@ -1,0 +1,62 @@
+{
+  "base": "0dce977a54de9cfed76e762ad952a053b7ef72ba",
+  "npmCheck": {
+    "passed": true,
+    "serverTests": 912,
+    "voiceCostTests": 8,
+    "failures": 0,
+    "build": true,
+    "serverTypecheck": true,
+    "lint": true,
+    "lintWarningLines": 40
+  },
+  "focusedTests": 69,
+  "browser": {
+    "widths": [
+      320,
+      390,
+      1440
+    ],
+    "passed": true,
+    "localhostOnly": true,
+    "syntheticWhatsAppSendsOnly": true
+  },
+  "providerReadOnly": {
+    "workflow": "eaFeXG2ShIZatGRF",
+    "execution": "38984",
+    "published": false,
+    "queries": 4,
+    "pagesPerQuery": 1,
+    "httpStatuses": [
+      200,
+      200,
+      200,
+      200
+    ],
+    "recordsPerQuery": [
+      18,
+      18,
+      50,
+      50
+    ],
+    "reportedTotals": [
+      18,
+      18,
+      332,
+      111
+    ],
+    "caseBObserved": [
+      "message:null",
+      "MessageUpdate.status:EDITED"
+    ],
+    "caseBFixtureBefore": "RESPONSE",
+    "caseBFixtureAfterEnvelopes": 18
+  },
+  "productionChanges": false,
+  "realWhatsAppSends": 0,
+  "limitations": [
+    "Installed SQLite not queried",
+    "No production replay/deploy",
+    "Offset pagination is not a snapshot"
+  ]
+}

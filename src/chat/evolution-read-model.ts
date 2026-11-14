@@ -11,13 +11,14 @@ export type ConversationRow = {
   unreadCount: number | null
   atendimentoId?: string | null
 }
-export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'; linksEnabled?: true }
+export type ConversationList = { items: ConversationRow[]; nextSkip: number | null; source: 'evolution'|'local'; linksEnabled?: true; providerUnavailable?:boolean }
 export type ReadUiMessage = {
   messageId: string
   timestamp: number
   fromMe: boolean
   kind: 'text' | 'image' | 'audio' | 'video' | 'document' | 'unsupported'
   text: string | null
+  version?:string // local mutation fingerprint, never authorization
   page?: number // client-only: provider page containing this media ID
 }
 export type ConversationMessages = {
@@ -26,9 +27,10 @@ export type ConversationMessages = {
   page: number
   nextPage: number | null
   reportedTotal: number
-  consistency: 'offset-not-snapshot'
+  consistency: 'offset-not-snapshot'|'local-keyset'
   historyComplete: 'unknown'
-  source: 'evolution'
+  source: 'evolution'|'local'
+  nextCursor?: string | null
 }
 
 const invalid = (): never => { throw new Error('CHAT_READ_RESPONSE_INVALID') }
@@ -71,7 +73,7 @@ function pageNumber(value: unknown): number {
 
 export function parseConversationList(raw: unknown): ConversationList {
   const data = record(raw)
-  if (data.source !== 'evolution' || !Array.isArray(data.items) || data.items.length > 50) return invalid()
+  if (!['evolution','local'].includes(String(data.source)) || !Array.isArray(data.items) || data.items.length > 50) return invalid()
   const seen = new Set<string>()
   const items = data.items.map((value): ConversationRow => {
     const row = record(value)
@@ -81,17 +83,18 @@ export function parseConversationList(raw: unknown): ConversationList {
     return { conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount), ...(Object.hasOwn(row, 'atendimentoId') ? { atendimentoId: row.atendimentoId === null ? null : opaqueId(row.atendimentoId) } : {}) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
-  return data.linksEnabled === true ? { items, nextSkip, source: 'evolution', linksEnabled: true } : { items, nextSkip, source: 'evolution' }
+  return {items,nextSkip,source:data.source as 'evolution'|'local',...(data.linksEnabled===true?{linksEnabled:true as const}:{}),...(data.source==='local'?{providerUnavailable:data.providerUnavailable===true}:{})}
 }
 
 export function parseConversationMessages(raw: unknown, expectedId: string): ConversationMessages {
   const data = record(raw)
-  if (data.source !== 'evolution' || data.consistency !== 'offset-not-snapshot' ||
+  if (!((data.source==='evolution'&&data.consistency==='offset-not-snapshot')||(data.source==='local'&&data.consistency==='local-keyset')) ||
       data.historyComplete !== 'unknown' || opaqueId(data.conversationId) !== expectedId ||
       !Array.isArray(data.items) || data.items.length > 50) return invalid()
   const page = pageNumber(data.page)
   const nextPage = data.nextPage === null ? null : pageNumber(data.nextPage)
   if (nextPage !== null && nextPage !== page + 1) return invalid()
+  if(data.source==='local'&&(nextPage===null)!==(data.nextCursor===null))return invalid()
   const items = data.items.map((value): ReadUiMessage => {
     const row = record(value)
     if (typeof row.messageId !== 'string' || row.messageId.length < 1 || row.messageId.length > 256 ||
@@ -100,12 +103,13 @@ export function parseConversationMessages(raw: unknown, expectedId: string): Con
     const timestamp = count(row.timestamp, 2_147_483_647)
     const text = row.text === null ? null : row.text
     if (text !== null && (typeof text !== 'string' || text.length > 16_384)) return invalid()
-    return { messageId: row.messageId, timestamp, fromMe: row.fromMe, kind: row.kind as ReadUiMessage['kind'], text: text as string | null }
+    return { messageId: row.messageId, timestamp, fromMe: row.fromMe, kind: row.kind as ReadUiMessage['kind'], text: text as string | null, ...(row.version===undefined?{}:typeof row.version==='string'&&/^[a-f0-9]{64}$/.test(row.version)?{version:row.version}:invalid()) }
   })
   return {
     conversationId: expectedId, items, page, nextPage,
     reportedTotal: count(data.reportedTotal, 100_000_000),
-    consistency: 'offset-not-snapshot', historyComplete: 'unknown', source: 'evolution',
+    consistency: data.consistency as ConversationMessages['consistency'], historyComplete: 'unknown', source: data.source as ConversationMessages['source'],
+    ...(data.source==='local'?{nextCursor:typeof data.nextCursor==='string'&&/^[A-Za-z0-9_-]{1,900}$/.test(data.nextCursor)?data.nextCursor:data.nextCursor===null?null:invalid()}:{}),
   }
 }
 
