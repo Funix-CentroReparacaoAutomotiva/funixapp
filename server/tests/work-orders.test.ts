@@ -140,3 +140,30 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
   assert.equal((await request(url+'/pdf')).status,401)
  }finally{db.close()}
 })
+
+
+test('Excluded version line never enters the operational projection',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const{version}=await emitted(db)
+  const removed={...version.snapshot.calculation.lines[0]!,id:'synthetic-excluded-service',included:false,name:'NÃO EXECUTAR'}
+  const frozen=structuredClone(version)
+  frozen.snapshot.calculation.lines.push(removed)
+  const scope=operationalScope(frozen)
+  assert(!scope.lines.some(line=>line.id===removed.id||line.name==='NÃO EXECUTAR'))
+  assert(scope.lines.length>0)
+ }finally{db.close()}
+})
+
+test('Separate SQLite connections cannot create two OS records for the same issued version',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'funix-os-two-connections-')),path=join(directory,'synthetic.sqlite')
+ const firstDb=openDatabase(path),secondDb=openDatabase(path)
+ try{
+  const{fixture,version}=await emitted(firstDb)
+  const a=new WorkOrderRepository(firstDb),b=new WorkOrderRepository(secondDb)
+  const results=await Promise.all([Promise.resolve().then(()=>a.create(fixture.at.id,version.id,{authorized:true})),
+    Promise.resolve().then(()=>b.create(fixture.at.id,version.id,{authorized:true}))])
+  assert.equal(results[0]!.id,results[1]!.id)
+  assert.equal(firstDb.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,1)
+ }finally{firstDb.close();secondDb.close();rmSync(directory,{recursive:true,force:true})}
+})
