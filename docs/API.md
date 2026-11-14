@@ -308,3 +308,46 @@ Resposta `{requestId, transcription, plan, applied:false}`. Áudio e transcriç�
 Erros estruturados com requestId: `VOICE_UNAVAILABLE` (503), `VOICE_AUDIO_FORMAT` (415), `VOICE_AUDIO_TOO_LARGE` (413), `VOICE_INVALID_INPUT` (400), `VOICE_UPLOAD_TIMEOUT` (408), `VOICE_TIMEOUT` (504), `VOICE_BUSY/VOICE_RATE_LIMIT` (429), `VOICE_CONTEXT_STALE` (409), `VOICE_TRANSCRIPTION_FAILED/VOICE_INTERPRETATION_FAILED/VOICE_PROVIDER_UNAVAILABLE/VOICE_MODEL_INVALID/VOICE_MODEL_INCOMPLETE` (502), `VOICE_MODEL_REFUSED` (422). Contexto alterado é distinto de erro de IA e de conflito comercial de gravação. Autenticação/origem/pertencimento mantêm os erros existentes.
 
 Configuração exclusivamente backend: `OPENAI_API_KEY`, `FUNIX_VOICE_TRANSCRIPTION_MODEL=gpt-transcribe`, `FUNIX_VOICE_INTERPRETATION_MODEL=gpt-6.1-terra`. Sem chave: indisponível, nenhuma chamada externa. Nenhum segredo VITE. Não há fallback silencioso de modelo. O Compose existente já injeta runtime.env; não foi modificado. Homologação dos modelos/chave no smartphone e implantação dependem de autorização posterior.
+
+### MVP01 — análise contextual Gmail, somente revisão
+
+Disponível com `GmailAnalysisService` explicitamente configurado. Bootstrap normal
+permanece desligado; flags `FUNIX_GMAIL_ANALYSIS_ENABLED`,
+`FUNIX_GMAIL_ANALYSIS_SYNTHETIC` e `FUNIX_GMAIL_ANALYSIS_FIXTURE_FILE` admitem somente
+fixture sintética em desenvolvimento. Produção falha fechada. Nenhum executor é habilitado.
+
+- `GET /api/atualizacoes/analises-gmail?ids=<UUIDs separados por vírgula>`: sessão
+  obrigatória; máximo 100 IDs. Sem `ids`, últimas 100 análises; `ids=` retorna vazio.
+  Resposta `{enabled,items}`. Cada item traz estado, tentativas, falha sanitizada,
+  próxima tentativa, geração, resultado congelado e proposta relacionada.
+- `POST /api/atualizacoes/avisos-gmail/:id/analisar`: sessão, mesma origem e JSON;
+  `{revision,snapshotHash,requestId}` do aviso já autorizado. Retorna 202. Idempotente;
+  reativa somente falha ou agenda aviso autorizado ainda sem job. Não concede autorização.
+- A decisão inicial existente é persistida antes do agendamento. Recuperação detecta
+  autorizações/complementações confirmadas sem agendamento. `denied` nunca entra na análise.
+- Decisão/complementação da proposta reutilizam os endpoints existentes e suas flags,
+  controle de revisão/hash, ator, data e recibo idempotente. Complementação inicia nova
+  geração, conserva a anterior e exige nova revisão. Aprovação anterior nunca é sobrescrita.
+- Pacotes internos deste fluxo recebem `reviewOnly:true` e `analysisNoticeId` pela
+  relação persistida, não por declaração de um produtor. Mantêm o status compatível
+  `approved_pending_execution`, apresentado como **proposta aprovada, sem execução**.
+  O simulador de execução recusa esses pacotes. O MVP não possui dispatcher.
+- Com análise configurada, a listagem de Atualizações agrupa esses pacotes no aviso
+  Gmail e os omite da lista independente para não duplicar cards/contagem. Histórico
+  permanece consultável no card; snapshots anteriores permanecem no banco.
+
+Schema aditivo opt-in: `gmail_analysis_jobs` (estado/lease/checkpoint),
+`gmail_analysis_proposals` (vínculo único por aviso/geração e snapshot imutável com hash),
+`gmail_analysis_commands` (recibos). Não altera a versão global nem a fila de entrega Gmail.
+Contrato: `shared/gmail-analysis.ts`. Evidências citam offsets UTF-16 e trecho literal
+no assunto/corpo, com origem da conta/mensagem, digest e inventário de anexos. Ausência
+é `unknown`; inferências nunca são identificadores de consulta. Contexto conserva
+candidatos, conflitos, momento/digest da consulta e seleção humana. Conflito não recebe
+vínculo automático. Somente correspondência forte ou escolha humana explícita pode
+estabelecer correspondência contextual; isso não aprova reparo ou operação.
+
+Limites: 50 mil caracteres de corpo, 500 de assunto, 16 campos, 40 anexos (somente
+metadados), 20 candidatos Coda. Respostas fora do contrato falham fechadas. Adapters
+Gmail/Coda fazem somente GET em hosts fixos, sem redirects; provedor IA não recebe
+ferramentas. Não há leitura de anexos binários nem arquivamento no Drive.
+Detalhes e roteiro: [MVP01_GMAIL_ANALISE_CONTEXTUAL.md](integracoes/MVP01_GMAIL_ANALISE_CONTEXTUAL.md).

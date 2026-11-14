@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react'
 import { useState } from 'react'
 import type { GmailIntakeDecision, GmailIntakeNotice } from '../shared/gmail-intake'
 import { api } from './api'
@@ -21,7 +22,9 @@ const statusLabel = {
 } as const
 
 /** An email decision is independent from approving a proposed system update. */
-export function GmailIntakeCard({notice,decisionsEnabled,expanded,onToggle,onSuccess,onUnauthorized}:{
+export function GmailIntakeCard({notice,decisionsEnabled,expanded,onToggle,onSuccess,onUnauthorized,children,analysisLabel}:{
+  children?:ReactNode
+  analysisLabel?:string
   notice:GmailIntakeNotice
   decisionsEnabled:boolean
   expanded:boolean
@@ -74,7 +77,7 @@ export function GmailIntakeCard({notice,decisionsEnabled,expanded,onToggle,onSuc
         <strong className="gmail-intake-card-title">{notice.title}</strong>
         <span className="gmail-intake-card-subline">
           <span>E-mail</span>
-          <span className={'gmail-intake-status status-'+notice.status}>{compactStatusLabel[notice.status]}</span>
+          <span className={'gmail-intake-status status-'+notice.status}>{analysisLabel??compactStatusLabel[notice.status]}</span>
           <span>Registrado em {createdAtLabel(notice.createdAt)}</span>
         </span>
       </span>
@@ -102,6 +105,7 @@ export function GmailIntakeCard({notice,decisionsEnabled,expanded,onToggle,onSuc
         {!decisionsEnabled&&<small>Decisões de triagem ainda não habilitadas.</small>}
       </>}
       {notice.status!=='awaiting_authorization'&&<p className="gmail-intake-decided">{statusLabel[notice.status]}</p>}
+      {children}
       {message&&<p className="gmail-intake-success" role="status">{message}</p>}
       {error&&<p className="updates-error" role="alert">{error}</p>}
     </div>}
