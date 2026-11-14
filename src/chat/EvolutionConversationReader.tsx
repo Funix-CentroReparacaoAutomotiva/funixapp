@@ -1,307 +1,69 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from '../api'
-import type { RequestFailure } from '../api'
-import { Notice } from '../ui'
-import { ConversationLinksPanel } from './ConversationLinksPanel'
-import { parseConversationList } from './evolution-read-model'
-import { filterLoadedConversations } from './conversation-search'
-import type { ConversationRow } from './evolution-read-model'
+import {useCallback,useEffect,useRef,useState} from 'react'
+import {api,type RequestFailure} from '../api'
+import {Notice} from '../ui'
+import {ConversationLinksPanel} from './ConversationLinksPanel'
+import {parseConversationList,type ConversationRow} from './evolution-read-model'
 import './evolution-read.css'
-
-const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
-function conversationLabel(row: ConversationRow): string {
-  return row.displayName || (row.phoneNumber ? '+' + row.phoneNumber : 'Contato não identificado')
+const calendar=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'America/Sao_Paulo'})
+function messageTime(value:string){const date=new Date(value),today=new Date(),day=calendar.format(date);if(day===calendar.format(today))return clock.format(date);if(day===calendar.format(new Date(today.getTime()-86400000)))return 'Ontem';return new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',...(date.getUTCFullYear()!==today.getUTCFullYear()?{year:'2-digit' as const}:{}),timeZone:'America/Sao_Paulo'}).format(date)}
+const clock=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'})
+const name=(row:ConversationRow)=>row.commercial?.names.map(p=>p.name).join(' / ')||'Sem nome'
+type Links={items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
+export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string)=>void}) {
+ const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
+ const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
+ const dialog=useRef<HTMLDialogElement>(null),request=useRef<AbortController|null>(null)
+ const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else setError((e as Error).message||'Não foi possível carregar as conversas.')},[onUnauthorized])
+ const load=useCallback(async(skip:number,signal:AbortSignal)=>{
+  setBusy(true);setError('')
+  try{const result=parseConversationList(await api('/api/chat/conversations?skip='+skip,{signal}));if(signal.aborted)return;setRows(p=>skip?[...p,...result.items.filter(r=>!p.some(x=>x.conversationId===r.conversationId))]:result.items);setNext(result.nextSkip);setAvailable(true);setLinksEnabled(result.linksEnabled===true)}
+  catch(e){if(!signal.aborted){if((e as RequestFailure).status===404)setAvailable(false);else fail(e)}}finally{if(!signal.aborted)setBusy(false)}
+ },[fail])
+ useEffect(()=>{const c=new AbortController();request.current=c;void load(0,c.signal);return()=>c.abort()},[load,version])
+ useEffect(()=>{if(selected&&!dialog.current?.open)dialog.current?.showModal()},[selected])
+ useEffect(()=>()=>request.current?.abort(),[])
+ async function details(row:ConversationRow){setSelected(row);setLinks(null);setError('');if(!linksEnabled)return;try{setLinks(await api<Links>('/api/chat/conversations/'+row.conversationId+'/atendimentos'))}catch(e){fail(e)}}
+ async function open(row:ConversationRow){
+  if((row.commercial?.atendimentoCount??0)!==1&&!row.atendimentoId){await details(row);return}
+  try{const value=await api<{atendimentoId:string|null;state?:string}>('/api/chat/conversations/'+row.conversationId+'/active-atendimento');if(value.atendimentoId)onOpenAtendimento?.(value.atendimentoId,'chat',row.conversationId);else await details(row)}catch(e){fail(e)}
+ }
+ async function choose(row:ConversationRow,linkId:string,id:string){try{await api('/api/chat/conversations/'+row.conversationId+'/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId})});setSelected(null);onOpenAtendimento?.(id,'chat',row.conversationId)}catch(e){fail(e)}}
+ const q=searchTerm.trim().toLocaleLowerCase('pt-BR'),matches=rows.filter(r=>[name(r),r.phoneNumber,r.commercial?.preview].join(' ').toLocaleLowerCase('pt-BR').includes(q))
+ return <section className="ev-reader"><header className="ev-header"><strong>Conversas</strong><button className="fh-filter" disabled={busy} onClick={()=>setVersion(v=>v+1)}>Atualizar</button></header>
+  {!available&&<Notice title="Canal ainda não habilitado">Os Atendimentos podem ser criados pelo Funil.</Notice>}
+  {error&&<Notice title="Não foi possível concluir" error>{error}</Notice>}
+  {busy&&<p role="status">Carregando conversas…</p>}
+  {available&&!busy&&!matches.length&&<Notice title="Nenhuma conversa encontrada"/>}
+  <div className="ev-list" aria-label="Lista de Conversas">{matches.map(row=>{
+   const parts=row.commercial?.names??[{name:'Sem nome',entityId:null}],label=name(row),count=row.commercial?.atendimentoCount??0,initials=label==='Sem nome'?'':label.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('pt-BR')
+   return <article className="conversation-row" key={row.conversationId}>
+    <button className="conversation-hit" aria-label={'Abrir conversa: '+label} onClick={()=>void open(row)}/>
+    <ConversationAvatar initials={initials} photo={row.commercial?.profilePhoto??null}/>
+    <div className="conversation-info"><strong className="conversation-names" title={label}>{parts.map((p,i)=><span key={i}>{i?' / ':''}{p.name}{p.entityId&&<span className="entity-seal" role="img" aria-label={'Cadastro associado a '+p.name+'; não confirma identidade'} title="Cadastro associado; não confirma identidade"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="7" r="3"/><path d="M3 19c0-4 2-6 6-6 3 0 5 1 6 4m0 0 2 2 5-5"/></svg></span>}</span>)}</strong><span className="conversation-phone">{row.phoneNumber?'+'+row.phoneNumber:'Telefone pendente'}</span><span className="conversation-preview">{row.commercial?.preview??'Sem mensagens locais'}</span></div>
+    <div className="conversation-right"><button className={'conversation-count '+(count===0?'warning':'')} aria-label={'Detalhes: '+count+' Atendimentos'} onClick={()=>void details(row)}>{count===0?'⚠':count>1?count+' atend.':<span aria-hidden="true"> </span>}</button><time dateTime={row.updatedAt??undefined}>{row.updatedAt?messageTime(row.updatedAt):'—'}</time>{!!row.unreadCount&&<span className="conversation-unread" aria-label={row.unreadCount+' mensagens não lidas'}>{row.unreadCount}</span>}</div>
+   </article>
+  })}</div>
+  {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
+  {selected&&<dialog className="ev-choice-dialog" ref={dialog} onClose={()=>setSelected(null)} aria-label="Detalhes da conversa"><header><strong>Conversa · {selected.phoneNumber?'+'+selected.phoneNumber:'Telefone pendente'}</strong><button aria-label="Fechar detalhes" onClick={()=>setSelected(null)}>×</button></header>
+   <p>O histórico pertence à conversa. A pessoa de referência pode ser diferente de quem usa o número.</p>
+   <ul>{(selected.commercial?.names??[]).map((p,i)=><li key={i}>{p.name}{p.entityId?' · cadastro associado':''}</li>)}</ul>
+   <div className="ev-choice-items">{links?.items.map(l=><button key={l.linkId} onClick={()=>void choose(selected,l.linkId,l.atendimentoId)}><strong>{l.name||'Sem nome'}</strong><span>{[l.vehicle,l.plate].filter(Boolean).join(' · ')||l.atendimentoId}</span></button>)}</div>
+   <ContactNickname row={selected} onSaved={()=>{setSelected(null);setVersion(v=>v+1)}} onFailure={fail}/>
+   {linksEnabled&&<ConversationLinksPanel conversationId={selected.conversationId} onUnauthorized={onUnauthorized}/>}
+  </dialog>}
+ </section>
 }
-type CandidateAtendimento = { id: string; phone: string; phoneNormalized?: string | null; name: string; vehicle?: string; plate?: string; stage?: string }
-type Choice = { items: CandidateAtendimento[] }
-const stageNames: Record<string, string> = {
-  'novo-lead': 'Novo lead', 'aguardando-dados': 'Aguardando dados',
-  'em-negociacao': 'Em negociação', morno: 'Morno', frio: 'Frio',
-  rejeitados: 'Rejeitado',
+function ConversationAvatar({initials,photo}:{initials:string;photo:string|null}){
+ const [failed,setFailed]=useState(false)
+ return <span className="conversation-avatar" aria-hidden="true">{photo&&!failed?<img src={photo} alt="" loading="lazy" onError={()=>setFailed(true)}/>:initials||<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M20 11a8 8 0 0 1-8 8 8 8 0 0 1-4-.9L3 20l1.8-4.9A8 8 0 1 1 20 11Z"/></svg>}</span>
 }
-type AtendimentoSearch = { items: CandidateAtendimento[]; nextOffset: number | null }
-/** A navigation lookup, NOT a permanent conversation association.
- * A Brazilian +55 prefix is only a formatting difference. Never add a ninth digit.
- */
-function comparablePhone(value: string): string {
-  const digits = value.replace(/\D/g, '')
-  return digits.startsWith('55') && (digits.length === 12 || digits.length === 13) ? digits.slice(2) : digits
-}
-function listErrorLabel(cause: unknown) {
-  const error = cause as RequestFailure
-  return error.status === 503
-    ? 'A Evolution não respondeu. Atualize a lista para tentar novamente.'
-    : 'Não foi possível carregar as conversas. Confira a conexão e tente novamente.'
-}
-
-/**
- * Conversas é uma entrada para o Atendimento, não um segundo Chat.
- * A navegação só usa o Atendimento canônico confirmado no servidor;
- * contatos sem vínculo têm uma ação explícita, sem adivinhar por telefone.
- */
-export function EvolutionConversationReader({ searchTerm = '', onUnauthorized, onOpenAtendimento }: {
-  searchTerm?: string
-  onUnauthorized: () => void
-  onOpenAtendimento?: (atendimentoId: string, tab: 'chat' | 'diagnosticos' | 'mapa', conversationId?: string) => void
-}) {
-  const [localList,setLocalList]=useState(false)
-  const [available, setAvailable] = useState<boolean | null>(null)
-  const [linksEnabled, setLinksEnabled] = useState(false)
-  const [list, setList] = useState<ConversationRow[]>([])
-  const matches = filterLoadedConversations(list, searchTerm)
-  const searching = searchTerm.trim().length > 0
-  const [nextSkip, setNextSkip] = useState<number | null>(null)
-  const [unlinked, setUnlinked] = useState<string | null>(null)
-  const [listBusy, setListBusy] = useState(false)
-  const [listError, setListError] = useState('')
-  const [version, setVersion] = useState(0)
-  const [lookupBusy, setLookupBusy] = useState<string | null>(null)
-  const [lookupError, setLookupError] = useState('')
-  const [choice, setChoice] = useState<Choice | null>(null)
-  const choiceDialog = useRef<HTMLDialogElement | null>(null)
-  const listRequest = useRef<AbortController | null>(null)
-  const lookupRequest = useRef<AbortController | null>(null)
-  const loadingMore = useRef(false)
-
-  const loadList = useCallback(async (skip: number, controller: AbortController) => {
-    try {
-      const result = parseConversationList(await api<unknown>(`/api/chat/conversations?skip=${skip}`, { signal: controller.signal }))
-      if (controller.signal.aborted) return
-      setAvailable(true)
-      setLocalList(result.source==='local'&&result.providerUnavailable===true)
-      setLinksEnabled(result.linksEnabled === true)
-      setList(previous => skip === 0 ? result.items : [
-        ...previous, ...result.items.filter(row => !previous.some(known => known.conversationId === row.conversationId)),
-      ])
-      setNextSkip(result.nextSkip)
-      setListError('')
-    } catch (cause) {
-      if (controller.signal.aborted) return
-      const error = cause as RequestFailure
-      if (error.status === 401) { onUnauthorized(); return }
-      if (error.status === 404 && skip === 0) {
-        setAvailable(false); setList([]); setNextSkip(null); return
-      }
-      setListError(listErrorLabel(cause))
-    } finally {
-      if (!controller.signal.aborted) setListBusy(false)
-      loadingMore.current = false
-    }
-  }, [onUnauthorized])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    listRequest.current = controller
-    queueMicrotask(() => {
-      if (controller.signal.aborted) return
-      setListBusy(true)
-      setListError('')
-      void loadList(0, controller)
-    })
-    return () => controller.abort()
-  }, [loadList, version])
-
-  useEffect(() => () => lookupRequest.current?.abort(), [])
-
-  useEffect(() => {
-    if (choice && choiceDialog.current && !choiceDialog.current.open) {
-      choiceDialog.current.showModal()
-    }
-  }, [choice])
-
-  function refreshList() {
-    listRequest.current?.abort()
-    lookupRequest.current?.abort()
-    setLookupBusy(null); setChoice(null); setLookupError('')
-    setUnlinked(null); setList([]); setNextSkip(null);setLocalList(false)
-    setAvailable(null); setLinksEnabled(false)
-    setVersion(value => value + 1)
-  }
-
-  function moreList() {
-    if (nextSkip === null || listBusy || loadingMore.current) return
-    loadingMore.current = true
-    listRequest.current?.abort()
-    const controller = new AbortController()
-    listRequest.current = controller
-    setListBusy(true); setListError('')
-    void loadList(nextSkip, controller)
-  }
-
-  async function open(row: ConversationRow) {
-    lookupRequest.current?.abort()
-    setLookupBusy(null); setLookupError(''); setChoice(null)
-    if (row.atendimentoId && onOpenAtendimento) {
-      setUnlinked(null)
-      onOpenAtendimento(row.atendimentoId, 'chat', row.conversationId)
-      return
-    }
-    // The list may predate a successful Coda→FunixApp event. Recheck the
-    // canonical mapping before relying on local phone matches as navigation.
-    // A 200/null response is an expected missing link, not permission to
-    // fabricate one or to merge manual records between systems.
-    const canonicalController = new AbortController()
-    lookupRequest.current = canonicalController
-    setLookupBusy(row.conversationId)
-    try {
-      const current = await api<{ atendimentoId: string | null; state?: string }>(
-        '/api/chat/conversations/' + encodeURIComponent(row.conversationId) + '/active-atendimento',
-        { signal: canonicalController.signal },
-      )
-      if (canonicalController.signal.aborted) return
-      if(current.state==='identity_conflict'||current.state==='context_conflict'){
-        setUnlinked(row.conversationId);setLookupError('Há uma divergência na identidade ou no Atendimento confirmado. Histórico e envio estão bloqueados até a revisão da sincronização. Não crie outra ficha.');return
-      }
-      if (current.atendimentoId && onOpenAtendimento) {
-        setLookupBusy(null)
-        onOpenAtendimento(current.atendimentoId, 'chat', row.conversationId)
-        return
-      }
-    } catch (cause) {
-      if (canonicalController.signal.aborted) return
-      const error = cause as RequestFailure
-      if (error.status === 401) { onUnauthorized(); return }
-      // Fail safely if the authoritative lookup is unavailable. Display the
-      // problem instead of using a phone match as proof of an active context.
-      if (error.status !== 404) {
-        setLookupBusy(null)
-        setUnlinked(row.conversationId)
-        setLookupError('Não foi possível conferir o Atendimento vinculado. Tente novamente.')
-        return
-      }
-      // 404 is possible on older servers with the resolver not yet deployed.
-    } finally {
-      if (!canonicalController.signal.aborted) setLookupBusy(null)
-    }
-    // A first tap performs the lookup. The operator should not have to open an
-    // intermediate panel just to discover the only matching Atendimento.
-    // This is navigation only; it MUST NOT create an ERP record or a link.
-    setUnlinked(null)
-    // The Funil can contain an Atendimento before this Evolution JID has
-    // received a canonical Coda event. Search existing records on click.
-    const phone = row.phoneNumber ? comparablePhone(row.phoneNumber) : ''
-    // Never search by display name: it is not identity evidence. A LID-only
-    // conversation stays pending until a trusted PN/canonical mapping exists.
-    // Require an unambiguous Brazilian DDD + subscriber number for this
-    // legacy navigation lookup; never synthesize digits from a LID.
-    if (!/^[1-9][0-9][0-9]{8,9}$/.test(phone)) {
-      setUnlinked(row.conversationId)
-      setLookupError('Telefone confiável indisponível. A identidade da conversa precisa ser confirmada antes de abrir um Atendimento.')
-      return
-    }
-    const query = phone
-    const controller = new AbortController()
-    lookupRequest.current = controller
-    setLookupBusy(row.conversationId)
-    try {
-      let offset = 0
-      let incomplete = false
-      const matches = new Map<string, CandidateAtendimento>()
-      for (let batch = 0; batch < 10; batch++) {
-        const result = await api<AtendimentoSearch>(
-          `/api/atendimentos?q=${encodeURIComponent(query)}&limit=100&offset=${offset}`,
-          { signal: controller.signal },
-        )
-        if (controller.signal.aborted) return
-        if (!Array.isArray(result.items)) throw new Error('INVALID_ATENDIMENTO_SEARCH')
-        for (const item of result.items) {
-          if (!item || typeof item.id !== 'string' || typeof item.phone !== 'string') continue
-          // Exact telephone match allows automatic NAVIGATION, never a new link.
-          if (comparablePhone(item.phoneNormalized || item.phone) === phone)
-            matches.set(item.id, item)
-        }
-        if (result.nextOffset === null) break
-        if (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset) throw new Error('INVALID_PAGINATION')
-        offset = result.nextOffset
-        if (batch === 9) incomplete = true
-      }
-      if (controller.signal.aborted) return
-      const found = [...matches.values()]
-      // A phone match is navigation, NOT proof that this record is the
-      // current Coda Atendimento or that its WhatsApp history is linked.
-      // The local stage is not a reliable indication of Coda closure.
-      if (phone && !incomplete && found.length === 1 && onOpenAtendimento) {
-        onOpenAtendimento(found[0]!.id, 'chat')
-        return
-      }
-      if (phone && !incomplete && found.length > 1) {
-        setChoice({ items: found })
-        return
-      }
-      // Missing canonical events are an integration exception, not a reason
-      // to create another Atendimento through a browser click.
-      setUnlinked(row.conversationId)
-      setLookupError(incomplete
-        ? 'Consulta incompleta. Atualize a lista e confira a sincronização.'
-        : !found.length
-          ? 'Atendimento não identificado nesta consulta. A sincronização precisa ser verificada; não crie uma ficha duplicada. Solicite a conferência do evento confirmado Coda/n8n e use Verificar novamente após a recuperação.'
-          : 'Não há Atendimento aberto identificado com segurança para esta conversa. Confira a sincronização.')
-    } catch (cause) {
-      if (controller.signal.aborted) return
-      if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
-      setUnlinked(row.conversationId)
-      setLookupError('Não foi possível consultar os Atendimentos. Tente novamente.')
-    } finally {
-      if (!controller.signal.aborted) setLookupBusy(null)
-    }
-  }
-
-  if (available === false) return <div className="fh-surface">
-    <Notice title="Conversas indisponíveis">A consulta de conversas não está habilitada. Os Atendimentos continuam disponíveis no Funil.</Notice>
-  </div>
-
-  return <section className="ev-reader" aria-label="Conversas WhatsApp">
-    <div className="ev-conversations-pane">
-      <div className="ev-header"><strong>Conversas</strong>
-        <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Atualizar lista</button>
-      </div>
-      {localList && <p role="status">Mostrando conversas salvas no FunixApp. A Evolution está indisponível; a lista pode estar incompleta.</p>}
-      {listBusy && !list.length && <Notice title="Carregando conversas…" />}
-      {listError && <Notice title="Falha na lista" error retry={refreshList}>{listError}</Notice>}
-      {!listBusy && available === true && !listError && !list.length &&
-        <Notice title="Nenhuma conversa retornada">Atualize a lista para consultar novamente.</Notice>}
-      {searching && available === true && <p className="ev-search-scope" role="status">{matches.length} de {list.length} conversas carregadas correspondem à busca. {nextSkip !== null ? 'Há outras páginas ainda não carregadas.' : 'Todas as páginas disponíveis foram carregadas.'}</p>}
-      {searching && !listBusy && available === true && !listError && list.length > 0 && !matches.length &&
-        <Notice title="Nenhuma conversa encontrada nas páginas carregadas">Tente outro nome ou telefone. {nextSkip !== null ? 'Use Carregar mais conversas para consultar outras páginas.' : 'Limpe a busca para retornar à lista.'}</Notice>}
-      {matches.length > 0 && <div className="ev-list" aria-label="Lista de conversas">
-        {matches.map(row => <div key={row.conversationId}>
-          <button type="button" className="ev-item" onClick={() => { void open(row) }}
-            disabled={lookupBusy !== null}
-            aria-expanded={!row.atendimentoId ? unlinked === row.conversationId : undefined}>
-            <strong>{conversationLabel(row)}</strong>
-            <span>{row.updatedAt ? `Atualização: ${date.format(new Date(row.updatedAt))}` : 'Data não informada'}</span>
-            {lookupBusy === row.conversationId && <small>Localizando Atendimento…</small>}
-          </button>
-          {unlinked === row.conversationId && !row.atendimentoId && <section className="ev-unlinked" aria-label="Conversa sem Atendimento">
-            <strong>Vínculo pendente</strong>
-            {lookupError && <p role="status">{lookupError}</p>}
-            <button type="button" className="fh-filter" onClick={refreshList} disabled={listBusy}>Verificar novamente</button>
-            {linksEnabled && <ConversationLinksPanel key={row.conversationId} conversationId={row.conversationId} onUnauthorized={onUnauthorized} />}
-
-          </section>}
-        </div>)}
-      </div>}
-      {nextSkip !== null && <button type="button" className="fh-filter ev-more" disabled={listBusy} onClick={moreList}>
-        {listBusy ? 'Carregando…' : 'Carregar mais conversas'}
-      </button>}
-    </div>
-    {choice && <dialog className="ev-choice-dialog" ref={choiceDialog}
-      aria-labelledby="ev-choice-title" onClose={() => setChoice(null)}>
-      <header>
-        <strong id="ev-choice-title">Qual Atendimento deseja abrir?</strong>
-        <button type="button" aria-label="Fechar seleção" onClick={() => setChoice(null)}>×</button>
-      </header>
-      <p>Foram encontradas várias fichas com este telefone. Escolha a correta; essa seleção não vincula o histórico WhatsApp.</p>
-      <div className="ev-choice-items">
-        {choice.items.map(item => <button key={item.id} type="button" onClick={() => {
-          setChoice(null)
-          onOpenAtendimento?.(item.id, 'chat')
-        }}>
-          <strong>{item.name || 'Atendimento sem nome'}</strong>
-          <span>{[item.vehicle, item.plate, stageNames[item.stage ?? ''] || item.stage].filter(Boolean).join(' · ') || 'Sem detalhes cadastrados'}</span>
-        </button>)}
-      </div>
-      <p className="ev-links-hint">Escolher uma ficha não cria um vínculo com a Evolution; sem associação canônica, o histórico poderá continuar indisponível.</p>
-    </dialog>}
-  </section>
+function ContactNickname({row,onSaved,onFailure}:{row:ConversationRow;onSaved:()=>void;onFailure:(e:unknown)=>void}){
+ const [nickname,setNickname]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[entityId,setEntityId]=useState<string|null>(null),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState<{id:string;text:string}[]>([]),[record,setRecord]=useState<{text:string;revision:number;nickname?:string;entityId:string|null}|null>(null),[failure,setFailure]=useState('')
+ const id=row.commercial?.contactId
+ useEffect(()=>{const c=new AbortController();if(!id)return;void api<{text:string;revision:number;nickname?:string;entityId:string|null}>('/api/customer-records/'+id,{signal:c.signal}).then(r=>{if(!c.signal.aborted){setRecord(r);setNickname(r.nickname??'');setEntityId(r.entityId)}}).catch(e=>{if(!c.signal.aborted){setFailure((e as Error).message);onFailure(e)}}).finally(()=>{if(!c.signal.aborted)setLoading(false)});return()=>c.abort()},[id,onFailure])
+ useEffect(()=>{const c=new AbortController();if(query.trim().length<2){setSuggestions([]);return()=>c.abort()}const timer=setTimeout(()=>{void api<{items:{id:string;text:string}[]}>('/api/customer-records?kind=entity&q='+encodeURIComponent(query),{signal:c.signal}).then(r=>{if(!c.signal.aborted)setSuggestions(r.items)}).catch(()=>{})},250);return()=>{clearTimeout(timer);c.abort()}},[query])
+ if(!id)return null
+ return <form onSubmit={async e=>{e.preventDefault();if(!record)return;setBusy(true);setFailure('');try{await api('/api/customer-records/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:record.text,revision:record.revision,nickname,entityId})});onSaved()}catch(e){setFailure((e as Error).message);onFailure(e)}finally{setBusy(false)}}}><label>Nome opcional do Contato<input aria-label="Nome opcional do Contato" disabled={loading} maxLength={250} value={nickname} onChange={e=>setNickname(e.target.value)}/></label><p>Deixe vazio para usar os nomes dos Atendimentos.</p>
+ <label>Buscar pessoa ou organização cadastrada<input aria-label="Associar cadastro ao Contato" value={query} onChange={e=>setQuery(e.target.value)}/></label>{suggestions.map(e=><button type="button" key={e.id} onClick={()=>{setEntityId(e.id);setNickname(e.text);setQuery('');setSuggestions([])}}>{e.text} · selecionar cadastro</button>)}{entityId&&<p>Cadastro associado; não comprova identidade. <button type="button" onClick={()=>setEntityId(null)}>Desassociar cadastro</button></p>}
+ {failure&&<p role="alert">{failure}</p>}<button disabled={busy||loading||!record}>Salvar nome do Contato</button></form>
 }

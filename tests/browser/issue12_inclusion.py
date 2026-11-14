@@ -231,7 +231,7 @@ async def run():
             await page.goto(ORIGIN + '/atendimentos/' + at['id'] + '?aba=mapa'); await h.login(page)
             await expect(active_scenario(page,'Cenário 1')).to_be_visible()
             await expect(page.locator('.interactive-map')).to_be_visible()
-            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+            await page.get_by_role('button', name='Diagnóstico', exact=True).click()
             await expect(page.locator('.diagnosis-card')).to_have_count(len(expected))
             await page.get_by_role('button', name='Mapa', exact=True).click()
             after = await get(path + '/diagnosticos'); assert after == expected

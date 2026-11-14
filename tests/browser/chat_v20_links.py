@@ -48,7 +48,7 @@ async def device_case(browser, width, height):
         await h.attach(page)
         await page.goto(ORIGIN + "/conversas")
         await h.login(page)
-        await expect(page.get_by_text("Conversas indisponíveis", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Canal ainda não habilitado", exact=True)).to_be_visible()
 
         async def mock(route):
             request = route.request
@@ -142,7 +142,7 @@ async def device_case(browser, width, height):
         await ctx.route("**/api/chat/conversations**", mock)
         await ctx.route("**/api/atendimentos?*", mock)
         await page.goto(ORIGIN + "/conversas")
-        await page.get_by_role("button", name="Contato Sintético Alfa").click()
+        await page.get_by_role("button", name="Abrir conversa: Sem nome", exact=True).first.click()
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
         await expect(panel).to_be_visible()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
@@ -191,7 +191,8 @@ async def device_case(browser, width, height):
         assert state["active"] is None and len(state["links"]) == 1
         h.mark(f"{width}px: cancel/confirm unlink and reset context")
 
-        await page.get_by_role("button", name="Contato Sintético Beta").click()
+        await page.get_by_role("button", name="Fechar detalhes").click()
+        await page.get_by_role("button", name="Abrir conversa: Sem nome", exact=True).nth(1).click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
         h.mark(f"{width}px: conversation switch isolates manual association panels")
 
@@ -202,8 +203,9 @@ async def device_case(browser, width, height):
         h.mark(f"{width}px: no horizontal overflow, no external network, no JS exceptions")
 
         state["enabled"] = False
-        await page.get_by_role("button", name="Atualizar lista").click()
-        await page.get_by_role("button", name="Contato Sintético Alfa").click()
+        await page.get_by_role("button", name="Fechar detalhes").click()
+        await page.get_by_role("button", name="Atualizar", exact=True).click()
+        await page.get_by_role("button", name="Abrir conversa: Sem nome", exact=True).first.click()
         assert await page.get_by_role("region", name="Vínculos com Atendimentos").count() == 0
         h.mark(f"{width}px: link feature OFF hides writes and never opens a second chat")
     except Exception:

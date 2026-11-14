@@ -132,7 +132,7 @@ createServer(async(req,res)=>{{
                     assert (records['privateB'] if key == 'a' else records['last']) not in history
                     assert 'PENDENTE PRIVADO' not in history
                     assert marker not in history
-                    for tab in ['Diagnósticos', 'Mapa', 'Chat']:
+                    for tab in ['Diagnóstico', 'Mapa', 'Chat']:
                         await page.get_by_role('button', name=tab, exact=True).click()
                         await expect(page.get_by_role('button', name=tab, exact=True)).to_have_attribute('aria-current', 'page')
                     await expect(page.get_by_text(expected, exact=True)).to_be_visible()

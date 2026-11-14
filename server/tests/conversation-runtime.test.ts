@@ -591,10 +591,7 @@ test('disabled gates create no metadata/instance and cannot enable read without 
       () => loadConversationRuntime({ FUNIX_CHAT_LOCAL_READ_ENABLED: 'true' }, db),
       /REQUIRES_STORAGE/,
     )
-    assert.throws(
-      () => loadConversationRuntime({ FUNIX_CHAT_LOCAL_ENABLED: 'true' }, db),
-      /REQUIRES_CANONICAL/,
-    )
+    assert.ok(loadConversationRuntime({ FUNIX_CHAT_LOCAL_ENABLED: 'true' }, db)?.authority)
   } finally {
     db.close()
   }
@@ -604,7 +601,7 @@ test('identity upgrade retains four-column evidence and adds provenance without 
   const db = openDatabase(':memory:')
   try {
     db.exec(
-      'CREATE TABLE chat_provider_alias_evidence(instance TEXT,pn TEXT,lid TEXT,first_seen_at TEXT,PRIMARY KEY(instance,pn,lid))',
+      'DROP TABLE chat_provider_alias_evidence; CREATE TABLE chat_provider_alias_evidence(instance TEXT,pn TEXT,lid TEXT,first_seen_at TEXT,PRIMARY KEY(instance,pn,lid))',
     )
     db.prepare('INSERT INTO chat_provider_alias_evidence VALUES(?,?,?,?)').run(
       'funix_comercial',

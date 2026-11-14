@@ -46,26 +46,26 @@ const v20Associations = process.env.FUNIX_CHAT_V20_LINKS_ENABLED === 'true' &&
 if (process.env.FUNIX_UPDATES_STORAGE_ENABLED === 'true') createUpdatePackageSchema(db)
 if (process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED === 'true') createGmailIntakeSchema(db)
 if (process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED === 'true' && process.env.FUNIX_GMAIL_QUEUE_STORAGE_ENABLED === 'true') createGmailIntakeQueueSchema(db)
-const codaSyncKey = parseCodaSyncSecret(process.env)
+const codaSyncKey = process.env.FUNIX_CHAT_AUTONOMOUS_ENABLED==='true'?null:parseCodaSyncSecret(process.env)
 const codaSync = codaSyncKey ? (() => {
   createCodaEventSchema(db)
   return { repo: new CodaEventSyncRepository(db), secret: codaSyncKey }
 })() : undefined
 const conversationRuntime=loadConversationRuntime(process.env,db,codaSync?.repo)
-const sourceLedgerKey = parseDevelopmentSourceSecret(process.env)
+const sourceLedgerKey = process.env.FUNIX_CHAT_AUTONOMOUS_ENABLED==='true'?null:parseDevelopmentSourceSecret(process.env)
 const sourceLedger = sourceLedgerKey ? (() => {
   createDevelopmentSourceLedgerSchema(db)
   createDevelopmentDecisionLedgerSchema(db)
   return { ledger:new DevelopmentSourceLedger(db), decisionLedger:new DevelopmentDecisionLedger(db), secret:sourceLedgerKey }
 })() : undefined
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
-const app = createApp({ conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const app = createApp({ conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
 // Reconciliation is an additional opt-in, not implied by the HTTP intake
 // gates. No Coda API access or scheduled sync occurs when the flag is unset.
-const reconciliationEnabled=process.env.FUNIX_CODA_RECONCILIATION_ENABLED==='true'
+const reconciliationEnabled=process.env.FUNIX_CODA_RECONCILIATION_ENABLED==='true'&&!conversationRuntime?.authority
 if(reconciliationEnabled && (!sourceLedger || !codaSync || !codaSyncKey))
   throw Error('RECONCILIATION_REQUIRES_SOURCE_AND_CODA_SYNC')
 const reconciliationToken=process.env.FUNIX_CODA_API_TOKEN ?? ''

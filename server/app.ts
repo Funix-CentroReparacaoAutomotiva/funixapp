@@ -1,3 +1,5 @@
+import { CustomerRepository } from './customers.ts'
+import { funnelProjection } from './funnel.ts'
 import { identifier as chatIdentifier } from './chat/events.ts'
 import type { ConversationRuntime } from './chat/conversation-runtime.ts'
 import { EvolutionReadError } from './experimental/evolution-read/client.ts'
@@ -96,7 +98,7 @@ export function createRequestHandler(options: AppOptions) {
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
   const ingest = createIngestEndpoint(chat, options.whatsappIngest, now, options.conversationRuntime?.store, options.conversationRuntime?.providerIdentity)
-  const codaIntake = options.codaSync ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
+  const codaIntake = options.codaSync && !options.conversationRuntime?.authority ? createCodaSyncEndpoint({ ...options.codaSync, now }) : null
   const sourceIntake = options.sourceLedger ? createDevelopmentSourceIntake({ ...options.sourceLedger, now }) : null
   const decisionIntake = options.decisionLedger ? createDevelopmentDecisionIntake({...options.decisionLedger,now}) : null
   const origin = options.origin ?? 'http://127.0.0.1:5173'
@@ -310,17 +312,51 @@ export function createRequestHandler(options: AppOptions) {
           return send(200,result)
         }finally{res.off('close',cancel)}
       }
+      const prepareConversationRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/prepare-conversation$/.exec(url.pathname)
+      if(prepareConversationRoute&&options.conversationRuntime?.authority){
+        if(req.method!=='POST'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,1024)
+        if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['contactIndex','revision'].includes(k)))return fail(400,'INVALID_REFERENCE','Contato inválido.')
+        const input=body as {contactIndex?:unknown;revision?:unknown}
+        if(typeof input.contactIndex!=='number'||typeof input.revision!=='number')return fail(400,'INVALID_REFERENCE','Contato inválido.')
+        return send(200,options.conversationRuntime.authority.prepareConversation(prepareConversationRoute[1]!,input.contactIndex,input.revision))
+      }
+      const localConversationsRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/conversations$/.exec(url.pathname)
+      if(localConversationsRoute&&options.conversationRuntime?.authority){
+        if(req.method!=='GET'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
+        options.atendimentos.get(localConversationsRoute[1]!)
+        return send(200,{items:options.conversationRuntime.authority.conversationsForAtendimento(localConversationsRoute[1]!)})
+      }
+      const photoRoute=/^\/api\/chat\/conversations\/([a-f0-9-]{36})\/profile-photo$/.exec(url.pathname)
+      if(photoRoute&&options.evolutionChat){
+        if(req.method!=='GET'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
+        const photo=await options.evolutionChat.profilePhoto(photoRoute[1]!)
+        if(!photo)return fail(404,'PHOTO_UNAVAILABLE','Foto indisponível.')
+        res.writeHead(200,{'Content-Type':photo.mime,'Content-Length':photo.bytes.length,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'});res.end(photo.bytes);return
+      }
+      const customerRoute=/^\/api\/customer-records(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
+      if(customerRoute){
+        const customers=new CustomerRepository(options.atendimentos.db),id=customerRoute[1]
+        if(req.method==='GET')return send(200,id?customers.record(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(req.method==='POST'&&!id || req.method==='PATCH'&&id)return send(id?200:201,customers.save(await readJson(req,8192),id))
+        return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+      }
       // V20 N:N associations: opt-in, single authenticated operator and explicit Origin on writes.
       // These operations NEVER contact Evolution or change legacy chat/messages.
-      if (!options.conversationRuntime && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
+      if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         if (associationRoute || contextRoute) {
           const conversationId = (associationRoute?.[1] ?? contextRoute?.[1])!
+          const scope=options.conversationRuntime?.authority?.associationScope(conversationId)
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
           if (associationRoute && req.method === 'GET' && !associationRoute[3])
-            return send(200, options.v20Associations.listActive(conversationId))
+            return send(200, options.v20Associations.listActive(conversationId,scope))
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
           if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
           const body = await readJson(req, 2048)
@@ -332,7 +368,7 @@ export function createRequestHandler(options: AppOptions) {
             return send(201, options.v20Associations.link({
               conversationId, atendimentoId: input.atendimentoId as string, expectedRevision: input.expectedRevision as number,
               requestId: input.requestId as string, reason: input.reason as string,
-            }))
+            },scope))
           }
           if (associationRoute && req.method === 'DELETE' && associationRoute[3]) {
             if (Object.keys(input).some(key => !['expectedRevision','requestId','reason'].includes(key)))
@@ -340,14 +376,14 @@ export function createRequestHandler(options: AppOptions) {
             return send(200, options.v20Associations.unlink({
               conversationId, linkId: associationRoute[3], expectedRevision: input.expectedRevision as number,
               requestId: input.requestId as string, reason: input.reason as string,
-            }))
+            },scope))
           }
           if (contextRoute && req.method === 'POST') {
             if (Object.keys(input).some(key => key !== 'linkId'))
               return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
             if (!Object.hasOwn(input, 'linkId') || (input.linkId !== null && typeof input.linkId !== 'string'))
               return fail(400, 'CHAT_INVALID_BODY', 'Contexto inválido.')
-            return send(200, { activeAtendimentoId: options.v20Associations.selectAtendimento(conversationId, input.linkId as string | null) })
+            return send(200, { activeAtendimentoId: options.v20Associations.selectAtendimento(conversationId, input.linkId as string | null,scope) })
           }
           return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         }
@@ -381,7 +417,7 @@ export function createRequestHandler(options: AppOptions) {
         }catch(cause){return providerFailure(cause,'history')}
       }
       const activeContextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/active-atendimento$/.exec(url.pathname)
-      if (activeContextRoute && options.evolutionChat && options.codaSync) {
+      if (activeContextRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const atendimentoId = options.evolutionChat.activeAtendimentoForConversation(activeContextRoute[1]!)
@@ -390,7 +426,7 @@ export function createRequestHandler(options: AppOptions) {
       // Resolve the unique active Coda-linked conversation for direct Funil navigation.
       // Returns opaque IDs only; the caller must already hold a valid FUNIX session.
       const canonicalConversationRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversation$/.exec(url.pathname)
-      if (canonicalConversationRoute && options.evolutionChat && options.codaSync) {
+      if (canonicalConversationRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         if (url.search) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const conversation = options.evolutionChat.conversationForAtendimento(canonicalConversationRoute[1]!)
@@ -401,7 +437,7 @@ export function createRequestHandler(options: AppOptions) {
       const sendEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/send-text$/.exec(url.pathname)
       if (sendEvolutionRoute) {
         if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Use POST para enviar texto.')
-        if (!options.evolutionChat || !options.codaSync || process.env.FUNIX_EVOLUTION_SEND_ENABLED !== 'true')
+        if (!options.evolutionChat || !(options.codaSync || options.conversationRuntime?.authority) || process.env.FUNIX_EVOLUTION_SEND_ENABLED !== 'true')
           return fail(503, 'CHAT_SEND_DISABLED', 'O envio WhatsApp não está habilitado.')
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
@@ -431,7 +467,7 @@ export function createRequestHandler(options: AppOptions) {
       const mediaSendRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/send-media$/.exec(url.pathname)
       if(mediaSendRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
-        if(!options.evolutionChat||!options.codaSync||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
+        if(!options.evolutionChat||!(options.codaSync || options.conversationRuntime?.authority)||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
           return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
@@ -460,7 +496,7 @@ export function createRequestHandler(options: AppOptions) {
       const mediaReadRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
       if(mediaReadRoute){
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
-        if(!options.evolutionChat||!options.codaSync||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
+        if(!options.evolutionChat||!(options.codaSync || options.conversationRuntime?.authority)||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
           return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
         if([...url.searchParams.keys()].some(key=>key!=='page')||url.searchParams.getAll('page').length>1)
           return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
@@ -487,7 +523,7 @@ export function createRequestHandler(options: AppOptions) {
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
-      if (syncedEvolutionRoute && options.evolutionChat && options.codaSync) {
+      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
@@ -516,7 +552,7 @@ export function createRequestHandler(options: AppOptions) {
           try {
             const result = await options.evolutionChat.list(Number(skip))
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-            return send(200, options.v20Associations && !options.conversationRuntime ? { ...result, linksEnabled: true } : result)
+            return send(200, options.v20Associations && (!options.conversationRuntime || options.conversationRuntime.authority) ? { ...result, linksEnabled: true } : result)
           } catch (cause) { return providerFailure(cause, 'list') }
         }
         if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
@@ -709,9 +745,10 @@ export function createRequestHandler(options: AppOptions) {
         const limit = url.searchParams.get('limit') ?? '50'
         const offset = url.searchParams.get('offset') ?? '0'
         if (!/^\d+$/.test(limit) || !/^\d+$/.test(offset)) return fail(400, 'INVALID_QUERY', 'Parâmetros de busca inválidos.')
-        return send(200, options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) }))
+        const result=options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) })
+        return send(200,{...result,items:funnelProjection(options.atendimentos.db,new CustomerRepository(options.atendimentos.db).present(result.items))})
       }
-      if (record && req.method === 'GET') return send(200, options.atendimentos.get(record[1]!))
+      if (record && req.method === 'GET') return send(200, options.atendimentos.get(record[1]!,true))
       if ((collection && req.method === 'POST') || (record && req.method === 'PATCH')) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')

@@ -1,0 +1,31 @@
+name: Customer experience Chromium
+on:
+  pull_request:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install browser tools without changing application dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/funix-browser" --no-save --no-audit --no-fund playwright@1.56.1
+          ln -s "$RUNNER_TEMP/funix-browser/node_modules/playwright" node_modules/playwright
+      - run: node scripts/customer-experience-browser.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-experience-chromium
+          path: artifacts/customer-experience/
+          if-no-files-found: ignore

@@ -1,3 +1,4 @@
+import type { CustomerReferences } from './customer.ts'
 export interface WorkRecord {
   rowId: string
   id: string
@@ -40,15 +41,19 @@ export interface ApiError {
 export const ATENDIMENTO_STAGES = [
   { id: 'novo-lead', name: 'Novo lead' },
   { id: 'aguardando-dados', name: 'Aguardando dados' },
-  { id: 'em-negociacao', name: 'Em negociação (24h)' },
-  { id: 'morno', name: 'Morno (3 dias)' },
-  { id: 'frio', name: 'Frio (5 dias)' },
-  { id: 'rejeitados', name: 'Rejeitados' },
+  { id: 'em-negociacao', name: 'Em negociação' },
+  { id: 'morno', name: 'Morno' },
+  { id: 'frio', name: 'Frio' },
+  { id: 'rejeitados', name: 'Encerrados' },
 ] as const
 
 export type AtendimentoStage = typeof ATENDIMENTO_STAGES[number]['id']
 
 export interface Atendimento {
+  closedAt?: string | null
+  references?: CustomerReferences
+  lastContactAt?: string | null
+  commercialValue?: {min: string; max: string} | null
   id: string
   phone: string
   phoneNormalized: string | null
@@ -76,7 +81,7 @@ export interface AtendimentoList {
   stages: typeof ATENDIMENTO_STAGES
 }
 
-export type AtendimentoInput = Pick<Atendimento, 'phone'> & Partial<Pick<Atendimento,
+export type AtendimentoInput = {closed?:boolean} & Partial<Pick<Atendimento, 'phone' | 'references' |
   'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }
