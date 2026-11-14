@@ -1,3 +1,4 @@
+import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import { hierarchyPieces } from './hierarchy.ts'
 import { createChatSchema } from './chat/schema.ts'
@@ -258,7 +259,8 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     ALTER TABLE atendimentos ADD COLUMN model_year TEXT;
   `)},
   // #168: technical review remains attached to the diagnosis across scenarios.
-  {version:17,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')}
+  {version:17,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')},
+  {version:18,apply:createCustomerSchema}
 ]
 
 export function migrate(db: DatabaseSync) {

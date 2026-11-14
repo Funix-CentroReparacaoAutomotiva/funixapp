@@ -1,0 +1,38 @@
+[
+  {
+    "width": 320,
+    "conversations": 3,
+    "namesInDetails": 20,
+    "sends": 1,
+    "manualPartial": true,
+    "contextSwitch": true,
+    "chat": true,
+    "diagnosis": true,
+    "map": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "conversations": 3,
+    "namesInDetails": 20,
+    "sends": 1,
+    "manualPartial": true,
+    "contextSwitch": true,
+    "chat": true,
+    "diagnosis": true,
+    "map": true,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "conversations": 3,
+    "namesInDetails": 20,
+    "sends": 1,
+    "manualPartial": true,
+    "contextSwitch": true,
+    "chat": true,
+    "diagnosis": true,
+    "map": true,
+    "overflow": false
+  }
+]

@@ -1,3 +1,5 @@
+import {localEventFromV1} from './legacy-event.ts'
+import type {ChatEvent} from '../../shared/chat.ts'
 import { normalizeEvolutionEvent } from './evolution-normalize.ts'
 import { parseConversationEvent } from './conversation-event.ts'
 import type { ConversationStore } from './conversation-store.ts'
@@ -94,7 +96,12 @@ export function createIngestEndpoint(chat: ChatRepository, options?: IngestOptio
       if(v2&&!local)throw new ServiceError(503,'CHAT_LOCAL_DISABLED','Recebimento local não habilitado.')
       if (!key.instances.has(event.instance)) throw new ServiceError(403, 'WHATSAPP_INSTANCE_DENIED', 'Instância não autorizada.')
       let receipt
-      try { receipt = v2 ? local!.ingest(normalized?JSON.stringify(normalized):raw) : chat.ingest(raw) }
+      try {
+        const compatible=!v2&&local?.identities.inbound?localEventFromV1(event as ChatEvent):null
+        const historical=compatible&&local!.db.prepare('SELECT 1 FROM chat_events WHERE instance=? AND event_id=?').get(event.instance,event.eventId)
+        receipt = v2 ? local!.ingest(normalized?JSON.stringify(normalized):raw)
+          : compatible&&!historical ? local!.ingest(JSON.stringify(compatible)) : chat.ingest(raw)
+      }
       catch (cause) {
         if (cause instanceof ServiceError) throw cause
         throw new ServiceError(503, 'WHATSAPP_EVENT_STORAGE', 'Persistência temporariamente indisponível.')

@@ -25,18 +25,13 @@ function hashRequest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex')
 }
 
-/**
- * Candidate additive V15 tables. Intentionally NOT registered in migrations.ts:
- * running the production V14 migrator against V15 would refuse startup after
- * a rollback. This schema is invoked ONLY by explicit offline tests for now.
- *
- * The legacy chat_links/chat_messages tables remain unmodified and continue
- * to represent temporal attribution, not the new N:N association.
+/** Additive N:N tables, now registered by V18. Compatibility startup remains idempotent.
+ * Temporal legacy links and messages retain their original attribution.
  */
-export function createV20AssociationSchema(db: DatabaseSync) {
+export function createV20AssociationSchema(db: DatabaseSync, inTransaction = false) {
   // Additive, idempotent DDL; no schema_migrations V15 entry or legacy table edits.
   // DDL is atomically committed, so interrupted startup cannot leave partial schema.
-  db.exec('BEGIN IMMEDIATE')
+  if (!inTransaction) db.exec('BEGIN IMMEDIATE')
   try {
     db.exec([
     'CREATE TABLE IF NOT EXISTS v20_conversations (',
@@ -67,9 +62,9 @@ export function createV20AssociationSchema(db: DatabaseSync) {
     ');',
     ].join('\n'))
     if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('V20_ASSOCIATION_FK_INVALID')
-    db.exec('COMMIT')
+    if (!inTransaction) db.exec('COMMIT')
   } catch (error) {
-    db.exec('ROLLBACK')
+    if (!inTransaction) db.exec('ROLLBACK')
     throw error
   }
 }
@@ -150,68 +145,72 @@ export class V20AssociationRepository {
     return row ? String(row.remote_jid) : null
   }
 
-  listActive(conversationId: string): { revision: number; items: V20Association[]; activeAtendimentoId: string | null } {
+  listActive(conversationId: string, scope = [conversationId]): { revision: number; items: V20Association[]; activeAtendimentoId: string | null } {
     validateId(conversationId)
-    const revision = this.conversation(conversationId)
+    const revision = scope.reduce((sum,id)=>sum+this.conversation(validateId(id)),0)
+    const placeholders=scope.map(()=>'?').join(',')
     const items = this.db.prepare(
-      'SELECT l.id,l.atendimento_id,l.linked_at,a.name,a.vehicle,a.plate FROM v20_associations l JOIN atendimentos a ON a.id=l.atendimento_id WHERE l.conversation_id=? AND l.unlinked_at IS NULL ORDER BY l.linked_at,l.id',
-    ).all(conversationId).map(row => ({
+      `SELECT l.id,l.atendimento_id,l.linked_at,a.name,a.vehicle,a.plate FROM v20_associations l JOIN atendimentos a ON a.id=l.atendimento_id WHERE l.conversation_id IN (${placeholders}) AND l.unlinked_at IS NULL ORDER BY l.linked_at,l.id`,
+    ).all(...scope).map(row => ({
       linkId: String(row.id), atendimentoId: String(row.atendimento_id), linkedAt: String(row.linked_at),
       name: String(row.name), vehicle: String(row.vehicle), plate: String(row.plate),
     }))
     const selected = this.db.prepare(
-      'SELECT l.atendimento_id FROM v20_active_context c JOIN v20_associations l ON l.id=c.link_id AND l.conversation_id=c.conversation_id WHERE c.conversation_id=? AND l.unlinked_at IS NULL',
-    ).get(conversationId)
-    return { revision, items, activeAtendimentoId: selected ? String(selected.atendimento_id) : null }
+      `SELECT l.atendimento_id FROM v20_active_context c JOIN v20_associations l ON l.id=c.link_id AND l.conversation_id=c.conversation_id WHERE c.conversation_id IN (${placeholders}) AND l.unlinked_at IS NULL`,
+    ).all(...scope)
+    const selectedIds=[...new Set(selected.map(s=>String(s.atendimento_id)))]
+    return { revision, items, activeAtendimentoId: selectedIds.length===1?selectedIds[0]!:null }
   }
 
   /** Same Atendimento may be connected to many conversations and vice versa. */
-  link(input: { conversationId: string; atendimentoId: string; expectedRevision: number; requestId: string; reason: string }): MutationResult {
+  link(input: { conversationId: string; atendimentoId: string; expectedRevision: number; requestId: string; reason: string }, scope?: string[]): MutationResult {
     const conversationId = validateId(input.conversationId)
     const atendimentoId = validateId(input.atendimentoId)
     const requestId = validateId(input.requestId)
     const expectedRevision = validateRevision(input.expectedRevision)
     const reason = validateReason(input.reason)
+    const ids=scope??[conversationId],placeholders=ids.map(()=>'?').join(',')
     const digest = hashRequest(['link', conversationId, atendimentoId, expectedRevision, reason])
     return this.transaction(() => {
       const replay = this.receipt(conversationId, requestId, digest)
       if (replay) return replay
-      if (this.conversation(conversationId) !== expectedRevision) return conflict()
+      if (ids.reduce((sum,id)=>sum+this.conversation(validateId(id)),0) !== expectedRevision) return conflict()
       if (!this.db.prepare('SELECT 1 FROM atendimentos WHERE id=?').get(atendimentoId)) return missing()
       if (this.db.prepare(
-        'SELECT 1 FROM v20_associations WHERE conversation_id=? AND atendimento_id=? AND unlinked_at IS NULL',
-      ).get(conversationId, atendimentoId)) return conflict()
+        `SELECT 1 FROM v20_associations WHERE conversation_id IN (${placeholders}) AND atendimento_id=? AND unlinked_at IS NULL`,
+      ).get(...ids, atendimentoId)) return conflict()
       const linkId = randomUUID()
       this.db.prepare(
         'INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)',
       ).run(linkId, conversationId, atendimentoId, this.now(), 'operator', reason)
       const revision = expectedRevision + 1
-      this.db.prepare('UPDATE v20_conversations SET revision=? WHERE id=?').run(revision, conversationId)
+      this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(conversationId)
       const result = { linkId, revision }
       this.saveReceipt(conversationId, requestId, digest, result)
       return result
     })
   }
 
-  unlink(input: { conversationId: string; linkId: string; expectedRevision: number; requestId: string; reason: string }): MutationResult {
+  unlink(input: { conversationId: string; linkId: string; expectedRevision: number; requestId: string; reason: string }, scope?: string[]): MutationResult {
     const conversationId = validateId(input.conversationId)
     const linkId = validateId(input.linkId)
     const requestId = validateId(input.requestId)
     const expectedRevision = validateRevision(input.expectedRevision)
     const reason = validateReason(input.reason)
+    const ids=scope??[conversationId],placeholders=ids.map(()=>'?').join(',')
     const digest = hashRequest(['unlink', conversationId, linkId, expectedRevision, reason])
     return this.transaction(() => {
       const replay = this.receipt(conversationId, requestId, digest)
       if (replay) return replay
-      if (this.conversation(conversationId) !== expectedRevision) return conflict()
+      if (ids.reduce((sum,id)=>sum+this.conversation(validateId(id)),0) !== expectedRevision) return conflict()
       const result = this.db.prepare(
-        'UPDATE v20_associations SET unlinked_at=?,unlinked_by=?,unlink_reason=? WHERE id=? AND conversation_id=? AND unlinked_at IS NULL',
-      ).run(this.now(), 'operator', reason, linkId, conversationId)
+        `UPDATE v20_associations SET unlinked_at=?,unlinked_by=?,unlink_reason=? WHERE id=? AND conversation_id IN (${placeholders}) AND unlinked_at IS NULL`,
+      ).run(this.now(), 'operator', reason, linkId, ...ids)
       if (result.changes !== 1) return missing()
-      this.db.prepare('DELETE FROM v20_active_context WHERE conversation_id=? AND link_id=?')
-        .run(conversationId, linkId)
+      this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders}) AND link_id=?`)
+        .run(...ids,linkId)
       const revision = expectedRevision + 1
-      this.db.prepare('UPDATE v20_conversations SET revision=? WHERE id=?').run(revision, conversationId)
+      this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(conversationId)
       const receipt = { linkId, revision }
       this.saveReceipt(conversationId, requestId, digest, receipt)
       return receipt
@@ -219,22 +218,31 @@ export class V20AssociationRepository {
   }
 
   /** A navigation preference, not a link change. Clearing returns to neutral. */
-  selectAtendimento(conversationId: string, linkId: string | null): string | null {
+  selectAtendimento(conversationId: string, linkId: string | null, scope = [conversationId]): string | null {
     validateId(conversationId)
     if (linkId !== null) validateId(linkId)
     return this.transaction(() => {
       this.conversation(conversationId)
+      // Local context epochs invalidate commands even across A→B→A navigation.
+      const hasEpoch=this.db.prepare('PRAGMA table_info(v20_conversations)').all().some(r=>r.name==='context_revision')
+      const placeholders=scope.map(()=>'?').join(',')
+      scope.forEach(id=>this.conversation(validateId(id)))
+      const bump=()=>{if(hasEpoch)this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${placeholders})`).run(...scope)}
       if (linkId === null) {
-        this.db.prepare('DELETE FROM v20_active_context WHERE conversation_id=?').run(conversationId)
+        bump()
+        this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
         return null
       }
       const link = this.db.prepare(
-        'SELECT atendimento_id FROM v20_associations WHERE id=? AND conversation_id=? AND unlinked_at IS NULL',
-      ).get(linkId, conversationId)
+        `SELECT atendimento_id,conversation_id FROM v20_associations WHERE id=? AND conversation_id IN (${placeholders}) AND unlinked_at IS NULL`,
+      ).get(linkId,...scope)
       if (!link) return missing()
+      bump()
+      if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_local_context_holds'").get())this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${placeholders})`).run(...scope)
+      this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare(
         'INSERT INTO v20_active_context(conversation_id,link_id) VALUES(?,?) ON CONFLICT(conversation_id) DO UPDATE SET link_id=excluded.link_id',
-      ).run(conversationId, linkId)
+      ).run(link.conversation_id!, linkId)
       return String(link.atendimento_id)
     })
   }

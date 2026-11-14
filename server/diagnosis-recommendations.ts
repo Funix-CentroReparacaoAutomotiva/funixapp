@@ -15,7 +15,7 @@ function object(value:unknown,keys:string[]){
 }
 function database(db:DatabaseSync){
  const versions=db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(r=>Number(r.version))
- if(![9,10,11,12,13,14,15,16,17].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw Error('Regras exigem schema exatamente V9, V10, V11, V12, V13, V14, V15, V16 ou V17; este comando não executa migrações.')
+ if(![9,10,11,12,13,14,15,16,17,18].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw Error('Regras exigem schema exatamente V9, V10, V11, V12, V13, V14, V15, V16, V17 ou V18; este comando não executa migrações.')
  if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Integridade do banco inválida; carga recusada.')
 }
 function originId(value:unknown){return typeof value==='string'&&/^i-[A-Za-z0-9_-]{1,60}$/.test(value)}

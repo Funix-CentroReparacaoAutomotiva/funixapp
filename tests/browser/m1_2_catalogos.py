@@ -37,7 +37,7 @@ async def run():
             await expect(page.get_by_role('button', name='Editar Atendimento', exact=True)).to_be_visible()
             at_id = re.search(r'/atendimentos/([^?]+)', page.url).group(1)
             path = f'/api/atendimentos/{at_id}/diagnosticos'
-            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+            await page.get_by_role('button', name='Diagnóstico', exact=True).click()
             await page.get_by_role('button', name='+ Adicionar peça', exact=True).click()
             await page.get_by_label('Buscar peça em todas as vistas').fill('capo')
             await expect(page.locator('.piece-options button').first).to_be_enabled()
@@ -85,7 +85,7 @@ async def run():
             await page.screenshot(path=str(ARTIFACTS / 'mapa-sintetico.png'))
             h.mark('interactive original SVG, nested V2 selection, Ambos creates two pieces and cross-view selections deduplicate')
 
-            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+            await page.get_by_role('button', name='Diagnóstico', exact=True).click()
             await page.locator('.diagnosis-card').filter(has_text='Capô').get_by_role('button', name=re.compile('^Capô')).click()
             await expect(page.get_by_role('form', name='Editar item de diagnóstico')).to_be_visible()
             await page.get_by_label('Diagnóstico', exact=True).select_option(label='Dano QA sintético')
@@ -144,7 +144,7 @@ async def run():
             other = await context.request.post(ORIGIN + '/api/atendimentos', headers={'Origin': ORIGIN}, data={'phone': '654321', 'name': 'QA M1.2 — OUTRO'})
             other_at = await other.json()
             await page.goto(ORIGIN + f'/atendimentos/{other_at["id"]}?aba=diagnosticos')
-            await expect(page.get_by_role('heading', name='Diagnósticos', exact=True)).to_be_visible()
+            await expect(page.get_by_role('heading', name='Diagnóstico', exact=True)).to_be_visible()
             await expect(page.locator('.diagnosis-heading')).to_contain_text('0 peças')
             await h.restart_api()
             await context.close()

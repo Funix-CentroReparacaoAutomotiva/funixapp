@@ -380,13 +380,13 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
           
           {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
-          <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time></footer>
+          <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
         {localHistory && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
       </section>
     </div></div>
-    {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); void (file ? sendMedia() : sendText()) }}>
+    {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); if(window.confirm('Enviar esta mensagem à conversa selecionada?')) void (file ? sendMedia() : sendText()) }}>
       <label htmlFor="chat-whatsapp-text" className="sr-only">Responder pelo WhatsApp</label>
       <div className="chat-composer-row">
         <textarea id="chat-whatsapp-text" aria-label="Mensagem de texto para o cliente"
@@ -395,7 +395,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
           placeholder="Mensagem"
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault(); void (file ? sendMedia() : sendText())
+              event.preventDefault(); if(window.confirm('Enviar esta mensagem à conversa selecionada?')) void (file ? sendMedia() : sendText())
             }
           }} />
         {canMedia && <label className="chat-file-chooser" title="Anexar foto, vídeo ou áudio">

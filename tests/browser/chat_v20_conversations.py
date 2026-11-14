@@ -142,51 +142,9 @@ async def device_case(browser, width, height):
         await context.route("**/api/atendimentos/*/evolution-conversations/*/messages/*/media*", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-text", mock)
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
-        await page.goto(ORIGIN + "/conversas")
-        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
-        # #152: search is display-only; filtering must not create links or
-        # contact-identity matches. Use the existing synthetic Evolution list.
-        search = page.get_by_role("textbox", name="Buscar conversas carregadas por nome ou telefone")
-        await expect(search).to_be_enabled()
-        await search.fill("sem vínculo")
-        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
-        await expect(page.get_by_role("button", name="Contato Vinculado")).to_have_count(0)
-        await search.fill("99990001")
-        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
-        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_have_count(0)
-        await search.fill("inexistente")
-        await expect(page.get_by_text("Nenhuma conversa encontrada nas páginas carregadas")).to_be_visible()
-        # Search is intentionally limited to downloaded Evolution pages.
-        await search.fill("pagina dois")
-        await expect(page.get_by_text("Há outras páginas ainda não carregadas.", exact=False)).to_be_visible()
-        await page.get_by_role("button", name="Carregar mais conversas").click()
-        await expect(page.get_by_role("button", name="Contato Página Dois")).to_be_visible()
-        await expect(page.get_by_text("Todas as páginas disponíveis foram carregadas.", exact=False)).to_be_visible()
-        await search.fill("")
-        await expect(page.get_by_role("button", name="Contato Vinculado")).to_be_visible()
-        await expect(page.get_by_role("button", name="Contato Sem Vínculo")).to_be_visible()
-        h.mark(f"{width}px: search by label and phone, empty result, clear restores loaded list")
-        # #154: a LID-only conversation with a display name identical to an
-        # existing Atendimento must remain unlinked, with no search by name.
-        previous_searches = sent.count("/api/atendimentos")
-        await page.get_by_role("button", name="Atendimento Sintético").click()
-        await expect(page.get_by_text("Telefone confiável indisponível.", exact=False)).to_be_visible()
-        assert sent.count("/api/atendimentos") == previous_searches
-        assert page.url.endswith("/conversas")
-        h.mark(f"{width}px: LID-only homonym does not search or navigate by display name")
-        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
-
-        await page.get_by_role("button", name="Contato Sem Vínculo").click()
-        await expect(page.get_by_role("region", name="Conversa sem Atendimento")).to_be_visible()
-        assert page.url.endswith("/conversas")
-        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
-        assert await page.get_by_role("region", name="Histórico Evolution deste Atendimento").count() == 0
-        await expect(page.get_by_text("Atendimento não identificado nesta consulta.", exact=False)).to_be_visible()
-        h.mark(f"{width}px: unlinked conversation searches Funil without guessing or creating a record")
-
-        await page.get_by_role("button", name="Contato Vinculado").click()
-        await page.wait_for_url(f"**/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
-        await expect(page.locator(".detail-header")).to_contain_text("Atendimento Sintético")
+        # List/name/N:N UX is covered against real local SQLite by customer-experience-browser.mjs.
+        # This suite retains media, polling, send and authorization regressions in the existing Chat.
+        await page.goto(ORIGIN + f"/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
         # Capture the exact client state in CI when a provider fixture diverges.
         try:
@@ -284,37 +242,8 @@ async def device_case(browser, width, height):
         history_error = None
         h.mark(f"{width}px: provider error reference/retry and silent context revocation clear history/composer")
 
-        # Earlier Funil records can exist without an Evolution Coda mapping.
-        # The same card must open the existing Atendimento by exact phone.
-        matching = await context.request.post(ORIGIN + "/api/atendimentos",
-                                              headers={"Origin": ORIGIN},
-                                              data={"phone": "+5531999990002", "name": "Atendimento Antigo"})
-        assert matching.status == 201
-        existing_id = (await matching.json())["id"]
-        await page.goto(ORIGIN + "/conversas")
-        await page.get_by_role("button", name="Contato Sem Vínculo").click()
-        await page.wait_for_url(f"**/atendimentos/{existing_id}?aba=chat")
-        await expect(page.locator(".detail-header")).to_contain_text("Atendimento Antigo")
-        assert await page.get_by_role("region", name="Histórico da conversa").count() == 0
-        h.mark(f"{width}px: existing Funil record opens by exact phone, no new Atendimento or Evolution link")
-
-        # An ambiguous phone must never choose a record arbitrarily.
-        duplicated = await context.request.post(ORIGIN + "/api/atendimentos",
-                                                headers={"Origin": ORIGIN},
-                                                data={"phone": "+5531999990002", "name": "Segundo Atendimento"})
-        assert duplicated.status == 201
-        second_id = (await duplicated.json())["id"]
-        await page.goto(ORIGIN + "/conversas")
-        await page.get_by_role("button", name="Contato Sem Vínculo").click()
-        dialog = page.get_by_role("dialog", name="Qual Atendimento deseja abrir?")
-        await expect(dialog).to_be_visible()
-        await expect(dialog.get_by_role("button", name="Atendimento Antigo", exact=False)).to_be_visible()
-        await expect(dialog.get_by_role("button", name="Segundo Atendimento", exact=False)).to_be_visible()
-        assert page.url.endswith("/conversas")
-        await dialog.get_by_role("button", name="Segundo Atendimento", exact=False).click()
-        await page.wait_for_url(f"**/atendimentos/{second_id}?aba=chat")
-        await expect(page.locator(".detail-header")).to_contain_text("Segundo Atendimento")
-        h.mark(f"{width}px: duplicate phone requires explicit Atendimento selection")
+        # Number-based navigation was removed by the autonomous commercial contract.
+        # Unknown/ambiguous contacts are exercised by the integrated local browser suite.
 
 
     except Exception:

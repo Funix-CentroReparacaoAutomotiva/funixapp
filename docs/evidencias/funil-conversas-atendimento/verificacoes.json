@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-14",
+  "base": "2692b0ee187ce35464ab7fbc55b865e0949308a3",
+  "check": {
+    "command": "npm run check",
+    "serverTests": 981,
+    "voiceCostTests": 8,
+    "exitCode": 0
+  },
+  "browser": [
+    {
+      "command": "node scripts/customer-experience-browser.mjs",
+      "exitCode": 0,
+      "seconds": 35.25,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "node scripts/atendimento-vehicle-browser.mjs",
+      "exitCode": 0,
+      "seconds": 32.4,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "node scripts/diagnosis-quote-browser.mjs",
+      "exitCode": 0,
+      "seconds": 23.1,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_conversations.py",
+      "exitCode": 0,
+      "seconds": 25.3,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_mvp_local.py",
+      "exitCode": 0,
+      "seconds": 21.51,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_links.py",
+      "exitCode": 0,
+      "seconds": 17.7,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_local_base.py",
+      "exitCode": 0,
+      "seconds": 46.25,
+      "widths": [
+        320,
+        390,
+        1440
+      ]
+    }
+  ],
+  "realWhatsAppSends": 0,
+  "productionChanges": false
+}
