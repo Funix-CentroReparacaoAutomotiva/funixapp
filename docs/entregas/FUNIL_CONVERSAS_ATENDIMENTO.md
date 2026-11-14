@@ -99,3 +99,7 @@ Capturas e resultados sintéticos em [evidências](../evidencias/funil-conversas
 5. Confirmar a capacidade/contrato de foto da Evolution instalada, ausência/privacidade e fallback. Validar teclado, foco, rolagem e seleção de referências no aparelho real.
 6. Somente mediante autorização própria, homologar envio/mídia ao número controlado, cancelamento, entrega/resposta, falha incerta e troca de contexto. A confirmação do provedor não comprova identidade civil.
 7. Conferir cadastro progressivo, múltiplos participantes/contatos/veículos/pagadores, faixa comercial, Encerrados, Diagnóstico/Mapa e emissão de orçamento. Planejamento de implantação/rollback permanece uma etapa separada desta entrega.
+
+## Revisão final da PR #219
+
+As correções posteriores e sua validação estão em [Revisão final da PR #219](REVISAO_FINAL_PR219.md): teste PDF atualizado para a navegação aprovada/V18, projeção PN/LID consistente, revogação segura de contexto após alteração de Contatos e preservação de referências/rascunhos no autosave. Esse complemento registra a política de seleção explícita sem excluir associações históricas.
