@@ -117,8 +117,8 @@ function realConfiguration(env:NodeJS.ProcessEnv){
 }
 /** Called only inside an eligible/authorized source step, before reading any message. */
 async function verifyGmailReadAccess(accountId:string,token:string,fetchImpl:typeof fetch,signal:AbortSignal){
- const infoUrl=new URL('https://oauth2.googleapis.com/tokeninfo');infoUrl.searchParams.set('access_token',token)
- const info=await boundedJson(await fetchImpl(infoUrl,{method:'GET',redirect:'error',cache:'no-store',signal}))
+ // Same tokeninfo transport as Google's OAuth2 client: bearer header, never a token in the URL.
+ const info=await boundedJson(await fetchImpl('https://oauth2.googleapis.com/tokeninfo',{method:'POST',redirect:'error',cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},signal}))
  const scopes=typeof info.scope==='string'?info.scope.split(/\s+/).filter(Boolean):[]
  if(!scopes.includes(gmailReadScope)||scopes.some(s=>!permittedGoogleScopes.has(s))||!(Number(info.expires_in)>0))throw Object.assign(Error('GMAIL_ANALYSIS_ACCESS_REJECTED'),{analysisCategory:'AUTH_REQUIRED'})
  const profile=await boundedJson(await fetchImpl('https://gmail.googleapis.com/gmail/v1/users/me/profile',{method:'GET',redirect:'error',cache:'no-store',headers:{Authorization:'Bearer '+token},signal}))

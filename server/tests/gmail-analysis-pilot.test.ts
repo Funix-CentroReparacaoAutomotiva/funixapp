@@ -44,7 +44,10 @@ function fakeProviders(){
   const url=new URL(String(input)),method=init?.method??'GET';calls.push({host:url.host,path:url.pathname,method})
   assert.equal(init?.redirect,'error')
   let data:unknown
-  if(url.host==='oauth2.googleapis.com')data={scope:scopes,expires_in:3600}
+  if(url.host==='oauth2.googleapis.com'){
+   assert.equal(method,'POST');assert.equal(url.search,'');assert.ok(new Headers(init?.headers).get('Authorization')?.startsWith('Bearer '))
+   data={scope:scopes,expires_in:3600}
+  }
   else if(url.pathname.endsWith('/profile'))data={emailAddress:account}
   else if(url.host==='gmail.googleapis.com'){
    assert.ok(url.pathname.endsWith(fixture.messages[0]!.message.messageId))
@@ -72,7 +75,7 @@ test('real-pilot: configuração estática completa não faz IO; só aviso selec
   assert.deepEqual(x.db.prepare('SELECT * FROM gmail_intake_notices ORDER BY id').all(),before)
   const authorized=x.decide(x.selected.id);await s.drain();await s.drain()
   assert.equal(s.get(x.selected.id)!.state,'ready');assert.equal(s.get(x.historic.id),null);assert.equal(s.get(x.denied.id),null)
-  assert.equal(f.calls.length,5);assert.equal(f.calls.filter(c=>c.host!=='api.openai.com').every(c=>c.method==='GET'),true)
+  assert.equal(f.calls.length,5);assert.equal(f.calls.filter(c=>c.host==='gmail.googleapis.com'||c.host==='coda.io').every(c=>c.method==='GET'),true)
   assert.equal(f.calls.some(c=>c.host.includes('drive')),false)
   assert.equal(s.scopeStatus().mode,'real-pilot');assert.equal(JSON.stringify(s.scopeStatus()).includes('secret'),false)
   const p=s.get(x.selected.id)!.proposal!,packages=new UpdatePackageRepository(x.db)

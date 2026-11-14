@@ -242,9 +242,10 @@ Antes de ler a mensagem elegível, Google tokeninfo valida validade e grant gmai
 somente depois de autorização persistida, não no bootstrap ou health. Coda só recebe
 GET; seu privilégio real precisa ser conferido no provedor — a flag não comprova grant.
 IA não recebe ferramentas. Falhas de credencial permanecem recuperáveis por intervenção.
-Não registrar tráfego com URL/headers/body: tokeninfo usa access_token na query TLS;
-a aplicação não loga essa URL, token ou resposta bruta. Proxies/traces precisam da mesma
-restrição/redação. Nenhum refresh OAuth automático ou segredo persistido no SQLite.
+Tokeninfo usa POST de introspecção com bearer no header, como o cliente OAuth2 Google;
+nunca coloca o token na URL. Gmail profile/mensagem e Coda usam somente GET.
+A aplicação não loga headers, corpo, token ou resposta bruta. Proxies/traces precisam
+da mesma restrição/redação. Nenhum refresh OAuth automático ou segredo persistido no SQLite.
 
 Consulta autenticada `GET /api/atualizacoes/analises-gmail?ids=` retorna items vazio e
 scope técnico: modo, UUID, corte, hash, valid e authorized. Não revela conta, mensagem,
