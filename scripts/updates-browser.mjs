@@ -8,6 +8,8 @@ import {openDatabase} from '../server/database.ts'
 import {commercialFixture} from '../server/tests/fixtures/commercial.ts'
 import {createUpdatePackageSchema} from '../server/update-packages-schema.ts'
 import {UpdatePackageRepository} from '../server/update-packages.ts'
+import {createGmailIntakeSchema} from '../server/gmail-intake-schema.ts'
+import {GmailIntakeRepository} from '../server/gmail-intake.ts'
 import {createApp} from '../server/app.ts'
 
 const origin='http://127.0.0.1:5173'
@@ -15,9 +17,11 @@ const password='synthetic-updates-browser-password-0123'
 const artifacts='artifacts/updates-browser'
 mkdirSync(artifacts,{recursive:true})
 const oldEnv=Object.fromEntries(['FUNIX_UPDATES_STORAGE_ENABLED','FUNIX_UPDATES_DECISIONS_ENABLED',
- 'FUNIX_UPDATES_CLARIFICATIONS_ENABLED','FUNIX_UPDATES_INGEST_ENABLED'].map(key=>[key,process.env[key]]))
+ 'FUNIX_UPDATES_CLARIFICATIONS_ENABLED','FUNIX_UPDATES_INGEST_ENABLED',
+ 'FUNIX_GMAIL_INTAKE_STORAGE_ENABLED','FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED'].map(key=>[key,process.env[key]]))
 Object.assign(process.env,{FUNIX_UPDATES_STORAGE_ENABLED:'true',FUNIX_UPDATES_DECISIONS_ENABLED:'true',
- FUNIX_UPDATES_CLARIFICATIONS_ENABLED:'true',FUNIX_UPDATES_INGEST_ENABLED:'false'})
+ FUNIX_UPDATES_CLARIFICATIONS_ENABLED:'true',FUNIX_UPDATES_INGEST_ENABLED:'false',
+ FUNIX_GMAIL_INTAKE_STORAGE_ENABLED:'true',FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED:'false'})
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1',
  '--port','5173','--strictPort'],{stdio:'pipe'})
 let browser
@@ -42,6 +46,13 @@ try {
  for(const [width,height] of [[390,844],[1440,900]]){
   const db=openDatabase(':memory:'),fixture=commercialFixture(db)
   createUpdatePackageSchema(db)
+  createGmailIntakeSchema(db)
+  const gmailRepo=new GmailIntakeRepository(db)
+  const gmailNotice=gmailRepo.ingest({
+   messageId:'b'.repeat(16), title:'Mensagem Gmail Sintética',
+   summary:'Solicitação fictícia de orçamento para pintura de um veículo de teste',
+   relevance:'relevant',reason:'LEAD_SERVICE',plateHint:null,xpHint:null
+  })
   const repo=new UpdatePackageRepository(db)
   const readyPackage=repo.createProposal(proposal('XP1234','ABC1D23'))
   const pendingPackage=repo.createProposal(proposal('XP2345','DEF2G34',[
@@ -63,9 +74,16 @@ try {
    await page.getByText('XP1234 · ABC1D23').waitFor()
    await page.getByText('XP2345 · DEF2G34').waitFor()
    assert.equal(await page.locator('.updates-card').count(),2)
+   await page.getByRole('button',{name:/Mensagem Gmail Sintética/}).waitFor()
+   assert.equal(await page.locator('.gmail-intake-card').count(),1)
+   await page.getByRole('button',{name:/Mensagem Gmail Sintética/}).click()
+   await page.getByText('Solicitação fictícia de orçamento para pintura de um veículo de teste').waitFor()
+   assert.equal(await page.getByRole('button',{name:'Autorizar análise'}).isDisabled(),true)
+   assert.equal(gmailRepo.get(gmailNotice.id).status,'awaiting_authorization')
    await page.getByRole('button',{name:/XP2345 · DEF2G34/}).click()
    assert.equal(await page.getByRole('button',{name:'Aprovar pacote'}).isDisabled(),true)
    await page.locator('.updates-missing li strong').getByText('Conferir autorização comercial',{exact:true}).waitFor()
+   assert.equal(await page.locator('.gmail-intake-detail').count(),0)
    await page.getByRole('button',{name:/XP1234 · ABC1D23/}).click()
    await page.getByRole('button',{name:'Aprovar pacote'}).click()
    await page.getByText('Aprovação registrada. A execução ainda não começou.').waitFor()
@@ -80,8 +98,18 @@ try {
    await page.getByText('XP2345 · DEF2G34').waitFor()
    assert.equal(await page.locator('.updates-card.is-rejected').count(),1)
    assert.equal(await page.getByText('XP1234 · ABC1D23').count(),1)
+   assert.equal(await page.locator('.gmail-intake-card').count(),1)
    await page.getByRole('button',{name:/XP2345 · DEF2G34/}).click()
    assert.equal(await page.getByRole('button',{name:'Aprovar pacote'}).count(),0)
+   const search=page.getByRole('textbox',{name:'Buscar atualizações por assunto, experiência, placa ou origem'})
+   await search.fill('Mensagem Gmail Sintética')
+   await page.getByText('1 atualização no histórico').waitFor()
+   assert.equal(await page.locator('.updates-card').count(),0)
+   assert.equal(await page.locator('.gmail-intake-card').count(),1)
+   await page.getByRole('group',{name:'Filtro de atualizações'}).getByRole('button',{name:'Pendentes'}).click()
+   await page.getByText('1 atualização pendente').waitFor()
+   assert.equal(await page.locator('.gmail-intake-card').count(),1)
+   assert.equal(gmailRepo.get(gmailNotice.id).status,'awaiting_authorization')
    await page.screenshot({path:artifacts+'/updates-'+width+'.png',fullPage:true})
    assert.deepEqual(errors,[])
    console.log('PASS updates browser',width,'cards, blocked approval, decision, pending/all filters, no execution')
