@@ -75,6 +75,7 @@ try{
    const options=component.locator('.component-search-links')
    await options.waitFor()
    const anchors=options.locator('a')
+    await anchors.nth(3).waitFor({state:'visible',timeout:10000})
    assert.deepEqual(await anchors.allTextContents(),['Geral','Original','Oficial','Montadora'])
    const general=new URL(await anchors.nth(0).getAttribute('href'))
    const original=new URL(await anchors.nth(1).getAttribute('href'))
