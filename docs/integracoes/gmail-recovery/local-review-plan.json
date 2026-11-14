@@ -1,0 +1,737 @@
+{
+  "format": "funix-gmail-local-review-v1",
+  "deployable": false,
+  "note": "Review only: credentials omitted; validate node behavior and version preconditions before authorized application.",
+  "workflows": [
+    {
+      "workflowId": "kOOWQripUr9BNy29",
+      "expectedVersionId": "e9d72d6c-1188-42d0-bff4-423aa758150f",
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "timezone": "America/Sao_Paulo",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 90,
+        "callerPolicy": "workflowsFromSameOwner"
+      },
+      "nodeChanges": [
+        {
+          "id": "b6020a67-7a4e-4026-9401-8a9084e02d85",
+          "name": "Trava de publicacao (OFF)",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            224,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const ENQUEUE_ENABLED=true;\nif(!ENQUEUE_ENABLED)return [];\nconst src=$input.first()?.json??{};\nconst raw=src.message_id??src.messageId;\nif(raw!==undefined&&!/^[a-f0-9]{15,25}$/i.test(String(raw)))throw Error('GMAIL_EVENT_ID_INVALID');\nreturn [{json:{eventMessageId:raw===undefined?null:String(raw).toLowerCase()}}];"
+          }
+        },
+        {
+          "id": "0c9a8a00-7491-4edd-adda-7042e9a8dfb0",
+          "name": "Ler pendencias registradas",
+          "type": "n8n-nodes-base.dataTable",
+          "typeVersion": 1.1,
+          "position": [
+            448,
+            0
+          ],
+          "parameters": {
+            "resource": "row",
+            "operation": "get",
+            "dataTableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "bEzvPYqWilbEgyVr"
+            },
+            "matchType": "allConditions",
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "source",
+                  "condition": "eq",
+                  "keyValue": "gmail"
+                },
+                {
+                  "keyName": "={{ $('Trava de publicacao (OFF)').first().json.eventMessageId ? 'message_id' : 'source' }}",
+                  "condition": "eq",
+                  "keyValue": "={{ $('Trava de publicacao (OFF)').first().json.eventMessageId || 'gmail' }}"
+                }
+              ]
+            },
+            "returnAll": true,
+            "orderBy": true,
+            "orderByColumn": "first_seen_at",
+            "orderByDirection": "DESC"
+          }
+        },
+        {
+          "id": "1c1b9384-63d5-4e08-8ddc-33bf21a69008",
+          "name": "Selecionar uma mensagem apos corte",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            672,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "// Runs in the existing feeder Code node. Ledger metadata only; no Gmail reads.\nconst CUTOVER_UTC = '2026-11-14T05:48:43.000Z';\nconst excluded = new Set(['1a1d2efa0bf0b85d', 'd3c15a7e2026111301', '1a1d87af83b6c00a']);\nconst wanted = $('Trava de publicacao (OFF)').first().json.eventMessageId;\nconst pending = new Set(['received', 'queued', 'leased', 'retry']);\nconst timestampOf = value => Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;\nconst candidates = $input.all().map((item, index) => ({row: item.json, index})).filter(({row}) =>\n  /^[a-f0-9]{15,25}$/i.test(String(row.message_id ?? '')) &&\n  row.source === 'gmail' && pending.has(row.state) &&\n  timestampOf(row.first_seen_at) >= Date.parse(CUTOVER_UTC) &&\n  !excluded.has(String(row.message_id).toLowerCase()) &&\n  (!wanted || String(row.message_id).toLowerCase() === wanted)\n);\n// Check least recently inspected first: leased/retrying messages cannot starve new work.\ncandidates.sort((a, b) => timestampOf(a.row.last_checked_at) - timestampOf(b.row.last_checked_at) ||\n  timestampOf(a.row.first_seen_at) - timestampOf(b.row.first_seen_at) || Number(a.row.id) - Number(b.row.id));\nconst seen = new Set(), out = [];\nfor (const {row, index} of candidates) {\n  const messageId = String(row.message_id).toLowerCase();\n  if (seen.has(messageId)) continue;\n  seen.add(messageId);\n  out.push({json: {messageId, expectedState: row.state, action: row.state === 'received' ? 'enqueue' : 'status'}, pairedItem: {item: index}});\n  if (out.length === 25) break;\n}\nreturn out;\n"
+          }
+        },
+        {
+          "id": "70376b0e-31d9-4010-b834-f9465bd668b1",
+          "name": "Enfileirar ID (sem ler e-mail)",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.3,
+          "position": [
+            1120,
+            0
+          ],
+          "parameters": {
+            "method": "POST",
+            "url": "={{ 'https://app.funix.com.br/api/integrations/gmail/queue/' + $json.action }}",
+            "authentication": "none",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "name": "x-funix-updates-timestamp",
+                  "value": "={{ $json.timestamp }}"
+                },
+                {
+                  "name": "x-funix-updates-signature",
+                  "value": "={{ $json.queueSignature }}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "contentType": "raw",
+            "rawContentType": "application/json",
+            "body": "={{ $json.rawBody }}",
+            "options": {
+              "timeout": 12000,
+              "redirect": {
+                "redirect": {
+                  "followRedirects": false
+                }
+              },
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "neverError": true,
+                  "responseFormat": "json"
+                }
+              }
+            }
+          },
+          "onError": "continueRegularOutput"
+        },
+        {
+          "id": "be280a9d-d0ed-4061-a9d3-11946cc1aac2",
+          "name": "Conferir recibo do enqueue",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            1344,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst expected = $('Preparar uma entrega ou conciliacao').item.json;\nconst response = $input.first()?.json ?? {};\nconst status = Number(response.statusCode ?? 0);\nconst body = readBody(response);\n// Invalid/uncertain responses never advance delivery state. Preserve only a fixed error code.\nconst valid = status === 200 && body && typeof body === 'object' &&\n  body.messageId === expected.messageId &&\n  ['queued', 'leased', 'retry', 'notified', 'ignored', 'blocked'].includes(body.state);\nreturn [{json: {\n  messageId: expected.messageId,\n  expectedState: expected.expectedState,\n  queueState: valid ? body.state : expected.expectedState,\n  lastError: valid ? (body.state === 'blocked' ? 'QUEUE_BLOCKED' : body.state === 'retry' ? 'QUEUE_RETRY' : '') :\n    status >= 400 && status <= 599 ? 'QUEUE_HTTP_' + status : 'QUEUE_RESPONSE_UNCONFIRMED',\n  wakeWorker: Boolean(valid && ['queued', 'leased', 'retry'].includes(body.state))\n}, pairedItem: {item: 0}}];\n"
+          }
+        },
+        {
+          "id": "ac15066c-c8e2-4b44-8a09-587efa0b5163",
+          "name": "Marcar ledger apos recibo confirmado",
+          "type": "n8n-nodes-base.dataTable",
+          "typeVersion": 1.1,
+          "position": [
+            1568,
+            0
+          ],
+          "parameters": {
+            "resource": "row",
+            "operation": "update",
+            "dataTableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "bEzvPYqWilbEgyVr"
+            },
+            "matchType": "allConditions",
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "message_id",
+                  "condition": "eq",
+                  "keyValue": "={{ $json.messageId }}"
+                },
+                {
+                  "keyName": "state",
+                  "condition": "eq",
+                  "keyValue": "={{ $json.expectedState }}"
+                }
+              ]
+            },
+            "columns": {
+              "mappingMode": "defineBelow",
+              "value": {
+                "state": "={{ $json.queueState }}",
+                "last_checked_at": "={{ $now.toISO() }}",
+                "last_error_code": "={{ $json.lastError }}"
+              }
+            }
+          },
+          "onError": "continueRegularOutput",
+          "alwaysOutputData": true
+        },
+        {
+          "id": "b200d742-fc44-4595-a376-5509688bd71b",
+          "name": "Acionar worker por mensagem enfileirada",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "typeVersion": 1.4,
+          "position": [
+            2050,
+            0
+          ],
+          "parameters": {
+            "mode": "each",
+            "source": "database",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "KQ6qkUfdvz6PApmt",
+              "cachedResultName": "FUNIX | PILOTO ATIVO | Gmail worker → avisos (5 min)"
+            },
+            "options": {
+              "waitForSubWorkflow": false
+            }
+          },
+          "onError": "continueRegularOutput",
+          "alwaysOutputData": true
+        },
+        {
+          "id": "gmail-recovery-loop",
+          "name": "Processar mensagens individualmente",
+          "type": "n8n-nodes-base.splitInBatches",
+          "typeVersion": 3,
+          "position": [
+            850,
+            0
+          ],
+          "parameters": {
+            "batchSize": 1,
+            "options": {}
+          }
+        },
+        {
+          "id": "gmail-recovery-prepare",
+          "name": "Preparar uma entrega ou conciliacao",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            900,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const row = $input.first().json;\nconst timestamp = String(Date.now()), rawBody = JSON.stringify({messageId: row.messageId});\nreturn [{json: {...row, timestamp, rawBody, toSign: timestamp + '.' + rawBody}, pairedItem: {item: 0}}];\n"
+          }
+        },
+        {
+          "id": "gmail-recovery-wake",
+          "name": "Fila ainda requer worker",
+          "type": "n8n-nodes-base.if",
+          "typeVersion": 2.3,
+          "position": [
+            1800,
+            0
+          ],
+          "parameters": {
+            "conditions": {
+              "combinator": "and",
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 2
+              },
+              "conditions": [
+                {
+                  "leftValue": "={{ $('Conferir recibo do enqueue').item.json.wakeWorker }}",
+                  "rightValue": true,
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "equals"
+                  }
+                }
+              ]
+            },
+            "options": {}
+          }
+        }
+      ],
+      "connections": {
+        "Iniciar ensaio manual": {
+          "main": [
+            [
+              {
+                "node": "Trava de publicacao (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Trava de publicacao (OFF)": {
+          "main": [
+            [
+              {
+                "node": "Ler pendencias registradas",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ler pendencias registradas": {
+          "main": [
+            [
+              {
+                "node": "Selecionar uma mensagem apos corte",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Selecionar uma mensagem apos corte": {
+          "main": [
+            [
+              {
+                "node": "Processar mensagens individualmente",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assinar enqueue com chave da fila": {
+          "main": [
+            [
+              {
+                "node": "Enfileirar ID (sem ler e-mail)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enfileirar ID (sem ler e-mail)": {
+          "main": [
+            [
+              {
+                "node": "Conferir recibo do enqueue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Conferir recibo do enqueue": {
+          "main": [
+            [
+              {
+                "node": "Marcar ledger apos recibo confirmado",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Receber evento do monitor Gmail": {
+          "main": [
+            [
+              {
+                "node": "Trava de publicacao (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Marcar ledger apos recibo confirmado": {
+          "main": [
+            [
+              {
+                "node": "Fila ainda requer worker",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recuperar registro recebido a cada hora": {
+          "main": [
+            [
+              {
+                "node": "Trava de publicacao (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Processar mensagens individualmente": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Preparar uma entrega ou conciliacao",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Preparar uma entrega ou conciliacao": {
+          "main": [
+            [
+              {
+                "node": "Assinar enqueue com chave da fila",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fila ainda requer worker": {
+          "main": [
+            [
+              {
+                "node": "Acionar worker por mensagem enfileirada",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Processar mensagens individualmente",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Acionar worker por mensagem enfileirada": {
+          "main": [
+            [
+              {
+                "node": "Processar mensagens individualmente",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "workflowId": "KQ6qkUfdvz6PApmt",
+      "expectedVersionId": "284851a9-4a1d-4c19-a5c6-95258a663376",
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "timezone": "America/Sao_Paulo",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "executionTimeout": 90,
+        "callerPolicy": "workflowsFromSameOwner"
+      },
+      "nodeChanges": [
+        {
+          "id": "b39145a2-82a0-459e-a995-599a1e613173",
+          "name": "Enviar candidato para triagem (sem decidir)",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.3,
+          "position": [
+            1792,
+            0
+          ],
+          "parameters": {
+            "method": "POST",
+            "url": "https://app.funix.com.br/api/integrations/gmail/intake-candidates",
+            "authentication": "none",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "name": "x-funix-updates-timestamp",
+                  "value": "={{ $json.timestamp }}"
+                },
+                {
+                  "name": "x-funix-updates-signature",
+                  "value": "={{ $json.intakeSignature }}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "contentType": "raw",
+            "rawContentType": "application/json",
+            "body": "={{ $json.rawBody }}",
+            "options": {
+              "timeout": 12000,
+              "redirect": {
+                "redirect": {
+                  "followRedirects": false
+                }
+              },
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "neverError": true,
+                  "responseFormat": "json"
+                }
+              }
+            }
+          },
+          "onError": "continueRegularOutput"
+        },
+        {
+          "id": "bf1ca359-0005-4aaa-a4a9-e9e0ff54d516",
+          "name": "Preparar recibo conservador",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2016,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst r = $input.first()?.json ?? {}, body = readBody(r);\nconst claim = $('Validar concessao e excluir homologacoes').first().json;\nconst status = Number(r.statusCode ?? 0);\nlet result = 'retry', noticeId = null, errorCode = 'INTAKE_UNCONFIRMED';\nif (status === 202 && body && typeof body === 'object') {\n  if (body.status === 'ignored') { result = 'ignored'; errorCode = null; }\n  else if (['awaiting_authorization', 'authorized', 'denied'].includes(body.status) &&\n    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(body.noticeId ?? ''))) {\n    result = 'notified'; noticeId = body.noticeId; errorCode = null;\n  }\n} else if (status >= 400 && status < 500 && ![408, 429].includes(status)) {\n  result = 'blocked'; errorCode = 'INTAKE_HTTP_' + status;\n} else if (status >= 400 && status <= 599) errorCode = 'INTAKE_HTTP_' + status;\nconst timestamp = String(Date.now());\nconst rawBody = JSON.stringify({messageId: claim.messageId, leaseToken: claim.leaseToken, result, noticeId, errorCode});\nreturn [{json: {timestamp, rawBody, toSign: timestamp + '.' + rawBody, result, messageId: claim.messageId}}];\n"
+          }
+        },
+        {
+          "id": "0d827bfe-8285-4df7-befa-f975b980ce70",
+          "name": "Conciliar ledger pelo ID apos ACK",
+          "type": "n8n-nodes-base.dataTable",
+          "typeVersion": 1.1,
+          "position": [
+            2912,
+            0
+          ],
+          "parameters": {
+            "resource": "row",
+            "operation": "update",
+            "dataTableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "bEzvPYqWilbEgyVr"
+            },
+            "matchType": "allConditions",
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "message_id",
+                  "condition": "eq",
+                  "keyValue": "={{ $json.messageId }}"
+                }
+              ]
+            },
+            "columns": {
+              "mappingMode": "defineBelow",
+              "value": {
+                "state": "={{ $json.queueState }}",
+                "last_checked_at": "={{ $now.toISO() }}",
+                "last_error_code": "={{ $json.queueState === 'blocked' ? 'QUEUE_BLOCKED' : $json.queueState === 'retry' ? 'QUEUE_RETRY' : '' }}"
+              }
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Iniciar ensaio manual": {
+          "main": [
+            [
+              {
+                "node": "Trava de processamento (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Trava de processamento (OFF)": {
+          "main": [
+            [
+              {
+                "node": "Assinar reivindicacao da fila",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assinar reivindicacao da fila": {
+          "main": [
+            [
+              {
+                "node": "Reivindicar uma mensagem",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Reivindicar uma mensagem": {
+          "main": [
+            [
+              {
+                "node": "Validar concessao e excluir homologacoes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validar concessao e excluir homologacoes": {
+          "main": [
+            [
+              {
+                "node": "Ler unica mensagem reivindicada",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ler unica mensagem reivindicada": {
+          "main": [
+            [
+              {
+                "node": "Preparar candidato minimalista",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Preparar candidato minimalista": {
+          "main": [
+            [
+              {
+                "node": "Assinar candidato Gmail",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assinar candidato Gmail": {
+          "main": [
+            [
+              {
+                "node": "Enviar candidato para triagem (sem decidir)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enviar candidato para triagem (sem decidir)": {
+          "main": [
+            [
+              {
+                "node": "Preparar recibo conservador",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Preparar recibo conservador": {
+          "main": [
+            [
+              {
+                "node": "Assinar resultado da fila",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assinar resultado da fila": {
+          "main": [
+            [
+              {
+                "node": "Confirmar resultado da tentativa",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Confirmar resultado da tentativa": {
+          "main": [
+            [
+              {
+                "node": "Validar recibo final sem conteudo",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validar recibo final sem conteudo": {
+          "main": [
+            [
+              {
+                "node": "Conciliar ledger pelo ID apos ACK",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Receber acionamento do alimentador": {
+          "main": [
+            [
+              {
+                "node": "Trava de processamento (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recuperar pendencias a cada hora": {
+          "main": [
+            [
+              {
+                "node": "Trava de processamento (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}
