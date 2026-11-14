@@ -255,6 +255,10 @@ function App() {
     try { await api('/api/session', { method: 'DELETE' }); expireSession(); setCopilotOpen(false) }
     catch (cause) { setFailure((cause as Error).message) }
   }
+  function autosaved(savedRecord: Atendimento) {
+    // Persistência de edição não encerra o modal nem recria o formulário.
+    setRecord(savedRecord);cache.current.clear();setList(null)
+  }
   function saved(savedRecord: Atendimento) {
     const creating = !editor?.record
     dirty.current = false; setEditor(null); cache.current.clear(); setList(null); setRecord(savedRecord)
@@ -318,7 +322,7 @@ function App() {
       }
     }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={()=>canLeaveEditor()}>×</button></header>
       {!session?.authenticated && <div className="at-reauth"><p>Sua sessão expirou. Entre novamente para continuar; as alterações do formulário foram mantidas.</p>{login}</div>}
-      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} /></div>
+      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} /></div>
     </section></div>}
   </div>
 }
