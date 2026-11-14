@@ -181,6 +181,12 @@ db.close()
         assert b"%%EOF" in pdf_bytes[-1024:]
         assert len(pdf_bytes) > 500
         pdf_sha = hashlib.sha256(pdf_bytes).hexdigest()
+        # Preserve one real output for A4 render review, without embedding a fixture in git.
+        if label == "desktop":
+            (ARTIFACTS / "os-sintetica-a4.pdf").write_bytes(pdf_bytes)
+            (ARTIFACTS / "os-sintetica-escopo.json").write_text(
+                json.dumps(order, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+            )
         await shot("02-detalhe-os")
         async with page.expect_popup() as popup_event:
             await history.get_by_role("link", name="Ver OS / Imprimir").click()
