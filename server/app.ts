@@ -226,7 +226,7 @@ export function createRequestHandler(options: AppOptions) {
           if(!['open','closed'].includes(view))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
           const available=process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
             hasGmailIntakeSchema(options.atendimentos.db)
-          return send(200,{...gmailIntake.list(view as 'open'|'closed'),
+          return send(200,{...gmailIntake.list(view as 'open'|'closed'|'all',query),
             decisionsEnabled:available && process.env.FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED==='true'})
         }
         if(req.method!=='POST'||!intakeDecisionMatch)return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
