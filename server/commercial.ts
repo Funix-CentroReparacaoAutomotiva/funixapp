@@ -207,27 +207,6 @@ export class CommercialRepository {
       return this.getDiagnosis(atendimentoId,id)
     })
   }
-  /** Explicit technical verification of the new piece, shared across all scenarios. */
-  confirmPieceReview(atendimentoId:string,id:string,input:unknown):DiagnosisItem {
-    const data=object(input,['revision','compositionRevision','scenarios','confirmed'])
-    if(data.confirmed!==true)invalid('Confirme a revisão técnica da composição.')
-    const expected=revision(data.revision),expectedComposition=revision(data.compositionRevision)
-    if(!Array.isArray(data.scenarios)||!data.scenarios.length)invalid('Informe as revisões de todos os cenários.')
-    const declared=data.scenarios.map(raw=>{const s=object(raw,['id','revision']);return{id:text(s.id,100,true),revision:revision(s.revision)}})
-    if(new Set(declared.map(s=>s.id)).size!==declared.length)invalid('Cenários repetidos.')
-    return this.transaction(()=>{
-      new AtendimentoRepository(this.db).get(atendimentoId)
-      const state=this.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimentoId)
-      const current=this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=?').all(atendimentoId)
-      if(state?.revision!==expectedComposition||current.length!==declared.length||current.some(s=>!declared.some(v=>v.id===s.id&&v.revision===s.revision)))conflict()
-      const old=this.getDiagnosis(atendimentoId,id)
-      if(old.revision!==expected)conflict()
-      if(!old.pieceReviewPending)return old
-      this.db.prepare('UPDATE diagnosis_items SET piece_review_pending=0,revision=revision+1,updated_at=? WHERE id=? AND atendimento_id=?').run(new Date().toISOString(),id,atendimentoId)
-      touchComposition(this.db,atendimentoId)
-      return this.getDiagnosis(atendimentoId,id)
-    })
-  }
   remove(atendimentoId: string, id: string, input: unknown) {
     const data = object(input, ['revision','compositionRevision','scenarios'])
     return this.removeMany(atendimentoId,{pieces:[{id,revision:data.revision}],compositionRevision:data.compositionRevision,scenarios:data.scenarios})
