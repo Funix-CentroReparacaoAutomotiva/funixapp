@@ -1,5 +1,10 @@
 # FUNIX — Gate de autorização para e-mails de veículos
 
+> Continuidade em 14/11/2026: este documento preserva etapas históricas, incluindo
+> descrições anteriores à ativação do piloto. Estado observado, correções locais e
+> proposta do primeiro MVP em [Gmail: confiabilidade mínima e jornada assistida](GMAIL_CONFIABILIDADE_E_MVP.md).
+> O plano novo não foi publicado e não constitui autorização de mudanças reais.
+
 Status: **implementação parcial em desenvolvimento (PR #149)**. Não há aprovação para ativar processamento automático, nem para alterar produção. Decisão funcional do gestor: **receber notificações e autorizar o início do processamento exclusivamente na aba Atualizações do FunixApp**.
 
 ## 1. Regra principal

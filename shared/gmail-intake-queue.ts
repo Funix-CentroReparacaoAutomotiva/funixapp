@@ -1,7 +1,7 @@
 /** Technical queue only. Authorization to triage remains solely in GmailIntakeNotice. */
 export type GmailQueueState = 'queued' | 'leased' | 'retry' | 'notified' | 'ignored' | 'blocked'
 export type GmailQueueEnqueue = { messageId: string }
-export type GmailQueueClaimRequest = { limit: number }
+export type GmailQueueClaimRequest = { limit: number; requestId: string }
 export type GmailQueueClaim = {
   messageId: string
   leaseToken: string
