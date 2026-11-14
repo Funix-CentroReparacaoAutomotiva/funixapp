@@ -1,0 +1,72 @@
+[
+  {
+    "url": "https://produto.mercadolivre.com.br/MLB-2676949813-farol-lado-esquerdo-golsaveiro-g5-original-5u0941005-esquerdo-_JM",
+    "duration_ms": 315,
+    "status": "blocked_403",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://www.mercadolivre.com.br/travessa-parachoque-dianteiro-novo-polo-original-volkswagen/up/MLBU768468429",
+    "duration_ms": 343,
+    "status": "blocked_403",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://produto.mercadolivre.com.br/MLB-4926007447-macaneta-externa-traseiro-direito-porta-vw-fox-2010-a-2015-_JM",
+    "duration_ms": 375,
+    "status": "blocked_403",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://www.mercadolivre.com.br/moldura-paralama-dianteiro-esquerdo-jeep-renegade-20152025/up/MLBU1469349607",
+    "duration_ms": 414,
+    "status": "blocked_403",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://produto.mercadolivre.com.br/MLB-5348766071-presilha-fixaco-para-barro-para-choque-jeep-51877375-_JM",
+    "duration_ms": 468,
+    "status": "blocked_403",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://pecas.vw.com.br/produto/farol-mascara-negra-esquerdo-motorista-vw-5u7941007d/52312",
+    "duration_ms": 326,
+    "status": "content_returned_by_tool",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://www.pecas.vw.com.br/produto/para-choque-dianteiro-vw-6ea807217fgru/3856",
+    "duration_ms": 300,
+    "status": "content_returned_by_tool",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://pecas.vw.com.br/produto/suporte-guia-de-para-choque-vw-5u0807183b/1376",
+    "duration_ms": 332,
+    "status": "content_returned_by_tool",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://mecanico.renault.com.br/loja-online",
+    "duration_ms": 347,
+    "status": "content_returned_by_tool",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  },
+  {
+    "url": "https://www.reparadorford.com.br/auto-busca",
+    "duration_ms": 376,
+    "status": "content_returned_by_tool",
+    "live_http_status": null,
+    "note": "Conteúdo pode ser cacheado; não é prova de HTTP 200 atual nem de estoque."
+  }
+]
