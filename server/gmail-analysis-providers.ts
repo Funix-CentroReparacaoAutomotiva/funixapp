@@ -4,6 +4,8 @@ import {cellText} from './coda.ts'
 import type {GmailAnalysisProviders,AnalysisMessage,ContextQuery} from './gmail-analysis-contract.ts'
 import {gmailFactFields} from '../shared/gmail-analysis.ts'
 import type {GmailContextRecord,GmailAttachment} from '../shared/gmail-analysis.ts'
+import {analysisHash} from './gmail-analysis-contract.ts'
+import type {GmailPilotScope} from './gmail-analysis-pilot.ts'
 import {createGmailAnalysisSchema} from './gmail-analysis-schema.ts'
 import {GmailAnalysisService} from './gmail-analysis.ts'
 
@@ -89,10 +91,56 @@ export function syntheticAnalysisProviders(fixture:SyntheticAnalysisFixture):Gma
   async lookup(query){return structuredClone(fixture.records.filter(r=>query.selectedRowId?r.rowId===query.selectedRowId:query.processId?r.processId===query.processId:query.experienceId?r.experienceId===query.experienceId:query.budgetId?r.budgetId===query.budgetId:query.plate?r.plate===query.plate:false))}
  }
 }
-/** Runtime fixture mode is explicitly development-only. No automatic use of real credentials. */
-export function loadGmailAnalysis(db:DatabaseSync,env:NodeJS.ProcessEnv):GmailAnalysisService|undefined{
+type AnalysisCodaColumns=Record<Exclude<keyof GmailContextRecord,'rowId'>,string>
+const codaFields=['processId','experienceId','plate','vehicle','partner','budgetId','budgetVersion'] as const
+const gmailReadScope='https://www.googleapis.com/auth/gmail.readonly'
+const permittedGoogleScopes=new Set([gmailReadScope,'openid','email','profile','https://www.googleapis.com/auth/userinfo.email','https://www.googleapis.com/auth/userinfo.profile'])
+function required(env:NodeJS.ProcessEnv,key:string,max=10000){
+ const value=env['FUNIX_GMAIL_ANALYSIS_'+key]
+ if(!value||value!==value.trim()||value.length>max||/[\r\n\0]/.test(value))throw Error('GMAIL_ANALYSIS_REAL_CONFIG_INVALID')
+ return value
+}
+/** Static configuration validation only; never contacts providers during bootstrap. */
+function realConfiguration(env:NodeJS.ProcessEnv){
+ const accountId=required(env,'GMAIL_ACCOUNT',100).toLowerCase()
+ const gmailToken=required(env,'GMAIL_TOKEN'),codaToken=required(env,'CODA_TOKEN'),apiKey=required(env,'OPENAI_API_KEY')
+ const docId=required(env,'CODA_DOC_ID',100),tableId=required(env,'CODA_TABLE_ID',100),model=required(env,'OPENAI_MODEL',100)
+ const noticeId=required(env,'PILOT_NOTICE_ID',36),activatedAt=required(env,'PILOT_ACTIVATED_AT',24)
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(accountId)||[gmailToken,codaToken,apiKey].some(v=>/\s/.test(v))||![docId,tableId].every(v=>/^[A-Za-z0-9_-]{1,100}$/.test(v))||!/^[A-Za-z0-9_.:-]{1,100}$/.test(model)||env.FUNIX_GMAIL_ANALYSIS_CODA_READ_ONLY_CONFIRMED!=='true')throw Error('GMAIL_ANALYSIS_REAL_CONFIG_INVALID')
+ let columns:AnalysisCodaColumns
+ try{columns=JSON.parse(required(env,'CODA_COLUMNS_JSON',2000)) as AnalysisCodaColumns}catch{throw Error('GMAIL_ANALYSIS_REAL_CONFIG_INVALID')}
+ if(!columns||typeof columns!=='object'||Array.isArray(columns)||Object.keys(columns).sort().join(',')!==[...codaFields].sort().join(',')||codaFields.some(k=>typeof columns[k]!=='string'||!/^c-[A-Za-z0-9_-]{1,98}$/.test(columns[k]))||new Set(Object.values(columns)).size!==codaFields.length)throw Error('GMAIL_ANALYSIS_REAL_CONFIG_INVALID')
+ // Hash only non-secret identity/configuration. Tokens may be rotated without changing pilot eligibility.
+ const canonicalColumns=Object.fromEntries(codaFields.map(k=>[k,columns[k]]))
+ const scope:GmailPilotScope={noticeId,activatedAt,accountId,configurationHash:analysisHash({accountId,docId,tableId,columns:canonicalColumns,model})}
+ return {accountId,gmailToken,codaToken,apiKey,docId,tableId,columns,model,scope}
+}
+/** Called only inside an eligible/authorized source step, before reading any message. */
+async function verifyGmailReadAccess(accountId:string,token:string,fetchImpl:typeof fetch,signal:AbortSignal){
+ const infoUrl=new URL('https://oauth2.googleapis.com/tokeninfo');infoUrl.searchParams.set('access_token',token)
+ const info=await boundedJson(await fetchImpl(infoUrl,{method:'GET',redirect:'error',cache:'no-store',signal}))
+ const scopes=typeof info.scope==='string'?info.scope.split(/\s+/).filter(Boolean):[]
+ if(!scopes.includes(gmailReadScope)||scopes.some(s=>!permittedGoogleScopes.has(s))||!(Number(info.expires_in)>0))throw Object.assign(Error('GMAIL_ANALYSIS_ACCESS_REJECTED'),{analysisCategory:'AUTH_REQUIRED'})
+ const profile=await boundedJson(await fetchImpl('https://gmail.googleapis.com/gmail/v1/users/me/profile',{method:'GET',redirect:'error',cache:'no-store',headers:{Authorization:'Bearer '+token},signal}))
+ if(typeof profile.emailAddress!=='string'||profile.emailAddress.toLowerCase()!==accountId)throw Object.assign(Error('GMAIL_ANALYSIS_ACCOUNT_REJECTED'),{analysisCategory:'AUTH_REQUIRED'})
+}
+/** OFF by default. Explicit real-pilot mode never falls back to synthetic fixtures. */
+export function loadGmailAnalysis(db:DatabaseSync,env:NodeJS.ProcessEnv,fetchImpl:typeof fetch=fetch):GmailAnalysisService|undefined{
  if(env.FUNIX_GMAIL_ANALYSIS_ENABLED!=='true')return undefined
- if(env.NODE_ENV==='production'||env.FUNIX_GMAIL_ANALYSIS_SYNTHETIC!=='true'||!env.FUNIX_GMAIL_ANALYSIS_FIXTURE_FILE)throw Error('GMAIL_ANALYSIS_PROVIDERS_REQUIRE_EXPLICIT_CONFIGURATION')
+ const mode=env.FUNIX_GMAIL_ANALYSIS_MODE||(env.FUNIX_GMAIL_ANALYSIS_SYNTHETIC==='true'?'synthetic':undefined)
+ if(mode==='real-pilot'){
+  if(env.FUNIX_GMAIL_ANALYSIS_SYNTHETIC==='true'||env.FUNIX_GMAIL_ANALYSIS_FIXTURE_FILE)throw Error('GMAIL_ANALYSIS_MODE_CONFLICT')
+  const c=realConfiguration(env)
+  const reader=gmailAnalysisReader({accountId:c.accountId,token:c.gmailToken,fetchImpl})
+  const providers:GmailAnalysisProviders={
+   async readMessage(id,signal){await verifyGmailReadAccess(c.accountId,c.gmailToken,fetchImpl,signal);return reader(id,signal)},
+   interpret:openAIAnalysisInterpreter({apiKey:c.apiKey,model:c.model,fetchImpl}),
+   lookup:analysisCodaReader({token:c.codaToken,docId:c.docId,tableId:c.tableId,columns:c.columns,fetchImpl})
+  }
+  createGmailAnalysisSchema(db)
+  return new GmailAnalysisService(db,providers,Date.now,c.scope)
+ }
+ if(mode!=='synthetic'||env.NODE_ENV==='production'||!env.FUNIX_GMAIL_ANALYSIS_FIXTURE_FILE)throw Error('GMAIL_ANALYSIS_PROVIDERS_REQUIRE_EXPLICIT_CONFIGURATION')
  const path=env.FUNIX_GMAIL_ANALYSIS_FIXTURE_FILE
  if(lstatSync(path).isSymbolicLink()||lstatSync(path).size>1000000)throw Error('GMAIL_ANALYSIS_FIXTURE_INVALID')
  const providers=syntheticAnalysisProviders(JSON.parse(readFileSync(path,'utf8')) as SyntheticAnalysisFixture)

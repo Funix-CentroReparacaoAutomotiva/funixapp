@@ -52,7 +52,9 @@ Atualizações/aviso, `.env.example`, API e CI de navegador existente.
 
 ## Contrato e consistência
 
-Autorização permanece independente da proposta. Antes de cada etapa de IO e da
+Autorização permanece independente da proposta. No piloto real, recuperação e claim
+se limitam ao UUID/corte persistidos; o comportamento irrestrito de recuperação é
+reservado à demonstração sintética em banco separado. Antes de cada etapa de IO e da
 confirmação final, o serviço verifica status/revisão/hash persistidos. Negação é
 terminal no repositório existente. A recuperação repara o intervalo decisão→job e
 complementação→nova geração. Uma rejeição durante reconsulta prevalece.
@@ -163,9 +165,11 @@ ensaios sintéticos da integração real ainda não realizada.
 
 ## Riscos residuais e ativação posterior (não executada)
 
-- Bootstrap admite apenas fixture dev explícita; adapters reais existem sob injeção
-  e têm testes de fetch sintético. Ativação real requer configuração revisada de
-  identidade da conta, token com escopo somente leitura, colunas Coda e provedor IA.
+- Bootstrap agora admite modo real-pilot explícito com configuração completa e scope
+  persistido para um único aviso; demonstração sintética permanece separada. Os novos
+  caminhos foram exercitados com fetch sintético, sem homologação de credenciais reais.
+  Configuração, identidade/escopos, colunas Coda e provedor IA dependem de conferência
+  e autorização para o piloto. Ver o roteiro específico abaixo.
 - Aviso legado identifica mensagem, não múltiplas contas. MVP é de conta única;
   associação de novas contas exige contrato de identidade, sem inferência por ID.
 - Leitor Gmail admite texto plain MIME; HTML-only, corpo grande, anexos com texto
@@ -178,7 +182,8 @@ ensaios sintéticos da integração real ainda não realizada.
 - Evidências permanecem nas tabelas SQLite locais. Retenção, acesso ampliado e gestão
   documental requerem a política própria ainda em homologação.
 
-Proposta de ativação: revisar esta PR e o CI; resolver a dependência de entrega da
+Proposta de ativação: seguir o roteiro específico abaixo; revisar esta PR e o CI;
+resolver a dependência de entrega da
 PR #220 sem merge indiscriminado; configurar providers reais com escopos somente
 leitura em ambiente explicitamente autorizado; verificar saúde/autorização/IDs com
 novo caso permitido; homologar evidências, ambiguidade e decisão; só depois avaliar
@@ -189,3 +194,146 @@ storages aditivos e feature flag com providers revisados, validar saúde e caso 
 Rollback: desligar análise/parar scheduler, manter tabelas/snapshots/decisões e restaurar
 versão anterior conforme compatibilidade revisada; não apagar filas, avisos ou dados
 para "reiniciar". Nenhuma etapa de publicação ou caso real foi executada aqui.
+
+
+## Incremento da revisão técnica — preparação do piloto real
+
+Revisão atendida: [bloqueios de bootstrap e recuperação histórica](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/222#pullrequestreview-5907529044).
+Não houve execução real do piloto nesta etapa.
+
+### Configuração e barreiras
+
+OFF por padrão. O modo real-pilot instancia os adapters existentes, sem fallback
+para fixture, token de outro módulo ou modelo implícito. O modo sintético legado
+continua funcionando em banco próprio e desenvolvimento. Configuração inválida aborta
+o startup; desabilitar a flag permite voltar ao aplicativo sem análise, preservando registros.
+
+| Variável (prefixo FUNIX_GMAIL_ANALYSIS_) | Valor exigido |
+|---|---|
+| ENABLED / MODE | true / real-pilot, somente após autorização de ativação |
+| PILOT_NOTICE_ID | Um UUID de aviso novo já existente, inicialmente sem análise |
+| PILOT_ACTIVATED_AT | Corte UTC anterior à chegada: YYYY-MM-DDTHH:mm:ss.sssZ |
+| GMAIL_ACCOUNT / GMAIL_TOKEN | Conta exata e access token OAuth de curta duração, grant gmail.readonly |
+| CODA_TOKEN / CODA_DOC_ID / CODA_TABLE_ID | Credencial com acesso restrito somente leitura e IDs auditados |
+| CODA_COLUMNS_JSON | JSON exato das sete chaves documentadas na API, valores c-... distintos |
+| CODA_READ_ONLY_CONFIRMED | true após conferência de privilégio no provedor |
+| OPENAI_API_KEY / OPENAI_MODEL | Chave dedicada a este fluxo e modelo explicitamente homologável |
+
+Requer os storages/decisões Gmail e Atualizações existentes e a flag de complementação
+para casos ambíguos. Não misturar real-pilot com SYNTHETIC=true ou fixture configurada.
+Não colocar valores de credenciais em comandos, PR, screenshots ou arquivos versionados.
+
+O banco vincula de forma imutável UUID, corte, conta e hash da configuração não secreta
+(doc/tabela/colunas/modelo). Tokens ficam fora do vínculo e podem ser renovados sem
+ampliar elegibilidade. Mudar UUID/corte/contexto/modelo no mesmo banco falha fechado;
+esta etapa **não implementa rotação de piloto nem reset**. Não apagar a tabela para
+liberar outro caso: outro piloto exigirá escolha e procedimento explicitamente revisados.
+Troca para modo sintético no banco vinculado também é recusada.
+
+Gate em criação, recuperação, claim, retomada, complementação e em cada etapa externa.
+Somente o aviso selecionado, criado e autorizado a partir do corte, pode ser processado.
+Avisos negados não entram. Jobs/autorizações históricos ficam intactos. O novo caso
+não pode já ter job prévio quando o vínculo é criado, evitando reutilizar análise sintética.
+Todas as instâncias precisam executar a versão revisada; parar schedulers antigos antes
+ativar. Não é possível impor o gate a um processo ainda executando código antigo.
+
+Antes de ler a mensagem elegível, Google tokeninfo valida validade e grant gmail.readonly
+(escopos amplos/de escrita são recusados); Gmail profile confirma a conta. Isso ocorre
+somente depois de autorização persistida, não no bootstrap ou health. Coda só recebe
+GET; seu privilégio real precisa ser conferido no provedor — a flag não comprova grant.
+IA não recebe ferramentas. Falhas de credencial permanecem recuperáveis por intervenção.
+Não registrar tráfego com URL/headers/body: tokeninfo usa access_token na query TLS;
+a aplicação não loga essa URL, token ou resposta bruta. Proxies/traces precisam da mesma
+restrição/redação. Nenhum refresh OAuth automático ou segredo persistido no SQLite.
+
+Consulta autenticada `GET /api/atualizacoes/analises-gmail?ids=` retorna items vazio e
+scope técnico: modo, UUID, corte, hash, valid e authorized. Não revela conta, mensagem,
+prompt ou token. É verificação local de configuração, não prova de saúde remota.
+Erros de acesso aparecerão no estado do caso após a etapa autorizada.
+
+### Roteiro de homologação de um caso (para autorização posterior)
+
+**Antes:**
+
+1. Revisar PR/CI e autorizar separadamente publicação/ativação e o acesso real aos três
+   serviços. Conferir HEAD instalado em todas as instâncias. Preservar backup SQLite e
+   registrar versões/flags anteriores. Manter análise OFF e schedulers antigos parados.
+2. Registrar o corte UTC. Usar uma mensagem nova e controlada após esse corte, com
+   conteúdo e destinatário aprovados para o teste; a chegada/aviso usa a integração
+   Gmail existente. Não reentregar nem reprocessar avisos históricos. Capturar o UUID
+   do novo aviso na consulta autenticada; manter a autorização inicial pendente.
+3. Confirmar a conta exata, grant Gmail somente leitura, acesso Coda limitado ao
+   documento, tabela e sete colunas (conferidas pelo responsável), e política aplicável
+   ao envio do conteúdo para IA. Configurar chave/projeto IA dedicado e limite de gasto;
+   conferir modelo/preços atuais sem inventar custo. Credenciais ficam somente no
+   mecanismo de segredos já utilizado pela instalação; sem alterar n8n.
+4. Configurar o único UUID/corte e todos os campos obrigatórios. Ativar somente mediante
+   autorização e reiniciar. Consultar scope com ids= vazio: UUID exato, corte correto,
+   valid=true e authorized=false. Confirmar que nenhum histórico ganhou job ou teve
+   tentativas/estado alterados. Nenhuma consulta remota deve ocorrer nessa fase.
+
+**Durante:**
+
+5. Autorizar a análise desse aviso na UI com sessão autenticada; registrar horário UTC
+   e operador. Confirmar persistência da autorização antes da primeira chamada. A
+   checagem automática Gmail deve bloquear conta/grant incorretos antes de ler o corpo.
+6. Acompanhar estado/código técnico, evidências e consulta Coda. Conferir processo,
+   orçamento, condições, dados desconhecidos, ambiguidades/divergências e horário do
+   contexto. Placa isolada não basta. Não confirmar prazo, peças, capacidade ou agenda
+   por inferência. Se faltar dado, complementar e revisar a nova geração antes de aprovar.
+7. Aprovar/rejeitar somente as recomendações. Confirmar decisão persistida e snapshot
+   preservado. Conferir ausência de e-mail/WhatsApp enviado, arquivo no Drive, compra,
+   agendamento, OS, alteração comercial ou escrita Coda. Não executar as providências.
+
+**Depois:**
+
+8. Registrar resultado, duração observada (início/fim UTC), tentativas, gerações e erros
+   sanitizados. Verificar uma proposta por geração e nenhuma duplicação por retry/reload.
+   Conferir que nenhum aviso fora do UUID foi processado e decisões anteriores continuam iguais.
+9. Conferir uso/custo no projeto dedicado do provedor IA, no intervalo do piloto,
+   incluindo tentativas cobradas. O adapter não retorna faturamento; dashboards podem
+   atrasar. Custo não disponível deve ser marcado desconhecido, nunca zero fictício.
+10. Preservar evidências e decisões conforme governança de dados; avaliar utilidade
+    das três providências de revisão fixas com o operador. Não ampliar conectores ou
+    converter recomendações em execução. Decidir separadamente sobre outro piloto.
+
+**Sucesso:** apenas o UUID autorizado foi analisado; identidade/grant corretos;
+evidências e correspondência conferidas ou incerteza explicitada; decisão humana
+persistida; sem duplicidade/escrita externa; duração/custo apurados ou pendência
+explicitamente registrada. Sucesso do caso não equivale à aprovação de ações operacionais.
+
+**Interromper:** scope/conta/grant divergente, qualquer job histórico alterado, evidência
+sem suporte, associação incerta apresentada como certa, chamada inesperada, erro
+recorrente, limite de gasto atingido ou proposta com aparência de ação executada.
+Desabilitar a análise e registrar somente códigos/IDs técnicos; não insistir por retries
+quando a causa for credencial/configuração. Corrigir primeiro e retomar explicitamente
+apenas o mesmo caso, preservando checkpoint e autorização.
+
+**Reversão:** colocar ENABLED=false em todas as instâncias e reiniciar de modo controlado;
+encerramento aborta etapa em curso e não inicia o próximo job. Requisição já enviada
+pode ter sido cobrada; não há cancelamento financeiro garantido. Preservar jobs, scope,
+snapshots e decisões. Se necessário restaurar versão anterior do app, manter análise OFF
+antes do rollback; não restaurar cópia antiga do banco sobre decisões mais recentes e
+não remover triggers/tabelas para contornar o gate. Não reverter Gmail/Coda/Drive por
+scripts: este MVP não deveria ter escrito nesses sistemas. Uma escrita inesperada é
+incidente e interrompe o piloto.
+
+### Evidências e pendências desta etapa
+
+Regressões novas: bootstrap real completo com fetch sintético; configuração incompleta;
+compatibilidade sintética; caso único autorizado; históricos/jobs preexistentes intactos;
+negado selecionado após vínculo; restart/rotação de tokens sem ampliação; modo/contexto
+alterado bloqueado; fonte de conta errada bloqueada antes de IA; serviço sem scope cercado
+num await; API de scope e autorização de outro aviso sem agendamento; simulador persistente
+recusando reviewOnly sem gravar recibo. Resultados finais e CI constam na PR.
+
+Interface e contratos comerciais não foram alterados. O caminho persistente do simulador
+já passa pela barreira reviewOnly; busca de referências ao status de aprovação não
+identificou dispatcher operacional nesta base. Os módulos de handoff/ingestão existentes
+não transformam aprovação em execução; atestados antigos não foram relaxados.
+
+Pendentes: credenciais e grants reais, mapeamento Coda conferido, precisão do modelo,
+custo/duração e utilidade num caso real, política de dados aplicável e autorização de
+publicação/ativação/consultas. Riscos remanescentes incluem expiração de token (retomada
+humana, sem refresh), texto HTML-only/anexos não interpretados, Coda com mais de 20
+candidatos e recomendações fixas. Nenhuma dessas dependências foi declarada homologada.

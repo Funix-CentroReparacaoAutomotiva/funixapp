@@ -10,5 +10,5 @@ export type GmailContext={status:'matched'|'not_found'|'ambiguous'|'conflict'|'n
 export type GmailAnalysisResult={extraction:GmailExtraction,context:GmailContext,summary:string,clarifications:Record<string,string>}
 export type GmailAnalysisState='queued'|'processing'|'ready'|'needs_information'|'failed'
 export type GmailAnalysis={noticeId:string,state:GmailAnalysisState,attempts:number,errorCode:string|null,nextAttemptAt:string|null,generation:number,updatedAt:string,result:GmailAnalysisResult|null,proposal:UpdatePackage|null}
-export type GmailAnalysisList={enabled:boolean,items:GmailAnalysis[]}
+export type GmailAnalysisList={enabled:boolean,items:GmailAnalysis[],scope?:{mode:'synthetic'}|{mode:'real-pilot',noticeId:string,activatedAt:string,configurationHash:string,valid:boolean,authorized:boolean}}
 export const gmailFactLabels:Record<GmailFactField,string>={processId:'Processo',partner:'Parceiro',contact:'Cliente ou contato',plate:'Placa',vehicle:'Veículo',atendimentoId:'Atendimento',experienceId:'Experiência',budgetId:'Orçamento',budgetVersion:'Versão do orçamento',scope:'Escopo',amount:'Valor declarado',conditions:'Condições',reservations:'Ressalvas',dates:'Datas ou prazos',requests:'Providências solicitadas',authorization:'Autorização declarada'}

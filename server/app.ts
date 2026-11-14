@@ -226,7 +226,7 @@ export function createRequestHandler(options: AppOptions) {
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         const ids=url.searchParams.has('ids')?(url.searchParams.get('ids')?url.searchParams.get('ids')!.split(','):[]):undefined
         if(ids&&(ids.length>100||ids.some(id=>!/^[0-9a-f-]{36}$/.test(id))))return fail(422,'GMAIL_ANALYSIS_INVALID','Identificadores inválidos.')
-        return send(200,options.gmailAnalysis?.list(ids)??{enabled:false,items:[]})
+        return send(200,options.gmailAnalysis?{...options.gmailAnalysis.list(ids),scope:options.gmailAnalysis.scopeStatus()}:{enabled:false,items:[]})
       }
       const analysisRetry=/^\/api\/atualizacoes\/avisos-gmail\/([0-9a-f-]{36})\/analisar$/.exec(url.pathname)
       if(analysisRetry){
@@ -264,7 +264,7 @@ export function createRequestHandler(options: AppOptions) {
         const body=await readJson(req,4096)
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
         const decided=gmailIntake.decide(intakeDecisionMatch[1]!,body as GmailIntakeDecisionInput,'funix_operator')
-        if(decided.status==='authorized'&&options.gmailAnalysis){options.gmailAnalysis.schedule(decided.id);options.gmailAnalysis.kick()}
+        if(decided.status==='authorized'&&options.gmailAnalysis?.isEligible(decided.id)){options.gmailAnalysis.schedule(decided.id);options.gmailAnalysis.kick()}
         return send(200,decided)
       }
       // Operator decisions and clarifications require authenticated same-origin sessions.
