@@ -10,7 +10,7 @@ export function operationalParagraphs(order:WorkOrder):string[] {
     '',
     'Orçamento de origem: '+(order.budgetNumber||'sem número comercial')+
       ' | Versão '+order.budgetLabel+' | ID '+order.budgetVersionId,
-    'Criada em: '+order.createdAt,
+    'Criada em: '+new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(order.createdAt)),
     'Autorização: confirmada no aplicativo em '+new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(order.authorization.confirmedAt))+
       '. Operador individual não identificado pela autenticação atual.',
     '',
