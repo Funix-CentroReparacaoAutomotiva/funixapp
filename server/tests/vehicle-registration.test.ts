@@ -40,3 +40,15 @@ test('parts searches use model year from a split model/fabrication year record',
  assert.equal(new URL(links.general).searchParams.get('q'),'Fiat Punto 2020 farol dianteiro direito')
  assert.equal(new URL(links.original).searchParams.get('q'),'Fiat Punto 2020 farol dianteiro direito original')
 })
+
+test('Issue #118 usa ano do modelo explicitamente e não confunde fabricação com modelo',()=>{
+ const explicit=manualComponentSearchLinks({brand:'Fiat',model:'Punto',vehicle:'Punto 2019/2020',modelYear:'2022'},'farol dianteiro direito')
+ assert(explicit)
+ assert.equal(new URL(explicit.general).searchParams.get('q'),'Fiat Punto 2022 farol dianteiro direito')
+ const noModel=manualComponentSearchLinks({brand:'Fiat',model:'Punto',vehicle:'Punto 2019',modelYear:''},'farol dianteiro direito')
+ assert(noModel)
+ assert.equal(new URL(noModel.general).searchParams.get('q'),'Fiat Punto farol dianteiro direito')
+ const legacy=manualComponentSearchLinks({brand:'Fiat',model:'Punto',vehicle:'Punto 2019/2020',modelYear:null},'farol dianteiro direito')
+ assert(legacy)
+ assert.equal(new URL(legacy.general).searchParams.get('q'),'Fiat Punto 2020 farol dianteiro direito')
+})
