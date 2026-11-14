@@ -96,7 +96,7 @@ test('revision, idempotent requestIds, invalid associations and context all fail
   } finally { f.db.close() }
 })
 
-test('offline schema is explicitly not part of V15 bootstrap; no production migration is introduced', () => {
+test('offline schema is explicitly not part of V15 bootstrap; no chat migration is introduced', () => {
   const db = openDatabase(':memory:')
   try {
     const version = db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v
@@ -104,7 +104,7 @@ test('offline schema is explicitly not part of V15 bootstrap; no production migr
     assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get(), undefined)
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
-    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 15)
+    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 16)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally { db.close() }
 })
