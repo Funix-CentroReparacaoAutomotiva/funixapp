@@ -88,7 +88,7 @@ test('Fase4 V9→V10 additive origin/receipt migration preserves all existing re
  try{
   db.exec('PRAGMA foreign_keys=ON');v9(db);const f=commercialFixture(db),before=db.prepare('SELECT * FROM diagnosis_services').all(),settings=f.pricing.settings(f.at.id)
   db.exec('CREATE VIEW recommendation_applications AS SELECT id FROM scenarios');assert.throws(()=>migrate(db));assert(!db.prepare('PRAGMA table_info(diagnosis_services)').all().some(c=>c.name==='recommendation_rule_id'));assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,9);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all(),before)
-  db.exec('DROP VIEW recommendation_applications');migrate(db);assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,17);assert.deepEqual(f.pricing.settings(f.at.id),settings);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all().map(({recommendation_rule_id,...r})=>{assert.equal(recommendation_rule_id,null);return{...r}}),before.map(r=>({...r})));assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+  db.exec('DROP VIEW recommendation_applications');migrate(db);assert.equal(db.prepare('SELECT MAX(version)v FROM schema_migrations').get()!.v,18);assert.deepEqual(f.pricing.settings(f.at.id),settings);assert.deepEqual(db.prepare('SELECT * FROM diagnosis_services').all().map(({recommendation_rule_id,...r})=>{assert.equal(recommendation_rule_id,null);return{...r}}),before.map(r=>({...r})));assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
 test('Fase4 ambiguous suggestions require explicit dimension choice, preserving exact rule identity without automatic inference',()=>{
