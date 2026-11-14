@@ -1,0 +1,303 @@
+{
+  "runtime": "n8n 2.47.7",
+  "syntheticOnly": true,
+  "scenarios": [
+    {
+      "name": "direct-id-outside-100",
+      "executionId": "1",
+      "queue": {
+        "total": 1,
+        "states": {
+          "queued": 0,
+          "leased": 0,
+          "retry": 0,
+          "notified": 1,
+          "ignored": 0,
+          "blocked": 0
+        },
+        "oldestActionableAt": null,
+        "oldestLeaseAt": null
+      },
+      "passed": true
+    },
+    {
+      "name": "native-pagination-1303-and-batch",
+      "executionId": "3",
+      "queue": {
+        "total": 26,
+        "states": {
+          "queued": 0,
+          "leased": 0,
+          "retry": 0,
+          "notified": 24,
+          "ignored": 2,
+          "blocked": 0
+        },
+        "oldestActionableAt": null,
+        "oldestLeaseAt": null
+      },
+      "passed": true
+    },
+    {
+      "name": "subsequent-cycle",
+      "executionId": "29",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "enqueue-before",
+      "executionId": "59",
+      "status": "success",
+      "firstExecutionId": "55",
+      "attempts": 1,
+      "passed": true
+    },
+    {
+      "name": "enqueue-lost",
+      "executionId": "64",
+      "status": "success",
+      "firstExecutionId": "60",
+      "attempts": 1,
+      "passed": true
+    },
+    {
+      "name": "claim-before",
+      "executionId": "70",
+      "status": "success",
+      "firstExecutionId": "65",
+      "attempts": 1,
+      "passed": true
+    },
+    {
+      "name": "claim-lost",
+      "executionId": "76",
+      "status": "success",
+      "firstExecutionId": "71",
+      "attempts": 2,
+      "passed": true
+    },
+    {
+      "name": "intake-lost",
+      "executionId": "82",
+      "status": "success",
+      "firstExecutionId": "77",
+      "attempts": 2,
+      "passed": true
+    },
+    {
+      "name": "ack-lost",
+      "executionId": "87",
+      "status": "success",
+      "firstExecutionId": "83",
+      "attempts": 1,
+      "passed": true
+    },
+    {
+      "name": "gmail-before",
+      "executionId": "93",
+      "status": "success",
+      "firstExecutionId": "88",
+      "attempts": 2,
+      "passed": true
+    },
+    {
+      "name": "http-400",
+      "executionId": "94",
+      "status": "success",
+      "firstState": "blocked",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-422",
+      "executionId": "96",
+      "status": "success",
+      "firstState": "blocked",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-401",
+      "executionId": "98",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-403",
+      "executionId": "114",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-404",
+      "executionId": "130",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-409",
+      "executionId": "146",
+      "status": "success",
+      "firstState": "blocked",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-408",
+      "executionId": "148",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-429",
+      "executionId": "150",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-500",
+      "executionId": "152",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "http-503",
+      "executionId": "154",
+      "status": "success",
+      "firstState": "retry",
+      "firstAttempt": 1,
+      "passed": true
+    },
+    {
+      "name": "invalid-id-fails-closed",
+      "executionId": "156",
+      "status": "error",
+      "passed": true,
+      "expectedExecutionStatus": "error (invalid event rejected)"
+    },
+    {
+      "name": "malformed-receipt",
+      "executionId": "159",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "mixed-results-item-association",
+      "executionId": "161",
+      "status": "success",
+      "loopRuns": 4,
+      "passed": true
+    },
+    {
+      "name": "native-update-error-keeps-loop-running",
+      "executionId": "167",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "ack-committed-ledger-failed",
+      "executionId": "173",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "native-subworkflow-call-failure",
+      "executionId": "174",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "interrupted-batch-recovery",
+      "executionId": "180",
+      "status": "success",
+      "interruptedExecutionId": "179",
+      "passed": true
+    },
+    {
+      "name": "concurrent-runtime-executions",
+      "executionId": "185",
+      "status": "success",
+      "otherExecutionId": "184",
+      "passed": true
+    },
+    {
+      "name": "human-denial-preserved",
+      "executionId": "193",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "expired-lease",
+      "executionId": "194",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "real-schedule-node-manual-path",
+      "executionId": "196",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "name": "accelerated-real-timer",
+      "executionId": "201",
+      "status": "success",
+      "secondsInterval": 1,
+      "productionIntervalUnchanged": "1 hour",
+      "passed": true
+    },
+    {
+      "name": "redacted-diagnostics-without-payload",
+      "executionId": 209,
+      "status": "success",
+      "ledgerCode": "QUEUE_HTTP_503",
+      "stdout": true,
+      "customMetadataPersisted": false,
+      "passed": true
+    }
+  ],
+  "node": "24.22.1",
+  "scenarioCount": 33,
+  "checks": {
+    "serverTests": 975,
+    "voiceCostTests": 8,
+    "npmRunCheck": "passed",
+    "productionChanges": 0,
+    "realMessagesRead": 0
+  },
+  "sourceSha256": {
+    "build-plan.mjs": "9343952bc5bbac8249060e366c9dcd5f4fe8209c8e35c50801971b42b684ff7a",
+    "intake-ack.cjs": "6dc6e76e954ee428ea3ec6628c1a6100e3a538e175e78889e940507c341f1b60",
+    "receipt.cjs": "5fa66b28c1770fd0a88cf7e34260054d47fc84ebe42b1a384d9512e64c9cb76b",
+    "select.cjs": "d2547e1c6acae7c825bd5060245da95ba08d4e0491dc4b98f254935468568d34",
+    "runtime-lab.ts": "824364e4a9710ea0deec38170affdc157803879be64f70940a587efa7fadc886",
+    "runtime-mock.ts": "99b0e73ad1aaf4ed244a7a198cb7a900d7e9e4ca50f3fa059d2fa2bf14de8253",
+    "runtime-network-guard.cjs": "695d8e073e98c0bdbebbc95b5c7035852f473c0d85964baa077af0b9947f6afd",
+    "run-runtime-lab.sh": "5f477c8bc326ef36e4a6445be36a48e36a2e8b4f013db02178dcd2e84fb5d08f"
+  },
+  "compatibility": {
+    "testedServer": "2.47.7",
+    "productionServerVersion": "not exposed by connector; verify before publication",
+    "nativeNodes": {
+      "dataTable": 1.1,
+      "splitInBatches": 3,
+      "code": 2,
+      "crypto": 2,
+      "httpRequest": 4.3,
+      "if": 2.3,
+      "executeWorkflow": 1.4
+    }
+  }
+}

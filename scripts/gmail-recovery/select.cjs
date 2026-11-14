@@ -19,7 +19,7 @@ for (const {row, index} of candidates) {
   const messageId = String(row.message_id).toLowerCase();
   if (seen.has(messageId)) continue;
   seen.add(messageId);
-  out.push({json: {messageId, expectedState: row.state, action: row.state === 'received' ? 'enqueue' : 'status'}, pairedItem: {item: index}});
+  out.push({json: {messageId, expectedState: row.state, expectedLastError: row.last_error_code ?? '', action: row.state === 'received' ? 'enqueue' : 'status'}, pairedItem: {item: index}});
   if (out.length === 25) break;
 }
 return out;

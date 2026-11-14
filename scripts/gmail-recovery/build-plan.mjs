@@ -37,6 +37,7 @@ const update = node(feeder, 'Marcar ledger apos recibo confirmado');
 update.parameters.filters = {conditions:[
   {keyName:'message_id',condition:'eq',keyValue:'={{ $json.messageId }}'},
   {keyName:'state',condition:'eq',keyValue:'={{ $json.expectedState }}'}
+  ,{keyName:'last_error_code',condition:"={{ $json.expectedLastError ? 'eq' : 'isEmpty' }}",keyValue:'={{ $json.expectedLastError }}'}
 ]};
 update.parameters.columns.value.last_error_code = '={{ $json.lastError }}';
 update.onError = 'continueRegularOutput';
@@ -53,8 +54,41 @@ feeder.connections['Fila ainda requer worker'] = {main:[[link('Acionar worker po
 feeder.connections['Acionar worker por mensagem enfileirada'] = {main:[[link('Processar mensagens individualmente')]]};
 node(worker, 'Preparar recibo conservador').parameters.jsCode = source('body-reader') + source('intake-ack');
 node(worker, 'Enviar candidato para triagem (sem decidir)').onError = 'continueRegularOutput';
+const finalReceipt = node(worker, 'Validar recibo final sem conteudo');
+finalReceipt.parameters.jsCode = finalReceipt.parameters.jsCode.replace('decisionRecorded:false',
+  "errorCode:$('Preparar recibo conservador').first().json.errorCode,decisionRecorded:false");
 node(worker, 'Conciliar ledger pelo ID apos ACK').parameters.columns.value.last_error_code =
-  "={{ $json.queueState === 'blocked' ? 'QUEUE_BLOCKED' : $json.queueState === 'retry' ? 'QUEUE_RETRY' : '' }}";
+  "={{ $json.errorCode || ($json.queueState === 'blocked' ? 'QUEUE_BLOCKED' : $json.queueState === 'retry' ? 'QUEUE_RETRY' : '') }}";
+const incidentLookup = structuredClone(node(feeder, 'Ler pendencias registradas'));
+incidentLookup.id = 'gmail-auth-incident-check'; incidentLookup.name = 'Verificar incidente de autenticacao';
+incidentLookup.parameters = {...incidentLookup.parameters,returnAll:false,limit:1,orderBy:false,matchType:'anyCondition',
+  filters:{conditions:['INTEGRATION_AUTH_INTAKE','INTEGRATION_ROUTE_INTAKE'].map(keyValue=>({keyName:'last_error_code',condition:'eq',keyValue}))}};
+incidentLookup.alwaysOutputData = true;
+worker.nodes.push(incidentLookup, {id:'gmail-auth-pause',name:'Pausar por incidente de integracao',type:'n8n-nodes-base.code',typeVersion:2,
+  position:[120,-200],parameters:{mode:'runOnceForAllItems',language:'javaScript',jsCode:
+    "const incident=$input.all().find(i=>['INTEGRATION_AUTH_INTAKE','INTEGRATION_ROUTE_INTAKE'].includes(i.json.last_error_code));if(incident){$execution.customData?.setAll({component:'gmail',code:incident.json.last_error_code});console.error(JSON.stringify({component:'gmail',code:'INTEGRATION_PAUSED',executionId:$execution.id}));return [];}return [{json:{}}];"}});
+for(const trigger of ['Iniciar ensaio manual','Receber acionamento do alimentador','Recuperar pendencias a cada hora'])
+  worker.connections[trigger]={main:[[link('Verificar incidente de autenticacao')]]};
+worker.connections['Verificar incidente de autenticacao']={main:[[link('Pausar por incidente de integracao')]]};
+worker.connections['Pausar por incidente de integracao']={main:[[link('Trava de processamento (OFF)')]]};
+// Technical diagnostics contain only fixed codes and execution correlation, never payloads.
+for(const [graph,after,name] of [[feeder,'Conferir recibo do enqueue','Registrar diagnostico de entrega'],[worker,'Validar recibo final sem conteudo','Registrar diagnostico do worker']]){
+  graph.nodes.push({id:name,name,type:'n8n-nodes-base.code',typeVersion:2,position:[2100,0],parameters:{mode:'runOnceForAllItems',language:'javaScript',jsCode:
+    "const x=$input.first().json,code=x.lastError||x.errorCode||'OK';if(code!=='OK'||!$execution.customData?.get('code'))$execution.customData?.setAll({component:'gmail',code,state:x.queueState});console.log(JSON.stringify({component:'gmail',executionId:$execution.id,state:x.queueState,code}));return [{json:x,pairedItem:{item:0}}];"}});
+  graph.connections[name]=graph.connections[after];graph.connections[after]={main:[[link(name)]]};
+}
+const gmailRead = node(worker,'Ler unica mensagem reivindicada');
+gmailRead.onError = 'continueRegularOutput';
+const candidate = node(worker,'Preparar candidato minimalista');
+candidate.parameters.jsCode = "if($input.first()?.json?.error){$execution.customData?.setAll({component:'gmail',code:'GMAIL_QUERY_UNCONFIRMED'});throw Error('GMAIL_QUERY_UNCONFIRMED');}" + candidate.parameters.jsCode;
+const claimValidation = node(worker,'Validar concessao e excluir homologacoes');
+claimValidation.parameters.jsCode = "try {" + claimValidation.parameters.jsCode + "}catch{const s=Number($input.first()?.json?.statusCode??0);const code=[400,401,403,404,408,409,422,429,500,502,503,504].includes(s)?'QUEUE_CLAIM_HTTP_'+s:'CLAIM_UNCONFIRMED';console.error(JSON.stringify({component:'gmail',executionId:$execution.id,code}));throw Error(code);}";
+for(const [graph,after,name,stop] of [[feeder,'Marcar ledger apos recibo confirmado','Conferir gravacao do ledger',false],[worker,'Conciliar ledger pelo ID apos ACK','Conferir conciliacao do ledger',true]]){
+  const updated = node(graph,after);updated.onError='continueRegularOutput';updated.alwaysOutputData=true;
+  graph.nodes.push({id:name,name,type:'n8n-nodes-base.code',typeVersion:2,position:[2300,0],parameters:{mode:'runOnceForAllItems',language:'javaScript',jsCode:
+    "if($input.first()?.json?.error){console.error(JSON.stringify({component:'gmail',code:'LEDGER_UPDATE_UNCONFIRMED',executionId:$execution.id}));"+(stop?"throw Error('LEDGER_UPDATE_UNCONFIRMED');":"")+"}return $input.all().map((i,index)=>({json:i.json,pairedItem:{item:index}}));"}});
+  graph.connections[name]=graph.connections[after];graph.connections[after]={main:[[link(name)]]};
+}
 for (const graph of [feeder,worker]) graph.settings.saveDataErrorExecution = 'none';
 export const graphs = {[feederId]: feeder, [workerId]: worker};
 export const plan = {

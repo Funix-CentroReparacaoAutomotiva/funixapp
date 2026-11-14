@@ -81,7 +81,7 @@
           "parameters": {
             "mode": "runOnceForAllItems",
             "language": "javaScript",
-            "jsCode": "// Runs in the existing feeder Code node. Ledger metadata only; no Gmail reads.\nconst CUTOVER_UTC = '2026-11-14T05:48:43.000Z';\nconst excluded = new Set(['1a1d2efa0bf0b85d', 'd3c15a7e2026111301', '1a1d87af83b6c00a']);\nconst wanted = $('Trava de publicacao (OFF)').first().json.eventMessageId;\nconst pending = new Set(['received', 'queued', 'leased', 'retry']);\nconst timestampOf = value => Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;\nconst candidates = $input.all().map((item, index) => ({row: item.json, index})).filter(({row}) =>\n  /^[a-f0-9]{15,25}$/i.test(String(row.message_id ?? '')) &&\n  row.source === 'gmail' && pending.has(row.state) &&\n  timestampOf(row.first_seen_at) >= Date.parse(CUTOVER_UTC) &&\n  !excluded.has(String(row.message_id).toLowerCase()) &&\n  (!wanted || String(row.message_id).toLowerCase() === wanted)\n);\n// Check least recently inspected first: leased/retrying messages cannot starve new work.\ncandidates.sort((a, b) => timestampOf(a.row.last_checked_at) - timestampOf(b.row.last_checked_at) ||\n  timestampOf(a.row.first_seen_at) - timestampOf(b.row.first_seen_at) || Number(a.row.id) - Number(b.row.id));\nconst seen = new Set(), out = [];\nfor (const {row, index} of candidates) {\n  const messageId = String(row.message_id).toLowerCase();\n  if (seen.has(messageId)) continue;\n  seen.add(messageId);\n  out.push({json: {messageId, expectedState: row.state, action: row.state === 'received' ? 'enqueue' : 'status'}, pairedItem: {item: index}});\n  if (out.length === 25) break;\n}\nreturn out;\n"
+            "jsCode": "// Runs in the existing feeder Code node. Ledger metadata only; no Gmail reads.\nconst CUTOVER_UTC = '2026-11-14T05:48:43.000Z';\nconst excluded = new Set(['1a1d2efa0bf0b85d', 'd3c15a7e2026111301', '1a1d87af83b6c00a']);\nconst wanted = $('Trava de publicacao (OFF)').first().json.eventMessageId;\nconst pending = new Set(['received', 'queued', 'leased', 'retry']);\nconst timestampOf = value => Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;\nconst candidates = $input.all().map((item, index) => ({row: item.json, index})).filter(({row}) =>\n  /^[a-f0-9]{15,25}$/i.test(String(row.message_id ?? '')) &&\n  row.source === 'gmail' && pending.has(row.state) &&\n  timestampOf(row.first_seen_at) >= Date.parse(CUTOVER_UTC) &&\n  !excluded.has(String(row.message_id).toLowerCase()) &&\n  (!wanted || String(row.message_id).toLowerCase() === wanted)\n);\n// Check least recently inspected first: leased/retrying messages cannot starve new work.\ncandidates.sort((a, b) => timestampOf(a.row.last_checked_at) - timestampOf(b.row.last_checked_at) ||\n  timestampOf(a.row.first_seen_at) - timestampOf(b.row.first_seen_at) || Number(a.row.id) - Number(b.row.id));\nconst seen = new Set(), out = [];\nfor (const {row, index} of candidates) {\n  const messageId = String(row.message_id).toLowerCase();\n  if (seen.has(messageId)) continue;\n  seen.add(messageId);\n  out.push({json: {messageId, expectedState: row.state, expectedLastError: row.last_error_code ?? '', action: row.state === 'received' ? 'enqueue' : 'status'}, pairedItem: {item: index}});\n  if (out.length === 25) break;\n}\nreturn out;\n"
           }
         },
         {
@@ -148,7 +148,7 @@
           "parameters": {
             "mode": "runOnceForAllItems",
             "language": "javaScript",
-            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst expected = $('Preparar uma entrega ou conciliacao').item.json;\nconst response = $input.first()?.json ?? {};\nconst status = Number(response.statusCode ?? 0);\nconst body = readBody(response);\n// Invalid/uncertain responses never advance delivery state. Preserve only a fixed error code.\nconst valid = status === 200 && body && typeof body === 'object' &&\n  body.messageId === expected.messageId &&\n  ['queued', 'leased', 'retry', 'notified', 'ignored', 'blocked'].includes(body.state);\nreturn [{json: {\n  messageId: expected.messageId,\n  expectedState: expected.expectedState,\n  queueState: valid ? body.state : expected.expectedState,\n  lastError: valid ? (body.state === 'blocked' ? 'QUEUE_BLOCKED' : body.state === 'retry' ? 'QUEUE_RETRY' : '') :\n    status >= 400 && status <= 599 ? 'QUEUE_HTTP_' + status : 'QUEUE_RESPONSE_UNCONFIRMED',\n  wakeWorker: Boolean(valid && ['queued', 'leased', 'retry'].includes(body.state))\n}, pairedItem: {item: 0}}];\n"
+            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst expected = $('Preparar uma entrega ou conciliacao').item.json;\nconst response = $input.first()?.json ?? {};\nconst status = Number(response.statusCode ?? 0);\nconst body = readBody(response);\n// Invalid/uncertain responses never advance delivery state. Preserve only a fixed error code.\nconst valid = status === 200 && body && typeof body === 'object' &&\n  body.messageId === expected.messageId &&\n  ['queued', 'leased', 'retry', 'notified', 'ignored', 'blocked'].includes(body.state);\nreturn [{json: {\n  messageId: expected.messageId,\n  expectedState: expected.expectedState,\n  expectedLastError: expected.expectedLastError,\n  queueState: valid ? body.state : expected.expectedState,\n  lastError: ['INTEGRATION_AUTH_INTAKE','INTEGRATION_ROUTE_INTAKE'].includes(expected.expectedLastError) ? expected.expectedLastError :\n    valid ? (body.state === 'blocked' ? 'QUEUE_BLOCKED' : body.state === 'retry' ? 'QUEUE_RETRY' : '') :\n    status >= 400 && status <= 599 ? 'QUEUE_HTTP_' + status : 'QUEUE_RESPONSE_UNCONFIRMED',\n  wakeWorker: Boolean(valid && ['queued', 'leased', 'retry'].includes(body.state))\n}, pairedItem: {item: 0}}];\n"
           }
         },
         {
@@ -180,6 +180,11 @@
                   "keyName": "state",
                   "condition": "eq",
                   "keyValue": "={{ $json.expectedState }}"
+                },
+                {
+                  "keyName": "last_error_code",
+                  "condition": "={{ $json.expectedLastError ? 'eq' : 'isEmpty' }}",
+                  "keyValue": "={{ $json.expectedLastError }}"
                 }
               ]
             },
@@ -280,6 +285,36 @@
             },
             "options": {}
           }
+        },
+        {
+          "id": "Registrar diagnostico de entrega",
+          "name": "Registrar diagnostico de entrega",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2100,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const x=$input.first().json,code=x.lastError||x.errorCode||'OK';if(code!=='OK'||!$execution.customData?.get('code'))$execution.customData?.setAll({component:'gmail',code,state:x.queueState});console.log(JSON.stringify({component:'gmail',executionId:$execution.id,state:x.queueState,code}));return [{json:x,pairedItem:{item:0}}];"
+          }
+        },
+        {
+          "id": "Conferir gravacao do ledger",
+          "name": "Conferir gravacao do ledger",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2300,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "if($input.first()?.json?.error){console.error(JSON.stringify({component:'gmail',code:'LEDGER_UPDATE_UNCONFIRMED',executionId:$execution.id}));}return $input.all().map((i,index)=>({json:i.json,pairedItem:{item:index}}));"
+          }
         }
       ],
       "connections": {
@@ -353,7 +388,7 @@
           "main": [
             [
               {
-                "node": "Marcar ledger apos recibo confirmado",
+                "node": "Registrar diagnostico de entrega",
                 "type": "main",
                 "index": 0
               }
@@ -375,7 +410,7 @@
           "main": [
             [
               {
-                "node": "Fila ainda requer worker",
+                "node": "Conferir gravacao do ledger",
                 "type": "main",
                 "index": 0
               }
@@ -444,6 +479,28 @@
               }
             ]
           ]
+        },
+        "Registrar diagnostico de entrega": {
+          "main": [
+            [
+              {
+                "node": "Marcar ledger apos recibo confirmado",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Conferir gravacao do ledger": {
+          "main": [
+            [
+              {
+                "node": "Fila ainda requer worker",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         }
       }
     },
@@ -460,6 +517,57 @@
         "callerPolicy": "workflowsFromSameOwner"
       },
       "nodeChanges": [
+        {
+          "id": "668bc507-43e3-471c-a261-bf8376347100",
+          "name": "Validar concessao e excluir homologacoes",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            896,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "try {function readBody(r){const body=r.body??{};if(body&&typeof body==='object'&&!body._readableState)return body;const chunks=body?._readableState?.buffer;const item=Array.isArray(chunks)?chunks.find(x=>x?.type==='Buffer'&&Array.isArray(x.data)):null;if(item&&item.data.length<=8192){try{return JSON.parse(String.fromCharCode(...item.data))}catch{throw Error('RESPONSE_JSON_INVALID')}}throw Error('RESPONSE_UNREADABLE')};const r=$input.first()?.json??{};const b=readBody(r);if(Number(r.statusCode)!==200||!Array.isArray(b.claims))throw Error('CLAIM_UNCONFIRMED');if(b.claims.length===0)return [];if(b.claims.length!==1)throw Error('CLAIM_LIMIT_VIOLATION');const c=b.claims[0],id=String(c.messageId??'').toLowerCase();if(!/^[a-f0-9]{15,25}$/.test(id)||! /^[a-f0-9-]{36}$/i.test(String(c.leaseToken??'')))throw Error('CLAIM_INVALID');if(['1a1d2efa0bf0b85d','d3c15a7e2026111301','1a1d87af83b6c00a'].includes(id))throw Error('HOMOLOGATION_BLOCKED');return [{json:{messageId:id,leaseToken:c.leaseToken,attempt:c.attempt,leaseExpiresAt:c.leaseExpiresAt}}];}catch{const s=Number($input.first()?.json?.statusCode??0);const code=[400,401,403,404,408,409,422,429,500,502,503,504].includes(s)?'QUEUE_CLAIM_HTTP_'+s:'CLAIM_UNCONFIRMED';console.error(JSON.stringify({component:'gmail',executionId:$execution.id,code}));throw Error(code);}"
+          }
+        },
+        {
+          "id": "d30396ed-4095-4f8a-9c22-f0f2aefd192c",
+          "name": "Ler unica mensagem reivindicada",
+          "type": "n8n-nodes-base.gmail",
+          "typeVersion": 2.1,
+          "position": [
+            1120,
+            0
+          ],
+          "parameters": {
+            "resource": "message",
+            "operation": "get",
+            "authentication": "oAuth2",
+            "messageId": "={{ $json.messageId }}",
+            "simple": false,
+            "options": {
+              "downloadAttachments": false
+            }
+          },
+          "onError": "continueRegularOutput"
+        },
+        {
+          "id": "4c98ccad-f35b-4311-be55-0f1ec93b316b",
+          "name": "Preparar candidato minimalista",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            1344,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "if($input.first()?.json?.error){$execution.customData?.setAll({component:'gmail',code:'GMAIL_QUERY_UNCONFIRMED'});throw Error('GMAIL_QUERY_UNCONFIRMED');}const claim=$('Validar concessao e excluir homologacoes').first().json;const m=$input.first()?.json??{};const id=String(m.id??m.messageId??'').toLowerCase();if(id!==claim.messageId)throw Error('GMAIL_ID_MISMATCH');const subject=String(m.subject??m.Subject??m.headers?.subject??'').slice(0,500),snippet=String(m.snippet??m.text??'').replace(/<[^>]*>/g,' ').replace(/[\\u0000-\\u001f\\u007f]/g,' ').trim().slice(0,1500);if(!subject&&!snippet)throw Error('GMAIL_MESSAGE_EMPTY');const timestamp=String(Date.now()),rawBody=JSON.stringify({messageId:id,subject,snippet});return [{json:{timestamp,rawBody,toSign:timestamp+'.'+rawBody,messageId:id}}];"
+          }
+        },
         {
           "id": "b39145a2-82a0-459e-a995-599a1e613173",
           "name": "Enviar candidato para triagem (sem decidir)",
@@ -524,7 +632,22 @@
           "parameters": {
             "mode": "runOnceForAllItems",
             "language": "javaScript",
-            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst r = $input.first()?.json ?? {}, body = readBody(r);\nconst claim = $('Validar concessao e excluir homologacoes').first().json;\nconst status = Number(r.statusCode ?? 0);\nlet result = 'retry', noticeId = null, errorCode = 'INTAKE_UNCONFIRMED';\nif (status === 202 && body && typeof body === 'object') {\n  if (body.status === 'ignored') { result = 'ignored'; errorCode = null; }\n  else if (['awaiting_authorization', 'authorized', 'denied'].includes(body.status) &&\n    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(body.noticeId ?? ''))) {\n    result = 'notified'; noticeId = body.noticeId; errorCode = null;\n  }\n} else if (status >= 400 && status < 500 && ![408, 429].includes(status)) {\n  result = 'blocked'; errorCode = 'INTAKE_HTTP_' + status;\n} else if (status >= 400 && status <= 599) errorCode = 'INTAKE_HTTP_' + status;\nconst timestamp = String(Date.now());\nconst rawBody = JSON.stringify({messageId: claim.messageId, leaseToken: claim.leaseToken, result, noticeId, errorCode});\nreturn [{json: {timestamp, rawBody, toSign: timestamp + '.' + rawBody, result, messageId: claim.messageId}}];\n"
+            "jsCode": "// eslint-disable-next-line no-unused-vars -- Concatenated with the receipt/ACK Code-node sources by build-plan.mjs.\nfunction readBody(response) {\n  const body = response.body;\n  if (body && typeof body === 'object' && !body._readableState) return body;\n  // Preserve the bounded response representation already handled by the published nodes.\n  const chunks = body?._readableState?.buffer;\n  const chunk = Array.isArray(chunks) ? chunks.find(x => x?.type === 'Buffer' && Array.isArray(x.data)) : null;\n  if (chunk && chunk.data.length <= 8192) {\n    try { return JSON.parse(String.fromCharCode(...chunk.data)); } catch { return null; }\n  }\n  return null;\n}\nconst r = $input.first()?.json ?? {}, body = readBody(r);\nconst claim = $('Validar concessao e excluir homologacoes').first().json;\nconst status = Number(r.statusCode ?? 0);\nlet result = 'retry', noticeId = null, errorCode = 'INTAKE_UNCONFIRMED';\nif (status === 202 && body && typeof body === 'object') {\n  if (body.status === 'ignored') { result = 'ignored'; errorCode = null; }\n  else if (['awaiting_authorization', 'authorized', 'denied'].includes(body.status) &&\n    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(body.noticeId ?? ''))) {\n    result = 'notified'; noticeId = body.noticeId; errorCode = null;\n  }\n} else if ([401, 403].includes(status)) {\n  // Integration incident, not a permanent defect in this message. A ledger gate\n  // pauses further claims until an operator verifies credentials and clears it.\n  errorCode = 'INTEGRATION_AUTH_INTAKE';\n} else if (status === 404) {\n  // A 404 at the classifier endpoint is an integration route/configuration issue.\n  errorCode = 'INTEGRATION_ROUTE_INTAKE';\n} else if (status >= 400 && status < 500 && ![408, 429].includes(status)) {\n  result = 'blocked'; errorCode = 'INTAKE_HTTP_' + status;\n} else if (status >= 400 && status <= 599) errorCode = 'INTAKE_HTTP_' + status;\nconst timestamp = String(Date.now());\nconst rawBody = JSON.stringify({messageId: claim.messageId, leaseToken: claim.leaseToken, result, noticeId, errorCode});\nreturn [{json: {timestamp, rawBody, toSign: timestamp + '.' + rawBody, result, errorCode, messageId: claim.messageId}}];\n"
+          }
+        },
+        {
+          "id": "1fbf89b3-562c-46c1-b839-ad28b59f888d",
+          "name": "Validar recibo final sem conteudo",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2688,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "function readBody(r){const body=r.body??{};if(body&&typeof body==='object'&&!body._readableState)return body;const chunks=body?._readableState?.buffer;const item=Array.isArray(chunks)?chunks.find(x=>x?.type==='Buffer'&&Array.isArray(x.data)):null;if(item&&item.data.length<=8192){try{return JSON.parse(String.fromCharCode(...item.data))}catch{throw Error('RESPONSE_JSON_INVALID')}}throw Error('RESPONSE_UNREADABLE')};const r=$input.first()?.json??{},b=readBody(r),p=$('Preparar recibo conservador').first().json;if(Number(r.statusCode)!==200||b.messageId!==p.messageId||!['retry','notified','ignored','blocked'].includes(b.state))throw Error('QUEUE_ACK_UNCONFIRMED');return [{json:{messageId:p.messageId,queueState:b.state,attempts:b.attempts,errorCode:$('Preparar recibo conservador').first().json.errorCode,decisionRecorded:false,emailSent:false,erpWrites:0}}];"
           }
         },
         {
@@ -559,9 +682,96 @@
               "value": {
                 "state": "={{ $json.queueState }}",
                 "last_checked_at": "={{ $now.toISO() }}",
-                "last_error_code": "={{ $json.queueState === 'blocked' ? 'QUEUE_BLOCKED' : $json.queueState === 'retry' ? 'QUEUE_RETRY' : '' }}"
+                "last_error_code": "={{ $json.errorCode || ($json.queueState === 'blocked' ? 'QUEUE_BLOCKED' : $json.queueState === 'retry' ? 'QUEUE_RETRY' : '') }}"
               }
             }
+          },
+          "onError": "continueRegularOutput",
+          "alwaysOutputData": true
+        },
+        {
+          "id": "gmail-auth-incident-check",
+          "name": "Verificar incidente de autenticacao",
+          "type": "n8n-nodes-base.dataTable",
+          "typeVersion": 1.1,
+          "position": [
+            448,
+            0
+          ],
+          "parameters": {
+            "resource": "row",
+            "operation": "get",
+            "dataTableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "bEzvPYqWilbEgyVr"
+            },
+            "matchType": "anyCondition",
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "last_error_code",
+                  "condition": "eq",
+                  "keyValue": "INTEGRATION_AUTH_INTAKE"
+                },
+                {
+                  "keyName": "last_error_code",
+                  "condition": "eq",
+                  "keyValue": "INTEGRATION_ROUTE_INTAKE"
+                }
+              ]
+            },
+            "returnAll": false,
+            "orderBy": false,
+            "orderByColumn": "first_seen_at",
+            "orderByDirection": "DESC",
+            "limit": 1
+          },
+          "alwaysOutputData": true
+        },
+        {
+          "id": "gmail-auth-pause",
+          "name": "Pausar por incidente de integracao",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            120,
+            -200
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const incident=$input.all().find(i=>['INTEGRATION_AUTH_INTAKE','INTEGRATION_ROUTE_INTAKE'].includes(i.json.last_error_code));if(incident){$execution.customData?.setAll({component:'gmail',code:incident.json.last_error_code});console.error(JSON.stringify({component:'gmail',code:'INTEGRATION_PAUSED',executionId:$execution.id}));return [];}return [{json:{}}];"
+          }
+        },
+        {
+          "id": "Registrar diagnostico do worker",
+          "name": "Registrar diagnostico do worker",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2100,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const x=$input.first().json,code=x.lastError||x.errorCode||'OK';if(code!=='OK'||!$execution.customData?.get('code'))$execution.customData?.setAll({component:'gmail',code,state:x.queueState});console.log(JSON.stringify({component:'gmail',executionId:$execution.id,state:x.queueState,code}));return [{json:x,pairedItem:{item:0}}];"
+          }
+        },
+        {
+          "id": "Conferir conciliacao do ledger",
+          "name": "Conferir conciliacao do ledger",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            2300,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "if($input.first()?.json?.error){console.error(JSON.stringify({component:'gmail',code:'LEDGER_UPDATE_UNCONFIRMED',executionId:$execution.id}));throw Error('LEDGER_UPDATE_UNCONFIRMED');}return $input.all().map((i,index)=>({json:i.json,pairedItem:{item:index}}));"
           }
         }
       ],
@@ -570,7 +780,7 @@
           "main": [
             [
               {
-                "node": "Trava de processamento (OFF)",
+                "node": "Verificar incidente de autenticacao",
                 "type": "main",
                 "index": 0
               }
@@ -702,7 +912,7 @@
           "main": [
             [
               {
-                "node": "Conciliar ledger pelo ID apos ACK",
+                "node": "Registrar diagnostico do worker",
                 "type": "main",
                 "index": 0
               }
@@ -713,7 +923,7 @@
           "main": [
             [
               {
-                "node": "Trava de processamento (OFF)",
+                "node": "Verificar incidente de autenticacao",
                 "type": "main",
                 "index": 0
               }
@@ -724,7 +934,51 @@
           "main": [
             [
               {
+                "node": "Verificar incidente de autenticacao",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verificar incidente de autenticacao": {
+          "main": [
+            [
+              {
+                "node": "Pausar por incidente de integracao",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Pausar por incidente de integracao": {
+          "main": [
+            [
+              {
                 "node": "Trava de processamento (OFF)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Registrar diagnostico do worker": {
+          "main": [
+            [
+              {
+                "node": "Conciliar ledger pelo ID apos ACK",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Conciliar ledger pelo ID apos ACK": {
+          "main": [
+            [
+              {
+                "node": "Conferir conciliacao do ledger",
                 "type": "main",
                 "index": 0
               }

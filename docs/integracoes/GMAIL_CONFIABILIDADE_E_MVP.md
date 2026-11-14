@@ -4,6 +4,11 @@ Data: 14/11/2026. Base auditada: `main@2692b0ee187ce35464ab7fbc55b865e0949308a3`
 Estado: correções preparadas e verificadas em desenvolvimento isolado; **não publicadas no n8n**.
 Contrato e escopo do MVP abaixo são propostas, não autorização de ativação.
 
+> Continuidade da PR #220: o [ensaio em runtime n8n real](gmail-recovery/RUNTIME_N8N_ISOLADO.md)
+> substitui a pendência de validação dos nós no simulador descrita abaixo, dentro dos
+> limites da versão ensaiada. O relatório novo corrige o tratamento de 401/403/404 e
+> documenta observabilidade, dependências de publicação e riscos residuais.
+
 ## 1. Avaliação e defeitos prioritários
 
 Os três workflows estão ativos e com draft igual à versão publicada observada:

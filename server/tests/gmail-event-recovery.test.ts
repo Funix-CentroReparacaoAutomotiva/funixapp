@@ -87,6 +87,7 @@ async function harness(rows:Json[],options:{published?:boolean}={}){
       $input:{all:()=>input,first:()=>input[0],item:input[0]},$json:input[0]?.json,
       $:(name:string)=>({first:()=>outputs.get(name)?.[0],item:outputs.get(name)?.[0]}),
       $now:{toISO:()=>new Date(clock).toISOString()},
+      $execution:{id:'synthetic-execution'},
       Date:class extends Date {static override now(){return clock}}
     })
     const expression=(value:unknown,input:Item[]):any=>typeof value==='string'&&value.startsWith('={{')
@@ -101,8 +102,10 @@ async function harness(rows:Json[],options:{published?:boolean}={}){
           const output=runInNewContext('(function(){'+p.jsCode+'\n})()',context(items),{timeout:1000})
           result=JSON.parse(JSON.stringify(Array.isArray(output)?output:[output]))
         }else if(node.type==='n8n-nodes-base.dataTable'){
-          const matches=(r:Json)=>p.filters.conditions.every((c:Json)=>
-            r[expression(c.keyName,items)]===expression(c.keyValue,items))
+          const matches=(r:Json)=>p.filters.conditions[p.matchType==='anyCondition'?'some':'every']((c:Json)=>{
+            const value=r[expression(c.keyName,items)]
+            return expression(c.condition,items)==='isEmpty'?(value===null||value===undefined||value===''):value===expression(c.keyValue,items)
+          })
           if(p.operation==='get'){
             let found=rows.filter(matches)
             if(p.orderBy)found.sort((a,b)=>String(b[p.orderByColumn]??'').localeCompare(String(a[p.orderByColumn]??'')))
@@ -235,7 +238,7 @@ test('lost claim response expires safely; five failures block and ledger exposes
     assert.equal(h.queue.status(id(1)).attempts,2)
     for(let n=0;n<3;n++){h.advance(3600000);await h.cycle()}
     assert.equal(h.queue.status(id(1)).state,'blocked')
-    assert.equal(h.rows[0]!.last_error_code,'QUEUE_BLOCKED')
+    assert.equal(h.rows[0]!.last_error_code,'INTAKE_HTTP_503')
     const reads=h.reads.length;await h.cycle();assert.equal(h.reads.length,reads)
   }finally{await h.close()}
 })
@@ -302,13 +305,26 @@ test('intake receipt preserves transient/permanent semantics and bounded JSON st
     },{timeout:1000})
     return JSON.parse(result[0].json.rawBody) as Json
   }
-  for(const statusCode of [400,401,403,404,409,422])assert.equal(run({statusCode,body:{}}).result,'blocked')
-  for(const statusCode of [408,429,500,503])assert.equal(run({statusCode,body:{}}).result,'retry')
+  for(const statusCode of [400,409,422])assert.equal(run({statusCode,body:{}}).result,'blocked')
+  for(const statusCode of [401,403,404,408,429,500,503])assert.equal(run({statusCode,body:{}}).result,'retry')
+  for(const statusCode of [401,403])assert.equal(run({statusCode,body:{}}).errorCode,'INTEGRATION_AUTH_INTAKE')
   assert.equal(run({statusCode:202,body:{status:'authorized',noticeId:'wrong'}}).result,'retry')
   const body={status:'denied',noticeId:'00000000-0000-4000-8000-000000000002'}
   const streamed={_readableState:{buffer:[{type:'Buffer',data:Array.from(Buffer.from(JSON.stringify(body)))}]}}
   assert.equal(run({statusCode:202,body:streamed}).result,'notified')
   assert.equal(run({statusCode:202,body:streamed}).noticeId,body.noticeId)
+})
+test('authentication incident pauses claims without exhausting recoverable messages',async()=>{
+  const h=await harness([row(1)])
+  try{
+    h.failures.intakeStatus=401;await h.cycle()
+    assert.equal(h.queue.status(id(1)).state,'retry')
+    assert.equal(h.rows[0]!.last_error_code,'INTEGRATION_AUTH_INTAKE')
+    for(let i=0;i<6;i++){h.advance(3600000);await h.cycle()}
+    assert.equal(h.queue.status(id(1)).attempts,1)
+    h.failures.intakeStatus=0;h.rows[0]!.last_error_code=''
+    await h.cycle();assert.equal(h.queue.status(id(1)).state,'notified')
+  }finally{await h.close()}
 })
 test('local plan is reproducible, credential-free and leaves monitor/publication untouched',()=>{
   assert.equal(plan.deployable,false)

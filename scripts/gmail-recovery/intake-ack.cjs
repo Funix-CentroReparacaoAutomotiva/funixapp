@@ -8,9 +8,16 @@ if (status === 202 && body && typeof body === 'object') {
     /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(body.noticeId ?? ''))) {
     result = 'notified'; noticeId = body.noticeId; errorCode = null;
   }
+} else if ([401, 403].includes(status)) {
+  // Integration incident, not a permanent defect in this message. A ledger gate
+  // pauses further claims until an operator verifies credentials and clears it.
+  errorCode = 'INTEGRATION_AUTH_INTAKE';
+} else if (status === 404) {
+  // A 404 at the classifier endpoint is an integration route/configuration issue.
+  errorCode = 'INTEGRATION_ROUTE_INTAKE';
 } else if (status >= 400 && status < 500 && ![408, 429].includes(status)) {
   result = 'blocked'; errorCode = 'INTAKE_HTTP_' + status;
 } else if (status >= 400 && status <= 599) errorCode = 'INTAKE_HTTP_' + status;
 const timestamp = String(Date.now());
 const rawBody = JSON.stringify({messageId: claim.messageId, leaseToken: claim.leaseToken, result, noticeId, errorCode});
-return [{json: {timestamp, rawBody, toSign: timestamp + '.' + rawBody, result, messageId: claim.messageId}}];
+return [{json: {timestamp, rawBody, toSign: timestamp + '.' + rawBody, result, errorCode, messageId: claim.messageId}}];

@@ -9,8 +9,10 @@ const valid = status === 200 && body && typeof body === 'object' &&
 return [{json: {
   messageId: expected.messageId,
   expectedState: expected.expectedState,
+  expectedLastError: expected.expectedLastError,
   queueState: valid ? body.state : expected.expectedState,
-  lastError: valid ? (body.state === 'blocked' ? 'QUEUE_BLOCKED' : body.state === 'retry' ? 'QUEUE_RETRY' : '') :
+  lastError: ['INTEGRATION_AUTH_INTAKE','INTEGRATION_ROUTE_INTAKE'].includes(expected.expectedLastError) ? expected.expectedLastError :
+    valid ? (body.state === 'blocked' ? 'QUEUE_BLOCKED' : body.state === 'retry' ? 'QUEUE_RETRY' : '') :
     status >= 400 && status <= 599 ? 'QUEUE_HTTP_' + status : 'QUEUE_RESPONSE_UNCONFIRMED',
   wakeWorker: Boolean(valid && ['queued', 'leased', 'retry'].includes(body.state))
 }, pairedItem: {item: 0}}];
