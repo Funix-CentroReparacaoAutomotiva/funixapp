@@ -112,6 +112,22 @@ export class GmailIntakeQueue {
       return map(this.one(id)!)
     }catch(e){this.database.exec('ROLLBACK');throw e}
   }
+  overview():{total:number,states:Record<GmailQueueState,number>,oldestActionableAt:string|null,oldestLeaseAt:string|null} {
+    this.enabled()
+    // Read-only aggregates. Never claim a lease, enqueue, acknowledge or expose message IDs.
+    const rows=this.database.prepare('SELECT state,COUNT(*) AS n FROM gmail_intake_delivery_queue GROUP BY state')
+      .all() as {state:GmailQueueState,n:number}[]
+    const states:Record<GmailQueueState,number>={queued:0,leased:0,retry:0,notified:0,ignored:0,blocked:0}
+    for(const row of rows)states[row.state]=row.n
+    const oldestActionable=this.database.prepare(
+      "SELECT MIN(created_at) AS stamp FROM gmail_intake_delivery_queue WHERE state IN ('queued','retry')"
+    ).get() as {stamp:string|null}
+    const oldestLease=this.database.prepare(
+      "SELECT MIN(created_at) AS stamp FROM gmail_intake_delivery_queue WHERE state='leased'"
+    ).get() as {stamp:string|null}
+    return {total:Object.values(states).reduce((sum,count)=>sum+count,0),states,
+      oldestActionableAt:oldestActionable.stamp,oldestLeaseAt:oldestLease.stamp}
+  }
   status(messageId:string):GmailQueueReceipt{
     this.enabled()
     if(!messagePattern.test(messageId))fail(400,'GMAIL_QUEUE_INVALID','Identificador inválido.')

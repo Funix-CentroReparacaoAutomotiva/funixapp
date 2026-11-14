@@ -158,9 +158,9 @@ export function createRequestHandler(options: AppOptions) {
         const result=await updatesIngest(req,res)
         return send(202,result)
       }
-      const queueRoute=/^\/api\/integrations\/gmail\/queue\/(enqueue|claim|ack|status)$/.exec(url.pathname)
+      const queueRoute=/^\/api\/integrations\/gmail\/queue\/(enqueue|claim|ack|status|overview)$/.exec(url.pathname)
       if(queueRoute){
-        const result=await gmailQueueEndpoint(req,res,queueRoute[1] as 'enqueue'|'claim'|'ack'|'status')
+        const result=await gmailQueueEndpoint(req,res,queueRoute[1] as 'enqueue'|'claim'|'ack'|'status'|'overview')
         return send(200,result)
       }
       if (url.pathname === '/api/integrations/gmail/intake-notices') {

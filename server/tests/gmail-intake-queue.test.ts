@@ -204,3 +204,21 @@ test('cinco leases expirados bloqueiam a fila sem sexto processamento',()=>{
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts WHERE outcome='expired'").get()!.n,5)
  }finally{db.close()}
 })
+
+
+test('overview somente leitura não altera estado, tentativas nem leases',()=>{
+ const {db,queue}=setup()
+ try{
+  assert.deepEqual(queue.overview(),{total:0,states:{queued:0,leased:0,retry:0,notified:0,ignored:0,blocked:0},oldestActionableAt:null,oldestLeaseAt:null})
+  queue.enqueue(msg)
+  const first=queue.overview()
+  const second=queue.overview()
+  assert.deepEqual(second,first)
+  assert.equal(first.total,1)
+  assert.equal(first.states.queued,1)
+  assert.ok(first.oldestActionableAt)
+  assert.equal(queue.status(msg).attempts,0)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_attempts').get()!.n,0)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_delivery_queue_claim_requests').get()!.n,0)
+ }finally{db.close()}
+})

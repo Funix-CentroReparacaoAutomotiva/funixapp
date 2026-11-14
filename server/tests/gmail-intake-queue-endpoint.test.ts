@@ -185,3 +185,34 @@ test('HTTP localhost: status signed round-trip works and invalid signature is re
   db.close()
  }
 })
+
+
+test('overview assinado é somente leitura, agrega estados e rejeita payload extra',async()=>{
+ const {db,queue,service}=setup()
+ try{
+   const empty=input({})
+   const initial=await service(empty.req,empty.res,'overview') as {total:number,states:Record<string,number>,oldestActionableAt:string|null}
+   assert.equal(initial.total,0)
+   assert.equal(initial.states.queued,0)
+   assert.equal(initial.oldestActionableAt,null)
+   queue.enqueue(messageId)
+   const check=input({})
+   const before=await service(check.req,check.res,'overview') as {total:number,states:Record<string,number>,oldestActionableAt:string|null}
+   assert.equal(before.total,1)
+   assert.equal(before.states.queued,1)
+   assert.ok(before.oldestActionableAt)
+   const [lease]=queue.claim(1,randomUUID())
+   const inFlight=input({})
+   const during=await service(inFlight.req,inFlight.res,'overview') as {states:Record<string,number>,oldestActionableAt:string|null,oldestLeaseAt:string|null}
+   assert.equal(during.states.leased,1)
+   assert.equal(during.oldestActionableAt,null)
+   assert.ok(during.oldestLeaseAt)
+   const bad=input({messageId})
+   await assert.rejects(()=>service(bad.req,bad.res,'overview'),{code:'GMAIL_QUEUE_PAYLOAD_INVALID'})
+   const forged=input({},'incorrect-but-long-synthetic-queue-secret')
+   await assert.rejects(()=>service(forged.req,forged.res,'overview'),{code:'GMAIL_INTAKE_UNAUTHORIZED'})
+   assert.equal(queue.status(messageId).state,'leased')
+   assert.equal(queue.status(messageId).attempts,1)
+   assert.ok(lease)
+ } finally{db.close()}
+})

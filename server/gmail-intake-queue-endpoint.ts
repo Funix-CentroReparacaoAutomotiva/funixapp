@@ -8,7 +8,7 @@ const fail=(status:number,code:string,message:string):never=>{throw new ServiceE
 const messagePattern=/^[0-9a-f]{15,25}$/i
 const requestPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-type Action='enqueue'|'claim'|'ack'|'status'
+type Action='enqueue'|'claim'|'ack'|'status'|'overview'
 export function createGmailQueueEndpoint(
   queue:GmailIntakeQueue,secret:string|undefined,enabled:boolean,now:()=>number=Date.now
 ){
@@ -18,7 +18,10 @@ export function createGmailQueueEndpoint(
     if(!raw||typeof raw!=='object'||Array.isArray(raw))fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Corpo inválido.')
     const input=raw as Record<string,unknown>
     let result:unknown
-    if(action==='enqueue'){
+    if(action==='overview'){
+      if(Object.keys(input).length!==0)fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Consulta agregada exige corpo vazio.')
+      result=queue.overview()
+    }else if(action==='enqueue'){
       if(Object.keys(input).sort().join(',')!=='messageId'||
         typeof input.messageId!=='string'||!messagePattern.test(input.messageId))
         fail(400,'GMAIL_QUEUE_PAYLOAD_INVALID','Identificador de mensagem inválido.')
