@@ -65,7 +65,7 @@ try{
    assert.equal(await piecePicker.count(),1,'one inline piece selector at '+width)
    assert.equal(await editor.getByRole('button',{name:'Trocar peça'}).count(),0,'old extra button removed')
    assert.equal(await editor.getByRole('button',{name:'Confirmar revisão técnica'}).count(),0,'no review confirmation')
-   const target=f.commercial.catalogs().items.find(x=>x.code==='capo')
+   const target=f.commercial.catalogs().items.find(x=>x.code==='para_choque_traseiro')
    assert(target)
    let unexpectedDialogs=0
    page.on('dialog',dialog=>{unexpectedDialogs++;void dialog.dismiss()})
