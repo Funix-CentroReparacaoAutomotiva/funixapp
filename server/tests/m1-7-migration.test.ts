@@ -48,7 +48,10 @@ test('V7 failure rolls back schema/history and never resets data; clean installa
   assert(db.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))
   assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),before)
   db.exec('DROP VIEW qa_block_drop');db.close();db=openDatabase(file)
-  assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),before)
+  // O upgrade V16 acrescenta apenas colunas nullable: compare os campos históricos originais.
+  const oldColumns=Object.keys(before[0]!).map(column=>'"'+column+'"').join(',')
+  assert.deepEqual(db.prepare('SELECT '+oldColumns+' FROM atendimentos').all(),before)
+  assert.equal(db.prepare('SELECT count(*) AS n FROM atendimentos WHERE fabrication_year IS NOT NULL OR model_year IS NOT NULL').get()!.n,0)
   const fresh=openDatabase(':memory:')
   try{assert(!fresh.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))}finally{fresh.close()}
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
