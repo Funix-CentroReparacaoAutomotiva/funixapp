@@ -221,12 +221,13 @@ export function createRequestHandler(options: AppOptions) {
       const intakeDecisionMatch=/^\/api\/atualizacoes\/avisos-gmail\/([0-9a-f-]{36})\/decisao$/.exec(url.pathname)
       if(url.pathname==='/api/atualizacoes/avisos-gmail' || intakeDecisionMatch){
         if(req.method==='GET' && !intakeDecisionMatch){
-          if([...url.searchParams.keys()].some(k=>k!=='visao'))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
+          if([...url.searchParams.keys()].some(k=>!['visao','q'].includes(k)))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
           const view=url.searchParams.get('visao')??'open'
-          if(!['open','closed'].includes(view))return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
+          const query=url.searchParams.get('q')??''
+          if(!['open','closed','all'].includes(view)||query.length>160)return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
           const available=process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
             hasGmailIntakeSchema(options.atendimentos.db)
-          return send(200,{...gmailIntake.list(view as 'open'|'closed'),
+          return send(200,{...gmailIntake.list(view as 'open'|'closed'|'all',query),
             decisionsEnabled:available && process.env.FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED==='true'})
         }
         if(req.method!=='POST'||!intakeDecisionMatch)return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
@@ -251,9 +252,9 @@ export function createRequestHandler(options: AppOptions) {
           if ([...url.searchParams.keys()].some(k=>!['visao','q'].includes(k))) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
           const visao=url.searchParams.get('visao')??'open'
           const query=url.searchParams.get('q')??''
-          if (!['open','closed'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+          if (!['open','closed','all'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
           const available=hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'
-          return send(200,{...updates.list(visao as 'open'|'closed',query),
+          return send(200,{...updates.list(visao as 'open'|'closed'|'all',query),
             decisionsEnabled:available&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true',
             clarificationsEnabled:available&&process.env.FUNIX_UPDATES_CLARIFICATIONS_ENABLED==='true'})
         }

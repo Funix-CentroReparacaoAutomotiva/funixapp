@@ -29,6 +29,7 @@ test('Armazenamento opt-in: pacote nasce aberto, não cria dados de demonstraç�
     assert.equal(x.actions.length,1)
     assert.equal(x.snapshotHash.length,64)
     assert.equal(repo.list('open','ABC1D23').total,1)
+    assert.equal(repo.list('all','ABC1D23').total,1)
     assert.equal(repo.list('closed','ABC1D23').total,0)
     assert.equal(repo.list('open','não encontrado').total,0)
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM update_package_decisions').get()!.n,0)
@@ -61,6 +62,8 @@ test('rejeição fecha, pendências impedem aprovação, dados inválidos são r
     assert.equal(rejected.status,'rejected')
     assert.equal(repo.list('open','').total,0)
     assert.equal(repo.list('closed','').total,1)
+    assert.equal(repo.list('all','').total,1)
+    assert.equal(repo.list('all','').items[0]?.status,'rejected')
     assert.throws(()=>repo.createProposal({...q,actions:[]}),{code:'PACKAGE_INVALID'})
     assert.throws(()=>repo.createProposal({...q,actions:[q.actions[0]!,q.actions[0]!]}),{code:'PACKAGE_INVALID'})
   }finally{db.close()}

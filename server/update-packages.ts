@@ -90,14 +90,13 @@ export class UpdatePackageRepository {
     return map(row!)
   }
 
-  list(view: 'open' | 'closed', query: string): UpdatePackageList {
-    if (!['open','closed'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
+  list(view: 'open' | 'closed' | 'all', query: string): UpdatePackageList {
+    if (!['open','closed','all'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false,clarificationsEnabled:false}
-    const closed = view === 'closed'
     // Paginate through the full queue so older matches are not silently lost
     // after the first 501 records. Return at most 100 cards, but count all matches.
     const statement = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
-      ${closed ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected','superseded')"}
+      ${view === 'all' ? '1=1' : view === 'closed' ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected','superseded')"}
       ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
     const needle = query.toLocaleLowerCase('pt-BR').trim()
     const items: UpdatePackage[] = []

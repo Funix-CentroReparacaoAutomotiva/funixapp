@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { UpdatePackage, UpdatePackageList, UpdatePackageStatus } from '../shared/update-packages'
 import { api } from './api'
-import { GmailIntakeNotices } from './GmailIntakeNotices'
+import { GmailIntakeCard } from './GmailIntakeNotices'
+import type { GmailIntakeNotice, GmailIntakeNoticeList } from '../shared/gmail-intake'
 import './updates.css'
 
-type View = 'open' | 'closed'
+type View = 'pending' | 'all'
+type FeedItem = {kind:'gmail',data:GmailIntakeNotice}|{kind:'package',data:UpdatePackage}
 const statusLabel: Record<UpdatePackageStatus,string> = {
   awaiting_review:'Aguardando aprovação',
   approved_pending_execution:'Aguardando execução',
@@ -21,8 +23,9 @@ function updatedDate(value:string){
 const sourceLabel={gmail:'E-mail',whatsapp:'WhatsApp',other:'Outro canal'} as const
 
 export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
-  const [view,setView]=useState<View>('open')
+  const [view,setView]=useState<View>('pending')
   const [query,setQuery]=useState('')
+  const [gmail,setGmail]=useState<GmailIntakeNoticeList|null>(null)
   const [refresh,setRefresh]=useState(0)
   const [result,setResult]=useState<UpdatePackageList|null>(null)
   const [expanded,setExpanded]=useState<string|null>(null)
@@ -35,18 +38,30 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     const controller=new AbortController()
     setLoading(true);setError('')
     const timer=setTimeout(()=>{
-      const search=new URLSearchParams({visao:view,q:query})
-      api<UpdatePackageList>(`/api/atualizacoes?${search}`,{signal:controller.signal})
-        .then(data=>{if(!controller.signal.aborted)setResult(data)})
-        .catch(cause=>{
-          if(controller.signal.aborted||cause.name==='AbortError')return
-          if(cause.status===401)onUnauthorized()
-          setError(cause.message);setResult(null)
-        }).finally(()=>{if(!controller.signal.aborted)setLoading(false)})
+      const search=new URLSearchParams({visao:view==='pending'?'open':'all',q:query})
+      Promise.all([
+        api<UpdatePackageList>(`/api/atualizacoes?${search}`,{signal:controller.signal}),
+        api<GmailIntakeNoticeList>(`/api/atualizacoes/avisos-gmail?${search}`,{signal:controller.signal})
+      ]).then(([packages,mail])=>{
+        if(!controller.signal.aborted){setResult(packages);setGmail(mail)}
+      }).catch(cause=>{
+        if(controller.signal.aborted||cause?.name==='AbortError')return
+        if(cause?.status===401)onUnauthorized()
+        setError(cause?.message||'Não foi possível consultar as atualizações.')
+        setResult(null);setGmail(null)
+      }).finally(()=>{if(!controller.signal.aborted)setLoading(false)})
     },query?250:0)
     return()=>{clearTimeout(timer);controller.abort()}
   },[view,query,refresh,onUnauthorized])
-  const count = useMemo(()=>result?.items.length??0,[result])
+  const items=useMemo<FeedItem[]>(()=>{
+    const entries:FeedItem[]=[
+      ...(result?.items??[]).map(data=>({kind:'package' as const,data})),
+      ...(gmail?.items??[]).map(data=>({kind:'gmail' as const,data}))
+    ]
+    entries.sort((a,b)=>b.data.createdAt.localeCompare(a.data.createdAt)||a.data.id.localeCompare(b.data.id))
+    return entries
+  },[result,gmail])
+  const count=(result?.total??0)+(gmail?.total??0)
   async function clarify(pkg:UpdatePackage){
     if(!result?.clarificationsEnabled||busy||pkg.clarificationPending||pkg.status!=='awaiting_review')return
     setBusy(pkg.id);setError('');setNotice('')
@@ -86,35 +101,41 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     }finally{setBusy(null)}
   }
   return <section className="updates-page" aria-label="Pacotes de atualizações">
-    <GmailIntakeNotices onUnauthorized={onUnauthorized}/>
     <div className="updates-toolbar">
       <label className="fh-search"><span aria-hidden="true">⌕</span>
-        <input aria-label="Buscar pacotes por experiência, placa ou origem" value={query}
-          onChange={e=>{setNotice('');setQuery(e.target.value)}} placeholder="Buscar experiência, placa ou origem…" autoComplete="off" />
+        <input aria-label="Buscar atualizações por assunto, experiência, placa ou origem" value={query}
+          onChange={e=>{setNotice('');setQuery(e.target.value)}} placeholder="Buscar assunto, experiência, placa ou origem…" autoComplete="off" />
       </label>
       <button className="fh-filter" onClick={()=>{setNotice('');setRefresh(v=>v+1)}}>Atualizar</button>
     </div>
-    <div className="updates-switch" role="group" aria-label="Situação dos pacotes">
-      <button aria-pressed={view==='open'} className={view==='open'?'selected':''} onClick={()=>{setNotice('');setView('open');setExpanded(null)}}>Abertos</button>
-      <button aria-pressed={view==='closed'} className={view==='closed'?'selected':''} onClick={()=>{setNotice('');setView('closed');setExpanded(null)}}>Fechados</button>
+    <div className="updates-switch" role="group" aria-label="Filtro de atualizações">
+      <button aria-pressed={view==='pending'} className={view==='pending'?'selected':''} onClick={()=>{setNotice('');setView('pending');setExpanded(null)}}>Pendentes</button>
+      <button aria-pressed={view==='all'} className={view==='all'?'selected':''} onClick={()=>{setNotice('');setView('all');setExpanded(null)}}>Todos</button>
     </div>
     {notice&&<p className="updates-message" role="status">{notice}</p>}
     {error&&<p className="updates-error" role="alert">{error}</p>}
     {loading&&<p className="updates-placeholder" role="status">Carregando atualizações…</p>}
-    {!loading&&!error&&result&&<>
-      <p className="updates-count">{count} pacote{count===1?'':'s'} {view==='open'?'aberto'+(count===1?'':'s'):'fechado'+(count===1?'':'s')}</p>
-      {!count&&<div className="fh-surface updates-empty"><strong>{view==='open'?'Nenhuma atualização pendente':'Nenhuma atualização fechada'}</strong><p>Os pacotes aparecerão aqui quando o backend preparar informações reais para revisão.</p></div>}
+    {!loading&&!error&&result&&gmail&&<>
+      <p className="updates-count">{count} atualização{count===1?'':'ões'} {view==='pending'?'pendente'+(count===1?'':'s'):'no histórico'}{items.length<count?' · exibindo '+items.length+' mais recentes':''}</p>
+      {!count&&<div className="fh-surface updates-empty"><strong>{view==='pending'?'Nenhuma atualização pendente':'Nenhuma atualização registrada'}</strong><p>Novas mensagens e propostas aparecerão aqui quando forem registradas.</p></div>}
       <div className="updates-cards">
-        {result.items.map(pkg=><article key={pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':pkg.status==='superseded'?'is-superseded':'')}>
-          <button type="button" className="updates-card-summary" aria-expanded={expanded===pkg.id} onClick={()=>{setExpanded(expanded===pkg.id?null:pkg.id);setAnswers({})}}>
-            <span className="updates-card-top"><strong>{pkg.title}</strong><span aria-hidden="true">{expanded===pkg.id?'▴':'▾'}</span></span>
+        {items.map(item=>item.kind==='gmail'?
+          <GmailIntakeCard key={'gmail-'+item.data.id} notice={item.data}
+            decisionsEnabled={gmail.decisionsEnabled}
+            expanded={expanded==='gmail-'+item.data.id}
+            onToggle={()=>{setExpanded(expanded==='gmail-'+item.data.id?null:'gmail-'+item.data.id);setAnswers({})}}
+            onSuccess={()=>{setRefresh(v=>v+1);setExpanded(null)}}
+            onUnauthorized={onUnauthorized}/>:
+          (()=>{const pkg=item.data;return <article key={'package-'+pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':pkg.status==='superseded'?'is-superseded':'')}>
+          <button type="button" className="updates-card-summary" aria-expanded={expanded==='package-'+pkg.id} onClick={()=>{setExpanded(expanded==='package-'+pkg.id?null:'package-'+pkg.id);setAnswers({})}}>
+            <span className="updates-card-top"><strong>{pkg.title}</strong><span aria-hidden="true">{expanded==='package-'+pkg.id?'▴':'▾'}</span></span>
             <span className="updates-source">{sourceLabel[pkg.source]} · {updatedDate(pkg.createdAt)}</span>
             <span className="updates-description">{pkg.summary}</span>
             <span className="updates-card-foot"><span className={'updates-state '+(pkg.status==='rejected'?'state-rejected':pkg.status==='executed'?'state-executed':'')}>{statusLabel[pkg.status]}</span>
               {pkg.missingFields.length>0&&<span className="updates-pending">⚠ {pkg.missingFields.length} pendência{pkg.missingFields.length===1?'':'s'}</span>}
             </span>
           </button>
-          {expanded===pkg.id&&<div className="updates-detail">
+          {expanded==='package-'+pkg.id&&<div className="updates-detail">
             <p className="updates-meta">{[pkg.experienceId,pkg.plate].filter(Boolean).join(' · ')||'Experiência não identificada'}</p>
             <h3>Ações propostas</h3>
             <ul>{pkg.actions.map(action=><li key={action.id}><strong>{action.title}</strong>{action.detail&&<span>{action.detail}</span>}</li>)}</ul>
@@ -144,7 +165,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
             {pkg.status==='execution_failed'&&<p className="updates-note">Pacote aprovado com execução pendente. Verifique a falha antes de tentar novamente.</p>}
             {pkg.decidedAt&&<p className="updates-note">Decisão registrada em {updatedDate(pkg.decidedAt)}.</p>}
           </div>}
-        </article>)}
+        </article>})())}
       </div>
     </>}
   </section>

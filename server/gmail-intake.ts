@@ -95,16 +95,31 @@ export class GmailIntakeRepository {
     if(!row)fail(404,'GMAIL_INTAKE_NOT_FOUND','Aviso não encontrado.')
     return mapped(row!)
   }
-  list(view:'open'|'closed'):GmailIntakeNoticeList {
-    if(!['open','closed'].includes(view))fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
+  list(view:'open'|'closed'|'all',query=''):GmailIntakeNoticeList {
+    if(!['open','closed','all'].includes(view)||query.length>160)fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
     if(!hasGmailIntakeSchema(this.db))return {items:[],total:0,decisionsEnabled:false}
-    const state=view==='open'?'awaiting_authorization':undefined
-    const where=state?'WHERE status=?':'WHERE status != ?'
-    const status=state??'awaiting_authorization'
-    const total=(this.db.prepare('SELECT COUNT(*) AS n FROM gmail_intake_notices '+where).get(status) as {n:number}).n
-    const rows=this.db.prepare('SELECT * FROM gmail_intake_notices '+where+
-      ' ORDER BY created_at DESC,id DESC LIMIT 100').all(status) as Row[]
-    return {items:rows.map(mapped),total,decisionsEnabled:false}
+    const where=view==='open'?"WHERE status='awaiting_authorization'":view==='closed'?"WHERE status!='awaiting_authorization'":''
+    // Search through the complete view, not only its newest 100 records.
+    const statement=this.db.prepare('SELECT * FROM gmail_intake_notices '+where+
+      ' ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?')
+    const needle=query.toLocaleLowerCase('pt-BR').trim()
+    const items:GmailIntakeNotice[]=[]
+    let total=0,offset=0
+    const pageSize=250
+    while(true){
+      const rows=statement.all(pageSize,offset) as Row[]
+      for(const row of rows){
+        const notice=mapped(row)
+        if(!needle||[notice.title,notice.summary,notice.plateHint??'',notice.xpHint??'',notice.reason]
+          .some(value=>value.toLocaleLowerCase('pt-BR').includes(needle))){
+          total++
+          if(items.length<100)items.push(notice)
+        }
+      }
+      if(rows.length<pageSize)break
+      offset+=rows.length
+    }
+    return {items,total,decisionsEnabled:false}
   }
   decide(id:string,input:GmailIntakeDecisionInput,actor:string):GmailIntakeNotice {
     if(!hasGmailIntakeSchema(this.db))fail(503,'GMAIL_INTAKE_DISABLED','Fila de e-mails desabilitada.')
