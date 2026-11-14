@@ -52,6 +52,9 @@ test('autosave signatures ignore metadata/default-property order while retaining
   assert.equal(pieceSignature(p),pieceSignature(copy));copy.services.reverse();assert.equal(pieceSignature(p),pieceSignature(copy),'visual order is not persisted ordering')
   const flipped=structuredClone(p);flipped.services[0]!.enabled=!flipped.services[0]!.enabled
   assert.notEqual(pieceSignature(p),pieceSignature(flipped));assert.equal(pieceDataSignature(p),pieceDataSignature(flipped))
+  const switched=structuredClone(p);switched.pieceId='different-canonical-piece';assert.notEqual(pieceSignature(p),pieceSignature(switched),'piece change cannot be mistaken for the same confirmed composition')
+  const pendingReview=structuredClone(p);pendingReview.pieceReviewPending=true;assert.notEqual(pieceSignature(p),pieceSignature(pendingReview),'technical review status must invalidate cached workspace signatures')
+  assert.equal(pieceSignature(p),pieceSignature({...p,pieceReviewPending:false}),'legacy default and explicit reviewed status are equivalent')
   const paired=structuredClone(p);paired.services[0]!.quantity='2';paired.services[1]!.enabled=false;const swapped=structuredClone(paired);swapped.services[0]!.enabled=false;swapped.services[1]!.enabled=true;assert.notEqual(pieceSignature(paired,false),pieceSignature(swapped,false),'recovery keeps attributes paired with their flags')
   flipped.services[0]!.notes='must save';assert.notEqual(pieceDataSignature(p),pieceDataSignature(flipped))
   const part={...f.components.list(f.at.id)[0]!,enabled:true},next={...part,revision:99,quantity:'01.000',manualPrice:'10.000'}
