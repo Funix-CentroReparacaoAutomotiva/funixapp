@@ -256,7 +256,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:16,apply:db=>db.exec(`
     ALTER TABLE atendimentos ADD COLUMN fabrication_year TEXT;
     ALTER TABLE atendimentos ADD COLUMN model_year TEXT;
-  `)}
+  `)},
+  // #168: technical review remains attached to the diagnosis across scenarios.
+  {version:17,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')}
 ]
 
 export function migrate(db: DatabaseSync) {

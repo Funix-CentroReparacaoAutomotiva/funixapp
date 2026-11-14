@@ -164,6 +164,7 @@ test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', (
     db.close()
     // Reconstrói em arquivo sintético o formato imediatamente anterior à migração V16.
     db=new DatabaseSync(temp.filename)
+    db.exec('ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; DELETE FROM schema_migrations WHERE version=17;')
     db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year')
     db.exec('ALTER TABLE atendimentos DROP COLUMN model_year')
     db.exec('DELETE FROM schema_migrations WHERE version=16')
@@ -173,7 +174,7 @@ test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', (
     assert.equal(restored.vehicle,'Gol 2019/2020')
     assert.equal(restored.fabricationYear,null)
     assert.equal(restored.modelYear,null)
-    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),16)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),17)
     db.close()
   } finally { temp.close() }
 })

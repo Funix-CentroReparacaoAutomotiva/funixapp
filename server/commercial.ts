@@ -90,7 +90,7 @@ export class CommercialRepository {
   }
   private diagnosis(row: Row, lines: Row[]): DiagnosisItem {
     const services = lines.map(s => ({ id: String(s.id), serviceId: String(s.service_id), dimensionId: s.dimension_id === null ? null : String(s.dimension_id), quantity: String(s.quantity), ...(s.recommendation_rule_id?{recommendationRuleId:String(s.recommendation_rule_id)}:{}), enabled:s.scenario_enabled===1, notes:String(s.notes), diagnosisId:s.diagnosis_id===null?null:String(s.diagnosis_id), ...(servicePolicy(String(s.service_id))?.execution==='external_confirmation'?{executionConfirmed:s.execution_scope===executionScope({serviceId:String(s.service_id),dimensionId:s.dimension_id===null?null:String(s.dimension_id),quantity:String(s.quantity)})}:{}) }))
-    return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),intensity:row.intensity==null?null:String(row.intensity)as DiagnosisIntensity,notes:String(row.notes),enabled:row.scenario_enabled===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
+    return { id:String(row.id),atendimentoId:String(row.atendimento_id),pieceId:String(row.piece_id),diagnosisId:row.diagnosis_id===null?null:String(row.diagnosis_id),intensity:row.intensity==null?null:String(row.intensity)as DiagnosisIntensity,notes:String(row.notes),enabled:row.scenario_enabled===1,pieceReviewPending:row.piece_review_pending===1,revision:Number(row.revision),createdAt:String(row.created_at),updatedAt:String(row.updated_at),services }
   }
   private getDiagnosis(atendimentoId: string, id: string, scenarioId?: string) {
     const selected=selectedScenario(this.db,atendimentoId,scenarioId)
@@ -179,6 +179,53 @@ export class CommercialRepository {
       touchComposition(this.db,atendimentoId)
       const item=this.getDiagnosis(atendimentoId,id,scenarioId)
       return withRevision?{item,scenarioRevision:Number(this.db.prepare('SELECT revision FROM scenarios WHERE id=?').get(scenarioId)!.revision)}:item
+    })
+  }
+  /** #168: replace the canonical piece without recreating the diagnosis or its children. */
+  replacePiece(atendimentoId:string,id:string,input:unknown):DiagnosisItem {
+    const data=object(input,['pieceId','revision','compositionRevision','scenarios'])
+    const pieceId=text(data.pieceId,100,true),expected=revision(data.revision),compositionRevision=revision(data.compositionRevision)
+    if(!Array.isArray(data.scenarios)||!data.scenarios.length)invalid('Informe as revisões de todos os cenários.')
+    const scenarios=data.scenarios.map(raw=>{const s=object(raw,['id','revision']);return{id:text(s.id,100,true),revision:revision(s.revision)}})
+    if(new Set(scenarios.map(s=>s.id)).size!==scenarios.length)invalid('Cenários repetidos.')
+    return this.transaction(()=>{
+      new AtendimentoRepository(this.db).get(atendimentoId)
+      const state=this.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimentoId)
+      const current=this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=?').all(atendimentoId)
+      if(state?.revision!==compositionRevision||current.length!==scenarios.length||current.some(s=>!scenarios.some(v=>v.id===s.id&&v.revision===s.revision)))conflict()
+      const old=this.getDiagnosis(atendimentoId,id)
+      if(old.revision!==expected)conflict()
+      this.usable(pieceId,'peca')
+      if(old.pieceId===pieceId)return old
+      if(this.db.prepare('SELECT id FROM diagnosis_items WHERE atendimento_id=? AND piece_id=?').get(atendimentoId,pieceId))
+        throw new ServiceError(409,'PIECE_ALREADY_SELECTED','A peça de destino já está neste Atendimento. A composição original foi preservada.')
+      const updated=this.db.prepare('UPDATE diagnosis_items SET piece_id=?,piece_review_pending=1,revision=revision+1,updated_at=? WHERE id=? AND atendimento_id=? AND revision=?')
+        .run(pieceId,new Date().toISOString(),id,atendimentoId,expected)
+      if(updated.changes!==1)conflict()
+      // Identity is unchanged: services, components and per-scenario flags retain their foreign keys.
+      touchComposition(this.db,atendimentoId)
+      return this.getDiagnosis(atendimentoId,id)
+    })
+  }
+  /** Explicit technical verification of the new piece, shared across all scenarios. */
+  confirmPieceReview(atendimentoId:string,id:string,input:unknown):DiagnosisItem {
+    const data=object(input,['revision','compositionRevision','scenarios','confirmed'])
+    if(data.confirmed!==true)invalid('Confirme a revisão técnica da composição.')
+    const expected=revision(data.revision),expectedComposition=revision(data.compositionRevision)
+    if(!Array.isArray(data.scenarios)||!data.scenarios.length)invalid('Informe as revisões de todos os cenários.')
+    const declared=data.scenarios.map(raw=>{const s=object(raw,['id','revision']);return{id:text(s.id,100,true),revision:revision(s.revision)}})
+    if(new Set(declared.map(s=>s.id)).size!==declared.length)invalid('Cenários repetidos.')
+    return this.transaction(()=>{
+      new AtendimentoRepository(this.db).get(atendimentoId)
+      const state=this.db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(atendimentoId)
+      const current=this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=?').all(atendimentoId)
+      if(state?.revision!==expectedComposition||current.length!==declared.length||current.some(s=>!declared.some(v=>v.id===s.id&&v.revision===s.revision)))conflict()
+      const old=this.getDiagnosis(atendimentoId,id)
+      if(old.revision!==expected)conflict()
+      if(!old.pieceReviewPending)return old
+      this.db.prepare('UPDATE diagnosis_items SET piece_review_pending=0,revision=revision+1,updated_at=? WHERE id=? AND atendimento_id=?').run(new Date().toISOString(),id,atendimentoId)
+      touchComposition(this.db,atendimentoId)
+      return this.getDiagnosis(atendimentoId,id)
     })
   }
   remove(atendimentoId: string, id: string, input: unknown) {

@@ -69,7 +69,7 @@ test('upgrades actual M1.1 SQL preserving legacy Atendimento values and adding o
       assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='fabrication_year'").get())
       assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='model_year'").get())
       assert(db.prepare("SELECT count(*) n FROM atendimentos WHERE fabrication_year IS NOT NULL OR model_year IS NOT NULL").get()!.n===0)
-      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
       assert.equal(new CommercialRepository(db).catalogs().items.length, 163)
       db.close()
     }

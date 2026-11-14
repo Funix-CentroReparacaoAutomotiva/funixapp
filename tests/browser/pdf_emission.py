@@ -170,7 +170,7 @@ async def device_case(browser,device,viewport):
   await page.reload();await expect(page.locator('.scenario-trigger')).to_be_enabled();await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 3',exact=True).click();await expect(finance.locator('.summary .deadline span')).to_have_text('—');await shot('prazo-indisponivel')
   h.mark(device+': an automatic deadline with missing capacity displays an em dash, never zero or a stale promise')
   with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:
-   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==16;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
+   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==17;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
   assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not h.external and not h.page_errors,(h.external,h.page_errors)
   h.mark(device+': V15 unchanged, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
  except Exception as error:
