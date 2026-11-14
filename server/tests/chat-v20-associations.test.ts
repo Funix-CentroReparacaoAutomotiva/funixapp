@@ -96,15 +96,15 @@ test('revision, idempotent requestIds, invalid associations and context all fail
   } finally { f.db.close() }
 })
 
-test('offline schema is explicitly not part of V16 bootstrap; no chat migration is introduced', () => {
+test('offline schema is explicitly not part of V17 bootstrap; no chat migration is introduced', () => {
   const db = openDatabase(':memory:')
   try {
     const version = db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v
-    assert.equal(version, 16)
+    assert.equal(version, 17)
     assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get(), undefined)
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
-    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 16)
+    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 17)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally { db.close() }
 })
@@ -129,7 +129,7 @@ test('stable association survives full SQLite file close/reopen with no legacy m
     assert.deepEqual(reopened.rememberConversation(instance, pn), { conversationId, revision: 1 })
     assert.deepEqual(reopened.listActive(conversationId).items.map(x => x.atendimentoId), [atendimento.id])
     assert.equal(reopened.listActive(conversationId).activeAtendimentoId, atendimento.id)
-    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version), 16)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version), 17)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally {
     try { db.close() } catch { /* already closed on failure */ }
