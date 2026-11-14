@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
+import {Readable} from 'node:stream'
+import type {IncomingMessage,ServerResponse} from 'node:http'
+import {createRequestHandler} from '../app.ts'
+import {AtendimentoRepository} from '../atendimentos.ts'
+import {syntheticRenderer} from './fixtures/budget-renderer.ts'
 import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
@@ -89,5 +94,49 @@ test('Different emitted versions can produce distinct OSs while each version has
   assert.equal(orders.create(fixture.at.id,version.id,{authorized:true}).id,first.id)
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_orders').get()!.count,2)
   assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,first.number)
+ }finally{db.close()}
+})
+
+
+test('HTTP OS endpoints require login and Origin and return the persisted operational PDF',async()=>{
+ const db=openDatabase(':memory:'),origin='http://localhost:5173'
+ try{
+  const{fixture,version}=await emitted(db)
+  const handler=createRequestHandler({atendimentos:new AtendimentoRepository(db),password:'synthetic-password-123',origin,budgetRenderer:syntheticRenderer})
+  async function request(path:string,method='GET',body?:unknown,cookie?:string,otherOrigin=origin){
+   const req=Object.assign(Readable.from(body===undefined?[]:[JSON.stringify(body)]),{
+    url:path,method,headers:{...(cookie?{cookie}:{}),...(method!=='GET'?{origin:otherOrigin,'content-type':'application/json'}:{})},
+    socket:{remoteAddress:'127.0.0.1'}
+   }) as unknown as IncomingMessage
+   let status=200;const headers=new Headers(),chunks:Buffer[]=[]
+   const res={setHeader(name:string,value:string|number){headers.set(name,String(value))},
+     writeHead(code:number){status=code},
+     end(value?:string|Buffer){if(value!==undefined)chunks.push(Buffer.isBuffer(value)?value:Buffer.from(value))}
+   } as unknown as ServerResponse
+   await handler(req,res)
+   return new Response(new Uint8Array(Buffer.concat(chunks)),{status,headers})
+  }
+  const url='/api/atendimentos/'+fixture.at.id+'/orcamentos/'+version.id+'/os'
+  assert.equal((await request(url)).status,401)
+  const login=await request('/api/session','POST',{password:'synthetic-password-123'})
+  assert.equal(login.status,200)
+  const cookie=login.headers.get('set-cookie')!.split(';')[0]!
+  assert.equal((await request(url,'POST',{authorized:true},cookie,'https://invalid.example')).status,403)
+  const absent=await request(url,'GET',undefined,cookie)
+  assert.equal(absent.status,404)
+  assert.equal((await absent.json()).error.code,'OS_NOT_FOUND')
+  assert.equal((await request(url,'POST',{authorized:false},cookie)).status,422)
+  const created=await request(url,'POST',{authorized:true},cookie)
+  assert.equal(created.status,201)
+  const order=await created.json()
+  assert.equal(order.number,'OS-000001')
+  assert.equal((await (await request(url,'GET',undefined,cookie)).json()).id,order.id)
+  assert.equal((await (await request(url,'POST',{authorized:true},cookie)).json()).id,order.id)
+  const pdf=await request(url+'/pdf','GET',undefined,cookie)
+  assert.equal(pdf.status,200)
+  assert.equal(pdf.headers.get('content-type'),'application/pdf')
+  assert.match(pdf.headers.get('content-disposition')??'',/inline/)
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0,8).toString(),'%PDF-1.7')
+  assert.equal((await request(url+'/pdf')).status,401)
  }finally{db.close()}
 })
