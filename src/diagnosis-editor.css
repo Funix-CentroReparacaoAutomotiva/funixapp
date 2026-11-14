@@ -59,3 +59,8 @@
 .approved-editor .section-bar .add-labeled .icon{flex:none;width:15px;height:15px}
 .approved-editor .section-bar .add-labeled:focus-visible{outline:2px solid #142c60;outline-offset:2px}
 @media(max-width:390px){.approved-editor .section-bar .add-labeled{max-width:50%;padding:6px 8px;font-size:11px}}
+
+/* #120: separação estrutural entre Serviços e Componentes, sem depender somente de cor. */
+.approved-editor .section-bar.component-title{position:relative;margin-top:24px;padding-top:18px;border-top:2px solid #aebed2;min-height:52px}
+.approved-editor .section-bar.component-title::before{content:'';position:absolute;top:-2px;left:0;width:64px;border-top:3px solid #315a84}
+@media(max-width:390px){.approved-editor .section-bar.component-title{margin-top:20px;padding-top:16px;min-height:54px}}
