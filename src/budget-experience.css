@@ -41,3 +41,9 @@
 .commercial-workspace section.approved-finance .summary>.metric,.commercial-workspace section.approved-finance .summary>.icon{grid-column:auto;grid-row:auto}
 @media(max-width:400px){.commercial-workspace section.approved-finance .summary{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr) 26px 9px;gap:3px;padding-inline:7px}.commercial-workspace section.approved-finance .summary .metric span{font-size:10px}.commercial-workspace section.approved-finance .summary .metric.final span{font-size:11px}}
 .commercial-workspace section.approved-finance .summary>.metric:nth-child(n){grid-column:auto;grid-row:auto}
+
+.budget-history-order{min-width:66px;min-height:44px;align-self:center;display:grid;place-items:center;border:1px solid #cad7e7;border-radius:7px;background:white;color:#16315a;font-size:11px;font-weight:700;padding:4px;text-decoration:none}
+.issued-order-card{border:1px solid #cad7e7;border-radius:8px;padding:12px;display:grid;gap:8px;margin-top:12px}
+.issued-order-card p{margin:0;font-size:12px}
+.issued-order-create,.issued-order-link{display:grid;place-items:center;min-height:44px;padding:10px 12px;border:0;border-radius:7px;background:#153764;color:#fff;font-weight:700;text-decoration:none;margin-top:10px}
+@media(max-width:400px){.budget-history-order{min-width:58px;font-size:10px}.budget-history-download{width:38px}}

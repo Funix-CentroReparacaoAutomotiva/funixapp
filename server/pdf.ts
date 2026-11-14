@@ -26,6 +26,33 @@ function wrap(text:string):string[]{
  }
  return result
 }
+// Opt-in word-aware wrapping for operational documents. Commercial PDFs keep
+// their original renderer, preserving historical and future budget behavior.
+function wrapOperational(text:string):string[]{
+ const result:string[]=[]
+ const measure=(value:string)=>[...value].reduce((sum,char)=>sum+width(char)*10/1000,0)
+ for(const paragraph of text.replace(/\r/g,'').split('\n')){
+  if(!paragraph.trim()){result.push('');continue}
+  let line='',lineWidth=0
+  for(const word of paragraph.trim().split(/\s+/)){
+   const wordWidth=measure(word),spaceWidth=line?measure(' '):0
+   if(line&&lineWidth+spaceWidth+wordWidth>495){result.push(line);line='';lineWidth=0}
+   if(wordWidth>495){
+    for(const char of word){
+     const w=measure(char)
+     if(line&&lineWidth+w>495){result.push(line);line='';lineWidth=0}
+     line+=char;lineWidth+=w
+    }
+   }else{
+    if(line){line+=' ';lineWidth+=measure(' ')}
+    line+=word;lineWidth+=wordWidth
+   }
+  }
+  result.push(line)
+ }
+ return result
+}
+
 const utf16=(value:string)=>{const b=Buffer.from(value,'utf16le');b.swap16();return b.toString('hex').toUpperCase()}
 
 export function budgetPdf(version:BudgetVersion):Buffer {
@@ -52,7 +79,13 @@ export function budgetPdf(version:BudgetVersion):Buffer {
   `Condições e ressalvas comerciais: ${s.conditions||'Não informadas.'}`,
   'Documento comercial. Não é ordem de serviço. Atendimento operacional permanece no ERP.',
   `Identificador imutável da versão: ${version.id}`)
- const lines=paragraphs.flatMap(wrap),pages:string[][]=[]
+ return documentPdf(paragraphs,documentId)
+}
+
+// Shared local Unicode PDF renderer. Historical budget output remains unchanged.
+// Work orders use their own strictly operational paragraphs, never jsreport.
+export function documentPdf(paragraphs:string[],documentId:string,options?:{wrapAtWords?:boolean}):Buffer {
+ const lines=paragraphs.flatMap(options?.wrapAtWords?wrapOperational:wrap),pages:string[][]=[]
  for(let i=0;i<lines.length;i+=46)pages.push(lines.slice(i,i+46))
  const footers=pages.map((_,i)=>`FUNIX | Página ${i+1}/${pages.length} | ${documentId}`)
  const chars=[...new Set([...lines.join(''),...footers.join('')])].sort((a,b)=>a.codePointAt(0)!-b.codePointAt(0)!)
