@@ -3,7 +3,6 @@ import type { GmailIntakeDecision, GmailIntakeNotice } from '../shared/gmail-int
 import { api } from './api'
 import './gmail-intake-notices.css'
 
-type View = 'open'|'closed'
 const compactStatusLabel = {
   awaiting_authorization:'Aguardando decisão',
   authorized:'Autorizado, não executado',
