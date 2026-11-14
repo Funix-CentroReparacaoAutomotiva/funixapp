@@ -35,18 +35,16 @@ const db=openDatabase(process.argv[1])
 const f=commercialFixture(db)
 const original=f.atendimentos.update(f.at.id,{revision:f.at.revision,vehicle:'Veículo sintético',plate:'QAO1S01'})
 // A second unselected service must never turn into authorized work.
-const extra=f.commercial.add(f.at.id,{pieceCodes:['alma_para_choque_dianteiro']})[0]
+const added=f.commercial.add(f.at.id,{pieceCodes:['alma_para_choque_dianteiro']})
+const targetPiece=f.commercial.catalogs().items.find(c=>c.code==='alma_para_choque_dianteiro')
+const extra=added.find(d=>d.pieceId===targetPiece?.id)
 if(!extra)throw new Error('Missing synthetic secondary piece')
 const omittedService=f.commercial.saveCatalog({kind:'servico',name:'NÃO EXECUTAR',status:'validado'})
 const omittedDimension=f.commercial.saveCatalog({kind:'dimensao',name:'Dimensão não autorizada',serviceId:omittedService.id,status:'validado'})
-const extraDiagnosis=f.commercial.updateDiagnosis(f.at.id,extra.id,{revision:extra.revision,services:[
- {serviceId:f.service.id,dimensionId:f.dimension.id,quantity:'1'},
- {serviceId:omittedService.id,dimensionId:omittedDimension.id,quantity:'1',notes:'NÃO EXECUTAR'}
+f.commercial.updateDiagnosis(f.at.id,extra.id,{revision:extra.revision,services:[
+ {serviceId:f.service.id,dimensionId:f.dimension.id,quantity:'1',enabled:true},
+ {serviceId:omittedService.id,dimensionId:omittedDimension.id,quantity:'1',enabled:false,notes:'NÃO EXECUTAR'}
 ]})
-const allowed=extraDiagnosis.services.find(s=>s.serviceId===f.service.id)
-if(!allowed)throw new Error('Missing synthetic authorized line')
-const scenario=f.scenarios.list(f.at.id)[0]
-f.scenarios.update(f.at.id,scenario.id,{revision:scenario.revision,pieceFlags:{[extra.id]:true},serviceFlags:{[allowed.id]:true}})
 const b=new BudgetRepository(db)
 const request={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
 const preview=b.preview(f.at.id,request)
