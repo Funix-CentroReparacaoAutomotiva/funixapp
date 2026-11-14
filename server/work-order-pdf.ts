@@ -7,14 +7,17 @@ export function operationalParagraphs(order:WorkOrder):string[] {
   const paragraphs=[
     'FUNIX | ORDEM DE SERVIÇO '+order.number,
     'Via operacional para execução. Não é proposta comercial.',
+    '',
     'Orçamento de origem: '+(order.budgetNumber||'sem número comercial')+
       ' | Versão '+order.budgetLabel+' | ID '+order.budgetVersionId,
     'Criada em: '+order.createdAt,
-    'Autorização: confirmada no aplicativo em '+order.authorization.confirmedAt+
+    'Autorização: confirmada no aplicativo em '+new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(order.authorization.confirmedAt))+
       '. Operador individual não identificado pela autenticação atual.',
+    '',
     'Cliente: '+(scope.customer.name||'Não informado'),
     'Veículo: '+(scope.vehicle.description||'Não informado')+
       ' | Placa: '+(scope.vehicle.plate||'Não informada'),
+    '',
     'DIAGNÓSTICOS'
   ]
   for(const item of scope.diagnostics) {
@@ -22,9 +25,9 @@ export function operationalParagraphs(order:WorkOrder):string[] {
       (item.intensity?' | Intensidade: '+item.intensity:''))
     if(item.notes)paragraphs.push('Observação do diagnóstico: '+item.notes)
   }
-  paragraphs.push('SERVIÇOS E COMPONENTES AUTORIZADOS')
+  paragraphs.push('','SERVIÇOS E COMPONENTES AUTORIZADOS')
   for(const item of scope.lines) {
-    paragraphs.push(item.pieceName+' | '+(item.kind==='service'?'Serviço: ':'Componente: ')+item.name,
+    paragraphs.push('',item.pieceName+' | '+(item.kind==='service'?'Serviço: ':'Componente: ')+item.name,
       'Quantidade: '+item.quantity+(item.dimension?' | Dimensão: '+item.dimension:'')+
       (item.diagnosis?' | Diagnóstico: '+item.diagnosis:''))
     if(item.notes)paragraphs.push('Observação: '+item.notes)
@@ -32,12 +35,12 @@ export function operationalParagraphs(order:WorkOrder):string[] {
       paragraphs.push('Etapa técnica: '+stage.name+(stage.dimension?' | Dimensão: '+stage.dimension:''))
   }
   if(scope.deadlineDays!==null)
-    paragraphs.push('Prazo de execução previsto na versão emitida: '+scope.deadlineDays+
+    paragraphs.push('','Prazo de execução previsto na versão emitida: '+scope.deadlineDays+
       ' dias úteis. Não representa data de entrega confirmada.')
-  paragraphs.push('Qualquer alteração material de escopo depende de nova autorização.')
+  paragraphs.push('','Qualquer alteração material de escopo depende de nova autorização.')
   return paragraphs
 }
 
 export function workOrderPdf(order:WorkOrder):Buffer {
-  return documentPdf(operationalParagraphs(order),order.number)
+  return documentPdf(operationalParagraphs(order),order.number,{wrapAtWords:true})
 }
