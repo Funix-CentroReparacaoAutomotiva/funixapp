@@ -100,7 +100,7 @@ test('offline schema is explicitly not part of V18 bootstrap; no chat migration 
   const db = openDatabase(':memory:')
   try {
     const version = db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v
-    assert.equal(version, 17)
+    assert.equal(version, 18)
     assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get(), undefined)
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
