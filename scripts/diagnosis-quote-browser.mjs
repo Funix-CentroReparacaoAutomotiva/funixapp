@@ -66,7 +66,7 @@ try{
    // #215: menus nativos podem abrir sobre fundo branco; garantir texto escuro nas opções.
    const popupColors=await piecePicker.evaluate(el=>{
      const option=el.options[0],style=getComputedStyle(option)
-     const rgb=value=>[...value.matchAll(/[\\d.]+/g)].map(m=>Number(m[0])).slice(0,3)
+     const rgb=value=>[...value.matchAll(/[0-9.]+/g)].map(m=>Number(m[0])).slice(0,3)
      return {foreground:rgb(style.color),background:rgb(style.backgroundColor),scheme:getComputedStyle(el).colorScheme}
    })
    const brightness=rgb=>rgb.reduce((acc,v)=>acc+v,0)/3
