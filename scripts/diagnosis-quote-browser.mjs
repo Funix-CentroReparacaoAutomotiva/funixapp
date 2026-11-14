@@ -60,42 +60,53 @@ try{
    assert((await componentHeading.innerText()).includes(money(official.componentTotal)))
    assert(await serviceHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'service header overflow at '+width)
    assert(await componentHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'component header overflow at '+width)
-   // #168: nome da peça vira um seletor direto, inclusive mobile, sem modal ou confirmação.
-   const piecePicker=editor.getByRole('combobox',{name:'Peça',exact:true})
-   assert.equal(await piecePicker.count(),1,'one inline piece selector at '+width)
-   // #215: menus nativos podem abrir sobre fundo branco; garantir texto escuro nas opções.
-   const popupColors=await piecePicker.evaluate(el=>{
-     const option=el.options[0],style=getComputedStyle(option)
-     const rgb=value=>[...value.matchAll(/[0-9.]+/g)].map(m=>Number(m[0])).slice(0,3)
-     return {foreground:rgb(style.color),background:rgb(style.backgroundColor),scheme:getComputedStyle(el).colorScheme}
-   })
-   const brightness=rgb=>rgb.reduce((acc,v)=>acc+v,0)/3
-   assert(popupColors.foreground.length===3&&popupColors.background.length===3,'explicit native option colors at '+width)
-   assert(brightness(popupColors.foreground)<110&&brightness(popupColors.background)>225,'dark options on light menu at '+width)
-   assert(popupColors.scheme.includes('light'),'native light dropdown color-scheme at '+width)
-
-   assert.equal(await editor.getByRole('button',{name:'Trocar peça'}).count(),0,'old extra button removed')
-   assert.equal(await editor.getByRole('button',{name:'Confirmar revisão técnica'}).count(),0,'no review confirmation')
+   // Nome da peça abre combobox filtrado: somente peças do catálogo podem ser selecionadas.
+   const piecePicker=editor.getByRole('button',{name:'Peça: '+catalog.name.replace(/\\s*·\\s*/g,' ')})
+   assert.equal(await piecePicker.count(),1,'one compact piece-name trigger at '+width)
+   assert.equal(await editor.getByRole('button',{name:'Trocar peça'}).count(),0)
+   assert.equal(await editor.getByRole('button',{name:'Confirmar revisão técnica'}).count(),0)
    const target=f.commercial.catalogs().items.find(x=>x.code==='para_choque_traseiro')
    assert(target)
+   const changedRequests=[]
+   page.on('request',req=>{if(req.url().includes('/trocar-peca')&&req.method()==='POST')changedRequests.push(req.url())})
    let unexpectedDialogs=0
    page.on('dialog',dialog=>{unexpectedDialogs++;void dialog.dismiss()})
-   await piecePicker.selectOption(target.id)
-   try{await page.waitForFunction(id=>document.querySelector('.piece-name-select select')?.value===id,target.id,{timeout:9000})}
-   catch(e){console.error('Piece selector diagnostic',await editor.evaluate(el=>({state:el.getAttribute('data-save-state'),value:el.querySelector('.piece-name-select select')?.value,alerts:[...el.querySelectorAll('[role=alert]')].map(a=>a.textContent),feedback:el.textContent?.slice(0,900)})),{dbPiece:f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,target:target.id});throw e}
-   try{await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed',null,{timeout:10000})}
-   catch(e){console.error('Piece swap diagnostic',await editor.evaluate(el=>({state:el.getAttribute('data-save-state'),selected:el.querySelector('.piece-name-select select')?.value,alerts:[...el.querySelectorAll('[role=alert]')].map(a=>a.textContent),status:el.textContent?.slice(0,500)})),{dbPiece:f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,expected:target.id});throw e}
+   await piecePicker.click()
+   const search=editor.getByRole('combobox',{name:'Pesquisar peça'})
+   await search.waitFor()
+   assert.equal(await search.getAttribute('aria-autocomplete'),'list')
+   assert.equal(await search.getAttribute('aria-expanded'),'true')
+   // Texto livre filtra apenas: não cria registro e não habilita uma escolha inexistente.
+   await search.fill('PECA INEXISTENTE XYZ 999')
+   assert.equal(await editor.locator('.piece-search-options').getByRole('option').count(),0)
+   assert.equal(await editor.getByText('Nenhuma peça encontrada').count(),1)
+   assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,catalog.id)
+   assert.equal(changedRequests.length,0,'typing must not persist anything')
+   await search.fill('TRASEIRO')
+   const result=editor.getByRole('option',{name:target.name.replace(/\\s*·\\s*/g,' '),exact:true})
+   await result.waitFor()
+   const legible=await result.evaluate(el=>{
+     const style=getComputedStyle(el)
+     return {foreground:style.color,background:style.backgroundColor,height:el.getBoundingClientRect().height}
+   })
+   assert.equal(legible.foreground,'rgb(23, 43, 69)')
+   assert.equal(legible.background,'rgb(255, 255, 255)')
+   assert(legible.height>=44,'readable touch target at '+width)
+   await result.click()
+   await page.waitForFunction(id=>[...document.querySelectorAll('.piece-search-trigger')].some(el=>el.textContent?.includes(id)),target.name.replace(/\\s*·\\s*/g,' '))
+   await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,target.id)
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.manualPrice,'10')
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.pieceId,piece.id)
-   assert.equal(await editor.locator('.piece-replacement-notice').count(),0)
-   const selectedStyle=await piecePicker.evaluate(el=>({height:el.getBoundingClientRect().height,overflow:el.scrollWidth>el.clientWidth+2}))
-   assert(selectedStyle.height>=44&&!selectedStyle.overflow,'compact piece picker at '+width)
-   await piecePicker.selectOption(catalog.id)
-   await page.waitForFunction(id=>document.querySelector('.piece-name-select select')?.value===id,catalog.id)
+   assert.equal(changedRequests.length,1,'only one persisted switch from choosing an existing piece')
+   await editor.getByRole('button',{name:'Peça: '+target.name.replace(/\\s*·\\s*/g,' ')}).click()
+   const searchAgain=editor.getByRole('combobox',{name:'Pesquisar peça'})
+   await searchAgain.fill('dianteiro')
+   await editor.getByRole('option',{name:catalog.name.replace(/\\s*·\\s*/g,' '),exact:true}).click()
+   await page.waitForFunction(id=>[...document.querySelectorAll('.piece-search-trigger')].some(el=>el.textContent?.includes(id)),catalog.name.replace(/\\s*·\\s*/g,' '))
    await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
    assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,catalog.id)
-   assert.equal(unexpectedDialogs,0,'piece change must never open a confirmation')
+   assert.equal(unexpectedDialogs,0,'no confirmation dialog when selecting existing pieces')
    // Category totals must also be visible before opening the piece editor.
    await page.getByRole('button',{name:'Voltar aos Diagnósticos'}).click()
    const overview=page.locator('.diagnosis-card').filter({hasText:catalog.name})

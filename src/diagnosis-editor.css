@@ -60,15 +60,22 @@
 .approved-editor .section-bar .add-labeled:focus-visible{outline:2px solid #142c60;outline-offset:2px}
 @media(max-width:390px){.approved-editor .section-bar .add-labeled{max-width:50%;padding:6px 8px;font-size:11px}}
 
-/* #168: nome da peça é o seletor nativo, sem cartão/etapa de confirmação. */
-.approved-editor .head>.piece-name-select{position:relative;display:block;width:100%;min-width:0;margin:0 0 8px;font-weight:700}
-.approved-editor .piece-name-select select{appearance:none;-webkit-appearance:none;display:block;box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px 35px 8px 6px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:15px;font-weight:700;text-align:left;text-overflow:ellipsis;cursor:pointer}
-/* Native dropdown menus need explicit contrasting option colors on light OS popups. */
-.approved-editor .piece-name-select select{color-scheme:light}
-.approved-editor .piece-name-select select option{background-color:#fff;color:#172b45}
-.approved-editor .piece-name-select select option:disabled{color:#68788d}
-.approved-editor .piece-name-select select:disabled{opacity:.65;cursor:wait}
-.approved-editor .piece-name-select select:focus-visible{outline:2px solid #315a84;outline-offset:2px}
-.approved-editor .piece-name-select .piece-chevron{position:absolute;pointer-events:none;right:8px;top:50%;transform:translateY(-50%);display:grid;place-items:center}
-.approved-editor .piece-name-select .piece-chevron .icon{width:17px;height:17px}
-@media(max-width:390px){.approved-editor .piece-name-select select{font-size:14px;padding-right:32px}}
+/* Seletor pesquisável: mantém título compacto e mostra resultados exclusivamente do catálogo. */
+.approved-editor .head>.piece-search-picker{position:relative;display:block;width:100%;min-width:0;margin:0 0 8px;font-weight:700}
+.approved-editor .piece-search-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:8px 9px 8px 6px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+.approved-editor .piece-search-trigger>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.approved-editor .piece-search-trigger:disabled{opacity:.65;cursor:wait}
+.approved-editor .piece-search-trigger:focus-visible,.approved-editor .piece-search-field input:focus-visible,.approved-editor .piece-search-option:focus-visible{outline:2px solid #62badd;outline-offset:2px}
+.approved-editor .piece-search-trigger .piece-chevron{flex:none;font-size:19px;font-weight:700;line-height:1}
+.approved-editor .piece-search-open{position:relative;z-index:12;width:100%;padding:3px 0 0}
+.approved-editor .piece-search-field{display:flex;align-items:center;gap:4px;border:1px solid #a9bad0;border-radius:8px;background:#fff;color:#172b45}
+.approved-editor .piece-search-field input{flex:1;min-width:0;min-height:44px;border:0;border-radius:8px;background:#fff;color:#172b45;padding:8px 10px;font:inherit;font-size:14px}
+.approved-editor .piece-search-field input::placeholder{color:#657589;opacity:1}
+.approved-editor .piece-search-close{flex:none;min-width:40px;min-height:40px;border:0;border-radius:7px;background:#fff;color:#344a62;font-size:24px;cursor:pointer}
+.approved-editor .piece-search-options{position:absolute;z-index:13;left:0;right:0;top:100%;max-height:min(42vh,280px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #a9bad0;border-radius:9px;background:#fff;color:#172b45;box-shadow:0 8px 24px #071b3430}
+.approved-editor .piece-search-option{display:block;width:100%;min-height:44px;padding:10px 12px;border:0;border-bottom:1px solid #e5ebf2;background:#fff;color:#172b45;font-size:14px;font-weight:500;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.approved-editor .piece-search-option:last-child{border-bottom:0}
+.approved-editor .piece-search-option:hover,.approved-editor .piece-search-option[data-active=true]{background:#eaf2fd;color:#112c4f}
+.approved-editor .piece-search-option[aria-selected=true]{font-weight:700}
+.approved-editor .piece-search-empty{padding:12px;color:#4d5e74;font-size:13px;font-weight:400}
+@media(max-width:390px){.approved-editor .piece-search-trigger{font-size:14px}.approved-editor .piece-search-options{max-height:min(38vh,260px)}}
