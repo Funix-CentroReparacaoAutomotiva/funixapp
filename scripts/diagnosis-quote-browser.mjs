@@ -71,7 +71,8 @@ try{
    page.on('dialog',dialog=>{unexpectedDialogs++;void dialog.dismiss()})
    await piecePicker.selectOption(target.id)
    await page.waitForFunction(id=>document.querySelector('.piece-name-select select')?.value===id,target.id)
-   await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
+   try{await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed',null,{timeout:10000})}
+   catch(e){console.error('Piece swap diagnostic',await editor.evaluate(el=>({state:el.getAttribute('data-save-state'),selected:el.querySelector('.piece-name-select select')?.value,alerts:[...el.querySelectorAll('[role=alert]')].map(a=>a.textContent),status:el.textContent?.slice(0,500)})),{dbPiece:f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,expected:target.id});throw e}
    assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,target.id)
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.manualPrice,'10')
    assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.pieceId,piece.id)
