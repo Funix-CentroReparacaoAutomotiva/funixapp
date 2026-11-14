@@ -308,3 +308,75 @@ Resposta `{requestId, transcription, plan, applied:false}`. Áudio e transcriç�
 Erros estruturados com requestId: `VOICE_UNAVAILABLE` (503), `VOICE_AUDIO_FORMAT` (415), `VOICE_AUDIO_TOO_LARGE` (413), `VOICE_INVALID_INPUT` (400), `VOICE_UPLOAD_TIMEOUT` (408), `VOICE_TIMEOUT` (504), `VOICE_BUSY/VOICE_RATE_LIMIT` (429), `VOICE_CONTEXT_STALE` (409), `VOICE_TRANSCRIPTION_FAILED/VOICE_INTERPRETATION_FAILED/VOICE_PROVIDER_UNAVAILABLE/VOICE_MODEL_INVALID/VOICE_MODEL_INCOMPLETE` (502), `VOICE_MODEL_REFUSED` (422). Contexto alterado é distinto de erro de IA e de conflito comercial de gravação. Autenticação/origem/pertencimento mantêm os erros existentes.
 
 Configuração exclusivamente backend: `OPENAI_API_KEY`, `FUNIX_VOICE_TRANSCRIPTION_MODEL=gpt-transcribe`, `FUNIX_VOICE_INTERPRETATION_MODEL=gpt-6.1-terra`. Sem chave: indisponível, nenhuma chamada externa. Nenhum segredo VITE. Não há fallback silencioso de modelo. O Compose existente já injeta runtime.env; não foi modificado. Homologação dos modelos/chave no smartphone e implantação dependem de autorização posterior.
+
+### MVP01 — análise contextual Gmail, somente revisão
+
+Disponível com `GmailAnalysisService` explicitamente configurado. Bootstrap normal
+permanece desligado. `FUNIX_GMAIL_ANALYSIS_MODE=synthetic` admite fixture somente em
+desenvolvimento; a configuração legada `SYNTHETIC=true` continua aceita sem MODE.
+`MODE=real-pilot` exige configuração completa de Gmail/Coda/IA, UUID único e corte de
+ativação, inclusive em produção. Modos conflitantes ou configuração incompleta abortam
+a inicialização antes do worker. Não existe fallback de credenciais ou de modo.
+Nenhum executor é habilitado.
+
+- `GET /api/atualizacoes/analises-gmail?ids=<UUIDs separados por vírgula>`: sessão
+  obrigatória; máximo 100 IDs. Sem `ids`, últimas 100 análises; `ids=` retorna vazio.
+  Resposta `{enabled,items,scope?}`. `ids=` permite verificar somente o escopo ativo
+  (modo, UUID, corte, hash de configuração, validade e autorização) sem conteúdo de e-mail.
+  Isso atesta configuração local, não saúde remota de credenciais. Cada item traz estado, tentativas, falha sanitizada,
+  próxima tentativa, geração, resultado congelado e proposta relacionada.
+- `POST /api/atualizacoes/avisos-gmail/:id/analisar`: sessão, mesma origem e JSON;
+  `{revision,snapshotHash,requestId}` do aviso já autorizado. Retorna 202. Idempotente;
+  reativa somente falha ou agenda aviso autorizado ainda sem job. Não concede autorização.
+- A decisão inicial existente é persistida antes do agendamento. Recuperação detecta
+  autorizações/complementações confirmadas sem agendamento. No modo real, somente o
+  UUID vinculado e criado/autorizado a partir do corte pode entrar na análise. Gate
+  também aplicado em claim, retry, complementação e antes/depois de cada IO.
+  `denied` nunca entra na análise. Autorizar outro aviso continua persistindo a decisão,
+  mas não cria job; retomada direta fora do piloto retorna 403 `GMAIL_ANALYSIS_NOT_ELIGIBLE`.
+- Decisão/complementação da proposta reutilizam os endpoints existentes e suas flags,
+  controle de revisão/hash, ator, data e recibo idempotente. Complementação inicia nova
+  geração, conserva a anterior e exige nova revisão. Aprovação anterior nunca é sobrescrita.
+- Pacotes internos deste fluxo recebem `reviewOnly:true` e `analysisNoticeId` pela
+  relação persistida, não por declaração de um produtor. Mantêm o status compatível
+  `approved_pending_execution`, apresentado como **proposta aprovada, sem execução**.
+  O simulador de execução recusa esses pacotes. O MVP não possui dispatcher.
+- Com análise configurada, a listagem de Atualizações agrupa esses pacotes no aviso
+  Gmail e os omite da lista independente para não duplicar cards/contagem. Histórico
+  permanece consultável no card; snapshots anteriores permanecem no banco.
+
+Schema aditivo opt-in: `gmail_analysis_jobs` (estado/lease/checkpoint),
+`gmail_analysis_proposals` (vínculo único por aviso/geração e snapshot imutável com hash),
+`gmail_analysis_commands` (recibos), `gmail_analysis_pilot_scope` (vínculo singleton
+imutável do piloto, sem segredos). Reinício com outro UUID/corte/conta/contexto/modelo
+falha fechado; não há endpoint de rotação/reset de escopo nesta entrega. Não altera a versão global nem a fila de entrega Gmail.
+Contrato: `shared/gmail-analysis.ts`. Evidências citam offsets UTF-16 e trecho literal
+no assunto/corpo, com origem da conta/mensagem, digest e inventário de anexos. Ausência
+é `unknown`; inferências nunca são identificadores de consulta. Contexto conserva
+candidatos, conflitos, momento/digest da consulta e seleção humana. Conflito não recebe
+vínculo automático. Somente correspondência forte ou escolha humana explícita pode
+estabelecer correspondência contextual; isso não aprova reparo ou operação.
+
+Limites: 50 mil caracteres de corpo, 500 de assunto, 16 campos, 40 anexos (somente
+metadados), 20 candidatos Coda. Respostas fora do contrato falham fechadas. Adapters
+Gmail/Coda fazem somente GET em hosts fixos, sem redirects; provedor IA não recebe
+ferramentas. Não há leitura de anexos binários nem arquivamento no Drive.
+Detalhes e roteiro: [MVP01_GMAIL_ANALISE_CONTEXTUAL.md](integracoes/MVP01_GMAIL_ANALISE_CONTEXTUAL.md).
+
+
+Configuração real exclusiva `FUNIX_GMAIL_ANALYSIS_*`: `MODE=real-pilot`,
+`PILOT_NOTICE_ID`, `PILOT_ACTIVATED_AT` (ISO UTC canônico com milissegundos),
+`GMAIL_ACCOUNT`, `GMAIL_TOKEN`, `CODA_TOKEN`, `CODA_DOC_ID`, `CODA_TABLE_ID`,
+`CODA_COLUMNS_JSON`, `CODA_READ_ONLY_CONFIRMED=true`, `OPENAI_API_KEY`, `OPENAI_MODEL`.
+O JSON de colunas exige exatamente processId/experienceId/plate/vehicle/partner/budgetId/
+budgetVersion, cada qual com ID c-... único e auditado. Ver `.env.example` e o roteiro.
+
+Nenhuma consulta remota é feita no bootstrap/health. Na etapa de fonte do caso
+explicitamente elegível e autorizado, o backend verifica o grant via Google tokeninfo
+(exige gmail.readonly e recusa escopos de escrita/outros serviços), validade do token e
+identidade via Gmail profile antes de buscar a mensagem. Tokens expirados/incorretos
+aguardam intervenção sem perder autorização. Não há refresh automático. Coda utiliza
+somente GET; privilégios do token/documento devem ser conferidos no provedor, pois a
+confirmação de configuração não é uma introspecção remota de permissões. A chave IA
+é exclusiva deste fluxo, com modelo explícito, sem ferramentas e `store:false`.
+Desabilitar `ENABLED` e reiniciar não apaga jobs, decisões ou escopo.

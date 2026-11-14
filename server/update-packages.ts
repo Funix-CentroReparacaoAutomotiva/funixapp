@@ -65,6 +65,12 @@ export class UpdatePackageRepository {
   private readonly db: DatabaseSync
   private readonly now: () => string
   constructor(db: DatabaseSync, now: () => string = () => new Date().toISOString()) { this.db=db; this.now=now }
+  private hasAnalysis(){return Boolean(this.db.prepare("SELECT name FROM sqlite_master WHERE name='gmail_analysis_proposals'").get())}
+  private decorate(pkg:UpdatePackage):UpdatePackage {
+    if(!this.hasAnalysis())return pkg
+    const link=this.db.prepare('SELECT notice_id FROM gmail_analysis_proposals WHERE package_id=?').get(pkg.id) as {notice_id:string}|undefined
+    return link?{...pkg,reviewOnly:true,analysisNoticeId:link.notice_id}:pkg
+  }
 
   // Internal-only entrypoint: no HTTP route or n8n ingestion is exposed in this increment.
   createProposal(proposal: Proposal, id: string = randomUUID()): UpdatePackage {
@@ -87,16 +93,18 @@ export class UpdatePackageRepository {
     const row = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending
       FROM update_packages p WHERE p.id=?`).get(id) as PackageRow | undefined
     if (!row) fail(404,'PACKAGE_NOT_FOUND','Pacote não localizado.')
-    return map(row!)
+    return this.decorate(map(row!))
   }
 
-  list(view: 'open' | 'closed' | 'all', query: string): UpdatePackageList {
+  list(view: 'open' | 'closed' | 'all', query: string, omitAnalysis=false): UpdatePackageList {
     if (!['open','closed','all'].includes(view) || query.length > 160) fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
     if (!hasUpdatePackageSchema(this.db)) return {items:[],total:0,decisionsEnabled:false,clarificationsEnabled:false}
     // Paginate through the full queue so older matches are not silently lost
     // after the first 501 records. Return at most 100 cards, but count all matches.
+    const reviewApproved=this.hasAnalysis()?"(status='approved_pending_execution' AND EXISTS(SELECT 1 FROM gmail_analysis_proposals a WHERE a.package_id=p.id))":'0=1'
     const statement = this.db.prepare(`SELECT p.*, EXISTS(SELECT 1 FROM update_package_clarifications c WHERE c.package_id=p.id) AS clarification_pending FROM update_packages p WHERE
-      ${view === 'all' ? '1=1' : view === 'closed' ? "status IN ('executed','rejected')" : "status NOT IN ('executed','rejected','superseded')"}
+      ${view === 'all' ? '1=1' : view === 'closed' ? "(status IN ('executed','rejected') OR "+reviewApproved+")" : "(status NOT IN ('executed','rejected','superseded') AND NOT "+reviewApproved+")"}
+      ${omitAnalysis&&this.hasAnalysis()?'AND NOT EXISTS(SELECT 1 FROM gmail_analysis_proposals a WHERE a.package_id=p.id)':''}
       ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
     const needle = query.toLocaleLowerCase('pt-BR').trim()
     const items: UpdatePackage[] = []
@@ -106,7 +114,7 @@ export class UpdatePackageRepository {
     while (true) {
       const rows = statement.all(pageSize, offset) as PackageRow[]
       for (const row of rows) {
-        const pkg = map(row)
+        const pkg = this.decorate(map(row))
         if (!needle || [pkg.title,pkg.summary,pkg.experienceId??'',pkg.plate??'',pkg.source,pkg.sourceReference]
           .some(s=>s.toLocaleLowerCase('pt-BR').includes(needle))) {
           total++

@@ -19,6 +19,7 @@ import { createCodaBackedDevelopmentReconciliationCycle } from './chat/coda-reco
 import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliation-scheduler-dev.ts'
 import { ServiceError } from './errors.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
+import {loadGmailAnalysis} from './gmail-analysis-providers.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('FUNIX_API_PORT inválida.')
@@ -59,7 +60,8 @@ const sourceLedger = sourceLedgerKey ? (() => {
   return { ledger:new DevelopmentSourceLedger(db), decisionLedger:new DevelopmentDecisionLedger(db), secret:sourceLedgerKey }
 })() : undefined
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
-const app = createApp({ conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const gmailAnalysis=loadGmailAnalysis(db,process.env)
+const app = createApp({ gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
@@ -96,9 +98,10 @@ if(reconciliationEnabled && sourceLedger && codaSync && codaSyncKey) {
   const drain=createDevelopmentOutboxDrain(outbox,transport,codaSyncKey,Date.now,10)
   deliveryScheduler=startDevelopmentReconciliationScheduler(drain,{intervalMs:60_000})
 }
+gmailAnalysis?.start()
 app.listen(port, host, () => { process.stdout.write(`FUNIX API comercial na porta ${port}.\\n`) })
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => {
-  const stopping=Promise.all([reconciliation?.stop(),deliveryScheduler?.stop()])
+  const stopping=Promise.all([reconciliation?.stop(),deliveryScheduler?.stop(),gmailAnalysis?.stop()])
   app.close(async () => { await stopping; db.close(); process.exit(0) })
   app.closeIdleConnections()
   setTimeout(() => process.exit(1), 15_000).unref()

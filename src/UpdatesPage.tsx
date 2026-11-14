@@ -3,6 +3,8 @@ import type { UpdatePackage, UpdatePackageList, UpdatePackageStatus } from '../s
 import { api } from './api'
 import { GmailIntakeCard } from './GmailIntakeNotices'
 import type { GmailIntakeNotice, GmailIntakeNoticeList } from '../shared/gmail-intake'
+import {GmailAnalysisPanel} from './GmailAnalysisPanel'
+import type {GmailAnalysisList} from '../shared/gmail-analysis'
 import './updates.css'
 
 type View = 'pending' | 'all'
@@ -26,6 +28,7 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
   const [view,setView]=useState<View>('pending')
   const [query,setQuery]=useState('')
   const [gmail,setGmail]=useState<GmailIntakeNoticeList|null>(null)
+  const [analyses,setAnalyses]=useState<GmailAnalysisList>({enabled:false,items:[]})
   const [refresh,setRefresh]=useState(0)
   const [result,setResult]=useState<UpdatePackageList|null>(null)
   const [expanded,setExpanded]=useState<string|null>(null)
@@ -42,7 +45,9 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
       Promise.all([
         api<UpdatePackageList>(`/api/atualizacoes?${search}`,{signal:controller.signal}),
         api<GmailIntakeNoticeList>(`/api/atualizacoes/avisos-gmail?${search}`,{signal:controller.signal})
-      ]).then(([packages,mail])=>{
+      ]).then(async([packages,mail])=>{
+        const analysis=await api<GmailAnalysisList>('/api/atualizacoes/analises-gmail?ids='+mail.items.map(n=>n.id).join(','),{signal:controller.signal})
+        if(!controller.signal.aborted)setAnalyses(analysis)
         if(!controller.signal.aborted){setResult(packages);setGmail(mail)}
       }).catch(cause=>{
         if(controller.signal.aborted||cause?.name==='AbortError')return
@@ -53,9 +58,14 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
     },query?250:0)
     return()=>{clearTimeout(timer);controller.abort()}
   },[view,query,refresh,onUnauthorized])
+  useEffect(()=>{
+    if(!analyses.items.some(a=>a.state==='queued'||a.state==='processing'||(a.state==='failed'&&a.nextAttemptAt)))return
+    const timer=setInterval(()=>setRefresh(v=>v+1),3000)
+    return()=>clearInterval(timer)
+  },[analyses])
   const items=useMemo<FeedItem[]>(()=>{
     const entries:FeedItem[]=[
-      ...(result?.items??[]).map(data=>({kind:'package' as const,data})),
+      ...(result?.items??[]).filter(p=>!p.analysisNoticeId).map(data=>({kind:'package' as const,data})),
       ...(gmail?.items??[]).map(data=>({kind:'gmail' as const,data}))
     ]
     entries.sort((a,b)=>b.data.createdAt.localeCompare(a.data.createdAt)||a.data.id.localeCompare(b.data.id))
@@ -124,8 +134,11 @@ export function UpdatesPage({onUnauthorized}:{onUnauthorized:()=>void}) {
             decisionsEnabled={gmail.decisionsEnabled}
             expanded={expanded==='gmail-'+item.data.id}
             onToggle={()=>{setExpanded(expanded==='gmail-'+item.data.id?null:'gmail-'+item.data.id);setAnswers({})}}
-            onSuccess={()=>{setRefresh(v=>v+1);setExpanded(null)}}
-            onUnauthorized={onUnauthorized}/>:
+            onSuccess={()=>setRefresh(v=>v+1)}
+            onUnauthorized={onUnauthorized}
+            analysisLabel={analyses.enabled&&item.data.status==='authorized'?(analyses.items.find(a=>a.noticeId===item.data.id)?.proposal?.status==='approved_pending_execution'?'Proposta aprovada · sem execução':analyses.items.find(a=>a.noticeId===item.data.id)?.proposal?.status==='rejected'?'Proposta rejeitada':'Análise autorizada'):undefined}>
+            {analyses.enabled&&item.data.status==='authorized'&&<GmailAnalysisPanel notice={item.data} analysis={analyses.items.find(a=>a.noticeId===item.data.id)} permissions={result} onRefresh={()=>setRefresh(v=>v+1)} onUnauthorized={onUnauthorized}/>}
+          </GmailIntakeCard>:
           (()=>{const pkg=item.data;return <article key={'package-'+pkg.id} className={'updates-card '+(pkg.status==='rejected'?'is-rejected':pkg.status==='executed'?'is-executed':pkg.status==='superseded'?'is-superseded':'')}>
           <button type="button" className="updates-card-summary" aria-expanded={expanded==='package-'+pkg.id} onClick={()=>{setExpanded(expanded==='package-'+pkg.id?null:'package-'+pkg.id);setAnswers({})}}>
             <span className="updates-card-top"><strong>{pkg.title}</strong><span aria-hidden="true">{expanded==='package-'+pkg.id?'▴':'▾'}</span></span>

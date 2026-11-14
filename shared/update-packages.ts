@@ -22,6 +22,9 @@ export type UpdatePackageMissingField = {
 }
 
 export type UpdatePackage = {
+  /** Local analysis recommendations only; never dispatch to any executor. */
+  reviewOnly?: true
+  analysisNoticeId?: string
   id: string
   revision: number
   snapshotHash: string

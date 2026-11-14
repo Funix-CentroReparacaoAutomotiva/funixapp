@@ -23,9 +23,10 @@ export const actionSnapshotHash=(action:UpdatePackageAction):string=>
   createHash('sha256').update(JSON.stringify(action)).digest('hex')
 
 export function simulateUpdatePackageExecution(
-  pkg:Pick<UpdatePackage,'status'|'actions'>,
+  pkg:Pick<UpdatePackage,'status'|'actions'|'reviewOnly'>,
   receipts:readonly SimulatedActionReceipt[]
 ):SimulatedExecutionPlan {
+  if(pkg.reviewOnly)throw Error('ANALYSIS_REVIEW_ONLY')
   if(!['approved_pending_execution','execution_failed'].includes(pkg.status)) {
     throw new Error('EXECUTION_NOT_APPROVED')
   }
