@@ -63,6 +63,17 @@ try{
    // #168: nome da peça vira um seletor direto, inclusive mobile, sem modal ou confirmação.
    const piecePicker=editor.getByRole('combobox',{name:'Peça',exact:true})
    assert.equal(await piecePicker.count(),1,'one inline piece selector at '+width)
+   // #215: menus nativos podem abrir sobre fundo branco; garantir texto escuro nas opções.
+   const popupColors=await piecePicker.evaluate(el=>{
+     const option=el.options[0],style=getComputedStyle(option)
+     const rgb=value=>[...value.matchAll(/[\\d.]+/g)].map(m=>Number(m[0])).slice(0,3)
+     return {foreground:rgb(style.color),background:rgb(style.backgroundColor),scheme:getComputedStyle(el).colorScheme}
+   })
+   const brightness=rgb=>rgb.reduce((acc,v)=>acc+v,0)/3
+   assert(popupColors.foreground.length===3&&popupColors.background.length===3,'explicit native option colors at '+width)
+   assert(brightness(popupColors.foreground)<110&&brightness(popupColors.background)>225,'dark options on light menu at '+width)
+   assert(popupColors.scheme.includes('light'),'native light dropdown color-scheme at '+width)
+
    assert.equal(await editor.getByRole('button',{name:'Trocar peça'}).count(),0,'old extra button removed')
    assert.equal(await editor.getByRole('button',{name:'Confirmar revisão técnica'}).count(),0,'no review confirmation')
    const target=f.commercial.catalogs().items.find(x=>x.code==='para_choque_traseiro')
