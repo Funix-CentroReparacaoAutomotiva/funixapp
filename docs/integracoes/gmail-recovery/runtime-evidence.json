@@ -285,7 +285,7 @@
     "runtime-lab.ts": "824364e4a9710ea0deec38170affdc157803879be64f70940a587efa7fadc886",
     "runtime-mock.ts": "99b0e73ad1aaf4ed244a7a198cb7a900d7e9e4ca50f3fa059d2fa2bf14de8253",
     "runtime-network-guard.cjs": "695d8e073e98c0bdbebbc95b5c7035852f473c0d85964baa077af0b9947f6afd",
-    "run-runtime-lab.sh": "5f477c8bc326ef36e4a6445be36a48e36a2e8b4f013db02178dcd2e84fb5d08f"
+    "run-runtime-lab.sh": "8786dc6e66ea8b19c8e7a082896c87e475e5a7d477ac68d4017636d943cac64f"
   },
   "compatibility": {
     "testedServer": "2.47.7",
@@ -299,5 +299,9 @@
       "if": 2.3,
       "executeWorkflow": 1.4
     }
+  },
+  "labCleanup": {
+    "processGroupTermination": "passed",
+    "changeAfterFullRuntimeRun": "spawn/cleanup only; workflow sources unchanged"
   }
 }

@@ -8,10 +8,10 @@ port=$(node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=
 broker_port=$(node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')
 guard="$repo/scripts/gmail-recovery/runtime-network-guard.cjs"
 lab_pid=''
-cleanup() { if [[ -n "$lab_pid" ]]; then kill "$lab_pid" 2>/dev/null || true; wait "$lab_pid" 2>/dev/null || true; fi; }
+cleanup() { if [[ -n "$lab_pid" ]]; then kill -- "-$lab_pid" 2>/dev/null || true; wait "$lab_pid" 2>/dev/null || true; fi; }
 trap cleanup EXIT INT TERM
 # Fresh settings/database and only explicitly selected environment values.
-env -i PATH="$PATH" \
+setsid env -i PATH="$PATH" \
   HTTP_PROXY="${HTTP_PROXY:-}" HTTPS_PROXY="${HTTPS_PROXY:-}" NO_PROXY="${NO_PROXY:-}" \
   http_proxy="${http_proxy:-}" https_proxy="${https_proxy:-}" no_proxy="${no_proxy:-}" \
   N8N_USER_FOLDER="$lab_root/state" N8N_LISTEN_ADDRESS=127.0.0.1 N8N_HOST=127.0.0.1 \
