@@ -251,8 +251,14 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:14,apply:createChatSchema},
   // Scenario-local drafts are separate from immutable emitted budget snapshots.
   {version:15,apply:db=>db.exec(`ALTER TABLE scenarios ADD COLUMN negotiation_draft_json TEXT NOT NULL DEFAULT '{"mode":"none","value":""}';`)},
-  // #168: unfinished technical review follows the same diagnosis identity across scenarios.
-  {version:16,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')}
+  // NULL means the historic single vehicle description was not independently verified.
+  // Do not backfill a single year into either field by guessing.
+  {version:16,apply:db=>db.exec(`
+    ALTER TABLE atendimentos ADD COLUMN fabrication_year TEXT;
+    ALTER TABLE atendimentos ADD COLUMN model_year TEXT;
+  `)},
+  // #168: technical review remains attached to the diagnosis across scenarios.
+  {version:17,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')}
 ]
 
 export function migrate(db: DatabaseSync) {
