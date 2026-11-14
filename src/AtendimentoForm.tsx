@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento, AtendimentoInput } from '../shared/contracts'
@@ -31,6 +31,7 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const [conflict, setConflict] = useState(false)
+  const phoneCursorUpdate = useRef(0)
   const dirty = JSON.stringify(fields) !== JSON.stringify(initial)
   useEffect(() => { onDirty(dirty) }, [dirty, onDirty])
   useEffect(() => () => onDirty(false), [onDirty])
@@ -67,14 +68,15 @@ export function AtendimentoForm({ record, onSaved, onDirty, onBusy, onAuthRequir
   }
   function updatePhone(value: string, caret: number | null, input: HTMLInputElement) {
     const formatted = formatPhoneDraft(value)
-    const count = (value.slice(0, caret ?? value.length).match(/\\d/g) ?? []).length
+    const count = (value.slice(0, caret ?? value.length).match(/\d/g) ?? []).length
+    const updateId = ++phoneCursorUpdate.current
+    const atEnd = (caret ?? value.length) === value.length
     update('phone', formatted)
-    // React atualiza o input controlado no próximo commit.
+    // Aguarde o commit do input controlado, mas descarte callbacks de digitações anteriores.
     requestAnimationFrame(() => {
-      if (document.activeElement === input) {
-        const position = phoneCursorPosition(formatted, count)
-        input.setSelectionRange(position, position)
-      }
+      if (updateId !== phoneCursorUpdate.current || document.activeElement !== input || input.value !== formatted) return
+      const position = atEnd ? formatted.length : phoneCursorPosition(formatted, count)
+      input.setSelectionRange(position, position)
     })
   }
   const textField = (name: 'phone' | 'name' | 'plate', label: string, maxLength = 250) => <div className="at-field" key={name}><label htmlFor={`at-${name}`}>{label}</label><input id={`at-${name}`} name={name} value={fields[name] ?? ''} onChange={event => name === 'phone' ? updatePhone(event.target.value, event.target.selectionStart, event.target) : update(name, name === 'plate' ? event.target.value.toUpperCase() : event.target.value)} maxLength={maxLength} required={name === 'phone'} autoFocus={name === 'name'} autoComplete="off" inputMode={name === 'phone' ? 'tel' : 'text'} disabled={busy} /></div>
