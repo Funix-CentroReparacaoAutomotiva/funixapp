@@ -33,7 +33,7 @@ test('V18 creates a frozen, operational-only OS, with no commercial fields or ex
   const orders=new WorkOrderRepository(db)
   assert.throws(()=>orders.get(fixture.at.id,version.id),error(404,'OS_NOT_FOUND'))
   assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
-  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true,operator:'invented'}),error(400,'INVALID_INPUT'))
+  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true,operator:'invented'}),error(400,'INVALID_COMMERCIAL_DATA'))
   const original=structuredClone(version),pdf=budgets.pdf(fixture.at.id,version.id)
   const os=orders.create(fixture.at.id,version.id,{authorized:true})
   assert.equal(os.number,'OS-000001')
