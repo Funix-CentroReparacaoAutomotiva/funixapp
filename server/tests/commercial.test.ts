@@ -51,7 +51,7 @@ function setup() {
   return { db, repo, atendimento, validate, service }
 }
 
-test('upgrades actual M1.1 SQL without changing any Atendimento field or table definition; reopen is idempotent', () => {
+test('upgrades actual M1.1 SQL preserving legacy Atendimento values and adding only nullable year columns; reopen is idempotent', () => {
   const dir = mkdtempSync(join(tmpdir(), 'funix-upgrade-')), file = join(dir, 'v1.sqlite')
   try {
     let db = new DatabaseSync(file)
@@ -61,12 +61,14 @@ test('upgrades actual M1.1 SQL without changing any Atendimento field or table d
     repo.update(first.id, { revision: first.revision, stage: 'rejeitados', explicitRefusal: true, rejectionReason: 'Teste preservado' })
     repo.create({ phone: '123' })
     const rows = db.prepare('SELECT * FROM atendimentos ORDER BY id').all()
-    const schema = db.prepare("SELECT sql FROM sqlite_master WHERE name='atendimentos'").get()
+    const legacyColumns=Object.keys(rows[0]!)
     db.close()
     for (let i = 0; i < 2; i++) {
       db = openDatabase(file)
-      assert.deepEqual(db.prepare('SELECT * FROM atendimentos ORDER BY id').all(), rows)
-      assert.deepEqual(db.prepare("SELECT sql FROM sqlite_master WHERE name='atendimentos'").get(), schema)
+      assert.deepEqual(db.prepare('SELECT '+legacyColumns.map(column=>'"'+column+'"').join(',')+' FROM atendimentos ORDER BY id').all(), rows)
+      assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='fabrication_year'").get())
+      assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='model_year'").get())
+      assert(db.prepare("SELECT count(*) n FROM atendimentos WHERE fabrication_year IS NOT NULL OR model_year IS NOT NULL").get()!.n===0)
       assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
       assert.equal(new CommercialRepository(db).catalogs().items.length, 163)
       db.close()
