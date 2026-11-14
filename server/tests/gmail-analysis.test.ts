@@ -211,3 +211,17 @@ test('401/403 de integração aguardam correção sem perder autorização, recu
   assert.equal(x.service.get(n.id)!.state,'ready')
  }finally{x.db.close()}
 })
+test('shutdown interrompe a etapa atual e não inicia o restante do lote',async()=>{
+ const x=setup();try{
+  x.authorize();const second=x.notices.ingest({...analysisNotice(),messageId:'b'.repeat(16)})
+  x.notices.decide(second.id,{decision:'authorize',revision:second.revision,snapshotHash:second.snapshotHash,requestId:randomUUID()},'operator')
+  const secondMessage=structuredClone(x.fixture.messages[0]!);secondMessage.message.messageId=second.messageId;x.fixture.messages.push(secondMessage)
+  let entered!:()=>void,reads=0
+  const reached=new Promise<void>(resolve=>{entered=resolve}),reader=x.providers.readMessage
+  x.providers.readMessage=async(...args)=>{reads++;return reader(...args)}
+  x.providers.interpret=async()=>{entered();return new Promise(()=>{})}
+  const running=x.service.drain();await reached;await x.service.stop();await running
+  assert.equal(reads,1)
+  assert.equal(x.db.prepare("SELECT COUNT(*) AS n FROM gmail_analysis_jobs WHERE state='queued'").get()!.n,1)
+ }finally{x.db.close()}
+})

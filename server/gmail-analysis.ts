@@ -15,6 +15,7 @@ export class GmailAnalysisService{
  private readonly now:()=>number
  private readonly notices:GmailIntakeRepository
  private readonly packages:UpdatePackageRepository
+ private stopping=false
  private running:Promise<void>|undefined
  private timer:ReturnType<typeof setInterval>|undefined
  private controller:AbortController|undefined
@@ -168,12 +169,13 @@ export class GmailAnalysisService{
   return true
  }
  drain(limit=3):Promise<void>{
+  if(this.stopping)return Promise.resolve()
   if(this.running)return this.running
-  const run=async()=>{this.recoverAuthorized();for(let i=0;i<limit;i++)if(!await this.one())break}
+  const run=async()=>{this.recoverAuthorized();for(let i=0;i<limit&&!this.stopping;i++)if(!await this.one())break}
   this.running=run().finally(()=>{this.running=undefined})
   return this.running
  }
  kick(){void this.drain().catch(()=>{/* Lease and durable state permit recovery; never log provider content. */})}
- start(){if(!this.timer){this.recoverAuthorized();this.timer=setInterval(()=>this.kick(),15000);this.timer.unref();this.kick()}}
- async stop(){if(this.timer)clearInterval(this.timer);this.timer=undefined;this.controller?.abort();await this.running?.catch(()=>{})}
+ start(){this.stopping=false;if(!this.timer){this.recoverAuthorized();this.timer=setInterval(()=>this.kick(),15000);this.timer.unref();this.kick()}}
+ async stop(){this.stopping=true;if(this.timer)clearInterval(this.timer);this.timer=undefined;this.controller?.abort();await this.running?.catch(()=>{})}
 }
