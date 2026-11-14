@@ -19,12 +19,12 @@ test('V6 to V7 removes only the obsolete column, preserving inputs, catalogs, co
   const p=parts.save(f.at.id,{pieceId:f.item.id,name:'Componente QA',quantity:'0.25',manualPrice:'10.01',notes:'QA'})
   db.prepare('UPDATE component_items SET fct=? WHERE id=?').run('99',p.id)
   const tables=['atendimentos','catalog_items','catalog_history','pricing_configuration','commercial_state','scenarios','diagnosis_items','diagnosis_services','scenario_piece_flags','scenario_service_flags','scenario_component_flags']
-  const before=tables.map(t=>db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all()),component={...db.prepare('SELECT * FROM component_items').get()};delete component.fct
+  const before=tables.map(t=>db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='atendimentos'?'id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all()),component={...db.prepare('SELECT * FROM component_items').get()};delete component.fct
   db.close();db=openDatabase(file)
   assert(!db.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))
   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version,17)
   assert.deepEqual({...db.prepare('SELECT * FROM component_items').get()},component)
-  tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
+  tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='atendimentos'?'id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t}`).all(),before[i]))
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   const repo=new BudgetRepository(db),request={scenarioId:f.scenario.id,negotiation:{mode:'none'}},preview=repo.preview(f.at.id,request)
   assert.equal(preview.snapshot.calculation.componentSubtotal,'5.0125')
@@ -48,7 +48,10 @@ test('V7 failure rolls back schema/history and never resets data; clean installa
   assert(db.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))
   assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),before)
   db.exec('DROP VIEW qa_block_drop');db.close();db=openDatabase(file)
-  assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(),before)
+  // O upgrade V16 acrescenta apenas colunas nullable: compare os campos históricos originais.
+  const oldColumns=Object.keys(before[0]!).map(column=>'"'+column+'"').join(',')
+  assert.deepEqual(db.prepare('SELECT '+oldColumns+' FROM atendimentos').all(),before)
+  assert.equal(db.prepare('SELECT count(*) AS n FROM atendimentos WHERE fabrication_year IS NOT NULL OR model_year IS NOT NULL').get()!.n,0)
   const fresh=openDatabase(':memory:')
   try{assert(!fresh.prepare('PRAGMA table_info(component_items)').all().some(c=>c.name==='fct'))}finally{fresh.close()}
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
