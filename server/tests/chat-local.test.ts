@@ -243,6 +243,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
   try {
     // Empty additive tables can be removed in this disposable fixture to recover
     // the V13 baseline; the actual upgrade and its failure are exercised below.
+    db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year; ALTER TABLE atendimentos DROP COLUMN model_year; DELETE FROM schema_migrations WHERE version=16;')
     db.exec(`DROP TABLE chat_link_receipts; DROP TABLE chat_statuses; DROP TABLE chat_messages;
       DROP TABLE chat_links; DROP TABLE chat_conversations; DROP TABLE chat_events;
       DROP TABLE chat_instances; ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; ALTER TABLE atendimentos DROP COLUMN fabrication_year; ALTER TABLE atendimentos DROP COLUMN model_year; ALTER TABLE scenarios DROP COLUMN negotiation_draft_json; DELETE FROM schema_migrations WHERE version IN (14,15,16,17);`)
