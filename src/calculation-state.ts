@@ -18,7 +18,7 @@ function persistedServices(p:DiagnosisItem,ids:boolean,flags:boolean){
  return p.services.map(l=>JSON.stringify([...(ids?[l.id]:[]),l.serviceId,l.dimensionId,normalized(l.quantity),(l.notes??'').trim(),l.diagnosisId??null,...(flags?[l.enabled]:[])])).sort()
 }
 export function pieceDataSignature(p:DiagnosisItem,ids=true){return JSON.stringify([p.diagnosisId,p.intensity??null,p.notes.trim(),persistedServices(p,ids,false)])}
-export function pieceSignature(p:DiagnosisItem,ids=true){return JSON.stringify([p.diagnosisId,p.intensity??null,p.notes.trim(),p.enabled,persistedServices(p,ids,true)])}
+export function pieceSignature(p:DiagnosisItem,ids=true){return JSON.stringify([p.pieceId,p.pieceReviewPending===true,p.diagnosisId,p.intensity??null,p.notes.trim(),p.enabled,persistedServices(p,ids,true)])}
 export function partDataSignature(p:ComponentItem){return JSON.stringify([p.pieceId,p.name.trim(),normalized(p.quantity),p.manualPrice===null?null:normalized(p.manualPrice),p.notes.trim()])}
 export function partSignature(p:ComponentItem&{enabled:boolean}){return JSON.stringify([partDataSignature(p),p.enabled])}
 
