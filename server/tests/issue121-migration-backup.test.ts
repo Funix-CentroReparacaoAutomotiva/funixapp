@@ -16,13 +16,13 @@ test('V14-to-V15 upgrades a disposable SQLite file, preserves records, and permi
   const at=new AtendimentoRepository(db).create({phone:'31999990000',name:'Cliente sintético'})
   const before=new ScenarioRepository(db).list(at.id)[0]!
   // Build a real V14-like file from the current schema; no production database is touched.
-  db.exec('ALTER TABLE scenarios DROP COLUMN negotiation_draft_json')
-  db.exec('DELETE FROM schema_migrations WHERE version=15')
+  db.exec('ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; ALTER TABLE scenarios DROP COLUMN negotiation_draft_json')
+  db.exec('DELETE FROM schema_migrations WHERE version IN (15,16)')
   assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,14)
   await backupDatabase(db,backup)
   db.close()
   db=openDatabase(file)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,15)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,16)
   assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   assert.equal(new AtendimentoRepository(db).get(at.id).name,'Cliente sintético')
