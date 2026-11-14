@@ -1,0 +1,143 @@
+{
+  "synthetic": true,
+  "reviewedBase": "85dae9a2cb1d2702a711c361c2d68753a9ac7aad",
+  "productChanges": false,
+  "realWhatsAppSends": 0,
+  "installedEvolutionOperations": 0,
+  "realDataMigrations": 0,
+  "authorizedRepresentativeCopyProvided": false,
+  "physicalDevicesUsed": false,
+  "targetedServer": {
+    "command": "node --test --test-isolation=none --test-reporter=tap server/tests/customer-homologation.test.ts server/tests/customer-inbound.test.ts server/tests/customer-alias-review.test.ts server/tests/customer-http.test.ts server/tests/evolution-config-optin.test.ts server/tests/evolution-send.test.ts server/tests/chat-ingest.test.ts server/tests/chat-v20-backup-restore.test.ts",
+    "tests": 47,
+    "passed": 47,
+    "failed": 0,
+    "cases": [
+      "ingest configuration requires explicit flag and private bounded regular file; invalid/duplicate keys fail closed",
+      "disabled/configuration missing hides every method even with operator cookie; whitelist and explicit registration are independent gates",
+      "raw HMAC precedes parsing: missing/unknown/tampered/old/future signatures never touch SQLite; no CORS or redirects",
+      "valid retries use raw-byte signatures and canonical event digest, stable receipts, controlled conflicts and safe aggregate telemetry",
+      "rotation accepts current/previous keys with independent scopes; removing a key after restart revokes it and retains receipts",
+      "strict content type, encoding, byte limits, UTF-8 and normalized schema reject invalid bodies after authentication",
+      "status before upsert, external fromMe, media, LID/groups and candidate/multiple Atendimentos never create links or ERP writes",
+      "no ACK before full body or after a failed commit; retry succeeds without partial projection",
+      "request rate is bounded and resets; partial body times out without ACK or persistent effects",
+      "operator cookie cannot replace HMAC, duplicate auth headers fail, timestamps are rechecked after upload and concurrent bodies are bounded",
+      "two independent HTTP processes commit one receipt; a restarted process replays the same receipt with no registration or link side effects",
+      "SQLite online backup restores to an isolated copy with integrity and FK checks",
+      "SQLite backup refuses overwriting a prior backup",
+      "verified PN/LID uses the seller nickname and read marks from either exact handle, including after restart",
+      "batch list deduplicates a verified conversation and shared message reads without exposing identity conflicts",
+      "replacing a Contact retains explicit history but revokes its implicit context and stale send until deliberate reselection",
+      "removing a Contact revokes both exact alias contexts and stale tokens; explicit reselection survives restart",
+      "unrelated edits and unchanged scalar phone retain selected context and recognized Contact",
+      "canonical nickname wins deterministically without deleting the secondary nickname or changing snapshots",
+      "controlled V18 rehearsal backs up V17 with WAL, preserves commercial/PDF/message data, retries inbound and restores to a new file",
+      "offline verifier rejects altered records, broken references and same-file comparisons without writing either input",
+      "authenticated relay → unique ficha → operator-only list/history; customer writes require origin and known records",
+      "profile photo bounds calls and caches present/absent capability without forwarding credentials to CDN",
+      "new authenticated V1 inbound uses the same autonomous policy; replay keeps receipt and existing V1 receipts are not reprocessed",
+      "autonomous inbound creates once, snapshots once, preserves manual changes and survives repeats",
+      "explicit unique active association is reused; ambiguous and closed links never create/reopen",
+      "LID only stores message and creates partial ficha without invented phone; unique alias preserves original snapshot",
+      "contradictory aliases preserve quarantined content and deny reading/sending contexts",
+      "manual progressive creation, entity selection, third-party contact, nickname and N:N preserve messages",
+      "individual seals, distinct names, own nickname and empty fallback",
+      "commercial clock stays unchanged after cadastral edit; closed ficha stays closed after new inbound",
+      "independent concurrent SQLite processes and restart create exactly one Atendimento",
+      "V18 upgrade is additive, rolls back failed DDL, and promotes only explicit historical links",
+      "funnel derives range from alternative scenarios and saved negotiations with exact existing motor",
+      "local A→B→A context epochs revoke old send commands, without changing messages or link revisions",
+      "manual contact prepares an explicit conversation without sending; phone correction cannot adopt existing history",
+      "previously separate PN/LID handles retain both processes; exact alias evidence permits explicit context selection without a third ficha",
+      "accepted outbound advances the contact clock once; replay never sends twice or resets clock",
+      "an incomplete enabled scenario cannot present a falsely complete commercial range",
+      "channel number as initial name is retained; a LID-only Contact can have an explicit seller nickname",
+      "editing another reference preserves independent legacy brand/model/years until vehicle is explicitly edited",
+      "V18 reuses previously confirmed bindings stored in the app database and preserves pending context conflicts without external access",
+      "Evolution Chat is off by default, and only exact opt-in is accepted",
+      "Enabled opt-in fails closed without key and valid technical instance ID",
+      "Evolution text sender uses the known instance, JID PN and bounded text without leaking secrets",
+      "Evolution text sender rejects invalid recipient, empty text, huge text and bad configuration before HTTP",
+      "Evolution text sender never retries failed/uncertain calls and strips provider contents"
+    ]
+  },
+  "finalV18FaultRecovery": {
+    "command": "node --test --test-reporter=tap server/tests/customer-homologation.test.ts",
+    "tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "note": "Final rerun after extending the rehearsal with a deliberately injected DDL fault in the disposable clone. Included in the 47 scenarios, not 49 distinct tests.",
+    "cases": [
+      "controlled V18 rehearsal backs up V17 with WAL, preserves commercial/PDF/message data, retries inbound and restores to a new file",
+      "offline verifier rejects altered records, broken references and same-file comparisons without writing either input"
+    ]
+  },
+  "checks": [
+    {
+      "command": "npm run check:server",
+      "exitCode": 0
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "warnings": "Existing warnings retained; no new verifier/rehearsal warning."
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "browserCommands": [
+    {
+      "command": "node scripts/customer-experience-browser.mjs",
+      "exitCode": 0,
+      "viewports": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_conversations.py",
+      "exitCode": 0,
+      "viewports": [
+        320,
+        390,
+        1440
+      ]
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_links.py",
+      "exitCode": 0,
+      "viewports": [
+        320,
+        390,
+        1440
+      ]
+    }
+  ],
+  "notRepeatedLocally": [
+    "full architectural audit",
+    "full server suite",
+    "PDF/browser financial suites",
+    "production build"
+  ],
+  "pending": [
+    "Authorized representative development copy",
+    "Installed Evolution contract and controlled inbound/photo authorization",
+    "Physical devices and approved development endpoint",
+    "Explicit real send/media authorization"
+  ],
+  "remoteCI": "Check final commit of PR #219; final result reported in delivery.",
+  "documentedBashProcedure": {
+    "executed": true,
+    "source": "synthetic disposable V17 file only",
+    "exitCode": 0,
+    "tablesCompared": 28,
+    "migration": "V17 to V18",
+    "backupHashVerified": true,
+    "recoveryVersion": 17,
+    "evidence": "preservacao-sintetica.json"
+  }
+}

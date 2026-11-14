@@ -56,3 +56,7 @@ Evidências sintéticas: [manifesto](../evidencias/revisao-pr219/verificacoes.js
 Recomendada para revisão técnica após as verificações locais e remotas do commit final. A política conservadora exige reselecionar uma conversa após troca/remoção de Contato; isso é intencional e precisa ser exercitado com vendedores. Se dois aliases já tinham apelidos, o canônico prevalece sem destruir o secundário; eventual unificação de cadastros exige ação própria futura.
 
 Não havia cópia de banco instalado autorizada nesta revisão: a V18 foi exercitada exclusivamente em SQLite sintético, inclusive arquivos/reinícios e falha simulada. Mantém-se o roteiro de homologação da entrega original: cópia de desenvolvimento autorizada com backup, recepção assinada e capacidades/foto PN/LID na Evolution instalada, aparelhos reais e envio a número controlado somente mediante autorização específica. Nenhum acesso ou alteração em banco instalado, mensagem real, Evolution instalada, merge ou deploy foi realizado.
+
+## Preparação de homologação controlada
+
+O [procedimento de homologação controlada](HOMOLOGACAO_CONTROLADA_PR219.md) complementa esta revisão sem reabri-la: ensaio sintético em arquivo com backup/WAL, falha/recuperação V18, verificador somente leitura e matrizes de Evolution/aparelhos ainda pendentes de recursos e autorização. A nova rodada distingue resultados locais de integrações reais não executadas.

@@ -103,3 +103,5 @@ Capturas e resultados sintéticos em [evidências](../evidencias/funil-conversas
 ## Revisão final da PR #219
 
 As correções posteriores e sua validação estão em [Revisão final da PR #219](REVISAO_FINAL_PR219.md): teste PDF atualizado para a navegação aprovada/V18, projeção PN/LID consistente, revogação segura de contexto após alteração de Contatos e preservação de referências/rascunhos no autosave. Esse complemento registra a política de seleção explícita sem excluir associações históricas.
+
+O roteiro acima foi detalhado em [Homologação controlada da PR #219](HOMOLOGACAO_CONTROLADA_PR219.md), com procedimento reproduzível de cópia/backup/recuperação e critérios para Evolution e aparelhos reais. Não concede autorização de operação externa ou implantação.
