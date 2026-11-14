@@ -123,15 +123,16 @@ export class AtendimentoRepository {
     return this.get(record.id)
   }
 
-  update(id: string, input: unknown): Atendimento {
+  update(id: string, input: unknown, includeReferences = false): Atendimento {
     this.db.exec('BEGIN IMMEDIATE')
-    try {const result=this.updateRecord(id,input);this.db.exec('COMMIT');return result}
+    try {const saved=this.updateRecord(id,input);const result=includeReferences?this.get(id,true):saved;this.db.exec('COMMIT');return result}
     catch(error){this.db.exec('ROLLBACK');throw error}
   }
   private updateRecord(id: string, input: unknown): Atendimento {
     const { fields, revision, references, closed } = validate(input, true)
     const customers=new CustomerRepository(this.db),refs=references===undefined?undefined:customers.validate(references)
     const old = this.get(id)
+    const previousContacts=customers.available()?customers.references(id).contact:[]
     if(refs)Object.assign(fields,customers.primaryFields(refs,old))
     const record: Atendimento = { ...old, ...fields, revision: revision + 1, updatedAt: new Date().toISOString() }
     record.phoneNormalized = normalizePhone(record.phone)
@@ -146,8 +147,8 @@ export class AtendimentoRepository {
     }
     if (!result.changes) throw new ServiceError(409, 'VERSION_CONFLICT', 'Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
     if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?record.updatedAt:null,id)
-    if(refs)customers.saveReferences(id,refs)
-    else if(customers.available())customers.applyLegacyFields(id,fields)
+    if(refs)customers.saveReferences(id,refs,previousContacts)
+    else if(customers.available()){customers.applyLegacyFields(id,fields);customers.invalidateContactContexts(id,previousContacts,customers.references(id).contact)}
     return this.get(id)
   }
 }

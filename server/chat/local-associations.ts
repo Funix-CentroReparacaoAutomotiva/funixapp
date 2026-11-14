@@ -49,6 +49,8 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const chosen=[...new Set(selections.map(s=>links.find(l=>l.id===s.link_id)?.atendimento_id).filter((id):id is string=>typeof id==='string'))]
     if(chosen.length>1)return null
     if(chosen.length===1)return chosen[0]!
+    // A cleared/revoked working context must never fall back to an implicit selection.
+    if(this.db.prepare(`SELECT 1 FROM v20_conversations WHERE id IN (${handles.map(()=>'?').join(',')}) AND context_revision>0 LIMIT 1`).get(...handles))return null
     const ids = [...new Set(links.map(l => String(l.atendimento_id)))]
     return ids.length === 1 ? ids[0]! : null
   }
@@ -71,13 +73,13 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       if(!linked&&(links.length||messages))throw new ServiceError(409,'CHAT_EXPLICIT_LINK_REQUIRED','Já existe histórico para este canal. Associe explicitamente pela lista de Conversas; editar o telefone não transfere histórico.')
       const id=this.rememberProviderConversation(jid),linkId=linked?String(linked.id):randomUUID()
       if(!linked){this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(linkId,id,at,this.now(),'operator','explicit_saved_contact');this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)}
+      const known=this.db.prepare('SELECT id FROM customer_records WHERE conversation_id=?').get(id),contactId=known?String(known.id):ref.id??randomUUID()
+      if(!known){if(ref.id)this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(id,ref.id);else this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,?)").run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id)}
+      const refs=record.references!;refs.contact[index]={id:contactId,text:phone??ref.text};new CustomerRepository(this.db).saveReferences(at,refs)
       const scope=this.handles(jid),placeholders=scope.map(()=>'?').join(',')
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(linked?linked.conversation_id!:id,linkId)
       this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${placeholders})`).run(...scope)
-      const known=this.db.prepare('SELECT id FROM customer_records WHERE conversation_id=?').get(id),contactId=known?String(known.id):ref.id??randomUUID()
-      if(!known){if(ref.id)this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(id,ref.id);else this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,?)").run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id)}
-      const refs=record.references!;refs.contact[index]={id:contactId,text:phone??ref.text};new CustomerRepository(this.db).saveReferences(at,refs)
       this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
       this.db.exec('COMMIT');return {conversationId:id}
     }catch(e){this.db.exec('ROLLBACK');throw e}
@@ -141,7 +143,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const scopes=jids.map(jid=>({jid,members:this.members(jid),ids:this.handles(jid),id:this.rememberProviderConversation(jid)}))
     const ids=[...new Set(scopes.flatMap(s=>s.ids))]
     const placeholders=ids.map(()=>'?').join(',')
-    const contacts=ids.length?this.db.prepare(`SELECT * FROM customer_records WHERE conversation_id IN (${placeholders})`).all(...ids):[]
+    const contacts=ids.length?this.db.prepare(`SELECT * FROM customer_records WHERE conversation_id IN (${placeholders}) ORDER BY rowid`).all(...ids):[]
     const links=ids.length?this.db.prepare(`SELECT l.conversation_id,l.atendimento_id,a.name,r.data,c.data AS record,c.kind,c.id AS record_id
       FROM v20_associations l JOIN atendimentos a ON a.id=l.atendimento_id
       LEFT JOIN atendimento_references r ON r.atendimento_id=a.id AND r.kind='person' AND r.position=0
@@ -153,15 +155,19 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         ROW_NUMBER() OVER(PARTITION BY scope.handle ORDER BY m.occurred_at DESC,m.sequence DESC) AS position
       FROM scope JOIN chat_conversations c ON c.remote_jid=scope.jid AND c.instance=? JOIN chat_messages m ON m.conversation_id=c.id)
       SELECT * FROM ranked WHERE position=1`).all(...pairs.flat(),instance):[]
-    const unread=pairs.length?this.db.prepare(`WITH scope(handle,jid) AS (VALUES ${pairs.map(()=>'(?,?)').join(',')})
+    const readPairs=scopes.flatMap(s=>s.ids.map(id=>[s.id,id]))
+    const unread=pairs.length?this.db.prepare(`WITH scope(handle,jid) AS (VALUES ${pairs.map(()=>'(?,?)').join(',')}), read_scope(handle,member_id) AS (VALUES ${readPairs.map(()=>'(?,?)').join(',')})
       SELECT scope.handle,COUNT(DISTINCT m.message_id) AS n FROM scope
       JOIN chat_conversations c ON c.remote_jid=scope.jid AND c.instance=? JOIN chat_messages m ON m.conversation_id=c.id
-      WHERE m.from_me=0 AND NOT EXISTS(SELECT 1 FROM conversation_message_reads r WHERE r.conversation_id=scope.handle AND r.message_id=m.message_id)
-      GROUP BY scope.handle`).all(...pairs.flat(),instance):[]
+      WHERE m.from_me=0 AND NOT EXISTS(SELECT 1 FROM read_scope rs JOIN conversation_message_reads r ON r.conversation_id=rs.member_id WHERE rs.handle=scope.handle AND r.message_id=m.message_id)
+      GROUP BY scope.handle`).all(...pairs.flat(),...readPairs.flat(),instance):[]
     for(const scope of scopes){
       const related=links.filter(l=>scope.ids.includes(String(l.conversation_id)))
       const people:NamePart[]=related.map(l=>{const r=l.record||l.data?JSON.parse(String(l.record??l.data)):null;return {name:r?String(r.text??''):String(l.name),entityId:l.kind==='entity'?String(l.record_id):null}})
-      const contact=contacts.find(c=>c.conversation_id===scope.id),data=contact?JSON.parse(String(contact.data)):null
+      const canonical=contacts.find(c=>c.conversation_id===scope.id)
+      const named=(c:typeof canonical)=>c&&String(JSON.parse(String(c.data)).nickname??'').trim()
+      // Canonical nickname wins; otherwise retain the seller's exact-alias nickname and editable source.
+      const contact=named(canonical)?canonical:contacts.find(c=>scope.ids.includes(String(c.conversation_id))&&named(c))??canonical,data=contact?JSON.parse(String(contact.data)):null
       const last=messages.find(m=>m.handle===scope.id)
       result.set(scope.jid,{phoneNumber:scope.members?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,...(contact?{contactId:String(contact.id)}:{}),names:conversationNames(data?.nickname??null,contact?.entity_id?String(contact.entity_id):null,scope.members?people:[]),atendimentoCount:scope.members?new Set(related.map(l=>l.atendimento_id)).size:0,preview:last?(last.text?String(last.text):'Mídia ou mensagem indisponível'):null,profilePhoto:null,unreadCount:Number(unread.find(u=>u.handle===scope.id)?.n??0),lastMessageAt:last?String(last.occurred_at):null})
     }

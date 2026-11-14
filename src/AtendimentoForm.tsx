@@ -25,7 +25,7 @@ function initialFields(record?: Atendimento): AtendimentoInput {
 export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy, onAuthRequired, onMessage }: {
   record?: Atendimento
   onSaved: (record: Atendimento) => void
-  onAutoSaved?: (record: Atendimento) => void
+  onAutoSaved?: (record: Atendimento, contactsChanged: boolean) => void
   onDirty: (dirty: boolean) => void
   onBusy: (busy: boolean) => void
   onMessage?: (id:string)=>void
@@ -75,7 +75,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
       const pending=JSON.stringify(fieldsRef.current)!==JSON.stringify(snapshot)
       onDirty(pending)
       setLastSaved(!pending)
-      onAutoSaved?.(saved)
+      onAutoSaved?.(saved,JSON.stringify(snapshot.references?.contact)!==JSON.stringify(baseline.references?.contact))
     } catch(cause) {
       const error=cause as RequestFailure
       setFailure(error.status===409

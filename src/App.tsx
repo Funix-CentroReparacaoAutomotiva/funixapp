@@ -55,6 +55,7 @@ function App() {
   const [failure, setFailure] = useState(''), [loading, setLoading] = useState(false), [loadingMore, setLoadingMore] = useState(false), [reload, setReload] = useState(0)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [copilotOpen, setCopilotOpen] = useState(false), [editor, setEditor] = useState<Editor | null>(null), [savedMessage, setSavedMessage] = useState('')
+  const [chatContextVersion,setChatContextVersion]=useState(0)
   const [commercialVersion, setCommercialVersion] = useState(0)
   const [voiceRefreshVersion,setVoiceRefreshVersion] = useState(0)
   const[voiceContext,setVoiceContext]=useState<VoiceCaptureContext|null>(null)
@@ -77,7 +78,7 @@ function App() {
     if (saving.current) return false
     if ((dirty.current || (!preserveNegotiation && negotiationDirty.current)) && !window.confirm('Há alterações não salvas. Deseja descartá-las?')) return false
     if (dirty.current || (!preserveNegotiation && negotiationDirty.current)) { setCommercialVersion(value => value + 1); negotiationDirty.current = false }
-    if (editor?.record) setReload(value => value + 1)
+    if (editor?.record && dirty.current) setReload(value => value + 1)
     dirty.current = false; setEditor(null); return true
   }
   function navigate(href: string, replace = false, state?: unknown) {
@@ -256,9 +257,14 @@ function App() {
     try { await api('/api/session', { method: 'DELETE' }); expireSession(); setCopilotOpen(false) }
     catch (cause) { setFailure((cause as Error).message) }
   }
-  function autosaved(savedRecord: Atendimento) {
+  function autosaved(savedRecord: Atendimento, contactsChanged: boolean) {
     // Persistência de edição não encerra o modal nem recria o formulário.
     setRecord(savedRecord);cache.current.clear();setList(null)
+    if(contactsChanged){
+      setChatContextVersion(v=>v+1)
+      const next=new URL(window.location.href);next.searchParams.delete('conversa')
+      window.history.replaceState(window.history.state,'',next.pathname+next.search);setRoute(readRoute())
+    }
   }
   function saved(savedRecord: Atendimento) {
     const creating = !editor?.record
@@ -307,7 +313,7 @@ function App() {
         {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext atendimentoId={record.id} conversationId={params.get('conversa')} onSelect={(id,cid)=>navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}`)}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '')} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} onUnauthorized={expireSession}>
+          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} onSelect={(id,cid)=>navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}`)}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} onUnauthorized={expireSession}>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{(record.fabricationYear!==null||record.modelYear!==null)&&<p>Ano de fabricação: {record.fabricationYear||'—'} · Ano do modelo: {record.modelYear||'—'}</p>}{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
           </ChatPanel></>} />}
         </>}

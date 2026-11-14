@@ -31,6 +31,11 @@ test('authenticated relay → unique ficha → operator-only list/history; custo
   const contact='/api/customer-records/'+list.items[0]!.commercial.contactId
   assert.equal((await fetch(base+contact)).status,401)
   assert.equal((await fetch(base+contact,{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json',Origin:'https://invalid.example'},body:'{}'})).status,403)
+  const saved=await fetch(base+'/api/atendimentos/'+id,{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json',Origin:origin},body:JSON.stringify({revision:at.get(id).revision,plate:'ABC1D23'})})
+  assert.equal(saved.status,200)
+  const representation=await saved.json()as {references:{contact:{id:string}[]}}
+  assert.equal(representation.references.contact[0]!.id,list.items[0]!.commercial.contactId)
+  assert.deepEqual(representation,await(await fetch(base+'/api/atendimentos/'+id,{headers:{Cookie:cookie}})).json())
   const invalid=await fetch(base+'/api/atendimentos/'+id,{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json',Origin:origin},body:JSON.stringify({revision:1,references:{person:[{id:'unknown',text:'Maria'}],contact:[],vehicle:[],payer:[]}})});assert.equal(invalid.status,404)
  }finally{await new Promise<void>(r=>app.close(()=>r()));db.close()}
 })

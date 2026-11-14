@@ -754,7 +754,7 @@ export function createRequestHandler(options: AppOptions) {
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
         if (collection) return send(201, options.atendimentos.create(body))
-        return send(200, options.atendimentos.update(record![1]!, body))
+        return send(200, options.atendimentos.update(record![1]!, body,true))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')

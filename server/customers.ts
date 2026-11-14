@@ -3,6 +3,7 @@ import type {Atendimento} from '../shared/contracts.ts'
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import type {CustomerRecord,CustomerReferences,CustomerReference,ReferenceKind} from '../shared/customer.ts'
+import {ConversationIdentities} from './chat/conversation-identities.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
 const invalid=():never=>{throw new ServiceError(400,'INVALID_REFERENCE','Referência inválida.')}
@@ -46,7 +47,27 @@ export class CustomerRepository {
     const vehicleFields=unchanged?{vehicle:previous.vehicle,model:previous.model,brand:previous.brand,plate:previous.plate,fabricationYear:previous.fabricationYear,modelYear:previous.modelYear}:{vehicle:vehicle?.text??'',model:vehicle?.text??'',brand:'',plate:vehicle?.plate??'',fabricationYear:vehicle?.fabricationYear??null,modelYear:vehicle?.modelYear??null}
     return {name:person?.text??'',phone:contact?.text??'',...vehicleFields}
   }
-  saveReferences(at:string,refs:CustomerReferences) {
+  /** Revoke working context, retaining auditable N:N links and all messages. */
+  invalidateContactContexts(at:string,before:CustomerReference[],after:CustomerReference[]) {
+    const key=(r:CustomerReference|undefined)=>r?.id?'id:'+r.id:'text:'+(r?.text??'')
+    const primaryChanged=key(before[0])!==key(after[0])
+    const removed=before.filter(r=>r.id&&!after.some(n=>n.id===r.id))
+    if(!primaryChanged&&!removed.length)return
+    const channels=new Set<string>()
+    if(primaryChanged)for(const row of this.db.prepare('SELECT conversation_id FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').all(at))channels.add(String(row.conversation_id))
+    for(const r of removed){const cid=this.record(r.id!).conversationId;if(cid)channels.add(cid)}
+    const identities=new ConversationIdentities(this.db)
+    for(const cid of [...channels]){
+      const jid=identities.providerJid(cid),members=jid?identities.identityJids(jid):null
+      if(members)for(const row of this.db.prepare(`SELECT id FROM chat_provider_conversations WHERE instance='funix_comercial' AND remote_jid IN (${members.map(()=>'?').join(',')})`).all(...members))channels.add(String(row.id))
+    }
+    for(const cid of channels){
+      this.db.prepare('DELETE FROM v20_active_context WHERE conversation_id=? AND link_id IN (SELECT id FROM v20_associations WHERE atendimento_id=?)').run(cid,at)
+      this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(cid)
+    }
+  }
+  saveReferences(at:string,refs:CustomerReferences,previous=this.references(at).contact) {
+    this.invalidateContactContexts(at,previous,refs.contact)
     this.db.prepare('DELETE FROM atendimento_references WHERE atendimento_id=?').run(at)
     for(const kind of kinds)refs[kind].forEach((r,i)=>{
       this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(r))
@@ -76,6 +97,7 @@ export class CustomerRepository {
       const row=this.db.prepare('SELECT data,record_id FROM atendimento_references WHERE atendimento_id=? AND kind=? AND position=0').get(at,kind)
       if(!row)continue
       const r=row.record_id?this.record(String(row.record_id)):JSON.parse(String(row.data))
+      if(kind==='contact'&&fields[key]===r.text)continue
       // Explicit textual correction detaches this ficha reference, never moves messages or edits a shared record.
       const data={id:null,text:fields[key]??r.text,...(kind==='vehicle'?{plate:fields.plate??r.plate??'',fabricationYear:fields.fabricationYear??r.fabricationYear??null,modelYear:fields.modelYear??r.modelYear??null}:{})}
       this.db.prepare('UPDATE atendimento_references SET record_id=NULL,data=? WHERE atendimento_id=? AND kind=? AND position=0').run(JSON.stringify(data),at,kind)
