@@ -1,11 +1,12 @@
 import {useCallback,useEffect,useEffectEvent,useLayoutEffect,useState} from 'react'
 import type {BudgetPreview,BudgetVersion} from '../shared/pricing'
+import type {WorkOrder} from '../shared/work-order'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
 import{budgetHistory}from'../shared/budget-history'
 import './budget-experience.css'
-type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;scenarioId?:string;serial?:number}
+type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;scenarioId?:string;serial?:number;workOrderNumber?:string|null}
 export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id'|'label'|'filename'>){
  const response=await fetch(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(version.id)}/pdf`,{credentials:'same-origin'})
  if(!response.ok||!response.headers.get('content-type')?.includes('application/pdf'))throw Object.assign(new Error('Não foi possível baixar o PDF.'),{status:response.status})
@@ -18,25 +19,42 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
 }
 
 export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
- const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
+ const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[order,setOrder]=useState<WorkOrder|null>(null),[checkingOrder,setCheckingOrder]=useState(false),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
  const requireAuth=useEffectEvent(onAuthRequired)
  const selected=version?.id===versionId?version:null
  const busy=ownBusy||externalBusy
  useLayoutEffect(()=>{onTitle(versionId?selected?'Orçamento '+(selected.documentNumber??selected.label):'Orçamento emitido':'Orçamentos emitidos')},[versionId,selected,onTitle])
  useEffect(()=>{
   if(!versionId)return
-  const controller=new AbortController()
-  api<BudgetVersion>(`/api/atendimentos/${at}/orcamentos/${encodeURIComponent(versionId)}`,{signal:controller.signal}).then(v=>{if(!controller.signal.aborted){setError('');setVersion(v)}}).catch(e=>{if(!controller.signal.aborted){setError(e.message);if(e.status===401)requireAuth()}})
+  const controller=new AbortController();setCheckingOrder(true);setOrder(null);setVersion(null)
+  Promise.all([
+    api<BudgetVersion>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(versionId)}`,{signal:controller.signal}),
+    api<WorkOrder>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(versionId)}/os`,{signal:controller.signal}).catch(e=>{
+      if((e as RequestFailure).status===404&&(e as RequestFailure).code==='OS_NOT_FOUND')return null
+      throw e
+    })
+  ]).then(([v,os])=>{if(!controller.signal.aborted){setError('');setVersion(v);setOrder(os)}})
+    .catch(e=>{if(!controller.signal.aborted){setError(e.message);if(e.status===401)requireAuth()}})
+    .finally(()=>{if(!controller.signal.aborted)setCheckingOrder(false)})
   return()=>controller.abort()
  },[at,versionId])
  const load=useCallback(async()=>{setVersions(await api<VersionMeta[]>(`/api/atendimentos/${at}/orcamentos`))},[at])
  useEffect(()=>{let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load])
+ const orderUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os/pdf`
+ async function createOrder(id:string){
+  if(busy||checkingOrder)return
+  if(!window.confirm('Confirma que o orçamento emitido foi autorizado para execução? A OS conterá o escopo congelado desta versão.'))return
+  await operation(async()=>{
+   const os=await api<WorkOrder>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authorized:true})})
+   setOrder(os);await load()
+  })
+ }
  async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
  return <section aria-label="Orçamentos emitidos">{error&&<p role="alert" className="form-error">{error}</p>}
- {selected?<><p>Documento emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. O PDF original fica preservado, independente de mudanças posteriores.</p><button className="primary-btn" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,selected))}>Baixar PDF {selected.documentNumber??selected.label}</button></>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>{budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}><h2>{group.name}</h2>{group.versions.map(v=><div className="budget-history-row" key={v.id}>
+ {selected?<><p>Documento emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. O PDF original fica preservado, independente de mudanças posteriores.</p><button className="primary-btn" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,selected))}>Baixar PDF {selected.documentNumber??selected.label}</button>{checkingOrder?<p role="status">Consultando OS…</p>:order?<section className="issued-order-card"><strong>{order.number} · Ordem de Serviço</strong><p>Autorizada em {new Date(order.authorization.confirmedAt).toLocaleString('pt-BR')} · {order.scope.lines.length} itens</p><a className="issued-order-link" href={orderUrl(selected.id)} target="_blank" rel="noopener noreferrer">Ver OS / Imprimir</a></section>:<button className="issued-order-create" disabled={busy} onClick={()=>createOrder(selected.id)}>Criar OS</button>}</>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>{budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}><h2>{group.name}</h2>{group.versions.map(v=><div className="budget-history-row" key={v.id}>
  <button className="budget-history-open" disabled={busy} onClick={()=>onOpenVersion(v.id)} aria-label={`Consultar orçamento ${v.documentNumber??v.label}, versão ${v.scenarioVersion}`}><strong className="budget-history-letter">{v.scenarioVersion}</strong><span className="budget-history-identity"><strong>{v.documentNumber??'Orçamento '+v.label}</strong><time dateTime={v.createdAt}>{new Date(v.createdAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})}</time></span><strong className="budget-history-total">{money(v.total)}</strong></button>
  <button className="budget-history-download" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,v))} aria-label={`Baixar orçamento ${v.documentNumber??v.label}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 18v3h16v-3"/></svg></button>
- </div>)}</section>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
+ {v.workOrderNumber?<a className="budget-history-order" href={orderUrl(v.id)} target="_blank" rel="noopener noreferrer">Ver OS</a>:<button className="budget-history-order" disabled={busy} onClick={()=>onOpenVersion(v.id)}>Criar OS</button>}</div>)}</section>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
  </section>
 }
 
