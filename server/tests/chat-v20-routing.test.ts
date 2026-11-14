@@ -100,7 +100,7 @@ test('Gated manual N:N routes require auth/Origin, reject arbitrary UUID, preser
     linked = await (await f.request(base + '/atendimentos', 'GET', undefined, cookie)).json()
     assert.equal(linked.activeAtendimentoId, null)
     assert.deepEqual(linked.items.map((x: { atendimentoId: string }) => x.atendimentoId), [f.two.id])
-    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 16)
+    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 17)
     assert.equal((await (await f.request('/api/health')).json()).capabilities.messages, false)
   } finally { f.db.close() }
 })
