@@ -40,10 +40,6 @@ export class BudgetRepository {
   }
   return negotiation(input)
  }
- private assertTechnicalReview(at:string,scenarioId:string){
-  const unresolved=this.db.prepare(`SELECT 1 FROM diagnosis_items p JOIN scenario_piece_flags f ON f.piece_id=p.id AND f.scenario_id=? WHERE p.atendimento_id=? AND p.piece_review_pending=1 AND f.enabled=1 LIMIT 1`).get(scenarioId,at)
-  if(unresolved)throw new ServiceError(422,'PIECE_REVIEW_PENDING','Revise e confirme tecnicamente a peça substituída antes de emitir o orçamento.')
- }
  private build(at:string,scenarioId:string,input:NegotiationInput):BudgetPreview{
   const atendimento=new AtendimentoRepository(this.db).get(at),commercial=new CommercialRepository(this.db),pricing=new PricingConfigurationRepository(this.db)
   selectedScenario(this.db,at,scenarioId)
@@ -65,8 +61,7 @@ export class BudgetRepository {
   snapshot.pdfPresentation={version:"technical-stage-v1",errors:technicalGroups(snapshot).errors}
   snapshot.executionDeadline=executionDeadline(scenario.deadline,calculation.days,hasIncludedPainting(items,scenario,calculation))
   if(calculation.total!==null)snapshot.installments=installmentSnapshot(calculation.total,new InstallmentRepository(this.db).get())
-  const pendingTechnicalReview=items.some(item=>item.pieceReviewPending&&scenario.pieceFlags[item.id]!==false)
-  return {snapshot,token:hash(snapshot),canEmit:!pendingTechnicalReview && budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}
+  return {snapshot,token:hash(snapshot),canEmit:budgetBlockingErrors(snapshot).length===0 && calculation.total!==null && snapshot.executionDeadline.effectiveDays!==null}
  }
  preview(at:string,input:unknown):BudgetPreview{
   const data=inputObject(input,['scenarioId','negotiation'])
@@ -79,7 +74,7 @@ export class BudgetRepository {
   const data=inputObject(input,['scenarioId','negotiation','previewToken'])
   const preview=this.preview(at,{scenarioId:data.scenarioId,negotiation:data.negotiation})
   if(preview.token!==data.previewToken)conflict()
-  if(!preview.canEmit){this.assertTechnicalReview(at,String(data.scenarioId));throw new ServiceError(422,'BUDGET_INCOMPLETE',[...budgetBlockingErrors(preview.snapshot),...(preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente.']:[])].join(' '))}
+  if(!preview.canEmit)throw new ServiceError(422,'BUDGET_INCOMPLETE',[...budgetBlockingErrors(preview.snapshot),...(preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente.']:[])].join(' '))
   const version:BudgetVersion={id:randomUUID(),atendimentoId:at,sequence:0,label:'PRÉVIA',documentNumber:'PRÉVIA',createdAt:new Date((this.options.now??Date.now)()).toISOString(),snapshot:structuredClone(preview.snapshot)}
   version.snapshot.document={template:'FUNIX - Orcamento',data:toJsreportData(version)}
   const pdf=await(this.options.render?this.options.render(version):renderJsreportPdf(version,frozenTerms(version.snapshot),configuredJsreport()))
@@ -97,7 +92,7 @@ export class BudgetRepository {
   const checkedPreview=()=>{
    const preview=this.build(at,scenarioId,deal)
    if(preview.token!==token)conflict()
-   if(!preview.canEmit){this.assertTechnicalReview(at,scenarioId);throw new ServiceError(422,'BUDGET_INCOMPLETE',[...budgetBlockingErrors(preview.snapshot),...(preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente: configure a estimativa técnica ou informe prazo manual válido.']:[])].join(' '))}
+   if(!preview.canEmit)throw new ServiceError(422,'BUDGET_INCOMPLETE',[...budgetBlockingErrors(preview.snapshot),...(preview.snapshot.executionDeadline?.effectiveDays===null?['Prazo de execução pendente: configure a estimativa técnica ou informe prazo manual válido.']:[])].join(' '))
    return preview
   }
   // Reserve under a short transaction. Failed attempts retain their serial permanently.

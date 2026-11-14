@@ -60,6 +60,31 @@ try{
    assert((await componentHeading.innerText()).includes(money(official.componentTotal)))
    assert(await serviceHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'service header overflow at '+width)
    assert(await componentHeading.evaluate(el=>el.scrollWidth<=el.clientWidth+2),'component header overflow at '+width)
+   // #168: nome da peça vira um seletor direto, inclusive mobile, sem modal ou confirmação.
+   const piecePicker=editor.getByRole('combobox',{name:'Peça',exact:true})
+   assert.equal(await piecePicker.count(),1,'one inline piece selector at '+width)
+   assert.equal(await editor.getByRole('button',{name:'Trocar peça'}).count(),0,'old extra button removed')
+   assert.equal(await editor.getByRole('button',{name:'Confirmar revisão técnica'}).count(),0,'no review confirmation')
+   const target=f.commercial.catalogs().items.find(x=>x.code==='para_choque_traseiro')
+   assert(target)
+   let unexpectedDialogs=0
+   page.on('dialog',dialog=>{unexpectedDialogs++;void dialog.dismiss()})
+   await piecePicker.selectOption(target.id)
+   try{await page.waitForFunction(id=>document.querySelector('.piece-name-select select')?.value===id,target.id,{timeout:9000})}
+   catch(e){console.error('Piece selector diagnostic',await editor.evaluate(el=>({state:el.getAttribute('data-save-state'),value:el.querySelector('.piece-name-select select')?.value,alerts:[...el.querySelectorAll('[role=alert]')].map(a=>a.textContent),feedback:el.textContent?.slice(0,900)})),{dbPiece:f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,target:target.id});throw e}
+   try{await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed',null,{timeout:10000})}
+   catch(e){console.error('Piece swap diagnostic',await editor.evaluate(el=>({state:el.getAttribute('data-save-state'),selected:el.querySelector('.piece-name-select select')?.value,alerts:[...el.querySelectorAll('[role=alert]')].map(a=>a.textContent),status:el.textContent?.slice(0,500)})),{dbPiece:f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,expected:target.id});throw e}
+   assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,target.id)
+   assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.manualPrice,'10')
+   assert.equal(components.list(f.at.id).find(x=>x.id===saved.id)?.pieceId,piece.id)
+   assert.equal(await editor.locator('.piece-replacement-notice').count(),0)
+   const selectedStyle=await piecePicker.evaluate(el=>({height:el.getBoundingClientRect().height,overflow:el.scrollWidth>el.clientWidth+2}))
+   assert(selectedStyle.height>=44&&!selectedStyle.overflow,'compact piece picker at '+width)
+   await piecePicker.selectOption(catalog.id)
+   await page.waitForFunction(id=>document.querySelector('.piece-name-select select')?.value===id,catalog.id)
+   await page.waitForFunction(()=>document.querySelector('.approved-editor')?.getAttribute('data-save-state')==='confirmed')
+   assert.equal(f.commercial.list(f.at.id).find(x=>x.id===piece.id)?.pieceId,catalog.id)
+   assert.equal(unexpectedDialogs,0,'piece change must never open a confirmation')
    // Category totals must also be visible before opening the piece editor.
    await page.getByRole('button',{name:'Voltar aos Diagnósticos'}).click()
    const overview=page.locator('.diagnosis-card').filter({hasText:catalog.name})

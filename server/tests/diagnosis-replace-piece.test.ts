@@ -118,7 +118,7 @@ test('#168: troca permanece após fechar e reabrir SQLite sintético',()=>{
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
 
-test('#168: revisão pendente bloqueia orçamento até confirmação explícita e mantém PDF emitido',async()=>{
+test('#168: troca direta não bloqueia orçamento e preserva documento emitido',async()=>{
  const db=openDatabase(':memory:')
  try{
   const f=commercialFixture(db),budgets=new BudgetRepository(db)
@@ -131,17 +131,30 @@ test('#168: revisão pendente bloqueia orçamento até confirmação explícita 
   const state=()=>({revision:Number(db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!.revision),scenarios:f.scenarios.list(f.at.id).map(x=>({id:x.id,revision:x.revision}))})
   const old=state()
   const changed=f.commercial.replacePiece(f.at.id,original.id,{pieceId:destination.id,revision:original.revision,compositionRevision:old.revision,scenarios:old.scenarios})
-  assert.equal(changed.pieceReviewPending,true)
-  assert.equal(budgets.preview(f.at.id,request).canEmit,false)
-  await assert.rejects(budgets.emit(f.at.id,{...request,previewToken:budgets.preview(f.at.id,request).token,idempotencyKey:randomUUID()}),(e:unknown)=>e instanceof ServiceError&&e.status===422&&e.code==='PIECE_REVIEW_PENDING')
-  const after=state()
-  assert.throws(()=>f.commercial.confirmPieceReview(f.at.id,changed.id,{confirmed:true,revision:changed.revision,compositionRevision:old.revision,scenarios:old.scenarios}),(e:unknown)=>e instanceof ServiceError&&e.status===409)
-  assert.equal(f.commercial.list(f.at.id)[0]!.pieceReviewPending,true)
-  const reviewed=f.commercial.confirmPieceReview(f.at.id,changed.id,{confirmed:true,revision:changed.revision,compositionRevision:after.revision,scenarios:after.scenarios})
-  assert.equal(reviewed.pieceReviewPending,false)
-  assert.equal(reviewed.revision,changed.revision+1)
+  assert.equal(changed.pieceReviewPending,false)
+  assert.equal(changed.id,original.id)
+  assert.deepEqual(changed.services,original.services)
   assert.equal(budgets.preview(f.at.id,request).canEmit,true)
+  const nextPreview=budgets.preview(f.at.id,request)
+  const next=await budgets.emit(f.at.id,{...request,previewToken:nextPreview.token,idempotencyKey:randomUUID()})
+  assert.equal(next.snapshot.composition.items.find(item=>item.id===original.id)?.pieceId,destination.id)
   assert.deepEqual(budgets.get(f.at.id,issued.id),frozen)
   assert.deepEqual(Buffer.from(budgets.pdf(f.at.id,issued.id)),pdf)
+ }finally{db.close()}
+})
+
+test('#168: pendência legada de revisão não bloqueia orçamento e é limpa na próxima troca',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const f=commercialFixture(db),budgets=new BudgetRepository(db)
+  const original=f.commercial.list(f.at.id)[0]!
+  db.prepare('UPDATE diagnosis_items SET piece_review_pending=1 WHERE id=?').run(original.id)
+  const before=budgets.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'}})
+  assert.equal(before.canEmit,true)
+  const next=f.commercial.catalogs().items.find(x=>x.code==='para_choque_traseiro')!
+  const state=db.prepare('SELECT revision FROM commercial_state WHERE atendimento_id=?').get(f.at.id)!
+  const switched=f.commercial.replacePiece(f.at.id,original.id,{pieceId:next.id,revision:original.revision,compositionRevision:Number(state.revision),scenarios:f.scenarios.list(f.at.id).map(s=>({id:s.id,revision:s.revision}))})
+  assert.equal(switched.pieceReviewPending,false)
+  assert.equal(budgets.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'}}).canEmit,true)
  }finally{db.close()}
 })
