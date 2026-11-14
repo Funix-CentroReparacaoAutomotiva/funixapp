@@ -52,6 +52,12 @@ export function budgetPdf(version:BudgetVersion):Buffer {
   `Condições e ressalvas comerciais: ${s.conditions||'Não informadas.'}`,
   'Documento comercial. Não é ordem de serviço. Atendimento operacional permanece no ERP.',
   `Identificador imutável da versão: ${version.id}`)
+ return documentPdf(paragraphs,documentId)
+}
+
+// Shared local Unicode PDF renderer. Historical budget output remains unchanged.
+// Work orders use their own strictly operational paragraphs, never jsreport.
+export function documentPdf(paragraphs:string[],documentId:string):Buffer {
  const lines=paragraphs.flatMap(wrap),pages:string[][]=[]
  for(let i=0;i<lines.length;i+=46)pages.push(lines.slice(i,i+46))
  const footers=pages.map((_,i)=>`FUNIX | Página ${i+1}/${pages.length} | ${documentId}`)
