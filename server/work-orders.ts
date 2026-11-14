@@ -46,7 +46,9 @@ function fromRow(row:Record<string,SQLOutputValue>):WorkOrder {
   }
 }
 export class WorkOrderRepository {
-  constructor(private readonly db:DatabaseSync,private readonly now:()=>number=Date.now){}
+  private readonly db:DatabaseSync
+  private readonly now:()=>number
+  constructor(db:DatabaseSync,now:()=>number=Date.now){this.db=db;this.now=now}
   get(at:string,versionId:string):WorkOrder {
     const row=this.db.prepare('SELECT * FROM work_orders WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)
     if(row)return fromRow(row)
