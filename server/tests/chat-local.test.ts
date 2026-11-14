@@ -245,7 +245,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
     // the V13 baseline; the actual upgrade and its failure are exercised below.
     db.exec(`DROP TABLE chat_link_receipts; DROP TABLE chat_statuses; DROP TABLE chat_messages;
       DROP TABLE chat_links; DROP TABLE chat_conversations; DROP TABLE chat_events;
-      DROP TABLE chat_instances; ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; ALTER TABLE scenarios DROP COLUMN negotiation_draft_json; DELETE FROM schema_migrations WHERE version IN (14,15,16);`)
+      DROP TABLE chat_instances; ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; ALTER TABLE atendimentos DROP COLUMN fabrication_year; ALTER TABLE atendimentos DROP COLUMN model_year; ALTER TABLE scenarios DROP COLUMN negotiation_draft_json; DELETE FROM schema_migrations WHERE version IN (14,15,16,17);`)
     db.exec('PRAGMA foreign_keys=ON')
     const at = new AtendimentoRepository(db).create({ phone: '000000000', notes: 'Preservar conteúdo sintético anterior' })
     const before = db.prepare('SELECT * FROM atendimentos').all()
@@ -255,7 +255,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='chat_instances'").get(), undefined)
     assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(), before)
     db.exec('DROP VIEW chat_messages'); migrate(db)
-    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 16)
+    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 17)
     assert.equal(count(db, 'chat_instances'), 0)
     assert.equal(count(db, 'chat_messages'), 0)
     assert.equal(new AtendimentoRepository(db).get(at.id).notes, at.notes)
