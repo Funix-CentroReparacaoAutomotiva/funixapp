@@ -131,3 +131,49 @@ test('Issue #159 normaliza placas no create/PATCH e mantém busca compatível', 
     assert.equal(repo.get(mercosul.id).phone, '31912345678')
   } finally { db.close() }
 })
+
+test('Issue #118 mantém anos independentes, legados sem inferência e revisão otimista', () => {
+  const db = openDatabase(':memory:')
+  try {
+    const repo = new AtendimentoRepository(db)
+    const legacy = repo.create({phone:'31911112222',model:'Punto',vehicle:'Punto 2019/2020'})
+    assert.equal(legacy.fabricationYear,null)
+    assert.equal(legacy.modelYear,null)
+    const untouched = repo.update(legacy.id,{revision:legacy.revision,name:'Legado preservado'})
+    assert.equal(untouched.fabricationYear,null)
+    assert.equal(untouched.modelYear,null)
+    assert.equal(untouched.vehicle,'Punto 2019/2020')
+    const split = repo.update(legacy.id,{revision:untouched.revision,fabricationYear:'2019',modelYear:'2020'})
+    assert.equal(split.fabricationYear,'2019')
+    assert.equal(split.modelYear,'2020')
+    assert.throws(()=>repo.update(legacy.id,{revision:untouched.revision,modelYear:'2021'}),/mudou em outra edição/)
+    assert.throws(()=>repo.update(legacy.id,{revision:split.revision,modelYear:'2020/2021'}),/quatro dígitos/)
+    assert.equal(repo.get(legacy.id).modelYear,'2020')
+    const onlyFabrication=repo.create({phone:'31911113333',fabricationYear:'2017',modelYear:''})
+    assert.equal(onlyFabrication.fabricationYear,'2017')
+    assert.equal(onlyFabrication.modelYear,'')
+  } finally { db.close() }
+})
+
+
+test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', () => {
+  const temp=files()
+  try {
+    let db=openDatabase(temp.filename)
+    const original=new AtendimentoRepository(db).create({phone:'31911112222',model:'Gol',vehicle:'Gol 2019/2020'})
+    db.close()
+    // Reconstrói em arquivo sintético o formato imediatamente anterior à migração V16.
+    db=new DatabaseSync(temp.filename)
+    db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year')
+    db.exec('ALTER TABLE atendimentos DROP COLUMN model_year')
+    db.exec('DELETE FROM schema_migrations WHERE version=16')
+    db.close()
+    db=openDatabase(temp.filename)
+    const restored=new AtendimentoRepository(db).get(original.id)
+    assert.equal(restored.vehicle,'Gol 2019/2020')
+    assert.equal(restored.fabricationYear,null)
+    assert.equal(restored.modelYear,null)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),16)
+    db.close()
+  } finally { temp.close() }
+})

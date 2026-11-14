@@ -255,6 +255,10 @@ function App() {
     try { await api('/api/session', { method: 'DELETE' }); expireSession(); setCopilotOpen(false) }
     catch (cause) { setFailure((cause as Error).message) }
   }
+  function autosaved(savedRecord: Atendimento) {
+    // Persistência de edição não encerra o modal nem recria o formulário.
+    setRecord(savedRecord);cache.current.clear();setList(null)
+  }
   function saved(savedRecord: Atendimento) {
     const creating = !editor?.record
     dirty.current = false; setEditor(null); cache.current.clear(); setList(null); setRecord(savedRecord)
@@ -302,7 +306,7 @@ function App() {
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
           {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<ChatPanel key={record.id + ':' + (params.get('conversa') ?? '')} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} onUnauthorized={expireSession}>
-            <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
+            <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{(record.fabricationYear!==null||record.modelYear!==null)&&<p>Ano de fabricação: {record.fabricationYear||'—'} · Ano do modelo: {record.modelYear||'—'}</p>}{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
           </ChatPanel>} />}
         </>}
       </>}
@@ -318,7 +322,7 @@ function App() {
       }
     }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={()=>canLeaveEditor()}>×</button></header>
       {!session?.authenticated && <div className="at-reauth"><p>Sua sessão expirou. Entre novamente para continuar; as alterações do formulário foram mantidas.</p>{login}</div>}
-      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} /></div>
+      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} /></div>
     </section></div>}
   </div>
 }
