@@ -88,6 +88,6 @@ test('Different emitted versions can produce distinct OSs while each version has
   assert.equal(other.number,'OS-000002')
   assert.equal(orders.create(fixture.at.id,version.id,{authorized:true}).id,first.id)
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_orders').get()!.count,2)
-  assert.equal(budgets.list(fixture.at.id).find(v=>v.id===version.id)?.workOrderNumber,first.number)
+  assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,first.number)
  }finally{db.close()}
 })
