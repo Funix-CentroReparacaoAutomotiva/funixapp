@@ -199,7 +199,7 @@ export class CommercialRepository {
       if(old.pieceId===pieceId)return old
       if(this.db.prepare('SELECT id FROM diagnosis_items WHERE atendimento_id=? AND piece_id=?').get(atendimentoId,pieceId))
         throw new ServiceError(409,'PIECE_ALREADY_SELECTED','A peça de destino já está neste Atendimento. A composição original foi preservada.')
-      const updated=this.db.prepare('UPDATE diagnosis_items SET piece_id=?,piece_review_pending=1,revision=revision+1,updated_at=? WHERE id=? AND atendimento_id=? AND revision=?')
+      const updated=this.db.prepare('UPDATE diagnosis_items SET piece_id=?,piece_review_pending=0,revision=revision+1,updated_at=? WHERE id=? AND atendimento_id=? AND revision=?')
         .run(pieceId,new Date().toISOString(),id,atendimentoId,expected)
       if(updated.changes!==1)conflict()
       // Identity is unchanged: services, components and per-scenario flags retain their foreign keys.
