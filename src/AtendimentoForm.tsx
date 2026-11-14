@@ -44,8 +44,10 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
   useEffect(() => () => onDirty(false), [onDirty])
 
   function setDraft(updater:(previous:AtendimentoInput)=>AtendimentoInput) {
-    setLastSaved(false)
-    setFields(previous=>{const next=updater(previous);fieldsRef.current=next;onDirty(true);return next})
+    setLastSaved(false);setFailure('')
+    // Marca edição imediatamente para proteger navegação no mesmo evento de input.
+    onDirty(true)
+    setFields(previous=>{const next=updater(previous);fieldsRef.current=next;return next})
   }
   function update<K extends keyof AtendimentoInput>(name: K, value: AtendimentoInput[K]) {
     setDraft(previous=>({...previous,[name]:value}))
