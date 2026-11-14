@@ -89,8 +89,8 @@ try{
      const style=getComputedStyle(el)
      return {foreground:style.color,background:style.backgroundColor,height:el.getBoundingClientRect().height}
    })
-   assert.match(legible.foreground,/rgb\\(23, 43, 69\\)/)
-   assert.match(legible.background,/rgb\\(255, 255, 255\\)/)
+   assert.equal(legible.foreground,'rgb(23, 43, 69)')
+   assert.equal(legible.background,'rgb(255, 255, 255)')
    assert(legible.height>=44,'readable touch target at '+width)
    await result.click()
    await page.waitForFunction(id=>[...document.querySelectorAll('.piece-search-trigger')].some(el=>el.textContent?.includes(id)),target.name.replace(/\\s*·\\s*/g,' '))
