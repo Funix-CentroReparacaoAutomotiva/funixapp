@@ -13,6 +13,8 @@ import base64
 import http.client
 import json
 import math
+import socket
+from datetime import datetime, timezone
 import re
 import ssl
 import stat
@@ -22,6 +24,77 @@ from typing import Any
 
 
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
+HML_HOST = "hml.funix.com.br"
+
+
+def probe_https(address: str, timeout: float = 6.0) -> dict[str, Any]:
+    """One unauthenticated GET, strict TLS, explicit separation of TCP and SNI."""
+    result: dict[str, Any] = {
+        "time": datetime.now(timezone.utc).isoformat(),
+        "target": address, "port": 443, "sni": HML_HOST,
+        "host": HML_HOST, "stage": "tcp",
+    }
+    raw = None
+    connection = None
+    tls = None
+    response = None
+    try:
+        raw = socket.create_connection((address, 443), timeout=timeout)
+        result["tcp"] = "ok"
+        result["stage"] = "tls"
+        tls = ssl.create_default_context().wrap_socket(raw, server_hostname=HML_HOST)
+        cert = tls.getpeercert()
+        result.update(tls="ok", certificate="verified", protocol=tls.version(),
+                      san=cert.get("subjectAltName", ()),
+                      not_after=cert.get("notAfter"))
+        result["stage"] = "http"
+        connection = http.client.HTTPConnection(HML_HOST, 443, timeout=timeout)
+        connection.sock = tls
+        connection.request("GET", "/", headers={
+            "Host": HML_HOST, "Connection": "close",
+            "User-Agent": "funix-hml-https-diagnostic/1",
+        })
+        response = connection.getresponse()
+        result.update(status=response.status,
+                      basic_challenge=response.getheader("WWW-Authenticate", "").lower().startswith("basic "))
+        # No body, cookies, arbitrary headers or exception text in the report.
+        result["stage"] = "complete"
+    except ssl.SSLCertVerificationError as error:
+        result.update(category="certificate", verify_code=error.verify_code)
+    except ssl.SSLError:
+        result.update(category="tls")
+    except (OSError, http.client.HTTPException) as error:
+        result.update(category=result["stage"], error_type=type(error).__name__,
+                      errno=getattr(error, "errno", None))
+    finally:
+        if response is not None:
+            response.close()
+        if connection is not None:
+            connection.close()
+        if tls is not None:
+            tls.close()
+        if raw is not None:
+            raw.close()
+    return result
+
+
+def diagnose_https() -> int:
+    """Observe loopback and every distinct A/AAAA result; never publish."""
+    addresses = []
+    failed = False
+    try:
+        answers = socket.getaddrinfo(HML_HOST, 443, type=socket.SOCK_STREAM)
+        addresses = sorted({answer[4][0] for answer in answers})
+        print(json.dumps({"stage": "dns", "host": HML_HOST, "addresses": addresses}), flush=True)
+    except socket.gaierror as error:
+        failed = True
+        print(json.dumps({"stage": "dns", "category": "dns", "errno": error.errno}), flush=True)
+    for address in dict.fromkeys(["127.0.0.1", *addresses]):
+        observation = probe_https(address)
+        print(json.dumps(observation), flush=True)
+        failed |= "category" in observation
+    # HTTP status is evidence, not an acceptance gate while gateway is absent.
+    return int(failed)
 
 
 class ValidationError(RuntimeError):
@@ -196,11 +269,13 @@ def request_json(
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("--release-env", type=Path, required=True)
+    result.add_argument("--diagnose-https", action="store_true",
+                        help="Unauthenticated HML DNS/TCP/TLS/HTTP observations; no files read")
+    result.add_argument("--release-env", type=Path)
     result.add_argument("--release-key", default="FUNIX_HML_REVISION")
-    result.add_argument("--credentials-file", type=Path, required=True)
+    result.add_argument("--credentials-file", type=Path)
     result.add_argument("--scheme", choices=("http", "https"), default="http")
-    result.add_argument("--connect-host", required=True)
+    result.add_argument("--connect-host")
     result.add_argument("--port", type=int)
     result.add_argument("--host-header", default="hml.funix.com.br")
     result.add_argument("--timeout", type=float, default=6.0)
@@ -208,7 +283,14 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    args = parser().parse_args()
+    cli = parser()
+    args = cli.parse_args()
+    if args.diagnose_https:
+        return diagnose_https()
+    if not args.release_env or not args.credentials_file or not args.connect_host:
+        cli.error("revision validation requires --release-env, --credentials-file and --connect-host")
+    if args.scheme == "https" and args.connect_host != args.host_header:
+        cli.error("HTTPS revision validation requires connect-host == host-header for SNI; use --diagnose-https for IP probes")
     try:
         expected = release_revision(args.release_env, args.release_key)
         credentials = basic_credentials(args.credentials_file)

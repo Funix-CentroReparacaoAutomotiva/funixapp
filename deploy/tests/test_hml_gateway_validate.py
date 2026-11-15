@@ -7,6 +7,12 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch, MagicMock
+import io
+import json
+import socket
+import ssl
+from contextlib import redirect_stdout, redirect_stderr
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +27,102 @@ REVISION = "8e801e9b0a8fc1fe5feec40d533d9e639e8b013b"
 
 
 class HmlGatewayValidatorTests(unittest.TestCase):
+    def test_authenticated_https_rejects_ip_host_mismatch_before_reading_credentials(self):
+        argv = ["validator", "--scheme", "https", "--connect-host", "127.0.0.1",
+                "--release-env", "/unused", "--credentials-file", "/unused"]
+        with patch.object(VALIDATOR.sys, "argv", argv), \
+             patch.object(VALIDATOR, "basic_credentials") as credentials, \
+             redirect_stderr(io.StringIO()) as output, \
+             self.assertRaises(SystemExit) as failure:
+            VALIDATOR.main()
+        self.assertEqual(failure.exception.code, 2)
+        self.assertIn("SNI", output.getvalue())
+        credentials.assert_not_called()
+
+    def test_https_probe_keeps_sni_and_host_while_connecting_to_loopback(self):
+        raw, tls, context, connection = (MagicMock() for _ in range(4))
+        context.wrap_socket.return_value = tls
+        tls.getpeercert.return_value = {
+            "subjectAltName": (("DNS", VALIDATOR.HML_HOST),), "notAfter": "synthetic",
+        }
+        tls.version.return_value = "TLSv1.3"
+        for status in (401, 404, 502, 503):
+            with self.subTest(status=status):
+                response = connection.getresponse.return_value
+                response.status = status
+                response.getheader.return_value = "Basic realm=synthetic"
+                with patch.object(VALIDATOR.socket, "create_connection", return_value=raw) as tcp, \
+                     patch.object(VALIDATOR.ssl, "create_default_context", return_value=context), \
+                     patch.object(VALIDATOR.http.client, "HTTPConnection", return_value=connection):
+                    result = VALIDATOR.probe_https("127.0.0.1")
+                tcp.assert_called_with(("127.0.0.1", 443), timeout=6.0)
+                context.wrap_socket.assert_called_with(raw, server_hostname=VALIDATOR.HML_HOST)
+                self.assertEqual(result["status"], status)
+                self.assertEqual(result["certificate"], "verified")
+                headers = connection.request.call_args.kwargs["headers"]
+                self.assertEqual(headers["Host"], VALIDATOR.HML_HOST)
+                self.assertNotIn("Authorization", headers)
+                response.read.assert_not_called()
+
+    def test_probe_distinguishes_tcp_tls_certificate_and_http_failure(self):
+        cases = [
+            ("tcp", ConnectionRefusedError(111, "private text"), "tcp"),
+            ("tls", ssl.SSLError("private text"), "tls"),
+            ("tls", ssl.SSLCertVerificationError("private text"), "certificate"),
+            ("http", TimeoutError("private text"), "http"),
+        ]
+        for stage, error, category in cases:
+            with self.subTest(category=category):
+                raw, context, tls, connection = (MagicMock() for _ in range(4))
+                context.wrap_socket.return_value = tls
+                tls.getpeercert.return_value = {}
+                tls.version.return_value = "TLSv1.3"
+                if category == "certificate":
+                    error.verify_code = 62
+                if stage == "tls":
+                    context.wrap_socket.side_effect = error
+                if stage == "http":
+                    connection.getresponse.side_effect = error
+                with patch.object(VALIDATOR.socket, "create_connection",
+                                  side_effect=error if stage == "tcp" else None,
+                                  return_value=raw), \
+                     patch.object(VALIDATOR.ssl, "create_default_context", return_value=context), \
+                     patch.object(VALIDATOR.http.client, "HTTPConnection", return_value=connection):
+                    result = VALIDATOR.probe_https("127.0.0.1")
+                self.assertEqual(result["category"], category)
+                self.assertEqual(result["stage"], stage)
+                self.assertNotIn("private text", json.dumps(result))
+                if category == "certificate":
+                    self.assertEqual(result["verify_code"], 62)
+                if stage != "tcp":
+                    raw.close.assert_called()
+
+    def test_diagnostic_probes_each_dns_address_once_even_with_gateway_absent(self):
+        answers = [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443)),
+            (socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("2001:db8::1", 443, 0, 0)),
+        ]
+        with patch.object(VALIDATOR.socket, "getaddrinfo", return_value=answers), \
+             patch.object(VALIDATOR, "probe_https", return_value={"status": 404}) as probe, \
+             patch.object(VALIDATOR, "basic_credentials") as credentials, \
+             patch.object(VALIDATOR.sys, "argv", ["validator", "--diagnose-https"]), \
+             redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(VALIDATOR.main(), 0)
+        self.assertEqual([call.args[0] for call in probe.call_args_list],
+                         ["127.0.0.1", "192.0.2.1", "2001:db8::1"])
+        credentials.assert_not_called()
+        self.assertEqual(len(output.getvalue().splitlines()), 4)
+
+    def test_dns_failure_still_observes_loopback_and_returns_nonzero(self):
+        with patch.object(VALIDATOR.socket, "getaddrinfo",
+                          side_effect=socket.gaierror(-2, "private text")), \
+             patch.object(VALIDATOR, "probe_https", return_value={"status": 404}) as probe, \
+             redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(VALIDATOR.diagnose_https(), 1)
+        probe.assert_called_once_with("127.0.0.1")
+        self.assertNotIn("private text", output.getvalue())
+
     def test_http_request_uses_host_and_basic_auth_without_changing_payload(self):
         expected_auth = "Basic " + base64.b64encode(b"homologacao:synthetic").decode()
 

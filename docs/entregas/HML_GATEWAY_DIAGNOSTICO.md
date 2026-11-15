@@ -1,6 +1,138 @@
 # Homologação: diagnóstico e publicação do gateway
 
-## Diagnóstico revisado
+## Atualização: HTTPS após correção dos upstreams
+
+Segundo o ensaio relatado pelo responsável, trocar os upstreams genéricos por
+funix-hml-api-1:8787 e funix-hml-web-1:8080 resolveu a divergência das revisões,
+inclusive com o gateway temporário conectado às duas redes. Isso sustenta
+ambiguidade dos aliases Docker api/web nas redes compartilhadas; o DNS Docker
+do instante original não foi inspecionado. A configuração e seu backup já foram
+instalados pelo responsável. Esta PR não altera Nginx ou arquivos da VPS.
+O histórico abaixo registra as conclusões anteriores a essa nova evidência.
+
+Todos os testes diretos 401/200 e revisões passaram na última tentativa.
+A nova falha foi somente HTTPS. A mensagem genérica não identifica se houve
+recusa TCP, erro TLS, certificado inválido ou status HTTP inesperado.
+A causa HTTPS permanece não confirmada.
+
+## Validade do teste em loopback
+
+TCP em 127.0.0.1:443 com TLS server_hostname=hml.funix.com.br e Host igual é
+correto para testar o Traefik local **se a publicação 443 incluir loopback**.
+SNI seleciona certificado; Host participa da seleção do router HTTP.
+Esse teste ignora DNS A/AAAA, firewall externo, eventual proxy/CDN e caminho
+externo. Seu resultado não comprova a acessibilidade pública.
+
+Docker pode publicar 443 somente em um IP específico ou em outra família.
+Publicação via NAT pode funcionar sem aparecer como processo em ss.
+Esperar 401 e descartar todos os erros não permite atribuir falha ao
+Let's Encrypt. Repetições também misturam indisponibilidade transitória,
+certificado inválido e roteamento incorreto sem indicar qual ocorreu.
+
+O validador autenticado da PR usava HTTPSConnection(connect_host), que também
+usa connect_host como SNI, independentemente de Host. Agora esse modo exige
+connect-host igual a host-header em HTTPS. O novo modo diagnóstico separa
+explicitamente IP TCP de SNI/Host, ambos fixados em homologação.
+
+## Hipóteses priorizadas para investigação
+
+Ordem por aderência ao sintoma e custo de verificação; não há evidência para
+declarar qual causa é mais provável com certeza.
+
+| Hipótese | Evidência favorável e limite | Discriminador |
+| --- | --- | --- |
+| Router/service inválido ou não carregado | Gateway direto passa; cadeia Traefik não foi validada | TLS válido + 404/502/503; erro do provider e configuração efetiva |
+| Loopback não alcança o entrypoint | Único destino testado foi 127.0.0.1; bind real desconhecido | Recusa/timeout TCP; comparar publicação 443 e IPs DNS |
+| Certificado padrão, cadeia não confiável ou emissão pendente | Hostname novo pode receber certificado padrão; erro TLS perdido | Categoria certificate e verify_code; certificado público apresentado |
+| DNS A/AAAA aponta para outro caminho | Não afeta diretamente loopback; pode afetar ACME/acesso público | Comparar A/AAAA com destinos esperados e testar cada IP com mesmo SNI |
+| Rede/porta errada entre Traefik e gateway | Duas redes; teste direto não prova seleção pelo Traefik | 502/503/504, server.port e traefik.docker.network |
+
+websecure e letsencrypt são nomes configuráveis, não garantias de existência.
+Só atribuir falha ao resolver após identificar erro ACME específico.
+Um healthcheck Traefik em /healthz sem credencial recebe 401 e pode excluir
+o backend, causando 503: verificar se essa opção foi herdada. Não criar
+exceção pública de autenticação como solução automática.
+
+## Procedimento mínimo manual, sem gateway e sem credenciais
+
+Executar somente após autorização, na VPS, com gateway ainda ausente:
+
+    python3 deploy/hml-gateway-validate.py --diagnose-https
+
+Não lê release, senha, token, banco ou arquivo de certificado. Resolve apenas
+hml.funix.com.br pelo resolver do sistema; faz um GET sem autenticação em /
+para loopback e cada A/AAAA distinto, uma vez por endereço, com timeout de seis
+segundos por operação. Usa validação TLS padrão de cadeia/hostname, sem fallback
+inseguro, redirects ou retries. Não usa o hostname de produção.
+
+A saída JSON por linha preserva destino, horário UTC, etapa, categoria/errno,
+verify_code quando disponível, SAN/validade/protocolo quando TLS passa, status
+HTTP e presença de desafio Basic. Não imprime corpo, cookies, Authorization
+ou texto arbitrário de exceções. Não modifica Docker/Traefik.
+
+| Resultado | Interpretação e próximo dado |
+| --- | --- |
+| dns | Resolver falhou; obter A/AAAA esperados e resposta do resolver |
+| tcp + recusa/timeout | TLS não alcançado; obter bind 443/publicação Docker |
+| tls | Handshake/protocolo falhou; confirmar serviço atendendo o destino |
+| certificate + verify_code | Certificado reprovado; não há status HTTP; obter metadados públicos e erro do resolver se houver |
+| TLS válido + 404 | Router ausente ou outra origem de 404; não é falha de certificado |
+| TLS válido + 401 e Basic | Compatível com gateway protegido; correlacionar router/service antes de concluir |
+| TLS válido + 502/503/504 | Investigar service, porta, rede, disponibilidade e healthcheck; status isolado não identifica origem |
+| TLS válido + 200/3xx | Rota/autenticação inesperada; não aceitar nem seguir redirect |
+
+Com gateway ausente, o provider Docker normalmente retira router/service.
+404 ou certificado padrão podem ser esperados. Não exigir 401 nesse estado,
+emitir certificado ou recriar gateway para fazer a coleta passar.
+Saída zero significa coleta sem erro DNS/TCP/TLS/transporte HTTP, **não aceite
+da homologação**; HTTP inesperado permanece registrado. Se TLS falha, não há
+tentativa insegura de alcançar HTTP. Acesso da VPS aos IPs públicos pode sofrer
+hairpin NAT; o caminho externo requer observação em rede externa autorizada.
+
+Complementos mínimos sanitizados, escolhidos pela etapa que falhar:
+
+1. TCP: publicação efetiva de 443 (HostIp/HostPort), endereço do entrypoint
+   websecure e resultado de ss -ltn '( sport = :443 )'. ss isoladamente não
+   descarta NAT Docker.
+2. DNS/TLS: A/AAAA esperados e observados; SAN, emissor, validade e fingerprint
+   SHA-256 do certificado público para SNI de homologação. Se TLS falha, a
+   sonda não captura certificado não verificado; esses metadados exigem
+   inspeção manual aprovada. Não ler armazenamento ACME privado.
+3. Roteamento: labels planejadas somente de funix-hml, rule Host, entrypoints,
+   tls, certresolver, service, server.port, traefik.docker.network, nomes de
+   middlewares e healthcheck sem headers. Confirmar websecure e letsencrypt
+   na configuração estática (tipo de challenge/entrypoint, sem segredos).
+4. Se disponível, snapshot anterior à reversão do router/service funix-hml@docker,
+   rede selecionada e erro de configuração. Caso não exista, fornecer mensagens
+   sanitizadas da janela da falha referentes à homologação: colisão de nomes,
+   entrypoint/resolver inexistente, erro ACME ou backend. A ausência atual do
+   router não explica seu estado anterior. Não habilitar dashboard/API para
+   obter essa informação.
+
+O responsável fornece somente a projeção necessária: não compartilhar inspect
+completo, env, acme.json, hashes Basic Auth ou logs brutos. Verificar colisões
+de nomes de routers/services/middlewares sem divulgar configuração produtiva.
+Revisar associação router → service → gateway:8080 pela rede traefik_default;
+API/Web permanecem privadas. A configuração dinâmica efetiva não existe no
+repositório; labels planejadas não provam o que Traefik carregou.
+
+## Critério para nova tentativa e reversão
+
+Antes de outra publicação: identificar a categoria da falha ou recuperar erro
+histórico, revisar configuração planejada/estática pertinente, eliminar
+colisões, confirmar caminho TCP e A/AAAA esperados. Se a evidência foi perdida,
+registrar a lacuna e submeter ensaio controlado instrumentado à autorização
+específica; não repetir o script opaco como descoberta inicial.
+
+Após autorização separada, exigir gateway Running, upstreams específicos,
+rede/porta corretas, TLS confiável para homologação, 401 com Basic sem senha,
+401 com senha incorreta e 200/revisões corretas autenticadas, tanto no caminho
+direto quanto no público pertinente. Preservar cada erro/status e interromper
+na etapa identificada. O rollback ao final deste documento remove somente
+gateway, sem parar Web/API, reiniciar Traefik, alterar DNS/certificados ou usar
+compose down. Com gateway ausente, não há mudança desta investigação a reverter.
+
+## Histórico anterior à correção dos upstreams
 
 A hipótese anterior de comparação entre objeto JSON e string está descartada.
 O programa original comparava explicitamente:
@@ -46,8 +178,8 @@ O fluxo da aplicação está coerente. `release.env` fornece
 `FUNIX_HML_REVISION`; o Compose passa esse valor à API como `FUNIX_REVISION`,
 que é exposto em `/api/ready`. A imagem Web grava `APP_REVISION` em
 `/release.json` no build. O Nginx da imagem Web rejeita `/api`; no desenho de
-homologação, o gateway precisa encaminhar `/api` para `api:8787` e o restante
-para `web:8080`. Os dois HTTP 200 autenticados confirmam que essas rotas
+homologação, o gateway deve encaminhar `/api` para `funix-hml-api-1:8787` e o restante
+para `funix-hml-web-1:8080`. Os dois HTTP 200 autenticados confirmam que essas rotas
 responderam, mas não registram quais revisões foram comparadas naquele instante.
 
 ## Correção proposta
