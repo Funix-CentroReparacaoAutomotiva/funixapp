@@ -5,7 +5,9 @@ import {inputObject,transaction} from './scenarios.ts'
 
 export interface BudgetCancellation {cancelledAt:string;reason:string}
 export class BudgetCancellationRepository {
- constructor(private readonly db:DatabaseSync,private readonly now:()=>number=Date.now){}
+ private readonly db:DatabaseSync
+ private readonly now:()=>number
+ constructor(db:DatabaseSync,now:()=>number=Date.now){this.db=db;this.now=now}
  cancel(at:string,versionId:string,input:unknown):BudgetCancellation{
   const data=inputObject(input,['reason'])
   const reason=typeof data.reason==='string'?data.reason.trim():''
