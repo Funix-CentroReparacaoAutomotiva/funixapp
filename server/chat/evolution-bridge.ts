@@ -92,6 +92,7 @@ export function createEvolutionChatBridge(
         updatedAt: string | null
         unreadCount: number | null
         atendimentoId?: string | null
+        atendimentoPhone?: string | null
         commercial?: CommercialConversation
       }>
       nextSkip: number | null
