@@ -107,16 +107,14 @@ db.close()
         history = page.get_by_role("region", name="Orçamentos emitidos")
         await expect(history.locator(".budget-history-row")).to_have_count(1)
         await expect(history.get_by_role("button", name="Criar OS")).to_be_visible()
-        await expect(history.get_by_role("button", name="Baixar orçamento " + ids["budgetNumber"])).to_be_visible()
+        await expect(history.get_by_role("link", name="Visualizar orçamento " + ids["budgetNumber"])).to_be_visible()
         await shot("01-lista-antes")
         mark("lista de orçamento emitido mostra Criar OS antes da autorização")
 
-        # The initial list button selects the frozen budget version; no OS is created.
-        await history.get_by_role("button", name="Criar OS").click()
-        await expect(page).to_have_url(__import__("re").compile(r"versao=" + ids["version"]))
-        await expect(history.get_by_role("button", name="Criar OS")).to_be_enabled()
+        # New UI: confirming OS on the list never navigates to the version detail.
+        original_url = page.url
         assert count_orders() == 0
-        mark("seleção da versão preserva orçamento e não cria OS implicitamente")
+        mark("lista apresenta criação de OS com botão acessível e orçamento consultável")
 
         # Dismissing the explicit browser confirmation must not create work.
         h.accept_dialogs = False
@@ -125,6 +123,7 @@ db.close()
         assert count_orders() == 0
         assert sum(x["method"] == "POST" and x["path"] == base + "/os" for x in h.api_requests) == before_posts
         assert h.dialogs and "autorizado" in h.dialogs[-1].lower()
+        assert page.url == original_url
         h.accept_dialogs = True
         mark("cancelar confirmação não dispara criação nem persiste OS")
 
@@ -146,7 +145,7 @@ db.close()
             assert len(seen) == 1 and seen[0] == {"authorized": True}
             assert count_orders() == 1
             await page.reload()
-            await expect(history.get_by_role("link", name="Ver OS / Imprimir")).to_be_visible()
+            await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
             mark("resposta perdida após commit recupera OS original sem duplicar")
         else:
             async with page.expect_response(
@@ -154,7 +153,7 @@ db.close()
             ) as created:
                 await history.get_by_role("button", name="Criar OS").click()
             assert (await created.value).status == 201
-            await expect(history.get_by_role("link", name="Ver OS / Imprimir")).to_be_visible()
+            await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
             assert count_orders() == 1
             mark("confirmação cria exatamente uma OS persistida")
 
@@ -189,20 +188,20 @@ db.close()
             )
         await shot("02-detalhe-os")
         async with page.expect_popup() as popup_event:
-            await history.get_by_role("link", name="Ver OS / Imprimir").click()
+            await history.get_by_role("link", name="Visualizar OS-000001").click()
         popup = await popup_event.value
         await popup.wait_for_url("**/os/pdf", timeout=12000)
         await popup.close()
         mark("botão Ver OS abre PDF operacional na guia de visualização/impressão")
 
-        # Return to history through actual UI and observe the alternate action.
-        await page.get_by_role("button", name="Voltar à tela anterior", exact=True).click()
+        # The whole workflow stays in the same list view; badge changes + to eye.
+        await expect(page).to_have_url(original_url)
         await expect(history.locator(".budget-history-row")).to_have_count(1)
-        await expect(history.get_by_role("link", name="Ver OS")).to_be_visible()
+        await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
         await expect(history.get_by_role("button", name="Criar OS")).to_have_count(0)
         await shot("03-lista-depois")
         assert count_orders() == 1
-        mark("histórico troca Criar OS por Ver OS e impede segundo clique de criação")
+        mark("lista permanece estável e OS passa de criar para visualizar")
 
         # Change live Atendimento via the real API; neither order nor historical PDF changes.
         record = await get("/api/atendimentos/" + ids["at"])
@@ -213,7 +212,7 @@ db.close()
         )
         assert changed.status == 200, await changed.text()
         await page.reload()
-        await expect(history.get_by_role("link", name="Ver OS")).to_be_visible()
+        await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
         again = await get(base + "/os")
         assert again == order
         pdf_again = await ctx.request.get(ORIGIN + base + "/os/pdf")
@@ -227,14 +226,21 @@ db.close()
             viewport, await page.evaluate("({scroll:document.documentElement.scrollWidth,width:innerWidth})")
         )
         row = history.locator(".budget-history-row").first
-        bounds = [await item.bounding_box() for item in [
+        controls = [
             row.locator(".budget-history-open"),
-            row.locator(".budget-history-download"),
-            row.locator(".budget-history-order")
-        ]]
-        assert all(b and b["width"] > 0 for b in bounds), bounds
-        assert bounds[0]["x"] + bounds[0]["width"] <= bounds[1]["x"] + 1, bounds
-        assert bounds[1]["x"] + bounds[1]["width"] <= bounds[2]["x"] + 1, bounds
+            row.locator(".budget-action-or"),
+            row.locator(".budget-action-os"),
+            row.locator(".budget-action-cancel")
+        ]
+        bounds = [await item.bounding_box() for item in controls]
+        assert all(b and b["width"] > 0 and b["height"] > 0 for b in bounds), bounds
+        # On 320px the action group wraps below the document identity.
+        for i, a in enumerate(bounds):
+            assert a["x"] >= 0 and a["x"] + a["width"] <= viewport["width"] + 1, (i, a, viewport)
+            for b in bounds[i + 1:]:
+                overlap_x = min(a["x"] + a["width"], b["x"] + b["width"]) - max(a["x"], b["x"])
+                overlap_y = min(a["y"] + a["height"], b["y"] + b["height"]) - max(a["y"], b["y"])
+                assert overlap_x <= 1 or overlap_y <= 1, (a, b)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         mark("layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo")
 
