@@ -83,16 +83,16 @@ test('independent concurrent SQLite processes and restart create exactly one Ate
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('V18 upgrade is additive, rolls back failed DDL, and promotes only explicit historical links',async()=>{
- const {removeV18FixtureSchema}=await import('./fixtures/pre-v18.ts'),{migrate}=await import('../migrations.ts')
+test('V19 upgrade is additive, rolls back failed DDL, and promotes only explicit historical links',async()=>{
+ const {removeV19FixtureSchema}=await import('./fixtures/pre-v19.ts'),{migrate}=await import('../migrations.ts')
  const db=openDatabase(':memory:');try{
   const at=new AtendimentoRepository(db).create({name:'Preservado',phone:''})
-  removeV18FixtureSchema(db)
+  removeV19FixtureSchema(db)
   db.prepare('INSERT INTO chat_instances VALUES(?,?)').run('funix_comercial','2026-01-01T00:00:00.000Z')
   const cid=randomUUID(),lid=randomUUID();db.prepare('INSERT INTO chat_conversations(id,instance,remote_jid) VALUES(?,?,?)').run(cid,'funix_comercial',PN)
   db.prepare('INSERT INTO chat_links VALUES(?,?,?,?,?,?,?,?)').run(lid,cid,at.id,1,'2026-01-01T00:00:00.000Z',null,'synthetic','explicit historical')
   db.exec('CREATE TABLE customer_records(collision TEXT)')
-  assert.throws(()=>migrate(db));assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,17)
+  assert.throws(()=>migrate(db));assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,18)
   assert.equal(db.prepare('PRAGMA table_info(atendimentos)').all().some(r=>r.name==='closed_at'),false)
   db.exec('DROP TABLE customer_records');migrate(db)
   assert.deepEqual(new AtendimentoRepository(db).get(at.id),at)
@@ -198,11 +198,11 @@ test('editing another reference preserves independent legacy brand/model/years u
  }finally{f.db.close()}
 })
 
-test('V18 reuses previously confirmed bindings stored in the app database and preserves pending context conflicts without external access',async()=>{
- const {createCodaEventSchema,CodaEventSyncRepository}=await import('../chat/coda-sync.ts'),{removeV18FixtureSchema}=await import('./fixtures/pre-v18.ts'),{migrate}=await import('../migrations.ts')
+test('V19 reuses previously confirmed bindings stored in the app database and preserves pending context conflicts without external access',async()=>{
+ const {createCodaEventSchema,CodaEventSyncRepository}=await import('../chat/coda-sync.ts'),{removeV19FixtureSchema}=await import('./fixtures/pre-v19.ts'),{migrate}=await import('../migrations.ts')
  for(const conflicted of [false,true]){
   const db=openDatabase(':memory:');try{
-   removeV18FixtureSchema(db);createCodaEventSchema(db)
+   removeV19FixtureSchema(db);createCodaEventSchema(db)
    const prior=new CodaEventSyncRepository(db),old=prior.sync({version:1,source:'coda',eventId:'stored-local-confirmation',codaRowId:'i-SYNTHETIC',instance:'funix_comercial',remoteJid:PN,phoneE164:'+5531999990101',displayName:'Ficha já existente',occurredAt:1767225600})
    if(conflicted)assert.throws(()=>prior.sync({version:1,source:'coda',eventId:'stored-local-conflict',codaRowId:'i-CONFLICT',instance:'funix_comercial',remoteJid:PN,phoneE164:'+5531999990101',displayName:'Conflito',occurredAt:1767225600}))
    migrate(db);const runtime=loadConversationRuntime(env,db)!,repo=new AtendimentoRepository(db)

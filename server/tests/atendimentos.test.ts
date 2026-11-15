@@ -1,4 +1,4 @@
-import {removeV18FixtureSchema} from './fixtures/pre-v18.ts'
+import {removeV19FixtureSchema} from './fixtures/pre-v19.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -165,7 +165,8 @@ test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', (
     db.close()
     // Reconstrói em arquivo sintético o formato imediatamente anterior à migração V16.
     db=new DatabaseSync(temp.filename)
-    removeV18FixtureSchema(db)
+    removeV19FixtureSchema(db)
+    db.exec('DROP TABLE work_orders; DELETE FROM schema_migrations WHERE version=18;')
     db.exec('ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; DELETE FROM schema_migrations WHERE version=17;')
     db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year')
     db.exec('ALTER TABLE atendimentos DROP COLUMN model_year')
