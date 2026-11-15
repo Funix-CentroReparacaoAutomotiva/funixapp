@@ -213,3 +213,49 @@ test('canonical Evolution response is withheld if active Coda Atendimento change
     assert.equal(await read,null)
   } finally { f.db.close() }
 })
+
+test('a LID-only conversation distinguishes confirmed provider PN from linked Atendimento phone', async () => {
+  const f=fixture()
+  try {
+    const lid='synthetic_phone_lookup@lid',pn='5531999990001@s.whatsapp.net'
+    const event={...synthetic('i-SYNTH_LID_PHONE','evo:synthetic:lid-phone',lid),phoneE164:'+5531999990001'}
+    const created=f.sync.sync(event)
+    const rows=[{remoteJid:lid,displayName:'Canal Fictício',phoneNumber:null,updatedAt:null,unreadCount:0}]
+    const provider={
+      async findChatsPage(){return {items:rows,sourceCount:rows.length}},
+      async findMessages(){return {items:[],currentPage:1,reportedTotal:0,reportedPages:0,nextPage:null,consistency:'offset-not-snapshot' as const}},
+    }
+    const bridge=createEvolutionChatBridge(provider,Date.now,undefined,f.sync)
+    const before=(await bridge.list(0)).items[0]!
+    assert.equal(before.phoneNumber,null)
+    assert.equal(before.atendimentoPhone,'5531999990001')
+    assert.equal(before.atendimentoId,created.atendimentoId)
+    // A known ficha number MUST NOT become a WhatsApp PN without provider alias evidence.
+    f.sync.rememberProviderAliases([{remoteJid:lid,remoteJidAlt:pn}],false,'findChats')
+    const verified=(await bridge.list(0)).items[0]!
+    assert.equal(verified.phoneNumber,'5531999990001')
+    assert.equal(verified.atendimentoPhone,'5531999990001')
+    assert.equal(verified.conversationId,before.conversationId)
+  }finally{f.db.close()}
+})
+
+test('ambiguous or unmapped LID never borrows a phone from a matching-looking Atendimento', async () => {
+ const f=fixture()
+ try{
+  const lid='synthetic_unknown_phone@lid', pn='5531999990001@s.whatsapp.net'
+  f.sync.sync(synthetic('i-SYNTH_ONLY_PN'))
+  const rows=[{remoteJid:lid,displayName:null,phoneNumber:null,updatedAt:null,unreadCount:0}]
+  const bridge=createEvolutionChatBridge({
+   async findChatsPage(){return {items:rows,sourceCount:rows.length}},
+   async findMessages(){return {items:[],currentPage:1,reportedTotal:0,reportedPages:0,nextPage:null,consistency:'offset-not-snapshot' as const}},
+  },Date.now,undefined,f.sync)
+  let row=(await bridge.list(0)).items[0]!
+  assert.equal(row.phoneNumber,null)
+  assert.equal(row.atendimentoPhone,null)
+  // Contradictory PN/LID evidence fails closed; numbers are not inferred.
+  f.sync.rememberProviderAliases([{remoteJid:lid,remoteJidAlt:pn},{remoteJid:lid,remoteJidAlt:'5531888880000@s.whatsapp.net'}])
+  row=(await bridge.list(0)).items[0]!
+  assert.equal(row.phoneNumber,null)
+  assert.equal(row.atendimentoPhone,null)
+ }finally{f.db.close()}
+})

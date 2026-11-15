@@ -55,6 +55,16 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     return ids.length === 1 ? ids[0]! : null
   }
   resolveActive(jid: string) { return this.resolveIdentityActive(jid) }
+
+  /** Display-only number from the uniquely active Atendimento. Not PN/LID evidence. */
+  linkedAtendimentoPhone(jid: string): string | null {
+    const atendimentoId = this.resolveIdentityActive(jid)
+    if (!atendimentoId) return null
+    const normalized = this.db.prepare('SELECT phone_normalized FROM atendimentos WHERE id=?').get(atendimentoId)?.phone_normalized
+    return typeof normalized === 'string' && /^\+[1-9]\d{7,14}$/.test(normalized)
+      ? normalized.slice(1) : null
+  }
+
   /** Explicit operator action, reads recipient from saved ficha; no browser-supplied JID and no send. */
   prepareConversation(at:string,index:number,revision:number) {
     this.db.exec('BEGIN IMMEDIATE')

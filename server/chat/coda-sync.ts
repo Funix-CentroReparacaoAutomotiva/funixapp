@@ -149,6 +149,16 @@ export class CodaEventSyncRepository extends ConversationIdentities {
     return active.size === 1 ? [...active][0]! : null
   }
 
+
+  /** Display-only number from the uniquely active Atendimento. Not PN/LID evidence. */
+  linkedAtendimentoPhone(remoteJid: string): string | null {
+    const atendimentoId = this.resolveIdentityActive(remoteJid)
+    if (!atendimentoId) return null
+    const normalized = this.db.prepare('SELECT phone_normalized FROM atendimentos WHERE id=?').get(atendimentoId)?.phone_normalized
+    return typeof normalized === 'string' && /^\+[1-9]\d{7,14}$/.test(normalized)
+      ? normalized.slice(1) : null
+  }
+
   /** One shared resolution for Funil and list. Prefer the provider's LID domain.
    * Multiple unrelated conversations and divergent active contexts remain blocked.
    */

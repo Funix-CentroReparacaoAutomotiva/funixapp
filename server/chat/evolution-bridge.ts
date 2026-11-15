@@ -8,7 +8,7 @@ import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { LocalConversationAssociations } from './local-associations.ts'
 import type { CommercialConversation } from '../../shared/customer.ts'
-export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'>>
+export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'|'linkedAtendimentoPhone'>>
 import type { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
 import type { MediaGateway, MediaInput } from './evolution-media.ts'
@@ -130,19 +130,29 @@ export function createEvolutionChatBridge(
         items: [
           ...new Map(
             rows.map((row) => {
-              const conversationId = register(
-                codaSync?.identityJids(row.remoteJid)?.[0] ?? row.remoteJid,
-              )
+              const members = codaSync?.identityJids(row.remoteJid)
+              const confirmedPn = members?.find(jid => jid.endsWith('@s.whatsapp.net'))?.split('@')[0] ?? null
+              const projection = projections?.get(row.remoteJid)
+              const conversationId = register(members?.[0] ?? row.remoteJid)
               return [
                 conversationId,
                 {
                   conversationId,
                   displayName: row.displayName,
-                  phoneNumber: row.phoneNumber,
+                  phoneNumber: row.phoneNumber ?? confirmedPn,
                   updatedAt: row.updatedAt,
                   unreadCount: row.unreadCount,
-                  ...(projections?.get(row.remoteJid) ? {commercial: {...projections.get(row.remoteJid)!,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},unreadCount:projections.get(row.remoteJid)!.unreadCount,phoneNumber:projections.get(row.remoteJid)!.phoneNumber,updatedAt:projections.get(row.remoteJid)!.lastMessageAt??row.updatedAt}:{}),
-                  ...(codaSync ? { atendimentoId: canonicalFor(row.remoteJid) } : {}),
+                  ...(projection ? {
+                    commercial: {...projection,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},
+                    unreadCount: projection.unreadCount,
+                    phoneNumber: row.phoneNumber ?? projection.phoneNumber ?? confirmedPn,
+                    updatedAt: projection.lastMessageAt ?? row.updatedAt,
+                  } : {}),
+                  ...(codaSync ? {
+                    atendimentoId: canonicalFor(row.remoteJid),
+                    // Separate provenance: a ficha's phone never proves WhatsApp identity.
+                    atendimentoPhone: codaSync.linkedAtendimentoPhone?.(row.remoteJid) ?? null,
+                  } : {}),
                 },
               ] as const
             }),
