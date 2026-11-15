@@ -104,7 +104,8 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
  const db=openDatabase(':memory:'),origin='http://localhost:5173'
  try{
   const{fixture,version}=await emitted(db)
-  const handler=createRequestHandler({atendimentos:new AtendimentoRepository(db),password:'synthetic-password-123',origin,budgetRenderer:syntheticRenderer})
+  let stamped=0
+  const handler=createRequestHandler({atendimentos:new AtendimentoRepository(db),password:'synthetic-password-123',origin,budgetRenderer:syntheticRenderer,cancelledPdfRenderer:async source=>{stamped++;return Buffer.concat([source,Buffer.from('CANCELADO-MOCK')])}})
   async function request(path:string,method='GET',body?:unknown,cookie?:string,otherOrigin=origin){
    const req=Object.assign(Readable.from(body===undefined?[]:[JSON.stringify(body)]),{
     url:path,method,headers:{...(cookie?{cookie}:{}),...(method!=='GET'?{origin:otherOrigin,'content-type':'application/json'}:{})},
@@ -140,6 +141,26 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
   assert.match(pdf.headers.get('content-disposition')??'',/inline/)
   assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0,8).toString(),'%PDF-1.7')
   assert.equal((await request(url+'/pdf')).status,401)
+  const cancelUrl=url.replace(/\\/os$/,'/cancelamento')
+  const rawBudget=await request(url.replace(/\\/os$/,'/pdf'),'GET',undefined,cookie)
+  const rawPdf=await rawBudget.arrayBuffer()
+  assert.equal((await request(cancelUrl,'POST',{reason:'x'},cookie)).status,422)
+  assert.equal((await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'},cookie,'https://invalid.example')).status,403)
+  assert.equal((await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'})).status,401)
+  const cancelled=await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'},cookie)
+  assert.equal(cancelled.status,200)
+  assert.equal((await cancelled.json()).reason,'Cliente mudou de ideia')
+  const osAfter=await request(url,'GET',undefined,cookie)
+  assert.equal((await osAfter.json()).cancellation.reason,'Cliente mudou de ideia')
+  assert.equal((await request(url,'POST',{authorized:true},cookie)).status,409)
+  const orAfter=await request(url.replace(/\\/os$/,'/pdf'),'GET',undefined,cookie)
+  assert.equal(orAfter.status,200)
+  assert(Buffer.from(await orAfter.arrayBuffer()).includes(Buffer.from('CANCELADO-MOCK')))
+  const osStamped=await request(url+'/pdf','GET',undefined,cookie)
+  assert.equal(osStamped.status,200)
+  assert(Buffer.from(await osStamped.arrayBuffer()).includes(Buffer.from('CANCELADO-MOCK')))
+  assert.equal(stamped,2)
+  assert.deepEqual(new BudgetRepository(db).pdf(fixture.at.id,version.id),Buffer.from(rawPdf))
  }finally{db.close()}
 })
 
