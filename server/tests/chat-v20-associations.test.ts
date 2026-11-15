@@ -104,7 +104,7 @@ test('V19 registers additive associations; compatibility startup is idempotent',
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
-    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 19)
+    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v, 20)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally { db.close() }
 })
