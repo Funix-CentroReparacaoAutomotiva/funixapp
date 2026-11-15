@@ -5,7 +5,7 @@
 ## Evidência verificada
 
 - main/deploy WEB e API: 2989fdca49691d8556edf47a09450002547aaf45 (PR #222); contêineres saudáveis na verificação operacional informada pelo operador.
-- SQLite instalado: esquema V18, uma OS; backup validado em 15/11/2026 UTC. Ensaio independente V18→V19 preservou tabelas/OS/orçamentos, mas **não** migrou produção. A PR #224 de V19 permanece separada.
+- SQLite instalado: esquema V18, uma OS; backup validado em 15/11/2026 UTC. Ensaio independente V18→V19 preservou tabelas/OS/orçamentos, mas **não** migrou produção. A PR #224 foi integrada à main em 15/11/2026 UTC (commit 8e801e9b0a8fc1fe5feec40d533d9e639e8b013b), mas o deploy produtivo V19 não foi comprovado. O estado da VPS deve ser verificado imediatamente antes de qualquer implantação.
 - Gmail automático: mensagem de teste 1a1dca29843b68bd chegou ao ledger n8n, estado notified, sem erro; aviso correspondente estava awaiting_authorization. Não autorizar/reutilizar este caso histórico.
 - Banco inspecionado: nenhum vínculo em gmail_analysis_pilot_scope, zero gmail_analysis_jobs.
 - Variáveis de análise Gmail/Coda/OpenAI e corte/UUID estavam ausentes. Atualizações Storage, Gmail Intake e Queue estavam ativos; FUNIX_UPDATES_DECISIONS_ENABLED e FUNIX_UPDATES_CLARIFICATIONS_ENABLED estavam desligados.
@@ -54,4 +54,4 @@ O preflight bloqueia se análise já está ativa, piloto vinculado anteriormente
 
 **Não liberar ativação operacional do piloto** sem fonte Coda auditada, permissões reais confirmadas, novo aviso após corte, backup externo, autorização de teste de dados de terceiros e CI/revisão técnica. Aprovação de propostas não deve executar ações externas.
 
-**Referências:** docs/integracoes/MVP01_GMAIL_ANALISE_CONTEXTUAL.md, server/gmail-analysis-providers.ts, server/gmail-analysis-pilot.ts, PRs #222/#220/#224 e evidências de 14/11/2026.
+**Referências:** docs/integracoes/MVP01_GMAIL_ANALISE_CONTEXTUAL.md, server/gmail-analysis-providers.ts, server/gmail-analysis-pilot.ts, PRs #222/#220/#224 e evidências de 14/11/2026; conferência de estado da main em 15/11/2026 UTC.
