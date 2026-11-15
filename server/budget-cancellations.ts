@@ -10,9 +10,10 @@ export class BudgetCancellationRepository {
  constructor(db:DatabaseSync,now:()=>number=Date.now){this.db=db;this.now=now}
  cancel(at:string,versionId:string,input:unknown):BudgetCancellation{
   const data=inputObject(input,['reason'])
-  const reason=typeof data.reason==='string'?data.reason.trim():''
+  // A reason is optional in the UI; retain the old field for prior records and API compatibility.
+  const reason=data.reason===undefined?'Cancelamento sem motivo informado':typeof data.reason==='string'?data.reason.trim():''
   if(reason.length<5||reason.length>500)
-   throw new ServiceError(422,'CANCELLATION_REASON_REQUIRED','Informe um motivo entre 5 e 500 caracteres.')
+   throw new ServiceError(422,'CANCELLATION_REASON_REQUIRED','O motivo, quando informado, deve conter entre 5 e 500 caracteres.')
   return transaction(this.db,()=>{
    new BudgetRepository(this.db).get(at,versionId)
    const existing=this.db.prepare('SELECT cancelled_at,reason FROM budget_cancellations WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)

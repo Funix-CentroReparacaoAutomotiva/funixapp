@@ -3,13 +3,14 @@ import './budget-experience.css'
 
 type Props={
  kind:'or'|'os'|'cancel'
- state?:'create'|'view'
+ state?:'create'|'view'|'unavailable'
+ cancelled?:boolean
  href?:string
  onClick?:()=>void
  disabled?:boolean
  title:string
 }
-export function DocumentButton({kind,state,href,onClick,disabled=false,title}:Props){
+export function DocumentButton({kind,state,cancelled=false,href,onClick,disabled=false,title}:Props){
  const content=<>
   {kind==='cancel'?<svg className="budget-action-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="8.1"/><path d="M8.8 8.8 15.2 15.2M15.2 8.8 8.8 15.2"/></svg>:
   <svg className="budget-action-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -20,12 +21,13 @@ export function DocumentButton({kind,state,href,onClick,disabled=false,title}:Pr
    </>}
   </svg>}
   {kind!=='cancel'&&<span className="budget-action-text">{kind.toUpperCase()}</span>}
-  {kind!=='cancel'&&<span className={`budget-action-badge ${state==='create'?'badge-create':'badge-view'}`} aria-hidden="true">
+  {kind!=='cancel'&&state!=='unavailable'&&<span className={`budget-action-badge ${state==='create'?'badge-create':'badge-view'}`} aria-hidden="true">
     {state==='create'?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"><path d="M12 4v16M4 12h16"/></svg>:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6z"/><circle cx="12" cy="12" r="2.7"/></svg>}
    </span>}
  </>
- const className='budget-action budget-action-'+kind
+ const visualState=kind==='cancel'?'':cancelled?' budget-action-cancelled':state==='view'?' budget-action-issued':state==='create'?' budget-action-pending':' budget-action-unavailable'
+ const className='budget-action budget-action-'+kind+visualState
  if(href)return <a className={className} href={href} target="_blank" rel="noopener noreferrer" aria-label={title} title={title}>{content}</a>
  const click:MouseEventHandler<HTMLButtonElement>=()=>onClick?.()
  return <button type="button" className={className} onClick={click} disabled={disabled} aria-label={title} title={title}>{content}</button>
