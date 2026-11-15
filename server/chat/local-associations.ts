@@ -60,8 +60,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   linkedAtendimentoPhone(jid: string): string | null {
     const atendimentoId = this.resolveIdentityActive(jid)
     if (!atendimentoId) return null
-    const normalized = this.db.prepare('SELECT phone_normalized FROM atendimentos WHERE id=?').get(atendimentoId)?.phone_normalized
-    return typeof normalized === 'string' && /^\+[1-9]\d{7,14}$/.test(normalized)
+    // Reuse the detail-view projection: a linked Contact can hold the current phone
+    // even when atendimentos.phone_normalized is empty or stale. Display only.
+    const normalized = new AtendimentoRepository(this.db).get(atendimentoId, true).phoneNormalized
+    return normalized && /^\+[1-9]\d{7,14}$/.test(normalized)
       ? normalized.slice(1) : null
   }
 
