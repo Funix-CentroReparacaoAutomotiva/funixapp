@@ -12,6 +12,7 @@ export interface WorkOrderScope {
   deadlineDays:number|null;
 }
 export interface WorkOrder {
+  cancellation?: {cancelledAt:string;reason:string};
   id:string;number:string;atendimentoId:string;budgetVersionId:string;
   budgetNumber:string;budgetLabel:string;createdAt:string;
   authorization:{confirmedAt:string;source:'authenticated-session-confirmation';operatorId:null};

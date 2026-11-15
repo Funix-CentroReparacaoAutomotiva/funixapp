@@ -42,7 +42,8 @@ function fromRow(row:Record<string,SQLOutputValue>):WorkOrder {
     budgetVersionId:String(row.budget_version_id),budgetNumber:String(row.budget_number),
     budgetLabel:String(row.budget_label),createdAt:String(row.created_at),
     authorization:{confirmedAt:String(row.authorized_at),source:'authenticated-session-confirmation',operatorId:null},
-    scope:JSON.parse(String(row.scope_json)) as WorkOrderScope
+    scope:JSON.parse(String(row.scope_json)) as WorkOrderScope,
+    ...(row.cancelled_at==null?{}:{cancellation:{cancelledAt:String(row.cancelled_at),reason:String(row.cancellation_reason)}})
   }
 }
 export class WorkOrderRepository {
@@ -50,7 +51,7 @@ export class WorkOrderRepository {
   private readonly now:()=>number
   constructor(db:DatabaseSync,now:()=>number=Date.now){this.db=db;this.now=now}
   get(at:string,versionId:string):WorkOrder {
-    const row=this.db.prepare('SELECT * FROM work_orders WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)
+    const row=this.db.prepare('SELECT w.*,c.cancelled_at,c.reason AS cancellation_reason FROM work_orders w LEFT JOIN budget_cancellations c ON c.budget_version_id=w.budget_version_id WHERE w.atendimento_id=? AND w.budget_version_id=?').get(at,versionId)
     if(row)return fromRow(row)
     // Distinguish a missing OS from an invalid or cross-Attendimento version.
     new BudgetRepository(this.db).get(at,versionId)
@@ -64,6 +65,7 @@ export class WorkOrderRepository {
     // A unique budget_version_id is a second line of defense against retries.
     return transaction(this.db,()=>{
       const version=new BudgetRepository(this.db).get(at,versionId)
+      if(version.cancellation)throw new ServiceError(409,'BUDGET_CANCELLED','Orçamento cancelado. Não é possível criar ou reemitir OS.')
       const existing=this.db.prepare('SELECT * FROM work_orders WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)
       if(existing)return fromRow(existing)
       const scope=operationalScope(version)
