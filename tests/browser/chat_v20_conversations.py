@@ -144,6 +144,22 @@ async def device_case(browser, width, height):
         await context.route("**/api/atendimentos/*/evolution-conversations/*/send-media", mock)
         # List/name/N:N UX is covered against real local SQLite by customer-experience-browser.mjs.
         # This suite retains media, polling, send and authorization regressions in the existing Chat.
+        # Evolution-only mode: provider display name is a non-verified hint, not
+        # an automatically adopted customer record. No preview is fabricated.
+        await page.goto(ORIGIN + "/conversas")
+        await expect(page.locator(".conversation-row")).to_have_count(3)
+        await expect(page.locator(".conversation-names").filter(has_text="Contato Vinculado")).to_have_count(1)
+        await expect(page.locator(".conversation-channel-hint")).to_have_count(3)
+        await expect(page.locator(".conversation-preview").first).to_have_text("Prévia indisponível neste modo")
+        await expect(page.locator(".conversation-phone").filter(has_text="Telefone pendente")).to_have_count(1)
+        initial_list_reads = sent.count("/api/chat/conversations")
+        await page.clock.run_for(61_000)
+        for _ in range(30):
+            if sent.count("/api/chat/conversations") > initial_list_reads:
+                break
+            await asyncio.sleep(0.1)
+        assert sent.count("/api/chat/conversations") > initial_list_reads, sent
+        assert not h.external and not h.page_errors, (h.external, h.page_errors)
         await page.goto(ORIGIN + f"/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
         # Capture the exact client state in CI when a provider fixture diverges.
