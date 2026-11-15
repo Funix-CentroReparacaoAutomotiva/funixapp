@@ -39,6 +39,7 @@ import { UpdatePackageRepository } from './update-packages.ts'
 import { createUpdatePackageIngest } from './update-packages-ingest.ts'
 import { hasUpdatePackageSchema } from './update-packages-schema.ts'
 import { GmailIntakeRepository } from './gmail-intake.ts'
+import type { GmailAnalysisService } from './gmail-analysis.ts'
 import { GmailIntakeQueue } from './gmail-intake-queue.ts'
 import { createGmailQueueEndpoint } from './gmail-intake-queue-endpoint.ts'
 import { hasGmailIntakeQueueSchema } from './gmail-intake-queue-schema.ts'
@@ -53,6 +54,7 @@ import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
 export interface AppOptions {
+  gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
   evolutionChat?: EvolutionChatBridge // explicit opt-in injection; never auto-configured
@@ -222,6 +224,24 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      if(url.pathname==='/api/atualizacoes/analises-gmail'){
+        if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        const ids=url.searchParams.has('ids')?(url.searchParams.get('ids')?url.searchParams.get('ids')!.split(','):[]):undefined
+        if(ids&&(ids.length>100||ids.some(id=>!/^[0-9a-f-]{36}$/.test(id))))return fail(422,'GMAIL_ANALYSIS_INVALID','Identificadores inválidos.')
+        return send(200,options.gmailAnalysis?{...options.gmailAnalysis.list(ids),scope:options.gmailAnalysis.scopeStatus()}:{enabled:false,items:[]})
+      }
+      const analysisRetry=/^\/api\/atualizacoes\/avisos-gmail\/([0-9a-f-]{36})\/analisar$/.exec(url.pathname)
+      if(analysisRetry){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(!options.gmailAnalysis)return fail(503,'GMAIL_ANALYSIS_DISABLED','Análise contextual ainda não configurada.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,4096)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a solicitação.')
+        const analysis=options.gmailAnalysis.retry(analysisRetry[1]!,body as {requestId:string,revision:number,snapshotHash:string},'funix_operator')
+        options.gmailAnalysis.kick()
+        return send(202,analysis)
+      }
       // Intake authorization only permits analysis, never changes in the ERP or Drive.
       const intakeDecisionMatch=/^\/api\/atualizacoes\/avisos-gmail\/([0-9a-f-]{36})\/decisao$/.exec(url.pathname)
       if(url.pathname==='/api/atualizacoes/avisos-gmail' || intakeDecisionMatch){
@@ -232,7 +252,7 @@ export function createRequestHandler(options: AppOptions) {
           if(!['open','closed','all'].includes(view)||query.length>160)return fail(400,'GMAIL_INTAKE_QUERY_INVALID','Filtro inválido.')
           const available=process.env.FUNIX_GMAIL_INTAKE_STORAGE_ENABLED==='true' &&
             hasGmailIntakeSchema(options.atendimentos.db)
-          return send(200,{...gmailIntake.list(view as 'open'|'closed'|'all',query),
+          return send(200,{...(options.gmailAnalysis?options.gmailAnalysis.listNotices(view as 'open'|'closed'|'all',query):gmailIntake.list(view as 'open'|'closed'|'all',query)),
             decisionsEnabled:available && process.env.FUNIX_GMAIL_INTAKE_DECISIONS_ENABLED==='true'})
         }
         if(req.method!=='POST'||!intakeDecisionMatch)return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
@@ -245,7 +265,9 @@ export function createRequestHandler(options: AppOptions) {
           return fail(415,'JSON_REQUIRED','Envie JSON.')
         const body=await readJson(req,4096)
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
-        return send(200,gmailIntake.decide(intakeDecisionMatch[1]!,body as GmailIntakeDecisionInput,'funix_operator'))
+        const decided=gmailIntake.decide(intakeDecisionMatch[1]!,body as GmailIntakeDecisionInput,'funix_operator')
+        if(decided.status==='authorized'&&options.gmailAnalysis?.isEligible(decided.id)){options.gmailAnalysis.schedule(decided.id);options.gmailAnalysis.kick()}
+        return send(200,decided)
       }
       // Operator decisions and clarifications require authenticated same-origin sessions.
       // Preparing a proposal or authorizing it does not execute an external action.
@@ -259,7 +281,7 @@ export function createRequestHandler(options: AppOptions) {
           const query=url.searchParams.get('q')??''
           if (!['open','closed','all'].includes(visao) || query.length>160) return fail(400,'PACKAGE_QUERY_INVALID','Filtro inválido.')
           const available=hasUpdatePackageSchema(options.atendimentos.db)&&process.env.FUNIX_UPDATES_STORAGE_ENABLED==='true'
-          return send(200,{...updates.list(visao as 'open'|'closed'|'all',query),
+          return send(200,{...updates.list(visao as 'open'|'closed'|'all',query,Boolean(options.gmailAnalysis)),
             decisionsEnabled:available&&process.env.FUNIX_UPDATES_DECISIONS_ENABLED==='true',
             clarificationsEnabled:available&&process.env.FUNIX_UPDATES_CLARIFICATIONS_ENABLED==='true'})
         }
@@ -273,7 +295,11 @@ export function createRequestHandler(options: AppOptions) {
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
         const body=await readJson(req,4096)
         if ((sessions.get(cookie)??0)<=now()) return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a decisão.')
-        if (clarificationMatch) return send(202,updates.submitClarification(clarificationMatch[1]!,body as UpdatePackageClarification,'funix_operator'))
+        if (clarificationMatch) {
+          const pkg=updates.submitClarification(clarificationMatch[1]!,body as UpdatePackageClarification,'funix_operator')
+          if(options.gmailAnalysis?.revise(pkg.id))options.gmailAnalysis.kick()
+          return send(202,pkg)
+        }
         return send(200,updates.decide(decisionMatch![1]!,body as UpdatePackageDecision,'funix_operator'))
       }
 

@@ -1,0 +1,13 @@
+.gmail-analysis{border-top:1px solid var(--border,#ddd);margin-top:12px;padding-top:12px;min-width:0;overflow-wrap:anywhere}
+.gmail-analysis h3,.gmail-analysis h4{font-size:.95rem;margin:12px 0 8px}
+.gmail-analysis p,.gmail-analysis li,.gmail-analysis dd{font-size:.85rem;line-height:1.5}
+.gmail-analysis ul{padding-left:20px}.gmail-analysis li{margin:8px 0}
+.gmail-analysis small{font-size:.75rem;color:var(--text-muted,#666)}
+.gmail-analysis details{margin:12px 0}.gmail-analysis summary{cursor:pointer;padding:8px 0;font-weight:600}
+.gmail-analysis dl>div{margin:10px 0}.gmail-analysis dt{font-weight:600}.gmail-analysis dd{margin:4px 0}
+.gmail-analysis blockquote{margin:6px 0;padding:8px;border-left:3px solid #bbc7d5;background:#f6f8fb}
+.gmail-analysis input,.gmail-analysis select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.gmail-analysis button{min-height:40px;white-space:normal}.gmail-analysis .updates-decisions{flex-wrap:wrap}
+/* Leave scroll room above the existing floating assistant on Updates. */
+.updates-page:has(.gmail-analysis){padding-bottom:80px}
+@media(max-width:390px){.gmail-analysis .updates-decisions{grid-template-columns:1fr}}
