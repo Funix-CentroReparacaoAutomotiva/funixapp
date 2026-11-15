@@ -134,12 +134,31 @@ async def device_case(browser,device,viewport):
   assert await history.locator('.budget-history-group').nth(0).locator('.budget-history-letter').all_text_contents()==['A','B','C','D','E']
   assert await history.locator('.budget-history-group').nth(1).locator('.budget-history-letter').all_text_contents()==['A','B']
   for row in await history.locator('.budget-history-row').all():
-   letter=await row.locator('.budget-history-letter').bounding_box();identity=await row.locator('.budget-history-identity').bounding_box();amount=await row.locator('.budget-history-total').bounding_box();icon=await row.locator('.budget-history-download').bounding_box();assert letter['x']<identity['x']<amount['x']<icon['x'];assert amount['x']+amount['width']<=icon['x']+1
-  count=await calls();name,old_content=await download(lambda:history.get_by_role('button',name='Baixar orçamento OR-000001',exact=True).click());assert name.endswith(' - 1.pdf')and hashlib.sha256(old_content).hexdigest()==old_hash;assert await calls()==count;await shot('historico-por-cenario')
+   letter=await row.locator('.budget-history-letter').bounding_box()
+   identity=await row.locator('.budget-history-identity').bounding_box()
+   amount=await row.locator('.budget-history-total').bounding_box()
+   action=await row.locator('.budget-action-or').bounding_box()
+   assert letter and identity and amount and action
+   assert letter['x']<identity['x']
+   assert abs(amount['x']-identity['x'])<2
+   assert amount['y']>identity['y']
+   if device!='mobile320':assert identity['x']+identity['width']<=action['x']+1
+  count=await calls()
+  original_link=history.get_by_role('link',name='Visualizar orçamento OR-000001',exact=True)
+  await expect(original_link).to_be_visible()
+  original_href=await original_link.get_attribute('href')
+  assert original_href.endswith('/pdf?view=1')
+  async with page.expect_popup()as opened:
+   await original_link.click()
+  popup=await opened.value;await popup.wait_for_url('**/pdf?view=1');await popup.close()
+  old_content=await(await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['old']+'/pdf')).body()
+  assert hashlib.sha256(old_content).hexdigest()==old_hash
+  assert await calls()==count
+  await shot('historico-por-cenario')
   assert(await get(base+'/orcamentos/'+ids['old']))['snapshot']==ids['snapshot'];assert(await get(base+'/orcamentos/'+issued['id']))['snapshot']==issued['snapshot']
   h.mark(device+': compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged')
   await h.restart_api();await page.reload();await h.login(page);await expect(history.locator('.budget-history-row')).to_have_count(total_count);assert await deadline(ids['one'],'manual',2);assert await deadline(ids['two'],'manual',7);assert(await get('/api/parcelamento'))['rates']['tres']=='8'
-  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos&tela=orcamentos&versao='+ids['old']);await expect(page.locator('.detail-header h1')).to_have_text('Orçamento OR-000001');name,deep_pdf=await download(lambda:page.get_by_role('button',name='Baixar PDF OR-000001',exact=True).click());assert hashlib.sha256(deep_pdf).hexdigest()==old_hash;await page.get_by_role('button',name='Voltar à tela anterior',exact=True).click();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos')
+  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos&tela=orcamentos&versao='+ids['old']);await expect(page.locator('.detail-header h1')).to_have_text('Orçamento OR-000001');await expect(page.get_by_role('link',name='Visualizar orçamento')).to_be_visible();deep_pdf=await(await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['old']+'/pdf')).body();assert hashlib.sha256(deep_pdf).hexdigest()==old_hash;await page.get_by_role('button',name='Voltar à tela anterior',exact=True).click();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos')
   h.mark(device+': restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically')
   await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos');await idle();summary=finance.locator('.summary');await expect(summary.locator('.deadline span')).to_have_text('2');await switch(2);await expect(summary.locator('.deadline span')).to_have_text('7');await shot('prazo-barra');await switch(1)
   boxes=[await metric.bounding_box()for metric in await summary.locator('.metric').all()];assert len(boxes)==5;assert all(boxes[i]['x']+boxes[i]['width']<=boxes[i+1]['x']+.5 for i in range(4));assert max(b['y']for b in boxes)-min(b['y']for b in boxes)<2
