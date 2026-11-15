@@ -21,6 +21,7 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
 
 export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[order,setOrder]=useState<WorkOrder|null>(null),[checkingOrder,setCheckingOrder]=useState(false),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
+ const load=useCallback(async()=>{const entries=await api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`);setVersions(entries);return entries},[at])
  const requireAuth=useEffectEvent(onAuthRequired)
  const selected=version?.id===versionId?version:null
  const busy=ownBusy||externalBusy
@@ -30,17 +31,19 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
   const controller=new AbortController();setCheckingOrder(true);setOrder(null);setVersion(null)
   Promise.all([
     api<BudgetVersion>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(versionId)}`,{signal:controller.signal}),
-    api<WorkOrder>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(versionId)}/os`,{signal:controller.signal}).catch(e=>{
-      if((e as RequestFailure).status===404&&(e as RequestFailure).code==='OS_NOT_FOUND')return null
-      throw e
-    })
-  ]).then(([v,os])=>{if(!controller.signal.aborted){setError('');setVersion(v);setOrder(os)}})
+    load()
+  ]).then(async([v,entries])=>{
+    // The history metadata already says whether an OS was issued. Avoid an
+    // expected OS_NOT_FOUND request (and browser console error) for an absent OS.
+    const os=entries.find(entry=>entry.id===versionId)?.workOrderNumber
+      ?await api<WorkOrder>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(versionId)}/os`,{signal:controller.signal}):null
+    return [v,os] as const
+  }).then(([v,os])=>{if(!controller.signal.aborted){setError('');setVersion(v);setOrder(os)}})
     .catch(e=>{if(!controller.signal.aborted){setError(e.message);if(e.status===401)requireAuth()}})
     .finally(()=>{if(!controller.signal.aborted)setCheckingOrder(false)})
   return()=>controller.abort()
- },[at,versionId])
- const load=useCallback(async()=>{setVersions(await api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`))},[at])
- useEffect(()=>{let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load])
+ },[at,versionId,load])
+ useEffect(()=>{if(versionId)return;let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load,versionId])
  const budgetUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/pdf?view=1`
  const orderUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os/pdf`
  async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
