@@ -15,6 +15,8 @@ import type { AtendimentoRepository } from './atendimentos.ts'
 import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
+import { WorkOrderRepository } from './work-orders.ts'
+import { workOrderPdf } from './work-order-pdf.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
 import { calculate } from './pricing-engine.ts'
@@ -94,6 +96,7 @@ export function createRequestHandler(options: AppOptions) {
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
+  const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
@@ -613,6 +616,29 @@ export function createRequestHandler(options: AppOptions) {
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Consulta somente leitura.')
         if([...url.searchParams.keys()].some(k=>!['diagnosisId','intensity'].includes(k))||url.searchParams.getAll('diagnosisId').length!==1||url.searchParams.getAll('intensity').length!==1)return fail(400,'INVALID_INPUT','Informe apenas diagnosisId e intensity.')
         return send(200,{items:recommendations(options.atendimentos.db,url.searchParams.get('diagnosisId'),url.searchParams.get('intensity'))})
+      }
+      // Operational OS: frozen emitted version, authenticated session confirmation,
+      // immutable local SQLite record and local PDF (no jsreport template).
+      const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(\/pdf)?$/.exec(url.pathname)
+      if (orderRoute) {
+        const at=orderRoute[1]!,versionId=orderRoute[2]!,pdf=orderRoute[3]
+        if (req.method==='GET') {
+          if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+          const order=workOrders.get(at,versionId)
+          if (!pdf) return send(200,order)
+          const data=workOrderPdf(order)
+          res.setHeader('Content-Type','application/pdf')
+          res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+'.pdf"')
+          res.setHeader('Content-Length',data.length)
+          res.writeHead(200);res.end(data);return
+        }
+        if (req.method!=='POST'||pdf) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,1024)
+        if ((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
+        return send(201,workOrders.create(at,versionId,body))
       }
       const budgetRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos(?:\/([^/]{1,100}))?(\/pdf)?$/.exec(url.pathname)
       if (budgetRoute) {

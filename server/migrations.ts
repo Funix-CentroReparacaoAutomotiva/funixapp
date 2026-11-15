@@ -260,7 +260,30 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   `)},
   // #168: technical review remains attached to the diagnosis across scenarios.
   {version:17,apply:db=>db.exec('ALTER TABLE diagnosis_items ADD COLUMN piece_review_pending INTEGER NOT NULL DEFAULT 0 CHECK(piece_review_pending IN (0,1));')},
-  {version:18,apply:createCustomerSchema}
+  // One immutable operational order per emitted version. Other versions can
+  // produce complementary orders; no uniqueness constraint on an Experience.
+  {version:18,apply:db=>db.exec(`
+    CREATE TABLE work_orders (
+      serial INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT NOT NULL UNIQUE,
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,
+      budget_version_id TEXT NOT NULL UNIQUE REFERENCES budget_versions(id) ON DELETE RESTRICT,
+      created_at TEXT NOT NULL,
+      authorized_at TEXT NOT NULL,
+      authorization_source TEXT NOT NULL CHECK(authorization_source='authenticated-session-confirmation'),
+      authorized_by TEXT,
+      budget_number TEXT NOT NULL,
+      budget_label TEXT NOT NULL,
+      scope_json TEXT NOT NULL
+    );
+    CREATE INDEX work_orders_atendimento ON work_orders(atendimento_id,created_at);
+    CREATE TRIGGER immutable_work_order_update BEFORE UPDATE ON work_orders
+      BEGIN SELECT RAISE(ABORT,'Work orders are immutable'); END;
+    CREATE TRIGGER immutable_work_order_delete BEFORE DELETE ON work_orders
+      BEGIN SELECT RAISE(ABORT,'Work orders are immutable'); END;
+  `)},
+  // #219: customer/chat schema follows the already deployed work-order V18.
+  {version:19,apply:createCustomerSchema}
 ]
 
 export function migrate(db: DatabaseSync) {
