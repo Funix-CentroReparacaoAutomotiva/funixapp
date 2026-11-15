@@ -16,6 +16,8 @@ import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
 import { WorkOrderRepository } from './work-orders.ts'
+import {BudgetCancellationRepository} from './budget-cancellations.ts'
+import {cancelledPdf} from './cancelled-pdf.ts'
 import { workOrderPdf } from './work-order-pdf.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
@@ -67,6 +69,7 @@ export interface AppOptions {
   voiceProcessingMs?:number // injectable timeout for deterministic local tests
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
   budgetRenderer?:BudgetOptions['render']
+  cancelledPdfRenderer?:(pdf:Buffer)=>Promise<Buffer>
   atendimentos: AtendimentoRepository
   password?: string
   origin?: string
@@ -99,6 +102,8 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
+  const cancellations = new BudgetCancellationRepository(options.atendimentos.db,options.now)
+  const stampPdf=options.cancelledPdfRenderer??cancelledPdf
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
   const voice=createVoiceEndpoint(options.atendimentos.db,options.voiceProvider===undefined?openAIVoiceProvider():options.voiceProvider??undefined,options.voiceProcessingMs,voiceContextMode)
   const now = options.now ?? Date.now
@@ -645,6 +650,16 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Operational OS: frozen emitted version, authenticated session confirmation,
       // immutable local SQLite record and local PDF (no jsreport template).
+      const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
+      if(cancellationRoute){
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,2048)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante o cancelamento.')
+        return send(200,cancellations.cancel(cancellationRoute[1]!,cancellationRoute[2]!,body))
+      }
       const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(\/pdf)?$/.exec(url.pathname)
       if (orderRoute) {
         const at=orderRoute[1]!,versionId=orderRoute[2]!,pdf=orderRoute[3]
@@ -652,7 +667,7 @@ export function createRequestHandler(options: AppOptions) {
           if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
           const order=workOrders.get(at,versionId)
           if (!pdf) return send(200,order)
-          const data=workOrderPdf(order)
+          const data=order.cancellation?await stampPdf(workOrderPdf(order)):workOrderPdf(order)
           res.setHeader('Content-Type','application/pdf')
           res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+'.pdf"')
           res.setHeader('Content-Length',data.length)
@@ -672,9 +687,10 @@ export function createRequestHandler(options: AppOptions) {
         if (req.method === 'GET') {
           if (!id) return send(200,budgets.list(at))
           if (pdf) {
-            const data = budgets.pdf(at,id), version = budgets.get(at,id)
+            const version = budgets.get(at,id), original=budgets.pdf(at,id)
+            const data=version.cancellation?await stampPdf(original):original
             res.setHeader('Content-Type','application/pdf')
-            res.setHeader('Content-Disposition',`attachment; filename="FUNIX-orcamento-${version.documentNumber?.replace(/[^A-Za-z0-9-]/g,'')??version.label}.pdf"; filename*=UTF-8''${encodeURIComponent(version.filename??`FUNIX-orcamento-${version.label}.pdf`)}`)
+            res.setHeader('Content-Disposition',`${url.searchParams.get('view')==='1'?'inline':'attachment'}; filename="FUNIX-orcamento-${version.documentNumber?.replace(/[^A-Za-z0-9-]/g,'')??version.label}.pdf"; filename*=UTF-8''${encodeURIComponent(version.filename??`FUNIX-orcamento-${version.label}.pdf`)}`)
             res.setHeader('Content-Length',data.length)
             res.writeHead(200);res.end(data);return
           }

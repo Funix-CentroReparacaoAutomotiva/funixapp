@@ -6,7 +6,8 @@ import type {RequestFailure} from './api'
 import {money} from './money'
 import{budgetHistory}from'../shared/budget-history'
 import './budget-experience.css'
-type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;scenarioId?:string;serial?:number;workOrderNumber?:string|null}
+import {DocumentButton} from './BudgetDocumentActions'
+type VersionMeta=Omit<BudgetVersion,'snapshot'>&{total:string;scenarioName?:string;scenarioId?:string;serial?:number;workOrderNumber?:string|null;cancelledAt?:string|null;cancelReason?:string|null}
 export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id'|'label'|'filename'>){
  const response=await fetch(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(version.id)}/pdf`,{credentials:'same-origin'})
  if(!response.ok||!response.headers.get('content-type')?.includes('application/pdf'))throw Object.assign(new Error('Não foi possível baixar o PDF.'),{status:response.status})
@@ -38,23 +39,68 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
     .finally(()=>{if(!controller.signal.aborted)setCheckingOrder(false)})
   return()=>controller.abort()
  },[at,versionId])
- const load=useCallback(async()=>{setVersions(await api<VersionMeta[]>(`/api/atendimentos/${at}/orcamentos`))},[at])
+ const load=useCallback(async()=>{setVersions(await api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`))},[at])
  useEffect(()=>{let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load])
+ const budgetUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/pdf?view=1`
  const orderUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os/pdf`
+ async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
  async function createOrder(id:string){
   if(busy||checkingOrder)return
-  if(!window.confirm('Confirma que o orçamento emitido foi autorizado para execução? A OS conterá o escopo congelado desta versão.'))return
+  const entry=versions.find(v=>v.id===id)
+  if(entry?.cancelledAt||selected?.id===id&&selected.cancellation)return
+  if(!window.confirm('Criar ordem de serviço para este orçamento emitido? Confirme que ele foi autorizado para execução.'))return
   await operation(async()=>{
    const os=await api<WorkOrder>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authorized:true})})
    setOrder(os);await load()
   })
  }
- async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
+ async function cancelBudget(id:string){
+  if(busy)return
+  const entry=versions.find(v=>v.id===id)
+  if(entry?.cancelledAt||selected?.id===id&&selected.cancellation)return
+  const reason=window.prompt('Motivo do cancelamento (mínimo de 5 caracteres):')
+  if(reason===null)return
+  const clean=reason.trim()
+  if(clean.length<5||clean.length>500){setError('Informe um motivo entre 5 e 500 caracteres.');return}
+  if(!window.confirm('Confirmar cancelamento do orçamento e de sua OS vinculada, caso exista? Os documentos continuarão disponíveis apenas com marca d’água CANCELADO. Esta ação não pode ser desfeita.'))return
+  await operation(async()=>{
+   const cancellation=await api<{cancelledAt:string;reason:string}>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/cancelamento`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:clean})})
+   if(selected?.id===id)setVersion({...selected,cancellation})
+   if(order?.budgetVersionId===id)setOrder({...order,cancellation})
+   await load()
+  })
+ }
+ const formatDate=(date:string)=>new Date(date).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
  return <section aria-label="Orçamentos emitidos">{error&&<p role="alert" className="form-error">{error}</p>}
- {selected?<><p>Documento emitido em {new Date(selected.createdAt).toLocaleString('pt-BR')}. O PDF original fica preservado, independente de mudanças posteriores.</p><button className="primary-btn" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,selected))}>Baixar PDF {selected.documentNumber??selected.label}</button>{checkingOrder?<p role="status">Consultando OS…</p>:order?<section className="issued-order-card"><strong>{order.number} · Ordem de Serviço</strong><p>Autorizada em {new Date(order.authorization.confirmedAt).toLocaleString('pt-BR')} · {order.scope.lines.length} itens</p><a className="issued-order-link" href={orderUrl(selected.id)} target="_blank" rel="noopener noreferrer">Ver OS / Imprimir</a></section>:<button className="issued-order-create" disabled={busy} onClick={()=>createOrder(selected.id)}>Criar OS</button>}</>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>{budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}><h2>{group.name}</h2>{group.versions.map(v=><div className="budget-history-row" key={v.id}>
- <button className="budget-history-open" disabled={busy} onClick={()=>onOpenVersion(v.id)} aria-label={`Consultar orçamento ${v.documentNumber??v.label}, versão ${v.scenarioVersion}`}><strong className="budget-history-letter">{v.scenarioVersion}</strong><span className="budget-history-identity"><strong>{v.documentNumber??'Orçamento '+v.label}</strong><time dateTime={v.createdAt}>{new Date(v.createdAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})}</time></span><strong className="budget-history-total">{money(v.total)}</strong></button>
- <button className="budget-history-download" disabled={busy} onClick={()=>operation(()=>downloadIssuedPdf(at,v))} aria-label={`Baixar orçamento ${v.documentNumber??v.label}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 18v3h16v-3"/></svg></button>
- {v.workOrderNumber?<a className="budget-history-order" href={orderUrl(v.id)} target="_blank" rel="noopener noreferrer">Ver OS</a>:<button className="budget-history-order" disabled={busy} onClick={()=>onOpenVersion(v.id)}>Criar OS</button>}</div>)}</section>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}</>}
+ {selected?<div className="budget-version-details">
+  <p>Emitido em {formatDate(selected.createdAt)}. Documento original preservado.</p>
+  {selected.cancellation&&<p role="status" className="budget-cancelled-status">Cancelado em {formatDate(selected.cancellation.cancelledAt)} · Motivo: {selected.cancellation.reason}</p>}
+  <div className="budget-detail-actions">
+   <DocumentButton kind="or" href={budgetUrl(selected.id)} state="view" title="Visualizar orçamento"/>
+   {checkingOrder?<span role="status">Consultando OS…</span>:order?<DocumentButton kind="os" href={orderUrl(selected.id)} state="view" title="Visualizar OS"/>:<DocumentButton kind="os" onClick={()=>createOrder(selected.id)} state="create" disabled={busy||!!selected.cancellation} title="Criar OS"/>}
+   <DocumentButton kind="cancel" onClick={()=>cancelBudget(selected.id)} disabled={busy||!!selected.cancellation} title={selected.cancellation?'Orçamento já cancelado':'Cancelar orçamento e OS'}/>
+  </div>
+  {order&&<p className="at-form-hint">{order.number} · {order.scope.lines.length} itens · {order.cancellation?'OS cancelada':'OS autorizada'}</p>}
+ </div>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>
+ {budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}>
+ <h2>{group.name}</h2>
+ {group.versions.map(v=><div className="budget-history-row" key={v.id}>
+  <button className="budget-history-open" disabled={busy} onClick={()=>onOpenVersion(v.id)} aria-label={`Consultar orçamento ${v.documentNumber??v.label}, versão ${v.scenarioVersion}`}>
+   <span className={`budget-history-letter${v.cancelledAt?' is-cancelled':''}`}>{v.scenarioVersion}</span>
+   <span className="budget-history-identity">
+    <strong>{v.documentNumber??'Orçamento '+v.label}</strong>
+    <span className="budget-history-total">{money(v.total)}</span>
+    <time dateTime={v.createdAt}>{formatDate(v.createdAt)}</time>
+   </span>
+  </button>
+  <div className="budget-history-actions">
+   <DocumentButton kind="or" href={budgetUrl(v.id)} state="view" title={`Visualizar orçamento ${v.documentNumber??v.label}`}/>
+   <DocumentButton kind="os" href={v.workOrderNumber?orderUrl(v.id):undefined} onClick={v.workOrderNumber?undefined:()=>createOrder(v.id)} state={v.workOrderNumber?'view':'create'} disabled={busy||!!v.cancelledAt&&!v.workOrderNumber} title={v.workOrderNumber?'Visualizar '+v.workOrderNumber:'Criar OS'}/>
+   <DocumentButton kind="cancel" onClick={()=>cancelBudget(v.id)} disabled={busy||!!v.cancelledAt} title={v.cancelledAt?'Orçamento cancelado':'Cancelar orçamento e OS'}/>
+  </div>
+ </div>)}
+ </section>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}
+ </>}
  </section>
 }
 

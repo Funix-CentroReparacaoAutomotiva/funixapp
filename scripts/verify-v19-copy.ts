@@ -34,7 +34,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
   try{
    before.exec('BEGIN');after.exec('BEGIN')
    const beforeVersion=healthy(before),afterVersion=healthy(after)
-   requireCheck([18,19].includes(beforeVersion)&&afterVersion===19,'V19_COPY_EXPECTED_V18_OR_V19_TO_V19')
+   requireCheck([18,19,20].includes(beforeVersion)&&[19,20].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20')
    const growing=new Set(['schema_migrations','chat_provider_conversations','v20_conversations','v20_associations'])
    const tables=before.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
    const results=[]

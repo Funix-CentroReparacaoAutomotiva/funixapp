@@ -283,7 +283,21 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Work orders are immutable'); END;
   `)},
   // #219: customer/chat schema follows the already deployed work-order V18.
-  {version:19,apply:createCustomerSchema}
+  {version:19,apply:createCustomerSchema},
+  // Cancellation is immutable metadata, separate from the issued PDF and OS.
+  {version:20,apply:db=>db.exec(`
+    CREATE TABLE budget_cancellations (
+      budget_version_id TEXT PRIMARY KEY REFERENCES budget_versions(id) ON DELETE RESTRICT,
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,
+      cancelled_at TEXT NOT NULL,
+      reason TEXT NOT NULL CHECK(length(trim(reason)) BETWEEN 5 AND 500)
+    );
+    CREATE INDEX budget_cancellations_at ON budget_cancellations(atendimento_id,cancelled_at);
+    CREATE TRIGGER immutable_budget_cancellation_update BEFORE UPDATE ON budget_cancellations
+      BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
+    CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
+      BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
+  `)}
 ]
 
 export function migrate(db: DatabaseSync) {
