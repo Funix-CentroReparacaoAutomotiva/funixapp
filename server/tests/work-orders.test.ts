@@ -13,6 +13,8 @@ import {openDatabase} from '../database.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {WorkOrderRepository,operationalScope} from '../work-orders.ts'
+import {BudgetCancellationRepository} from '../budget-cancellations.ts'
+import {cancelledPdf} from '../cancelled-pdf.ts'
 import {operationalParagraphs,workOrderPdf} from '../work-order-pdf.ts'
 import {ServiceError} from '../errors.ts'
 
@@ -141,6 +143,69 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
  }finally{db.close()}
 })
 
+
+
+test('Cancelamento preserva os originais, impede OS nova e permanece após reiniciar',async()=>{
+ const folder=mkdtempSync(join(tmpdir(),'funix-cancel-')),path=join(folder,'synthetic.sqlite')
+ let db=openDatabase(path)
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const original=budgets.pdf(fixture.at.id,version.id)
+  const cancel=new BudgetCancellationRepository(db,()=>Date.parse('2026-11-14T12:00:00Z'))
+  assert.throws(()=>cancel.cancel(fixture.at.id,version.id,{reason:'x'}),error(422,'CANCELLATION_REASON_REQUIRED'))
+  assert.throws(()=>cancel.cancel(fixture.at.id,'outro',{reason:'Teste válido'}),error(404,'NOT_FOUND'))
+  const event=cancel.cancel(fixture.at.id,version.id,{reason:'Cliente desistiu'})
+  assert.equal(event.reason,'Cliente desistiu')
+  assert.equal(cancel.cancel(fixture.at.id,version.id,{reason:'Motivo repetido'}).cancelledAt,event.cancelledAt)
+  assert.equal(budgets.list(fixture.at.id).find(v=>v.id===version.id)?.cancelledAt,event.cancelledAt)
+  assert.equal(budgets.get(fixture.at.id,version.id).cancellation?.reason,'Cliente desistiu')
+  assert.deepEqual(budgets.pdf(fixture.at.id,version.id),original)
+  assert.throws(()=>new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+  assert.throws(()=>db.prepare('DELETE FROM budget_cancellations').run(),/immutable/i)
+  assert.throws(()=>db.prepare("UPDATE budget_cancellations SET reason='mudança'").run(),/immutable/i)
+  db.close();db=openDatabase(path)
+  assert.equal(new BudgetRepository(db).get(fixture.at.id,version.id).cancellation?.reason,'Cliente desistiu')
+ }finally{db.close();rmSync(folder,{recursive:true,force:true})}
+})
+
+test('Cancelar orçamento com OS preserva a consulta da OS e o escopo congelado',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const orders=new WorkOrderRepository(db),before=orders.create(fixture.at.id,version.id,{authorized:true})
+  const cancellation=new BudgetCancellationRepository(db).cancel(fixture.at.id,version.id,{reason:'Escopo cancelado pelo cliente'})
+  const after=orders.get(fixture.at.id,version.id)
+  assert.deepEqual(after.scope,before.scope)
+  assert.equal(after.number,before.number)
+  assert.equal(after.cancellation?.cancelledAt,cancellation.cancelledAt)
+  assert.equal(budgets.list(fixture.at.id).find(v=>v.id===version.id)?.workOrderNumber,before.number)
+  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+ }finally{db.close()}
+})
+
+test('PDF cancelado usa receita static-pdf com a marca em todas as páginas',async()=>{
+ const pdf=workOrderPdf({
+  id:'id',number:'OS-000001',atendimentoId:'a',budgetVersionId:'b',budgetNumber:'OR-000001',budgetLabel:'A',
+  createdAt:new Date().toISOString(),authorization:{confirmedAt:new Date().toISOString(),source:'authenticated-session-confirmation',operatorId:null},
+  scope:{customer:{name:'Cliente'},vehicle:{description:'Carro',plate:'ABC1D23'},diagnostics:[],lines:[],deadlineDays:null}
+ })
+ let calls=0
+ const send:typeof fetch=async(_url,init)=>{
+  calls++
+  const payload=JSON.parse(String(init?.body))
+  assert.equal(payload.template.recipe,'static-pdf')
+  assert.deepEqual(Buffer.from(payload.template.staticPdf.pdfAsset.content,'base64'),pdf)
+  assert.equal(payload.template.pdfOperations.length,1)
+  assert.equal(payload.template.pdfOperations[0].mergeToFront,true)
+  assert.equal(payload.template.pdfOperations[0].mergeWholeDocument,false)
+  assert.match(payload.template.pdfOperations[0].template.content,/CANCELADO/)
+  return new Response(new Uint8Array(pdf),{status:200,headers:{'content-type':'application/pdf'}})
+ }
+ const stamped=await cancelledPdf(pdf,{endpoint:'https://jsreport.example/api/report',username:'user',password:'pass',template:'FUNIX - Orcamento'},send)
+ assert.equal(calls,1)
+ assert.deepEqual(stamped,pdf)
+ await assert.rejects(cancelledPdf(pdf,{endpoint:'https://jsreport.example/api/report',username:'user',password:'pass',template:'FUNIX - Orcamento'},async()=>new Response('erro',{status:500})),error(502,'CANCELLED_PDF_RENDER_FAILED'))
+})
 
 test('Excluded version line never enters the operational projection',async()=>{
  const db=openDatabase(':memory:')
