@@ -154,7 +154,7 @@ async def device_case(browser, width, height):
         await expect(page.locator(".conversation-phone").filter(has_text="Telefone pendente")).to_have_count(1)
         initial_list_reads = sent.count("/api/chat/conversations")
         await page.clock.fast_forward(61_000)
-        await expect.poll(lambda: sent.count("/api/chat/conversations")).to_be_greater_than(initial_list_reads)
+        assert sent.count("/api/chat/conversations") > initial_list_reads, sent
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         await page.goto(ORIGIN + f"/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
         await expect(page.get_by_role("region", name="Histórico Evolution deste Atendimento")).to_be_visible()
