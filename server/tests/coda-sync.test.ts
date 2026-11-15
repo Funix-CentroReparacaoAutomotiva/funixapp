@@ -5,6 +5,7 @@ import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-sync.ts'
 import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
+import { LocalConversationAssociations } from '../chat/local-associations.ts'
 
 function synthetic(row: string, event = 'evo:synthetic:one', jid = '5531999990001@s.whatsapp.net', occurredAt = 1794144000) {
   return { version: 1, source: 'coda', eventId: event, codaRowId: row,
@@ -258,4 +259,32 @@ test('ambiguous or unmapped LID never borrows a phone from a matching-looking At
   assert.equal(row.phoneNumber,null)
   assert.equal(row.atendimentoPhone,null)
  }finally{f.db.close()}
+})
+
+test('list fallback agrees with Atendimento detail when the primary linked Contact has the number', () => {
+  const f = fixture()
+  try {
+    const lid = 'synthetic_detail_phone@lid'
+    const created = f.sync.sync({
+      ...synthetic('i-SYNTH_DETAIL_PHONE', 'evo:synthetic:detail-phone', lid),
+      phoneE164: null,
+    })
+    const contactId = randomUUID()
+    const phone = '+5531987654321'
+    f.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,NULL)")
+      .run(contactId, JSON.stringify({ text: phone }))
+    f.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'contact',0,?,?)")
+      .run(created.atendimentoId, contactId, JSON.stringify({ id: contactId, text: phone }))
+    // This reproduces a detail screen with a phone while the base column remains empty.
+    assert.equal(f.atendimentos.get(created.atendimentoId).phoneNormalized, null)
+    assert.equal(f.atendimentos.get(created.atendimentoId, true).phoneNormalized, phone)
+    assert.equal(f.sync.linkedAtendimentoPhone(lid), phone.slice(1))
+    const local = new LocalConversationAssociations(f.db)
+    const conversationId = local.rememberProviderConversation(lid)
+    f.db.prepare("INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)")
+      .run(randomUUID(), conversationId, created.atendimentoId, '2026-11-15T00:00:00.000Z', 'operator', 'explicit_test_link')
+    assert.equal(local.linkedAtendimentoPhone(lid), phone.slice(1))
+    // Neither projection creates an alias or authorizes a WhatsApp phone number.
+    assert.deepEqual(f.sync.identityJids(lid), [lid])
+  } finally { f.db.close() }
 })
