@@ -2,7 +2,7 @@ import { ConversationIdentities, createConversationIdentitySchema } from './conv
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { initializeFinancialSettings } from '../financial-initialization.ts'
-import { normalizePhone } from '../atendimentos.ts'
+import { AtendimentoRepository, normalizePhone } from '../atendimentos.ts'
 import { ServiceError } from '../errors.ts'
 
 const rowId = /^i-[A-Za-z0-9_-]{1,100}$/
@@ -154,8 +154,10 @@ export class CodaEventSyncRepository extends ConversationIdentities {
   linkedAtendimentoPhone(remoteJid: string): string | null {
     const atendimentoId = this.resolveIdentityActive(remoteJid)
     if (!atendimentoId) return null
-    const normalized = this.db.prepare('SELECT phone_normalized FROM atendimentos WHERE id=?').get(atendimentoId)?.phone_normalized
-    return typeof normalized === 'string' && /^\+[1-9]\d{7,14}$/.test(normalized)
+    // Reuse the detail-view projection: a linked Contact can hold the current phone
+    // even when atendimentos.phone_normalized is empty or stale. Display only.
+    const normalized = new AtendimentoRepository(this.db).get(atendimentoId, true).phoneNormalized
+    return normalized && /^\+[1-9]\d{7,14}$/.test(normalized)
       ? normalized.slice(1) : null
   }
 
