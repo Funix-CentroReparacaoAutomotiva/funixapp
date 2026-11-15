@@ -1,0 +1,90 @@
+{
+  "reviewedBase": "5e2979a7efb81d9b0c8782690f424cb5ffd0c51f",
+  "syntheticFixturesOnly": true,
+  "beforeFix": {
+    "command": "node --test server/tests/conversation-phone-contract.test.ts",
+    "failed": 1,
+    "cause": "Real list HTTP endpoint omitted atendimentoPhone with explicit N:N and no channel authority, although detail returned the primary Contact phone."
+  },
+  "npmRunCheck": {
+    "exitCode": 0,
+    "serverTests": 1038,
+    "voiceCostTests": 8,
+    "build": true,
+    "serverTypeScript": true,
+    "lint": true,
+    "existingWarningsRetained": true
+  },
+  "focusedFinal": {
+    "tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "covers": [
+      "Real provider normalizer and list/detail HTTP contract",
+      "Provider mode without identity authority",
+      "Local mode and offline fallback",
+      "Primary linked Contact with empty base phone column",
+      "Absent/ambiguous commercial phones",
+      "Distinct WhatsApp PN and commercial phone",
+      "PN/LID collision across source pages",
+      "Canonical and N:N mapping disagreement",
+      "Revoked working context does not erase display-only number",
+      "Bootstrap loadEvolutionChat offline transport",
+      "No changed Atendimentos/Contatos/links, sender or history side effects",
+      "Unchanged customer records and Atendimentos across projection; contradictory alias received at skip=50"
+    ]
+  },
+  "browserPhones": {
+    "command": "node scripts/conversation-phone-browser.mjs",
+    "exitCode": 0,
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "realListHttp": true,
+    "onlyProviderTransportMocked": true,
+    "scenariosPerViewport": 7,
+    "samePhoneAsDetail": true,
+    "searchBothPhones": true,
+    "refresh": true,
+    "linksUnchanged": true,
+    "realSends": 0
+  },
+  "browserRegressions": [
+    {
+      "command": "node scripts/customer-experience-browser.mjs",
+      "exitCode": 0,
+      "seconds": 24.88
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_conversations.py",
+      "exitCode": 0,
+      "seconds": 19.1
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_links.py",
+      "exitCode": 0,
+      "seconds": 15.86
+    }
+  ],
+  "installedValidation": {
+    "userConfirmedUrl": "https://app.funix.com.br/conversas",
+    "declaredRevision": "f6e215bfe489d69834b5d77597349ce71d92ea3d",
+    "installedFrontendSupportsAtendimentoPhone": false,
+    "publicMetadataOnly": true,
+    "authenticatedCustomerDataRead": false,
+    "fixedBuildDeployed": false,
+    "status": "Correction demonstrated in development; corrected installation not validated because PR #229 is not installed."
+  },
+  "schemaChanges": false,
+  "installedFlagsChanged": false,
+  "realWhatsAppSends": 0,
+  "mergeOrDeploy": false,
+  "functionalCommit": "20275a5",
+  "lastChecks": {
+    "serverTypeScriptExitCode": 0,
+    "lintExitCode": 0,
+    "gitDiffCheckExitCode": 0
+  }
+}

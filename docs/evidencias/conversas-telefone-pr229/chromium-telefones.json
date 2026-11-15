@@ -1,0 +1,65 @@
+[
+  {
+    "width": 320,
+    "source": "evolution",
+    "realApi": true,
+    "providerTransport": "synthetic",
+    "scenarios": {
+      "Contato principal": "Ficha: +5531999990404",
+      "PN divergente": "+5531999990505",
+      "Sem número": "Telefone pendente",
+      "Duas fichas": "Telefone pendente",
+      "Sem vínculo": "Telefone pendente",
+      "PN confirmado": "+5531999990808",
+      "Conflito": "Telefone pendente"
+    },
+    "linkedContactAgreesWithDetail": true,
+    "searchBothPhones": true,
+    "refresh": true,
+    "unchangedLinks": true,
+    "realSends": 0,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "source": "evolution",
+    "realApi": true,
+    "providerTransport": "synthetic",
+    "scenarios": {
+      "Contato principal": "Ficha: +5531999990404",
+      "PN divergente": "+5531999990505",
+      "Sem número": "Telefone pendente",
+      "Duas fichas": "Telefone pendente",
+      "Sem vínculo": "Telefone pendente",
+      "PN confirmado": "+5531999990808",
+      "Conflito": "Telefone pendente"
+    },
+    "linkedContactAgreesWithDetail": true,
+    "searchBothPhones": true,
+    "refresh": true,
+    "unchangedLinks": true,
+    "realSends": 0,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "source": "evolution",
+    "realApi": true,
+    "providerTransport": "synthetic",
+    "scenarios": {
+      "Contato principal": "Ficha: +5531999990404",
+      "PN divergente": "+5531999990505",
+      "Sem número": "Telefone pendente",
+      "Duas fichas": "Telefone pendente",
+      "Sem vínculo": "Telefone pendente",
+      "PN confirmado": "+5531999990808",
+      "Conflito": "Telefone pendente"
+    },
+    "linkedContactAgreesWithDetail": true,
+    "searchBothPhones": true,
+    "refresh": true,
+    "unchangedLinks": true,
+    "realSends": 0,
+    "overflow": false
+  }
+]
