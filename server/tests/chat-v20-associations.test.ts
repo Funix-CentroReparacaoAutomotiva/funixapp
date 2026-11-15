@@ -129,7 +129,7 @@ test('stable association survives full SQLite file close/reopen with no legacy m
     assert.deepEqual(reopened.rememberConversation(instance, pn), { conversationId, revision: 1 })
     assert.deepEqual(reopened.listActive(conversationId).items.map(x => x.atendimentoId), [atendimento.id])
     assert.equal(reopened.listActive(conversationId).activeAtendimentoId, atendimento.id)
-    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version), 18)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version), 19)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally {
     try { db.close() } catch { /* already closed on failure */ }
