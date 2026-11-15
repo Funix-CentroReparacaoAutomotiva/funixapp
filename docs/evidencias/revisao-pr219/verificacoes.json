@@ -1,0 +1,78 @@
+{
+  "syntheticOnly": true,
+  "baseReviewed": "eab381640f1683af3c371c96ff7a5c3ece510c9c",
+  "codeCommits": [
+    "4a8a23a",
+    "8ece81a"
+  ],
+  "npmRunCheck": {
+    "exitCode": 0,
+    "serverTests": 987,
+    "voiceCostTests": 8,
+    "build": true,
+    "serverTypeScript": true,
+    "lint": true,
+    "knownWarnings": "chunk >500 kB e warnings de lint preservados"
+  },
+  "targetedNewRegressions": {
+    "exitCode": 0,
+    "tests": 9
+  },
+  "browsers": [
+    {
+      "command": "node scripts/customer-experience-browser.mjs",
+      "exitCode": 0,
+      "seconds": 28.61
+    },
+    {
+      "command": "node scripts/atendimento-vehicle-browser.mjs",
+      "exitCode": 0,
+      "seconds": 32.55
+    },
+    {
+      "command": "node scripts/diagnosis-quote-browser.mjs",
+      "exitCode": 0,
+      "seconds": 19.35
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_conversations.py",
+      "exitCode": 0,
+      "seconds": 23.8
+    },
+    {
+      "command": "python3 tests/browser/chat_mvp_local.py",
+      "exitCode": 0,
+      "seconds": 26.05
+    },
+    {
+      "command": "python3 tests/browser/chat_v20_links.py",
+      "exitCode": 0,
+      "seconds": 20.02
+    },
+    {
+      "command": "python3 tests/browser/chat_local_base.py",
+      "exitCode": 0,
+      "seconds": 44.54
+    },
+    {
+      "command": "python3 tests/browser/pdf_emission.py",
+      "exitCode": 0,
+      "seconds": 92.69
+    }
+  ],
+  "viewports": [
+    320,
+    390,
+    1440
+  ],
+  "remoteCI": "Consultar checks da SHA final da PR #219; resultado terminal informado na entrega.",
+  "finalServerRecheck": {
+    "commands": [
+      "npm run check:server",
+      "npm run test:server"
+    ],
+    "exitCode": 0,
+    "tests": 987,
+    "note": "Resposta HTTP completa capturada na transação; rechecagem após a última alteração de código."
+  }
+}

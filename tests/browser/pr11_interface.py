@@ -51,7 +51,7 @@ async def run():
             h.mark('compact edit action in original header works with keyboard and unsaved guard; redundant tools bar absent')
 
             start = time.perf_counter(); before = len(h.api_requests)
-            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+            await page.get_by_role('button', name='Diagnóstico', exact=True).click()
             await expect(active_scenario(page,'Cenário 1')).to_be_visible()
             metrics['first_commercial_view_ms'] = round((time.perf_counter() - start) * 1000, 2)
             metrics['first_requests'] = h.api_requests[before:]
@@ -61,7 +61,7 @@ async def run():
             for _ in range(3):
                 await page.get_by_role('button', name='Mapa', exact=True).click()
                 await expect(page.locator('.interactive-map')).to_be_visible()
-                await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+                await page.get_by_role('button', name='Diagnóstico', exact=True).click()
                 await expect(page.locator('.interactive-map')).to_have_count(0)
             await page.wait_for_timeout(150)
             redundant = [r for r in h.api_requests[before:] if r['method'] == 'GET' and ('/api/catalogos' in r['path'] or '/cenarios' in r['path'])]
@@ -141,7 +141,7 @@ async def run():
             await expect(page.locator('.interactive-map')).to_be_visible()
             await page.get_by_role('button', name='Chat', exact=True).click()
             await expect(page.locator('.detail-header').get_by_role('button', name='Editar Atendimento')).to_be_visible()
-            await page.get_by_role('button', name='Diagnósticos', exact=True).click()
+            await page.get_by_role('button', name='Diagnóstico', exact=True).click()
             await expect(active_scenario(page,'Cenário 2')).to_be_visible()
             await page.get_by_role('button', name='Voltar à visão anterior').click()
             await page.wait_for_url('**/funil?modo=lista&q=QA')

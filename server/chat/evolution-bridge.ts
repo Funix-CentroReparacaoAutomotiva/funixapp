@@ -1,3 +1,4 @@
+import type {ProfilePhotoGateway} from './profile-photo.ts'
 import { ServiceError } from '../errors.ts'
 import { EvolutionReadError } from '../experimental/evolution-read/client.ts'
 import type { ConversationStore } from './conversation-store.ts'
@@ -5,25 +6,27 @@ import type { SendOperations, SendCommand } from './send-operations.ts'
 import { randomUUID } from 'node:crypto'
 import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
+import type { LocalConversationAssociations } from './local-associations.ts'
+import type { CommercialConversation } from '../../shared/customer.ts'
+export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'>>
 import type { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
 import type { MediaGateway, MediaInput } from './evolution-media.ts'
 
-/**
- * Single-operator V20 read-only bridge.
- * Durable opaque conversation IDs and identity evidence when canonical sync is enabled.
- * Offline/ungated consumers retain bounded ephemeral IDs.
- * This is NOT the eventual persisted N:N conversation model.
+/** Single-operator channel bridge. Identity and commercial authorization are separate
+ * from provider transport; local authority uses the existing PN/LID protections.
+ * Legacy injected authorities remain supported without becoming a prerequisite.
  */
 export function createEvolutionChatBridge(
   provider: Pick<EvolutionReadPoc, 'findChatsPage' | 'findMessages'> &
     Partial<Pick<EvolutionReadPoc, 'findMediaEnvelope'>>,
   now: () => number = Date.now,
   associations?: V20AssociationRepository,
-  codaSync?: CodaEventSyncRepository,
+  codaSync?: ChatIdentityAuthority,
   sendText?: EvolutionTextSender,
   media?: MediaGateway,
   local?: { store: ConversationStore; sends: SendOperations; read: boolean },
+  profilePhoto?:ProfilePhotoGateway,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -74,6 +77,13 @@ export function createEvolutionChatBridge(
   const historyJid = (remoteJid: string) => codaSync?.identityJids(remoteJid)?.[0] ?? remoteJid
 
   return {
+    async profilePhoto(conversationId:string){
+      const jid=codaSync?.providerJid(conversationId)
+      const pn=jid?sendTarget(jid):null
+      if(!pn||!profilePhoto)return null
+      const value=await profilePhoto(pn.split('@')[0]!)
+      return jid&&sendTarget(jid)===pn?value:null
+    },
     async list(skip: number): Promise<{
       items: Array<{
         conversationId: string
@@ -82,6 +92,7 @@ export function createEvolutionChatBridge(
         updatedAt: string | null
         unreadCount: number | null
         atendimentoId?: string | null
+        commercial?: CommercialConversation
       }>
       nextSkip: number | null
       source: 'evolution' | 'local'
@@ -114,6 +125,7 @@ export function createEvolutionChatBridge(
         sourceCount = rows.length
         source = 'local'
       }
+      const projections=codaSync?.projections?.(rows.map(r=>r.remoteJid))
       return {
         items: [
           ...new Map(
@@ -129,6 +141,7 @@ export function createEvolutionChatBridge(
                   phoneNumber: row.phoneNumber,
                   updatedAt: row.updatedAt,
                   unreadCount: row.unreadCount,
+                  ...(projections?.get(row.remoteJid) ? {commercial: {...projections.get(row.remoteJid)!,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},unreadCount:projections.get(row.remoteJid)!.unreadCount,phoneNumber:projections.get(row.remoteJid)!.phoneNumber,updatedAt:projections.get(row.remoteJid)!.lastMessageAt??row.updatedAt}:{}),
                   ...(codaSync ? { atendimentoId: canonicalFor(row.remoteJid) } : {}),
                 },
               ] as const
@@ -222,6 +235,7 @@ export function createEvolutionChatBridge(
                 sendText(recipient, text),
               )
             : await sendText(recipient, text)
+        codaSync.recordAccepted?.(atendimentoId,remoteJid,receipt.messageId)
         return { state: 'accepted' as const, receipt }
       } finally {
         pendingSends.delete(conversationId)
@@ -264,6 +278,7 @@ export function createEvolutionChatBridge(
                 media.send(recipient, item),
               )
             : await media.send(recipient, item)
+        codaSync.recordAccepted?.(atendimentoId,jid,receipt.messageId)
         return { state: 'accepted' as const, receipt }
       } finally {
         pendingSends.delete(conversationId)
@@ -441,6 +456,7 @@ export function createEvolutionChatBridge(
         }
         if (codaSync && canonicalFor(jid) !== active) return null
         const result = local.store.page(jid, page, cursor)
+        codaSync?.markRead?.(jid,result.items.map(m=>m.messageId))
         if (providerUnavailable && result.reportedTotal === 0)
           throw new EvolutionReadError('TRANSPORT')
         return {

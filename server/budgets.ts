@@ -1,3 +1,4 @@
+import {CustomerRepository} from './customers.ts'
 import{technicalGroups}from'./stage-allocation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash,randomUUID} from 'node:crypto'
@@ -41,7 +42,7 @@ export class BudgetRepository {
   return negotiation(input)
  }
  private build(at:string,scenarioId:string,input:NegotiationInput):BudgetPreview{
-  const atendimento=new AtendimentoRepository(this.db).get(at),commercial=new CommercialRepository(this.db),pricing=new PricingConfigurationRepository(this.db)
+  const atendimento=new CustomerRepository(this.db).present([new AtendimentoRepository(this.db).get(at)])[0]!,commercial=new CommercialRepository(this.db),pricing=new PricingConfigurationRepository(this.db)
   selectedScenario(this.db,at,scenarioId)
   const scenario=new ScenarioRepository(this.db).list(at).find(s=>s.id===scenarioId)!,items=commercial.list(at,scenario.id),components=new ComponentRepository(this.db).list(at),catalog=commercial.catalogs().items
   const state=pricing.settings(at),configuration=pricing.get()

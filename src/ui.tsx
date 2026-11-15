@@ -1,6 +1,6 @@
+import {money} from './money'
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento } from '../shared/contracts'
 import { api } from './api'
 import type { Session } from './api'
@@ -43,13 +43,17 @@ export function Notice({ title, children, retry, actionLabel = 'Tentar novamente
   return <div className={`fh-empty notice ${error ? 'notice-error' : ''}`} role={error ? 'alert' : 'status'}><strong>{title}</strong>{children && <p>{children}</p>}{retry && <button className="fh-filter" onClick={retry}>{actionLabel}</button>}</div>
 }
 export function RecordButton({ item, list = false, onOpen }: {item: Atendimento; list?: boolean; onOpen: (record: Atendimento) => void}) {
-  const title = item.name || item.phone
-  const stage = ATENDIMENTO_STAGES.find(stage => stage.id === item.stage)?.name
-  const vehicle = item.vehicle || [item.brand, item.model].filter(Boolean).join(' ')
-  return <button type="button" className={list ? 'fh-row' : 'fh-card'} onClick={() => onOpen(item)}>
-    {list && <span className="fh-avatar" aria-hidden="true">{title.slice(0, 1).toUpperCase()}</span>}
-    <span className={list ? 'fh-rowmain' : 'fh-cardmain'}><strong>{title}</strong><span className="record-description">{[vehicle, item.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}{item.name && <><br />{item.phone}</>}{item.reason && <><br />{item.reason}</>}</span><span className="fh-cardfoot"><span title={item.id}>ID {item.id.slice(0, 8)}…</span>{!list && <b>Abrir ↗</b>}</span></span>
-    {list && <span className="fh-pill blue">{stage}</span>}
+  const title = item.name || 'Sem nome'
+  const vehicle=item.vehicle||[item.brand,item.model].filter(Boolean).join(' ')||'Sem veículo'
+  const elapsed=item.lastContactAt?Math.max(0,Date.now()-Date.parse(item.lastContactAt)):null
+  const age=elapsed===null?'◷?':elapsed<3600000?Math.floor(elapsed/60000)+' min':elapsed<172800000?Math.floor(elapsed/3600000)+' h':Math.floor(elapsed/86400000)+' d'
+  const urgency=item.closedAt||item.stage==='rejeitados'?'closed':elapsed===null?'unknown':elapsed>120*3600000?'cold':elapsed>72*3600000?'late':elapsed>24*3600000?'attention':'current'
+
+  const value=item.commercialValue,amount=value?value.min===value.max?money(value.min):money(value.min)+'–'+money(value.max):'—'
+  return <button type="button" className={(list?'fh-row':'fh-card')+' funnel-compact urgency-'+urgency} onClick={()=>onOpen(item)}>
+   <span className="funnel-first"><strong>{title}</strong><span title={item.lastContactAt?'Último contato: '+item.lastContactAt:'Horário do último contato desconhecido'} aria-label={elapsed===null?'Horário do último contato desconhecido':'Último contato há '+age}>{age}</span></span>
+   <span className="funnel-phone">{item.phone||'Sem telefone'}</span>
+   <span className="funnel-last"><span><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" style={{width:13,height:13,verticalAlign:'middle'}}><path d="m5 10 2-5h10l2 5M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2"/></svg> {vehicle}{item.plate?' · '+item.plate:''}</span><b title={'Faixa entre cenários calculados: '+amount}>{amount}</b></span>
   </button>
 }
 export function Login({ session, error, refresh, onSession }: {session: Session | null; error: string; refresh: () => void; onSession: (session: Session) => void}) {

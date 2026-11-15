@@ -1,0 +1,15 @@
+PASS 320px: new message appears without click and typed reply is preserved
+PASS 320px: received photo/video/audio open inside Atendimento
+PASS 320px: sends one image/video/audio each with synthetic provider
+PASS 320px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card
+PASS 320px: provider error reference/retry and silent context revocation clear history/composer
+PASS 390px: new message appears without click and typed reply is preserved
+PASS 390px: received photo/video/audio open inside Atendimento
+PASS 390px: sends one image/video/audio each with synthetic provider
+PASS 390px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card
+PASS 390px: provider error reference/retry and silent context revocation clear history/composer
+PASS 1440px: new message appears without click and typed reply is preserved
+PASS 1440px: received photo/video/audio open inside Atendimento
+PASS 1440px: sends one image/video/audio each with synthetic provider
+PASS 1440px: click routes directly to canonical Atendimento; no nested reader, inactive controls or duplicated card
+PASS 1440px: provider error reference/retry and silent context revocation clear history/composer

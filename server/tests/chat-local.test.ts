@@ -1,3 +1,4 @@
+import {removeV19FixtureSchema} from './fixtures/pre-v19.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
@@ -243,7 +244,9 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
   try {
     // Empty additive tables can be removed in this disposable fixture to recover
     // the V13 baseline; the actual upgrade and its failure are exercised below.
-    db.exec('DROP TABLE work_orders; DELETE FROM schema_migrations WHERE version=18; ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; DELETE FROM schema_migrations WHERE version=17;')
+    removeV19FixtureSchema(db)
+    db.exec('DROP TABLE work_orders; DELETE FROM schema_migrations WHERE version=18;')
+    db.exec('ALTER TABLE diagnosis_items DROP COLUMN piece_review_pending; DELETE FROM schema_migrations WHERE version=17;')
     db.exec('ALTER TABLE atendimentos DROP COLUMN fabrication_year; ALTER TABLE atendimentos DROP COLUMN model_year; DELETE FROM schema_migrations WHERE version=16;')
     db.exec(`DROP TABLE chat_link_receipts; DROP TABLE chat_statuses; DROP TABLE chat_messages;
       DROP TABLE chat_links; DROP TABLE chat_conversations; DROP TABLE chat_events;
@@ -257,7 +260,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='chat_instances'").get(), undefined)
     assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(), before)
     db.exec('DROP VIEW chat_messages'); migrate(db)
-    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 18)
+    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v, 19)
     assert.equal(count(db, 'chat_instances'), 0)
     assert.equal(count(db, 'chat_messages'), 0)
     assert.equal(new AtendimentoRepository(db).get(at.id).notes, at.notes)

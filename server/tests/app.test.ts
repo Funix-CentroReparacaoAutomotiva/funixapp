@@ -147,7 +147,7 @@ test('writes require origin and JSON; reject malformed payloads, readonly fields
     assert.equal((await app.write('/api/atendimentos', 'POST', { phone: '1' }, cookie, 'https://invalid.example')).status, 403)
     assert.equal((await app.request('/api/atendimentos', { method: 'POST', headers: { Cookie: cookie, Origin: origin }, body: '{}' })).status, 415)
     assert.equal((await app.request('/api/atendimentos', { method: 'POST', headers: { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' }, body: '{' })).status, 400)
-    for (const body of [{}, { phone: '   ' }, { phone: 12 }, { phone: 'abc' }, { phone: '1', id: 'chosen' }, { phone: '1', stage: 'Agendado' }, { phone: '1', notes: 10 }]) {
+    for (const body of [{ phone: 12 }, { phone: 'abc' }, { phone: '1', id: 'chosen' }, { phone: '1', stage: 'Agendado' }, { phone: '1', notes: 10 }]) {
       assert.equal((await app.write('/api/atendimentos', 'POST', body, cookie)).status, 400)
     }
     assert.equal((await app.write('/api/atendimentos', 'POST', { phone: '1', notes: 'x'.repeat(70_000) }, cookie)).status, 413)

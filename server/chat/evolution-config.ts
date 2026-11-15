@@ -1,3 +1,4 @@
+import {createProfilePhotoGateway} from './profile-photo.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution-bridge.ts'
 import { createEvolutionHttpTransport } from '../experimental/evolution-read/http-transport.ts'
@@ -45,5 +46,5 @@ export function loadEvolutionChat(
   const media = env.FUNIX_EVOLUTION_MEDIA_ENABLED === 'true'
     ? createMediaGateway({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
     : undefined
-  return createEvolutionChatBridge(provider, Date.now, associations, codaSync, sender, media, local)
+  return createEvolutionChatBridge(provider, Date.now, associations, local?.authority ?? codaSync, sender, media, local, createProfilePhotoGateway({origin:EXISTING_INTERNAL_ORIGIN,apiKey:key,instance:EXISTING_INSTANCE}))
 }

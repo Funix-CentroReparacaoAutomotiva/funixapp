@@ -29,10 +29,8 @@ async def case(browser, width):
         page = await context.new_page()
         await page.clock.install()
         await h.attach(page)
-        await page.goto(ORIGIN + "/conversas")
+        await page.goto(ORIGIN + f"/atendimentos/{meta['atendimentoId']}?aba=chat&conversa={meta['conversationId']}")
         await h.login(page)
-        await expect(page.get_by_text("Mostrando conversas salvas", exact=False)).to_be_visible()
-        await page.get_by_role("button", name="Cliente Sintético Local").click()
         await expect(page.get_by_text("Mensagem local 125", exact=True)).to_be_visible()
         assert await page.locator(".chat-message").count() == 50
         await page.get_by_role("button", name="Carregar mensagens anteriores", exact=True).click()

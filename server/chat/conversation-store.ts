@@ -1,3 +1,4 @@
+import type { LocalConversationAssociations } from './local-associations.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { ReadChat, ReadMessage } from '../experimental/evolution-read/client.ts'
@@ -52,11 +53,11 @@ export function createConversationStoreSchema(db: DatabaseSync) {
 }
 export class ConversationStore {
   readonly db: DatabaseSync
-  readonly identities: ConversationIdentities & ConversationAssociationReader
+  readonly identities: ConversationIdentities & ConversationAssociationReader & Partial<Pick<LocalConversationAssociations, 'inbound'>>
   private readonly now: () => string
   constructor(
     db: DatabaseSync,
-    identities: ConversationIdentities & ConversationAssociationReader,
+    identities: ConversationIdentities & ConversationAssociationReader & Partial<Pick<LocalConversationAssociations, 'inbound'>>,
     now = () => new Date().toISOString(),
   ) {
     this.db = db
@@ -299,9 +300,10 @@ export class ConversationStore {
         if (
           disposition === 'quarantined' &&
           (prior.reason === 'context_conflict' || prior.reason === 'identity_conflict') &&
-          this.identities.identityState(e.message.remoteJid) === 'linked'
+          (this.identities.identityState(e.message.remoteJid) === 'linked' || !!this.identities.inbound && this.identities.identityState(e.message.remoteJid) === 'missing_confirmation')
         ) {
           this.apply(e, this.ensure(e.message.remoteJid))
+          this.identities.inbound?.(e)
           this.db
             .prepare(
               "UPDATE chat_events SET disposition='projected',reason='RECONCILED_AFTER_CONFIRMATION' WHERE instance=? AND event_id=?",
@@ -329,7 +331,11 @@ export class ConversationStore {
         this.db
           .prepare('UPDATE chat_conversation_coverage SET display_name=? WHERE conversation_id=?')
           .run(e.displayName, id)
-      if (disposition !== 'quarantined') this.apply(e, id)
+      if (disposition !== 'quarantined' || !!this.identities.inbound) {
+        this.apply(e, id)
+        this.identities.inbound?.(e)
+        if (identity === 'context_conflict') disposition = 'pending'
+      }
       const receiptId = randomUUID()
       this.db
         .prepare(
@@ -564,6 +570,7 @@ export class ConversationStore {
           ).toString('base64url')
         : null
     return {
+      readThroughSequence: Math.max(0, ...selected.map(r=>Number(r.sequence))),
       items: selected.reverse().map((r) => this.projectMessage(r)),
       page,
       reportedTotal: total,

@@ -1,0 +1,24 @@
+PASS 320px: opted-in UI, empty links, no duplicate chat history
+PASS 320px: search, reason required, manual link, no parallel chat view
+PASS 320px: 409 conflict displays warning and safe retry, N:N links
+PASS 320px: switch active Atendimento context while no nested chat exists
+PASS 320px: cancel/confirm unlink and reset context
+PASS 320px: conversation switch isolates manual association panels
+PASS 320px: no horizontal overflow, no external network, no JS exceptions
+PASS 320px: link feature OFF hides writes and never opens a second chat
+PASS 390px: opted-in UI, empty links, no duplicate chat history
+PASS 390px: search, reason required, manual link, no parallel chat view
+PASS 390px: 409 conflict displays warning and safe retry, N:N links
+PASS 390px: switch active Atendimento context while no nested chat exists
+PASS 390px: cancel/confirm unlink and reset context
+PASS 390px: conversation switch isolates manual association panels
+PASS 390px: no horizontal overflow, no external network, no JS exceptions
+PASS 390px: link feature OFF hides writes and never opens a second chat
+PASS 1440px: opted-in UI, empty links, no duplicate chat history
+PASS 1440px: search, reason required, manual link, no parallel chat view
+PASS 1440px: 409 conflict displays warning and safe retry, N:N links
+PASS 1440px: switch active Atendimento context while no nested chat exists
+PASS 1440px: cancel/confirm unlink and reset context
+PASS 1440px: conversation switch isolates manual association panels
+PASS 1440px: no horizontal overflow, no external network, no JS exceptions
+PASS 1440px: link feature OFF hides writes and never opens a second chat

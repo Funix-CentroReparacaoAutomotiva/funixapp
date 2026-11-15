@@ -1,3 +1,4 @@
+import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import { hierarchyPieces } from './hierarchy.ts'
 import { createChatSchema } from './chat/schema.ts'
@@ -280,7 +281,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Work orders are immutable'); END;
     CREATE TRIGGER immutable_work_order_delete BEFORE DELETE ON work_orders
       BEGIN SELECT RAISE(ABORT,'Work orders are immutable'); END;
-  `)}
+  `)},
+  // #219: customer/chat schema follows the already deployed work-order V18.
+  {version:19,apply:createCustomerSchema}
 ]
 
 export function migrate(db: DatabaseSync) {

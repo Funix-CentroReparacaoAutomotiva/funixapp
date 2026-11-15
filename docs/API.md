@@ -22,15 +22,15 @@ Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInpu
 
 ## Atendimento e validações
 
-Telefone textual é obrigatório e precisa conter ao menos um dígito, sem exigir DDI/DDD ou ficha completa. Valores opcionais omitidos na criação viram texto vazio; omitidos no PATCH preservam o conteúdo anterior; texto vazio explícito limpa o campo opcional. Números/objetos/null não substituem textos. Telefone repetido é aceito, sem cadastro/vínculo ou escolha automática de outro Atendimento.
+Desde V18, telefone é opcional na criação progressiva. Quando informado e não vazio, permanece textual e deve conter ao menos um dígito; não exige DDI/DDD ou ficha completa para salvar. Preparar um novo canal para envio exige telefone internacional inequívoco, conforme a seção V18 abaixo. Valores opcionais omitidos na criação viram texto vazio; omitidos no PATCH preservam o conteúdo anterior; texto vazio explícito limpa o campo opcional. Números/objetos/null não substituem textos. Telefone repetido é aceito, sem cadastro/vínculo ou escolha automática de outro Atendimento.
 
-Campos graváveis: `phone`, `name`, `vehicle`, `brand`, `model`, `plate`, `reason`, `notes`, `stage`, `rejectionReason`, `explicitRefusal`. Campos técnicos retornados: `id`, `phoneNormalized`, `createdAt`, `updatedAt`, `revision`. São calculados no backend, não aceitos livremente do navegador.
+Campos graváveis: `references`, `closed` (V18, abaixo), `phone`, `name`, `vehicle`, `brand`, `model`, `plate`, `reason`, `notes`, `stage`, `rejectionReason`, `explicitRefusal`. Campos técnicos retornados: `id`, `phoneNormalized`, `createdAt`, `updatedAt`, `revision`. São calculados no backend, não aceitos livremente do navegador.
 
 Limites em caracteres: phone/plate 100; name/vehicle/model 250; brand 150; reason/notes 8000; rejectionReason 2000. JSON de cadastro/edição limitado a 64 KiB; senha a 1 KiB. Campos desconhecidos são rejeitados.
 
 Telefone original é preservado com limpeza das bordas; a versão E.164 só é preenchida para formato internacional inequívoco com `+` e quantidade plausível de dígitos. Um telefone nacional/ambíguo permanece válido sem normalização inventada. Não há consulta a provedor ou Coda.
 
-Fases: `novo-lead`, `aguardando-dados`, `em-negociacao`, `morno`, `frio`, `rejeitados`. Rótulos exatos da V1.0; a criação padrão é Novo lead. Mudanças são manuais. Rejeitados exige `explicitRefusal: true` e motivo preenchido; nenhum job avança fase por tempo.
+Fases: `novo-lead`, `aguardando-dados`, `em-negociacao`, `morno`, `frio`, `rejeitados`. A criação padrão é Novo lead. A navegação V18 agrupa recusa histórica e encerramento explícito na lane Encerrados; os IDs anteriores permanecem compatíveis. Mudanças são manuais. Rejeitados exige `explicitRefusal: true` e motivo preenchido; nenhum job avança fase por tempo.
 
 A atualização é SQL condicional pela revisão técnica; se o registro mudou, retorna 409 `VERSION_CONFLICT` sem sobrescrever. Essa revisão não é versão A/B/C de orçamento. Emissões de orçamento têm sequência e imutabilidade próprias, descritas abaixo.
 
@@ -380,3 +380,18 @@ somente GET; privilégios do token/documento devem ser conferidos no provedor, p
 confirmação de configuração não é uma introspecção remota de permissões. A chave IA
 é exclusiva deste fluxo, com modelo explícito, sem ferramentas e `store:false`.
 Desabilitar `ENABLED` e reiniciar não apaga jobs, decisões ou escopo.
+
+## V18 — Funil, Conversas e Atendimento autônomos
+
+Esta decisão substitui as restrições anteriores de telefone obrigatório e de não criar ficha por inbound. Especificação, política de ciclo comercial e evidências: [entrega integrada](entregas/FUNIL_CONVERSAS_ATENDIMENTO.md). Contratos tipados em `shared/customer.ts` e `shared/contracts.ts`.
+
+- `AtendimentoInput` aceita `{}` e `references?: {person,contact,vehicle,payer}`, cada grupo com até 100 linhas `{id:string|null,text:string,plate?,fabricationYear?,modelYear?}`. Texto livre não cria cadastro. IDs são selecionados explicitamente e o backend exige o tipo de registro correspondente. Campos primários são derivados no servidor. As duas datas de veículo permanecem independentes. O PATCH exige revisão e conserva atomicamente os vínculos e dados.
+- `closed?: boolean` grava/limpa `closed_at` pelo relógio do servidor, somente por ação explícita. `closedAt` é de leitura; rejeição comercial continua exigindo recusa/motivo. A ingestão nunca reabre uma ficha.
+- `GET /api/atendimentos` acrescenta `lastContactAt` e `commercialValue: {min,max}|null`, com decimais exatos calculados pelo motor vigente. Edição cadastral não reinicia contato. Negociações salvas usam a prévia oficial; cenários/versões alternativas não são somados e bases incompletas não são apresentadas como completas.
+- `GET /api/customer-records?kind=entity|contact|vehicle&q=...`: até 20 sugestões. `POST /api/customer-records` cria cadastro somente por ação explícita; `GET/PATCH /api/customer-records/:id` consulta/edita com revisão. Contato admite `nickname` e associação explícita `entityId`; nenhuma semelhança de nome confirma identidade. Telefone de Contato com histórico não é editado diretamente.
+- `GET /api/chat/conversations?skip=...`: até 50 conversas, `commercial: {names:[{name,entityId}],contactId?,atendimentoCount,preview,profilePhoto}`. Apelido explícito precede pessoas dos Atendimentos; ausência gera Sem nome. `unreadCount` é quantidade de inbound ainda não retornado como lido. URL de foto é local/autenticada; credenciais e URL externa ficam no backend.
+- `GET/POST/DELETE /api/chat/conversations/:id/atendimentos[/:linkId]` e `POST /context` mantêm o contrato N:N e seus recibos/revisões. O escopo de aliases é calculado no servidor por evidência PN/LID única; clientes não enviam esse escopo. Mudanças de contexto invalidam comandos antigos, inclusive A→B→A.
+- `GET /api/atendimentos/:id/conversations` retorna somente contatos associados explicitamente. `POST /api/atendimentos/:id/prepare-conversation`, `{contactIndex,revision}`, prepara contexto de um contato salvo sem enviar. Igualdade textual com canal que já possui histórico exige associação explícita; destinatário/JID/URL nunca é recebido do navegador.
+- `GET /api/chat/conversations/:id/profile-photo` devolve JPEG validado ou 404, com cache privado e cache backend positivo/negativo. Indisponibilidade não bloqueia a lista.
+
+Todos esses endpoints de dados exigem a sessão existente; escritas exigem Origin exata e JSON. Inbound continua exigindo relay HMAC/allowlist independente de cookie. Primeiro inbound elegível, mensagem e decisão de criação/reutilização são confirmados juntos. Retries não refazem snapshot nem criam nova ficha. LID sem PN conserva telefone desconhecido; conflitos permanecem bloqueados para leitura/envio. Preparação e recebimento não autorizam mensagem automática; o composer exige ação e confirmação do vendedor, além dos gates de envio.

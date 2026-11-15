@@ -1,0 +1,178 @@
+{
+  "readOnly": true,
+  "beforeVersion": 17,
+  "afterVersion": 18,
+  "integrity": true,
+  "foreignKeys": true,
+  "tables": [
+    {
+      "table": "atendimentos",
+      "beforeRows": 1,
+      "afterRows": 1,
+      "preserved": true
+    },
+    {
+      "table": "budget_document_identity",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "budget_emission_attempts",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "budget_versions",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "catalog_history",
+      "beforeRows": 163,
+      "afterRows": 163,
+      "preserved": true
+    },
+    {
+      "table": "catalog_items",
+      "beforeRows": 163,
+      "afterRows": 163,
+      "preserved": true
+    },
+    {
+      "table": "chat_conversations",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_events",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_instances",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_link_receipts",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_links",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_messages",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "chat_statuses",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "commercial_state",
+      "beforeRows": 1,
+      "afterRows": 1,
+      "preserved": true
+    },
+    {
+      "table": "component_items",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "diagnosis_items",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "diagnosis_recommendations",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "diagnosis_services",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "installment_configuration",
+      "beforeRows": 1,
+      "afterRows": 1,
+      "preserved": true
+    },
+    {
+      "table": "pricing_configuration",
+      "beforeRows": 1,
+      "afterRows": 1,
+      "preserved": true
+    },
+    {
+      "table": "recommendation_applications",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "scenario_component_flags",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "scenario_piece_flags",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "scenario_service_confirmations",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "scenario_service_flags",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    },
+    {
+      "table": "scenarios",
+      "beforeRows": 1,
+      "afterRows": 1,
+      "preserved": true
+    },
+    {
+      "table": "schema_migrations",
+      "beforeRows": 17,
+      "afterRows": 18,
+      "preserved": true
+    },
+    {
+      "table": "voice_apply_receipts",
+      "beforeRows": 0,
+      "afterRows": 0,
+      "preserved": true
+    }
+  ],
+  "limitation": "Comparação de preservação; vínculos promovidos, ambiguidades e contratos externos exigem os casos do roteiro."
+}
