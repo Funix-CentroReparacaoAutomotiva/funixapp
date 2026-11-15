@@ -52,7 +52,7 @@ export function preflightGmailAnalysis(env: NodeJS.ProcessEnv, db: DatabaseSync)
   }
   add('coda_columns_shape', columnMapValid, 'Exige sete IDs distintos c-...; nomes e significado devem ser auditados no Coda.')
   const cutoff = env.FUNIX_GMAIL_ANALYSIS_PILOT_ACTIVATED_AT
-  const validCutoff = Boolean(cutoff && Number.isFinite(Date.parse(cutoff)) && new Date(cutoff).toISOString() === cutoff)
+  const validCutoff = Boolean(typeof cutoff === 'string' && Number.isFinite(Date.parse(cutoff)) && new Date(cutoff).toISOString() === cutoff)
   add('cutoff_format', validCutoff, 'Data UTC ISO 8601 com milissegundos e Z.')
   const noticeId = env.FUNIX_GMAIL_ANALYSIS_PILOT_NOTICE_ID
   const validId = Boolean(noticeId && idPattern.test(noticeId))
