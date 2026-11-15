@@ -12,6 +12,7 @@ import argparse
 import base64
 import http.client
 import json
+import math
 import re
 import ssl
 import stat
@@ -27,22 +28,26 @@ class ValidationError(RuntimeError):
     pass
 
 
-def release_revision(path: Path, key: str) -> str:
-    values: dict[str, str] = {}
-    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
+class DuplicateJsonKey(ValueError):
+    pass
+
+
+def release_revision(path: Path, key: str) -> str | None:
+    try:
+        content = path.read_bytes().decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValidationError(f"{path}: arquivo de ambiente nao e UTF-8 valido") from error
+    # Split only the LF record separator. Any CR, space or other character in
+    # the value remains observable and must fail revision validation later.
+    prefix = key + "="
+    values: list[str] = []
+    for number, line in enumerate(content.split("\n"), 1):
+        if not line.startswith(prefix):
             continue
-        if "=" not in line:
-            raise ValidationError(f"{path}:{number}: linha de ambiente invalida")
-        name, value = line.split("=", 1)
-        if name in values:
-            raise ValidationError(f"{path}:{number}: variavel duplicada: {name}")
-        values[name] = value
-    revision = values.get(key, "")
-    if not SHA40.fullmatch(revision):
-        raise ValidationError(f"{path}: {key} deve conter um SHA-1 completo em minusculas")
-    return revision
+        values.append(line[len(prefix):])
+        if len(values) > 1:
+            raise ValidationError(f"{path}:{number}: variavel duplicada: {key}")
+    return values[0] if values else None
 
 
 def basic_credentials(path: Path) -> tuple[str, str]:
@@ -52,7 +57,11 @@ def basic_credentials(path: Path) -> tuple[str, str]:
     if stat.S_IMODE(metadata.st_mode) & 0o077:
         raise ValidationError(f"{path}: credenciais devem estar inacessiveis para grupo/outros")
     fields: dict[str, str] = {}
-    for raw in path.read_text(encoding="utf-8").splitlines():
+    try:
+        content = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise ValidationError(f"{path}: arquivo de credenciais nao e UTF-8 valido") from error
+    for raw in content.splitlines():
         if ": " in raw:
             name, value = raw.split(": ", 1)
             fields[name.strip().lower()] = value
@@ -64,8 +73,18 @@ def basic_credentials(path: Path) -> tuple[str, str]:
 
 
 def json_object(body: bytes, endpoint: str) -> dict[str, Any]:
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise DuplicateJsonKey(key)
+            result[key] = value
+        return result
+
     try:
-        value = json.loads(body)
+        value = json.loads(body, object_pairs_hook=unique_object)
+    except DuplicateJsonKey as error:
+        raise ValidationError(f"{endpoint}: resposta JSON contem chave duplicada: {error}") from error
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValidationError(f"{endpoint}: resposta nao e JSON valido") from error
     if not isinstance(value, dict):
@@ -127,19 +146,24 @@ def validate_api_contract(payload: dict[str, Any]) -> None:
 def request_json(
     scheme: str,
     connect_host: str,
-    port: int,
+    port: int | None,
     host_header: str,
     endpoint: str,
     credentials: tuple[str, str],
     timeout: float,
 ) -> dict[str, Any]:
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValidationError(f"timeout invalido: {timeout!r}")
+    selected_port = port if port is not None else (443 if scheme == "https" else 8080)
+    if selected_port < 1 or selected_port > 65535:
+        raise ValidationError(f"porta invalida: {selected_port}")
     connection_class = http.client.HTTPSConnection if scheme == "https" else http.client.HTTPConnection
     connection = connection_class(
         connect_host,
-        port,
+        selected_port,
         timeout=timeout,
         context=ssl.create_default_context() if scheme == "https" else None,
-    ) if scheme == "https" else connection_class(connect_host, port, timeout=timeout)
+    ) if scheme == "https" else connection_class(connect_host, selected_port, timeout=timeout)
     token = base64.b64encode(f"{credentials[0]}:{credentials[1]}".encode()).decode("ascii")
     try:
         connection.request(
@@ -162,17 +186,22 @@ def request_json(
         raise ValidationError(f"{endpoint}: resposta excede 100000 bytes")
     if response.status != 200:
         raise ValidationError(f"{endpoint}: HTTP {response.status}, esperado 200")
+    content_type = response.getheader("Content-Type", "").partition(";")[0].strip().lower()
+    if content_type != "application/json":
+        raise ValidationError(
+            f"{endpoint}: Content-Type {content_type!r}, esperado 'application/json'"
+        )
     return json_object(body, endpoint)
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--release-env", type=Path, required=True)
-    result.add_argument("--release-key", default="FUNIX_RELEASE")
+    result.add_argument("--release-key", default="FUNIX_HML_REVISION")
     result.add_argument("--credentials-file", type=Path, required=True)
     result.add_argument("--scheme", choices=("http", "https"), default="http")
     result.add_argument("--connect-host", required=True)
-    result.add_argument("--port", type=int, default=8080)
+    result.add_argument("--port", type=int)
     result.add_argument("--host-header", default="hml.funix.com.br")
     result.add_argument("--timeout", type=float, default=6.0)
     return result

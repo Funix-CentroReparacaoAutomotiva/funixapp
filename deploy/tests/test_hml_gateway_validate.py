@@ -25,6 +25,8 @@ class HmlGatewayValidatorTests(unittest.TestCase):
         expected_auth = "Basic " + base64.b64encode(b"homologacao:synthetic").decode()
 
         class Handler(BaseHTTPRequestHandler):
+            content_type = "application/json"
+
             def do_GET(self):
                 if self.headers.get("Host") != "hml.funix.com.br" or self.headers.get("Authorization") != expected_auth:
                     self.send_response(401)
@@ -32,7 +34,7 @@ class HmlGatewayValidatorTests(unittest.TestCase):
                     return
                 body = (f'{{"revision":"{REVISION}"}}').encode()
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Type", self.content_type)
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -56,6 +58,28 @@ class HmlGatewayValidatorTests(unittest.TestCase):
             2,
         )
         self.assertEqual(payload, {"revision": REVISION})
+        with self.assertRaisesRegex(VALIDATOR.ValidationError, "HTTP 401") as failure:
+            VALIDATOR.request_json(
+                "http",
+                "127.0.0.1",
+                server.server_port,
+                "hml.funix.com.br",
+                "/release.json",
+                ("homologacao", "secret-not-for-output"),
+                2,
+            )
+        self.assertNotIn("secret-not-for-output", str(failure.exception))
+        Handler.content_type = "text/plain"
+        with self.assertRaisesRegex(VALIDATOR.ValidationError, "Content-Type"):
+            VALIDATOR.request_json(
+                "http",
+                "127.0.0.1",
+                server.server_port,
+                "hml.funix.com.br",
+                "/release.json",
+                ("homologacao", "synthetic"),
+                2,
+            )
 
     def test_observed_values_do_not_reproduce_original_failure(self):
         revision = REVISION
@@ -99,14 +123,71 @@ class HmlGatewayValidatorTests(unittest.TestCase):
         ):
             VALIDATOR.validate_revisions(REVISION, REVISION + " ", None)
 
-    def test_release_file_requires_one_full_lowercase_sha(self):
+    def test_real_hml_revision_key_is_the_default_and_is_read_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "release.env"
+            path.write_text(
+                f"linha irrelevante sem separador\nFUNIX_HML_REVISION={REVISION}\n"
+                f"FUNIX_RELEASE={'f' * 40}\n",
+                encoding="utf-8",
+            )
+            args = VALIDATOR.parser().parse_args(
+                [
+                    "--release-env", str(path),
+                    "--credentials-file", str(path),
+                    "--connect-host", "127.0.0.1",
+                ]
+            )
+            self.assertEqual(args.release_key, "FUNIX_HML_REVISION")
+            value = VALIDATOR.release_revision(path, args.release_key)
+            self.assertEqual(value, REVISION)
+            VALIDATOR.validate_revisions(value, REVISION, REVISION)
+
+    def test_release_file_preserves_spaces_cr_and_invisible_characters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "release.env"
+            for suffix in (" ", "\r", "\u200b"):
+                with self.subTest(suffix=repr(suffix)):
+                    path.write_bytes(
+                        f"FUNIX_HML_REVISION={REVISION}{suffix}\n".encode("utf-8")
+                    )
+                    value = VALIDATOR.release_revision(path, "FUNIX_HML_REVISION")
+                    self.assertEqual(value, REVISION + suffix)
+                    diagnostics = VALIDATOR.revision_diagnostics(value, REVISION, REVISION)
+                    self.assertIn(f"length={len(REVISION + suffix)}", diagnostics[0])
+                    self.assertIn(repr(REVISION + suffix), diagnostics[0])
+                    with self.assertRaisesRegex(
+                        VALIDATOR.ValidationError, "release.env"
+                    ):
+                        VALIDATOR.validate_revisions(value, REVISION, REVISION)
+
+    def test_release_file_missing_key_and_invalid_utf8_fail_visibly(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "release.env"
             path.write_text(f"FUNIX_RELEASE={REVISION}\n", encoding="utf-8")
-            self.assertEqual(VALIDATOR.release_revision(path, "FUNIX_RELEASE"), REVISION)
-            path.write_text("FUNIX_RELEASE=8e801e9b0a8f\n", encoding="utf-8")
-            with self.assertRaises(VALIDATOR.ValidationError):
-                VALIDATOR.release_revision(path, "FUNIX_RELEASE")
+            self.assertIsNone(
+                VALIDATOR.release_revision(path, "FUNIX_HML_REVISION")
+            )
+            with self.assertRaisesRegex(VALIDATOR.ValidationError, "release.env"):
+                VALIDATOR.validate_revisions(None, REVISION, REVISION)
+            path.write_bytes(b"FUNIX_HML_REVISION=\xff\n")
+            with self.assertRaisesRegex(VALIDATOR.ValidationError, "UTF-8"):
+                VALIDATOR.release_revision(path, "FUNIX_HML_REVISION")
+            path.write_text(
+                f"FUNIX_HML_REVISION={REVISION}\n"
+                f"FUNIX_HML_REVISION={REVISION}\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(VALIDATOR.ValidationError, "duplicada"):
+                VALIDATOR.release_revision(path, "FUNIX_HML_REVISION")
+
+    def test_json_with_duplicate_revision_is_rejected(self):
+        with self.assertRaisesRegex(VALIDATOR.ValidationError, "chave duplicada"):
+            VALIDATOR.json_object(
+                b'{"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+                b'"revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
+                "/release.json",
+            )
 
     def test_credentials_file_must_be_private(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -125,6 +206,26 @@ class HmlGatewayValidatorTests(unittest.TestCase):
             VALIDATOR.validate_api_contract(
                 {"status": "ok", "revision": REVISION, "source": "app", "storage": "sqlite"}
             )
+
+    def test_documented_checks_match_gateway_lifecycle_without_healthcheck(self):
+        document = (
+            ROOT / "docs/entregas/HML_GATEWAY_DIAGNOSTICO.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("--release-key FUNIX_HML_REVISION", document)
+        self.assertIn("gateway deveria estar ausente antes da publicacao", document)
+        self.assertIn("{{.State.Running}}", document)
+        self.assertIn("continuam `healthy`", document)
+        self.assertIn("não possui\n`HEALTHCHECK` Docker", document)
+        healthcheck_for_all = (
+            "{{.State.Health.Status}}' \\" + "\n"
+            "  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1"
+        )
+        self.assertNotIn(healthcheck_for_all, document)
+        absent = document.index("gateway deveria estar ausente antes da publicacao")
+        publication = document.index("up --detach --no-build --pull never --no-deps gateway")
+        running = document.index("{{.State.Running}}")
+        self.assertLess(absent, publication)
+        self.assertLess(publication, running)
 
 
 if __name__ == "__main__":

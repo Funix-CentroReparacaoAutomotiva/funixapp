@@ -42,8 +42,9 @@ conhecido não configura `proxy_cache`, e a repetição posterior coincidiu. Ain
 assim, a configuração completa do gateway não foi preservada no texto colado.
 Nenhuma dessas hipóteses está confirmada.
 
-O fluxo da aplicação está coerente. A API recebe `FUNIX_REVISION` no Compose e
-expõe o valor em `/api/ready`. A imagem Web grava `APP_REVISION` em
+O fluxo da aplicação está coerente. `release.env` fornece
+`FUNIX_HML_REVISION`; o Compose passa esse valor à API como `FUNIX_REVISION`,
+que é exposto em `/api/ready`. A imagem Web grava `APP_REVISION` em
 `/release.json` no build. O Nginx da imagem Web rejeita `/api`; no desenho de
 homologação, o gateway precisa encaminhar `/api` para `api:8787` e o restante
 para `web:8080`. Os dois HTTP 200 autenticados confirmam que essas rotas
@@ -54,7 +55,8 @@ responderam, mas não registram quais revisões foram comparadas naquele instant
 `deploy/hml-gateway-validate.py` é um substituto somente leitura para a parte de
 validação. Ele:
 
-1. exige um SHA completo de 40 caracteres no arquivo de release;
+1. lê `FUNIX_HML_REVISION` sem remover espaços, `CR` ou caracteres invisíveis e
+   exige um SHA completo de 40 caracteres;
 2. lê a senha de um arquivo protegido, sem colocá-la na linha de comando nem
    imprimi-la;
 3. consulta `/api/ready` e `/release.json` com Basic Auth;
@@ -77,7 +79,7 @@ somente na rede `funix-hml_privada`:
 GATEWAY_IP="$(docker inspect --format '{{(index .NetworkSettings.Networks "funix-hml_privada").IPAddress}}' funix-hml-gateway-1)"
 python3 deploy/hml-gateway-validate.py \
   --release-env /opt/funix-hml/release.env \
-  --release-key FUNIX_RELEASE \
+  --release-key FUNIX_HML_REVISION \
   --credentials-file /etc/funix-hml/gateway-login-temporario.txt \
   --connect-host "$GATEWAY_IP" \
   --port 8080 \
@@ -85,8 +87,8 @@ python3 deploy/hml-gateway-validate.py \
 unset GATEWAY_IP
 ```
 
-Se o arquivo usar outro nome para a variável, ele deve ser passado de forma
-explícita em `--release-key`; não se deve tentar adivinhar entre variáveis.
+`FUNIX_HML_REVISION` também é o padrão do validador. O argumento explícito no
+exemplo documenta o contrato real e evita confusão com a variável produtiva.
 
 ## Informações ainda necessárias da VPS
 
@@ -97,9 +99,8 @@ artefatos de homologação, todos sem segredos e sem conteúdo do SQLite:
   atribui ou reutiliza `revision`, não apenas as duas expressões de comparação;
 - `/opt/funix-hml/gateway.compose.yaml` e
   `/etc/funix-hml/gateway-nginx.conf` completos;
-- os nomes das variáveis e os digests de imagem de `release.env`, com qualquer
-  credencial omitida (o histórico indica que esse arquivo contém somente
-  release/imagens, mas isso precisa ser confirmado);
+- os digests de imagem de `release.env`, com qualquer credencial omitida; a
+  variável de revisão confirmada é `FUNIX_HML_REVISION`;
 - `docker compose ... config --format json` somente para os serviços `api`,
   `web` e `gateway`, com valores sensíveis removidos;
 - `docker inspect funix-hml-gateway-1` sanitizado, contendo apenas imagem,
@@ -114,8 +115,9 @@ gateway.
 
 ## Diagnóstico seguro antes da publicação
 
-O operador pode executar estas verificações somente sobre homologação. Elas não
-fazem pull, build, restart, `up`, `down`, `rm` ou escrita em volume:
+As verificações são divididas pelo estado esperado. Antes da publicação, o
+gateway removido pela reversão deve continuar ausente. Estes comandos não fazem
+pull, build, restart, `up`, `down`, `rm` ou escrita em volume:
 
 ```bash
 docker compose \
@@ -125,29 +127,37 @@ docker compose \
   -f /opt/funix-hml/gateway.compose.yaml \
   config --quiet
 
+for C in funix-hml-api-1 funix-hml-web-1; do
+  STATUS="$(docker inspect --format '{{.State.Health.Status}}' "$C")"
+  test "$STATUS" = healthy || {
+    echo "BLOQUEADO: $C nao esta saudavel"
+    exit 1
+  }
+done
+
+if docker container inspect funix-hml-gateway-1 >/dev/null 2>&1; then
+  echo "BLOQUEADO: gateway deveria estar ausente antes da publicacao"
+  exit 1
+fi
+
 docker inspect --format '{{json .NetworkSettings.Networks}}' \
-  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1
+  funix-hml-api-1 funix-hml-web-1
 
 docker inspect --format '{{json .HostConfig.PortBindings}}' \
-  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1
-
-docker inspect --format '{{.State.Health.Status}}' \
-  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1
+  funix-hml-api-1 funix-hml-web-1
 ```
 
-Critérios: os três contêineres estão saudáveis; API e Web pertencem somente à
-rede privada; o gateway pertence à rede privada e à rede externa do Traefik;
-nenhum deles publica porta no host; somente o gateway tem labels do hostname de
-homologação; e o validador acima aprova os dois endpoints. Um teste sem
-`Authorization` deve retornar 401 em `/`, `/api/ready`, `/release.json` e
-`/healthz`; com credencial, os três primeiros devem retornar 200. `/healthz`
-também deve permanecer protegido externamente.
+Critérios anteriores à publicação: API e Web estão `healthy`, pertencem somente
+à rede privada e não publicam portas no host; `funix-hml-gateway-1` não existe.
+Não se consulta `.State.Health.Status` do gateway, pois ele não possui
+`HEALTHCHECK` Docker.
 
 Antes de atribuir qualquer falha a cache, repita cada GET com um query string
 único e registre `Date`, `Age`, `Via`, `Server` e um hash do corpo, sem registrar
 `Authorization`. O gateway deve enviar `Cache-Control: no-store` para
 `/api/ready` e `/release.json`. A resposta posterior já reduz muito a
-probabilidade de cache, mas essa coleta a elimina de forma objetiva.
+probabilidade de cache; essa coleta ajuda a distinguir a hipótese sem tratá-la
+como causa confirmada.
 
 ## Publicação e reversão propostas
 
@@ -166,8 +176,31 @@ docker compose \
 
 Depois do `up`, execute primeiro o validador pelo IP privado e então pelo HTTPS
 público, usando `--scheme https --connect-host hml.funix.com.br --port 443`.
-Confirme também 401 sem credencial. Nenhum comando deve nomear, reiniciar ou
-inspecionar contêineres de produção.
+Antes dos testes HTTP, verifique o estado pós-publicação:
+
+```bash
+test "$(docker inspect --format '{{.State.Running}}' \
+  funix-hml-gateway-1)" = true
+
+for C in funix-hml-api-1 funix-hml-web-1; do
+  test "$(docker inspect --format '{{.State.Health.Status}}' "$C")" = healthy
+done
+
+docker inspect --format '{{json .NetworkSettings.Networks}}' \
+  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1
+
+docker inspect --format '{{json .HostConfig.PortBindings}}' \
+  funix-hml-api-1 funix-hml-web-1 funix-hml-gateway-1
+```
+
+Critérios posteriores à publicação: gateway `Running=true`, conectado somente
+às redes privada e externa do Traefik, sem porta publicada no host; API e Web
+continuam `healthy`; somente o gateway declara o hostname de homologação. Sem
+credencial, `/`, `/api/ready`, `/release.json` e `/healthz` retornam 401. Com a
+credencial, `/`, `/api/ready` e `/release.json` retornam 200, e o validador
+confirma as revisões. Esses testes HTTP substituem um healthcheck Docker do
+gateway. Nenhum comando deve nomear, reiniciar ou inspecionar contêineres de
+produção.
 
 Se qualquer critério falhar, a reversão é restrita ao gateway:
 
