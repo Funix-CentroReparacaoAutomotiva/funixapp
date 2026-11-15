@@ -8,7 +8,7 @@ import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { LocalConversationAssociations } from './local-associations.ts'
 import type { CommercialConversation } from '../../shared/customer.ts'
-export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'>>
+export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'|'linkedAtendimentoPhone'>>
 import type { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
 import type { MediaGateway, MediaInput } from './evolution-media.ts'
@@ -92,6 +92,7 @@ export function createEvolutionChatBridge(
         updatedAt: string | null
         unreadCount: number | null
         atendimentoId?: string | null
+        atendimentoPhone?: string | null
         commercial?: CommercialConversation
       }>
       nextSkip: number | null
@@ -119,7 +120,8 @@ export function createEvolutionChatBridge(
 
       if (source === 'evolution') local?.store.observeChats(rows)
       // Scan the entire provider page before resolving any links to detect collisions.
-      codaSync?.rememberProviderAliases(rows, false, 'findChats')
+      if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
+      else associations?.observePhoneAliases(rows)
       if (local?.read) {
         rows = local.store.list(skip)
         sourceCount = rows.length
@@ -130,19 +132,32 @@ export function createEvolutionChatBridge(
         items: [
           ...new Map(
             rows.map((row) => {
-              const conversationId = register(
-                codaSync?.identityJids(row.remoteJid)?.[0] ?? row.remoteJid,
-              )
+              const members = codaSync?.identityJids(row.remoteJid)
+              const confirmedPn = members?.find(jid => jid.endsWith('@s.whatsapp.net'))?.split('@')[0] ?? null
+              const projection = projections?.get(row.remoteJid)
+              const conversationId = register(members?.[0] ?? row.remoteJid)
+              const activeAt=canonicalFor(row.remoteJid)
+              const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
+              const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn
+              const atendimentoPhone=displayPhones?displayPhones.atendimentoPhone:codaSync?.linkedAtendimentoPhone?.(row.remoteJid)??null
               return [
                 conversationId,
                 {
                   conversationId,
                   displayName: row.displayName,
-                  phoneNumber: row.phoneNumber,
+                  phoneNumber,
                   updatedAt: row.updatedAt,
                   unreadCount: row.unreadCount,
-                  ...(projections?.get(row.remoteJid) ? {commercial: {...projections.get(row.remoteJid)!,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},unreadCount:projections.get(row.remoteJid)!.unreadCount,phoneNumber:projections.get(row.remoteJid)!.phoneNumber,updatedAt:projections.get(row.remoteJid)!.lastMessageAt??row.updatedAt}:{}),
-                  ...(codaSync ? { atendimentoId: canonicalFor(row.remoteJid) } : {}),
+                  ...(projection ? {
+                    commercial: {...projection,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},
+                    unreadCount: projection.unreadCount,
+                    updatedAt: projection.lastMessageAt ?? row.updatedAt,
+                  } : {}),
+                  ...(codaSync ? {
+                    atendimentoId: activeAt,
+                  } : {}),
+                  // A known ficha number is presentation, independent of channel authorization.
+                  ...((codaSync||associations)?{atendimentoPhone}:{}),
                 },
               ] as const
             }),

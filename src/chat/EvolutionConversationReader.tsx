@@ -14,6 +14,11 @@ function visibleIdentity(row:ConversationRow){
  return {parts,label:parts.map(p=>p.name).join(' / '),providerHint:Boolean(providerHint)}
 }
 const name=(row:ConversationRow)=>visibleIdentity(row).label
+function phoneLine(row:ConversationRow){
+ if(row.phoneNumber)return {text:'+'+row.phoneNumber,hint:'Número apresentado ou confirmado pelo canal WhatsApp'}
+ if(row.atendimentoPhone)return {text:'Ficha: +'+row.atendimentoPhone,hint:'Número cadastrado no Atendimento; não confirma que seja o número desta conversa WhatsApp'}
+ return {text:'Telefone pendente',hint:'Número do WhatsApp ainda não confirmado'}
+}
 type Links={items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
 export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
@@ -49,23 +54,23 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   try{const value=await api<{atendimentoId:string|null;state?:string}>('/api/chat/conversations/'+row.conversationId+'/active-atendimento');if(value.atendimentoId)onOpenAtendimento?.(value.atendimentoId,'chat',row.conversationId);else await details(row)}catch(e){fail(e)}
  }
  async function choose(row:ConversationRow,linkId:string,id:string){try{await api('/api/chat/conversations/'+row.conversationId+'/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId})});setSelected(null);onOpenAtendimento?.(id,'chat',row.conversationId)}catch(e){fail(e)}}
- const q=searchTerm.trim().toLocaleLowerCase('pt-BR'),matches=rows.filter(r=>[name(r),r.displayName,r.phoneNumber,r.commercial?.preview].join(' ').toLocaleLowerCase('pt-BR').includes(q))
+ const q=searchTerm.trim().toLocaleLowerCase('pt-BR'),matches=rows.filter(r=>[name(r),r.displayName,r.phoneNumber,r.atendimentoPhone,r.commercial?.preview].join(' ').toLocaleLowerCase('pt-BR').includes(q))
  return <section className="ev-reader"><header className="ev-header"><strong>Conversas</strong><button className="fh-filter" disabled={busy} onClick={()=>{lastRefresh.current=Date.now();setVersion(v=>v+1)}}>Atualizar</button></header>
   {!available&&<Notice title="Canal ainda não habilitado">Os Atendimentos podem ser criados pelo Funil.</Notice>}
   {error&&<Notice title="Não foi possível concluir" error>{error}</Notice>}
   {busy&&<p role="status">Carregando conversas…</p>}
   {available&&!busy&&!matches.length&&<Notice title="Nenhuma conversa encontrada"/>}
   <div className="ev-list" aria-label="Lista de Conversas">{matches.map(row=>{
-   const {parts,label,providerHint}=visibleIdentity(row),count=row.commercial?.atendimentoCount??0,initials=label==='Sem nome'?'':label.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('pt-BR')
+   const {parts,label,providerHint}=visibleIdentity(row),count=row.commercial?.atendimentoCount??(row.atendimentoId?1:0),initials=label==='Sem nome'?'':label.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('pt-BR')
    return <article className="conversation-row" key={row.conversationId}>
     <button className="conversation-hit" aria-label={'Abrir conversa: '+label} onClick={()=>void open(row)}/>
     <ConversationAvatar initials={initials} photo={row.commercial?.profilePhoto??null}/>
-    <div className="conversation-info"><strong className="conversation-names" title={label}>{parts.map((p,i)=><span key={i}>{i?' / ':''}{p.name}{p.entityId&&<span className="entity-seal" role="img" aria-label={'Cadastro associado a '+p.name+'; não confirma identidade'} title="Cadastro associado; não confirma identidade"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="7" r="3"/><path d="M3 19c0-4 2-6 6-6 3 0 5 1 6 4m0 0 2 2 5-5"/></svg></span>}</span>)}{providerHint&&<span className="conversation-channel-hint" title="Nome informado pelo canal WhatsApp; identidade não confirmada"> · canal</span>}</strong><span className="conversation-phone">{row.phoneNumber?'+'+row.phoneNumber:'Telefone pendente'}</span><span className="conversation-preview">{row.commercial?.preview??(source==='local'?'Sem mensagens salvas no FunixApp':'Prévia indisponível neste modo')}</span></div>
+    <div className="conversation-info"><strong className="conversation-names" title={label}>{parts.map((p,i)=><span key={i}>{i?' / ':''}{p.name}{p.entityId&&<span className="entity-seal" role="img" aria-label={'Cadastro associado a '+p.name+'; não confirma identidade'} title="Cadastro associado; não confirma identidade"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="7" r="3"/><path d="M3 19c0-4 2-6 6-6 3 0 5 1 6 4m0 0 2 2 5-5"/></svg></span>}</span>)}{providerHint&&<span className="conversation-channel-hint" title="Nome informado pelo canal WhatsApp; identidade não confirmada"> · canal</span>}</strong><span className="conversation-phone" title={phoneLine(row).hint} aria-label={phoneLine(row).hint+': '+phoneLine(row).text}>{phoneLine(row).text}</span><span className="conversation-preview">{row.commercial?.preview??(source==='local'?'Sem mensagens salvas no FunixApp':'Prévia indisponível neste modo')}</span></div>
     <div className="conversation-right"><button className={'conversation-count '+(count===0?'warning':'')} aria-label={'Detalhes: '+count+' Atendimentos'} onClick={()=>void details(row)}>{count===0?'⚠':count>1?count+' atend.':<span aria-hidden="true"> </span>}</button><time dateTime={row.updatedAt??undefined}>{row.updatedAt?messageTime(row.updatedAt):'—'}</time>{!!row.unreadCount&&<span className="conversation-unread" aria-label={row.unreadCount+' mensagens não lidas'}>{row.unreadCount}</span>}</div>
    </article>
   })}</div>
   {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
-  {selected&&<dialog className="ev-choice-dialog" ref={dialog} onClose={()=>setSelected(null)} aria-label="Detalhes da conversa"><header><strong>Conversa · {selected.phoneNumber?'+'+selected.phoneNumber:'Telefone pendente'}</strong><button aria-label="Fechar detalhes" onClick={()=>setSelected(null)}>×</button></header>
+  {selected&&<dialog className="ev-choice-dialog" ref={dialog} onClose={()=>setSelected(null)} aria-label="Detalhes da conversa"><header><strong>Conversa · {phoneLine(selected).text}</strong><button aria-label="Fechar detalhes" onClick={()=>setSelected(null)}>×</button></header>
    <p>O histórico pertence à conversa. A pessoa de referência pode ser diferente de quem usa o número.</p>
    <ul>{(selected.commercial?.names??[]).map((p,i)=><li key={i}>{p.name}{p.entityId?' · cadastro associado':''}</li>)}</ul>
    <div className="ev-choice-items">{links?.items.map(l=><button key={l.linkId} onClick={()=>void choose(selected,l.linkId,l.atendimentoId)}><strong>{l.name||'Sem nome'}</strong><span>{[l.vehicle,l.plate].filter(Boolean).join(' · ')||l.atendimentoId}</span></button>)}</div>

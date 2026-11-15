@@ -103,7 +103,7 @@ async def device_case(browser, width, height):
                 return await route.fulfill(status=200, json={"source": "evolution",
                     "items": [
                         {"conversationId": A, "displayName": "Contato Vinculado",
-                         "phoneNumber": "5531999990001", "updatedAt": None,
+                         "phoneNumber": None, "atendimentoPhone": "5531999990001", "updatedAt": None,
                          "unreadCount": 0, "atendimentoId": atendimento_id},
                         {"conversationId": B, "displayName": "Contato Sem Vínculo",
                          "phoneNumber": "5531999990002", "updatedAt": None,
@@ -152,6 +152,7 @@ async def device_case(browser, width, height):
         await expect(page.locator(".conversation-channel-hint")).to_have_count(3)
         await expect(page.locator(".conversation-preview").first).to_have_text("Prévia indisponível neste modo")
         await expect(page.locator(".conversation-phone").filter(has_text="Telefone pendente")).to_have_count(1)
+        await expect(page.locator(".conversation-phone").filter(has_text="Ficha: +5531999990001")).to_have_count(1)
         initial_list_reads = sent.count("/api/chat/conversations")
         await page.clock.run_for(61_000)
         for _ in range(30):

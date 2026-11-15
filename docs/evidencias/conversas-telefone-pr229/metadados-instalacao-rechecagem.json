@@ -1,0 +1,18 @@
+{
+  "checkedAddress": "https://app.funix.com.br",
+  "userAddressConfirmed": true,
+  "requests": "public GET only; no cookies or credentials",
+  "observation": "Final recheck; installation revision changed independently during this task.",
+  "ready": {
+    "revision": "a15a2c6805c5e44fba9766c13ff3f10fde53db23",
+    "status": "ready",
+    "declaredRevisionSourceHasAtendimentoPhone": false
+  },
+  "frontend": {
+    "asset": "/assets/index-Dq5kZhAs.js",
+    "sha256": "18293c870127b72d3abe3619247b0f386049232c010ca0d5e731d5cf3b6f1e08",
+    "hasAtendimentoPhone": false,
+    "hasProvenanceLabel": false,
+    "hasChannelNameHint": true
+  }
+}

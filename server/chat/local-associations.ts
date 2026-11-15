@@ -1,3 +1,4 @@
+import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { ConversationIdentities, type ConversationAssociationReader } from './conversation-identities.ts'
@@ -55,6 +56,14 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     return ids.length === 1 ? ids[0]! : null
   }
   resolveActive(jid: string) { return this.resolveIdentityActive(jid) }
+
+  /** Display-only number from the uniquely active Atendimento. Not PN/LID evidence. */
+  linkedAtendimentoPhone(jid: string): string | null {
+    const atendimentoId = this.resolveIdentityActive(jid)
+    if (!atendimentoId) return null
+    return atendimentoDisplayPhone(this.db,atendimentoId)
+  }
+
   /** Explicit operator action, reads recipient from saved ficha; no browser-supplied JID and no send. */
   prepareConversation(at:string,index:number,revision:number) {
     this.db.exec('BEGIN IMMEDIATE')

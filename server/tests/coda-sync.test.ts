@@ -5,6 +5,7 @@ import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { createCodaEventSchema, CodaEventSyncRepository } from '../chat/coda-sync.ts'
 import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
+import { LocalConversationAssociations } from '../chat/local-associations.ts'
 
 function synthetic(row: string, event = 'evo:synthetic:one', jid = '5531999990001@s.whatsapp.net', occurredAt = 1794144000) {
   return { version: 1, source: 'coda', eventId: event, codaRowId: row,
@@ -211,5 +212,79 @@ test('canonical Evolution response is withheld if active Coda Atendimento change
     f.sync.sync(synthetic('i-SYNTH_B','event:race-b',jid,1794144050))
     release()
     assert.equal(await read,null)
+  } finally { f.db.close() }
+})
+
+test('a LID-only conversation distinguishes confirmed provider PN from linked Atendimento phone', async () => {
+  const f=fixture()
+  try {
+    const lid='synthetic_phone_lookup@lid',pn='5531999990001@s.whatsapp.net'
+    const event={...synthetic('i-SYNTH_LID_PHONE','evo:synthetic:lid-phone',lid),phoneE164:'+5531999990001'}
+    const created=f.sync.sync(event)
+    const rows=[{remoteJid:lid,displayName:'Canal Fictício',phoneNumber:null,updatedAt:null,unreadCount:0}]
+    const provider={
+      async findChatsPage(){return {items:rows,sourceCount:rows.length}},
+      async findMessages(){return {items:[],currentPage:1,reportedTotal:0,reportedPages:0,nextPage:null,consistency:'offset-not-snapshot' as const}},
+    }
+    const bridge=createEvolutionChatBridge(provider,Date.now,undefined,f.sync)
+    const before=(await bridge.list(0)).items[0]!
+    assert.equal(before.phoneNumber,null)
+    assert.equal(before.atendimentoPhone,'5531999990001')
+    assert.equal(before.atendimentoId,created.atendimentoId)
+    // A known ficha number MUST NOT become a WhatsApp PN without provider alias evidence.
+    f.sync.rememberProviderAliases([{remoteJid:lid,remoteJidAlt:pn}],false,'findChats')
+    const verified=(await bridge.list(0)).items[0]!
+    assert.equal(verified.phoneNumber,'5531999990001')
+    assert.equal(verified.atendimentoPhone,'5531999990001')
+    assert.equal(verified.conversationId,before.conversationId)
+  }finally{f.db.close()}
+})
+
+test('ambiguous or unmapped LID never borrows a phone from a matching-looking Atendimento', async () => {
+ const f=fixture()
+ try{
+  const lid='synthetic_unknown_phone@lid', pn='5531999990001@s.whatsapp.net'
+  f.sync.sync(synthetic('i-SYNTH_ONLY_PN'))
+  const rows=[{remoteJid:lid,displayName:null,phoneNumber:null,updatedAt:null,unreadCount:0}]
+  const bridge=createEvolutionChatBridge({
+   async findChatsPage(){return {items:rows,sourceCount:rows.length}},
+   async findMessages(){return {items:[],currentPage:1,reportedTotal:0,reportedPages:0,nextPage:null,consistency:'offset-not-snapshot' as const}},
+  },Date.now,undefined,f.sync)
+  let row=(await bridge.list(0)).items[0]!
+  assert.equal(row.phoneNumber,null)
+  assert.equal(row.atendimentoPhone,null)
+  // Contradictory PN/LID evidence fails closed; numbers are not inferred.
+  f.sync.rememberProviderAliases([{remoteJid:lid,remoteJidAlt:pn},{remoteJid:lid,remoteJidAlt:'5531888880000@s.whatsapp.net'}])
+  row=(await bridge.list(0)).items[0]!
+  assert.equal(row.phoneNumber,null)
+  assert.equal(row.atendimentoPhone,null)
+ }finally{f.db.close()}
+})
+
+test('list fallback agrees with Atendimento detail when the primary linked Contact has the number', () => {
+  const f = fixture()
+  try {
+    const lid = 'synthetic_detail_phone@lid'
+    const created = f.sync.sync({
+      ...synthetic('i-SYNTH_DETAIL_PHONE', 'evo:synthetic:detail-phone', lid),
+      phoneE164: null,
+    })
+    const contactId = randomUUID()
+    const phone = '+5531987654321'
+    f.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,NULL)")
+      .run(contactId, JSON.stringify({ text: phone }))
+    f.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'contact',0,?,?)")
+      .run(created.atendimentoId, contactId, JSON.stringify({ id: contactId, text: phone }))
+    // This reproduces a detail screen with a phone while the base column remains empty.
+    assert.equal(f.atendimentos.get(created.atendimentoId).phoneNormalized, null)
+    assert.equal(f.atendimentos.get(created.atendimentoId, true).phoneNormalized, phone)
+    assert.equal(f.sync.linkedAtendimentoPhone(lid), phone.slice(1))
+    const local = new LocalConversationAssociations(f.db)
+    const conversationId = local.rememberProviderConversation(lid)
+    f.db.prepare("INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)")
+      .run(randomUUID(), conversationId, created.atendimentoId, '2026-11-15T00:00:00.000Z', 'operator', 'explicit_test_link')
+    assert.equal(local.linkedAtendimentoPhone(lid), phone.slice(1))
+    // Neither projection creates an alias or authorizes a WhatsApp phone number.
+    assert.deepEqual(f.sync.identityJids(lid), [lid])
   } finally { f.db.close() }
 })
