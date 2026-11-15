@@ -100,7 +100,7 @@ test('V19 registers additive associations; compatibility startup is idempotent',
   const db = openDatabase(':memory:')
   try {
     const version = db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v
-    assert.equal(version, 18)
+    assert.equal(version, 19)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
