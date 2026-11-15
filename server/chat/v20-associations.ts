@@ -1,3 +1,5 @@
+import {ConversationIdentities} from './conversation-identities.ts'
+import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { ServiceError } from '../errors.ts'
@@ -160,6 +162,29 @@ export class V20AssociationRepository {
     ).all(...scope)
     const selectedIds=[...new Set(selected.map(s=>String(s.atendimento_id)))]
     return { revision, items, activeAtendimentoId: selectedIds.length===1?selectedIds[0]!:null }
+  }
+
+  /** Record only exact provider evidence, even in provider-only read mode. No commercial links. */
+  observePhoneAliases(rows:Parameters<ConversationIdentities['rememberProviderAliases']>[0]) {
+    if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_provider_alias_evidence'").get())
+      new ConversationIdentities(this.db).rememberProviderAliases(rows,false,'findChats')
+  }
+
+  /** Presentation does not select a context or authorize history/sending. */
+  phoneProjection(remoteJid:string,authoritativeAt:string|null=null,knownMembers?:string[]|null) {
+    const members=knownMembers===undefined
+      ? this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_provider_alias_evidence'").get()
+        ? new ConversationIdentities(this.db).identityJids(remoteJid) : [remoteJid]
+      : knownMembers
+    if(!members)return {phoneNumber:null,atendimentoPhone:null}
+    const rows=this.db.prepare(`SELECT DISTINCT l.atendimento_id FROM v20_associations l JOIN v20_conversations c ON c.id=l.conversation_id
+      WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) AND l.unlinked_at IS NULL`).all('funix_comercial',...members)
+    const ids=new Set(rows.map(r=>String(r.atendimento_id)))
+    if(authoritativeAt)ids.add(authoritativeAt)
+    return {
+      phoneNumber:members.find(j=>/^[0-9]{8,15}@s\.whatsapp\.net$/.test(j))?.split('@')[0]??null,
+      atendimentoPhone:ids.size===1?atendimentoDisplayPhone(this.db,[...ids][0]!):null,
+    }
   }
 
   /** Same Atendimento may be connected to many conversations and vice versa. */

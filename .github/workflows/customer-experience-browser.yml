@@ -23,6 +23,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/funix-browser" --no-save --no-audit --no-fund playwright@1.56.1
           ln -s "$RUNNER_TEMP/funix-browser/node_modules/playwright" node_modules/playwright
       - run: node scripts/customer-experience-browser.mjs
+      - run: node scripts/conversation-phone-browser.mjs
       - if: always()
         uses: actions/upload-artifact@v4
         with:

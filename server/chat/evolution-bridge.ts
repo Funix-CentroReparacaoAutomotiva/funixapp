@@ -120,7 +120,8 @@ export function createEvolutionChatBridge(
 
       if (source === 'evolution') local?.store.observeChats(rows)
       // Scan the entire provider page before resolving any links to detect collisions.
-      codaSync?.rememberProviderAliases(rows, false, 'findChats')
+      if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
+      else associations?.observePhoneAliases(rows)
       if (local?.read) {
         rows = local.store.list(skip)
         sourceCount = rows.length
@@ -135,25 +136,28 @@ export function createEvolutionChatBridge(
               const confirmedPn = members?.find(jid => jid.endsWith('@s.whatsapp.net'))?.split('@')[0] ?? null
               const projection = projections?.get(row.remoteJid)
               const conversationId = register(members?.[0] ?? row.remoteJid)
+              const activeAt=canonicalFor(row.remoteJid)
+              const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
+              const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn
+              const atendimentoPhone=displayPhones?displayPhones.atendimentoPhone:codaSync?.linkedAtendimentoPhone?.(row.remoteJid)??null
               return [
                 conversationId,
                 {
                   conversationId,
                   displayName: row.displayName,
-                  phoneNumber: row.phoneNumber ?? confirmedPn,
+                  phoneNumber,
                   updatedAt: row.updatedAt,
                   unreadCount: row.unreadCount,
                   ...(projection ? {
                     commercial: {...projection,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},
                     unreadCount: projection.unreadCount,
-                    phoneNumber: row.phoneNumber ?? projection.phoneNumber ?? confirmedPn,
                     updatedAt: projection.lastMessageAt ?? row.updatedAt,
                   } : {}),
                   ...(codaSync ? {
-                    atendimentoId: canonicalFor(row.remoteJid),
-                    // Separate provenance: a ficha's phone never proves WhatsApp identity.
-                    atendimentoPhone: codaSync.linkedAtendimentoPhone?.(row.remoteJid) ?? null,
+                    atendimentoId: activeAt,
                   } : {}),
+                  // A known ficha number is presentation, independent of channel authorization.
+                  ...((codaSync||associations)?{atendimentoPhone}:{}),
                 },
               ] as const
             }),

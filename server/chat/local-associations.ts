@@ -1,3 +1,4 @@
+import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { ConversationIdentities, type ConversationAssociationReader } from './conversation-identities.ts'
@@ -60,11 +61,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   linkedAtendimentoPhone(jid: string): string | null {
     const atendimentoId = this.resolveIdentityActive(jid)
     if (!atendimentoId) return null
-    // Reuse the detail-view projection: a linked Contact can hold the current phone
-    // even when atendimentos.phone_normalized is empty or stale. Display only.
-    const normalized = new AtendimentoRepository(this.db).get(atendimentoId, true).phoneNormalized
-    return normalized && /^\+[1-9]\d{7,14}$/.test(normalized)
-      ? normalized.slice(1) : null
+    return atendimentoDisplayPhone(this.db,atendimentoId)
   }
 
   /** Explicit operator action, reads recipient from saved ficha; no browser-supplied JID and no send. */
