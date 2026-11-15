@@ -154,6 +154,10 @@ async def device_case(browser, width, height):
         await expect(page.locator(".conversation-phone").filter(has_text="Telefone pendente")).to_have_count(1)
         initial_list_reads = sent.count("/api/chat/conversations")
         await page.clock.fast_forward(61_000)
+        for _ in range(30):
+            if sent.count("/api/chat/conversations") > initial_list_reads:
+                break
+            await asyncio.sleep(0.1)
         assert sent.count("/api/chat/conversations") > initial_list_reads, sent
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         await page.goto(ORIGIN + f"/atendimentos/{atendimento_id}?aba=chat&conversa={A}")
