@@ -10,9 +10,11 @@ Branch existente: `fix/conversas-telefone-com-proveniencia`. Ponto inicial confi
 
 O usuário confirmou que a captura é de `https://app.funix.com.br/conversas`. Foram consultados somente HTML/JavaScript públicos e `/api/ready`, sem cookies, credenciais, consulta autenticada a conversas ou acesso direto ao SQLite/VPS:
 
-- Backend declara revisão `f6e215bfe489d69834b5d77597349ce71d92ea3d`, anterior à implementação desta PR.
-- Frontend servido: `/assets/index-D1c6brm9.js`. O bundle contém a indicação de nome de canal, mas **não contém `atendimentoPhone` nem o rótulo `Ficha:`**.
+- Na consulta inicial, o backend declarou revisão `f6e215bfe489d69834b5d77597349ce71d92ea3d`, anterior à implementação desta PR.
+- Frontend servido na consulta inicial: `/assets/index-D1c6brm9.js`. O bundle contém a indicação de nome de canal, mas **não contém `atendimentoPhone` nem o rótulo `Ficha:`**.
 - O código do bridge na revisão declarada também não contém `atendimentoPhone`.
+
+**Rechecagem durante a finalização:** o endereço mudou, fora desta tarefa, para `a15a2c6805c5e44fba9766c13ff3f10fde53db23`, merge da PR #231 (cores de OR/OS). O asset passou a `/assets/index-Dq5kZhAs.js`. Esse novo bundle e o bridge da revisão declarada também não contêm `atendimentoPhone`; o rótulo `Ficha:` continua ausente. [Segunda observação pública](../evidencias/conversas-telefone-pr229/metadados-instalacao-rechecagem.json). A mudança externa não incorporou a PR #229 e não invalida o diagnóstico. Nenhuma dessas implantações foi realizada nesta tarefa.
 
 Isso explica por que os nomes provisórios já aparecem e o telefone comercial continua ausente: a instalação contém a correção de nomes da #227, mas não a apresentação de telefone da #229. Atualizar/pollar a página não instala o código da branch. O hash do asset e os indicadores observados estão em [metadados públicos](../evidencias/conversas-telefone-pr229/metadados-instalacao.json). A captura recebida, com dados pessoais, não foi copiada para o repositório.
 
@@ -68,7 +70,7 @@ Não há tabela, migração, schema, flag instalada ou destinatário novo. A inf
 
 A suíte nova cobre provider/local/offline, LID isolado, PN e alias confirmados, telefone ausente/incompleto, Contato principal com coluna base vazia, múltiplos Atendimentos, divergência de números e de mapeamentos, conflitos persistentes e contexto revogado. Confere ausência de alteração em fichas, Contatos, referências e vínculos; nenhuma tentativa de envio ou consulta de histórico é disparada por essa apresentação.
 
-O novo Chromium está incluído no workflow existente **Customer experience Chromium**, com seus artefatos. Build conserva aviso de chunk >500 kB e lint conserva warnings existentes. [Manifesto](../evidencias/conversas-telefone-pr229/verificacoes.json), [cenários Chromium](../evidencias/conversas-telefone-pr229/chromium-telefones.json) e capturas sintéticas acompanham este relatório. Os onze workflows do commit inicial estavam verdes; o estado terminal dos workflows da SHA final será conferido e informado na entrega.
+O novo Chromium está incluído no workflow existente **Customer experience Chromium**, com seus artefatos. Build conserva aviso de chunk >500 kB e lint conserva warnings existentes. [Manifesto](../evidencias/conversas-telefone-pr229/verificacoes.json), [cenários Chromium](../evidencias/conversas-telefone-pr229/chromium-telefones.json) e capturas sintéticas acompanham este relatório. Os onze workflows do commit inicial e da SHA `1b01bac` concluíram com sucesso. O commit documental posterior apenas registra a rechecagem da instalação; seu CI também será conferido e informado na entrega. O código funcional permanece em `20275a5`.
 
 ## Limites, pendências e próxima ação
 

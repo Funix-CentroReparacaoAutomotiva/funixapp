@@ -70,12 +70,14 @@
   ],
   "installedValidation": {
     "userConfirmedUrl": "https://app.funix.com.br/conversas",
-    "declaredRevision": "f6e215bfe489d69834b5d77597349ce71d92ea3d",
+    "declaredRevision": "a15a2c6805c5e44fba9766c13ff3f10fde53db23",
     "installedFrontendSupportsAtendimentoPhone": false,
     "publicMetadataOnly": true,
     "authenticatedCustomerDataRead": false,
     "fixedBuildDeployed": false,
-    "status": "Correction demonstrated in development; corrected installation not validated because PR #229 is not installed."
+    "status": "Correction demonstrated in development; corrected installation not validated because PR #229 is not installed.",
+    "initialDeclaredRevision": "f6e215bfe489d69834b5d77597349ce71d92ea3d",
+    "recheckEvidence": "metadados-instalacao-rechecagem.json"
   },
   "schemaChanges": false,
   "installedFlagsChanged": false,
@@ -86,5 +88,10 @@
     "serverTypeScriptExitCode": 0,
     "lintExitCode": 0,
     "gitDiffCheckExitCode": 0
+  },
+  "priorVerifiedCI": {
+    "sha": "1b01bac0429ea407e32accba005198d28eee8398",
+    "workflows": 11,
+    "allCompletedSuccess": true
   }
 }
