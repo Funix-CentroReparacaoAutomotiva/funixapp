@@ -84,7 +84,7 @@
 .conversation-info{min-width:0;display:flex;flex-direction:column;gap:5px}
 .conversation-names,.conversation-phone,.conversation-preview{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .conversation-names{font-size:13px;color:#172a43}.entity-seal{color:#397c9b;margin-left:2px;font-size:11px}
-.conversation-phone{font-size:11px;color:#526c86}.conversation-preview{font-size:11px;color:#718397}
+.conversation-channel-hint{font-size:10px;font-weight:400;color:#647b92}.conversation-phone{font-size:11px;color:#526c86}.conversation-preview{font-size:11px;color:#718397}
 .conversation-right{position:relative;display:grid;grid-template-rows:22px 20px 23px;justify-items:end;align-items:center;font-size:10px;color:#75869a}
 .conversation-count{border:0;background:transparent;font-size:10px;color:#526b85;cursor:pointer;height:22px;padding:0;min-width:24px}.conversation-count.warning{color:#a7721b;background:#fff3e0;border-radius:6px}
 .conversation-unread{background:#148958;color:white;font-weight:800;border-radius:20px;min-width:19px;height:19px;display:grid;place-items:center;padding:0 5px}
