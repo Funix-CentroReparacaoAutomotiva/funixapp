@@ -7,6 +7,7 @@ Never contacts production, Coda, WhatsApp or an external service.
 import asyncio
 import hashlib
 import json
+import re
 import sqlite3
 import subprocess
 import traceback
@@ -107,6 +108,8 @@ db.close()
         history = page.get_by_role("region", name="Orçamentos emitidos")
         await expect(history.locator(".budget-history-row")).to_have_count(1)
         await expect(history.get_by_role("button", name="Criar OS")).to_be_visible()
+        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-issued"))
+        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-pending"))
         await expect(history.get_by_role("link", name="Visualizar orçamento " + ids["budgetNumber"])).to_be_visible()
         await shot("01-lista-antes")
         mark("lista de orçamento emitido mostra Criar OS antes da autorização")
@@ -157,6 +160,7 @@ db.close()
             assert count_orders() == 1
             mark("confirmação cria exatamente uma OS persistida")
 
+        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-issued"))
         order = await get(base + "/os")
         assert order["number"] == "OS-000001"
         assert order["budgetVersionId"] == ids["version"]
@@ -243,6 +247,20 @@ db.close()
                 assert overlap_x <= 1 or overlap_y <= 1, (a, b)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         mark("layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo")
+
+        # Cancel after all immutable-document checks; do not depend on external jsreport.
+        async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith(base + "/cancelamento")) as cancelled_response:
+            await history.get_by_role("button", name="Cancelar orçamento e OS").click()
+        assert (await cancelled_response.value).status == 200
+        await expect(history.locator(".budget-history-row")).to_have_class(re.compile("is-cancelled"))
+        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
+        assert (await get(base + "/os"))["cancellation"]["reason"] == "Cancelamento sem motivo informado"
+        await page.reload()
+        await expect(history.locator(".budget-history-row")).to_have_class(re.compile("is-cancelled"))
+        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
+        mark("cancelamento sem motivo solicitado, documentos vermelhos e linha cinza persistem após reload")
 
     except Exception as exc:
         if page:

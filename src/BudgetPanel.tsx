@@ -58,13 +58,9 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
   if(busy)return
   const entry=versions.find(v=>v.id===id)
   if(entry?.cancelledAt||selected?.id===id&&selected.cancellation)return
-  const reason=window.prompt('Motivo do cancelamento (mínimo de 5 caracteres):')
-  if(reason===null)return
-  const clean=reason.trim()
-  if(clean.length<5||clean.length>500){setError('Informe um motivo entre 5 e 500 caracteres.');return}
   if(!window.confirm('Confirmar cancelamento do orçamento e de sua OS vinculada, caso exista? Os documentos continuarão disponíveis apenas com marca d’água CANCELADO. Esta ação não pode ser desfeita.'))return
   await operation(async()=>{
-   const cancellation=await api<{cancelledAt:string;reason:string}>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/cancelamento`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:clean})})
+   const cancellation=await api<{cancelledAt:string;reason:string}>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/cancelamento`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
    if(selected?.id===id)setVersion({...selected,cancellation})
    if(order?.budgetVersionId===id)setOrder({...order,cancellation})
    await load()
@@ -74,17 +70,17 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
  return <section aria-label="Orçamentos emitidos">{error&&<p role="alert" className="form-error">{error}</p>}
  {selected?<div className="budget-version-details">
   <p>Emitido em {formatDate(selected.createdAt)}. Documento original preservado.</p>
-  {selected.cancellation&&<p role="status" className="budget-cancelled-status">Cancelado em {formatDate(selected.cancellation.cancelledAt)} · Motivo: {selected.cancellation.reason}</p>}
+  {selected.cancellation&&<p role="status" className="budget-cancelled-status">Cancelado em {formatDate(selected.cancellation.cancelledAt)}</p>}
   <div className="budget-detail-actions">
-   <DocumentButton kind="or" href={budgetUrl(selected.id)} state="view" title="Visualizar orçamento"/>
-   {checkingOrder?<span role="status">Consultando OS…</span>:order?<DocumentButton kind="os" href={orderUrl(selected.id)} state="view" title="Visualizar OS"/>:<DocumentButton kind="os" onClick={()=>createOrder(selected.id)} state="create" disabled={busy||!!selected.cancellation} title="Criar OS"/>}
+   <DocumentButton kind="or" href={budgetUrl(selected.id)} state="view" cancelled={!!selected.cancellation} title="Visualizar orçamento"/>
+   {checkingOrder?<span role="status">Consultando OS…</span>:order?<DocumentButton kind="os" href={orderUrl(selected.id)} state="view" cancelled={!!selected.cancellation} title="Visualizar OS"/>:<DocumentButton kind="os" onClick={selected.cancellation?undefined:()=>createOrder(selected.id)} state={selected.cancellation?'unavailable':'create'} disabled={busy||!!selected.cancellation} title={selected.cancellation?'OS não emitida; orçamento cancelado':'Criar OS'}/>}
    <DocumentButton kind="cancel" onClick={()=>cancelBudget(selected.id)} disabled={busy||!!selected.cancellation} title={selected.cancellation?'Orçamento já cancelado':'Cancelar orçamento e OS'}/>
   </div>
   {order&&<p className="at-form-hint">{order.number} · {order.scope.lines.length} itens · {order.cancellation?'OS cancelada':'OS autorizada'}</p>}
  </div>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>
  {budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}>
  <h2>{group.name}</h2>
- {group.versions.map(v=><div className="budget-history-row" key={v.id}>
+ {group.versions.map(v=><div className={`budget-history-row${v.cancelledAt?' is-cancelled':''}`} key={v.id}>
   <button className="budget-history-open" disabled={busy} onClick={()=>onOpenVersion(v.id)} aria-label={`Consultar orçamento ${v.documentNumber??v.label}, versão ${v.scenarioVersion}`}>
    <span className={`budget-history-letter${v.cancelledAt?' is-cancelled':''}`}>{v.scenarioVersion}</span>
    <span className="budget-history-identity">
@@ -94,8 +90,8 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
    </span>
   </button>
   <div className="budget-history-actions">
-   <DocumentButton kind="or" href={budgetUrl(v.id)} state="view" title={`Visualizar orçamento ${v.documentNumber??v.label}`}/>
-   <DocumentButton kind="os" href={v.workOrderNumber?orderUrl(v.id):undefined} onClick={v.workOrderNumber?undefined:()=>createOrder(v.id)} state={v.workOrderNumber?'view':'create'} disabled={busy||!!v.cancelledAt&&!v.workOrderNumber} title={v.workOrderNumber?'Visualizar '+v.workOrderNumber:'Criar OS'}/>
+   <DocumentButton kind="or" href={budgetUrl(v.id)} state="view" cancelled={!!v.cancelledAt} title={`Visualizar orçamento ${v.documentNumber??v.label}`}/>
+   <DocumentButton kind="os" href={v.workOrderNumber?orderUrl(v.id):undefined} onClick={v.workOrderNumber||v.cancelledAt?undefined:()=>createOrder(v.id)} state={v.workOrderNumber?'view':v.cancelledAt?'unavailable':'create'} cancelled={!!v.cancelledAt&&!!v.workOrderNumber} disabled={busy||!!v.cancelledAt&&!v.workOrderNumber} title={v.workOrderNumber?'Visualizar '+v.workOrderNumber:v.cancelledAt?'OS não emitida; orçamento cancelado':'Criar OS'}/>
    <DocumentButton kind="cancel" onClick={()=>cancelBudget(v.id)} disabled={busy||!!v.cancelledAt} title={v.cancelledAt?'Orçamento cancelado':'Cancelar orçamento e OS'}/>
   </div>
  </div>)}

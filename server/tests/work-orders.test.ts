@@ -147,11 +147,11 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
   assert.equal((await request(cancelUrl,'POST',{reason:'x'},cookie)).status,422)
   assert.equal((await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'},cookie,'https://invalid.example')).status,403)
   assert.equal((await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'})).status,401)
-  const cancelled=await request(cancelUrl,'POST',{reason:'Cliente mudou de ideia'},cookie)
+  const cancelled=await request(cancelUrl,'POST',{},cookie)
   assert.equal(cancelled.status,200)
-  assert.equal((await cancelled.json()).reason,'Cliente mudou de ideia')
+  assert.equal((await cancelled.json()).reason,'Cancelamento sem motivo informado')
   const osAfter=await request(url,'GET',undefined,cookie)
-  assert.equal((await osAfter.json()).cancellation.reason,'Cliente mudou de ideia')
+  assert.equal((await osAfter.json()).cancellation.reason,'Cancelamento sem motivo informado')
   assert.equal((await request(url,'POST',{authorized:true},cookie)).status,409)
   const orAfter=await request(url.slice(0,-3).concat('/pdf'),'GET',undefined,cookie)
   assert.equal(orAfter.status,200)
@@ -174,6 +174,7 @@ test('Cancelamento preserva os originais, impede OS nova e permanece após reini
   const original=budgets.pdf(fixture.at.id,version.id)
   const cancel=new BudgetCancellationRepository(db,()=>Date.parse('2026-11-14T12:00:00Z'))
   assert.throws(()=>cancel.cancel(fixture.at.id,version.id,{reason:'x'}),error(422,'CANCELLATION_REASON_REQUIRED'))
+  assert.throws(()=>cancel.cancel(fixture.at.id,version.id,{reason:99}),error(422,'CANCELLATION_REASON_REQUIRED'))
   assert.throws(()=>cancel.cancel(fixture.at.id,'outro',{reason:'Teste válido'}),error(404,'NOT_FOUND'))
   const event=cancel.cancel(fixture.at.id,version.id,{reason:'Cliente desistiu'})
   assert.equal(event.reason,'Cliente desistiu')
@@ -201,6 +202,20 @@ test('Cancelar orçamento com OS preserva a consulta da OS e o escopo congelado'
   assert.equal(after.cancellation?.cancelledAt,cancellation.cancelledAt)
   assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,before.number)
   assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+ }finally{db.close()}
+})
+
+test('Cancelar sem OS e sem motivo não cria documento retrospectivamente',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const event=new BudgetCancellationRepository(db).cancel(fixture.at.id,version.id,{})
+  assert.equal(event.reason,'Cancelamento sem motivo informado')
+  const listed=(budgets.list(fixture.at.id) as unknown as {id:string;cancelledAt?:string|null;workOrderNumber?:string|null}[]).find(v=>v.id===version.id)
+  assert.equal(listed?.cancelledAt,event.cancelledAt)
+  assert.equal(listed?.workOrderNumber,undefined)
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,0)
+  assert.throws(()=>new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
  }finally{db.close()}
 })
 

@@ -74,3 +74,14 @@
  .budget-history-open{width:100%}
  .budget-history-actions{justify-content:center;padding:1px 5px 5px}
 }
+
+/* Documento: emitido=verde, a criar=azul, cancelado=vermelho, não criado=cinza. */
+.budget-action-issued{background:#e0f3e6;border-color:#7ebd93;color:#146d38}
+.budget-action-pending{background:#e1edff;border-color:#80abe8;color:#174fa9}
+.budget-action-cancelled{background:#fce1e5;border-color:#db8997;color:#a0233d}
+.budget-action-unavailable{background:#edf0f3;border-color:#c5cdd5;color:#818e9e}
+.budget-action-unavailable:disabled{opacity:1}
+.budget-action-cancel:disabled{opacity:1;background:#edf0f3;border-color:#c5cdd5;color:#818e9e}
+.budget-history-row.is-cancelled .budget-history-open,
+.budget-history-row.is-cancelled .budget-history-identity time{color:#8793a2}
+.budget-history-row.is-cancelled .budget-history-letter.is-cancelled::after{background:#8793a2}
