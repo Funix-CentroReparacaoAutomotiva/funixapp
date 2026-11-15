@@ -15,6 +15,7 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
+from document_button_colors import color_case
 
 ARTIFACTS = ROOT / "docs/evidencias/os-browser"
 
@@ -293,6 +294,7 @@ async def run():
                 ("mobile320", {"width": 320, "height": 844})
             ]:
                 await case(browser, label, viewport)
+                await color_case(browser, label, viewport)
         finally:
             await browser.close()
 
