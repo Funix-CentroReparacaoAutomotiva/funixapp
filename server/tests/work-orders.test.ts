@@ -157,7 +157,7 @@ test('Cancelamento preserva os originais, impede OS nova e permanece após reini
   const event=cancel.cancel(fixture.at.id,version.id,{reason:'Cliente desistiu'})
   assert.equal(event.reason,'Cliente desistiu')
   assert.equal(cancel.cancel(fixture.at.id,version.id,{reason:'Motivo repetido'}).cancelledAt,event.cancelledAt)
-  assert.equal(budgets.list(fixture.at.id).find(v=>v.id===version.id)?.cancelledAt,event.cancelledAt)
+  assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;cancelledAt?:string|null}[]).find(v=>v.id===version.id)?.cancelledAt,event.cancelledAt)
   assert.equal(budgets.get(fixture.at.id,version.id).cancellation?.reason,'Cliente desistiu')
   assert.deepEqual(budgets.pdf(fixture.at.id,version.id),original)
   assert.throws(()=>new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
@@ -178,7 +178,7 @@ test('Cancelar orçamento com OS preserva a consulta da OS e o escopo congelado'
   assert.deepEqual(after.scope,before.scope)
   assert.equal(after.number,before.number)
   assert.equal(after.cancellation?.cancelledAt,cancellation.cancelledAt)
-  assert.equal(budgets.list(fixture.at.id).find(v=>v.id===version.id)?.workOrderNumber,before.number)
+  assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,before.number)
   assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
  }finally{db.close()}
 })
