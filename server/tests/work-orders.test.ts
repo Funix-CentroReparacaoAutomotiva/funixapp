@@ -211,7 +211,7 @@ test('Cancelar sem OS e sem motivo não cria documento retrospectivamente',async
   const {fixture,budgets,version}=await emitted(db)
   const event=new BudgetCancellationRepository(db).cancel(fixture.at.id,version.id,{})
   assert.equal(event.reason,'Cancelamento sem motivo informado')
-  const listed=budgets.list(fixture.at.id).find(v=>v.id===version.id)
+  const listed=(budgets.list(fixture.at.id) as unknown as {id:string;cancelledAt?:string|null;workOrderNumber?:string|null}[]).find(v=>v.id===version.id)
   assert.equal(listed?.cancelledAt,event.cancelledAt)
   assert.equal(listed?.workOrderNumber,undefined)
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,0)
