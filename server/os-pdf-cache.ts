@@ -4,7 +4,8 @@ import {validatePdf} from './jsreport-client.ts'
 const TEMPLATE_VERSION='v63-jsreport-1'
 /** Immutable PDF per OS. Never caches a cancellation watermark on the original. */
 export class WorkOrderPdfCache{
- constructor(private readonly db:DatabaseSync){}
+ private readonly db:DatabaseSync
+ constructor(db:DatabaseSync){this.db=db}
  get(orderId:string):Buffer|null{
    const row=this.db.prepare('SELECT pdf FROM work_order_pdf_cache WHERE work_order_id=? AND template_version=?')
      .get(orderId,TEMPLATE_VERSION)
