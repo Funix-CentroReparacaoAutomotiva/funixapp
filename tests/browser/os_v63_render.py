@@ -28,6 +28,23 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert "background:transparent" in data["headerTemplate"]
         assert "pageNumber" in data["headerTemplate"]
         page.set_content(data["content"], wait_until="load")
+        # Force the wider Arial fallback to reproduce the user's jsreport PDF.
+        # The arrow tip ends at 82.8% of the five-cluster SVG.
+        page.add_style_tag(content=(
+            ".main-matrix .technical-band-label,"
+            ".main-matrix .technical-band-label span"
+            "{font-family:Arial,Helvetica,sans-serif!important;}"
+        ))
+        for viewport_width in (1000, 1054):
+            page.set_viewport_size({"width":viewport_width, "height":900})
+            metrics=page.evaluate("""() => {
+              const art=document.querySelector('.technical-band-art').getBoundingClientRect();
+              const word=document.querySelector('.technical-band-label:last-child span:last-child').getBoundingClientRect();
+              return {gap:word.left-(art.left+art.width*0.828),rightSlack:art.right-word.right};
+            }""")
+            assert metrics["gap"]>=4, f"Chevron overlaps COMPLEMENTARES at {viewport_width}px: {metrics}"
+            assert metrics["rightSlack"]>=6, f"COMPLEMENTARES clipped at {viewport_width}px: {metrics}"
+        page.set_viewport_size({"width":1280, "height":900})
         weights = page.locator(".main-matrix tbody td .stage-entry .stage-name").evaluate_all(
             "(elements) => [...new Set(elements.map(el => getComputedStyle(el).fontWeight))]"
         )
