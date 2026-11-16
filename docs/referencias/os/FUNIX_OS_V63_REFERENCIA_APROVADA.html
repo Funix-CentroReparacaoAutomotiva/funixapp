@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>FUNIX | Ordem de Serviço | V51 - modelo operacional</title><style>
+:root{
+ --navy:#0A1F44;
+ --blue:#527AA3;
+ --ink:#182D4C;
+ --muted:#596C84;
+ --grid:#d2d9e3;
+ --stripe:#C8D3E1;
+ --light:#e4eaf1;
+ --footer:#D5DBE4;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:10pt;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{background:#eef1f5}
+
+/* Margin boxes are page-specific to prevent the running OS header showing the wrong subtitle. */
+@page cover{
+ size:A4 landscape;
+ margin:28mm 9mm 17mm 9mm;
+ @top-center{content:element(coverhead);width:100%;vertical-align:bottom;margin:0 0 3mm}
+ @top-right{content:counter(page) "/" counter(pages);font:800 16pt Arial,Helvetica,sans-serif;color:#fff;background:transparent;width:19mm;height:18mm;text-align:center;vertical-align:middle;margin:0 1.5mm 3mm 0}
+ @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 3.5mm 0}
+ @bottom-left{content:none} @bottom-right{content:none}
+}
+@page plan{
+ size:A4 landscape;
+ margin:28mm 9mm 17mm 9mm;
+ @top-center{content:element(planhead);width:100%;vertical-align:bottom;margin:0 0 3mm}
+ @top-right{content:counter(page) "/" counter(pages);font:800 16pt Arial,Helvetica,sans-serif;color:#fff;background:transparent;width:19mm;height:18mm;text-align:center;vertical-align:middle;margin:0 1.5mm 3mm 0}
+ @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 3.5mm 0}
+ @bottom-left{content:none} @bottom-right{content:none}
+}
+.cover-page{page:cover;break-after:page;min-height:0}
+.plan-page{page:plan;min-height:0}
+
+.running-header{height:18mm;min-height:18mm;max-height:18mm;background:var(--navy);color:white;margin:0;padding:0 23mm 0 4mm;display:block}
+.cover-header{position:running(coverhead)}
+.plan-header{position:running(planhead)}
+.running-header .mast{height:18mm;display:grid;grid-template-columns:24% 48% 28%;align-items:center;gap:0;min-width:0}
+.running-header .logo{min-width:0;padding:0 6mm 0 3.5mm}
+.running-header .logo svg{display:block;width:124px;max-width:100%;height:auto}
+.running-header .title{text-align:center;min-width:0}
+.running-header .title h1{margin:0;color:#fff;font-size:16pt;font-weight:800;line-height:1.08;letter-spacing:.25px;text-align:center}
+.running-header .title p{margin:2px 0 0;font-size:10pt;color:#fff;font-weight:800;line-height:1.16;text-align:center;letter-spacing:.15px}
+.running-header .docref{min-width:0;color:#e9eff6;font-size:10pt;line-height:1.13;text-align:right;padding:0 2mm 0 0;overflow-wrap:anywhere}
+.running-header .docref strong{display:block;color:#fff;font-size:10pt;font-weight:800}
+
+.footer-legend{position:running(iconlegend);height:11mm;min-height:11mm;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 3mm;border:1px solid var(--navy);background:var(--footer);color:#233b59;font-size:10pt;white-space:nowrap}
+.footer-legend .legend-heading{font-weight:800;white-space:nowrap}
+.footer-legend .legend-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:#233b59}
+.footer-legend .legend-text{font-size:10pt;line-height:1.05}
+.footer-legend svg{display:block;width:14px;height:14px;flex:0 0 14px;color:#224c7b}
+
+.cover-page,.plan-page{background:#fff;width:100%;max-width:100%;padding:0;margin:0}
+.identity{display:grid;grid-template-columns:33% 24% 13% 10% 20%;align-items:start;border:1px solid var(--navy);padding:9px 13px;gap:0;margin:3mm 0 0}
+.identity-field{min-width:0;padding:0 3px}
+.identity-field:first-child{padding-left:0}
+.identity-field:last-child{text-align:right;padding-right:0}
+.idlabel{display:block;text-transform:uppercase;color:#5c6c81;font-size:10pt;font-weight:800;letter-spacing:0;line-height:1.18;margin-bottom:4px}
+.idvalue{display:block;color:var(--navy);font-size:10pt;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.summary-intro{display:flex;align-items:baseline;justify-content:space-between;margin:7mm 0 3mm}
+.summary-intro h2{margin:0;padding:0 0 0 4mm;font-size:14pt;font-weight:800;line-height:1.15;color:var(--navy)}
+.summary-intro span{font-size:10pt;color:var(--muted)}
+
+/* Summary has two balanced, independent cards; no surrounding shared frame. */
+.closing-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm;align-items:stretch;margin:0;break-inside:avoid}
+.closing-grid > section{border:1px solid var(--navy);padding:11px 12px;display:flex;flex-direction:column;min-width:0;background:#fff}
+.closing-grid h2,.notes-section h2{margin:0 0 9px;font-size:12pt;line-height:1.1;color:var(--navy);font-weight:800}
+.piece-summary-table,.component-table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0;border:0}
+.piece-summary-table thead th,.component-table thead th{padding:8px 7px;border-bottom:1px solid #c2cedc;text-align:left;background:#e2e8f0;color:var(--navy);font-size:10pt;font-weight:800;line-height:1.15;vertical-align:middle}
+.piece-summary-table tbody td,.component-table tbody td{border-bottom:1px solid var(--grid);padding:10px 7px;vertical-align:middle;color:var(--ink);font-size:10pt;line-height:1.2}
+.piece-summary-table tbody tr:last-child td,.component-table tbody tr:last-child td{border-bottom:0}
+.piece-summary-table tbody tr,.component-table tbody tr{background:#fff;break-inside:avoid}
+.piece-summary-table th:nth-child(1){width:13%}
+.piece-summary-table th:nth-child(2){width:48%}
+.piece-summary-table th:nth-child(3){width:39%}
+.component-table th:nth-child(1){width:16%}
+.component-table th:nth-child(2){width:62%}
+.component-table th:nth-child(3){width:22%;text-align:right}
+.component-table .component-qty{text-align:right;white-space:nowrap}
+.summary-letter{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--navy);color:#fff;font-size:10pt;font-weight:800;line-height:1}
+.summary-name,.component-name,.component-ref{font-size:10pt;font-weight:600;line-height:1.2;color:var(--ink)}
+.summary-icons{display:flex;align-items:center;justify-content:flex-start;flex-wrap:nowrap;white-space:nowrap;gap:7px}
+.summary-icons svg{display:block;width:16px;height:16px;flex:0 0 16px;color:#315987}
+.component-note{display:none}
+.notes-section{border:1px solid var(--navy);padding:12px 15px;margin-top:3mm;background:#fff;break-inside:avoid}
+.notes-section p{margin:0 0 7px;color:var(--ink);font-size:10pt;line-height:1.24}
+.notes-section p:last-of-type{margin-bottom:0}
+.notes-section .lines{display:none}
+
+/* The service matrix begins immediately beneath the differentiated second-page header. */
+.execution{padding:0;margin:3mm 0 0;border:0}
+.execution .section-head{display:none}
+.main-matrix{table-layout:fixed;width:100%;border:2px solid var(--navy);border-collapse:separate;border-spacing:0;margin:0;background:#fff}
+.main-matrix col.marker-col{width:4%}
+.main-matrix col.piece-col{width:28%}
+.main-matrix col.cluster-col{width:13.6%}
+.main-matrix thead{display:table-header-group}
+.main-matrix thead tr{height:40px}
+.main-matrix thead th{height:40px;min-height:40px;vertical-align:middle;padding:0;border:0;border-bottom:2px solid var(--navy);color:#fff;background:var(--blue);font-size:10pt;font-weight:800;line-height:1}
+.main-matrix thead th .th-centered{display:flex;align-items:center;justify-content:center;height:40px;width:100%;font-size:10pt;line-height:1.1;color:#fff;font-weight:800;text-align:center}
+.main-matrix thead th:nth-child(2),.main-matrix tbody tr>th:nth-child(2){border-right:2px solid var(--navy)}
+.main-matrix thead th.integrated-header{position:relative;overflow:hidden;background:var(--blue);border-left:0;border-right:0}
+.main-matrix thead th.integrated-header .header-arrow{display:block;position:absolute;inset:0;width:100%;height:40px;border:0}
+.main-matrix thead th.integrated-header .arrow-text{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:40px;padding:0 3px 0 8px;text-align:center;color:#fff;font-size:10pt;font-weight:800;line-height:1.05}
+.main-matrix tbody tr{break-inside:avoid}
+.main-matrix tbody tr:nth-child(odd)>th,.main-matrix tbody tr:nth-child(odd)>td{background:#fff}
+.main-matrix tbody tr:nth-child(even)>th,.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe)}
+.main-matrix tbody tr>th,.main-matrix tbody tr>td{padding:9px 6px;vertical-align:top;text-align:left;border-bottom:1px solid var(--grid);border-right:1px solid #c4cfdb;font-size:10pt;line-height:1.2;overflow-wrap:break-word}
+.main-matrix tbody tr>th:last-child,.main-matrix tbody tr>td:last-child{border-right:0}
+.main-matrix tbody tr:last-child>th,.main-matrix tbody tr:last-child>td{border-bottom:0}
+.main-matrix tbody tr>th:nth-child(2){padding-left:9px;padding-right:9px}
+.main-matrix tbody th.piece-marker{padding:9px 2px;text-align:center}
+.piece-letter{display:inline-flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;width:20px;height:20px;font-size:10pt;font-weight:800;line-height:1}
+.status-stack{display:flex;align-items:center;flex-direction:column;gap:7px;margin:8px 0 0}
+.status-stack svg{width:14px;height:14px;color:#315987;display:block}
+.part-title{margin:0 0 12px;font-size:10pt}
+.part-name{font-size:10pt;font-weight:800;color:var(--navy);line-height:1.2}
+.piece-components{margin:0;padding:0;font-size:10pt;line-height:1.22;color:#526781}
+.piece-components .piece-component-item{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px;align-items:start;margin:0 0 6px;font-size:10pt;line-height:1.2}
+.piece-component-id{font-size:10pt;font-weight:800}
+.piece-component-name,.piece-component-qty,.piece-component-empty{font-size:10pt}
+.piece-component-empty{display:block;color:#526781}
+.stage-entry{display:flex;align-items:flex-start;gap:5px;margin:0 0 5px;color:#293d56;font-size:10pt;line-height:1.18}
+.stage-entry:last-child{margin-bottom:0}
+.stage-entry .stage-code{display:none}
+.stage-entry .stage-name{font-size:10pt;font-weight:600;line-height:1.15;color:#293d56}
+.service-name{display:none}
+.service-group+.service-group{margin-top:5px}
+.empty{display:block;color:#697c92;text-align:center;font-size:10pt}
+
+@media screen{
+ body{background:#e9edf2}
+ .cover-page,.plan-page{width:279mm;max-width:none;padding:0;margin:18px auto 26px;box-shadow:0 4px 20px #16263d20}
+}
+@media print{body{background:#fff}.cover-page,.plan-page{box-shadow:none!important}}
+
+/* FUNIX V33: page-specific subheads and consistent OS identifier */
+.summary-intro-only-count{display:flex;justify-content:flex-end;align-items:center;margin:8px 0 7px!important;min-height:0!important}
+.summary-intro-only-count span{font-size:10pt!important;color:#596f8b!important;line-height:1.25}
+.running-header .docref strong{display:block;color:#fff;font-size:11pt;line-height:1.15;margin:0 0 3px}
+.running-header .docref span{display:block;font-size:10pt;line-height:1.12;color:#e9eff6}
+
+/* V34 — contagens integradas aos títulos das seções, sem linha de resumo solta */
+.closing-grid .section-title-row{
+  display:flex !important;
+  align-items:baseline !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  margin:0 0 9px !important;
+  min-height:17px !important;
+}
+.closing-grid .section-title-row h2{
+  margin:0 !important;
+  font-size:12pt !important;
+  font-weight:800 !important;
+  line-height:1.2 !important;
+  flex:none;
+}
+.closing-grid .section-title-row .section-total{
+  display:block;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:10pt;
+  line-height:1.18;
+  color:#5c6c81;
+  font-weight:700;
+  text-align:right;
+  white-space:nowrap;
+}
+
+
+/* V35 adjustments */
+:root{--grid-strong:#a6b3c1;}
+/* More breathing room between identity and summary tables */
+.identity{padding:10px 16px 10px 16px !important; margin:3mm 0 0 !important;}
+.identity-field{padding:0 4px !important;}
+.closing-grid{margin-top:4.5mm !important; gap:4mm !important;}
+.notes-section{margin-top:4mm !important;}
+/* Reinforce internal grid lines, but keep them lighter than outer borders */
+.piece-summary-table thead th,.component-table thead th{border-bottom:2pt solid var(--grid-strong) !important;}
+.piece-summary-table tbody td,.component-table tbody td{border-bottom:2pt solid var(--grid-strong) !important;}
+.main-matrix tbody tr>th,.main-matrix tbody tr>td{border-bottom:2pt solid var(--grid-strong) !important; border-right:2pt solid var(--grid-strong) !important;}
+.main-matrix tbody tr>th:last-child,.main-matrix tbody tr>td:last-child{border-right:0 !important;}
+/* Make plan header arrows more evident */
+.main-matrix thead tr{height:46px !important;}
+.main-matrix thead th{height:46px !important; min-height:46px !important;}
+.main-matrix thead th .th-centered{height:46px !important; line-height:1.05 !important; align-items:center !important;}
+.main-matrix thead th.integrated-header .header-arrow{height:46px !important;}
+.main-matrix thead th.integrated-header .arrow-text{height:46px !important; font-size:10pt !important; line-height:1.04 !important; padding:0 6px 0 10px !important;}
+/* Slightly stronger separation in header without dark internal vertical lines */
+.main-matrix thead th{border-bottom:2px solid var(--navy) !important;}
+/* Keep left/right content alignment closer to header logic */
+.identity-field:last-child{text-align:right !important; padding-right:0 !important;}
+.identity-field:first-child{padding-left:0 !important;}
+/* Nudge first-page body blocks to preserve top rhythm */
+.cover-page .closing-grid{margin-top:5mm !important;}
+
+/* V36 – title case headers and refined arrows */
+.running-header .title p{letter-spacing:0 !important;text-transform:none !important;font-size:10pt !important;}
+.piece-summary h2,.components-section h2,.notes-section h2{letter-spacing:0 !important;text-transform:none !important;}
+.piece-summary-table thead th,.component-table thead th,.main-matrix thead th{letter-spacing:0 !important;text-transform:none !important;}
+.main-matrix thead tr{height:48px !important;}
+.main-matrix thead th{height:48px !important;min-height:48px !important;}
+.main-matrix thead th .th-centered{height:48px !important;font-size:10pt !important;font-weight:800 !important;line-height:1.05 !important;display:flex;align-items:center;justify-content:center;}
+.main-matrix thead th.integrated-header .header-arrow{height:48px !important;display:block;}
+.main-matrix thead th.integrated-header .arrow-text{height:48px !important;display:flex;align-items:center;justify-content:center;padding:0 5px 0 10px !important;font-size:10pt !important;font-weight:800 !important;line-height:1.03 !important;position:relative;z-index:2;}
+/* keep no vertical lines between the cluster columns in header */
+.main-matrix thead th.integrated-header{border-left:0 !important;border-right:0 !important;overflow:hidden !important;}
+
+/* V37 — single filled white chevrons matching photographic reference */
+.main-matrix thead tr,
+.main-matrix thead th{height:48px!important;min-height:48px!important}
+.main-matrix thead th.integrated-header{background:#527AA3!important;border-left:0!important;border-right:0!important;overflow:hidden!important}
+.main-matrix thead th.integrated-header .header-arrow{height:48px!important;width:100%!important;display:block!important;position:absolute!important;inset:0!important}
+.main-matrix thead th.integrated-header .arrow-text{
+  height:48px!important;
+  font-size:10pt!important;
+  text-transform:uppercase!important;
+  padding:0 30px 0 6px!important;
+  line-height:1.08!important;
+  z-index:2!important;
+}
+.main-matrix thead th.integrated-header:last-child .arrow-text{padding-right:6px!important}
+.main-matrix thead th .th-centered{height:48px!important;font-size:10pt!important;text-transform:uppercase!important}
+.piece-summary-table thead th,.component-table thead th{font-size:10pt!important;text-transform:uppercase!important}
+
+
+/* FUNIX V38: centred chevrons, consistent medium-blue table headers and readable borders */
+:root{--header-table:#527AA3; --inner-grid:#8998A9;}
+.running-header .title p{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:12pt!important;
+  font-weight:800!important;
+  line-height:1.05!important;
+  margin-top:2px!important;
+  text-align:center!important;
+  text-transform:none!important;
+}
+/* First-page table boxes: strong outer edge, fine inner separators. */
+.closing-grid > section{
+  border:2px solid #0A1F44!important;
+  background:#fff!important;
+}
+.piece-summary-table thead th,.component-table thead th{
+  background:var(--header-table)!important;
+  color:#fff!important;
+  border-bottom:1px solid var(--inner-grid)!important;
+  font-size:10pt!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+}
+.piece-summary-table tbody td,.component-table tbody td{
+  border-bottom:1px solid var(--inner-grid)!important;
+}
+.piece-summary-table tbody tr:last-child td,.component-table tbody tr:last-child td{
+  border-bottom:0!important;
+}
+/* The outer outline of the first-page tables is heavier than their internal grid. */
+/* A single colspan=5 table header uses exact column boundaries, not cell-local arrows. */
+.main-matrix thead tr,.main-matrix thead th{
+  height:48px!important;
+  min-height:48px!important;
+}
+.main-matrix thead th{
+  background:var(--header-table)!important;
+  color:#fff!important;
+  font-size:10pt!important;
+  font-weight:800!important;
+  border-bottom:2px solid #0A1F44!important;
+}
+.main-matrix thead th.th-flat{
+  background:var(--header-table)!important;
+}
+.main-matrix thead th .th-centered{
+  height:48px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#fff!important;
+  font-size:10pt!important;
+  font-weight:800!important;
+}
+.main-matrix thead th.technical-band{
+  height:48px!important;
+  position:relative!important;
+  padding:0!important;
+  background:var(--header-table)!important;
+  border-left:0!important;
+  border-right:0!important;
+  overflow:hidden!important;
+  vertical-align:middle!important;
+}
+.technical-band-art{
+  position:absolute!important;
+  top:0!important;
+  left:0!important;
+  width:100%!important;
+  height:48px!important;
+  display:block!important;
+  z-index:0!important;
+}
+.technical-band-labels{
+  position:relative!important;
+  z-index:1!important;
+  width:100%!important;
+  height:48px!important;
+  display:flex!important;
+  align-items:stretch!important;
+}
+.technical-band-label{
+  flex:0 0 20%!important;
+  min-width:0!important;
+  max-width:20%!important;
+  height:48px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  font-size:10pt!important;
+  line-height:1.08!important;
+  font-weight:800!important;
+  color:#fff!important;
+  white-space:nowrap!important;
+}
+/* Leave the five-cluster header without internal grid strokes. */
+.main-matrix thead th.technical-band::before,.main-matrix thead th.technical-band::after{
+  content:none!important;
+}
+
+/* FUNIX V39 — alinhamento óptico, paleta, contornos e chevrons */
+:root {
+  --header-table: #345A85;
+  --inner-grid: #8998A9;
+}
+/* Three tables share the same medium navy-blue heading; header stripe remains dark navy. */
+.piece-summary-table thead th,
+.component-table thead th,
+.main-matrix thead th,
+.main-matrix thead th.th-flat,
+.main-matrix thead th.technical-band {
+  background:var(--header-table)!important;
+  color:#fff!important;
+  font-size:10pt!important;
+}
+/* All meaningful external borders use the same 2px dark navy. */
+.identity,.closing-grid > section,.notes-section,
+.main-matrix,.footer-legend {
+  border:2px solid #0A1F44!important;
+  border-radius:0!important;
+}
+/* Interior separators: one restrained but print-visible gray pixel. */
+.piece-summary-table thead th,
+.component-table thead th,
+.piece-summary-table tbody td,
+.component-table tbody td {
+  border-bottom:1px solid var(--inner-grid)!important;
+}
+.piece-summary-table tbody tr:last-child td,
+.component-table tbody tr:last-child td {
+  border-bottom:0!important;
+}
+.main-matrix tbody tr > th,
+.main-matrix tbody tr > td {
+  border-bottom:1px solid var(--inner-grid)!important;
+  border-right:1px solid var(--inner-grid)!important;
+}
+.main-matrix tbody tr > th:last-child,
+.main-matrix tbody tr > td:last-child {border-right:0!important;}
+.main-matrix tbody tr:last-child > th,
+.main-matrix tbody tr:last-child > td {border-bottom:0!important;}
+/* Structural separation between piece description and first technical cluster: navy. */
+.main-matrix thead th:nth-child(2),
+.main-matrix tbody tr > th:nth-child(2) {
+  border-right:2px solid #0A1F44!important;
+}
+.main-matrix thead th {border-bottom:2px solid #0A1F44!important;}
+/* Consistent typographic width and centering for comparable summary fields. */
+.piece-summary-table thead th:nth-child(1),
+.piece-summary-table tbody td:nth-child(1),
+.component-table thead th:nth-child(1),
+.component-table tbody td:nth-child(1),
+.component-table thead th:nth-child(3),
+.component-table tbody td:nth-child(3) {
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+.component-table th:nth-child(3),
+.component-table td.component-qty {text-align:center!important;}
+/* Match client/term inner edges to logo and printed page number. */
+.identity {
+  padding-left:26px!important;
+  padding-right:26px!important;
+}
+.identity-field:first-child{padding-left:0!important;}
+.identity-field:last-child{padding-right:0!important;text-align:right!important;}
+/* Re-center title 'Legenda:' against icon explanations on their real baselines.
+   The SVG+inline-flex group is naturally ~5pt lower in the PDF renderer. */
+.footer-legend {  align-items:center!important;
+  justify-content:center!important;
+  background:#D5DBE4!important;
+  box-sizing:border-box!important;
+}
+.footer-legend .legend-heading {
+  position:relative!important;
+  top:1.25pt!important;
+  line-height:1.05!important;
+}
+.footer-legend .legend-item {
+  position:relative!important;
+  top:-1.25pt!important;
+  align-items:center!important;
+}
+.footer-legend .legend-item svg,
+.footer-legend .legend-item .legend-text {
+  vertical-align:middle!important;
+}
+/* Draw larger chevrons centrally in the unified five-column header cell. */
+.technical-band-art {
+  height:48px!important;
+  width:100%!important;
+  display:block!important;
+}
+.main-matrix thead th.technical-band,
+.main-matrix thead th.technical-band .technical-band-labels {
+  background:var(--header-table)!important;
+}
+.main-matrix thead th.technical-band .technical-band-labels {
+  background:transparent!important;
+}
+
+
+/* V40 - divisória branca entre paginação e bloco do ID/data */
+@page {
+  size: A4 landscape;
+  margin: 26mm 10mm 18mm 10mm;
+  @top-center {
+    content: element(funixheader);
+    width: 100%;
+    vertical-align: top;
+  }
+  @top-right {
+    content: counter(page) " / " counter(pages);
+    color:#fff;
+    background:#0A1F44;
+    border-left:2.17px solid #fff;
+    width:18mm;
+    height:20mm;
+    margin:0 0 0 0;
+    padding:0 0 0 0;
+    text-align:center;
+    vertical-align:middle;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:12pt;
+    font-weight:800;
+  }
+  @bottom-left { content: element(iconlegend); width:100%; vertical-align:bottom; }
+  @bottom-center { content:none; }
+  @bottom-right { content:none; }
+}
+
+
+/* FUNIX V41 — Cabeçalho técnico levemente mais baixo e chevrons mais espessos */
+.main-matrix thead tr,
+.main-matrix thead th,
+.main-matrix thead th.technical-band {
+  height:44px!important;
+  min-height:44px!important;
+}
+.main-matrix thead th .th-centered,
+.main-matrix thead th.technical-band .technical-band-labels,
+.main-matrix thead th.technical-band .technical-band-label {
+  height:44px!important;
+}
+.main-matrix thead th.technical-band .technical-band-art {
+  height:44px!important;
+  inset:0!important;
+}
+/* Regras tipográficas do cabeçalho não alteradas: mínimo de 10pt. */
+
+/* FUNIX V42: official ERP cluster names, solid icons, compact print legend */
+.main-matrix .technical-band-label{font-family:'Liberation Sans Narrow',Arial,Helvetica,sans-serif!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;font-size:10pt!important;line-height:1.06!important;font-weight:800!important;padding:0 6px!important;white-space:normal!important;}
+.main-matrix .technical-band-label span{font-family:inherit!important;display:block!important;white-space:nowrap!important;font-size:10pt!important;line-height:1.04!important;}
+.summary-icons{gap:6px!important;}
+.summary-icons svg{width:16px!important;height:16px!important;flex:0 0 16px!important;color:#0A1F44!important;}
+.status-stack{gap:7px!important;}
+.status-stack svg{width:15px!important;height:15px!important;color:#0A1F44!important;}
+.footer-legend{gap:9px!important;justify-content:space-between!important;padding:0 3mm!important;}
+.footer-legend .legend-item{gap:3px!important;flex-shrink:0!important;}
+.footer-legend svg{width:14px!important;height:14px!important;flex:0 0 14px!important;color:#0A1F44!important;}
+.footer-legend .legend-text{font-size:10pt!important;line-height:1.1!important;}
+.footer-legend .legend-heading,.footer-legend .legend-item{top:0!important;position:static!important;}
+
+/* FUNIX V43 - smaller balanced footer, stage bullets and readable label */
+@page cover{
+  margin-bottom:15mm;
+  @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 3.5mm 0}
+}
+@page plan{
+  margin-bottom:15mm;
+  @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 3.5mm 0}
+}
+/* Keep the full footer visible but reduce its unused internal space. */
+.footer-legend{
+  height:8.6mm!important;
+  min-height:8.6mm!important;
+  max-height:8.6mm!important;
+  padding:0.7mm 2.2mm!important;
+  gap:5px!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  border:2px solid #0A1F44!important;
+}
+.footer-legend .legend-item{gap:3px!important;display:inline-flex!important;align-items:center!important;margin:0!important;}
+.footer-legend .legend-heading{
+  margin:0!important;
+  line-height:1.1!important;
+  font-size:10pt!important;
+}
+.footer-legend svg{
+  width:14px!important;height:14px!important;flex:0 0 14px!important;
+}
+.footer-legend .legend-text{font-size:10pt!important;line-height:1.1!important;white-space:nowrap!important;}
+/* Disc bullets - standard black dots, not small icon codes. */
+.main-matrix .stage-list{
+  margin:0!important;
+  padding:0 0 0 14px!important;
+  list-style:disc outside!important;
+}
+.main-matrix .stage-list + .stage-list{margin-top:3px!important;}
+.main-matrix .stage-entry{
+  display:list-item!important;
+  list-style-type:disc!important;
+  list-style-position:outside!important;
+  margin:0 0 4px 0!important;
+  padding:0!important;
+  color:#111!important;
+  font-size:10pt!important;
+  line-height:1.2!important;
+}
+.main-matrix .stage-entry::marker{color:#111!important;font-size:10pt!important;}
+.main-matrix .stage-entry .stage-name{
+  display:inline!important;
+  font-size:10pt!important;
+  color:#293d56!important;
+  font-weight:600!important;
+  line-height:1.16!important;
+}
+
+/* V43 footer optical centering in print render */
+.footer-legend .legend-item{transform:translateY(-2.6pt)!important;}
+
+
+/* V44 – centralização e alinhamento dos eixos internos */
+.identity{
+  grid-template-columns:30% 28% 13% 11% 18% !important;
+  align-items:stretch !important;
+  padding:9px 4mm 9px 4mm !important;
+  margin:3.6mm 0 0 !important;
+}
+.identity-field{
+  min-width:0 !important;
+  padding:0 2px !important;
+  text-align:center !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:flex-start !important;
+  align-items:center !important;
+}
+.identity-field:first-child{padding-left:0 !important;}
+.identity-field:last-child{padding-right:0 !important;}
+.idlabel{
+  width:100% !important;
+  text-align:center !important;
+  margin-bottom:4px !important;
+}
+.idvalue{
+  width:100% !important;
+  text-align:center !important;
+}
+/* Make first and last cells visually align with header inner axes */
+.identity-field:first-child .idlabel,
+.identity-field:first-child .idvalue{padding-left:0 !important;}
+.identity-field:last-child .idlabel,
+.identity-field:last-child .idvalue{padding-right:0 !important;}
+
+/* Summary cards aligned to same left/right rhythm */
+.closing-grid{
+  margin-top:4.2mm !important;
+  gap:3mm !important;
+}
+.closing-grid > section{
+  padding:10px 4mm 10px 4mm !important;
+}
+.section-title-row{
+  display:flex !important;
+  align-items:baseline !important;
+  justify-content:space-between !important;  gap:10px !important;
+  margin:0 0 9px 0 !important;
+}
+.piece-summary h2,
+.components-section h2,
+.notes-section h2{
+  margin:0 !important;
+  padding:0 !important;
+}
+.section-total{font-size:10pt !important; color:var(--muted) !important; white-space:nowrap !important;}
+.notes-section{
+  padding:10px 4mm 10px 4mm !important;
+  margin-top:4.2mm !important;
+}
+/* Keep table content centered where needed */
+.piece-summary-table thead th:first-child,
+.component-table thead th:first-child,
+.component-table thead th:last-child,
+.piece-summary-table tbody td:first-child,
+.component-table tbody td:first-child,
+.component-table tbody td:last-child{
+  text-align:center !important;
+}
+
+
+/* V45 – referência integrada à coluna Peças */
+.main-matrix col.piece-col{width:31% !important;}
+.main-matrix thead th.th-piece{width:31% !important;}
+.main-matrix thead th.th-piece,
+.main-matrix tbody th.piece-block-cell{
+  border-right:2px solid var(--navy) !important;
+}
+.main-matrix thead th.th-piece .th-centered{align-items:center !important; justify-content:flex-start !important; padding-left:12px !important;}
+.main-matrix tbody th.piece-block-cell{
+  padding:9px 10px 9px 10px !important;
+  vertical-align:top !important;
+  text-align:left !important;
+}
+.piece-topline{display:flex !important; align-items:center !important; gap:8px !important; margin:0 0 8px !important;}
+.piece-topline .piece-letter{margin:0 !important; flex:0 0 22px !important;}
+.part-name-inline{font-size:10pt !important; line-height:1.18 !important; font-weight:800 !important; color:var(--navy) !important;}
+.piece-icons-inline{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+  align-items:center !important;
+  margin:0 0 10px 0 !important;
+}
+.piece-icons-inline svg{width:14px !important; height:14px !important; color:#0A1F44 !important; flex:0 0 14px !important;}
+.piece-components{
+  margin:0 !important;
+  color:#55667c !important;
+  font-size:10pt !important;
+  line-height:1.22 !important;
+}
+.piece-component-item{
+  display:grid !important;
+  grid-template-columns:auto 1fr auto !important;
+  gap:5px !important;
+  margin:0 0 5px !important;
+  font-size:10pt !important;
+  line-height:1.18 !important;
+}
+.piece-component-id{font-weight:800 !important; color:var(--navy) !important;}
+.piece-component-name,.piece-component-qty{color:#55667c !important;}
+/* after removing ref col */
+.main-matrix thead th.technical-band{width:auto !important;}
+.main-matrix thead th.technical-band .header-arrow-row{margin-left:0 !important;}
+.main-matrix tbody td:first-of-type{border-left:0 !important;}
+
+/* FUNIX V46: título PEÇAS alinhado aos demais cabeçalhos nos dois eixos */
+.main-matrix thead th.th-piece{
+  padding:0 !important;
+  vertical-align:middle !important;
+  text-align:center !important;
+}
+.main-matrix thead th.th-piece .piece-header-centered{
+  display:flex !important;
+  width:100% !important;
+  height:44px !important;
+  margin:0 !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  color:#fff !important;
+  font-size:10pt !important;
+  font-weight:800 !important;
+  line-height:1.05 !important;
+}
+
+
+/* V48 – célula Peças com letra ocupando duas linhas */
+.main-matrix tbody th.piece-block-cell{
+  padding:10px 10px 9px 10px !important;
+}
+.piece-head-grid{
+  display:grid !important;
+  grid-template-columns:28px minmax(0,1fr) !important;
+  grid-template-rows:auto auto !important;
+  column-gap:10px !important;
+  row-gap:4px !important;
+  align-items:start !important;
+  margin:0 0 10px 0 !important;
+}
+.piece-head-grid .piece-letter{
+  grid-column:1 !important;
+  grid-row:1 / span 2 !important;
+  align-self:stretch !important;
+  justify-self:start !important;
+  width:24px !important;
+  min-width:24px !important;
+  height:auto !important;
+  min-height:42px !important;
+  border-radius:0 !important;
+  margin:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:10pt !important;
+  line-height:1 !important;
+}
+.piece-name-grid{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  font-size:10pt !important;
+  line-height:1.18 !important;
+  font-weight:800 !important;
+  color:var(--navy) !important;
+  margin:0 !important;
+  padding-top:1px !important;
+}
+.piece-icons-grid{
+  grid-column:2 !important;
+  grid-row:2 !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+  align-items:center !important;
+  margin:0 !important;
+  min-height:16px !important;
+}
+.piece-icons-grid svg{width:14px !important;height:14px !important;flex:0 0 14px !important;color:#0A1F44 !important;display:block !important;}
+.piece-components-grid{
+  margin:0 !important;
+}
+
+/* V49: componentes ligados à referência da peça + opção 01, linha contínua fina */
+.main-matrix tbody th.piece-block-cell { padding:9px 9px !important; }
+.piece-ladder {
+    display:grid !important;
+    grid-template-columns:24px minmax(0,1fr) !important;
+    grid-auto-rows:auto !important;
+    column-gap:8px !important;
+    row-gap:0 !important;
+    width:100% !important;
+    margin:0 !important;
+    align-items:stretch !important;
+    font-family:Arial,Helvetica,sans-serif !important;
+}
+.piece-ladder > .piece-letter {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    font-weight:800 !important;
+    font-size:10pt !important;
+    line-height:1 !important;
+    background:var(--navy) !important;
+    color:white !important;
+    width:24px !important;
+    height:auto !important;
+    min-height:43px !important;
+    margin:0 !important;
+    padding:0 !important;
+}
+.piece-ladder-head {
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:flex-start !important;
+    min-height:43px !important;
+    min-width:0 !important;
+    gap:5px !important;
+    padding:0 0 5px !important;
+}
+.piece-ladder-name {
+    display:block !important;
+    font-size:10pt !important;
+    font-weight:800 !important;
+    line-height:1.14 !important;
+    color:var(--navy) !important;
+    margin:0 !important;
+}
+.piece-ladder-icons {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    align-items:center !important;
+    gap:6px !important;
+    min-height:14px !important;
+    margin:0 !important;}
+.piece-ladder-icons svg {
+    color:var(--navy) !important;
+    width:14px !important;
+    height:14px !important;
+    flex:0 0 14px !important;
+    display:block !important;
+}
+.piece-ladder-code {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:24px !important;
+    min-width:24px !important;
+    min-height:23px !important;
+    padding:2px 0 !important;
+    border-left:1px solid var(--navy) !important;
+    border-right:1px solid var(--navy) !important;
+    color:var(--navy) !important;
+    background:transparent !important;
+    font-size:10pt !important;
+    font-weight:800 !important;
+    line-height:1.1 !important;
+}
+.piece-ladder-code--first { border-top:1px solid var(--navy) !important; }
+.piece-ladder-code--last { border-bottom:1px solid var(--navy) !important; }
+.piece-ladder-component {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:4px !important;
+    align-items:center !important;
+    min-height:23px !important;
+    padding:2px 0 !important;
+    color:#526781 !important;
+    font-size:10pt !important;
+    font-weight:700 !important;
+    line-height:1.16 !important;
+    min-width:0 !important;
+}
+/* Opção 01: linha fina sem introduzir uma linha adicional de conteúdo. */
+.piece-ladder-component--first { border-top:1px solid #9cb0c6 !important; }
+.piece-ladder-desc { min-width:0 !important; color:#526781 !important; }
+.piece-ladder-qty { white-space:nowrap !important; text-align:right !important; color:#526781 !important; }
+
+/* Ajuste tipográfico exclusivo dos componentes para manter uma linha por item no exemplo */
+.piece-ladder-component{font-size:9.3pt !important;gap:3px !important;}
+.piece-ladder-desc{letter-spacing:-.12px !important;}
+
+
+/* V50 — OS em uma única página. Retirada da página de resumo e cabeçalho compacto. */
+@page plan {
+ size: A4 landscape;
+ margin:21mm 9mm 15mm 9mm;
+ @top-center {
+   content:element(planhead);
+   width:100%;
+   vertical-align:bottom;
+   margin:0 0 2mm 0;
+ }
+ @top-right { content:none; width:0; height:0; margin:0; padding:0; border:0; background:transparent; }
+ @top-left { content:none; }
+ @bottom-center {
+   content:element(iconlegend);
+   width:100%;
+   vertical-align:middle;
+   margin:0 0 3.5mm 0;
+ }
+ @bottom-right {content:none;}
+ @bottom-left {content:none;}
+}
+.plan-page{page:plan !important;break-before:auto !important;break-after:auto !important;}
+.plan-header {
+  height:15mm !important;
+  min-height:15mm !important;
+  max-height:15mm !important;
+  padding:0 3.5mm !important;
+  background:var(--navy) !important;
+}
+.plan-header .mast {
+  height:15mm !important;
+  grid-template-columns:21% minmax(0,1fr) 23% !important;
+  align-items:center !important;
+  gap:0 !important;
+}
+.plan-header .logo {
+  padding:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+}
+.plan-header .logo svg {
+  width:121px !important;
+  max-width:100% !important;
+  height:auto !important;
+}
+.v50-identidade {
+ min-width:0 !important;
+ display:flex !important;
+ flex-direction:column !important;
+ align-items:center !important;
+ justify-content:center !important;
+ gap:2.5px !important;
+ text-align:center !important;
+ color:#fff !important;
+}
+.v50-os-title {
+ font-size:14pt !important;
+ line-height:1.1 !important;
+ font-weight:800 !important;
+ letter-spacing:.1px !important;
+ white-space:nowrap !important;
+}
+.v50-vehicle {
+ font-size:10pt !important;
+ line-height:1.15 !important;
+ font-weight:700 !important;
+ white-space:nowrap !important;
+ color:#ecf3fc !important;
+}
+.v50-os-info {
+ display:flex !important;
+ flex-direction:column !important;
+ align-items:flex-end !important;
+ justify-content:center !important;
+ text-align:right !important;
+ gap:3px !important;
+ color:#fff !important;
+}
+.v50-number{font-size:11pt !important;line-height:1.1 !important;font-weight:800 !important;white-space:nowrap !important;}
+.v50-delivery{font-size:10pt !important;line-height:1.1 !important;font-weight:700 !important;white-space:nowrap !important;color:#ecf3fc !important;}
+.execution{margin:2.5mm 0 0 !important;}
+
+
+/* V51 — cabeçalho e comentários por peça, sem célula PEÇAS */
+.v50-os-title {
+  font-size:10pt !important;
+  line-height:1.12 !important;
+  font-weight:700 !important;
+  letter-spacing:.05px !important;
+}
+.v50-vehicle {
+  font-size:14pt !important;
+  line-height:1.08 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  color:#fff !important;
+}
+.v50-delivery{
+  display:flex !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  gap:5px !important;
+}
+.delivery-icon {width:14px !important; height:14px !important; flex:0 0 14px !important; stroke:#ecf3fc !important; display:block !important;}
+/* Padronizar cor dos nomes das peças à cor das atividades da matriz. */
+.main-matrix tbody .piece-ladder-name {color:#293d56 !important;}
+/* Célula de título PEÇAS removida visualmente; o espaço preserva o alinhamento de linhas. */
+.main-matrix thead td.matrix-header-empty{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  height:48px !important;
+  min-height:48px !important;
+}
+/* Puxar o conteúdo da primeira peça para a faixa liberada pelo título removido. */
+.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{
+  margin-top:-47px !important;
+}
+/* Comentários em seção condicional, após os componentes, sem título ou linha vazia. */
+.piece-comment-block{
+  width:100% !important;
+  box-sizing:border-box !important;
+  border-top:1px solid #9cb0c6 !important;
+  margin:6px 0 0 !important;
+  padding:5px 0 0 !important;
+  font-size:9.2pt !important;
+  line-height:1.20 !important;
+  color:#293d56 !important;
+  font-weight:500 !important;
+  text-align:left !important;
+  overflow-wrap:break-word !important;
+}
+
+
+/* FUNIX V52 – ajustes aprovados no cabeçalho e plano de serviços */
+:root{
+  --stripe:#E9EFF5 !important;
+  --table-blue:#0A1F44;
+}
+/* Margens de impressão estreitas sem alterar a posição vertical da faixa azul. */
+@page plan{
+  size:A4 landscape;
+  margin:21mm 5mm 12.5mm 5mm;
+  @top-center{content:element(planhead);width:100%;vertical-align:bottom;margin:0 0 2mm 0;}
+  @top-right{content:none;}
+  @top-left{content:none;}
+  @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 2.4mm 0;}
+  @bottom-right{content:none;}
+  @bottom-left{content:none;}}
+/* Mantém altura/posição da faixa e distribuição do ID/data. */
+.plan-header .mast{grid-template-columns:20% minmax(0,1fr) 23% !important;}
+.plan-header .logo{gap:10px !important;white-space:nowrap !important;}
+.plan-header .logo svg{width:113px !important;min-width:0 !important;}
+.plan-header .v52-os-prefix{
+  font-family:Arial,Helvetica,sans-serif;
+  display:inline-flex;
+  color:#fff !important;
+  font-size:22pt !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  letter-spacing:-.5px !important;
+  flex:none;
+}
+.plan-header .v50-identidade{gap:0 !important;}
+.plan-header .v50-vehicle{font-size:14pt !important;font-weight:800 !important;line-height:1.1 !important;}
+
+/* Mantém a célula da primeira coluna vazia sem sobrepor a primeira peça. */
+.main-matrix thead td.matrix-header-empty{
+  background:#fff !important;
+  height:44px !important;
+  min-height:44px !important;
+  border-bottom:2px solid var(--navy) !important;
+  border-right:2px solid var(--navy) !important;
+  padding:0 !important;
+}
+.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{
+  margin-top:0 !important;
+}
+/* Distribui o trabalho com mais respiro até perto do rodapé, sem sobrepor a legenda. */
+/* V63: altura determinada somente pelo conteúdo; larguras já aprovadas preservadas. */
+.main-matrix{min-height:0 !important;height:auto !important;}
+.main-matrix tbody tr{height:auto !important;min-height:0 !important;}
+.main-matrix tbody tr>th,.main-matrix tbody tr>td{padding-top:7px !important;padding-bottom:7px !important;}
+.main-matrix tbody th.piece-block-cell{padding:7px 8px !important;}
+
+/* Linhas brancas e linhas em cinza-azulado muito leve. */
+.main-matrix tbody tr:nth-child(odd)>th,
+.main-matrix tbody tr:nth-child(odd)>td{background:#fff !important;}
+.main-matrix tbody tr:nth-child(even)>th,
+.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe) !important;}
+
+/* Todos os textos da área de dados no mesmo azul corporativo. */
+.main-matrix tbody tr>th,
+.main-matrix tbody tr>td,
+.main-matrix tbody tr>th .piece-ladder-name,
+.main-matrix tbody tr>th .piece-ladder-code,
+.main-matrix tbody tr>th .piece-ladder-desc,
+.main-matrix tbody tr>th .piece-ladder-qty,
+.main-matrix tbody tr>th .piece-comment-text,
+.main-matrix tbody tr>td .stage-entry,
+.main-matrix tbody tr>td .stage-entry .stage-name,
+.main-matrix tbody tr>td .empty {
+  color:var(--table-blue) !important;
+}
+/* Exceção obrigatória: a letra branca no bloco azul mantém contraste. */
+.main-matrix tbody .piece-letter{color:#fff !important;}
+
+/* Comentário como continuação do retângulo vertical de códigos.
+   A célula de texto fica ao lado, alinhada à descrição de componentes. */
+.piece-ladder-comment-marker{
+  grid-column:1 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:30px !important;
+  width:24px !important;
+  border-left:1px solid var(--navy) !important;
+  border-right:1px solid var(--navy) !important;
+  border-bottom:1px solid var(--navy) !important;
+  border-top:1px solid var(--navy) !important;
+  color:var(--navy) !important;
+}
+.piece-ladder-comment-marker svg{width:14px !important;height:14px !important;display:block !important;color:var(--navy) !important;}
+.piece-ladder-comment-content{
+  grid-column:2 !important;
+  display:block !important;
+  min-width:0 !important;
+  min-height:30px !important;
+  padding:5px 0 4px !important;
+  border-top:1px solid #9cb0c6 !important;
+  color:var(--table-blue) !important;
+  font-size:9.2pt !important;
+  line-height:1.2 !important;
+  font-weight:500 !important;
+  overflow-wrap:break-word !important;
+}
+.piece-ladder-comment-content .piece-comment-text{color:var(--table-blue) !important;}
+/* O espaço entre a seção de dados e a legenda continua disponível para conteúdo dinâmico. */
+
+
+/* V53 – paginação, alinhamento das setas e trilhos contínuos */
+@page plan {
+ size:A4 landscape;
+ margin:21mm 5mm 12.5mm 5mm;
+ @top-center{content:element(planhead);width:100%;vertical-align:bottom;margin:0 0 2mm 0;}
+ @top-right{
+   content:counter(page) "/" counter(pages);
+   font:800 11pt Arial,Helvetica,sans-serif;
+   color:#fff;
+   background:transparent;
+   width:14mm;
+   height:15mm;
+   text-align:center;
+   vertical-align:middle;
+   margin:0 1.2mm 2mm 0;
+ }
+ @top-left{content:none;}
+ @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 2.4mm 0;}
+ @bottom-right{content:none;}
+ @bottom-left{content:none;}
+}
+
+/* Blank space where PEÇAS title used to be: no outer top/left borders */
+.matrix-header-empty{
+  background:transparent !important;
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:2px solid var(--navy) !important;
+  border-bottom:2px solid var(--navy) !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  height:48px !important;
+  min-height:48px !important;
+}
+/* cancel earlier upward pull of first piece */
+.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{margin-top:0 !important;}
+
+/* All body table text in the same blue */
+.main-matrix tbody th,
+.main-matrix tbody td,
+.main-matrix tbody .piece-ladder-name,
+.main-matrix tbody .piece-ladder-desc,
+.main-matrix tbody .piece-ladder-qty,
+.main-matrix tbody .stage-entry .stage-name,
+.main-matrix tbody .empty,
+.main-matrix tbody .piece-comment-text{
+  color:var(--table-blue) !important;
+}
+
+/* Clean right edge to avoid double line in Serviços complementares */
+.main-matrix tbody tr > td:last-child,
+.main-matrix tbody tr > th:last-child{border-right:0 !important;}
+.main-matrix thead th.technical-band{border-right:0 !important; border-left:0 !important;}
+.main-matrix thead tr > td.matrix-header-empty{border-right:2px solid var(--navy) !important;}
+
+/* Fine tune cluster-label positions */
+.technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-10px) !important;}
+.technical-band-labels .technical-band-label:nth-child(2),
+.technical-band-labels .technical-band-label:nth-child(3),
+.technical-band-labels .technical-band-label:nth-child(4){transform:translateX(4px) !important;}
+.technical-band-labels .technical-band-label:nth-child(5){transform:translateX(12px) !important;}
+
+/* Left rail rebuilt as continuous boxed ladder */
+.piece-ladder{
+  display:grid !important;
+  grid-template-columns:24px minmax(0,1fr) !important;
+  column-gap:8px !important;
+  row-gap:0 !important;
+}
+.piece-ladder > .piece-letter{
+  box-sizing:border-box !important;
+  border:1px solid var(--navy) !important;
+  border-bottom:0 !important;
+}
+.piece-ladder-code,
+.piece-ladder-comment-marker{
+  box-sizing:border-box !important;
+  border-left:1px solid var(--navy) !important;
+  border-right:1px solid var(--navy) !important;
+  border-top:1px solid var(--navy) !important;
+  border-bottom:0 !important;
+  margin:0 !important;
+}
+.piece-ladder-code--first{border-top:1px solid var(--navy) !important;}
+.piece-ladder-code--last{border-bottom:0 !important;}
+.piece-ladder-comment-marker{
+  border-bottom:1px solid var(--navy) !important;
+  min-height:28px !important;
+}
+.piece-ladder-head{padding:0 0 5px !important;}
+.piece-ladder-component--first,
+.piece-ladder-comment-content{border-top:1px solid #9cb0c6 !important;}
+
+/* Subtle row stripe preserved */
+.main-matrix tbody tr:nth-child(odd)>th,
+.main-matrix tbody tr:nth-child(odd)>td{background:#fff !important;}
+.main-matrix tbody tr:nth-child(even)>th,
+.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe) !important;}
+
+
+/* V54 – paginação dentro do header e máscara do blank cell */
+@page plan {
+ size:A4 landscape;
+ margin:21mm 5mm 12.5mm 5mm;
+ @top-center{content:element(planhead);width:100%;vertical-align:bottom;margin:0 0 2mm 0;}
+ @top-right{content:none;}
+ @top-left{content:none;}
+ @bottom-center{content:element(iconlegend);width:100%;vertical-align:middle;margin:0 0 2.4mm 0;} @bottom-right{content:none;}
+ @bottom-left{content:none;}
+}
+.plan-header .mast{position:relative !important;}
+.v50-os-info{
+  position:relative !important;
+  padding-right:13mm !important;
+}
+.v54-pagecount{
+  position:absolute !important;
+  top:50% !important;
+  right:0 !important;
+  transform:translateY(-50%) !important;
+  color:#fff !important;
+  font-size:10.5pt !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  width:11mm !important;
+  text-align:right !important;
+}
+.matrix-header-empty{position:relative !important;}
+.matrix-header-empty::before{
+  content:'' !important;
+  position:absolute !important;
+  left:-2px !important;
+  top:-2px !important;
+  width:calc(100% + 2px) !important;
+  height:2px !important;
+  background:#fff !important;
+}
+.matrix-header-empty::after{
+  content:'' !important;
+  position:absolute !important;
+  left:-2px !important;
+  top:-2px !important;
+  width:2px !important;
+  height:calc(100% + 2px) !important;
+  background:#fff !important;
+}
+
+
+/* V55 – fontes mínimas 11pt, setas ajustadas e paginação quadrada */
+:root{
+  --body-min:11pt;
+}
+/* minimum font sizes across document */
+body, table, th, td, div, span, p, li { font-size: var(--body-min); }
+.plan-header .v52-os-prefix{font-size:22pt !important;}
+.plan-header .logo svg{height:11.2mm !important;}
+.v50-vehicle{font-size:13.4pt !important;font-weight:800 !important;line-height:1.05 !important;}
+.v50-number{font-size:11pt !important;line-height:1.05 !important;font-weight:800 !important;}
+.v50-delivery{font-size:11pt !important;line-height:1.05 !important;font-weight:800 !important;}
+.delivery-icon{width:12px !important;height:12px !important;}
+
+/* page count box with white divider */
+.v50-os-info{
+  position:relative !important;
+  display:grid !important;
+  grid-template-columns:1fr 15mm !important;
+  align-items:stretch !important;
+  column-gap:0 !important;
+  padding-right:0 !important;
+  min-height:100% !important;
+}
+.v50-os-info > .v50-number,
+.v50-os-info > .v50-delivery{
+  grid-column:1 !important;
+  text-align:right !important;
+  padding-right:3.2mm !important;
+}
+.v50-os-info > .v50-number{align-self:end !important;}
+.v50-os-info > .v50-delivery{align-self:start !important;}
+.v54-pagecount{
+  grid-column:2 !important;
+  grid-row:1 / span 2 !important;
+  position:relative !important;
+  inset:auto !important;
+  transform:none !important;
+  width:15mm !important;
+  min-width:15mm !important;
+  height:15mm !important;
+  align-self:center !important;
+  justify-self:end !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  color:#fff !important;
+  font-size:12pt !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  border-left:1px solid #fff !important;
+  box-sizing:border-box !important;
+  padding:0 !important;
+}
+
+/* cluster header arrows slightly further right */
+.technical-band-art path:nth-of-type(1){transform:translateX(10px) !important; transform-origin:center;}
+.technical-band-art path:nth-of-type(2){transform:translateX(10px) !important; transform-origin:center;}
+.technical-band-art path:nth-of-type(3){transform:translateX(10px) !important; transform-origin:center;}
+.technical-band-art path:nth-of-type(4){transform:translateX(10px) !important; transform-origin:center;}
+.technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-6px) !important;}
+.technical-band-labels .technical-band-label:nth-child(2),
+.technical-band-labels .technical-band-label:nth-child(3),
+.technical-band-labels .technical-band-label:nth-child(4){transform:translateX(8px) !important;}
+.technical-band-labels .technical-band-label:nth-child(5){transform:translateX(18px) !important;}
+.technical-band-label{font-size:11pt !important;line-height:1.02 !important;}
+
+/* no internal horizontal separators between component codes */
+.piece-ladder-code{
+  min-height:24px !important;
+  padding:1px 0 !important;
+  border-top:0 !important;
+  border-bottom:0 !important;
+}
+.piece-ladder-code--first{border-top:1px solid var(--navy) !important;}
+.piece-ladder-code--last{border-bottom:1px solid var(--navy) !important;}
+.piece-ladder-component{
+  min-height:24px !important;
+  padding:1px 0 !important;
+  font-size:11pt !important;
+  gap:6px !important;
+  line-height:1.12 !important;
+}
+.piece-ladder-desc,.piece-ladder-qty,.piece-ladder-name,.piece-comment-text,.stage-entry .stage-name,.empty,
+.footer-legend .legend-text{font-size:11pt !important;}
+.piece-ladder-comment-content{font-size:11pt !important;line-height:1.14 !important;}
+.piece-ladder > .piece-letter,
+.piece-ladder-comment-marker,
+.piece-ladder-code{font-size:11pt !important;}
+.main-matrix tbody tr>th,.main-matrix tbody tr>td{font-size:11pt !important;line-height:1.16 !important;}
+.stage-entry{font-size:11pt !important;line-height:1.14 !important; margin:0 0 6px !important;}
+.main-matrix thead th,.main-matrix thead th .th-centered{font-size:11pt !important;}
+.legend-heading{font-size:11pt !important;}
+
+
+/* V57 – correções definitivas: tipografia mínima 11pt, paginação e ícone ID */
+/* Cabeçalho: quatro colunas independentes, sem encaixar a paginação dentro da info */
+.plan-header .mast {
+  display:grid !important;
+  grid-template-columns:22% minmax(0,1fr) 34mm 15mm !important;
+  align-items:center !important;
+  height:15mm !important;
+  min-height:15mm !important;
+  gap:0 !important;
+  width:100% !important;
+}
+.plan-header .mast > .logo {
+  grid-column:1 !important;
+  min-width:0 !important;
+  padding:0 !important;
+}
+.plan-header .mast > .v50-identidade {
+  grid-column:2 !important;
+  min-width:0 !important;
+  text-align:center !important;
+  padding:0 !important;
+}
+.plan-header .v50-vehicle {
+  font-size:14pt !important;
+  font-weight:800 !important;
+  white-space:nowrap !important;
+}
+.plan-header .mast > .v50-os-info {
+  grid-column:3 !important;
+  position:static !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:3px !important;
+  align-items:flex-end !important;
+  justify-content:center !important;
+  box-sizing:border-box !important;
+  padding:0 3mm 0 0 !important;
+  margin:0 !important;
+  min-width:0 !important;
+  width:100% !important;
+  height:15mm !important;
+  min-height:15mm !important;
+}
+.plan-header .v50-number,
+.plan-header .v50-delivery {
+  font-size:11pt !important;
+  line-height:1.08 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:5px !important;
+  padding:0 !important;
+  margin:0 !important;
+  align-self:auto !important;
+  white-space:nowrap !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+}
+.plan-header .os-id-icon,
+.plan-header .delivery-icon {
+  width:15px !important;
+  height:15px !important;
+  flex:0 0 15px !important;
+  display:block !important;  color:#FFFFFF !important;
+}
+.plan-header .mast > .v57-pagecount {
+  grid-column:4 !important;
+  position:static !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  align-self:stretch !important;
+  justify-self:stretch !important;
+  width:15mm !important;
+  height:15mm !important;
+  min-height:15mm !important;
+  box-sizing:border-box !important;
+  color:#FFFFFF !important;
+  border-left:1px solid #FFFFFF !important;
+  text-align:center !important;
+  font-size:12pt !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  margin:0 !important;
+  padding:0 !important;
+  transform:none !important;
+}
+
+/* Confere o texto realmente renderizado: CSS antigo fazia as etapas ficarem em 10pt */
+.main-matrix .stage-entry,
+.main-matrix .stage-entry .stage-name,
+.main-matrix .stage-entry::marker {
+  font-size:11pt !important;
+  line-height:1.15 !important;
+}
+.main-matrix .stage-entry .stage-name {font-weight:600 !important;}
+.main-matrix tbody .piece-ladder-component,
+.main-matrix tbody .piece-ladder-component span,
+.main-matrix tbody .piece-ladder-comment-content,
+.main-matrix tbody .piece-ladder-comment-content span,
+.main-matrix tbody .piece-ladder-name,
+.main-matrix tbody .piece-ladder-code,
+.main-matrix tbody .piece-letter,
+.main-matrix tbody .empty,
+.footer-legend .legend-text,
+.footer-legend .legend-heading,
+.technical-band-label {
+  font-size:11pt !important;
+}
+/* Uma só coluna contornada por fora: sem linhas horizontais em A/A1/A2/comentário. */
+.main-matrix .piece-ladder > .piece-letter {border-bottom:0 !important;}
+.main-matrix .piece-ladder-code,
+.main-matrix .piece-ladder-code--first,
+.main-matrix .piece-ladder-code--last,
+.main-matrix .piece-ladder-comment-marker {
+  border-top:0 !important;
+  border-bottom:0 !important;
+  border-left:1px solid var(--navy) !important;
+  border-right:1px solid var(--navy) !important;
+}
+.main-matrix .piece-ladder-comment-marker {border-bottom:1px solid var(--navy) !important;}
+
+/* V57: detalhes finais – duas linhas separadoras removidas, textos do cabeçalho técnico >= 11pt */
+.main-matrix .piece-ladder-component--first,
+.main-matrix .piece-ladder-comment-content,
+.main-matrix .piece-ladder-head,
+.main-matrix .piece-ladder-code,
+.main-matrix .piece-ladder-code--first,
+.main-matrix .piece-ladder-code--last {
+  border-top:0 !important;
+}
+.main-matrix .piece-ladder-head {border-bottom:0 !important;}
+.main-matrix .piece-ladder-comment-content {border-bottom:0 !important;}
+.main-matrix .technical-band-label,
+.main-matrix .technical-band-label span {
+  font-size:11pt !important;
+  line-height:1.0 !important;
+  letter-spacing:-.35px !important;
+}
+.main-matrix .technical-band-label:nth-child(5) span {letter-spacing:-.48px !important;}
+
+/* Contrato para dados FunixApp: modelo/ano com 1 ano = YYYY, 2 anos = YY/YY.
+   Placa sem hífen ou espaços: XXX#### ou XXX#X##. */
+
+
+/* FUNIX V58: tipografia padrão 10pt; exceções hierárquicas deliberadas. */
+body .main-matrix,
+body .main-matrix th,
+body .main-matrix td,
+body .main-matrix div,
+body .main-matrix span,
+body .main-matrix li,
+body .main-matrix p,
+body .footer-legend,
+body .footer-legend div,
+body .footer-legend span,
+body .plan-header .v50-number,
+body .plan-header .v50-delivery {
+  font-size:10pt !important;
+}
+/* OS, identificação do veículo e paginação preservam a hierarquia aprovada. */
+body .plan-header .v52-os-prefix {font-size:22pt !important;}
+body .plan-header .v50-vehicle {font-size:14pt !important;}
+body .plan-header .v57-pagecount,
+body .plan-header .v57-pagecount .pagecount-value {font-size:12pt !important;}
+
+/* Marcadores das etapas também em 10 pt, sem herdar regra antiga de 11 pt. */
+body .main-matrix .stage-entry::marker,
+body .main-matrix .stage-list .stage-entry::marker {font-size:10pt !important;}
+
+/* Apenas duas linhas de grupo: entre dados da peça/componentes e componentes/comentário.
+   Nenhuma linha entre A1/A2/A3... */
+body .piece-ladder .piece-ladder-code,
+body .piece-ladder .piece-ladder-code--last{
+  border-top:0 !important;
+  border-bottom:0 !important;
+  border-left:1px solid var(--navy) !important;
+  border-right:1px solid var(--navy) !important;
+}
+body .piece-ladder .piece-ladder-code--first{
+  border-top:1px solid var(--navy) !important;
+}
+body .piece-ladder .piece-ladder-component--first{
+  border-top:1px solid #9cb0c6 !important;
+}
+body .piece-ladder .piece-ladder-comment-marker{
+  border-top:1px solid var(--navy) !important;
+  border-bottom:1px solid var(--navy) !important;
+  border-left:1px solid var(--navy) !important;
+  border-right:1px solid var(--navy) !important;
+}
+body .piece-ladder .piece-ladder-comment-content{
+  border-top:1px solid #9cb0c6 !important;
+}
+
+/* Header vazio superior esquerdo: sem bordas de cima e esquerda.
+   Preservar contorno da matriz nas células de dados. */
+body .main-matrix{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:2px solid var(--navy) !important;
+  border-bottom:2px solid var(--navy) !important;
+}
+body .main-matrix thead .matrix-header-empty{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:2px solid var(--navy) !important;
+  border-bottom:2px solid var(--navy) !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+body .main-matrix thead th.technical-band{
+  border-top:2px solid var(--navy) !important;
+  border-right:0 !important;
+}
+body .main-matrix tbody tr > th:first-child{
+  border-left:2px solid var(--navy) !important;
+}
+
+/* Page count: square with centered text and balanced visual side spaces. */
+body .plan-header .mast > .v57-pagecount{
+  width:15mm !important;
+  height:15mm !important;
+  min-width:15mm !important;
+  min-height:15mm !important;
+  padding:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  box-sizing:border-box !important;
+  border-left:1px solid #FFFFFF !important;
+}
+body .plan-header .v57-pagecount .pagecount-value{
+  display:block !important;
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1 !important;
+  text-align:center !important;
+  transform:translateX(0.7mm) !important;
+}
+
+/* V59 — apenas a linha vertical branca entre o bloco OS/entrega e paginação */
+body .plan-header .mast > .v57-pagecount{
+  border-left:2pt solid #FFFFFF !important;
+}
+
+
+/* V60 — nomes das peças em 12 pt, ícone de observação simplificado */
+.main-matrix tbody .piece-ladder-name {
+  font-size:12pt !important;
+  line-height:1.14 !important;
+  font-weight:800 !important;
+  color:#0A1F44 !important;
+  overflow-wrap:break-word !important;
+}
+.piece-ladder-comment-marker svg {
+  display:block !important;
+  width:14px !important;
+  height:14px !important;
+  color:#0A1F44 !important;
+}
+
+/* FUNIX V61 — ajustes finos aprovados da V60. */
+/* Centralização óptica da fração 1/1 no quadrado de 15 mm. */
+body .plan-header .v57-pagecount .pagecount-value{
+  transform:translateX(1.4mm) !important;
+  text-align:center !important;
+  font-size:12pt !important;
+}
+/* Respiro entre ID / entrega e a divisória branca da paginação. */
+body .plan-header .mast > .v50-os-info{
+  padding-right:5mm !important;
+}
+/* Preservar divisor vertical branco de 2pt. */
+body .plan-header .mast > .v57-pagecount{
+  border-left:2pt solid #FFFFFF !important;
+}
+/* Todo conteúdo do cabeçalho em branco puro. */
+body .plan-header,
+body .plan-header .mast,
+body .plan-header .mast > div,
+body .plan-header .mast span,
+body .plan-header .mast .v50-number,
+body .plan-header .mast .v50-delivery,
+body .plan-header .mast .v50-vehicle,
+body .plan-header .mast .v57-pagecount,
+body .plan-header .mast .v52-os-prefix{
+  color:#FFFFFF !important;
+}
+body .plan-header .os-id-icon,
+body .plan-header .delivery-icon{
+  color:#FFFFFF !important;
+  stroke:#FFFFFF !important;
+}
+body .plan-header .os-id-icon path,
+body .plan-header .delivery-icon rect,
+body .plan-header .delivery-icon path{
+  stroke:#FFFFFF !important;
+}
+body .plan-header .logo svg path{
+  fill:#FFFFFF !important;
+}
+/* Afastar "Serviços complementares" da margem direita. */
+body .main-matrix .technical-band-labels .technical-band-label:nth-child(5){
+  transform:translateX(6px) !important;
+}
+/* Rótulo da legenda com peso de negrito explícito. */
+body .footer-legend .legend-heading{
+  font-weight:900 !important;
+  color:#0A1F44 !important;
+}
+
+
+/* V62 — linhas alternadas com exatamente o mesmo fundo da legenda. */
+:root { --stripe: #D5DBE4 !important; }
+.main-matrix tbody tr:nth-child(even) > th,
+.main-matrix tbody tr:nth-child(even) > td {
+  background-color: #D5DBE4 !important;
+}
+.footer-legend { background-color: #D5DBE4 !important; }
+
+/* V63 – normalização final da altura, sem tocar nas proporções horizontais */
+.main-matrix tbody tr{height:auto !important;}
+.main-matrix tbody tr>th,
+.main-matrix tbody tr>td {vertical-align:top !important;}
+.main-matrix tbody th.piece-block-cell {padding:7px 8px !important;}
+.main-matrix tbody tr > td {padding:7px 6px !important;}
+</style></head><body><div class="footer-legend" style="font-size:10pt !important;"><span class="legend-heading" style="font-size:10pt !important;">Legenda:</span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Requer componentes</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
+</svg><span class="legend-text" style="font-size:10pt !important;">Requer componentes</span></span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Preparação técnica" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Preparação técnica — chave de montagem</title>
+<path d="M22.0 18.8 L14.0 10.8 C14.9 8.2 14.4 5.6 12.3 3.5 C10.3 1.5 7.6 0.9 5.0 1.9 L9.2 6.1 L6.1 9.2 L1.9 5.0 C0.9 7.6 1.5 10.4 3.5 12.3 C5.6 14.4 8.2 14.9 10.8 14.0 L18.8 22.0 Q20.0 23.2 21.2 22.0 L22.0 21.2 Q23.2 20.0 22.0 18.8 Z" fill="currentColor"></path>
+</svg><span class="legend-text" style="font-size:10pt !important;">Preparação técnica</span></span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Correção estrutural" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Correção estrutural</title>
+<g fill="currentColor" transform="rotate(-34 12 12)">
+<path d="M2.6 3.5c0-.6.5-1.1 1.1-1.1h16.6c.6 0 1.1.5 1.1 1.1v4.7c0 .6-.5 1.1-1.1 1.1H3.7c-.6 0-1.1-.5-1.1-1.1z"></path>
+<path d="M10 8.6h4v12.9a1.35 1.35 0 0 1-1.35 1.35h-1.3A1.35 1.35 0 0 1 10 21.5z"></path>
+</g></svg><span class="legend-text" style="font-size:10pt !important;">Correção estrutural</span></span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Pintura e acabamento" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Pintura e acabamento</title><g fill="currentColor"><path d="M 11.643,2.022 L 11.123,2.152 L 3.290,11.285 L 2.055,12.812 L 1.600,14.015 L 1.697,15.185 L 2.315,16.225 L 8.165,21.360 L 8.945,21.847 L 9.433,21.977 L 10.342,21.880 L 11.188,21.263 L 18.305,11.967 L 21.295,11.317 L 21.620,11.090 L 21.555,10.797 Z"></path><path d="M 19.833,13.787 L 17.785,16.712 L 17.460,17.362 L 17.200,18.435 L 17.330,19.410 L 17.752,20.320 L 18.532,21.068 L 19.508,21.425 L 20.417,21.360 L 21.328,20.873 L 22.108,19.833 L 22.400,18.695 L 22.270,17.590 L 21.782,16.485 Z"></path></g></svg><span class="legend-text" style="font-size:10pt !important;">Pintura e acabamento</span></span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Estética e revitalização" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Estética e revitalização</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M12 2l2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z"></path></g>
+</svg><span class="legend-text" style="font-size:10pt !important;">Estética e revitalização</span></span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Serviços complementares" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Serviços complementares — engrenagem sólida</title>
+<path d="M 8.824 4.332 L 9.782 4.002 L 9.995 1.184 L 14.005 1.184 L 14.218 4.002 L 15.176 4.332 L 15.176 4.332 L 16.087 4.776 L 18.230 2.935 L 21.065 5.770 L 19.224 7.913 L 19.668 8.824 L 19.668 8.824 L 19.998 9.782 L 22.816 9.995 L 22.816 14.005 L 19.998 14.218 L 19.668 15.176 L 19.668 15.176 L 19.224 16.087 L 21.065 18.230 L 18.230 21.065 L 16.087 19.224 L 15.176 19.668 L 15.176 19.668 L 14.218 19.998 L 14.005 22.816 L 9.995 22.816 L 9.782 19.998 L 8.824 19.668 L 8.824 19.668 L 7.913 19.224 L 5.770 21.065 L 2.935 18.230 L 4.776 16.087 L 4.332 15.176 L 4.332 15.176 L 4.002 14.218 L 1.184 14.005 L 1.184 9.995 L 4.002 9.782 L 4.332 8.824 L 4.332 8.824 L 4.776 7.913 L 2.935 5.770 L 5.770 2.935 L 7.913 4.776 L 8.824 4.332 Z" fill="currentColor"></path>
+</svg><span class="legend-text" style="font-size:10pt !important;">Serviços complementares</span></span></div><div class="running-header plan-header"><header class="mast mast-refined"><div class="logo"><span aria-label="Ordem de Serviço" class="v52-os-prefix">OS</span><svg aria-label="FUNIX" preserveaspectratio="xMinYMid meet" role="img" viewbox="0 0 101.5 19.2" xmlns="http://www.w3.org/2000/svg"><path d="M55.883,7.155 C55.954,9.914 56.039,12.673 55.954,15.432 C55.741,16.918 53.318,17.236 52.801,15.645 C52.683,12.843 52.659,10.037 52.730,7.226 C53.084,5.747 55.139,5.280 55.883,7.155 Z" fill="#ffffff" fill-rule="evenodd"></path><path d="M39.303,6.058 C41.514,6.002 43.710,6.014 45.892,6.094 C46.538,6.168 47.143,6.365 47.708,6.684 C48.274,7.004 48.755,7.420 49.152,7.933 C49.681,8.570 50.023,9.301 50.179,10.126 C50.226,11.966 50.226,13.805 50.179,15.645 C49.541,17.038 47.657,17.081 47.061,15.645 C47.047,14.017 47.012,12.390 46.955,10.763 C46.858,10.391 46.669,10.073 46.387,9.811 C46.105,9.549 45.775,9.383 45.396,9.313 C43.460,9.270 41.523,9.270 39.586,9.313 C38.807,9.490 38.346,10.112 38.098,10.834 C38.113,12.371 38.101,13.904 38.063,15.432 C37.567,17.130 35.555,17.060 34.945,15.645 C34.898,13.805 34.898,11.966 34.945,10.126 C35.392,8.068 37.092,6.200 39.303,6.058 Z" fill="#ffffff" fill-rule="nonzero"></path><path d="M73.454,7.261 C73.702,7.099 73.974,7.019 74.269,7.019 C74.565,7.019 74.837,7.099 75.084,7.261 C76.657,8.803 78.192,10.372 79.690,11.966 C80.481,11.234 81.237,10.468 81.957,9.666 C82.264,9.420 82.614,9.290 83.008,9.277 C83.402,9.264 83.760,9.370 84.083,9.596 C84.732,10.326 85.417,11.022 86.137,11.683 L101.300,11.683 L101.300,14.088 C95.986,14.102 90.672,14.091 85.358,14.053 C85.155,13.986 84.966,13.892 84.791,13.770 C84.238,13.194 83.683,12.640 83.126,12.107 C82.240,12.897 81.402,13.734 80.611,14.619 C80.326,14.783 80.019,14.865 79.690,14.865 C79.361,14.865 79.054,14.783 78.769,14.619 C77.295,13.077 75.795,11.555 74.269,10.056 C73.183,11.152 72.085,12.237 70.975,13.310 L69.203,11.612 C73.454,7.261 72.059,8.726 73.454,7.261 Z" fill="#ffffff" fill-rule="nonzero"></path><path d="M14.717,0.186 C11.495,0.130 8.283,0.142 5.081,0.222 C2.636,0.575 0.192,2.981 0.192,5.549 C0.168,9.992 0.121,14.430 0.050,18.864 C0.333,18.602 3.486,15.836 3.770,15.574 L3.841,11.541 C4.074,10.989 4.528,10.501 5.151,10.445 L13.158,10.374 C13.711,10.360 14.114,9.886 14.327,9.419 C14.384,8.966 14.377,8.523 14.306,8.089 C14.248,7.823 14.122,7.595 13.926,7.405 C13.729,7.216 13.497,7.097 13.229,7.049 C10.706,7.044 8.184,7.016 5.662,6.964 C3.026,6.837 3.904,4.042 6.002,3.971 C8.883,3.985 11.764,3.974 14.646,3.936 C14.903,3.890 15.130,3.781 15.327,3.610 C15.524,3.439 15.663,3.229 15.744,2.981 C15.782,2.462 15.794,1.943 15.780,1.424 C15.726,1.138 15.605,0.884 15.415,0.663 C15.225,0.442 14.992,0.283 14.717,0.186 M29.135,7.226 C29.582,5.867 31.297,5.422 32.324,7.084 C32.371,8.853 32.371,10.622 32.324,12.390 C32.230,12.934 32.054,13.449 31.795,13.936 C31.536,14.423 31.207,14.858 30.809,15.240 C30.410,15.621 29.962,15.932 29.464,16.170 C28.966,16.409 28.443,16.564 27.896,16.635 C25.685,16.720 23.465,16.732 21.235,16.670 C18.996,16.317 17.175,14.407 16.878,12.178 C16.831,10.527 16.831,8.876 16.878,7.226 C17.402,5.832 19.294,5.556 19.995,6.943 C20.090,8.660 20.137,10.381 20.137,12.107 C20.350,12.777 20.787,13.225 21.448,13.451 C23.526,13.546 25.605,13.546 27.683,13.451 C28.354,13.220 28.815,12.771 29.065,12.107 L29.135,7.226 M68.778,5.988 C69.841,5.945 70.904,5.945 71.967,5.988 C72.207,5.988 72.420,6.058 72.604,6.200 C70.868,7.850 69.168,9.537 67.503,11.258 C69.383,13.032 71.272,14.789 73.171,16.529 C72.952,16.654 72.715,16.713 72.463,16.706 C71.367,16.729 70.280,16.706 69.203,16.635 C68.788,16.578 68.410,16.425 68.070,16.175 L65.271,13.381 C64.315,14.314 63.382,15.269 62.472,16.246 C62.164,16.441 61.834,16.582 61.480,16.670 C60.384,16.732 59.298,16.720 58.221,16.635 C58.032,16.663 57.867,16.616 57.725,16.494 C59.539,14.796 61.310,13.051 63.039,11.258 C61.338,9.537 59.591,7.862 57.796,6.235 C58.046,6.122 58.306,6.040 58.575,5.988 C59.473,5.940 60.370,5.940 61.268,5.988 C61.787,6.058 62.260,6.247 62.685,6.554 C63.526,7.403 64.376,8.240 65.235,9.065 C66.073,8.122 66.947,7.215 67.857,6.341 C68.140,6.162 68.447,6.044 68.778,5.988 Z" fill="#ffffff" fill-rule="nonzero"></path><path d="M65.235,14.796 C65.661,15.248 66.617,16.281 67.042,16.706 C65.802,16.800 64.562,16.800 63.322,16.706 C63.677,16.352 64.853,15.213 65.235,14.796 Z" fill="#ffffff" fill-rule="nonzero"></path><path d="M54.395,0.257 C54.672,0.257 54.939,0.310 55.195,0.416 C55.451,0.522 55.677,0.673 55.873,0.868 C56.069,1.064 56.220,1.290 56.326,1.545 C56.432,1.801 56.485,2.067 56.485,2.344 C56.485,2.621 56.432,2.887 56.326,3.143 C56.220,3.399 56.069,3.624 55.873,3.820 C55.677,4.016 55.451,4.166 55.195,4.272 C54.939,4.378 54.672,4.431 54.395,4.431 C54.118,4.431 53.851,4.378 53.595,4.272 C53.339,4.166 53.113,4.016 52.917,3.820 C52.721,3.624 52.570,3.399 52.464,3.143 C52.358,2.887 52.305,2.621 52.305,2.344 C52.305,2.067 52.358,1.801 52.464,1.545 C52.570,1.290 52.721,1.064 52.917,0.868 C53.113,0.673 53.339,0.522 53.595,0.416 C53.851,0.310 54.118,0.257 54.395,0.257 Z" fill="#ffffff" fill-rule="nonzero"></path></svg></div><div class="v50-identidade"><!-- Exibição do cabeçalho: ano duplo YYYY/YYYY → YY/YY; ano único YYYY → YYYY. Placa sem hífen nem espaços (ABC1234 ou ABC1D23). Normalizar dados antes de preencher o HTML/PDF. --><div class="v50-vehicle" data-ano-origem="2021/2022" data-ano-original="2021/2022" data-modelo-original="Honda City EXL" data-placa-origem="FXN-2A26" data-placa-original="FXN-2A26">Honda City EXL 21/22 (FXN2A26)</div></div><div class="v50-os-info"><div class="v50-number" style="font-size:10pt !important;"><svg aria-hidden="true" class="os-id-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 2.5h8.5L20 8v12.5c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-17c0-.6.4-1 1-1Z" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M14.5 2.5V8H20M8 12h8M8 16h6" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>OS-000142</div><div aria-label="Data de entrega: 25/11/2026" class="v50-delivery" style="font-size:10pt !important;"><svg aria-label="Data de entrega" class="delivery-icon" fill="none" role="img" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="#FFFFFF" width="18" x="3" y="5"></rect><path d="M7 3v4M17 3v4M3 10h18" stroke="#FFFFFF"></path><path d="m8 15 2.5 2.5L16 12" stroke="#FFFFFF"></path></svg><span style="font-size:10pt !important;">25/11/2026</span></div></div><div aria-label="Página 1 de 1" class="v57-pagecount"><span class="pagecount-value">1/1</span></div></header></div><main aria-label="Plano de Serviços" class="plan-page"><section class="execution"><table class="main-matrix" style="font-size:10pt !important;"><colgroup><col class="piece-col" style="width:31%;"/><col class="cluster-col" style="width:13.8%;"/><col class="cluster-col" style="width:13.8%;"/><col class="cluster-col" style="width:13.8%;"/><col class="cluster-col" style="width:13.8%;"/><col class="cluster-col" style="width:13.8%;"/></colgroup><thead><tr><td aria-hidden="true" class="matrix-header-empty" scope="col" style="font-size:10pt !important;"></td><th aria-label="Preparação técnica, Correção estrutural, Pintura e acabamento, Estética e revitalização, Serviços complementares" class="technical-band" colspan="5" scope="colgroup" style="font-size:10pt !important;"><svg aria-hidden="true" class="technical-band-art" preserveaspectratio="none" viewbox="0 0 1000 44" xmlns="http://www.w3.org/2000/svg"><rect fill="#345A85" height="44" width="1000" x="0" y="0"></rect><path d="M180 0 H204 L228 22 L204 44 H180 L206 22 Z" data-centered-boundary="204" fill="#FFFFFF"></path><path d="M380 0 H404 L428 22 L404 44 H380 L406 22 Z" data-centered-boundary="404" fill="#FFFFFF"></path><path d="M580 0 H604 L628 22 L604 44 H580 L606 22 Z" data-centered-boundary="604" fill="#FFFFFF"></path><path d="M780 0 H804 L828 22 L804 44 H780 L806 22 Z" data-centered-boundary="804" fill="#FFFFFF"></path></svg><div class="technical-band-labels" style="font-size:10pt !important;"><span aria-label="Preparação técnica" class="technical-band-label" style="font-size:10pt !important;"><span style="font-size:10pt !important;">PREPARAÇÃO</span><span style="font-size:10pt !important;">TÉCNICA</span></span><span aria-label="Correção estrutural" class="technical-band-label" style="font-size:10pt !important;"><span style="font-size:10pt !important;">CORREÇÃO</span><span style="font-size:10pt !important;">ESTRUTURAL</span></span><span aria-label="Pintura e acabamento" class="technical-band-label" style="font-size:10pt !important;"><span style="font-size:10pt !important;">PINTURA E</span><span style="font-size:10pt !important;">ACABAMENTO</span></span><span aria-label="Estética e revitalização" class="technical-band-label" style="font-size:10pt !important;"><span style="font-size:10pt !important;">ESTÉTICA E</span><span style="font-size:10pt !important;">REVITALIZAÇÃO</span></span><span aria-label="Serviços complementares" class="technical-band-label" style="font-size:10pt !important;"><span style="font-size:10pt !important;">SERVIÇOS</span><span style="font-size:10pt !important;">COMPLEMENTARES</span></span></div></th></tr></thead><tbody><tr data-peca="P01" data-piece-ref="A"><th class="piece-block-cell" scope="row" style="font-size:10pt !important;"><div class="piece-ladder" style="font-size:10pt !important;"><span class="piece-letter" style="font-size:10pt !important;">A</span><div class="piece-ladder-head" style="font-size:10pt !important;"><div class="piece-ladder-name" style="font-size:12pt !important;">Para-choque dianteiro</div><div class="piece-ladder-icons" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Requer componentes</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
+</svg><svg aria-label="Preparação técnica" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Preparação técnica — chave de montagem</title>
+<path d="M22.0 18.8 L14.0 10.8 C14.9 8.2 14.4 5.6 12.3 3.5 C10.3 1.5 7.6 0.9 5.0 1.9 L9.2 6.1 L6.1 9.2 L1.9 5.0 C0.9 7.6 1.5 10.4 3.5 12.3 C5.6 14.4 8.2 14.9 10.8 14.0 L18.8 22.0 Q20.0 23.2 21.2 22.0 L22.0 21.2 Q23.2 20.0 22.0 18.8 Z" fill="currentColor"></path>
+</svg><svg aria-label="Correção estrutural" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Correção estrutural</title>
+<g fill="currentColor" transform="rotate(-34 12 12)">
+<path d="M2.6 3.5c0-.6.5-1.1 1.1-1.1h16.6c.6 0 1.1.5 1.1 1.1v4.7c0 .6-.5 1.1-1.1 1.1H3.7c-.6 0-1.1-.5-1.1-1.1z"></path>
+<path d="M10 8.6h4v12.9a1.35 1.35 0 0 1-1.35 1.35h-1.3A1.35 1.35 0 0 1 10 21.5z"></path>
+</g></svg><svg aria-label="Pintura e acabamento" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Pintura e acabamento</title><g fill="currentColor"><path d="M 11.643,2.022 L 11.123,2.152 L 3.290,11.285 L 2.055,12.812 L 1.600,14.015 L 1.697,15.185 L 2.315,16.225 L 8.165,21.360 L 8.945,21.847 L 9.433,21.977 L 10.342,21.880 L 11.188,21.263 L 18.305,11.967 L 21.295,11.317 L 21.620,11.090 L 21.555,10.797 Z"></path><path d="M 19.833,13.787 L 17.785,16.712 L 17.460,17.362 L 17.200,18.435 L 17.330,19.410 L 17.752,20.320 L 18.532,21.068 L 19.508,21.425 L 20.417,21.360 L 21.328,20.873 L 22.108,19.833 L 22.400,18.695 L 22.270,17.590 L 21.782,16.485 Z"></path></g></svg></div></div><div class="piece-ladder-code piece-ladder-code--first" style="font-size:10pt !important;">A1</div><div class="piece-ladder-component piece-ladder-component--first" data-component-ref="A1" style="font-size:10pt !important;"><span class="piece-ladder-desc" style="font-size:10pt !important;">Presilhas de fixação do para-choque</span><span class="piece-ladder-qty" style="font-size:10pt !important;">6 un.</span></div><div class="piece-ladder-code piece-ladder-code--last" style="font-size:10pt !important;">A2</div><div class="piece-ladder-component" data-component-ref="A2" style="font-size:10pt !important;"><span class="piece-ladder-desc" style="font-size:10pt !important;">Suporte lateral direito do para-choque</span><span class="piece-ladder-qty" style="font-size:10pt !important;">1 un.</span></div><div aria-label="Observação da peça" class="piece-ladder-comment-marker" style="font-size:10pt !important;"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"></path></g></svg></div><div class="piece-ladder-comment-content" data-piece-ref="A" style="font-size:10pt !important;"><span class="piece-comment-text" style="font-size:10pt !important;">Conferir fixações e extensão do dano após a desmontagem.</span></div></div></th><td data-cluster="Preparação técnica" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S01"><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E01" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Desmonta­gem</span></li></ul><ul class="service-group stage-list" data-service="S02"><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E04" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Preparação</span></li><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E05" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Colorimetria</span></li><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E06" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Mascaramento</span></li></ul></td><td data-cluster="Correção estrutural" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S01"><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E02" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Solda plastica</span></li><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E03" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Reparo</span></li></ul></td><td data-cluster="Pintura e acabamento" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S02"><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E07" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Pintura</span></li><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E08" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Acabamento</span></li></ul></td><td data-cluster="Estética e revitalização" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Serviços complementares" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td></tr><tr data-peca="P02" data-piece-ref="B"><th class="piece-block-cell" scope="row" style="font-size:10pt !important;"><div class="piece-ladder" style="font-size:10pt !important;"><span class="piece-letter" style="font-size:10pt !important;">B</span><div class="piece-ladder-head" style="font-size:10pt !important;"><div class="piece-ladder-name" style="font-size:12pt !important;">Para-lama dianteiro direito</div><div class="piece-ladder-icons" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Requer componentes</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
+</svg><svg aria-label="Preparação técnica" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Preparação técnica — chave de montagem</title>
+<path d="M22.0 18.8 L14.0 10.8 C14.9 8.2 14.4 5.6 12.3 3.5 C10.3 1.5 7.6 0.9 5.0 1.9 L9.2 6.1 L6.1 9.2 L1.9 5.0 C0.9 7.6 1.5 10.4 3.5 12.3 C5.6 14.4 8.2 14.9 10.8 14.0 L18.8 22.0 Q20.0 23.2 21.2 22.0 L22.0 21.2 Q23.2 20.0 22.0 18.8 Z" fill="currentColor"></path>
+</svg><svg aria-label="Correção estrutural" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Correção estrutural</title>
+<g fill="currentColor" transform="rotate(-34 12 12)">
+<path d="M2.6 3.5c0-.6.5-1.1 1.1-1.1h16.6c.6 0 1.1.5 1.1 1.1v4.7c0 .6-.5 1.1-1.1 1.1H3.7c-.6 0-1.1-.5-1.1-1.1z"></path>
+<path d="M10 8.6h4v12.9a1.35 1.35 0 0 1-1.35 1.35h-1.3A1.35 1.35 0 0 1 10 21.5z"></path>
+</g></svg><svg aria-label="Pintura e acabamento" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Pintura e acabamento</title><g fill="currentColor"><path d="M 11.643,2.022 L 11.123,2.152 L 3.290,11.285 L 2.055,12.812 L 1.600,14.015 L 1.697,15.185 L 2.315,16.225 L 8.165,21.360 L 8.945,21.847 L 9.433,21.977 L 10.342,21.880 L 11.188,21.263 L 18.305,11.967 L 21.295,11.317 L 21.620,11.090 L 21.555,10.797 Z"></path><path d="M 19.833,13.787 L 17.785,16.712 L 17.460,17.362 L 17.200,18.435 L 17.330,19.410 L 17.752,20.320 L 18.532,21.068 L 19.508,21.425 L 20.417,21.360 L 21.328,20.873 L 22.108,19.833 L 22.400,18.695 L 22.270,17.590 L 21.782,16.485 Z"></path></g></svg></div></div><div class="piece-ladder-code piece-ladder-code--first piece-ladder-code--last" style="font-size:10pt !important;">B1</div><div class="piece-ladder-component piece-ladder-component--first" data-component-ref="B1" style="font-size:10pt !important;"><span class="piece-ladder-desc" style="font-size:10pt !important;">Grampos do protetor da caixa de roda</span><span class="piece-ladder-qty" style="font-size:10pt !important;">3 un.</span></div><div aria-label="Observação da peça" class="piece-ladder-comment-marker" style="font-size:10pt !important;"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"></path></g></svg></div><div class="piece-ladder-comment-content" data-piece-ref="B" style="font-size:10pt !important;"><span class="piece-comment-text" style="font-size:10pt !important;">Confirmar folgas com a porta e com o conjunto do farol.</span></div></div></th><td data-cluster="Preparação técnica" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S03"><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E09" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Desmonta­gem</span></li></ul><ul class="service-group stage-list" data-service="S04"><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E12" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Preparação</span></li><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E13" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Mascaramento</span></li></ul></td><td data-cluster="Correção estrutural" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S03"><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E10" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Funilaria</span></li><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E11" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Alinhamento</span></li></ul></td><td data-cluster="Pintura e acabamento" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S04"><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E14" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Pintura</span></li><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E15" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Acabamento</span></li></ul></td><td data-cluster="Estética e revitalização" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Serviços complementares" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td></tr><tr data-peca="P03" data-piece-ref="C"><th class="piece-block-cell" scope="row" style="font-size:10pt !important;"><div class="piece-ladder" style="font-size:10pt !important;"><span class="piece-letter" style="font-size:10pt !important;">C</span><div class="piece-ladder-head" style="font-size:10pt !important;"><div class="piece-ladder-name" style="font-size:12pt !important;">Porta dianteira direita</div><div class="piece-ladder-icons" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Requer componentes</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
+</svg><svg aria-label="Preparação técnica" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Preparação técnica — chave de montagem</title>
+<path d="M22.0 18.8 L14.0 10.8 C14.9 8.2 14.4 5.6 12.3 3.5 C10.3 1.5 7.6 0.9 5.0 1.9 L9.2 6.1 L6.1 9.2 L1.9 5.0 C0.9 7.6 1.5 10.4 3.5 12.3 C5.6 14.4 8.2 14.9 10.8 14.0 L18.8 22.0 Q20.0 23.2 21.2 22.0 L22.0 21.2 Q23.2 20.0 22.0 18.8 Z" fill="currentColor"></path>
+</svg><svg aria-label="Correção estrutural" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Correção estrutural</title>
+<g fill="currentColor" transform="rotate(-34 12 12)">
+<path d="M2.6 3.5c0-.6.5-1.1 1.1-1.1h16.6c.6 0 1.1.5 1.1 1.1v4.7c0 .6-.5 1.1-1.1 1.1H3.7c-.6 0-1.1-.5-1.1-1.1z"></path>
+<path d="M10 8.6h4v12.9a1.35 1.35 0 0 1-1.35 1.35h-1.3A1.35 1.35 0 0 1 10 21.5z"></path>
+</g></svg><svg aria-label="Pintura e acabamento" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Pintura e acabamento</title><g fill="currentColor"><path d="M 11.643,2.022 L 11.123,2.152 L 3.290,11.285 L 2.055,12.812 L 1.600,14.015 L 1.697,15.185 L 2.315,16.225 L 8.165,21.360 L 8.945,21.847 L 9.433,21.977 L 10.342,21.880 L 11.188,21.263 L 18.305,11.967 L 21.295,11.317 L 21.620,11.090 L 21.555,10.797 Z"></path><path d="M 19.833,13.787 L 17.785,16.712 L 17.460,17.362 L 17.200,18.435 L 17.330,19.410 L 17.752,20.320 L 18.532,21.068 L 19.508,21.425 L 20.417,21.360 L 21.328,20.873 L 22.108,19.833 L 22.400,18.695 L 22.270,17.590 L 21.782,16.485 Z"></path></g></svg></div></div><div class="piece-ladder-code piece-ladder-code--first piece-ladder-code--last" style="font-size:10pt !important;">C1</div><div class="piece-ladder-component piece-ladder-component--first" data-component-ref="C1" style="font-size:10pt !important;"><span class="piece-ladder-desc" style="font-size:10pt !important;">Presilhas de acabamento da porta</span><span class="piece-ladder-qty" style="font-size:10pt !important;">4 un.</span></div><div aria-label="Observação da peça" class="piece-ladder-comment-marker" style="font-size:10pt !important;"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"></path></g></svg></div><div class="piece-ladder-comment-content" data-piece-ref="C" style="font-size:10pt !important;"><span class="piece-comment-text" style="font-size:10pt !important;">Preservar componentes internos não afetados; verificar vedação.</span></div></div></th><td data-cluster="Preparação técnica" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S06"><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E18" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Preparação</span></li><li class="stage-entry" data-categoria="Preparação técnica" data-etapa="E19" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Colorimetria</span></li></ul></td><td data-cluster="Correção estrutural" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S05"><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E16" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Funilaria</span></li><li class="stage-entry" data-categoria="Correção estrutural" data-etapa="E17" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Alinhamento</span></li></ul></td><td data-cluster="Pintura e acabamento" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S06"><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E20" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Pintura</span></li><li class="stage-entry" data-categoria="Pintura e acabamento" data-etapa="E21" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Acabamento</span></li></ul></td><td data-cluster="Estética e revitalização" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Serviços complementares" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td></tr><tr data-peca="P04" data-piece-ref="D"><th class="piece-block-cell" scope="row" style="font-size:10pt !important;"><div class="piece-ladder" style="font-size:10pt !important;"><span class="piece-letter" style="font-size:10pt !important;">D</span><div class="piece-ladder-head" style="font-size:10pt !important;"><div class="piece-ladder-name" style="font-size:12pt !important;">Farol dianteiro esquerdo</div><div class="piece-ladder-icons" style="font-size:10pt !important;"><svg aria-label="Estética e revitalização" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<title>Estética e revitalização</title>
+<g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M12 2l2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z"></path></g>
+</svg></div></div><div aria-label="Observação da peça" class="piece-ladder-comment-marker" style="font-size:10pt !important;"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"></path></g></svg></div><div class="piece-ladder-comment-content" data-piece-ref="D" style="font-size:10pt !important;"><span class="piece-comment-text" style="font-size:10pt !important;">Interromper o procedimento se houver dano interno ou comprometimento funcional.</span></div></div></th><td data-cluster="Preparação técnica" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Correção estrutural" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Pintura e acabamento" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td><td data-cluster="Estética e revitalização" style="font-size:10pt !important;"><ul class="service-group stage-list" data-service="S07"><li class="stage-entry" data-categoria="Estética e revitalização" data-etapa="E22" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Desconta­minação</span></li><li class="stage-entry" data-categoria="Estética e revitalização" data-etapa="E23" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Corte</span></li><li class="stage-entry" data-categoria="Estética e revitalização" data-etapa="E24" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Refino</span></li><li class="stage-entry" data-categoria="Estética e revitalização" data-etapa="E25" style="font-size:10pt !important;"><span class="stage-name" style="font-size:10pt !important;">Lustre</span></li></ul></td><td data-cluster="Serviços complementares" style="font-size:10pt !important;"><span class="empty" style="font-size:10pt !important;">—</span></td></tr></tbody></table></section></main><script>
+(function () {
+  function fmtAno(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    const both = s.match(/^(\d{4})\s*\/\s*(\d{4})$/);
+    if (both) return both[1].slice(-2) + '/' + both[2].slice(-2);
+    if (/^\d{4}$/.test(s) || /^\d{2}\/\d{2}$/.test(s)) return s;
+    return s;
+  }
+  function fmtPlaca(raw) {
+    return String(raw == null ? '' : raw).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+  function atualizarVeiculo() {
+    const el = document.querySelector('.plan-header .v50-vehicle');
+    if (!el) return;
+    const modelo = el.getAttribute('data-modelo-original');
+    const ano = el.getAttribute('data-ano-original');
+    const placa = el.getAttribute('data-placa-original');
+    if (modelo != null && ano != null && placa != null) {
+      el.textContent = modelo + ' ' + fmtAno(ano) + ' (' + fmtPlaca(placa) + ')';
+    }
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', atualizarVeiculo);
+  else atualizarVeiculo();
+})();
+</script></body></html>
