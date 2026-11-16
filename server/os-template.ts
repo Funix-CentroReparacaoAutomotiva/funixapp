@@ -70,7 +70,8 @@ function rows(order:WorkOrder):string{
    if(item.quantity!=='1')notes.push(item.name+': quantidade '+item.quantity)
    if(!item.stages.length)notes.push('Serviço sem etapas cadastradas: '+item.name)
    for(const stage of item.stages){
-    const label=stage.name+(stage.dimension?' ('+stage.dimension+')':'')
+    // A dimensão permanece no escopo congelado; a matriz mostra apenas o nome da etapa.
+    const label=stage.name
     if(stage.cluster&&grouped.has(stage.cluster))grouped.get(stage.cluster)!.push(label)
     else notes.push('Etapa sem categoria ('+item.name+'): '+label)
    }
@@ -123,9 +124,14 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
    'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
    '</style></head><body>'+body+'</body></html>'
- const marginStyle='body{margin:0!important;background:#fff!important}'+
+ // Chrome's separate header/footer contexts otherwise bleed to the physical A4 edges.
+ // Align both to the approved V63 reference: x=5 mm, header y≈4 mm, footer y≈198 mm.
+ const marginStyle='body{margin:0!important;background:transparent!important;padding:0 5mm!important;box-sizing:border-box!important}'+
    '.running-header,.footer-legend{position:static!important;width:100%!important;}'
- const wrap=(body:string)=>'<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
+ const wrap=(body:string,kind:'header'|'footer')=>
+   '<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
+   (kind==='header'?'.running-header{transform:translateY(-1.3mm)!important;}':
+     '.footer-legend{transform:translateY(2mm)!important;}')+
    '</style></head><body>'+body+'</body></html>'
- return{content,headerTemplate:wrap(headerHtml),footerTemplate:wrap(footer)}
+ return{content,headerTemplate:wrap(headerHtml,'header'),footerTemplate:wrap(footer,'footer')}
 }

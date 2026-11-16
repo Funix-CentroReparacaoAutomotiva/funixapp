@@ -44,6 +44,30 @@ test('template V63 uses frozen OS data, escapes HTML and does not invent deliver
  assert(!result.content.includes('Prazo de entrega confirmado'))
 })
 
+test('etapas da matriz não apresentam dimensões, mas WorkOrder original permanece íntegra',()=>{
+ const order=structuredClone(sample)
+ const service=order.scope.lines.find(line=>line.id==='s1')!
+ service.stages[0]!.dimension='Parcial'
+ service.stages[1]!.dimension='M'
+ const uncategorized=order.scope.lines.find(line=>line.id==='s2')!
+ uncategorized.stages[0]!.dimension='Total'
+ const before=JSON.stringify(order)
+ const print=renderOrderV63(order)
+ assert(print.content.includes('Preparação &amp; teste'))
+ assert(print.content.includes('Solda plástica'))
+ assert(print.content.includes('Etapa sem agrupamento'))
+ assert(!print.content.includes('Preparação &amp; teste (Parcial)'))
+ assert(!print.content.includes('Solda plástica (M)'))
+ assert(!print.content.includes('Etapa sem agrupamento (Total)'))
+ assert(!print.content.includes('(Parcial)'))
+ assert(!print.content.includes('(M)'))
+ assert(!print.content.includes('(Total)'))
+ assert.equal(JSON.stringify(order),before)
+ assert.equal(service.stages[0]!.dimension,'Parcial')
+ assert.equal(service.stages[1]!.dimension,'M')
+ assert.equal(uncategorized.stages[0]!.dimension,'Total')
+})
+
 test('jsreport receives print-ready V63 html directly and validates PDF',async()=>{
  let calls=0
  const connection={endpoint:'https://example.invalid/api/report',username:'qa',password:'secret'}
