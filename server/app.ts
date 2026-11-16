@@ -19,6 +19,8 @@ import { WorkOrderRepository } from './work-orders.ts'
 import {BudgetCancellationRepository} from './budget-cancellations.ts'
 import {cancelledPdf} from './cancelled-pdf.ts'
 import { workOrderPdf } from './work-order-pdf.ts'
+import {configuredOrderRenderer,renderOrderJsreport} from './os-jsreport.ts'
+import {WorkOrderPdfCache} from './os-pdf-cache.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
 import { calculate } from './pricing-engine.ts'
@@ -70,6 +72,7 @@ export interface AppOptions {
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
   budgetRenderer?:BudgetOptions['render']
   cancelledPdfRenderer?:(pdf:Buffer)=>Promise<Buffer>
+  osPdfRenderer?:(order:import('../shared/work-order.ts').WorkOrder)=>Promise<Buffer> // synthetic QA only
   atendimentos: AtendimentoRepository
   password?: string
   origin?: string
@@ -102,6 +105,7 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
+  const osCache = new WorkOrderPdfCache(options.atendimentos.db)
   const cancellations = new BudgetCancellationRepository(options.atendimentos.db,options.now)
   const stampPdf=options.cancelledPdfRenderer??cancelledPdf
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
@@ -667,7 +671,18 @@ export function createRequestHandler(options: AppOptions) {
           if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
           const order=workOrders.get(at,versionId)
           if (!pdf) return send(200,order)
-          const data=order.cancellation?await stampPdf(workOrderPdf(order)):workOrderPdf(order)
+          const useV63=Boolean(options.osPdfRenderer)||process.env.FUNIX_OS_JSREPORT_ENABLED==='true'
+          let original:Buffer
+          if(!useV63) original=workOrderPdf(order)
+          else {
+            const cached=osCache.get(order.id)
+            if(cached)original=cached
+            else{
+              const renderer=options.osPdfRenderer??((item:typeof order)=>renderOrderJsreport(item,configuredOrderRenderer()))
+              original=osCache.save(order.id,await renderer(order))
+            }
+          }
+          const data=order.cancellation?await stampPdf(original):original
           res.setHeader('Content-Type','application/pdf')
           res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+'.pdf"')
           res.setHeader('Content-Length',data.length)
