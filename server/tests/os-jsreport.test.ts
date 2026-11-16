@@ -90,7 +90,9 @@ test('impressão usa Serviços complementares na quarta coluna e Estética na qu
  assert(header.indexOf('aria-label="Serviços complementares"')<header.indexOf('aria-label="Estética e revitalização"'))
  const legend=print.footerTemplate
  assert(legend.indexOf('aria-label="Serviços complementares"')<legend.indexOf('aria-label="Estética e revitalização"'))
- assert(print.content.includes('td:nth-of-type(4)'))
+ // As divisórias originais da matriz devem permanecer, sem linha artificial sobre os chevrons.
+ assert(!print.content.includes('td:nth-of-type(4)'))
+ assert(!print.content.includes('technical-band-labels::after'))
  // Fonte de dados congelada permanece intacta, inclusive dimensões.
  assert.equal(service.stages.at(-2)?.dimension,'Parcial')
  assert.equal(service.stages.at(-1)?.dimension,'M')
