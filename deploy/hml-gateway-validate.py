@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import http.client
 import json
 import math
@@ -19,6 +20,7 @@ import re
 import ssl
 import stat
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -44,9 +46,11 @@ def probe_https(address: str, timeout: float = 6.0) -> dict[str, Any]:
         result["stage"] = "tls"
         tls = ssl.create_default_context().wrap_socket(raw, server_hostname=HML_HOST)
         cert = tls.getpeercert()
+        certificate_der = tls.getpeercert(binary_form=True)
         result.update(tls="ok", certificate="verified", protocol=tls.version(),
                       san=cert.get("subjectAltName", ()),
-                      not_after=cert.get("notAfter"))
+                      not_after=cert.get("notAfter"),
+                      certificate_sha256=hashlib.sha256(certificate_der).hexdigest())
         result["stage"] = "http"
         connection = http.client.HTTPConnection(HML_HOST, 443, timeout=timeout)
         connection.sock = tls
@@ -78,23 +82,47 @@ def probe_https(address: str, timeout: float = 6.0) -> dict[str, Any]:
     return result
 
 
-def diagnose_https() -> int:
-    """Observe loopback and every distinct A/AAAA result; never publish."""
-    addresses = []
-    failed = False
-    try:
-        answers = socket.getaddrinfo(HML_HOST, 443, type=socket.SOCK_STREAM)
-        addresses = sorted({answer[4][0] for answer in answers})
-        print(json.dumps({"stage": "dns", "host": HML_HOST, "addresses": addresses}), flush=True)
-    except socket.gaierror as error:
-        failed = True
-        print(json.dumps({"stage": "dns", "category": "dns", "errno": error.errno}), flush=True)
-    for address in dict.fromkeys(["127.0.0.1", *addresses]):
-        observation = probe_https(address)
-        print(json.dumps(observation), flush=True)
-        failed |= "category" in observation
-    # HTTP status is evidence, not an acceptance gate while gateway is absent.
-    return int(failed)
+def diagnose_https(
+    attempts: int = 1,
+    interval: float = 5.0,
+    expected_status: int | None = None,
+    require_basic: bool = False,
+) -> int:
+    """Observe strict HTTPS, optionally polling for one bounded acceptance state."""
+    for attempt in range(1, attempts + 1):
+        addresses = []
+        failed = False
+        accepted = expected_status is not None
+        try:
+            answers = socket.getaddrinfo(HML_HOST, 443, type=socket.SOCK_STREAM)
+            addresses = sorted({answer[4][0] for answer in answers})
+            if expected_status is not None:
+                accepted &= bool(addresses)
+            print(json.dumps({"attempt": attempt, "stage": "dns", "host": HML_HOST,
+                              "addresses": addresses}), flush=True)
+        except socket.gaierror as error:
+            failed = True
+            accepted = False
+            print(json.dumps({"attempt": attempt, "stage": "dns", "category": "dns",
+                              "errno": error.errno}), flush=True)
+        for address in dict.fromkeys(["127.0.0.1", *addresses]):
+            observation = probe_https(address)
+            observation["attempt"] = attempt
+            print(json.dumps(observation), flush=True)
+            failed |= "category" in observation
+            if expected_status is not None:
+                accepted &= (
+                    "category" not in observation
+                    and observation.get("status") == expected_status
+                    and (not require_basic or observation.get("basic_challenge") is True)
+                )
+        if expected_status is None:
+            return int(failed)
+        if accepted:
+            return 0
+        if attempt < attempts:
+            time.sleep(interval)
+    return 1
 
 
 class ValidationError(RuntimeError):
@@ -271,6 +299,10 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--diagnose-https", action="store_true",
                         help="Unauthenticated HML DNS/TCP/TLS/HTTP observations; no files read")
+    result.add_argument("--https-attempts", type=int, default=1)
+    result.add_argument("--https-interval", type=float, default=5.0)
+    result.add_argument("--expect-status", type=int)
+    result.add_argument("--expect-basic", action="store_true")
     result.add_argument("--release-env", type=Path)
     result.add_argument("--release-key", default="FUNIX_HML_REVISION")
     result.add_argument("--credentials-file", type=Path)
@@ -286,7 +318,16 @@ def main() -> int:
     cli = parser()
     args = cli.parse_args()
     if args.diagnose_https:
-        return diagnose_https()
+        if args.https_attempts < 1 or not math.isfinite(args.https_interval) or args.https_interval < 0:
+            cli.error("HTTPS attempts/interval must be finite and non-negative")
+        if args.https_attempts > 1 and args.expect_status is None:
+            cli.error("multiple HTTPS attempts require --expect-status")
+        if args.expect_status is not None and not 100 <= args.expect_status <= 599:
+            cli.error("--expect-status must be between 100 and 599")
+        if args.expect_basic and args.expect_status is None:
+            cli.error("--expect-basic requires --expect-status")
+        return diagnose_https(args.https_attempts, args.https_interval,
+                              args.expect_status, args.expect_basic)
     if not args.release_env or not args.credentials_file or not args.connect_host:
         cli.error("revision validation requires --release-env, --credentials-file and --connect-host")
     if args.scheme == "https" and args.connect_host != args.host_header:

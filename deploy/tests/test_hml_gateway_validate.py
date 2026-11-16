@@ -45,6 +45,11 @@ class HmlGatewayValidatorTests(unittest.TestCase):
         tls.getpeercert.return_value = {
             "subjectAltName": (("DNS", VALIDATOR.HML_HOST),), "notAfter": "synthetic",
         }
+        tls.getpeercert.side_effect = lambda binary_form=False: (
+            b"synthetic certificate" if binary_form else {
+                "subjectAltName": (("DNS", VALIDATOR.HML_HOST),), "notAfter": "synthetic",
+            }
+        )
         tls.version.return_value = "TLSv1.3"
         for status in (401, 404, 502, 503):
             with self.subTest(status=status):
@@ -59,6 +64,7 @@ class HmlGatewayValidatorTests(unittest.TestCase):
                 context.wrap_socket.assert_called_with(raw, server_hostname=VALIDATOR.HML_HOST)
                 self.assertEqual(result["status"], status)
                 self.assertEqual(result["certificate"], "verified")
+                self.assertEqual(len(result["certificate_sha256"]), 64)
                 headers = connection.request.call_args.kwargs["headers"]
                 self.assertEqual(headers["Host"], VALIDATOR.HML_HOST)
                 self.assertNotIn("Authorization", headers)
@@ -76,6 +82,7 @@ class HmlGatewayValidatorTests(unittest.TestCase):
                 raw, context, tls, connection = (MagicMock() for _ in range(4))
                 context.wrap_socket.return_value = tls
                 tls.getpeercert.return_value = {}
+                tls.getpeercert.side_effect = lambda binary_form=False: b"certificate" if binary_form else {}
                 tls.version.return_value = "TLSv1.3"
                 if category == "certificate":
                     error.verify_code = 62
@@ -122,6 +129,35 @@ class HmlGatewayValidatorTests(unittest.TestCase):
             self.assertEqual(VALIDATOR.diagnose_https(), 1)
         probe.assert_called_once_with("127.0.0.1")
         self.assertNotIn("private text", output.getvalue())
+
+    def test_bounded_https_poll_preserves_failure_then_accepts_strict_401_basic(self):
+        answers = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))]
+        observations = [
+            {"stage": "tls", "category": "certificate", "verify_code": 18},
+            {"stage": "tls", "category": "certificate", "verify_code": 18},
+            {"stage": "complete", "status": 401, "basic_challenge": True},
+            {"stage": "complete", "status": 401, "basic_challenge": True},
+        ]
+        with patch.object(VALIDATOR.socket, "getaddrinfo", return_value=answers), \
+             patch.object(VALIDATOR, "probe_https", side_effect=observations), \
+             patch.object(VALIDATOR.time, "sleep") as sleep, \
+             redirect_stdout(io.StringIO()) as output:
+            result = VALIDATOR.diagnose_https(2, 5, 401, True)
+        self.assertEqual(result, 0)
+        sleep.assert_called_once_with(5)
+        rows = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertEqual([row["attempt"] for row in rows], [1, 1, 1, 2, 2, 2])
+        self.assertEqual(rows[1]["verify_code"], 18)
+
+    def test_bounded_https_poll_fails_after_limit_on_unexpected_http(self):
+        with patch.object(VALIDATOR.socket, "getaddrinfo", return_value=[]), \
+             patch.object(VALIDATOR, "probe_https",
+                          return_value={"stage": "complete", "status": 404,
+                                        "basic_challenge": False}), \
+             patch.object(VALIDATOR.time, "sleep") as sleep, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(VALIDATOR.diagnose_https(3, 0, 401, True), 1)
+        self.assertEqual(sleep.call_count, 2)
 
     def test_http_request_uses_host_and_basic_auth_without_changing_payload(self):
         expected_auth = "Basic " + base64.b64encode(b"homologacao:synthetic").decode()
