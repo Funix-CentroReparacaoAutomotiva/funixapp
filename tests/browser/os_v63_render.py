@@ -35,15 +35,46 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
             ".main-matrix .technical-band-label span"
             "{font-family:Arial,Helvetica,sans-serif!important;}"
         ))
-        for viewport_width in (1000, 1054):
-            page.set_viewport_size({"width":viewport_width, "height":900})
+        expected=["Preparação técnica","Correção estrutural","Pintura e acabamento",
+                  "Serviços complementares","Estética e revitalização"]
+        headings=page.locator(".technical-band-label").evaluate_all(
+            "(nodes) => nodes.map(node => node.getAttribute('aria-label'))"
+        )
+        assert headings==expected, f"Ordem dos cabeçalhos inválida: {headings}"
+        cells=page.locator(".main-matrix tbody tr:first-child td").evaluate_all(
+            "(nodes) => nodes.map(node => node.getAttribute('data-cluster'))"
+        )
+        assert cells==expected, f"Ordem das colunas inválida: {cells}"
+        legend=page.locator(".footer-legend .legend-item").evaluate_all(
+            "(nodes) => nodes.slice(1).map(node => node.querySelector('svg')?.getAttribute('aria-label'))"
+        )
+        assert legend==expected, f"Ordem da legenda inválida: {legend}"
+        # O título do quarto cluster não pode invadir o chevron da esquerda
+        # nem o início da última coluna, mesmo com Arial.
+        for viewport_width in (1000,1054):
+            page.set_viewport_size({"width":viewport_width,"height":900})
             metrics=page.evaluate("""() => {
               const art=document.querySelector('.technical-band-art').getBoundingClientRect();
-              const word=document.querySelector('.technical-band-label:last-child span:last-child').getBoundingClientRect();
-              return {gap:word.left-(art.left+art.width*0.828),rightSlack:art.right-word.right};
+              const labels=[...document.querySelectorAll('.technical-band-label')];
+              const service=labels[3].querySelector('span:last-child').getBoundingClientRect();
+              const aesthetic=labels[4].querySelector('span:last-child').getBoundingClientRect();
+              const line=getComputedStyle(document.querySelector('.main-matrix tbody tr:first-child td:nth-of-type(4)'));
+              return {
+                serviceGap:service.left-(art.left+art.width*.628),
+                serviceRightSlack:art.left+art.width*.80-service.right,
+                aestheticGap:aesthetic.left-(art.left+art.width*.828),
+                aestheticRightSlack:art.right-aesthetic.right,
+                separator:line.borderRightWidth,
+                separatorStyle:line.borderRightStyle
+              };
             }""")
-            assert metrics["gap"]>=4, f"Chevron overlaps COMPLEMENTARES at {viewport_width}px: {metrics}"
-            assert metrics["rightSlack"]>=6, f"COMPLEMENTARES clipped at {viewport_width}px: {metrics}"
+            assert metrics["serviceGap"]>=3, f"Chevron sobre SERVIÇOS: {metrics}"
+            assert metrics["serviceRightSlack"]>=3, f"SERVIÇOS invade 5ª coluna: {metrics}"
+            assert metrics["aestheticGap"]>=3, f"Chevron sobre ESTÉTICA: {metrics}"
+            assert metrics["aestheticRightSlack"]>=3, f"ESTÉTICA invade borda: {metrics}"
+            assert metrics["separatorStyle"]=="solid" and float(metrics["separator"].replace("px",""))>=1, (
+                f"Sem divisória vertical 4/5: {metrics}"
+            )
         page.set_viewport_size({"width":1280, "height":900})
         weights = page.locator(".main-matrix tbody td .stage-entry .stage-name").evaluate_all(
             "(elements) => [...new Set(elements.map(el => getComputedStyle(el).fontWeight))]"
