@@ -13,6 +13,29 @@ if(!css||footerStart<0||headerStart<0||mainStart<0||mainEnd<0||
   !master.includes('<tbody>')||!master.includes('</tbody>'))
   throw Error('HTML mestre V63 inválido.')
 
+/** Chrome prints native header/footer from a separate document context.
+ * WeasyPrint @page rules in that context can paint an opaque white sheet OVER
+ * the entire body PDF. Keep all visual rules, but remove @page blocks and
+ * their nested margin boxes from header/footer CSS only.
+ */
+function withoutPageRules(source:string):string{
+ let output='',cursor=0
+ for(const match of source.matchAll(/@page[^{}]*\{/g)){
+   const at=match.index
+   if(at<cursor)continue
+   output+=source.slice(cursor,at)
+   let depth=1,position=at+match[0].length
+   while(depth&&position<source.length){
+     const current=source[position++]
+     if(current==='{')depth++
+     else if(current==='}')depth--
+   }
+   if(depth)throw Error('Regra @page incompleta no HTML da OS.')
+   cursor=position
+ }
+ return output+source.slice(cursor)
+}
+const marginCss=withoutPageRules(css)
 const footer=master.slice(footerStart,headerStart)
 const header=master.slice(headerStart,mainStart)
 const main=master.slice(mainStart,mainEnd+7)
@@ -102,7 +125,7 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
    '</style></head><body>'+body+'</body></html>'
  const marginStyle='body{margin:0!important;background:#fff!important}'+
    '.running-header,.footer-legend{position:static!important;width:100%!important;}'
- const wrap=(body:string)=>'<html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+marginStyle+
+ const wrap=(body:string)=>'<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
    '</style></head><body>'+body+'</body></html>'
  return{content,headerTemplate:wrap(headerHtml),footerTemplate:wrap(footer)}
 }
