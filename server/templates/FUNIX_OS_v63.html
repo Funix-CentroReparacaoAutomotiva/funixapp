@@ -1673,6 +1673,14 @@ body .main-matrix tbody tr > td .stage-entry .stage-name{
   font-weight:400 !important;
   line-height:1.16 !important;
 }
+
+/* V63 Chromium: evita sobreposição da última seta com "COMPLEMENTARES".
+   Mantém as larguras 31% + 5x13,8% e o peso/tamanho da tipografia.
+   O ajuste afeta somente o texto da segunda linha do último cluster. */
+body .main-matrix .technical-band-labels .technical-band-label:last-child span:last-child {
+  transform: translateX(2px) scaleX(.85) !important;
+  transform-origin: center center !important;
+}
 </style></head><body><div class="footer-legend" style="font-size:10pt !important;"><span class="legend-heading" style="font-size:10pt !important;">Legenda:</span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 <title>Requer componentes</title>
 <g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
