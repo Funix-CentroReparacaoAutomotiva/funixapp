@@ -297,7 +297,7 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
-  `\)},
+  `)},
   // Catálogo do veículo inteiro: a V2 contém "Veículo completo" sem código de peça.
   // A nova identidade é local e aditiva; nenhum serviço é incluído automaticamente.
   {version:21,apply:db=>{
