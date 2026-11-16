@@ -4,7 +4,6 @@ import {openDatabase} from '../database.ts'
 import type {WorkOrder} from '../../shared/work-order.ts'
 import {renderOrderV63} from '../os-template.ts'
 import {renderOrderJsreport} from '../os-jsreport.ts'
-import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 
 const sample:WorkOrder={
  id:'os-synthetic',number:'OS-000142',atendimentoId:'at-synthetic',
