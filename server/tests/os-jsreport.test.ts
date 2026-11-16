@@ -68,6 +68,34 @@ test('etapas da matriz não apresentam dimensões, mas WorkOrder original perman
  assert.equal(uncategorized.stages[0]!.dimension,'Total')
 })
 
+test('impressão usa Serviços complementares na quarta coluna e Estética na quinta',()=>{
+ const order=structuredClone(sample)
+ const service=order.scope.lines.find(line=>line.id==='s1')!
+ service.stages.push({name:'Tapeçaria',dimension:'Parcial',cluster:'Serviços complementares'})
+ service.stages.push({name:'Polimento',dimension:'M',cluster:'Estética e revitalização'})
+ const print=renderOrderV63(order)
+ const labels=[...print.content.matchAll(/<td data-cluster="([^"]+)"/g)].map(m=>m[1])
+ assert.deepEqual(labels,[
+   'Preparação técnica','Correção estrutural','Pintura e acabamento',
+   'Serviços complementares','Estética e revitalização'
+ ])
+ const servicePos=print.content.indexOf('data-cluster="Serviços complementares"')
+ const aestheticPos=print.content.indexOf('data-cluster="Estética e revitalização"')
+ assert(servicePos>=0&&aestheticPos>servicePos)
+ assert(print.content.slice(servicePos,aestheticPos).includes('Tapeçaria'))
+ assert(print.content.slice(aestheticPos).includes('Polimento'))
+ assert(!print.content.includes('Tapeçaria (Parcial)'))
+ assert(!print.content.includes('Polimento (M)'))
+ const header=print.content.slice(print.content.indexOf('technical-band-labels'),print.content.indexOf('</thead>'))
+ assert(header.indexOf('aria-label="Serviços complementares"')<header.indexOf('aria-label="Estética e revitalização"'))
+ const legend=print.footerTemplate
+ assert(legend.indexOf('aria-label="Serviços complementares"')<legend.indexOf('aria-label="Estética e revitalização"'))
+ assert(print.content.includes('td:nth-of-type(4)'))
+ // Fonte de dados congelada permanece intacta, inclusive dimensões.
+ assert.equal(service.stages.at(-2)?.dimension,'Parcial')
+ assert.equal(service.stages.at(-1)?.dimension,'M')
+})
+
 test('jsreport receives print-ready V63 html directly and validates PDF',async()=>{
  let calls=0
  const connection={endpoint:'https://example.invalid/api/report',username:'qa',password:'secret'}
