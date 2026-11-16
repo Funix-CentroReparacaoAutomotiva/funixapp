@@ -105,7 +105,8 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
-  const osCache = new WorkOrderPdfCache(options.atendimentos.db)
+  const osCache=(options.osPdfRenderer||process.env.FUNIX_OS_JSREPORT_ENABLED==='true')
+    ?new WorkOrderPdfCache(options.atendimentos.db):null
   const cancellations = new BudgetCancellationRepository(options.atendimentos.db,options.now)
   const stampPdf=options.cancelledPdfRenderer??cancelledPdf
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
@@ -675,11 +676,11 @@ export function createRequestHandler(options: AppOptions) {
           let original:Buffer
           if(!useV63) original=workOrderPdf(order)
           else {
-            const cached=osCache.get(order.id)
+            const cached=osCache!.get(order.id)
             if(cached)original=cached
             else{
               const renderer=options.osPdfRenderer??((item:typeof order)=>renderOrderJsreport(item,configuredOrderRenderer()))
-              original=osCache.save(order.id,await renderer(order))
+              original=osCache!.save(order.id,await renderer(order))
             }
           }
           const data=order.cancellation?await stampPdf(original):original
