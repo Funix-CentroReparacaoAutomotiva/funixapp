@@ -28,6 +28,11 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert "background:transparent" in data["headerTemplate"]
         assert "pageNumber" in data["headerTemplate"]
         page.set_content(data["content"], wait_until="load")
+        # Regression: step labels are regular; piece names remain bold.
+        weights = page.locator(".main-matrix tbody td .stage-entry .stage-name").evaluate_all(
+            "(elements) => [...new Set(elements.map(el => getComputedStyle(el).fontWeight))]"
+        )
+        assert weights == ["400"], f"Technical stages should be regular: {weights}"
         path = Path(tmp) / f"os-{count}.pdf"
         page.pdf(
             path=str(path), format="A4", landscape=True, print_background=True,
