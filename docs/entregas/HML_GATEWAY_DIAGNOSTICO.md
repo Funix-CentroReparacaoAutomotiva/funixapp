@@ -31,6 +31,80 @@ confirmação de que o A é o IP público esperado e a acessibilidade pública d
 porta 80 usada pelo HTTP-01. Nenhum bloqueador da publicação ficou confirmado
 por essa coleta.
 
+## Evidência da publicação controlada seguinte
+
+O procedimento autorizado iniciou o gateway, validou API, Web, Basic Auth e
+as três revisões, mas as 42 tentativas HTTPS em loopback e `2.25.144.201`
+pararam na validação do certificado com `verify_code=18`. Nenhuma chegou ao
+HTTP. A reversão confirmou a remoção exclusiva do gateway. O script executado
+tinha SHA-256
+`aa30a5774656bd3381e749de8a6e852aa9d0f74fe3f5c2defb9adb4475a49d2f`.
+
+Isso confirma que o certificado padrão permaneceu durante toda a janela
+observada. Ainda não distingue router ausente/rejeitado, provider sem observar
+o contêiner, labels efetivas divergentes ou router carregado com erro ACME. O
+filtro de logs anterior aceitava apenas linhas com domínio ou `funix-hml` e
+podia omitir mensagens genéricas do provider/resolver; `[]` não prova ausência
+de erros.
+
+## Diagnóstico único, somente leitura, com gateway ausente
+
+O utilitário `deploy/hml-traefik-readonly.py` deve ser revisado antes de uma
+execução manual autorizada. Ele exige a janela UTC exata da tentativa anterior:
+
+```bash
+python3 deploy/hml-traefik-readonly.py \
+  --since 'INICIO_UTC_DA_TENTATIVA' \
+  --until 'FIM_UTC_DA_TENTATIVA' \
+  --gateway-compose /opt/funix-hml/gateway.compose.yaml \
+  > funix-hml-traefik-diagnostico.json
+```
+
+Ele executa somente `docker container inspect`, `docker network inspect` e
+`docker logs` com limites `--since/--until`. Falha se o gateway existir. Não
+executa `compose`, `exec`, `up`, `restart`, chamada à API do Traefik ou leitura
+do socket por conta própria. A saída contém:
+
+- estado/identidade opaca do Traefik, presença e modo do mount do Docker
+  socket, participação em `traefik_default` e destinos de mounts, nunca suas
+  origens;
+- somente opções relevantes encontradas em argumentos/ambiente: Docker
+  `watch`, `exposedByDefault`, `constraints` e endpoint; endereços dos
+  entrypoints; storage/entrypoint do resolver. Endpoint, storage e constraints
+  são representados apenas por presença e hash;
+- SHA-256 do Compose de homologação e projeção de labels/redes/portas; qualquer
+  valor Basic Auth é removido;
+- contagens de warnings/erros da janela nas categorias provider Docker,
+  router/service, ACME/certificado e rede, mais horário e hash de cada evento.
+  O texto do log, hostnames e nomes de recursos não são emitidos.
+
+Sem ativar o gateway, essa coleta pode confirmar que o Traefik está `Running`,
+monta o socket, participa da rede, quais opções estáticas vieram de argumentos
+ou ambiente, se a rede existe, se o Compose planejado contém o contrato
+esperado e se houve categoria de erro preservada na janela. Pode confirmar um
+bloqueador concreto como `watch=false`, socket ausente, rede ausente,
+`exposedByDefault=false` sem `traefik.enable=true`, entrypoint/resolver
+divergente ou labels planejadas incompletas.
+
+Ela não lê conteúdo de arquivo estático montado. Portanto, opção ausente da
+seção `static_from_args_or_env` significa **desconhecida**, não valor padrão.
+Também não pode reconstruir labels efetivamente aplicadas ao contêiner já
+removido, provar que `funix-hml@docker` carregou, inspecionar a associação
+dinâmica histórica, provar acesso externo à porta 80 ou diagnosticar um erro
+cujo log já saiu da retenção. Esses pontos continuam impossíveis com o gateway
+ausente sem snapshot preservado da janela.
+
+Não autorizar nova publicação apenas porque a coleta não encontrou eventos.
+Uma nova tentativa passa a ser justificável se a projeção não mostrar
+bloqueador, a janela de logs estiver disponível e revisada, as labels tiverem
+router TLS, `certresolver=letsencrypt`, service explícito, porta 8080 e rede
+`traefik_default`, e houver método aprovado para preservar inspect/configuração
+efetiva durante a próxima janela. Se um bloqueador for confirmado, a mudança
+deve ser mínima e específica: corrigir apenas a label/configuração de
+homologação; para `watch=false`, socket/provider inacessível ou configuração
+estática do Traefik, parar e submeter uma mudança de infraestrutura separada,
+pois esta PR não autoriza alterar/reiniciar o Traefik compartilhado.
+
 ## Validade do teste em loopback
 
 TCP em 127.0.0.1:443 com TLS server_hostname=hml.funix.com.br e Host igual é
