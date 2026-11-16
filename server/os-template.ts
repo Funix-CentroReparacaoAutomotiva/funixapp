@@ -9,6 +9,12 @@ const PRINT_CLUSTERS:readonly StageCluster[]=[
 
 /** V63 is the visual master; replace its sample data, never the persisted scope. */
 const master=readFileSync(new URL('./templates/FUNIX_OS_v63.html',import.meta.url),'utf8')
+const approvedHeader=readFileSync(new URL('./templates/FUNIX_OS_v63_header.html',import.meta.url),'utf8')
+const officialLogo=(()=>{const found=master.match(/<svg aria-label="FUNIX"[\s\S]*?<\/svg>/)?.[0]
+ if(!found)throw Error('Marca vetorial FUNIX ausente do mestre da OS.')
+ return found
+})()
+
 const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
 const footerStart=master.indexOf('<div class="footer-legend"')
 const headerStart=master.indexOf('<div class="running-header plan-header"')
@@ -42,7 +48,6 @@ function withoutPageRules(source:string):string{
 }
 const marginCss=withoutPageRules(css)
 const footer=master.slice(footerStart,headerStart)
-const header=master.slice(headerStart,mainStart)
 const main=master.slice(mainStart,mainEnd+7)
 const icons=new Map<string,string>()
 for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
@@ -57,7 +62,6 @@ function letter(index:number):string{
  for(let n=index+1;n>0;n=Math.floor((n-1)/26))text=String.fromCharCode(65+(n-1)%26)+text
  return text
 }
-const day=(iso:string)=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(iso))
 function rows(order:WorkOrder):string{
  const {diagnostics,lines}=order.scope
  const ids=[...new Set([...diagnostics.map(d=>d.pieceId),...lines.map(l=>l.pieceId)])]
@@ -116,14 +120,15 @@ function rows(order:WorkOrder):string{
 export interface OrderPrintTemplate{content:string;headerTemplate:string;footerTemplate:string}
 export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
- const date=day(order.createdAt)
- const headerHtml=header
-   .replace('Honda City EXL 21/22 (FXN2A26)',html(vehicle||'Veículo não informado'))
-   .replace('OS-000142',html(order.number))
-   .replaceAll('25/11/2026',html(date))
-   .replaceAll('Data de entrega','Data de emissão')
-   .replace('Página 1 de 1','Paginação do documento')
-   .replace('1/1','<span class="pageNumber"></span>/<span class="totalPages"></span>')
+ // O modelo V63 não contém data de entrega confirmada. Prazo em dias não é
+ // compromisso com data de calendário: não inferir entrega a partir da emissão.
+ // Usar marcador explícito até existir data confirmada, persistida no WorkOrder.
+ const delivery='-'
+ const headerHtml=approvedHeader
+   .replace('{{FUNIX_LOGO_SVG}}',officialLogo)
+   .replace('{{OS_NUMBER}}',html(order.number))
+   .replace('{{VEHICLE}}',html(vehicle||'Veículo não informado'))
+   .replace('{{DELIVERY}}',html(delivery))
  const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
  const chromePrint='@page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}'+
    'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'
@@ -133,10 +138,17 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  // Align both to the approved V63 reference: x=5 mm, header y≈4 mm, footer y≈198 mm.
  const marginStyle='body{margin:0!important;background:transparent!important;padding:0 5mm!important;box-sizing:border-box!important}'+
    '.running-header,.footer-legend{position:static!important;width:100%!important;}'
- const wrap=(body:string,kind:'header'|'footer')=>
+ const wrapFooter=(body:string)=>
    '<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
-   (kind==='header'?'.running-header{transform:translateY(-1.3mm)!important;}':
-     '.footer-legend{transform:translateY(2mm)!important;}')+
+   '.footer-legend{transform:translateY(2mm)!important;}'+
+   // Original CSS shifted icon+text groups 2.6pt upward, misaligning them with 'Legenda:'.
+   '.footer-legend .legend-item{transform:none!important;}'+
    '</style></head><body>'+body+'</body></html>'
- return{content,headerTemplate:wrap(headerHtml,'header'),footerTemplate:wrap(footer,'footer')}
+ // Header is self-contained to prevent legacy V63 mast CSS from overriding
+ // the approved grid. Chrome head/footer templates are distinct documents.
+ const chromeHeader=headerHtml.replace('</style>',
+   'body{margin:0!important;padding:0 5mm!important;background:transparent!important;box-sizing:border-box!important;}'+
+   '.osv63-header{transform:translateY(-1.3mm)!important;}'+
+   '</style>')
+ return{content,headerTemplate:chromeHeader,footerTemplate:wrapFooter(footer)}
 }

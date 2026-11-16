@@ -1,7 +1,7 @@
 import type {DatabaseSync} from 'node:sqlite'
 import {validatePdf} from './jsreport-client.ts'
 
-const TEMPLATE_VERSION='v63-jsreport-5'
+const TEMPLATE_VERSION='v63-jsreport-6'
 /** Immutable PDF per OS. Never caches a cancellation watermark on the original. */
 export class WorkOrderPdfCache{
  private readonly db:DatabaseSync

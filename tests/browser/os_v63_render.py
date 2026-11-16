@@ -27,6 +27,35 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert "@page" not in data["footerTemplate"], "WeasyPrint page rules in Chromium footer"
         assert "background:transparent" in data["headerTemplate"]
         assert "pageNumber" in data["headerTemplate"]
+        assert 'class="osv63-header"' in data["headerTemplate"]
+        header_page=browser.new_page(viewport={"width":1122,"height":210})
+        header_page.set_content(data["headerTemplate"],wait_until="load")
+        header_metrics=header_page.evaluate("""() => {
+          const h=document.querySelector('.osv63-header');
+          const brand=h.querySelector('.brand');
+          const fields=[...h.querySelectorAll('.field')];
+          const logo=brand.querySelector('svg');
+          const labels=[...h.querySelectorAll('.label')];
+          const values=[...h.querySelectorAll('.value')];
+          const grid=h.getBoundingClientRect();
+          return {
+            labels:labels.map(x=>x.textContent.trim()),
+            brandW:brand.getBoundingClientRect().width,
+            staticWidths:[0,2,3].map(i=>fields[i].getBoundingClientRect().width),
+            vehicleW:fields[1].getBoundingClientRect().width,
+            vertical:values.every(x=>Math.abs(
+              x.getBoundingClientRect().top+x.getBoundingClientRect().height/2-
+              (grid.top+grid.height/2))<2),
+            logoW:logo.getBoundingClientRect().width,
+            delivery:values[2].textContent.trim()
+          };
+        }""")
+        assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
+        assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
+        assert header_metrics["delivery"]=="-",header_metrics
+        assert 120<header_metrics["logoW"]<125,header_metrics
+        assert 198<header_metrics["brandW"]<204,header_metrics
+        header_page.close()
         page.set_content(data["content"], wait_until="load")
         # Force the wider Arial fallback to reproduce the user's jsreport PDF.
         # The arrow tip ends at 82.8% of the five-cluster SVG.
@@ -120,6 +149,13 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
             assert any(abs(r.x0-14.2)<2 and abs(r.y0-562.0)<3 for r in footers), f"Footer not aligned: {footers}"
             assert "OS-000142" in text, f"Missing header on page {index+1}"
             assert "Legenda:" in text, f"Missing footer on page {index+1}"
+            words=p.get_text("words")
+            legend_titles=["Legenda:","Requer","Preparação","Correção","Pintura","Serviços","Estética"]
+            baselines=[w[3] for w in words if w[4] in legend_titles and w[1]>560]
+            assert len(baselines)>=6, f"Legenda incompleta na página {index+1}: {baselines}"
+            assert max(baselines)-min(baselines)<1.2, (
+                f"Itens da legenda desalinhados na página {index+1}: {baselines}"
+            )
             assert "(Parcial)" not in text and "(M)" not in text, f"Dimensões indevidas na página {index+1}"
             assert f"{index+1}/{len(doc)}" in text, f"Wrong page counter on page {index+1}"
             found.update(map(int,re.findall(r"Peça sintética\s+(\d+)",text)))
