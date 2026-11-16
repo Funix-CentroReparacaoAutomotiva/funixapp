@@ -36,12 +36,40 @@ test('template V63 uses frozen OS data, escapes HTML and does not invent deliver
  assert(result.content.includes('Preparação &amp; teste'))
  assert(result.content.includes('Etapa sem categoria'))
  assert(result.headerTemplate.includes('OS-000142'))
- assert(result.headerTemplate.includes('16/11/2026'))
+ assert(result.headerTemplate.includes('ID:'))
+ assert(result.headerTemplate.includes('VEÍCULO:'))
+ assert(result.headerTemplate.includes('ENTREGA:'))
+ assert(result.headerTemplate.includes('PÁG.:'))
+ assert(result.headerTemplate.includes('A DEFINIR'))
+ assert(!result.headerTemplate.includes('16/11/2026'))
  assert(!result.headerTemplate.includes('25/11/2026'))
- assert(result.headerTemplate.includes('Data de emissão'))
  assert(result.headerTemplate.includes('class="totalPages"'))
+ assert(result.headerTemplate.includes('class="pageNumber"'))
+ assert(result.headerTemplate.includes('class="os-prefix"'))
+ assert(result.headerTemplate.includes('aria-label="FUNIX"'))
+ assert(result.headerTemplate.includes('grid-template-columns:53mm 43mm minmax(0,1fr) 50mm 27mm'))
+ assert(!result.headerTemplate.includes('{{OS_NUMBER}}'))
+ assert(!result.headerTemplate.includes('{{VEHICLE}}'))
+ assert(!result.headerTemplate.includes('{{DELIVERY}}'))
  assert(!result.content.includes('R$ '))
  assert(!result.content.includes('Prazo de entrega confirmado'))
+})
+
+test('cabeçalho novo escapa dados dinâmicos e não inventa uma entrega a partir do prazo',()=>{
+ const order=structuredClone(sample)
+ order.number='OS-<1>'
+ order.scope.vehicle.description='Tracker <script>injetado</script>'
+ order.scope.vehicle.plate='ABC1D23'
+ order.scope.deadlineDays=1
+ const result=renderOrderV63(order)
+ assert(result.headerTemplate.includes('OS-&lt;1&gt;'))
+ assert(result.headerTemplate.includes('Tracker &lt;script&gt;injetado&lt;/script&gt; (ABC1D23)'))
+ assert(!result.headerTemplate.includes('Tracker <script>'))
+ assert(result.headerTemplate.includes('A DEFINIR'))
+ assert(!result.headerTemplate.includes('17/11/2026'))
+ assert(result.headerTemplate.includes('font-weight:800'))
+ assert(result.headerTemplate.includes('font-size:19pt'))
+ assert(!result.headerTemplate.includes('Data de emissão'))
 })
 
 test('etapas da matriz não apresentam dimensões, mas WorkOrder original permanece íntegra',()=>{
