@@ -70,7 +70,8 @@ function rows(order:WorkOrder):string{
    if(item.quantity!=='1')notes.push(item.name+': quantidade '+item.quantity)
    if(!item.stages.length)notes.push('Serviço sem etapas cadastradas: '+item.name)
    for(const stage of item.stages){
-    const label=stage.name+(stage.dimension?' ('+stage.dimension+')':'')
+    // A dimensão permanece no escopo congelado; a matriz mostra apenas o nome da etapa.
+    const label=stage.name
     if(stage.cluster&&grouped.has(stage.cluster))grouped.get(stage.cluster)!.push(label)
     else notes.push('Etapa sem categoria ('+item.name+'): '+label)
    }
