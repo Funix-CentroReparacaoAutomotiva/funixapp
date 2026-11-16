@@ -4,6 +4,7 @@ import {openDatabase} from '../database.ts'
 import type {WorkOrder} from '../../shared/work-order.ts'
 import {renderOrderV63} from '../os-template.ts'
 import {renderOrderJsreport} from '../os-jsreport.ts'
+import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 
 const sample:WorkOrder={
  id:'os-synthetic',number:'OS-000142',atendimentoId:'at-synthetic',
@@ -72,9 +73,11 @@ test('jsreport receives print-ready V63 html directly and validates PDF',async()
 test('OS PDF cache is immutable and returns existing PDF on repeated saves',()=>{
  const db=openDatabase(':memory:')
  try{
-   // Minimal FK fixtures; migration is installed by openDatabase.
-   db.exec("INSERT INTO atendimentos(id,phone,name,created_at,updated_at) VALUES('at-synthetic','','QA','2026-11-16','2026-11-16')")
-   // Avoid writing synthetic budget/OS records into real persistence: cache API is verified through its schema.
+   // Cache is created only when explicitly instantiated; main schema remains V20.
+   const cache=new WorkOrderPdfCache(db)
+   assert.equal(cache.get('missing-order'),null)
+   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,20)
+   // No synthetic production objects are needed to inspect the schema.
    const schema=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='work_order_pdf_cache'").get()
    assert(schema)
    const info=db.prepare("PRAGMA table_info(work_order_pdf_cache)").all()
