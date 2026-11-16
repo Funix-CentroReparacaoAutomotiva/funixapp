@@ -45,10 +45,12 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
             "(nodes) => nodes.map(node => node.getAttribute('data-cluster'))"
         )
         assert cells==expected, f"Ordem das colunas inválida: {cells}"
-        legend=page.locator(".footer-legend .legend-item").evaluate_all(
-            "(nodes) => nodes.slice(1).map(node => node.querySelector('svg')?.getAttribute('aria-label'))"
+        # A legenda é um documento separado em Chrome header/footer, não parte do body.
+        legend=re.findall(
+            r'<span class="legend-item"[^>]*><svg aria-label="([^"]+)"',
+            data["footerTemplate"]
         )
-        assert legend==expected, f"Ordem da legenda inválida: {legend}"
+        assert legend==["Requer componentes",*expected], f"Ordem da legenda inválida: {legend}"
         # O título do quarto cluster não pode invadir o chevron da esquerda
         # nem o início da última coluna, mesmo com Arial.
         for viewport_width in (1000,1054):
