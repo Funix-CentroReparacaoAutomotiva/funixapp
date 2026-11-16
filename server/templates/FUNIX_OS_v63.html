@@ -1674,25 +1674,11 @@ body .main-matrix tbody tr > td .stage-entry .stage-name{
   line-height:1.16 !important;
 }
 
-/* V63 Chromium: textos e separador entre o 4º e o 5º clusters.
-   Mantém 31% + 5 x 13,8%; preserva a área dos chevrons e dos dados. */
+/* V63 Chromium: reserva legibilidade de COMPLEMENTARES na 4ª coluna.
+   As divisórias seguem o padrão cinza original da matriz. */
 body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span:last-child {
   transform: translateX(2px) scaleX(.85) !important;
   transform-origin: center center !important;
-}
-/* Linha vertical do cabeçalho exatamente na divisão 4/5. */
-body .main-matrix .technical-band-labels::after {
-  content: "" !important;
-  position: absolute !important;
-  left: 80% !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  border-left: 1px solid #0A1F44 !important;
-  pointer-events: none !important;
-}
-/* A mesma divisória continua através das linhas da matriz. */
-body .main-matrix tbody tr > td:nth-of-type(4) {
-  border-right: 1px solid #0A1F44 !important;
 }
 </style></head><body><div class="footer-legend" style="font-size:10pt !important;"><span class="legend-heading" style="font-size:10pt !important;">Legenda:</span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 <title>Requer componentes</title>
