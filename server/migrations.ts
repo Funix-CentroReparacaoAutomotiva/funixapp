@@ -297,7 +297,25 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
-  `)}
+  `\)},
+  // Catálogo do veículo inteiro: a V2 contém "Veículo completo" sem código de peça.
+  // A nova identidade é local e aditiva; nenhum serviço é incluído automaticamente.
+  {version:21,apply:db=>{
+    const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('pt-BR')
+    const aliases=new Set(['veiculo','veiculo completo'])
+    const all=db.prepare("SELECT id,code,name FROM catalog_items WHERE kind='peca'").all() as {id:string;code:string|null;name:string}[]
+    const matches=all.filter(row=>row.code==='veiculo_completo'||aliases.has(normalize(row.name)))
+    if(matches.length){
+      // An existing operator registration wins; never create a near-duplicate or rewrite its ID.
+      if(matches.length!==1 || !matches[0]!.code || (matches[0]!.code==='veiculo_completo'&&!aliases.has(normalize(matches[0]!.name))))
+        throw new Error('Peça Veículo ambígua ou sem código: revisar catálogo antes de migrar.')
+      return
+    }
+    const id='funix:peca:veiculo_completo',now=new Date().toISOString()
+    db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES (?,'peca',?,'Veículo','proposta','operador',?,?)").run(id,'veiculo_completo',now,now)
+    const record=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id)
+    db.prepare('INSERT INTO catalog_history(item_id,revision,changed_at,data) VALUES (?,?,?,?)').run(id,1,now,JSON.stringify(record))
+  }}
 ]
 
 export function migrate(db: DatabaseSync) {
