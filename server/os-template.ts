@@ -1,0 +1,110 @@
+import {readFileSync} from 'node:fs'
+import type {WorkOrder} from '../shared/work-order.ts'
+import {STAGE_CLUSTERS,type StageCluster} from '../shared/stage-clusters.ts'
+
+/** V63 is the visual master; replace its sample data, never the persisted scope. */
+const master=readFileSync(new URL('./templates/FUNIX_OS_v63.html',import.meta.url),'utf8')
+const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
+const footerStart=master.indexOf('<div class="footer-legend"')
+const headerStart=master.indexOf('<div class="running-header plan-header"')
+const mainStart=master.indexOf('<main ')
+const mainEnd=master.indexOf('</main>',mainStart)
+if(!css||footerStart<0||headerStart<0||mainStart<0||mainEnd<0||
+  !master.includes('<tbody>')||!master.includes('</tbody>'))
+  throw Error('HTML mestre V63 inválido.')
+
+const footer=master.slice(footerStart,headerStart)
+const header=master.slice(headerStart,mainStart)
+const main=master.slice(mainStart,mainEnd+7)
+const icons=new Map<string,string>()
+for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
+ const name=svg.match(/aria-label="([^"]+)"/)?.[1]
+ if(name)icons.set(name,svg)
+}
+const commentIcon='<svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"/></svg>'
+const esc=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const html=(value:string)=>esc(value||'')
+function letter(index:number):string{
+ let text=''
+ for(let n=index+1;n>0;n=Math.floor((n-1)/26))text=String.fromCharCode(65+(n-1)%26)+text
+ return text
+}
+const day=(iso:string)=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(iso))
+function rows(order:WorkOrder):string{
+ const {diagnostics,lines}=order.scope
+ const ids=[...new Set([...diagnostics.map(d=>d.pieceId),...lines.map(l=>l.pieceId)])]
+ return ids.map((pieceId,index)=>{
+  const diag=diagnostics.find(d=>d.pieceId===pieceId)
+  const items=lines.filter(l=>l.pieceId===pieceId)
+  const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
+  const symbol=letter(index),components=items.filter(l=>l.kind==='component')
+  const services=items.filter(l=>l.kind==='service')
+  const grouped=new Map<StageCluster,string[]>(STAGE_CLUSTERS.map(c=>[c,[]]))
+  const notes=[...(diag?.diagnosis?['Diagnóstico: '+diag.diagnosis]:[]),...(diag?.notes?[diag.notes]:[])]
+  for(const item of items){
+   if(item.kind==='component'&&item.notes)notes.push(item.name+': '+item.notes)
+   if(item.kind!=='service')continue
+   if(item.notes)notes.push(item.name+': '+item.notes)
+   if(item.quantity!=='1')notes.push(item.name+': quantidade '+item.quantity)
+   if(!item.stages.length)notes.push('Serviço sem etapas cadastradas: '+item.name)
+   for(const stage of item.stages){
+    const label=stage.name+(stage.dimension?' ('+stage.dimension+')':'')
+    if(stage.cluster&&grouped.has(stage.cluster))grouped.get(stage.cluster)!.push(label)
+    else notes.push('Etapa sem categoria ('+item.name+'): '+label)
+   }
+  }
+  const active=STAGE_CLUSTERS.filter(c=>grouped.get(c)!.length)
+  const rowIcons=[...(components.length?['Requer componentes']:[]),...active]
+    .map(category=>icons.get(category)||'').join('')
+  const componentHtml=components.map((item,i)=>{
+    const code=symbol+(i+1)
+    const variant=i===0?' piece-ladder-code--first':i===components.length-1?' piece-ladder-code--last':''
+    const quantity=item.quantity?item.quantity+' un.':''
+    return '<div class="piece-ladder-code'+variant+'">'+html(code)+'</div>'+
+      '<div class="piece-ladder-component'+(i===0?' piece-ladder-component--first':'')+'">'+
+      '<span class="piece-ladder-desc">'+html(item.name)+'</span>'+
+      '<span class="piece-ladder-qty">'+html(quantity)+'</span></div>'
+  }).join('')
+  const uniqueNotes=[...new Set(notes.map(note=>note.trim()).filter(Boolean))]
+  const remarks=uniqueNotes.length?
+    '<div class="piece-ladder-comment-marker" aria-label="Observações da peça">'+commentIcon+'</div>'+
+    '<div class="piece-ladder-comment-content"><span class="piece-comment-text">'+uniqueNotes.map(html).join(' • ')+'</span></div>':''
+  const first='<th class="piece-block-cell" scope="row"><div class="piece-ladder">'+
+    '<span class="piece-letter">'+symbol+'</span>'+
+    '<div class="piece-ladder-head"><div class="piece-ladder-name">'+html(name)+'</div>'+
+    '<div class="piece-ladder-icons">'+rowIcons+'</div></div>'+
+    componentHtml+remarks+'</div></th>'
+  const cols=STAGE_CLUSTERS.map(category=>{
+   const stages=grouped.get(category)!
+   return '<td data-cluster="'+html(category)+'">'+
+     (stages.length?'<ul class="service-group stage-list">'+stages.map(name=>
+       '<li class="stage-entry"><span class="stage-name">'+html(name)+'</span></li>').join('')+'</ul>':
+       '<span class="empty">—</span>')+'</td>'
+  }).join('')
+  return '<tr data-piece-ref="'+symbol+'">'+first+cols+'</tr>'
+ }).join('')
+}
+
+export interface OrderPrintTemplate{content:string;headerTemplate:string;footerTemplate:string}
+export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
+ const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
+ const date=day(order.createdAt)
+ const headerHtml=header
+   .replace('Honda City EXL 21/22 (FXN2A26)',html(vehicle||'Veículo não informado'))
+   .replace('OS-000142',html(order.number))
+   .replace('25/11/2026',html(date))
+   .replace('Data de entrega: 25/11/2026','Data de emissão: '+html(date))
+   .replace('Página 1 de 1','Paginação do documento')
+   .replace('1/1','<span class="pageNumber"></span>/<span class="totalPages"></span>')
+   .replace('class="v50-delivery"','class="v50-delivery"')
+ const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,'<tbody>'+rows(order)+'</tbody>')
+ const chromePrint='@page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}'+
+   'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'
+ const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
+   '</style></head><body>'+body+'</body></html>'
+ const marginStyle='body{margin:0!important;background:#fff!important}'+
+   '.running-header,.footer-legend{position:static!important;width:100%!important;}'
+ const wrap=(body:string)=>'<html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+marginStyle+
+   '</style></head><body>'+body+'</body></html>'
+ return{content,headerTemplate:wrap(headerHtml),footerTemplate:wrap(footer)}
+}
