@@ -36,6 +36,7 @@ COPY --chown=node:node server/chat/*.ts ./server/chat/
 # Opt-in Evolution read adapter is imported by the backend bootstrap, even when disabled.
 COPY --chown=node:node server/experimental/evolution-read/*.ts ./server/experimental/evolution-read/
 COPY --chown=node:node server/data ./server/data
+COPY --chown=node:node server/templates ./server/templates
 COPY --chown=node:node shared ./shared
 USER node
 EXPOSE 8787
