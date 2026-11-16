@@ -10,8 +10,10 @@ const PRINT_CLUSTERS:readonly StageCluster[]=[
 /** V63 is the visual master; replace its sample data, never the persisted scope. */
 const master=readFileSync(new URL('./templates/FUNIX_OS_v63.html',import.meta.url),'utf8')
 const approvedHeader=readFileSync(new URL('./templates/FUNIX_OS_v63_header.html',import.meta.url),'utf8')
-const officialLogo=master.match(/<svg aria-label="FUNIX"[\s\S]*?<\/svg>/)?.[0]
-if(!officialLogo)throw Error('Marca vetorial FUNIX ausente do mestre da OS.')
+const officialLogo=(()=>{const found=master.match(/<svg aria-label="FUNIX"[\s\S]*?<\/svg>/)?.[0]
+ if(!found)throw Error('Marca vetorial FUNIX ausente do mestre da OS.')
+ return found
+})()
 
 const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
 const footerStart=master.indexOf('<div class="footer-legend"')
@@ -46,7 +48,6 @@ function withoutPageRules(source:string):string{
 }
 const marginCss=withoutPageRules(css)
 const footer=master.slice(footerStart,headerStart)
-const header=master.slice(headerStart,mainStart)
 const main=master.slice(mainStart,mainEnd+7)
 const icons=new Map<string,string>()
 for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
