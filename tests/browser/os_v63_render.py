@@ -27,6 +27,35 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert "@page" not in data["footerTemplate"], "WeasyPrint page rules in Chromium footer"
         assert "background:transparent" in data["headerTemplate"]
         assert "pageNumber" in data["headerTemplate"]
+        assert 'class="osv63-header"' in data["headerTemplate"]
+        header_page=browser.new_page(viewport={"width":1122,"height":210})
+        header_page.set_content(data["headerTemplate"],wait_until="load")
+        header_metrics=header_page.evaluate("""() => {
+          const h=document.querySelector('.osv63-header');
+          const brand=h.querySelector('.brand');
+          const fields=[...h.querySelectorAll('.field')];
+          const logo=brand.querySelector('svg');
+          const labels=[...h.querySelectorAll('.label')];
+          const values=[...h.querySelectorAll('.value')];
+          const grid=h.getBoundingClientRect();
+          return {
+            labels:labels.map(x=>x.textContent.trim()),
+            brandW:brand.getBoundingClientRect().width,
+            staticWidths:[0,2,3].map(i=>fields[i].getBoundingClientRect().width),
+            vehicleW:fields[1].getBoundingClientRect().width,
+            vertical:values.every(x=>Math.abs(
+              x.getBoundingClientRect().top+x.getBoundingClientRect().height/2-
+              (grid.top+grid.height/2))<2),
+            logoW:logo.getBoundingClientRect().width,
+            delivery:values[2].textContent.trim()
+          };
+        }""")
+        assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
+        assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
+        assert header_metrics["delivery"]=="A DEFINIR",header_metrics
+        assert 120<header_metrics["logoW"]<125,header_metrics
+        assert 198<header_metrics["brandW"]<204,header_metrics
+        header_page.close()
         page.set_content(data["content"], wait_until="load")
         # Force the wider Arial fallback to reproduce the user's jsreport PDF.
         # The arrow tip ends at 82.8% of the five-cluster SVG.
