@@ -1664,6 +1664,15 @@ body .footer-legend .legend-heading{
 .main-matrix tbody tr>td {vertical-align:top !important;}
 .main-matrix tbody th.piece-block-cell {padding:7px 8px !important;}
 .main-matrix tbody tr > td {padding:7px 6px !important;}
+
+/* Chromium/WeasyPrint parity: approved V63 uses 10pt stage labels.
+   Preserve all column widths, piece-name weights and cluster headings. */
+body .main-matrix tbody tr > td .stage-entry,
+body .main-matrix tbody tr > td .stage-entry .stage-name{
+  font-size:10pt !important;
+  font-weight:400 !important;
+  line-height:1.16 !important;
+}
 </style></head><body><div class="footer-legend" style="font-size:10pt !important;"><span class="legend-heading" style="font-size:10pt !important;">Legenda:</span><span class="legend-item" style="font-size:10pt !important;"><svg aria-label="Requer componentes" color="#0A1F44" role="img" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 <title>Requer componentes</title>
 <g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0"><path d="M4 7l8-4 8 4v11l-8 4-8-4z"></path><path d="M4 7l8 4 8-4M12 11v11" fill="none" stroke="#fff" stroke-width="1.7"></path></g>
