@@ -2,7 +2,7 @@
 export interface WorkOrderLine {
   id:string; pieceId:string; kind:'service'|'component'; pieceName:string; name:string;
   diagnosis:string; dimension:string; quantity:string; notes:string;
-  stages:{name:string;dimension:string}[]
+  stages:{name:string;dimension:string;cluster?:import('./stage-clusters.ts').StageCluster|null}[]
 }
 export interface WorkOrderScope {
   customer:{name:string};

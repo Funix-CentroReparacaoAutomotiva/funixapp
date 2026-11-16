@@ -5,6 +5,7 @@ import type {WorkOrder,WorkOrderScope} from '../shared/work-order.ts'
 import {BudgetRepository} from './budgets.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
+import {stagePresentation} from './stage-presentation.ts'
 
 export function operationalScope(version:BudgetVersion):WorkOrderScope {
   // Only the immutable issued calculation decides which work is authorized.
@@ -22,7 +23,11 @@ export function operationalScope(version:BudgetVersion):WorkOrderScope {
   const lines=included.map(line=>({
     id:line.id,pieceId:line.pieceId,kind:line.kind,pieceName:line.pieceName,name:line.name,
     diagnosis:line.diagnosis,dimension:line.dimension,quantity:line.quantity,notes:line.notes,
-    stages:line.stages.map(stage=>({name:stage.name,dimension:stage.dimension}))
+    stages:line.stages.map(stage=>{
+      const source=frozen.composition.items.find(item=>item.id===line.pieceId)?.services.find(service=>service.id===line.id)
+      const presentation=source?.dimensionId?stagePresentation(stage,source.serviceId,source.dimensionId):stage.presentation
+      return{name:stage.name,dimension:stage.dimension,cluster:presentation?.cluster??null}
+    })
   }))
   const days=frozen.executionDeadline?.effectiveDays
   return {
