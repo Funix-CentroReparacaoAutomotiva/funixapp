@@ -61,13 +61,18 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
               const service=labels[3].querySelector('span:last-child').getBoundingClientRect();
               const aesthetic=labels[4].querySelector('span:last-child').getBoundingClientRect();
               const line=getComputedStyle(document.querySelector('.main-matrix tbody tr:first-child td:nth-of-type(4)'));
+              const headingLine=getComputedStyle(document.querySelector('.technical-band-labels'),'::after');
+              const regular=getComputedStyle(document.querySelector('.main-matrix tbody tr:first-child td:nth-of-type(3)'));
               return {
                 serviceGap:service.left-(art.left+art.width*.628),
                 serviceRightSlack:art.left+art.width*.80-service.right,
                 aestheticGap:aesthetic.left-(art.left+art.width*.828),
                 aestheticRightSlack:art.right-aesthetic.right,
                 separator:line.borderRightWidth,
-                separatorStyle:line.borderRightStyle
+                separatorStyle:line.borderRightStyle,
+                separatorColor:line.borderRightColor,
+                standardColor:regular.borderRightColor,
+                headingPseudoContent:headingLine.content
               };
             }""")
             assert metrics["serviceGap"]>=3, f"Chevron sobre SERVIÇOS: {metrics}"
@@ -75,7 +80,13 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
             assert metrics["aestheticGap"]>=3, f"Chevron sobre ESTÉTICA: {metrics}"
             assert metrics["aestheticRightSlack"]>=3, f"ESTÉTICA invade borda: {metrics}"
             assert metrics["separatorStyle"]=="solid" and float(metrics["separator"].replace("px",""))>=1, (
-                f"Sem divisória vertical 4/5: {metrics}"
+                f"Divisória original ausente: {metrics}"
+            )
+            assert metrics["separatorColor"]==metrics["standardColor"], (
+                f"Divisória 4/5 deve ter a mesma cor cinza das demais: {metrics}"
+            )
+            assert metrics["headingPseudoContent"] in ("none","normal"), (
+                f"Linha artificial sobre o cabeçalho: {metrics}"
             )
         page.set_viewport_size({"width":1280, "height":900})
         weights = page.locator(".main-matrix tbody td .stage-entry .stage-name").evaluate_all(
