@@ -12,7 +12,7 @@ for(let i=0;i<count;i++){
  diagnostics.push({pieceId,pieceName:'Peça sintética '+String(i+1).padStart(2,'0'),
    diagnosis:'Diagnóstico sintético '+(i+1),intensity:'leve',notes:'Conferir montagem após desmontagem.'})
  lines.push({id:'s-'+i,pieceId,kind:'service',pieceName:diagnostics[i]!.pieceName,name:'Reparação técnica',diagnosis:'Avaria externa',dimension:'',quantity:'1',notes:'',
-   stages:categories.slice(0,3).map(cluster=>({name:'Etapa de '+cluster,dimension:'',cluster}))})
+   stages:categories.slice(0,3).map(cluster=>({name:'Etapa de '+cluster,dimension:i%2===0?'Parcial':'M',cluster}))})
  if(i%2===0)lines.push({id:'c-'+i,pieceId,kind:'component',pieceName:diagnostics[i]!.pieceName,
    name:'Presilha '+(i+1),diagnosis:'',dimension:'',quantity:'4',notes:'',stages:[]})
 }
