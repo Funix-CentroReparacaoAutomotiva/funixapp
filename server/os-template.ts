@@ -38,7 +38,6 @@ function rows(order:WorkOrder):string{
   const items=lines.filter(l=>l.pieceId===pieceId)
   const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
   const symbol=letter(index),components=items.filter(l=>l.kind==='component')
-  const services=items.filter(l=>l.kind==='service')
   const grouped=new Map<StageCluster,string[]>(STAGE_CLUSTERS.map(c=>[c,[]]))
   const notes=[...(diag?.diagnosis?['Diagnóstico: '+diag.diagnosis]:[]),...(diag?.notes?[diag.notes]:[])]
   for(const item of items){
@@ -92,12 +91,11 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  const headerHtml=header
    .replace('Honda City EXL 21/22 (FXN2A26)',html(vehicle||'Veículo não informado'))
    .replace('OS-000142',html(order.number))
-   .replace('25/11/2026',html(date))
-   .replace('Data de entrega: 25/11/2026','Data de emissão: '+html(date))
+   .replaceAll('25/11/2026',html(date))
+   .replaceAll('Data de entrega','Data de emissão')
    .replace('Página 1 de 1','Paginação do documento')
    .replace('1/1','<span class="pageNumber"></span>/<span class="totalPages"></span>')
-   .replace('class="v50-delivery"','class="v50-delivery"')
- const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,'<tbody>'+rows(order)+'</tbody>')
+ const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
  const chromePrint='@page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}'+
    'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
