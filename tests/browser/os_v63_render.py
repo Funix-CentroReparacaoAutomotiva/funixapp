@@ -45,6 +45,17 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         found=set()
         for index,p in enumerate(doc):
             text=p.get_text()
+            # V63 reference has 5-mm side insets and precise vertical alignment.
+            ink=(10/255,31/255,68/255)
+            grey=(213/255,219/255,228/255)
+            def matching_rects(target):
+                return [d["rect"] for d in p.get_drawings()
+                        if d.get("fill") and all(abs(a-b)<0.022 for a,b in zip(d["fill"],target))
+                        and 810<d["rect"].width<819 and d["rect"].height>18]
+            headers=[r for r in matching_rects(ink) if r.y0<55]
+            footers=[r for r in matching_rects(grey) if r.y0>540]
+            assert any(abs(r.x0-14.2)<2 and abs(r.y0-11.3)<3 for r in headers), f"Header not aligned: {headers}"
+            assert any(abs(r.x0-14.2)<2 and abs(r.y0-562.0)<3 for r in footers), f"Footer not aligned: {footers}"
             assert "OS-000142" in text, f"Missing header on page {index+1}"
             assert "Legenda:" in text, f"Missing footer on page {index+1}"
             assert f"{index+1}/{len(doc)}" in text, f"Wrong page counter on page {index+1}"
