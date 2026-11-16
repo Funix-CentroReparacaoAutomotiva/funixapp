@@ -69,8 +69,8 @@ test('upgrades actual M1.1 SQL preserving legacy Atendimento values and adding o
       assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='fabrication_year'").get())
       assert(db.prepare("SELECT name FROM pragma_table_info('atendimentos') WHERE name='model_year'").get())
       assert(db.prepare("SELECT count(*) n FROM atendimentos WHERE fabrication_year IS NOT NULL OR model_year IS NOT NULL").get()!.n===0)
-      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
-      assert.equal(new CommercialRepository(db).catalogs().items.length, 163)
+      assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21])
+      assert.equal(new CommercialRepository(db).catalogs().items.length, 164)
       db.close()
     }
   } finally { rmSync(dir, { recursive: true, force: true }) }
@@ -103,7 +103,7 @@ test('V2 stays byte-identical; 163 coded pieces retain legacy metadata and missi
     const hash = (url: URL) => createHash('sha256').update(readFileSync(url)).digest('hex')
     assert.equal(hash(new URL('../data/hierarquia-v2.json', import.meta.url)), hash(new URL('../../docs/especificacao-v1.0/originais/hierarquia_pecas_funix_v2.json', import.meta.url)))
     const items = repo.catalogs().items
-    assert.equal(items.length, 163)
+    assert.equal(items.length, 164)
     assert.equal(hierarchyPieces().length, 163)
     assert(items.every(item => item.status === 'proposta' && item.code && item.kind === 'peca'))
     assert(items.some(item => item.suggestion))
