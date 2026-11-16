@@ -52,7 +52,7 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         }""")
         assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
         assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
-        assert header_metrics["delivery"]=="A DEFINIR",header_metrics
+        assert header_metrics["delivery"]=="-",header_metrics
         assert 120<header_metrics["logoW"]<125,header_metrics
         assert 198<header_metrics["brandW"]<204,header_metrics
         header_page.close()
@@ -149,6 +149,13 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
             assert any(abs(r.x0-14.2)<2 and abs(r.y0-562.0)<3 for r in footers), f"Footer not aligned: {footers}"
             assert "OS-000142" in text, f"Missing header on page {index+1}"
             assert "Legenda:" in text, f"Missing footer on page {index+1}"
+            words=p.get_text("words")
+            legend_titles=["Legenda:","Requer","Preparação","Correção","Pintura","Serviços","Estética"]
+            baselines=[w[3] for w in words if w[4] in legend_titles and w[1]>560]
+            assert len(baselines)>=6, f"Legenda incompleta na página {index+1}: {baselines}"
+            assert max(baselines)-min(baselines)<1.2, (
+                f"Itens da legenda desalinhados na página {index+1}: {baselines}"
+            )
             assert "(Parcial)" not in text and "(M)" not in text, f"Dimensões indevidas na página {index+1}"
             assert f"{index+1}/{len(doc)}" in text, f"Wrong page counter on page {index+1}"
             found.update(map(int,re.findall(r"Peça sintética\s+(\d+)",text)))
