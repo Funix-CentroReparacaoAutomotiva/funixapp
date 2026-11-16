@@ -123,7 +123,7 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  // O modelo V63 não contém data de entrega confirmada. Prazo em dias não é
  // compromisso com data de calendário: não inferir entrega a partir da emissão.
  // Usar marcador explícito até existir data confirmada, persistida no WorkOrder.
- const delivery='A DEFINIR'
+ const delivery='-'
  const headerHtml=approvedHeader
    .replace('{{FUNIX_LOGO_SVG}}',officialLogo)
    .replace('{{OS_NUMBER}}',html(order.number))
@@ -141,6 +141,8 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  const wrapFooter=(body:string)=>
    '<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
    '.footer-legend{transform:translateY(2mm)!important;}'+
+   // Original CSS shifted icon+text groups 2.6pt upward, misaligning them with 'Legenda:'.
+   '.footer-legend .legend-item{transform:none!important;}'+
    '</style></head><body>'+body+'</body></html>'
  // Header is self-contained to prevent legacy V63 mast CSS from overriding
  // the approved grid. Chrome head/footer templates are distinct documents.
