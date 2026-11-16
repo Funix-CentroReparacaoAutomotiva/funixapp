@@ -1,6 +1,11 @@
 import {readFileSync} from 'node:fs'
 import type {WorkOrder} from '../shared/work-order.ts'
-import {STAGE_CLUSTERS,type StageCluster} from '../shared/stage-clusters.ts'
+import {type StageCluster} from '../shared/stage-clusters.ts'
+// Ordem de apresentação da OS: não altera IDs ou categorias do cadastro comercial.
+const PRINT_CLUSTERS:readonly StageCluster[]=[
+  'Preparação técnica','Correção estrutural','Pintura e acabamento',
+  'Serviços complementares','Estética e revitalização'
+]
 
 /** V63 is the visual master; replace its sample data, never the persisted scope. */
 const master=readFileSync(new URL('./templates/FUNIX_OS_v63.html',import.meta.url),'utf8')
@@ -61,7 +66,7 @@ function rows(order:WorkOrder):string{
   const items=lines.filter(l=>l.pieceId===pieceId)
   const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
   const symbol=letter(index),components=items.filter(l=>l.kind==='component')
-  const grouped=new Map<StageCluster,string[]>(STAGE_CLUSTERS.map(c=>[c,[]]))
+  const grouped=new Map<StageCluster,string[]>(PRINT_CLUSTERS.map(c=>[c,[]]))
   const notes=[...(diag?.diagnosis?['Diagnóstico: '+diag.diagnosis]:[]),...(diag?.notes?[diag.notes]:[])]
   for(const item of items){
    if(item.kind==='component'&&item.notes)notes.push(item.name+': '+item.notes)
@@ -76,7 +81,7 @@ function rows(order:WorkOrder):string{
     else notes.push('Etapa sem categoria ('+item.name+'): '+label)
    }
   }
-  const active=STAGE_CLUSTERS.filter(c=>grouped.get(c)!.length)
+  const active=PRINT_CLUSTERS.filter(c=>grouped.get(c)!.length)
   const rowIcons=[...(components.length?['Requer componentes']:[]),...active]
     .map(category=>icons.get(category)||'').join('')
   const componentHtml=components.map((item,i)=>{
@@ -97,7 +102,7 @@ function rows(order:WorkOrder):string{
     '<div class="piece-ladder-head"><div class="piece-ladder-name">'+html(name)+'</div>'+
     '<div class="piece-ladder-icons">'+rowIcons+'</div></div>'+
     componentHtml+remarks+'</div></th>'
-  const cols=STAGE_CLUSTERS.map(category=>{
+  const cols=PRINT_CLUSTERS.map(category=>{
    const stages=grouped.get(category)!
    return '<td data-cluster="'+html(category)+'">'+
      (stages.length?'<ul class="service-group stage-list">'+stages.map(name=>
