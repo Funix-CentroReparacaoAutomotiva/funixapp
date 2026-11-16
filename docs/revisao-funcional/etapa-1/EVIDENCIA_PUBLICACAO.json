@@ -1,0 +1,24 @@
+{
+  "run": 41151094868,
+  "sha": "b0fdba268bc9250a04267e3d313c3eca26c625c5",
+  "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/actions/runs/41151094868",
+  "deploy": "success",
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "name": "Update only the preinstalled FUNIX Compose project",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify public HTTPS, frontend revision and API routing",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ]
+}
