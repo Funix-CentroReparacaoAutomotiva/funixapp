@@ -297,21 +297,7 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
-  `)},
-  {version:21,apply:db=>db.exec(`
-    CREATE TABLE work_order_pdf_cache (
-      work_order_id TEXT NOT NULL REFERENCES work_orders(id) ON DELETE RESTRICT,
-      template_version TEXT NOT NULL,
-      pdf BLOB NOT NULL CHECK(length(pdf)>16),
-      created_at TEXT NOT NULL,
-      PRIMARY KEY(work_order_id,template_version)
-    );
-    CREATE TRIGGER immutable_work_order_pdf_cache_update BEFORE UPDATE ON work_order_pdf_cache
-      BEGIN SELECT RAISE(ABORT,'Work order PDF cache is immutable'); END;
-    CREATE TRIGGER immutable_work_order_pdf_cache_delete BEFORE DELETE ON work_order_pdf_cache
-      BEGIN SELECT RAISE(ABORT,'Work order PDF cache is immutable'); END;
   `)}
-
 ]
 
 export function migrate(db: DatabaseSync) {
