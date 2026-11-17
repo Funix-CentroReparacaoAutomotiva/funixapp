@@ -1,5 +1,6 @@
 import { CustomerRepository } from './customers.ts'
 import{initializeFinancialSettings}from'./financial-initialization.ts'
+import{initializeVehicleComposition}from'./default-vehicle-composition.ts'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import { ATENDIMENTO_STAGES } from '../shared/contracts.ts'
@@ -123,6 +124,7 @@ export class AtendimentoRepository {
       if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
       if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?now:null,record.id)
       if(refs)customers.saveReferences(record.id,refs)
+      initializeVehicleComposition(this.db,record.id,now)
       if (!inTransaction) this.db.exec('COMMIT')
     }catch(error){if (!inTransaction) this.db.exec('ROLLBACK');throw error}
     return this.get(record.id)
