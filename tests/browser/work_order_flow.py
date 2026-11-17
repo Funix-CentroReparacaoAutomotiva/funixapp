@@ -120,16 +120,40 @@ db.close()
         assert count_orders() == 0
         mark("lista apresenta criação de OS com botão acessível e orçamento consultável")
 
-        # Dismissing the explicit browser confirmation must not create work.
-        h.accept_dialogs = False
+        # The optional date dialog has two mutually exclusive explicit actions.
         before_posts = sum(x["method"] == "POST" and x["path"] == base + "/os" for x in h.api_requests)
         await history.get_by_role("button", name="Criar OS").click()
+        dialog = page.get_by_role("dialog", name="Emitir Ordem de Serviço")
+        await expect(dialog).to_be_visible()
+        field = dialog.get_by_label("Data prevista de entrega (opcional)")
+        without = dialog.get_by_role("button", name="Emitir sem data")
+        with_date = dialog.get_by_role("button", name="Emitir com data")
+        await expect(without).to_be_enabled()
+        await expect(with_date).to_be_disabled()
+        await field.fill("2026-12-02")
+        await expect(without).to_be_disabled()
+        await expect(with_date).to_be_enabled()
+        await field.fill("")
+        await expect(without).to_be_enabled()
+        await expect(with_date).to_be_disabled()
+        await shot("01a-escolha-data")
+        await dialog.get_by_role("button", name="Cancelar", exact=True).click()
+        await expect(dialog).to_have_count(0)
         assert count_orders() == 0
         assert sum(x["method"] == "POST" and x["path"] == base + "/os" for x in h.api_requests) == before_posts
-        assert h.dialogs and "autorizado" in h.dialogs[-1].lower()
         assert page.url == original_url
         h.accept_dialogs = True
-        mark("cancelar confirmação não dispara criação nem persiste OS")
+        mark("dois botões não permitem descartar uma data válida por engano; cancelar não cria OS")
+
+        async def issue_initial():
+            await history.get_by_role("button", name="Criar OS").click()
+            await expect(dialog).to_be_visible()
+            if label == "mobile390":
+                await without.click()
+            else:
+                await field.fill("2026-12-02")
+                await expect(without).to_be_disabled()
+                await with_date.click()
 
         # Exercise ordinary success at two sizes and response lost AFTER SQLite commit at 390px.
         if label == "mobile390":
@@ -143,10 +167,12 @@ db.close()
                 else:
                     await route.continue_()
             await page.route("**/orcamentos/*/os", lost_response)
-            await history.get_by_role("button", name="Criar OS").click()
-            await expect(history.get_by_role("alert")).to_contain_text("Não foi possível comunicar")
+            await issue_initial()
+            await expect(dialog.get_by_role("alert")).to_contain_text("Não foi possível comunicar")
             await page.unroute("**/orcamentos/*/os", lost_response)
-            assert len(seen) == 1 and seen[0] == {"authorized": True}
+            assert len(seen) == 1 and seen[0]["authorized"] is True
+            assert seen[0]["deliveryChoice"] == "without" and "deliveryDate" not in seen[0]
+            assert isinstance(seen[0]["expectedAtendimentoRevision"], int)
             assert count_orders() == 1
             await page.reload()
             await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
@@ -155,7 +181,7 @@ db.close()
             async with page.expect_response(
                 lambda r: r.request.method == "POST" and r.url.endswith(base + "/os")
             ) as created:
-                await history.get_by_role("button", name="Criar OS").click()
+                await issue_initial()
             assert (await created.value).status == 201
             await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
             assert count_orders() == 1
@@ -164,6 +190,9 @@ db.close()
         await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-issued"))
         order = await get(base + "/os")
         assert order["number"] == "OS-000001"
+        expected_date = None if label == "mobile390" else "2026-12-02"
+        assert order["scope"]["deliveryDate"] == expected_date
+        assert (await get("/api/atendimentos/" + ids["at"])).get("deliveryDate") == expected_date
         assert order["budgetVersionId"] == ids["version"]
         assert order["authorization"]["operatorId"] is None
         assert order["scope"]["customer"]["name"] == ids["originalCustomer"]

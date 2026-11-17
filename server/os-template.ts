@@ -123,7 +123,7 @@ function setHeaderField(source:string,field:string,value:string):string{
 }
 export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
- let headerHtml=setHeaderField(header,'id-field',order.number+(order.revision&&order.revision>1?' R'+String(order.revision).padStart(2,'0'):''))
+ let headerHtml=setHeaderField(header,'id-field',order.number+(order.scope.deliveryDate!==undefined||order.revision?' R'+String(order.revision??1).padStart(2,'0'):''))
  headerHtml=setHeaderField(headerHtml,'vehicle-field',vehicle||'Veículo não informado')
  headerHtml=setHeaderField(headerHtml,'delivery-field',deliveryDateLabel(order.scope.deliveryDate))
  headerHtml=headerHtml.replace('class="field vehicle-field"',

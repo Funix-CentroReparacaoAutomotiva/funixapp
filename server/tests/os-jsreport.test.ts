@@ -165,3 +165,16 @@ test('OS PDF cache is immutable and returns existing PDF on repeated saves',()=>
    assert(info.some(row=>row.name==='template_version'))
  }finally{db.close()}
 })
+
+test('V1 prints the explicit calendar date and revision, not calendar arithmetic based on deadline',()=>{
+ const order=structuredClone(sample)
+ order.scope.deliveryDate='2026-12-02'
+ order.scope.deadlineDays=99
+ order.revision=2
+ const result=renderOrderV1(order)
+ assert(result.headerTemplate.includes('02/12/2026'))
+ assert(result.headerTemplate.includes('OS-000142 R02'))
+ assert(!result.headerTemplate.includes('99 dias'))
+ order.scope.deliveryDate=null
+ assert(renderOrderV1(order).headerTemplate.includes('class="value">—</strong>'))
+})

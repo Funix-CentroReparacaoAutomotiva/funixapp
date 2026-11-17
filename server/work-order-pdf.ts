@@ -6,7 +6,7 @@ import {deliveryDateLabel} from '../shared/delivery-date.ts'
 export function operationalParagraphs(order:WorkOrder):string[] {
   const scope=order.scope
   const paragraphs=[
-    'FUNIX | ORDEM DE SERVIÇO '+order.number+(order.revision&&order.revision>1?' R'+String(order.revision).padStart(2,'0'):''),
+    'FUNIX | ORDEM DE SERVIÇO '+order.number+(order.scope.deliveryDate!==undefined||order.revision?' R'+String(order.revision??1).padStart(2,'0'):''),
     'Via operacional para execução. Não é proposta comercial.',
     '',
     'Orçamento de origem: '+(order.budgetNumber||'sem número comercial')+
