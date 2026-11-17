@@ -1,0 +1,9 @@
+.os-delivery-dialog{width:min(420px,calc(100% - 32px));max-height:calc(100% - 32px);box-sizing:border-box;border:1px solid var(--border,#adb5bd);border-radius:12px;padding:20px;color:inherit;background:var(--surface,#fff);overflow:auto}
+.os-delivery-dialog::backdrop{background:#0008}
+.os-delivery-dialog h2{margin:0 0 12px;font-size:1.1rem}
+.os-delivery-dialog p{font-size:.9rem;line-height:1.4}
+.os-delivery-dialog .at-field input{min-width:0;width:100%;box-sizing:border-box}
+.os-delivery-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.os-delivery-actions button{flex:1 1 120px;min-height:44px;border-radius:8px;padding:8px;white-space:normal}
+.os-delivery-actions button:disabled{opacity:.45;cursor:not-allowed}
+.os-delivery-cancel{margin-top:12px;min-height:40px;width:100%}

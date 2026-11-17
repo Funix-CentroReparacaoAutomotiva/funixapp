@@ -105,8 +105,8 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
-  const osCache=(options.osPdfRenderer||process.env.FUNIX_OS_JSREPORT_ENABLED==='true')
-    ?new WorkOrderPdfCache(options.atendimentos.db):null
+  // V21 revisions and new explicit issues freeze the first successfully rendered PDF.
+  const osCache=new WorkOrderPdfCache(options.atendimentos.db)
   const cancellations = new BudgetCancellationRepository(options.atendimentos.db,options.now)
   const stampPdf=options.cancelledPdfRenderer??cancelledPdf
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
@@ -665,37 +665,44 @@ export function createRequestHandler(options: AppOptions) {
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante o cancelamento.')
         return send(200,cancellations.cancel(cancellationRoute[1]!,cancellationRoute[2]!,body))
       }
-      const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(\/pdf)?$/.exec(url.pathname)
+      const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(?:\/(revisoes)(?:\/([1-9][0-9]{0,8}))?)?(\/pdf)?$/.exec(url.pathname)
       if (orderRoute) {
-        const at=orderRoute[1]!,versionId=orderRoute[2]!,pdf=orderRoute[3]
+        const at=orderRoute[1]!,versionId=orderRoute[2]!,revisions=orderRoute[3],revision=orderRoute[4],pdf=orderRoute[5]
         if (req.method==='GET') {
           if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
-          const order=workOrders.get(at,versionId)
+          if(revisions&&!revision){
+            if(pdf)return fail(404,'NOT_FOUND','Informe a revisão da OS.')
+            return send(200,workOrders.listRevisions(at,versionId))
+          }
+          const order=workOrders.get(at,versionId,revision?Number(revision):1)
           if (!pdf) return send(200,order)
           const useJsreportOrderPdf=Boolean(options.osPdfRenderer)||process.env.FUNIX_OS_JSREPORT_ENABLED==='true'
           let original:Buffer
-          if(!useJsreportOrderPdf) original=workOrderPdf(order)
+          // Keep the old fallback behavior only for legacy records without an explicit delivery field.
+          const frozenPdf=order.scope.deliveryDate!==undefined||!!order.revisionId
+          if(!useJsreportOrderPdf&&!frozenPdf) original=workOrderPdf(order)
           else {
-            const cached=osCache!.get(order.id)
+            const cached=osCache.get(order.id,order.revisionId)
             if(cached)original=cached
             else{
               const renderer=options.osPdfRenderer??((item:typeof order)=>renderOrderJsreport(item,configuredOrderRenderer()))
-              original=osCache!.save(order.id,await renderer(order))
+              const rendered=useJsreportOrderPdf?await renderer(order):workOrderPdf(order)
+              original=osCache.save(order.id,rendered,order.revisionId)
             }
           }
           const data=order.cancellation?await stampPdf(original):original
           res.setHeader('Content-Type','application/pdf')
-          res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+'.pdf"')
+          res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+(order.revision&&order.revision>1?'-R'+String(order.revision).padStart(2,'0'):'')+'.pdf"')
           res.setHeader('Content-Length',data.length)
           res.writeHead(200);res.end(data);return
         }
-        if (req.method!=='POST'||pdf) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (req.method!=='POST'||pdf||revision) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
         if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
         const body=await readJson(req,1024)
         if ((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
-        return send(201,workOrders.create(at,versionId,body))
+        return send(201,revisions?workOrders.reissue(at,versionId,body):workOrders.create(at,versionId,body))
       }
       const budgetRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos(?:\/([^/]{1,100}))?(\/pdf)?$/.exec(url.pathname)
       if (budgetRoute) {

@@ -292,3 +292,103 @@ test('Separate SQLite connections cannot create two OS records for the same issu
   assert.equal(firstDb.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,1)
  }finally{firstDb.close();secondDb.close();rmSync(directory,{recursive:true,force:true})}
 })
+
+test('Manual delivery choice is independent from the estimated duration and atomic with OS issuance',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const before=repo.get(at),sourcePdf=budgets.pdf(at,version.id),source=budgets.get(at,version.id)
+  const choose={authorized:true,expectedAtendimentoRevision:before.revision}
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without',deliveryDate:'2026-11-27'}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-02-30'}),error(422,'INVALID_DELIVERY_DATE'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with'}),error(422,'INVALID_DELIVERY_DATE'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-11-27',expectedAtendimentoRevision:before.revision-1}),error(409,'VERSION_CONFLICT'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,0)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  assert.deepEqual(repo.get(at),before)
+  const input={...choose,deliveryChoice:'with',deliveryDate:'2026-11-27'}
+  const first=orders.create(at,version.id,input)
+  assert.equal(first.scope.deliveryDate,'2026-11-27')
+  assert.equal(first.scope.deadlineDays,operationalScope(version).deadlineDays)
+  assert.equal(repo.get(at).deliveryDate,'2026-11-27')
+  assert.equal(repo.get(at).revision,before.revision+1)
+  assert.deepEqual(orders.create(at,version.id,input),first)
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without'}),error(409,'OS_ALREADY_ISSUED'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
+  assert.deepEqual(budgets.get(at,version.id),source)
+  assert.deepEqual(budgets.pdf(at,version.id),sourcePdf)
+ }finally{db.close()}
+})
+
+test('Optional empty delivery, explicit reissue, historical PDFs and cancellation remain independent',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const first=orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:repo.get(at).revision})
+  assert.equal(first.scope.deliveryDate,null)
+  assert.equal(repo.get(at).deliveryDate??null,null)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  const original=Buffer.from('%PDF-1.7\noriginal synthetic\n%%EOF')
+  const next=Buffer.from('%PDF-1.7\nrevision synthetic\n%%EOF')
+  const cache=new WorkOrderPdfCache(db)
+  cache.save(first.id,original)
+  const updated=repo.update(at,{revision:repo.get(at).revision,deliveryDate:'2026-12-02'})
+  const meta=()=>{
+   const listed=budgets.list(at) as unknown as {id:string;workOrderNeedsReissue:boolean;workOrderRevision:number}[]
+   const entry=listed.find(v=>v.id===version.id)
+   assert.ok(entry,'Issued budget must remain listed')
+   return entry
+  }
+  assert.equal(meta().workOrderNeedsReissue,true)
+  assert.deepEqual(orders.get(at,version.id),first)
+  const request={authorized:true,deliveryChoice:'with',deliveryDate:'2026-12-02',expectedAtendimentoRevision:updated.revision,expectedRevision:1}
+  const revision=orders.reissue(at,version.id,request)
+  assert.equal(revision.id,first.id)
+  assert.equal(revision.revision,2)
+  assert.equal(revision.scope.deliveryDate,'2026-12-02')
+  assert.deepEqual({...revision.scope,deliveryDate:null},first.scope)
+  assert.equal(meta().workOrderNeedsReissue,false)
+  assert.equal(meta().workOrderRevision,2)
+  assert.throws(()=>orders.reissue(at,version.id,request),error(409,'OS_REVISION_CONFLICT'))
+  assert.equal(cache.get(first.id,revision.revisionId!),null)
+  cache.save(first.id,next,revision.revisionId!)
+  assert.deepEqual(cache.get(first.id),original)
+  assert.deepEqual(cache.get(first.id,revision.revisionId!),next)
+  assert.deepEqual(cache.save(first.id,original,revision.revisionId!),next)
+  assert.throws(()=>db.prepare("UPDATE work_order_revisions SET scope_json='{}'").run(),/immutable/i)
+  assert.throws(()=>db.prepare('DELETE FROM work_order_revision_pdf_cache').run(),/immutable/i)
+  const cleared=repo.update(at,{revision:updated.revision,deliveryDate:null})
+  assert.equal(meta().workOrderNeedsReissue,true)
+  const third=orders.reissue(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:cleared.revision,expectedRevision:2})
+  assert.equal(third.revision,3)
+  assert.equal(third.scope.deliveryDate,null)
+  assert.deepEqual(orders.listRevisions(at,version.id).map(o=>o.revision??1),[3,2,1])
+  assert.equal(orders.get(at,version.id,2).scope.deliveryDate,'2026-12-02')
+  assert.deepEqual(orders.get(at,version.id),first)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,2)
+  assert.throws(()=>db.prepare('DELETE FROM atendimento_delivery_date_history').run(),/immutable/i)
+  new BudgetCancellationRepository(db).cancel(at,version.id,{})
+  assert(orders.get(at,version.id,2).cancellation)
+  assert.throws(()=>orders.reissue(at,version.id,{...request,expectedRevision:3}),error(409,'BUDGET_CANCELLED'))
+ }finally{db.close()}
+})
+
+test('Date registered before OS issuance is reused; invalid date or concurrent changes do not overwrite it',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,version}=await emitted(db),at=fixture.at.id
+  const repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const before=repo.get(at)
+  assert.throws(()=>repo.update(at,{revision:before.revision,deliveryDate:'2026-02-29'}),error(422,'INVALID_DELIVERY_DATE'))
+  const saved=repo.update(at,{revision:before.revision,deliveryDate:'2028-02-29'})
+  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:'2028-03-01',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  const order=orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:saved.deliveryDate,expectedAtendimentoRevision:saved.revision})
+  assert.equal(order.scope.deliveryDate,'2028-02-29')
+  assert.equal(repo.get(at).revision,saved.revision)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
+ }finally{db.close()}
+})

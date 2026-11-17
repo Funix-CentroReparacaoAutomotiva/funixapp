@@ -157,11 +157,24 @@ test('OS PDF cache is immutable and returns existing PDF on repeated saves',()=>
    // Cache is created only when explicitly instantiated; main schema remains V20.
    const cache=new WorkOrderPdfCache(db)
    assert.equal(cache.get('missing-order'),null)
-   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,20)
+   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,21)
    // No synthetic production objects are needed to inspect the schema.
    const schema=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='work_order_pdf_cache'").get()
    assert(schema)
    const info=db.prepare("PRAGMA table_info(work_order_pdf_cache)").all()
    assert(info.some(row=>row.name==='template_version'))
  }finally{db.close()}
+})
+
+test('V1 prints the explicit calendar date and revision, not calendar arithmetic based on deadline',()=>{
+ const order=structuredClone(sample)
+ order.scope.deliveryDate='2026-12-02'
+ order.scope.deadlineDays=99
+ order.revision=2
+ const result=renderOrderV1(order)
+ assert(result.headerTemplate.includes('02/12/2026'))
+ assert(result.headerTemplate.includes('OS-000142 R02'))
+ assert(!result.headerTemplate.includes('99 dias'))
+ order.scope.deliveryDate=null
+ assert(renderOrderV1(order).headerTemplate.includes('class="value">—</strong>'))
 })

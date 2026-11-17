@@ -7,6 +7,7 @@ import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
 import {validVehicleYear} from './vehicle-registration'
+import {validDeliveryDate} from '../shared/delivery-date'
 import './vehicle-registration.css'
 
 function initialFields(record?: Atendimento): AtendimentoInput {
@@ -17,6 +18,7 @@ function initialFields(record?: Atendimento): AtendimentoInput {
     brand: record?.brand ?? '', model: record?.model ?? '', plate: record?.plate ?? '',
     fabricationYear: record?.fabricationYear ?? (record ? null : ''),
     modelYear: record?.modelYear ?? (record ? null : ''),
+    deliveryDate: record?.deliveryDate ?? null,
     reason: record?.reason ?? '', notes: record?.notes ?? '', stage: record?.stage ?? 'novo-lead',
     rejectionReason: record?.rejectionReason ?? '', explicitRefusal: record?.explicitRefusal ?? false,
   }
@@ -60,7 +62,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
   async function persistEdit() {
     if (!record || inFlight.current || conflict || !dirty) return
     const snapshot=fieldsRef.current
-    if (!validVehicleYear(snapshot.fabricationYear??'') ||
+    if ((snapshot.deliveryDate&&!validDeliveryDate(snapshot.deliveryDate)) || !validVehicleYear(snapshot.fabricationYear??'') ||
         !validVehicleYear(snapshot.modelYear??'') ||
         (snapshot.stage==='rejeitados' && (!snapshot.explicitRefusal || !snapshot.rejectionReason?.trim()))) return
     inFlight.current=true
@@ -96,6 +98,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
     event.preventDefault()
     if (record) {await persistEdit();return}
     if (busy || conflict) return
+    if (fields.deliveryDate&&!validDeliveryDate(fields.deliveryDate)) {setFailure('Informe uma data de entrega válida ou deixe em branco.');return}
     if (!validVehicleYear(fields.fabricationYear ?? '') || !validVehicleYear(fields.modelYear ?? '')) { setFailure('Informe anos válidos com quatro dígitos ou deixe os campos vazios.'); return }
     setBusy(true); onBusy(true); setFailure('')
     try {
@@ -113,7 +116,8 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
     <div className="at-form-scroll"><p className="at-form-hint">Comece com as informações disponíveis. Nenhum cadastro completo é obrigatório.</p>
       <CustomerLines value={fields.references!} disabled={busy&&!record} onMessage={record?async(cid,index)=>{if(dirty||busy){setFailure('Aguarde o salvamento antes de abrir a conversa.');return}void cid;try{const result=await api<{conversationId:string}>(`/api/atendimentos/${record.id}/prepare-conversation`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactIndex:index,revision:revisionRef.current})});onMessage?.(result.conversationId)}catch(e){setFailure((e as Error).message)}}:undefined} onChange={(references:CustomerReferences)=>setDraft(previous=>({...previous,references,name:references.person[0]?.text??'',phone:references.contact[0]?.text??'',vehicle:references.vehicle[0]?.text??'',plate:references.vehicle[0]?.plate??'',fabricationYear:references.vehicle[0]?.fabricationYear??'',modelYear:references.vehicle[0]?.modelYear??''}))}/>
       <div className="at-field"><label htmlFor="at-reason">Motivo / descrição do ocorrido</label><textarea id="at-reason" value={fields.reason} onChange={event => update('reason', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>
-      <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>
+      <div className="at-field"><label htmlFor="at-delivery-date">Data prevista de entrega (opcional)</label><input id="at-delivery-date" type="date" value={fields.deliveryDate??''} onChange={event=>update('deliveryDate',event.target.value||null)} disabled={busy&&!record}/><small>Preenchimento manual; não altera o prazo de execução do orçamento. Uma mudança exige nova emissão das OS existentes.</small></div>
+       <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>
       {record && <><div className="at-field"><label htmlFor="at-stage">Fase comercial</label><select id="at-stage" value={fields.stage} onChange={event => update('stage', event.target.value as Atendimento['stage'])} disabled={busy}>{ATENDIMENTO_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></div><p className="at-form-hint">Movimentação manual. Os prazos dos nomes não mudam a fase automaticamente.</p></>}
       {fields.stage === 'rejeitados' && <div className="at-refusal"><label><input type="checkbox" checked={fields.explicitRefusal} required onChange={event => update('explicitRefusal', event.target.checked)} disabled={busy} /> Houve recusa explícita do cliente.</label><div className="at-field"><label htmlFor="at-rejection-reason">Motivo da recusa</label><textarea id="at-rejection-reason" required value={fields.rejectionReason} onChange={event => update('rejectionReason', event.target.value)} maxLength={2000} rows={2} disabled={busy} /></div></div>}
       {record && <label><input type="checkbox" checked={!!fields.closed} onChange={e=>update('closed',e.target.checked)}/> Atendimento encerrado</label>}
