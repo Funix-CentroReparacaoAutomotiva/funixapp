@@ -1,6 +1,6 @@
 import{createPortal}from'react-dom'
 import type{RecommendationApplication,RecommendationApplicationRequest,DiagnosisRecommendation,DiagnosisIntensity}from'../shared/commercial'
-import{servicePolicy,newServiceSelectionIssue,TECHNICAL_ACTIVITY,compareRecommendations}from'../shared/commercial-curation'
+import{serviceDisplayName,servicePolicy,newServiceSelectionIssue,TECHNICAL_ACTIVITY,compareRecommendations}from'../shared/commercial-curation'
 import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState} from 'react'
 import type {DiagnosisItem,CatalogItem,CommercialWorkspace,CommercialSave,Scenario} from '../shared/commercial'
 import {catalogItemUsable} from '../shared/commercial'
@@ -228,12 +228,12 @@ export function DiagnosisEditor({initial,workspace,catalog,noteSlot,onDirty,onBu
   const result:(CatalogItem&{selectionDisabled?:boolean})[]=[],seen=new Set<string>()
   for(const c of all){const policy=servicePolicy(c.id)
    if(policy?.group===TECHNICAL_ACTIVITY){
-    if(servicePolicy(current??'')?.group===TECHNICAL_ACTIVITY){if(c.id===current)result.push({...c,name:policy.displayName!});continue}
+    if(servicePolicy(current??'')?.group===TECHNICAL_ACTIVITY){if(c.id===current)result.push({...c,name:serviceDisplayName(c.id,c.name)});continue}
     if(seen.has(TECHNICAL_ACTIVITY))continue;seen.add(TECHNICAL_ACTIVITY)
     result.push({...c,id:'activity:'+TECHNICAL_ACTIVITY,name:'Diagnóstico / inspeção técnica — identificação pendente',selectionDisabled:true});continue
    }
    if(c.id!==current&&newServiceSelectionIssue(c.id))continue
-   result.push({...c,name:policy?.displayName??c.name})
+   result.push({...c,name:serviceDisplayName(c.id,c.name)})
   }return result
  }
  const savedPiece=workspace.items.find(p=>p.id===initial.id)
