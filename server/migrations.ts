@@ -297,6 +297,54 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
+  `)},
+  // Expected delivery is owned by the Atendimento; changes must be auditable.
+  // OS V18 records remain byte-for-byte intact, and later issues are append-only.
+  {version:21,apply:db=>db.exec(`
+    ALTER TABLE atendimentos ADD COLUMN delivery_date TEXT
+      CHECK(delivery_date IS NULL OR (length(delivery_date)=10 AND
+        delivery_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND
+        date(delivery_date) IS NOT NULL AND date(delivery_date)=delivery_date));
+    CREATE TABLE atendimento_delivery_date_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id) ON DELETE RESTRICT,
+      previous_date TEXT,
+      new_date TEXT,
+      reason TEXT NOT NULL CHECK(length(trim(reason)) BETWEEN 5 AND 500),
+      changed_at TEXT NOT NULL,
+      operator_id TEXT
+    );
+    CREATE INDEX atendimento_delivery_date_history_at ON atendimento_delivery_date_history(atendimento_id,id);
+    CREATE TRIGGER immutable_delivery_history_update BEFORE UPDATE ON atendimento_delivery_date_history
+      BEGIN SELECT RAISE(ABORT,'Delivery date history is immutable'); END;
+    CREATE TRIGGER immutable_delivery_history_delete BEFORE DELETE ON atendimento_delivery_date_history
+      BEGIN SELECT RAISE(ABORT,'Delivery date history is immutable'); END;
+    CREATE TABLE work_order_revisions (
+      id TEXT PRIMARY KEY,
+      work_order_id TEXT NOT NULL REFERENCES work_orders(id) ON DELETE RESTRICT,
+      revision INTEGER NOT NULL CHECK(revision>=2),
+      created_at TEXT NOT NULL,
+      authorized_at TEXT NOT NULL,
+      reason TEXT NOT NULL CHECK(length(trim(reason)) BETWEEN 5 AND 500),
+      scope_json TEXT NOT NULL,
+      UNIQUE(work_order_id,revision)
+    );
+    CREATE INDEX work_order_revisions_by_order ON work_order_revisions(work_order_id,revision DESC);
+    CREATE TRIGGER immutable_work_order_revision_update BEFORE UPDATE ON work_order_revisions
+      BEGIN SELECT RAISE(ABORT,'Work order revisions are immutable'); END;
+    CREATE TRIGGER immutable_work_order_revision_delete BEFORE DELETE ON work_order_revisions
+      BEGIN SELECT RAISE(ABORT,'Work order revisions are immutable'); END;
+    CREATE TABLE work_order_revision_pdf_cache (
+      revision_id TEXT NOT NULL REFERENCES work_order_revisions(id) ON DELETE RESTRICT,
+      template_version TEXT NOT NULL,
+      pdf BLOB NOT NULL CHECK(length(pdf)>16),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(revision_id,template_version)
+    );
+    CREATE TRIGGER immutable_work_order_revision_pdf_update BEFORE UPDATE ON work_order_revision_pdf_cache
+      BEGIN SELECT RAISE(ABORT,'Work order revision PDF is immutable'); END;
+    CREATE TRIGGER immutable_work_order_revision_pdf_delete BEFORE DELETE ON work_order_revision_pdf_cache
+      BEGIN SELECT RAISE(ABORT,'Work order revision PDF is immutable'); END;
   `)}
 ]
 
