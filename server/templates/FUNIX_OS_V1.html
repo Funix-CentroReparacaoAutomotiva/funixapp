@@ -1828,8 +1828,10 @@ body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span
 }
 /* PR240: native gray grid borders only, no synthetic dark separators. */
 @page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}.execution{margin:3.2mm 0 0!important;}
-body .main-matrix .technical-band-label span,
-body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:0.18px!important;}
+/* V1: compact technical titles; keep size, weight and arrow geometry. */
+body .main-matrix .technical-band-label span{letter-spacing:-0.15px!important;}
+body .main-matrix .technical-band-label:nth-child(4) span,
+body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:-0.25px!important;}
 
 
 @page{size:A4 landscape;margin:0}
@@ -1861,8 +1863,6 @@ html,body{height:210mm!important;width:297mm!important;margin:0!important;paddin
  justify-content:center!important;gap:8px!important;z-index:22
 }
 .footer-legend .legend-item{transform:none!important}
-/* Quarto título evita encostar no chevron com fonte de substituição mais larga. */
-.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.02px!important}
 .controls,.note,.sheet,.running-header{display:none!important}
 </style></head><body>
 <!-- MODELO VISUAL FUNIX OS V1 — amostra ilustrativa OS-000009.

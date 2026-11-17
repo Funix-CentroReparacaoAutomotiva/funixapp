@@ -33,6 +33,8 @@ with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as play
             "(nodes)=>nodes.map(n=>n.getAttribute('aria-label'))")==expected
         assert page.locator(".main-matrix tbody tr:first-child td").evaluate_all(
             "(nodes)=>nodes.map(n=>n.getAttribute('data-cluster'))")==expected
+        assert page.locator(".technical-band-label > span").evaluate_all(
+            "els=>els.map(e=>getComputedStyle(e).letterSpacing)")==['-0.15px']*6+['-0.25px']*4
         assert page.locator(".main-matrix tbody tr").count()==count
         assert page.locator(".main-matrix tbody td .stage-name").evaluate_all(
             "(els)=>[...new Set(els.map(e=>getComputedStyle(e).fontWeight))]")==["400"]
