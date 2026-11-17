@@ -1,4 +1,5 @@
 import{referencePresentation,clusterById,clusterName,sourceStageCluster}from'./stage-presentation.ts'
+import{approvedEnergy,POLISH_M_SERVICE,POLISH_M_DIMENSION,POLISH_M_RELATIONS}from'./approved-stage-energy.ts'
 import{COMMERCIAL_CURATION,servicePolicy}from'../shared/commercial-curation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash} from 'node:crypto'
@@ -155,26 +156,56 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
    for(const r of relations){
     const st=ref(r,'c-AWrfBjSHDl',TABLES.stages),sd=ref(r,'c-B9QLxROotP',TABLES.stageDimensions)
     const be=st?ref(st,'c-K6LT-CKgWA',TABLES.energy):null,de=sd?ref(sd,'c-ufXqc_8vWI',TABLES.energy):null
-    const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,dimensionEnergy=de?number(de,'c-3-8rupyDNx'):null
-    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):''
-    const actual=number(r,'c-Ii7Vzlr1ni')
-    if(!st || !sd || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){
+    const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,actual=number(r,'c-Ii7Vzlr1ni')
+    const dimensionCell=sd?cell(sd,'c-ufXqc_8vWI'):undefined
+    const stageDimensionCell=cell(r,'c-B9QLxROotP')
+    const rawDimensionCell=de?scalar(cell(de,'c-3-8rupyDNx')):null
+    // The normal non-negative decimal parser intentionally rejects negative values.
+    // For approved historical corrections, inspect the raw negative operand explicitly.
+    const rawDimension=rawDimensionCell===null||rawDimensionCell===undefined||rawDimensionCell===''?null:
+      /^-?\d+(?:\.\d+)?$/.test(String(rawDimensionCell))?String(rawDimensionCell):null
+    const explicitlyBlank=(value:unknown)=>value===null||value===''||value===undefined
+    const approved=approvedEnergy({
+      relationId:r.rowId,serviceId:s.rowId,dimensionId:d.row.rowId,
+      stageId:st?.rowId??'',stageDimensionId:sd?.rowId??null,
+      base:baseEnergy,rawDimension,rawDimensionMissing:sd?explicitlyBlank(dimensionCell):explicitlyBlank(stageDimensionCell),
+      originalTotal:actual
+    },energyVerified)
+    const dimensionEnergy=approved?.dimensionEnergy??rawDimension
+    const effectiveBase=approved?.baseEnergy??baseEnergy
+    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):approved?d.name:''
+    if(!st || (!sd&&!approved) || !name || !dimension || effectiveBase===null || dimensionEnergy===null || actual===null ||
+      (!approved&&(dimensionEnergy.startsWith('-')||Q.from(effectiveBase).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0))){
      validEnergy=false
      const negative=[be,de].some(e=>e && String(scalar(cell(e,'c-3-8rupyDNx'))).startsWith('-'))
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
      pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
     }
+    if(approved)report.imported.push({source:id(TABLES.relations,r),
+      reason:`Energia aprovada pela direção (#157/#244): ${approved.category}; origem ${approved.sourceTotal}, destino ${approved.approvedTotal}. ID de relação preservado.`})
     const prior=referencePresentation(id(TABLES.relations,r),id(TABLES.services,s),id(TABLES.dimensions,d.row))
     const rawCluster=cell(st,'c-96H1EFHFA1'),clusterId=rawCluster&&typeof rawCluster==='object'&&'rowId'in rawCluster&&typeof rawCluster.rowId==='string'?rawCluster.rowId:null
     const brokenCluster=rawCluster&&typeof rawCluster==='object'&&'isBroken'in rawCluster&&rawCluster.isBroken
     let cluster=brokenCluster?null:rawCluster===undefined?(prior?.stageId===st.rowId?prior.cluster:null):clusterId?clusterById(clusterId):clusterName(label(rawCluster))
     if(sourceStageCluster(st.rowId)&&cluster!==sourceStageCluster(st.rowId))cluster=null
     const rawOrder=scalar(cell(r,'c-oh6TT09I-z')),order=rawOrder===undefined?prior?.order??null:typeof rawOrder==='number'||typeof rawOrder==='string'&&/^\d+$/.test(rawOrder)?Number(rawOrder):null
-    const presentation={stageId:st.rowId,stageDimensionId:sd.rowId,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
+    const presentation={stageId:st.rowId,stageDimensionId:sd?.rowId??null,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
     if(!cluster)pending(id(TABLES.relations,r),'Categoria de apresentação ausente/não reconhecida; preço/energia preservados, emissão PDF pendente.')
-    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy,presentation})
+    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy:effectiveBase,dimensionEnergy,presentation})
    }
-   const total=number(d.row,'c-wZoGYfi40i')
+   const polishM=s.rowId===POLISH_M_SERVICE&&d.row.rowId===POLISH_M_DIMENSION
+   const auditedM=polishM&&relations.length===POLISH_M_RELATIONS.length&&
+      POLISH_M_RELATIONS.every(rid=>relations.some(relation=>relation.rowId===rid))
+   const totalSource=number(d.row,'c-wZoGYfi40i')
+   // Direction expressly approved 8 for Polimento M instead of Coda's 5.
+   // Fail closed if source changes or if fewer than all four approved stages load.
+   const approvedM=auditedM&&totalSource==='5'&&validEnergy&&stages.length===4&&
+     stages.every(stage=>stage.baseEnergy==='2'&&stage.dimensionEnergy==='0')
+   if(polishM&&!approvedM){
+     validEnergy=false
+     pending(id(TABLES.dimensions,d.row),'Polimento Veículo M: configuração/fonte divergiu da decisão expressa 2+2+2+2=8; revisão obrigatória.')
+   }
+   const total=approvedM?'8':totalSource
    if(total===null || !validEnergy || sum(stages.map(st=>Q.from(st.baseEnergy!).add(Q.from(st.dimensionEnergy!)))).cmp(Q.from(total??'0'))!==0){validEnergy=false;pending(id(TABLES.dimensions,d.row),'Conjunto de etapas incompleto/incompatível com a energia total Coda; nenhuma etapa parcial liberada.')}
    if(rule && fd!==null && base!==null){report.imported.push({source:id(TABLES.rules,rule),reason:`Base/FD da fonte para ${id(TABLES.dimensions,d.row)}; cálculo segue FC por serviço e FV/FR da Issue #20, não regras históricas por tabela.`});report.mapping.push({source:`${TABLES.rules}/${rule.rowId}`,target:`services/${id(TABLES.services,s)}/${id(TABLES.dimensions,d.row)}`})}
    return {dimensionId:id(TABLES.dimensions,d.row),fd,stages:validEnergy?stages:[]}
@@ -184,7 +215,8 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  // Report invalid links even when they do not belong to any otherwise usable dimension.
  for(const r of rows(TABLES.relations)){
   const s=ref(r,'c-7sr002IvYn',TABLES.services),d=ref(r,'c-EBO2IBlQEH',TABLES.dimensions)
-  if(!s || !d || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || !ref(r,'c-B9QLxROotP',TABLES.stageDimensions))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
+  const approvedNoStageDimension=report.imported.some(entry=>entry.source===id(TABLES.relations,r)&&entry.reason.startsWith('Energia aprovada pela direção'))
+  if(!s || !d || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || (!ref(r,'c-B9QLxROotP',TABLES.stageDimensions)&&!approvedNoStageDimension))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
   else if(dimensions.get(d.rowId)?.service!==s)pending(id(TABLES.relations,r),'Serviço da relação não corresponde ao pai da dimensão; associação não inferida por nome.')
  }
  for(const r of rows(TABLES.diagnosisServices))pending(id(TABLES.diagnosisServices,r),'Sugestão automática diagnóstico/intensidade → serviço não faz parte do contrato V7; seleção manual preservada.')
