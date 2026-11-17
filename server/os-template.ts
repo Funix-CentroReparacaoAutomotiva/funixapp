@@ -125,13 +125,20 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  // Usar marcador explícito até existir data confirmada, persistida no WorkOrder.
  const delivery='-'
  const headerHtml=approvedHeader
+   // Compactação horizontal apenas em textos de veículo excepcionalmente longos,
+   // sem diminuir a fonte (permanece 16pt).
+   .replace('class="field vehicle-field"',
+     vehicle.length>=55?'class="field vehicle-field vehicle-field--long"':'class="field vehicle-field"')
    .replace('{{FUNIX_LOGO_SVG}}',officialLogo)
    .replace('{{OS_NUMBER}}',html(order.number))
    .replace('{{VEHICLE}}',html(vehicle||'Veículo não informado'))
    .replace('{{DELIVERY}}',html(delivery))
  const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
  const chromePrint='@page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}'+
-   'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'
+   'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'+
+   // Aproximar a faixa dos clusters: a diferença entre faixa azul e tabela
+   // fica em ~4mm, igual ao recuo superior da barra azul da OS.
+   '.execution{margin:1.8mm 0 0!important;}'
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
    '</style></head><body>'+body+'</body></html>'
  // Chrome's separate header/footer contexts otherwise bleed to the physical A4 edges.
@@ -148,7 +155,8 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  // the approved grid. Chrome head/footer templates are distinct documents.
  const chromeHeader=headerHtml.replace('</style>',
    'body{margin:0!important;padding:0 5mm!important;background:transparent!important;box-sizing:border-box!important;}'+
-   '.osv63-header{width:279mm!important;max-width:279mm!important;margin-left:auto!important;margin-right:auto!important;transform:translateY(-1.3mm)!important;}'+
+   // A matriz começa a 5mm da folha; a barra deve usar o mesmo alinhamento.
+   '.osv63-header{width:287mm!important;max-width:287mm!important;margin-left:auto!important;margin-right:auto!important;transform:translateY(-1.3mm)!important;}'+
    '</style>')
  return{content,headerTemplate:chromeHeader,footerTemplate:wrapFooter(footer)}
 }
