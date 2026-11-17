@@ -63,6 +63,8 @@ export interface Atendimento {
   model: string
   fabricationYear: string | null
   modelYear: string | null
+  /** Current operational forecast, YYYY-MM-DD in local calendar; not the actual handover. */
+  deliveryDate?: string | null
   plate: string
   reason: string
   notes: string
@@ -81,7 +83,7 @@ export interface AtendimentoList {
   stages: typeof ATENDIMENTO_STAGES
 }
 
-export type AtendimentoInput = {closed?:boolean} & Partial<Pick<Atendimento, 'phone' | 'references' |
-  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
+export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string} & Partial<Pick<Atendimento, 'phone' | 'references' |
+  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }
