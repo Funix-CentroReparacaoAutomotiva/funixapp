@@ -7,6 +7,7 @@ import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
 import {validVehicleYear} from './vehicle-registration'
+import {validDeliveryDate} from '../shared/delivery-date'
 import './vehicle-registration.css'
 
 function initialFields(record?: Atendimento): AtendimentoInput {
@@ -61,7 +62,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
   async function persistEdit() {
     if (!record || inFlight.current || conflict || !dirty) return
     const snapshot=fieldsRef.current
-    if (!validVehicleYear(snapshot.fabricationYear??'') ||
+    if ((snapshot.deliveryDate&&!validDeliveryDate(snapshot.deliveryDate)) || !validVehicleYear(snapshot.fabricationYear??'') ||
         !validVehicleYear(snapshot.modelYear??'') ||
         (snapshot.stage==='rejeitados' && (!snapshot.explicitRefusal || !snapshot.rejectionReason?.trim()))) return
     inFlight.current=true
@@ -97,6 +98,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
     event.preventDefault()
     if (record) {await persistEdit();return}
     if (busy || conflict) return
+    if (fields.deliveryDate&&!validDeliveryDate(fields.deliveryDate)) {setFailure('Informe uma data de entrega válida ou deixe em branco.');return}
     if (!validVehicleYear(fields.fabricationYear ?? '') || !validVehicleYear(fields.modelYear ?? '')) { setFailure('Informe anos válidos com quatro dígitos ou deixe os campos vazios.'); return }
     setBusy(true); onBusy(true); setFailure('')
     try {

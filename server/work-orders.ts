@@ -40,28 +40,6 @@ export function operationalScope(version:BudgetVersion):WorkOrderScope {
     },
     diagnostics,lines,deadlineDays:typeof days==='number'&&Number.isSafeInteger(days)&&days>0?days:null
   }
-  reissue(at:string,versionId:string,input:unknown):WorkOrder {
-    const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision','expectedRevision','reason'])
-    if(confirmation.authorized!==true||confirmation.deliveryChoice===undefined)
-      throw new ServiceError(422,'OS_AUTHORIZATION_REQUIRED','Confirme explicitamente a nova emissão.')
-    return transaction(this.db,()=>{
-      const version=new BudgetRepository(this.db).get(at,versionId)
-      if(version.cancellation)throw new ServiceError(409,'BUDGET_CANCELLED','Orçamento cancelado. Não é possível reemitir OS.')
-      const latest=this.listRevisions(at,versionId)[0]!
-      const revision=latest.revision??1
-      if(confirmation.expectedRevision!==revision)
-        throw new ServiceError(409,'OS_REVISION_CONFLICT','A OS já possui outra revisão. Atualize a consulta.')
-      const now=new Date(this.now()).toISOString()
-      const date=this.chosenDate(at,confirmation,now)
-      if(date===(latest.scope.deliveryDate??null))
-        throw new ServiceError(409,'OS_REVISION_UNCHANGED','A data prevista não mudou. Consulte a emissão existente.')
-      const scope={...latest.scope,deliveryDate:date}
-      const id=randomUUID()
-      const reason=deliveryReason(confirmation.reason,'Atualização da data prevista de entrega')
-      this.db.prepare('INSERT INTO work_order_revisions(id,work_order_id,revision,created_at,authorized_at,reason,scope_json) VALUES(?,?,?,?,?,?,?)').run(id,latest.id,revision+1,now,now,reason,JSON.stringify(scope))
-      return this.get(at,versionId,revision+1)
-    })
-  }
 }
 
 const number=(serial:number)=>'OS-'+String(serial).padStart(6,'0')
@@ -132,15 +110,45 @@ export class WorkOrderRepository {
       const version=new BudgetRepository(this.db).get(at,versionId)
       if(version.cancellation)throw new ServiceError(409,'BUDGET_CANCELLED','Orçamento cancelado. Não é possível criar ou reemitir OS.')
       const existing=this.db.prepare('SELECT * FROM work_orders WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)
-      if(existing)return fromRow(existing)
+      if(existing){
+        const original=fromRow(existing)
+        if(confirmation.deliveryChoice!==undefined){
+          const expected=confirmation.deliveryChoice==='with'?parseDeliveryDate(confirmation.deliveryDate):confirmation.deliveryChoice==='without'&&confirmation.deliveryDate===undefined?null:undefined
+          if(expected===undefined||confirmation.deliveryChoice==='with'&&expected===null||expected!==(original.scope.deliveryDate??null))
+            throw new ServiceError(409,'OS_ALREADY_ISSUED','A OS já foi emitida com outra previsão. Consulte o documento existente.')
+        }
+        return original
+      }
       const scope=operationalScope(version)
       const createdAt=new Date(this.now()).toISOString(),id=randomUUID()
       const deliveryDate=this.chosenDate(at,confirmation,createdAt)
-      if(deliveryDate!==null)scope.deliveryDate=deliveryDate
+      if(deliveryDate!==null||confirmation.deliveryChoice!==undefined)scope.deliveryDate=deliveryDate
       this.db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)')
         .run(id,at,versionId,createdAt,createdAt,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(scope))
       const row=this.db.prepare('SELECT * FROM work_orders WHERE id=?').get(id)!
       return fromRow(row)
+    })
+  }
+  reissue(at:string,versionId:string,input:unknown):WorkOrder {
+    const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision','expectedRevision','reason'])
+    if(confirmation.authorized!==true||confirmation.deliveryChoice===undefined)
+      throw new ServiceError(422,'OS_AUTHORIZATION_REQUIRED','Confirme explicitamente a nova emissão.')
+    return transaction(this.db,()=>{
+      const version=new BudgetRepository(this.db).get(at,versionId)
+      if(version.cancellation)throw new ServiceError(409,'BUDGET_CANCELLED','Orçamento cancelado. Não é possível reemitir OS.')
+      const latest=this.listRevisions(at,versionId)[0]!
+      const revision=latest.revision??1
+      if(confirmation.expectedRevision!==revision)
+        throw new ServiceError(409,'OS_REVISION_CONFLICT','A OS já possui outra revisão. Atualize a consulta.')
+      const now=new Date(this.now()).toISOString()
+      const date=this.chosenDate(at,confirmation,now)
+      if(date===(latest.scope.deliveryDate??null))
+        throw new ServiceError(409,'OS_REVISION_UNCHANGED','A data prevista não mudou. Consulte a emissão existente.')
+      const scope={...latest.scope,deliveryDate:date}
+      const id=randomUUID()
+      const reason=deliveryReason(confirmation.reason,'Atualização da data prevista de entrega')
+      this.db.prepare('INSERT INTO work_order_revisions(id,work_order_id,revision,created_at,authorized_at,reason,scope_json) VALUES(?,?,?,?,?,?,?)').run(id,latest.id,revision+1,now,now,reason,JSON.stringify(scope))
+      return this.get(at,versionId,revision+1)
     })
   }
 }
