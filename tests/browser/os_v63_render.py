@@ -56,8 +56,27 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
         assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
         assert header_metrics["delivery"]=="-",header_metrics
-        assert abs(header_metrics["headerW"]-279*96/25.4)<1.0,header_metrics
+        assert abs(header_metrics["headerW"]-287*96/25.4)<1.0,header_metrics
         assert header_metrics["dividerW"]=="2px",header_metrics
+        sizes=header_page.locator(".field .value").evaluate_all(
+            "(elements)=>elements.map(e=>({font:getComputedStyle(e).fontSize,weight:getComputedStyle(e).fontWeight}))"
+        )
+        assert all(v["font"]=="21.3333px" and v["weight"]=="700" for v in sizes),sizes
+        # Testa data completa e veículo extenso sem deslocar os demais blocos.
+        overflow=header_page.evaluate("""()=>{
+            document.querySelector(".delivery-field .value").textContent="25/11/2026";
+            const vehicle=document.querySelector(".vehicle-field");
+            vehicle.classList.add("vehicle-field--long");
+            vehicle.querySelector(".value").textContent=
+              "Chevrolet Trailblazer Premier 2.8 Turbo Diesel 2023/2024 (SYL8A39)";
+            return [...document.querySelectorAll(".field")].map(el=>{
+              const value=el.querySelector(".value"),a=el.getBoundingClientRect(),
+                b=value.getBoundingClientRect();
+              return {rightSlack:a.right-b.right,lines:b.height/parseFloat(getComputedStyle(value).lineHeight)};
+            });
+        }""")
+        assert all(v["rightSlack"]>=2 for v in overflow),overflow
+        assert overflow[1]["lines"]<=2.1,overflow
         assert 120<header_metrics["logoW"]<125,header_metrics
         assert 198<header_metrics["brandW"]<204,header_metrics
         header_page.close()
@@ -150,9 +169,17 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
                         and 810<d["rect"].width<819 and d["rect"].height>18]
             headers=[d["rect"] for d in p.get_drawings()
                      if d.get("fill") and all(abs(a-b)<.022 for a,b in zip(d["fill"],ink))
-                     and 789<d["rect"].width<792 and d["rect"].height>18 and d["rect"].y0<55]
+                     and 812<d["rect"].width<816 and d["rect"].height>18 and d["rect"].y0<55]
             footers=[r for r in matching_rects(grey) if r.y0>540]
-            assert any(abs(r.x0-26.25)<2 and abs(r.y0-11.3)<3 for r in headers), f"Header 279mm not aligned: {headers}"
+            assert any(abs(r.x0-14.25)<2 and abs(r.y0-11.3)<3 for r in headers), f"Header 287mm not aligned: {headers}"
+            # Recuo superior da faixa = espaço até a tabela (~4mm em ambos).
+            technical=[d["rect"] for d in p.get_drawings()
+                       if d.get("fill") and all(abs(a-b)<.025 for a,b in zip(d["fill"],(52/255,90/255,133/255)))
+                       and d["rect"].width>500 and 60<d["rect"].y0<75]
+            assert headers and technical, f"Faixa ou tabela ausente: {headers} / {technical}"
+            top=min(headers,key=lambda r:r.y0)
+            matrix=min(technical,key=lambda r:r.y0)
+            assert abs((matrix.y0-top.y1)-top.y0)<1.3, f"Espaçamento vertical desigual: {top} / {matrix}"
             assert any(abs(r.x0-14.2)<2 and abs(r.y0-562.0)<3 for r in footers), f"Footer not aligned: {footers}"
             assert "OS-000142" in text, f"Missing header on page {index+1}"
             assert "Legenda:" in text, f"Missing footer on page {index+1}"
