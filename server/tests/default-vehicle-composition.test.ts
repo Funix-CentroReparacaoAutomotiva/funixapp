@@ -87,7 +87,7 @@ test('#162: origem parcialmente importada bloqueia criação atômica sem Atendi
  try{
   sourceCatalog(db,['diagnosis','technical'])
   const before=db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n
-  assert.throws(()=>newAt(db),(e:unknown)=>e instanceof Error&&e.message.includes('configuração canônica'))
+  assert.throws(()=>newAt(db),(e:unknown)=>e instanceof Error&&e.message.includes('Nenhum Atendimento foi gravado'))
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM atendimentos').get()!.n,before)
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM scenarios').get()!.n,0)
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM diagnosis_items').get()!.n,0)
