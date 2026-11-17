@@ -88,3 +88,14 @@ export function approvedEnergy(e:StageEnergyEvidence,formulaVerified:boolean){
  return {baseEnergy:approved.approvedTotal,dimensionEnergy:'0',category:approved.category,
   sourceTotal:approved.originalTotal,approvedTotal:approved.approvedTotal}
 }
+
+/** Copy of the approved relation groups, for explicit reconciliation only. */
+export function approvedEnergyDimensions(){
+ const groups=new Map<string,{serviceId:string;dimensionId:string;relations:{id:string;energy:string}[]}>()
+ for(const rule of rules){
+  const group=groups.get(rule.dimensionId)??{serviceId:rule.serviceId,dimensionId:rule.dimensionId,relations:[]}
+  group.relations.push({id:rule.relationId,energy:rule.approvedTotal})
+  groups.set(rule.dimensionId,group)
+ }
+ return [...groups.values()]
+}
