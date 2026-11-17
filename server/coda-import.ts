@@ -155,15 +155,29 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
    for(const r of relations){
     const st=ref(r,'c-AWrfBjSHDl',TABLES.stages),sd=ref(r,'c-B9QLxROotP',TABLES.stageDimensions)
     const be=st?ref(st,'c-K6LT-CKgWA',TABLES.energy):null,de=sd?ref(sd,'c-ufXqc_8vWI',TABLES.energy):null
-    const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,dimensionEnergy=de?number(de,'c-3-8rupyDNx'):null
-    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):''
-    const actual=number(r,'c-Ii7Vzlr1ni')
-    if(!st || !sd || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){
+    const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,actual=number(r,'c-Ii7Vzlr1ni')
+    // #157: five audited Coda relations have no explicit dimension-energy operand.
+    // In those EXACT canonical identities only, a verified formula plus the
+    // independent relation total proves that the missing additive operand is
+    // mathematically zero. This is not a generic blank-to-zero fallback.
+    const dimensionCell=sd?cell(sd,'c-ufXqc_8vWI'):undefined
+    const relationDimensionCell=cell(r,'c-B9QLxROotP')
+    const codaBlank=(v:unknown)=>v===null||v===''
+    const degradê=s.rowId==='i-SW0n7TLbtf'&&st?.rowId==='i-SW0n7TLbtf'&&sd?.rowId==='i-jTU8EBeCLM'&&
+      ['i-SW0n7TLbtf','i-k8ZulOn21b','i-RQlr0QK5rR','i-gXduy16b-V'].includes(d.row.rowId)&&codaBlank(dimensionCell)
+    const vidraçaria=s.rowId==='i-6v-u7Wk73b'&&st?.rowId==='i-6v-u7Wk73b'&&d.row.rowId==='i-XAWXTYWQIa'&&
+      d.name==='-'&&!sd&&codaBlank(relationDimensionCell)
+    const derivedZero=energyVerified&&baseEnergy!==null&&actual!==null&&
+      Q.from(baseEnergy).cmp(Q.from(actual))===0&&(degradê||vidraçaria)
+    const dimensionEnergy=derivedZero?'0':de?number(de,'c-3-8rupyDNx'):null
+    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):derivedZero?d.name:''
+    if(!st || (!sd&&!derivedZero) || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){
      validEnergy=false
      const negative=[be,de].some(e=>e && String(scalar(cell(e,'c-3-8rupyDNx'))).startsWith('-'))
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
      pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
     }
+    if(derivedZero)report.imported.push({source:id(TABLES.relations,r),reason:'#157: parcela dimensional 0 demonstrada pela fórmula de energia verificada e pelo total exato da relação, em vínculo Coda previamente auditado. Etapa/ID originais preservados.'})
     const prior=referencePresentation(id(TABLES.relations,r),id(TABLES.services,s),id(TABLES.dimensions,d.row))
     const rawCluster=cell(st,'c-96H1EFHFA1'),clusterId=rawCluster&&typeof rawCluster==='object'&&'rowId'in rawCluster&&typeof rawCluster.rowId==='string'?rawCluster.rowId:null
     const brokenCluster=rawCluster&&typeof rawCluster==='object'&&'isBroken'in rawCluster&&rawCluster.isBroken
