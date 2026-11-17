@@ -1,4 +1,4 @@
-import {renderOrderV63} from '../../../server/os-template.ts'
+import {renderOrderV1} from '../../../server/os-template.ts'
 import type {WorkOrder} from '../../../shared/work-order.ts'
 import type {StageCluster} from '../../../shared/stage-clusters.ts'
 
@@ -23,4 +23,4 @@ const order:WorkOrder={
  scope:{customer:{name:'Cliente sintético'},vehicle:{description:'Honda City EXL 21/22',plate:'FXN2A26'},
  diagnostics,lines,deadlineDays:7}
 }
-process.stdout.write(JSON.stringify(renderOrderV63(order)))
+process.stdout.write(JSON.stringify(renderOrderV1(order)))

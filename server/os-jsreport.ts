@@ -1,7 +1,7 @@
 import type {WorkOrder} from '../shared/work-order.ts'
 import {ServiceError} from './errors.ts'
 import {validatePdf} from './jsreport-client.ts'
-import {renderOrderV63} from './os-template.ts'
+import {renderOrderV1} from './os-template.ts'
 
 /** Does not reuse the commercial template; jsreport is the renderer, not the OS source of truth. */
 export function configuredOrderRenderer(){
@@ -20,7 +20,7 @@ export async function renderOrderJsreport(order:WorkOrder,connection:ReturnType<
     !url.pathname.endsWith('/api/report')||url.username||url.password||url.search||url.hash||
     !connection.username||!connection.password)
    throw new ServiceError(503,'OS_PDF_CONFIGURATION_INVALID','Configuração do renderizador inválida.')
- const print=renderOrderV63(order)
+ const print=renderOrderV1(order)
  const timeoutMs=20000,maxBytes=15*1024*1024
  const request={
    template:{
@@ -28,7 +28,7 @@ export async function renderOrderJsreport(order:WorkOrder,connection:ReturnType<
      chrome:{
        format:'A4',landscape:true,printBackground:true,displayHeaderFooter:true,
        headerTemplate:print.headerTemplate,footerTemplate:print.footerTemplate,
-       marginTop:'28mm',marginRight:'9mm',marginBottom:'18mm',marginLeft:'9mm'
+       marginTop:'23mm',marginRight:'5mm',marginBottom:'15mm',marginLeft:'5mm'
      }
    },
    data:{}

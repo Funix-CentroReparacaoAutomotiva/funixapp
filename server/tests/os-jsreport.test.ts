@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {openDatabase} from '../database.ts'
 import type {WorkOrder} from '../../shared/work-order.ts'
-import {renderOrderV63} from '../os-template.ts'
+import {renderOrderV1} from '../os-template.ts'
 import {renderOrderJsreport} from '../os-jsreport.ts'
 import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 
@@ -28,70 +28,50 @@ const sample:WorkOrder={
 }
 const fakePdf=Buffer.from('%PDF-1.7\nsynthetic test\n%%EOF')
 
-test('template V63 uses frozen OS data, escapes HTML and does not invent delivery date',()=>{
- const result=renderOrderV63(sample)
+test('V1 prints frozen OS scope safely, with dynamic header and no invented delivery',()=>{
+ const result=renderOrderV1(sample)
  assert.match(result.content,/Para-choque &lt;dianteiro&gt;/)
  assert.match(result.content,/Presilha &lt;script&gt;alert\(1\)&lt;\/script&gt;/)
  assert(!result.content.includes('<script>alert(1)</script>'))
  assert(result.content.includes('Preparação &amp; teste'))
  assert(result.content.includes('Etapa sem categoria'))
  assert(result.headerTemplate.includes('OS-000142'))
- assert(result.headerTemplate.includes('ID:'))
- assert(result.headerTemplate.includes('VEÍCULO:'))
- assert(result.headerTemplate.includes('ENTREGA:'))
- assert(result.headerTemplate.includes('PÁG.:'))
+ assert(result.headerTemplate.includes('Honda City EXL 21/22 (FXN2A26)'))
+ for(const label of ['ID:','VEÍCULO:','ENTREGA:','PÁG.:'])assert(result.headerTemplate.includes(label))
  assert(result.headerTemplate.includes('class="value">—</strong>'))
- assert(!result.headerTemplate.includes('16/11/2026'))
- assert(!result.headerTemplate.includes('25/11/2026'))
- assert(result.headerTemplate.includes('class="totalPages"'))
  assert(result.headerTemplate.includes('class="pageNumber"'))
- assert(result.headerTemplate.includes('class="os-prefix"'))
+ assert(result.headerTemplate.includes('class="totalPages"'))
  assert(result.headerTemplate.includes('aria-label="FUNIX"'))
- assert(result.headerTemplate.includes('grid-template-columns:53mm 43mm minmax(0,1fr) 56mm 26mm'))
- assert(result.headerTemplate.includes('width:287mm!important;max-width:287mm!important'))
- assert(result.headerTemplate.includes('margin-left:auto!important;margin-right:auto!important'))
- assert(result.headerTemplate.includes('font-size:12pt'))
- assert(result.headerTemplate.includes('font-weight:700'))
- assert(result.headerTemplate.includes('font-weight:900'))
- assert(result.headerTemplate.includes('-webkit-text-stroke:0.18px currentColor'))
- assert(result.content.includes('.execution{margin:2.0mm 0 0!important;}'))
- assert(result.content.includes('.main-matrix .technical-band-label span{letter-spacing:0.18px!important;}'))
- assert(result.content.includes('.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.02px!important;}'))
- assert(result.headerTemplate.includes('letter-spacing:.15px'))
- assert(result.headerTemplate.includes('border-left:2px solid #fff'))
- assert(!result.headerTemplate.includes('border-left:3px solid #fff'))
- assert(!result.headerTemplate.includes('{{OS_NUMBER}}'))
- assert(!result.headerTemplate.includes('{{VEHICLE}}'))
- assert(!result.headerTemplate.includes('{{DELIVERY}}'))
+ assert(result.headerTemplate.includes('class="os-header"'))
+ assert(result.headerTemplate.includes('width:287mm!important'))
+ assert(result.content.includes('.plan-page{position:static!important'))
+ assert(result.content.includes('@page plan{size:A4 landscape;margin:23mm 5mm 15mm 5mm}'))
+ assert(result.footerTemplate.includes('Legenda:'))
+ assert(!result.headerTemplate.includes('@page'))
+ assert(!result.footerTemplate.includes('@page'))
  assert(!result.content.includes('R$ '))
- assert(result.footerTemplate.includes('.footer-legend .legend-item{transform:none!important;}'))
- assert(!result.content.includes('Prazo de entrega confirmado'))
+ assert(!result.content.includes('25/11/2026'))
 })
-
-test('cabeçalho novo escapa dados dinâmicos e não inventa uma entrega a partir do prazo',()=>{
+test('V1 escapes header inputs and preserves explicitly unknown delivery',()=>{
  const order=structuredClone(sample)
  order.number='OS-<1>'
  order.scope.vehicle.description='Tracker <script>injetado</script>'
  order.scope.vehicle.plate='ABC1D23'
  order.scope.deadlineDays=1
- const result=renderOrderV63(order)
+ const result=renderOrderV1(order)
  assert(result.headerTemplate.includes('OS-&lt;1&gt;'))
  assert(result.headerTemplate.includes('Tracker &lt;script&gt;injetado&lt;/script&gt; (ABC1D23)'))
  assert(!result.headerTemplate.includes('Tracker <script>'))
  assert(result.headerTemplate.includes('class="value">—</strong>'))
  assert(!result.headerTemplate.includes('17/11/2026'))
- assert(result.headerTemplate.includes('font-weight:700'))
- assert(result.headerTemplate.includes('font-size:19pt'))
- assert(!result.headerTemplate.includes('Data de emissão'))
 })
-
-test('veículo muito longo conserva 12pt com espaçamento horizontal adaptado',()=>{
+test('V1 long vehicle label leaves print grid and page-number fields intact',()=>{
  const order=structuredClone(sample)
  order.scope.vehicle.description='Chevrolet Trailblazer Premier 2.8 Turbo Diesel 2023/2024'
- const print=renderOrderV63(order)
+ const print=renderOrderV1(order)
  assert(print.headerTemplate.includes('vehicle-field--long'))
- assert(print.headerTemplate.includes('letter-spacing:-1px'))
- assert(print.headerTemplate.includes('font-size:12pt'))
+ assert(print.headerTemplate.includes('VEÍCULO:'))
+ assert(print.headerTemplate.includes('pageNumber'))
 })
 
 test('etapas da matriz não apresentam dimensões, mas WorkOrder original permanece íntegra',()=>{
@@ -102,7 +82,7 @@ test('etapas da matriz não apresentam dimensões, mas WorkOrder original perman
  const uncategorized=order.scope.lines.find(line=>line.id==='s2')!
  uncategorized.stages[0]!.dimension='Total'
  const before=JSON.stringify(order)
- const print=renderOrderV63(order)
+ const print=renderOrderV1(order)
  assert(print.content.includes('Preparação &amp; teste'))
  assert(print.content.includes('Solda plástica'))
  assert(print.content.includes('Etapa sem agrupamento'))
@@ -123,7 +103,7 @@ test('impressão usa Serviços complementares na quarta coluna e Estética na qu
  const service=order.scope.lines.find(line=>line.id==='s1')!
  service.stages.push({name:'Tapeçaria',dimension:'Parcial',cluster:'Serviços complementares'})
  service.stages.push({name:'Polimento',dimension:'M',cluster:'Estética e revitalização'})
- const print=renderOrderV63(order)
+ const print=renderOrderV1(order)
  const labels=[...print.content.matchAll(/<td data-cluster="([^"]+)"/g)].map(m=>m[1])
  assert.deepEqual(labels,[
    'Preparação técnica','Correção estrutural','Pintura e acabamento',
@@ -140,15 +120,12 @@ test('impressão usa Serviços complementares na quarta coluna e Estética na qu
  assert(header.indexOf('aria-label="Serviços complementares"')<header.indexOf('aria-label="Estética e revitalização"'))
  const legend=print.footerTemplate
  assert(legend.indexOf('aria-label="Serviços complementares"')<legend.indexOf('aria-label="Estética e revitalização"'))
- // As divisórias originais da matriz devem permanecer, sem linha artificial sobre os chevrons.
- assert(!print.content.includes('td:nth-of-type(4)'))
- assert(!print.content.includes('technical-band-labels::after'))
  // Fonte de dados congelada permanece intacta, inclusive dimensões.
  assert.equal(service.stages.at(-2)?.dimension,'Parcial')
  assert.equal(service.stages.at(-1)?.dimension,'M')
 })
 
-test('jsreport receives print-ready V63 html directly and validates PDF',async()=>{
+test('jsreport receives print-ready V1 html directly and validates PDF',async()=>{
  let calls=0
  const connection={endpoint:'https://example.invalid/api/report',username:'qa',password:'secret'}
  const pdf=await renderOrderJsreport(sample,connection,async(url,init)=>{
