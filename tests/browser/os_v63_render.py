@@ -59,9 +59,9 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         assert abs(header_metrics["headerW"]-287*96/25.4)<1.0,header_metrics
         assert header_metrics["dividerW"]=="2px",header_metrics
         sizes=header_page.locator(".field .value").evaluate_all(
-            "(elements)=>elements.map(e=>({font:getComputedStyle(e).fontSize,weight:getComputedStyle(e).fontWeight}))"
+            "(elements)=>elements.map(e=>({font:getComputedStyle(e).fontSize,weight:getComputedStyle(e).fontWeight,stroke:getComputedStyle(e).webkitTextStrokeWidth}))"
         )
-        assert all(abs(float(v["font"].removesuffix("px"))-14*96/72)<0.05 and v["weight"]=="700" for v in sizes),sizes
+        assert all(abs(float(v["font"].removesuffix("px"))-12*96/72)<0.05 and v["weight"]=="900" and abs(float(v["stroke"].removesuffix("px"))-.18)<.02 for v in sizes),sizes
         # Testa data completa e veículo extenso sem deslocar os demais blocos.
         overflow=header_page.evaluate("""()=>{
             document.querySelector(".delivery-field .value").textContent="25/11/2026";
