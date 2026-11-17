@@ -215,7 +215,8 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
  // Report invalid links even when they do not belong to any otherwise usable dimension.
  for(const r of rows(TABLES.relations)){
   const s=ref(r,'c-7sr002IvYn',TABLES.services),d=ref(r,'c-EBO2IBlQEH',TABLES.dimensions)
-  if(!s || !d || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || !ref(r,'c-B9QLxROotP',TABLES.stageDimensions))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
+  const approvedNoStageDimension=report.imported.some(entry=>entry.source===id(TABLES.relations,r)&&entry.reason.startsWith('Energia aprovada pela direção'))
+  if(!s || !d || !ref(r,'c-AWrfBjSHDl',TABLES.stages) || (!ref(r,'c-B9QLxROotP',TABLES.stageDimensions)&&!approvedNoStageDimension))pending(id(TABLES.relations,r),'Referência técnica quebrada/ausente.')
   else if(dimensions.get(d.rowId)?.service!==s)pending(id(TABLES.relations,r),'Serviço da relação não corresponde ao pai da dimensão; associação não inferida por nome.')
  }
  for(const r of rows(TABLES.diagnosisServices))pending(id(TABLES.diagnosisServices,r),'Sugestão automática diagnóstico/intensidade → serviço não faz parte do contrato V7; seleção manual preservada.')
