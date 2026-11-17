@@ -184,7 +184,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     let cluster=brokenCluster?null:rawCluster===undefined?(prior?.stageId===st.rowId?prior.cluster:null):clusterId?clusterById(clusterId):clusterName(label(rawCluster))
     if(sourceStageCluster(st.rowId)&&cluster!==sourceStageCluster(st.rowId))cluster=null
     const rawOrder=scalar(cell(r,'c-oh6TT09I-z')),order=rawOrder===undefined?prior?.order??null:typeof rawOrder==='number'||typeof rawOrder==='string'&&/^\d+$/.test(rawOrder)?Number(rawOrder):null
-    const presentation={stageId:st.rowId,stageDimensionId:sd.rowId,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
+    const presentation={stageId:st.rowId,stageDimensionId:sd?.rowId??null,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
     if(!cluster)pending(id(TABLES.relations,r),'Categoria de apresentação ausente/não reconhecida; preço/energia preservados, emissão PDF pendente.')
     stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy,presentation})
    }
