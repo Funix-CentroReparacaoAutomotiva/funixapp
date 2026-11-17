@@ -1,6 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {openDatabase} from '../database.ts'
+import {openDatabase,backupDatabase} from '../database.ts'
+import {mkdtempSync,rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {AtendimentoRepository} from '../atendimentos.ts'
+import {CommercialRepository} from '../commercial.ts'
+import {ScenarioRepository} from '../scenarios.ts'
+import {PricingConfigurationRepository} from '../pricing-config.ts'
+import {WorkOrderRepository} from '../work-orders.ts'
+import {planApprovedPieces,applyApprovedPieces} from '../approved-pieces-165.ts'
+import {requiredVehicleCatalog} from '../default-vehicle-composition.ts'
 import {planImport,applyImport} from '../coda-import.ts'
 import {planEnergyReconciliation,applyEnergyReconciliation} from '../reconcile-approved-energy.ts'
 import {TABLES,sourceId} from '../coda-import-source.ts'
@@ -147,4 +157,71 @@ test('approved reconciliation rolls back on write failure and leaves a fresh val
   db.exec('DROP TRIGGER qa_reconcile_abort')
   assert.equal(planEnergyReconciliation(db,src).planHash,p.planHash)
  }finally{db.close()}
+})
+
+test('QA integrated: restore energies and install approved pieces on an isolated SQLite copy, then emit a new quote and OS',async()=>{
+ const folder=mkdtempSync(join(tmpdir(),'funix-integrated-')),file=join(folder,'qa.sqlite')
+ const original=openDatabase(':memory:')
+ let db:DB|undefined
+ try{
+  const f=commercialFixture(original),oldBudgets=new BudgetRepository(original)
+  const beforePreview=oldBudgets.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'}})
+  const issued=await oldBudgets.emit(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'},previewToken:beforePreview.token,idempotencyKey:'qa-integrated-historical'})
+  const pdf=oldBudgets.pdf(f.at.id,issued.id),oldOS=new WorkOrderRepository(original).create(f.at.id,issued.id,{authorized:true})
+  const {src}=setup(original)
+  // Synthetic wash price and stage. Identities and energy are approved;
+  // no real commercial amounts are used in this fixture.
+  for(const r of requiredVehicleCatalog)original.prepare("INSERT INTO catalog_items(id,kind,name,status,source,service_id,created_at,updated_at) VALUES (?,?,?,'validado','operador',?,'QA','QA')").run(r.id,r.kind,r.name,r.serviceId)
+  const washing=sourceId(TABLES.services,'i-AlsNigbGqx'),washingM=sourceId(TABLES.dimensions,'i-07mjG2Tryl')
+  const config=readConfig(original)
+  config.services.push({serviceId:washing,base:'100',billable:true,colorFactorEnabled:false,discountable:true,dimensions:[{dimensionId:washingM,fd:'1',stages:[{id:'qa-wash-stage',name:'Lavagem',dimension:'M',baseEnergy:'5',dimensionEnergy:'2',presentation:{stageId:null,stageDimensionId:null,clusterId:null,cluster:'Estética e revitalização',order:null}}]}]})
+  writeConfig(original,config)
+  const originalConfig=configRow(original),originalOther=snapshot(original)
+  await backupDatabase(original,file)
+  db=openDatabase(file)
+  const energy=planEnergyReconciliation(db,src)
+  assert.deepEqual(energy.conflicts,[])
+  applyEnergyReconciliation(db,src,energy.planHash)
+  const catalog=planApprovedPieces(db)
+  assert.deepEqual(catalog.conflicts,[]);assert.deepEqual(catalog.prerequisites,[])
+  assert.equal(catalog.decisions.filter(d=>d.action==='insert').length,13)
+  applyApprovedPieces(db,catalog.planHash)
+  const budgets=new BudgetRepository(db),orders=new WorkOrderRepository(db),commercial=new CommercialRepository(db)
+  assert.deepEqual(budgets.get(f.at.id,issued.id),issued)
+  assert.deepEqual(budgets.pdf(f.at.id,issued.id),pdf)
+  assert.deepEqual(orders.get(f.at.id,issued.id),oldOS)
+  const at=new AtendimentoRepository(db).create({phone:'124',name:'QA integração — SINTÉTICO',vehicle:'Veículo QA',plate:'QA-001'})
+  const items=commercial.list(at.id),vehicle=items[0]!
+  assert.equal(items.length,1)
+  assert.equal(commercial.item(vehicle.pieceId).code,'veiculo_completo')
+  assert.equal(vehicle.services.length,2)
+  assert.equal(vehicle.services.find(s=>s.serviceId===washing)?.enabled,true)
+  assert.equal(vehicle.services.find(s=>s.serviceId===washing)?.dimensionId,washingM)
+  assert.equal(vehicle.services.find(s=>s.serviceId!==washing)?.enabled,false)
+  commercial.updateDiagnosis(at.id,vehicle.id,{revision:vehicle.revision,services:[...vehicle.services,{serviceId:sourceId(TABLES.services,'i-NG0WMuMSy1'),dimensionId:sourceId(TABLES.dimensions,'i-c5xaRttDXs'),quantity:'1',enabled:true}]})
+  const pieces=commercial.add(at.id,{pieceCodes:['para_choque_traseiro_inferior','moldura_porta_dianteira']})
+  for(const [code,dim] of [['para_choque_traseiro_inferior','i-6Nx-kpDlH8'],['moldura_porta_dianteira','i-6qb1FQ1krk']] as const){
+   const item=pieces.find(p=>commercial.item(p.pieceId).code===code)!
+   assert(item)
+   commercial.updateDiagnosis(at.id,item.id,{revision:item.revision,enabled:true,services:[{serviceId:sourceId(TABLES.services,'i-XDTMBmueos'),dimensionId:sourceId(TABLES.dimensions,dim),quantity:'1',enabled:true}]})
+  }
+  const pricing=new PricingConfigurationRepository(db)
+  pricing.saveSettings(at.id,{revision:pricing.settings(at.id).revision,tableId:'table',colorId:'color',riskId:'risk'})
+  const scenario=new ScenarioRepository(db).list(at.id)[0]!,input={scenarioId:scenario.id,negotiation:{mode:'none'} as const}
+  const preview=budgets.preview(at.id,input)
+  assert(preview.canEmit,JSON.stringify(preview.snapshot.calculation.errors))
+  assert.equal(preview.snapshot.calculation.energy,'25')
+  assert.deepEqual(preview.snapshot.calculation.lines.filter(l=>l.included).map(l=>l.energy).sort(),['1','7','8','9'])
+  const version=await budgets.emit(at.id,{...input,previewToken:preview.token,idempotencyKey:'qa-integrated-new'})
+  assert.match(budgets.pdf(at.id,version.id).toString('latin1'),/^%PDF/)
+  const os=orders.create(at.id,version.id,{authorized:true})
+  assert.equal(os.scope.lines.length,4)
+  assert.deepEqual(orders.get(f.at.id,issued.id),oldOS)
+  assert.deepEqual(budgets.pdf(f.at.id,issued.id),pdf)
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+  assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
+  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,21)
+  assert.deepEqual(configRow(original),originalConfig)
+  assert.deepEqual(snapshot(original),originalOther)
+ }finally{db?.close();original.close();rmSync(folder,{recursive:true,force:true})}
 })
