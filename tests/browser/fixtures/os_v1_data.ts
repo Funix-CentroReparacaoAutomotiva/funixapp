@@ -20,7 +20,7 @@ const order:WorkOrder={
  id:'synthetic-os',number:'OS-000142',atendimentoId:'synthetic-at',budgetVersionId:'synthetic-budget',
  budgetNumber:'OR-000100',budgetLabel:'Principal',createdAt:'2026-11-16T13:00:00.000Z',
  authorization:{confirmedAt:'2026-11-16T13:00:00.000Z',source:'authenticated-session-confirmation',operatorId:null},
- scope:{customer:{name:'Cliente sintético'},vehicle:{description:'Honda City EXL 21/22',plate:'FXN2A26'},
- diagnostics,lines,deadlineDays:7}
+ scope:{customer:{name:'Cliente sintético'},vehicle:{description:count===4?'Honda City EXL 21/22':'Chevrolet Trailblazer Premier 2.8 Turbo Diesel 2023/2024',plate:'FXN2A26'},
+ diagnostics,lines,deadlineDays:7,deliveryDate:'2026-11-19'},revision:1
 }
 process.stdout.write(JSON.stringify(renderOrderV1(order)))
