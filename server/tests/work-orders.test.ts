@@ -13,6 +13,7 @@ import {openDatabase} from '../database.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {WorkOrderRepository,operationalScope} from '../work-orders.ts'
+import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 import {BudgetCancellationRepository} from '../budget-cancellations.ts'
 import {cancelledPdf} from '../cancelled-pdf.ts'
 import {operationalParagraphs,workOrderPdf} from '../work-order-pdf.ts'
@@ -58,6 +59,29 @@ test('V18 creates a frozen, operational-only OS, with no commercial fields or ex
   assert.equal(workOrderPdf(os).subarray(0,8).toString(),'%PDF-1.7')
   assert.throws(()=>db.prepare("UPDATE work_orders SET scope_json='{}'").run(),/immutable/i)
   assert.throws(()=>db.prepare('DELETE FROM work_orders').run(),/immutable/i)
+ }finally{db.close()}
+})
+
+test('OS V1 PDF cache does not overwrite or reuse historical V63 PDF',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,version}=await emitted(db)
+  const order=new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true})
+  const cache=new WorkOrderPdfCache(db)
+  const legacy=Buffer.from('%PDF-1.7\nV63 original synthetic\n%%EOF')
+  const current=Buffer.from('%PDF-1.7\nV1 official synthetic\n%%EOF')
+  db.prepare('INSERT INTO work_order_pdf_cache(work_order_id,template_version,pdf,created_at) VALUES(?,?,?,?)')
+    .run(order.id,'v63-jsreport-8',legacy,'2026-11-16T12:00:00.000Z')
+  assert.equal(cache.get(order.id),null,'V63 PDF cannot be returned as V1')
+  assert.deepEqual(cache.save(order.id,current),current)
+  assert.deepEqual(cache.get(order.id),current)
+  assert.deepEqual(cache.save(order.id,Buffer.from('%PDF-1.7\nSecond V1 render\n%%EOF')),current,
+    'a repeated V1 render cannot replace the first PDF')
+  const rows=db.prepare('SELECT template_version,pdf FROM work_order_pdf_cache WHERE work_order_id=? ORDER BY template_version')
+    .all(order.id) as Array<{template_version:string;pdf:Uint8Array}>
+  assert.deepEqual(rows.map(r=>r.template_version),['v1-jsreport-1','v63-jsreport-8'])
+  assert.deepEqual(Buffer.from(rows[1]!.pdf),legacy)
+  assert.throws(()=>db.prepare('DELETE FROM work_order_pdf_cache WHERE work_order_id=?').run(order.id),/immutable/i)
  }finally{db.close()}
 })
 
