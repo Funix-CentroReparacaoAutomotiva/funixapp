@@ -148,7 +148,7 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
  // the approved grid. Chrome head/footer templates are distinct documents.
  const chromeHeader=headerHtml.replace('</style>',
    'body{margin:0!important;padding:0 5mm!important;background:transparent!important;box-sizing:border-box!important;}'+
-   '.osv63-header{transform:translateY(-1.3mm)!important;}'+
+   '.osv63-header{width:279mm!important;max-width:279mm!important;margin-left:auto!important;margin-right:auto!important;transform:translateY(-1.3mm)!important;}'+
    '</style>')
  return{content,headerTemplate:chromeHeader,footerTemplate:wrapFooter(footer)}
 }
