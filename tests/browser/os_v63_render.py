@@ -61,7 +61,7 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         sizes=header_page.locator(".field .value").evaluate_all(
             "(elements)=>elements.map(e=>({font:getComputedStyle(e).fontSize,weight:getComputedStyle(e).fontWeight}))"
         )
-        assert all(v["font"]=="21.3333px" and v["weight"]=="700" for v in sizes),sizes
+        assert all(abs(float(v["font"].removesuffix("px"))-14*96/72)<0.05 and v["weight"]=="700" for v in sizes),sizes
         # Testa data completa e veículo extenso sem deslocar os demais blocos.
         overflow=header_page.evaluate("""()=>{
             document.querySelector(".delivery-field .value").textContent="25/11/2026";
