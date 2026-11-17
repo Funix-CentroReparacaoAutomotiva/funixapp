@@ -141,7 +141,7 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
    '.execution{margin:3.2mm 0 0!important;}'+
    '.main-matrix .technical-band-label span{letter-spacing:0.18px!important;}'+
    // Texto mais longo: preservar margem visual dos chevrons em Chromium/Arial.
-   '.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.05px!important;}'
+   '.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.02px!important;}'
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
    '</style></head><body>'+body+'</body></html>'
  // Chrome's separate header/footer contexts otherwise bleed to the physical A4 edges.
