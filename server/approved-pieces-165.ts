@@ -6,6 +6,7 @@ import {lstatSync,realpathSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {DatabaseSync} from 'node:sqlite'
 import {pathToFileURL} from 'node:url'
+import {vehicleCatalogProblems} from './default-vehicle-composition.ts'
 
 export const approvedPieces=[
  {code:'veiculo_completo',name:'Veículo completo',existingOnly:false},
@@ -51,8 +52,9 @@ export function planApprovedPieces(db:DatabaseSync){
    return {code:piece.code,name:piece.name,id:matches[0]?.id??stableId(piece.code),action:'conflict',reason:'Cadastro ausente, inativo, renomeado ou conflitante; não duplicar, reativar ou sobrescrever.'}
   return {code:piece.code,name:piece.name,id:stableId(piece.code),action:'insert',reason:'Peça sem lado, autorizada pela direção; não implica expansão automática.'}
  })
- const planHash=createHash('sha256').update(JSON.stringify({version:'funix-approved-pieces-162-165-180-v3',versions,relevant,decisions})).digest('hex')
- return {planHash,decisions,conflicts:decisions.filter(d=>d.action==='conflict')}
+ const planHash=createHash('sha256').update(JSON.stringify({version:'funix-approved-pieces-162-165-180-v4',versions,relevant,decisions,prerequisites:vehicleCatalogProblems(db)})).digest('hex')
+ const prerequisites=vehicleCatalogProblems(db)
+ return {planHash,decisions,prerequisites,conflicts:decisions.filter(d=>d.action==='conflict')}
 }
 
 export function applyApprovedPieces(db:DatabaseSync,confirmation:string){
@@ -61,6 +63,7 @@ export function applyApprovedPieces(db:DatabaseSync,confirmation:string){
  try{
   const plan=planApprovedPieces(db)
   if(plan.planHash!==confirmation)throw new Error('Catálogo mudou desde o dry-run; gere novo plano.')
+  if(plan.prerequisites.length)throw new Error('Pré-requisitos #162 ausentes: '+plan.prerequisites.join(', '))
   if(plan.conflicts.length)throw new Error('Conflito no catálogo; nenhuma alteração aplicada.')
   const now=new Date().toISOString()
   const insert=db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES (?,'peca',?,?,'proposta','operador',?,?)")
@@ -89,7 +92,7 @@ export function main(args:string[]){
  try{
   const plan=confirmation?applyApprovedPieces(db,confirmation):planApprovedPieces(db)
   console.log(JSON.stringify({mode:confirmation?'applied':'dry-run',...plan},null,2))
-  return plan.conflicts.length?2:0
+  return plan.conflicts.length||plan.prerequisites.length?2:0
  }finally{db.close()}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
