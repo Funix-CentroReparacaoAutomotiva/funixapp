@@ -3,6 +3,7 @@ import type {PricingConfiguration,PricingSettings,ComponentItem} from '../shared
 import type {HistoricalBudgetPackage} from './historical-budget-preflight.ts'
 import {calculate} from './pricing-engine.ts'
 import {Q,ZERO} from './exact.ts'
+import {reconcileMappedHistoricalBudget} from './historical-budget-reconciliation.ts'
 
 type Mapping={rowId:string;role:'piece'|'diagnosis'|'service'|'dimension';catalog:CatalogItem}
 function exact(value:string):Q{
@@ -39,6 +40,7 @@ export function compareHistoricalPricing(data:HistoricalBudgetPackage,mapping:Ma
     components:{historical:data.totals.components,current:currentComponents,reason:data.components.length?'HISTORICAL_COMPONENT_COST_UNKNOWN':null},
     gross:{historical:historicGross.toString(),current:currentGross,delta:currentGross===null?null:exact(currentGross).sub(historicGross).toString()},
     historicNet:data.totals.total,historicDiscount:data.totals.discount,lines,errors:current.errors,
+    reconciliation:reconcileMappedHistoricalBudget(data,current,configuration.config,state.settings),
     complete:currentServices!==null&&currentComponents!==null&&current.errors.length===0,
   }
 }
