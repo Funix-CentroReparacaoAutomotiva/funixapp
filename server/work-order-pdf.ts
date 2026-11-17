@@ -1,11 +1,12 @@
 import type {WorkOrder} from '../shared/work-order.ts'
 import {documentPdf} from './pdf.ts'
+import {deliveryDateLabel} from '../shared/delivery-date.ts'
 
 /** No prices, financial fields, calculated energy or commercial terms. */
 export function operationalParagraphs(order:WorkOrder):string[] {
   const scope=order.scope
   const paragraphs=[
-    'FUNIX | ORDEM DE SERVIÇO '+order.number,
+    'FUNIX | ORDEM DE SERVIÇO '+order.number+(order.revision&&order.revision>1?' R'+String(order.revision).padStart(2,'0'):''),
     'Via operacional para execução. Não é proposta comercial.',
     '',
     'Orçamento de origem: '+(order.budgetNumber||'sem número comercial')+
@@ -18,6 +19,7 @@ export function operationalParagraphs(order:WorkOrder):string[] {
     'Veículo: '+(scope.vehicle.description||'Não informado')+
       ' | Placa: '+(scope.vehicle.plate||'Não informada'),
     '',
+    ...(scope.deliveryDate!==undefined?['Data prevista de entrega: '+deliveryDateLabel(scope.deliveryDate),'']:[]),
     'DIAGNÓSTICOS'
   ]
   for(const item of scope.diagnostics) {

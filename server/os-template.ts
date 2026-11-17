@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs'
 import type {WorkOrder} from '../shared/work-order.ts'
+import {deliveryDateLabel} from '../shared/delivery-date.ts'
 import {type StageCluster} from '../shared/stage-clusters.ts'
 // Ordem de apresentação da OS: não altera IDs ou categorias do cadastro comercial.
 const PRINT_CLUSTERS:readonly StageCluster[]=[
@@ -122,9 +123,9 @@ function setHeaderField(source:string,field:string,value:string):string{
 }
 export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
- let headerHtml=setHeaderField(header,'id-field',order.number)
+ let headerHtml=setHeaderField(header,'id-field',order.number+(order.revision&&order.revision>1?' R'+String(order.revision).padStart(2,'0'):''))
  headerHtml=setHeaderField(headerHtml,'vehicle-field',vehicle||'Veículo não informado')
- headerHtml=setHeaderField(headerHtml,'delivery-field','—')
+ headerHtml=setHeaderField(headerHtml,'delivery-field',deliveryDateLabel(order.scope.deliveryDate))
  headerHtml=headerHtml.replace('class="field vehicle-field"',
    vehicle.length>=55?'class="field vehicle-field vehicle-field--long"':'class="field vehicle-field"')
  headerHtml=headerHtml.replace(/(<div class="field page-field">[\s\S]*?<strong class="value">)[\s\S]*?(<\/strong>)/,

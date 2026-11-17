@@ -5,9 +5,10 @@ import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import { ATENDIMENTO_STAGES } from '../shared/contracts.ts'
 import type { Atendimento, AtendimentoList, AtendimentoStage } from '../shared/contracts.ts'
 import { ServiceError } from './errors.ts'
+import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-date.ts'
 
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
-const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'explicitRefusal', 'references', 'closed'])
+const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
@@ -35,6 +36,8 @@ function validate(input: unknown, patch: boolean) {
     if (typeof source[key] !== 'string' || (source[key] !== '' && !/^(?:19|20)\d{2}$/.test(source[key] as string))) invalid(`Campo ${key} inválido. Informe um ano de quatro dígitos.`)
     output[key] = source[key] as string
   }
+  if (source.deliveryDate !== undefined) output.deliveryDate=parseDeliveryDate(source.deliveryDate)
+  const dateReason=deliveryReason(source.deliveryDateReason,'Alteração manual nas configurações do Atendimento')
   if (source.stage !== undefined) {
     if (!ATENDIMENTO_STAGES.some(stage => stage.id === source.stage)) invalid('Fase comercial inválida.')
     output.stage = String(source.stage)
@@ -45,7 +48,7 @@ function validate(input: unknown, patch: boolean) {
   }
   if(source.closed!==undefined){if(typeof source.closed!=='boolean')invalid('Encerramento inválido.')}
   if (patch && source.closed===undefined && source.references===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
-  return { fields: output, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined }
+  return { fields: output, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined }
 }
 
 function map(row: Record<string, SQLOutputValue>): Atendimento {
@@ -54,7 +57,8 @@ function map(row: Record<string, SQLOutputValue>): Atendimento {
     id: String(row.id), phone: String(row.phone), phoneNormalized: row.phone_normalized === null ? null : String(row.phone_normalized),
     name: String(row.name), vehicle: String(row.vehicle), brand: String(row.brand), model: String(row.model),
     fabricationYear: row.fabrication_year == null ? null : String(row.fabrication_year),
-    modelYear: row.model_year == null ? null : String(row.model_year), plate: String(row.plate),
+    modelYear: row.model_year == null ? null : String(row.model_year),
+    ...(row.delivery_date==null?{}:{deliveryDate:String(row.delivery_date)}), plate: String(row.plate),
     reason: String(row.reason), notes: String(row.notes), stage: String(row.stage) as AtendimentoStage,
     rejectionReason: String(row.rejection_reason), explicitRefusal: row.explicit_refusal === 1,
     createdAt: String(row.created_at), updatedAt: String(row.updated_at), revision: Number(row.revision),
@@ -99,7 +103,7 @@ export class AtendimentoRepository {
   }
 
   create(input: unknown, inTransaction = false): Atendimento {
-    const { fields, references, closed } = validate(input, false)
+    const { fields, references, closed, dateReason } = validate(input, false)
     const customers=new CustomerRepository(this.db),refs=references===undefined?undefined:customers.validate(references)
     if(refs)Object.assign(fields,customers.primaryFields(refs))
     const now = new Date().toISOString()
@@ -115,6 +119,7 @@ export class AtendimentoRepository {
       if(record.fabricationYear!==null && record.fabricationYear!=='' || record.modelYear!==null && record.modelYear!=='') invalid('Banco antigo não aceita anos independentes; migração necessária.')
       this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
     }
+      if(record.deliveryDate)writeDeliveryDate(this.db,record.id,null,record.deliveryDate,dateReason,now,false)
       if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
       if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?now:null,record.id)
       if(refs)customers.saveReferences(record.id,refs)
@@ -129,7 +134,7 @@ export class AtendimentoRepository {
     catch(error){this.db.exec('ROLLBACK');throw error}
   }
   private updateRecord(id: string, input: unknown): Atendimento {
-    const { fields, revision, references, closed } = validate(input, true)
+    const { fields, revision, references, closed, dateReason } = validate(input, true)
     const customers=new CustomerRepository(this.db),refs=references===undefined?undefined:customers.validate(references)
     const old = this.get(id)
     const previousContacts=customers.available()?customers.references(id).contact:[]
@@ -146,6 +151,7 @@ export class AtendimentoRepository {
       result = this.db.prepare(`UPDATE atendimentos SET phone=?,phone_normalized=?,name=?,vehicle=?,brand=?,model=?,plate=?,reason=?,notes=?,search_text=?,stage=?,rejection_reason=?,explicit_refusal=?,updated_at=?,revision=revision+1 WHERE id=? AND revision=?`).run(record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, record.updatedAt, id, revision)
     }
     if (!result.changes) throw new ServiceError(409, 'VERSION_CONFLICT', 'Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
+    if(fields.deliveryDate!==undefined)writeDeliveryDate(this.db,id,old.deliveryDate??null,record.deliveryDate??null,dateReason,record.updatedAt,false)
     if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?record.updatedAt:null,id)
     if(refs)customers.saveReferences(id,refs,previousContacts)
     else if(customers.available()){customers.applyLegacyFields(id,fields);customers.invalidateContactContexts(id,previousContacts,customers.references(id).contact)}

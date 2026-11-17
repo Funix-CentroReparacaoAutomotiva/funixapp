@@ -17,7 +17,7 @@ export interface WorkOrder {
   cancellation?: {cancelledAt:string;reason:string};
   id:string;number:string;atendimentoId:string;budgetVersionId:string;
   /** Document revision. Older records without revision are revision 1. */
-  revision?:number; revisionId?:string;
+  revision?:number; revisionId?:string; revisionReason?:string;
   budgetNumber:string;budgetLabel:string;createdAt:string;
   authorization:{confirmedAt:string;source:'authenticated-session-confirmation';operatorId:null};
   scope:WorkOrderScope;
