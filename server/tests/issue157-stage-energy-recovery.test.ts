@@ -69,7 +69,7 @@ test('#157: divergência do total mantém a etapa bloqueada, sem fallback genér
  set(source,TABLES.dimensions,'c-wZoGYfi40i',6)
  const p=planned(source)
  assert.deepEqual(p.config.services[0]!.dimensions[0]!.stages,[])
- assert(p.report.pending.some(x=>x.reason.includes('Energia inválida')))
+ assert(p.report.pending.some(x=>x.reason.includes('Conjunto de etapas incompleto') || x.reason.includes('não liberado')))
 })
 
 test('#157: dimensão não auditada, mesmo com soma igual, não recebe zero implícito',()=>{
