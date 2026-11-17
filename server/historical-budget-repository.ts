@@ -6,6 +6,8 @@ import {CommercialRepository} from './commercial.ts'
 import type {CatalogItem,CatalogKind} from '../shared/commercial.ts'
 import {ServiceError} from './errors.ts'
 import {transaction} from './scenarios.ts'
+import {PricingConfigurationRepository} from './pricing-config.ts'
+import {compareHistoricalPricing} from './historical-budget-comparison.ts'
 
 /** Development-only foundation. Explicit installation; not wired to startup or HTTP.
  * No changes to the local emission sequence, composition, catalog, or OS.
@@ -108,8 +110,10 @@ export class HistoricalBudgetRepository{
       return {state:'existing' as const,record:record(old),previewToken:String(old.preview_token)}
     }
     const frozen=freezeReview(this.db,p.data,mapping)
-    const previewToken=hash({source:p.digest,at:link,review:frozen})
-    return {state:'preview' as const,package:p,atendimento:link,catalogReview:frozen,reviewDigest,previewToken,financialIntegrity:p.financialIntegrity}
+    const pricing=new PricingConfigurationRepository(this.db)
+    const comparison=compareHistoricalPricing(p.data,frozen,pricing.get(),pricing.settings(at))
+    const previewToken=hash({source:p.digest,at:link,review:frozen,comparison})
+    return {state:'preview' as const,package:p,atendimento:link,catalogReview:frozen,reviewDigest,previewToken,financialIntegrity:p.financialIntegrity,comparison}
   }
   consult(at:string,captures:Captures){
     this.ready()
