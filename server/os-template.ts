@@ -138,7 +138,7 @@ export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
    'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'+
    // Aproximar a faixa dos clusters: a diferença entre faixa azul e tabela
    // fica em ~4mm, igual ao recuo superior da barra azul da OS.
-   '.execution{margin:3.2mm 0 0!important;}'+
+   '.execution{margin:2.0mm 0 0!important;}'+
    '.main-matrix .technical-band-label span{letter-spacing:0.18px!important;}'+
    // Texto mais longo: preservar margem visual dos chevrons em Chromium/Arial.
    '.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.02px!important;}'
