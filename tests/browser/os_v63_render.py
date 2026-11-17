@@ -55,7 +55,7 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
         }""")
         assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
         assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
-        assert header_metrics["delivery"]=="-",header_metrics
+        assert header_metrics["delivery"]=="—",header_metrics
         assert abs(header_metrics["headerW"]-287*96/25.4)<1.0,header_metrics
         assert header_metrics["dividerW"]=="2px",header_metrics
         sizes=header_page.locator(".field .value").evaluate_all(
