@@ -13,6 +13,7 @@ import subprocess
 import traceback
 from pathlib import Path
 
+import fitz
 from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
 from document_button_colors import color_case
@@ -278,6 +279,102 @@ db.close()
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         mark("layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo")
 
+        # Full revision workflow using the actual Atendimento settings and issuance UI.
+        at_url = "/api/atendimentos/" + ids["at"]
+
+        async def change_delivery_in_settings(value):
+            current = await get(at_url)
+            await h.goto_record(page, current)
+            await h.editor(page)
+            form = page.get_by_role("form", name="Editar Atendimento")
+            date_input = form.get_by_label("Data prevista de entrega (opcional)")
+            await expect(date_input).to_have_value(current.get("deliveryDate") or "")
+            async with page.expect_response(
+                lambda r: r.request.method == "PATCH" and r.url.endswith(at_url)
+            ) as saved:
+                await date_input.fill(value)
+            response = await saved.value
+            assert response.status == 200, await response.text()
+            assert (await response.json()).get("deliveryDate") == (value or None)
+            assert (await get(at_url)).get("deliveryDate") == (value or None)
+            await page.goto(ORIGIN + browse)
+            await expect(history.get_by_text("OS: reemissão necessária", exact=True)).to_be_visible()
+            await history.get_by_role("button", name="Consultar OS desatualizada").click()
+            await expect(history.get_by_role("button", name="Emitir nova revisão")).to_be_enabled()
+            await expect(history.get_by_role("link", name="Visualizar emissão anterior (desatualizada)")).to_be_visible()
+
+        def pdf_text(data):
+            with fitz.open(stream=data, filetype="pdf") as document:
+                return " ".join(p.get_text() for p in document)
+
+        if expected_date:
+            assert "02/12/2026" in pdf_text(pdf_bytes)
+        else:
+            assert "02/12/2026" not in pdf_text(pdf_bytes)
+        assert "R01" in pdf_text(pdf_bytes)
+
+        await change_delivery_in_settings("2026-12-08")
+        await shot("04-reemissao-necessaria")
+        async with page.expect_response(
+            lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
+        ) as r2_result:
+            await history.get_by_role("button", name="Emitir nova revisão").click()
+        r2_response = await r2_result.value
+        assert r2_response.status == 201, await r2_response.text()
+        r2 = await r2_response.json()
+        assert r2["id"] == order["id"] and r2["revision"] == 2
+        assert r2["scope"] == {**order["scope"], "deliveryDate": "2026-12-08"}
+        await expect(history.get_by_role("button", name="Emitir nova revisão")).to_have_count(0)
+        await expect(history.get_by_role("link", name="Visualizar OS", exact=True)).to_have_attribute("href", base + "/os/revisoes/2/pdf")
+        await history.get_by_text("Histórico de emissões da OS", exact=True).click()
+        await expect(history.get_by_role("link", name=re.compile("^R01"))).to_be_visible()
+        await expect(history.get_by_role("link", name=re.compile("^R02"))).to_be_visible()
+        await expect(history.get_by_text("Substituída", exact=False)).to_be_visible()
+        await shot("05-historico-r02")
+        r2_pdf = await ctx.request.get(ORIGIN + base + "/os/revisoes/2/pdf")
+        assert r2_pdf.status == 200
+        r2_bytes = await r2_pdf.body()
+        assert "08/12/2026" in pdf_text(r2_bytes) and "R02" in pdf_text(r2_bytes)
+        assert hashlib.sha256(await (await ctx.request.get(ORIGIN + base + "/os/pdf")).body()).hexdigest() == pdf_sha
+        assert (await get(base + "/os")) == order
+        mark("alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes")
+
+        await change_delivery_in_settings("")
+        async with page.expect_response(
+            lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
+        ) as r3_result:
+            await history.get_by_role("button", name="Emitir nova revisão").click()
+            rev_dialog = page.get_by_role("dialog", name="Emitir nova revisão da OS")
+            await expect(rev_dialog).to_be_visible()
+            await expect(rev_dialog.get_by_role("button", name="Emitir com data")).to_be_disabled()
+            await rev_dialog.get_by_role("button", name="Emitir sem data").click()
+        r3_response = await r3_result.value
+        assert r3_response.status == 201, await r3_response.text()
+        r3 = await r3_response.json()
+        assert r3["revision"] == 3 and r3["id"] == order["id"]
+        assert r3["scope"] == {**order["scope"], "deliveryDate": None}
+        await expect(history.get_by_role("button", name="Emitir nova revisão")).to_have_count(0)
+        await history.get_by_text("Histórico de emissões da OS", exact=True).click()
+        await expect(history.get_by_role("link", name=re.compile("^R03"))).to_be_visible()
+        await shot("06-historico-r03")
+        r3_pdf = await ctx.request.get(ORIGIN + base + "/os/revisoes/3/pdf")
+        assert r3_pdf.status == 200
+        r3_bytes = await r3_pdf.body()
+        assert "R03" in pdf_text(r3_bytes)
+        assert "08/12/2026" not in pdf_text(r3_bytes) and "02/12/2026" not in pdf_text(r3_bytes)
+        assert (await (await ctx.request.get(ORIGIN + base + "/os/revisoes/2/pdf")).body()) == r2_bytes
+        assert (await (await ctx.request.get(ORIGIN + base + "/os/pdf")).body()) == pdf_bytes
+        assert [item.get("revision", 1) for item in await get(base + "/os/revisoes")] == [3, 2, 1]
+        assert hashlib.sha256(await (await ctx.request.get(ORIGIN + base + "/pdf")).body()).hexdigest() == ids["originalPdfSha"]
+        assert count_orders() == 1
+        if label == "desktop":
+            (ARTIFACTS / "os-sintetica-r02.pdf").write_bytes(r2_bytes)
+            (ARTIFACTS / "os-sintetica-r03.pdf").write_bytes(r3_bytes)
+        await page.goto(ORIGIN + browse)
+        await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_have_attribute("href", base + "/os/revisoes/3/pdf")
+        assert not h.external and not h.page_errors, (h.external, h.page_errors)
+        mark("limpar previsão permite R03 sem data; histórico R01/R02 preservado, uma única OS e orçamento intacto")
+
         # Cancel after all immutable-document checks; do not depend on external jsreport.
         async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith(base + "/cancelamento")) as cancelled_response:
             await history.get_by_role("button", name="Cancelar orçamento e OS").click()
@@ -286,6 +383,7 @@ db.close()
         await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
         await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
         assert (await get(base + "/os"))["cancellation"]["reason"] == "Cancelamento sem motivo informado"
+        assert all(item.get("cancellation") for item in await get(base + "/os/revisoes"))
         await page.reload()
         await expect(history.locator(".budget-history-row")).to_have_class(re.compile("is-cancelled"))
         await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
