@@ -62,7 +62,7 @@ test('V18 creates a frozen, operational-only OS, with no commercial fields or ex
  }finally{db.close()}
 })
 
-test('OS V1 PDF cache does not overwrite or reuse historical V63 PDF',async()=>{
+test('OS V1 PDF cache preserves older template versions',async()=>{
  const db=openDatabase(':memory:')
  try{
   const {fixture,version}=await emitted(db)
@@ -72,15 +72,20 @@ test('OS V1 PDF cache does not overwrite or reuse historical V63 PDF',async()=>{
   const current=Buffer.from('%PDF-1.7\nV1 official synthetic\n%%EOF')
   db.prepare('INSERT INTO work_order_pdf_cache(work_order_id,template_version,pdf,created_at) VALUES(?,?,?,?)')
     .run(order.id,'v63-jsreport-8',legacy,'2026-11-16T12:00:00.000Z')
-  assert.equal(cache.get(order.id),null,'V63 PDF cannot be returned as V1')
+  const previous=Buffer.from('%PDF-1.7\nPrevious V1 synthetic\n%%EOF')
+  db.prepare('INSERT INTO work_order_pdf_cache(work_order_id,template_version,pdf,created_at) VALUES(?,?,?,?)')
+    .run(order.id,'v1-jsreport-1',previous,'2026-11-17T12:00:00.000Z')
+  assert.equal(cache.get(order.id),null,'Old template PDFs cannot be returned as the current layout')
   assert.deepEqual(cache.save(order.id,current),current)
   assert.deepEqual(cache.get(order.id),current)
   assert.deepEqual(cache.save(order.id,Buffer.from('%PDF-1.7\nSecond V1 render\n%%EOF')),current,
     'a repeated V1 render cannot replace the first PDF')
   const rows=db.prepare('SELECT template_version,pdf FROM work_order_pdf_cache WHERE work_order_id=? ORDER BY template_version')
     .all(order.id) as Array<{template_version:string;pdf:Uint8Array}>
-  assert.deepEqual(rows.map(r=>r.template_version),['v1-jsreport-1','v63-jsreport-8'])
-  assert.deepEqual(Buffer.from(rows[1]!.pdf),legacy)
+  assert.deepEqual(rows.map(r=>r.template_version),['v1-jsreport-1','v1-jsreport-2','v63-jsreport-8'])
+  assert.deepEqual(Buffer.from(rows[0]!.pdf),previous)
+  assert.deepEqual(Buffer.from(rows[1]!.pdf),current)
+  assert.deepEqual(Buffer.from(rows[2]!.pdf),legacy)
   assert.throws(()=>db.prepare('DELETE FROM work_order_pdf_cache WHERE work_order_id=?').run(order.id),/immutable/i)
  }finally{db.close()}
 })
