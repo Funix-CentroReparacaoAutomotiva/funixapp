@@ -6,7 +6,7 @@ import {CommercialRepository} from '../commercial.ts'
 import {ScenarioRepository} from '../scenarios.ts'
 import {TABLES,sourceId} from '../coda-import-source.ts'
 import {planApprovedPieces,applyApprovedPieces} from '../approved-pieces-165.ts'
-import {servicePolicy} from '../../shared/commercial-curation.ts'
+import {serviceDisplayName,servicePolicy} from '../../shared/commercial-curation.ts'
 
 const diagnosis=sourceId(TABLES.diagnoses,'i-UtUmAlS5ma')
 const technical=sourceId(TABLES.services,'i-GsuErCDZgL')
@@ -35,7 +35,7 @@ test('#162: novo Atendimento inclui avaliação desabilitada e Lavagem M habilit
   assert.equal(items[0]!.diagnosisId,diagnosis)
   assert.equal(items[0]!.enabled,true)
   assert.deepEqual(items[0]!.services.map(s=>s.serviceId),[technical,washing])
-  assert.equal(servicePolicy(technical)?.displayName,'Avaliação técnica e planejamento')
+  assert.equal(serviceDisplayName(technical,'Diagnóstico Técnico'),'Avaliação técnica e planejamento')
   assert.equal(servicePolicy(technical)?.billing,'not_billed')
   assert.equal(items[0]!.services[0]!.enabled,false)
   assert.equal(items[0]!.services[0]!.dimensionId,null)
