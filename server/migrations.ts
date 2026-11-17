@@ -297,7 +297,28 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
-  `)}
+  `)},
+  // #180. Coda: "Para-choque inferior" with the explicit scope "Traseiro".
+  // Keep the 163-entry V2 reference immutable; provide one independent piece.
+  {version:21,apply:db=>{
+    const code='para_choque_traseiro_inferior'
+    const name='Para-choque traseiro inferior'
+    const normal=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim()
+    const aliases=new Set([normal(name),normal('Para-choque inferior traseiro')])
+    const matches=db.prepare("SELECT id,code,name FROM catalog_items WHERE kind='peca' AND (code=? OR name IN (?,?))")
+      .all(code,name,'Para-choque inferior traseiro') as {id:string;code:string|null;name:string}[]
+    if(matches.length>1 || matches.length===1 && (matches[0]!.code!==code || !aliases.has(normal(matches[0]!.name))))
+      throw new Error('Catálogo de para-choque traseiro inferior conflitante; revisar cadastro antes de migrar.')
+    if(matches.length===1)return
+    // Also reject an existing uncoded/variant-named registration without guessing identity.
+    const similar=db.prepare("SELECT id,code,name FROM catalog_items WHERE kind='peca'").all() as {id:string;code:string|null;name:string}[]
+    if(similar.some(row=>aliases.has(normal(row.name))))
+      throw new Error('Para-choque inferior traseiro já cadastrado sob identidade diferente; revisão necessária.')
+    const id='funix:peca:para_choque_traseiro_inferior',now=new Date().toISOString()
+    db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES (?,'peca',?,?,'proposta','operador',?,?)").run(id,code,name,now,now)
+    const record=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id)
+    db.prepare('INSERT INTO catalog_history(item_id,revision,changed_at,data) VALUES (?,?,?,?)').run(id,1,now,JSON.stringify(record))
+  }}
 ]
 
 export function migrate(db: DatabaseSync) {

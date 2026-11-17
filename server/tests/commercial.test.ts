@@ -103,7 +103,7 @@ test('V2 stays byte-identical; 163 coded pieces retain legacy metadata and missi
     const hash = (url: URL) => createHash('sha256').update(readFileSync(url)).digest('hex')
     assert.equal(hash(new URL('../data/hierarquia-v2.json', import.meta.url)), hash(new URL('../../docs/especificacao-v1.0/originais/hierarquia_pecas_funix_v2.json', import.meta.url)))
     const items = repo.catalogs().items
-    assert.equal(items.length, 163)
+    assert.equal(items.length, 164)
     assert.equal(hierarchyPieces().length, 163)
     assert(items.every(item => item.status === 'proposta' && item.code && item.kind === 'peca'))
     assert(items.some(item => item.suggestion))
