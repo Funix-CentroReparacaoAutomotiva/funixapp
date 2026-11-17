@@ -10,7 +10,7 @@
   width:100%;
   height:15mm;
   display:grid;
-  grid-template-columns:53mm 43mm minmax(0,1fr) 50mm 27mm;
+  grid-template-columns:53mm 43mm minmax(0,1fr) 56mm 26mm;
   align-items:stretch;
   background:var(--navy);
   color:#fff;
@@ -67,14 +67,15 @@
   min-width:0;
   color:#fff;
   font-family:Arial,Helvetica,sans-serif;
-  font-size:12.5pt;
-  font-weight:800;
+  font-size:12pt;
+  font-weight:900;
+  -webkit-text-stroke:0.18px currentColor;
   line-height:1.06;
-  letter-spacing:-.15px;
+  letter-spacing:.15px;
   text-align:center;
   white-space:nowrap;
 }
-.osv63-header .delivery-field .value{font-size:13pt;}
+.osv63-header .delivery-field .value{font-size:12pt;}
 .osv63-header .page-field{column-gap:1.2mm;padding:0 1.9mm;}
 .osv63-header .page-field .value{font-size:12pt;}
 /* O rótulo fica à esquerda; o texto do veículo se centraliza na área restante. */
@@ -87,6 +88,8 @@
   line-height:1.04;
   text-wrap:balance;
 }
+/* Nomes especialmente longos: manter 12 pt e caber em duas linhas. */
+.osv63-header .vehicle-field--long .value{letter-spacing:-1px;}
 </style>
 </head>
 <body>
