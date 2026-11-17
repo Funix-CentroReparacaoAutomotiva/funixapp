@@ -11,6 +11,10 @@ export const approvedPieces=[
  {code:'moldura',name:'Moldura',existingOnly:false},
  {code:'moldura_para_lama',name:'Moldura do para-lama',existingOnly:false},
  {code:'moldura_lateral',name:'Moldura lateral',existingOnly:false},
+ {code:'moldura_porta_dianteira',name:'Moldura porta dianteira',existingOnly:false},
+ {code:'moldura_porta_traseira',name:'Moldura porta traseira',existingOnly:false},
+ {code:'moldura_para_choque_dianteiro',name:'Moldura para-choque dianteiro',existingOnly:false},
+ {code:'moldura_para_choque_traseiro',name:'Moldura para-choque traseiro',existingOnly:false},
  {code:'para_lama',name:'Para-lama',existingOnly:false},
  {code:'porta_dianteira',name:'Porta dianteira',existingOnly:false},
  {code:'porta_traseira',name:'Porta traseira',existingOnly:false},
@@ -22,6 +26,7 @@ export const approvedPieces=[
 type Row={id:string;kind:string;code:string|null;name:string;side:string;active:number;revision:number}
 type Decision={code:string;name:string;id:string;action:'insert'|'reuse'|'conflict';reason:string}
 const normalize=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim()
+const equivalentName=(s:string)=>normalize(s).replace(/\b(da|do|de)\b/g,'').replace(/\s+/g,' ').trim()
 const stableId=(code:string)=>'funix:peca:'+code
 
 export function planApprovedPieces(db:DatabaseSync){
@@ -31,7 +36,7 @@ export function planApprovedPieces(db:DatabaseSync){
  const relevant=rows.filter(r=>r.kind==='peca'||approvedPieces.some(p=>r.id===stableId(p.code)||r.code===p.code))
  const decisions:Decision[]=approvedPieces.map(piece=>{
   const matches=relevant.filter(r=>r.code===piece.code||r.id===stableId(piece.code)||
-    (r.kind==='peca'&&!r.side&&(normalize(r.name)===normalize(piece.name)||
+    (r.kind==='peca'&&!r.side&&(equivalentName(r.name)===equivalentName(piece.name)||
       (piece.code==='moldura'&&normalize(r.name)==='moldura generica'))))
   if(matches.length===1){
    const r=matches[0]!
@@ -42,7 +47,7 @@ export function planApprovedPieces(db:DatabaseSync){
    return {code:piece.code,name:piece.name,id:matches[0]?.id??stableId(piece.code),action:'conflict',reason:'Cadastro ausente, inativo, renomeado ou conflitante; não duplicar, reativar ou sobrescrever.'}
   return {code:piece.code,name:piece.name,id:stableId(piece.code),action:'insert',reason:'Peça sem lado, autorizada pela direção; não implica expansão automática.'}
  })
- const planHash=createHash('sha256').update(JSON.stringify({version:'funix-approved-pieces-165-v1',versions,relevant,decisions})).digest('hex')
+ const planHash=createHash('sha256').update(JSON.stringify({version:'funix-approved-pieces-165-v2',versions,relevant,decisions})).digest('hex')
  return {planHash,decisions,conflicts:decisions.filter(d=>d.action==='conflict')}
 }
 
