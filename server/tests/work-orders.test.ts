@@ -335,7 +335,12 @@ test('Optional empty delivery, explicit reissue, historical PDFs and cancellatio
   const cache=new WorkOrderPdfCache(db)
   cache.save(first.id,original)
   const updated=repo.update(at,{revision:repo.get(at).revision,deliveryDate:'2026-12-02'})
-  const meta=()=>budgets.list(at).find(v=>v.id===version.id) as unknown as {workOrderNeedsReissue:boolean;workOrderRevision:number}
+  const meta=()=>{
+   const listed=budgets.list(at) as unknown as {id:string;workOrderNeedsReissue:boolean;workOrderRevision:number}[]
+   const entry=listed.find(v=>v.id===version.id)
+   assert.ok(entry,'Issued budget must remain listed')
+   return entry
+  }
   assert.equal(meta().workOrderNeedsReissue,true)
   assert.deepEqual(orders.get(at,version.id),first)
   const request={authorized:true,deliveryChoice:'with',deliveryDate:'2026-12-02',expectedAtendimentoRevision:updated.revision,expectedRevision:1}
