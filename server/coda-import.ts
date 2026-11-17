@@ -1,4 +1,5 @@
 import{referencePresentation,clusterById,clusterName,sourceStageCluster}from'./stage-presentation.ts'
+import{approvedEnergy,POLISH_M_SERVICE,POLISH_M_DIMENSION,POLISH_M_RELATIONS}from'./approved-stage-energy.ts'
 import{COMMERCIAL_CURATION,servicePolicy}from'../shared/commercial-curation.ts'
 import{CURATION_STAMP}from'./curation.ts'
 import {createHash} from 'node:crypto'
@@ -156,28 +157,28 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     const st=ref(r,'c-AWrfBjSHDl',TABLES.stages),sd=ref(r,'c-B9QLxROotP',TABLES.stageDimensions)
     const be=st?ref(st,'c-K6LT-CKgWA',TABLES.energy):null,de=sd?ref(sd,'c-ufXqc_8vWI',TABLES.energy):null
     const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,actual=number(r,'c-Ii7Vzlr1ni')
-    // #157: five audited Coda relations have no explicit dimension-energy operand.
-    // In those EXACT canonical identities only, a verified formula plus the
-    // independent relation total proves that the missing additive operand is
-    // mathematically zero. This is not a generic blank-to-zero fallback.
     const dimensionCell=sd?cell(sd,'c-ufXqc_8vWI'):undefined
-    const relationDimensionCell=cell(r,'c-B9QLxROotP')
-    const codaBlank=(v:unknown)=>v===null||v===''
-    const degradê=s.rowId==='i-SW0n7TLbtf'&&st?.rowId==='i-SW0n7TLbtf'&&sd?.rowId==='i-jTU8EBeCLM'&&
-      ['i-SW0n7TLbtf','i-k8ZulOn21b','i-RQlr0QK5rR','i-gXduy16b-V'].includes(d.row.rowId)&&codaBlank(dimensionCell)
-    const vidraçaria=s.rowId==='i-6v-u7Wk73b'&&st?.rowId==='i-6v-u7Wk73b'&&d.row.rowId==='i-XAWXTYWQIa'&&
-      d.name==='-'&&!sd&&codaBlank(relationDimensionCell)
-    const derivedZero=energyVerified&&baseEnergy!==null&&actual!==null&&
-      Q.from(baseEnergy).cmp(Q.from(actual))===0&&(degradê||vidraçaria)
-    const dimensionEnergy=derivedZero?'0':de?number(de,'c-3-8rupyDNx'):null
-    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):derivedZero?d.name:''
-    if(!st || (!sd&&!derivedZero) || !name || !dimension || baseEnergy===null || dimensionEnergy===null || actual===null || Q.from(baseEnergy).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0){
+    const stageDimensionCell=cell(r,'c-B9QLxROotP')
+    const rawDimension=de?number(de,'c-3-8rupyDNx'):null
+    const explicitlyBlank=(value:unknown)=>value===null||value===''||value===undefined
+    const approved=approvedEnergy({
+      relationId:r.rowId,serviceId:s.rowId,dimensionId:d.row.rowId,
+      stageId:st?.rowId??'',stageDimensionId:sd?.rowId??null,
+      base:baseEnergy,rawDimension,rawDimensionMissing:sd?explicitlyBlank(dimensionCell):explicitlyBlank(stageDimensionCell),
+      originalTotal:actual
+    },energyVerified)
+    const dimensionEnergy=approved?.dimensionEnergy??rawDimension
+    const effectiveBase=approved?.baseEnergy??baseEnergy
+    const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):approved?d.name:''
+    if(!st || (!sd&&!approved) || !name || !dimension || effectiveBase===null || dimensionEnergy===null || actual===null ||
+      (!approved&&Q.from(effectiveBase).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0)){
      validEnergy=false
      const negative=[be,de].some(e=>e && String(scalar(cell(e,'c-3-8rupyDNx'))).startsWith('-'))
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
      pending(id(TABLES.relations,r),reason+' Conjunto não liberado nem convertido em zero.');continue
     }
-    if(derivedZero)report.imported.push({source:id(TABLES.relations,r),reason:'#157: parcela dimensional 0 demonstrada pela fórmula de energia verificada e pelo total exato da relação, em vínculo Coda previamente auditado. Etapa/ID originais preservados.'})
+    if(approved)report.imported.push({source:id(TABLES.relations,r),
+      reason:`Energia aprovada pela direção (#157/#244): ${approved.category}; origem ${approved.sourceTotal}, destino ${approved.approvedTotal}. ID de relação preservado.`})
     const prior=referencePresentation(id(TABLES.relations,r),id(TABLES.services,s),id(TABLES.dimensions,d.row))
     const rawCluster=cell(st,'c-96H1EFHFA1'),clusterId=rawCluster&&typeof rawCluster==='object'&&'rowId'in rawCluster&&typeof rawCluster.rowId==='string'?rawCluster.rowId:null
     const brokenCluster=rawCluster&&typeof rawCluster==='object'&&'isBroken'in rawCluster&&rawCluster.isBroken
@@ -186,9 +187,21 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     const rawOrder=scalar(cell(r,'c-oh6TT09I-z')),order=rawOrder===undefined?prior?.order??null:typeof rawOrder==='number'||typeof rawOrder==='string'&&/^\d+$/.test(rawOrder)?Number(rawOrder):null
     const presentation={stageId:st.rowId,stageDimensionId:sd?.rowId??null,clusterId:rawCluster===undefined?prior?.clusterId??null:clusterId,cluster,order:Number.isSafeInteger(order)&&Number(order)>=0?order:null}
     if(!cluster)pending(id(TABLES.relations,r),'Categoria de apresentação ausente/não reconhecida; preço/energia preservados, emissão PDF pendente.')
-    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy,dimensionEnergy,presentation})
+    stages.push({id:id(TABLES.relations,r),name,dimension,baseEnergy:effectiveBase,dimensionEnergy,presentation})
    }
-   const total=number(d.row,'c-wZoGYfi40i')
+   const polishM=s.rowId===POLISH_M_SERVICE&&d.row.rowId===POLISH_M_DIMENSION
+   const auditedM=polishM&&relations.length===POLISH_M_RELATIONS.length&&
+      POLISH_M_RELATIONS.every(rid=>relations.some(relation=>relation.rowId===rid))
+   const totalSource=number(d.row,'c-wZoGYfi40i')
+   // Direction expressly approved 8 for Polimento M instead of Coda's 5.
+   // Fail closed if source changes or if fewer than all four approved stages load.
+   const approvedM=auditedM&&totalSource==='5'&&validEnergy&&stages.length===4&&
+     stages.every(stage=>stage.baseEnergy==='2'&&stage.dimensionEnergy==='0')
+   if(polishM&&!approvedM){
+     validEnergy=false
+     pending(id(TABLES.dimensions,d.row),'Polimento Veículo M: configuração/fonte divergiu da decisão expressa 2+2+2+2=8; revisão obrigatória.')
+   }
+   const total=approvedM?'8':totalSource
    if(total===null || !validEnergy || sum(stages.map(st=>Q.from(st.baseEnergy!).add(Q.from(st.dimensionEnergy!)))).cmp(Q.from(total??'0'))!==0){validEnergy=false;pending(id(TABLES.dimensions,d.row),'Conjunto de etapas incompleto/incompatível com a energia total Coda; nenhuma etapa parcial liberada.')}
    if(rule && fd!==null && base!==null){report.imported.push({source:id(TABLES.rules,rule),reason:`Base/FD da fonte para ${id(TABLES.dimensions,d.row)}; cálculo segue FC por serviço e FV/FR da Issue #20, não regras históricas por tabela.`});report.mapping.push({source:`${TABLES.rules}/${rule.rowId}`,target:`services/${id(TABLES.services,s)}/${id(TABLES.dimensions,d.row)}`})}
    return {dimensionId:id(TABLES.dimensions,d.row),fd,stages:validEnergy?stages:[]}
