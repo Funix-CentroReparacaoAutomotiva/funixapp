@@ -71,6 +71,17 @@ try{
    await edit.getByRole('textbox',{name:'Marca e modelo',exact:true}).fill('Modelo Livre QA')
    await edit.getByRole('textbox',{name:'Ano de fabricação'}).fill('2018')
    await edit.getByRole('textbox',{name:'Ano do modelo'}).fill('2020')
+   // Issue #234: o textarea ativo não pode perder foco durante o PATCH de autosave.
+   const notesField=edit.getByRole('textbox',{name:'Observações'})
+   await notesField.fill('Relato sintético de teste')
+   await notesField.focus()
+   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   assert.equal(await notesField.evaluate(el=>document.activeElement===el),true,`${width}px: campo Observações perdeu foco no autosave`)
+   await notesField.press('End')
+   await notesField.type(' e continuação')
+   assert.equal(await notesField.inputValue(),'Relato sintético de teste e continuação')
+   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   assert.equal(fixture.atendimentos.get(record.id).notes,'Relato sintético de teste e continuação')
    // Issue #164: autosave após pausa, sem clique manual.
    await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
    const edited=fixture.atendimentos.get(record.id)
