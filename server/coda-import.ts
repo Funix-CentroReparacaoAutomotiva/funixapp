@@ -163,7 +163,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     // The normal non-negative decimal parser intentionally rejects negative values.
     // For approved historical corrections, inspect the raw negative operand explicitly.
     const rawDimension=rawDimensionCell===null||rawDimensionCell===undefined||rawDimensionCell===''?null:
-      /^-?\\d+(?:\\.\\d+)?$/.test(String(rawDimensionCell))?String(rawDimensionCell):null
+      /^-?\d+(?:\.\d+)?$/.test(String(rawDimensionCell))?String(rawDimensionCell):null
     const explicitlyBlank=(value:unknown)=>value===null||value===''||value===undefined
     const approved=approvedEnergy({
       relationId:r.rowId,serviceId:s.rowId,dimensionId:d.row.rowId,
