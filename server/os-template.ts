@@ -7,22 +7,17 @@ const PRINT_CLUSTERS:readonly StageCluster[]=[
   'Serviços complementares','Estética e revitalização'
 ]
 
-/** V63 is the visual master; replace its sample data, never the persisted scope. */
-const master=readFileSync(new URL('./templates/FUNIX_OS_v63.html',import.meta.url),'utf8')
-const approvedHeader=readFileSync(new URL('./templates/FUNIX_OS_v63_header.html',import.meta.url),'utf8')
-const officialLogo=(()=>{const found=master.match(/<svg aria-label="FUNIX"[\s\S]*?<\/svg>/)?.[0]
- if(!found)throw Error('Marca vetorial FUNIX ausente do mestre da OS.')
- return found
-})()
+/** V1 is the official visual master; replace its sample data, never the persisted scope. */
+const master=readFileSync(new URL('./templates/FUNIX_OS_V1.html',import.meta.url),'utf8')
 
 const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
 const footerStart=master.indexOf('<div class="footer-legend"')
-const headerStart=master.indexOf('<div class="running-header plan-header"')
+const headerStart=master.indexOf('<header ')
 const mainStart=master.indexOf('<main ')
 const mainEnd=master.indexOf('</main>',mainStart)
 if(!css||footerStart<0||headerStart<0||mainStart<0||mainEnd<0||
   !master.includes('<tbody>')||!master.includes('</tbody>'))
-  throw Error('HTML mestre V63 inválido.')
+  throw Error('HTML mestre V1 inválido.')
 
 /** Chrome prints native header/footer from a separate document context.
  * WeasyPrint @page rules in that context can paint an opaque white sheet OVER
@@ -47,7 +42,8 @@ function withoutPageRules(source:string):string{
  return output+source.slice(cursor)
 }
 const marginCss=withoutPageRules(css)
-const footer=master.slice(footerStart,headerStart)
+const footer=master.slice(footerStart,master.indexOf('</div>',footerStart)+6)
+const header=master.slice(headerStart,master.indexOf('</header>',headerStart)+9)
 const main=master.slice(mainStart,mainEnd+7)
 const icons=new Map<string,string>()
 for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
@@ -118,48 +114,38 @@ function rows(order:WorkOrder):string{
 }
 
 export interface OrderPrintTemplate{content:string;headerTemplate:string;footerTemplate:string}
-export function renderOrderV63(order:WorkOrder):OrderPrintTemplate{
+
+function setHeaderField(source:string,field:string,value:string):string{
+ const pattern=new RegExp('(<div class="field '+field+'">[\\s\\S]*?<strong class="value"(?: id="vehicle-text")?>)[\\s\\S]*?(<\\/strong>)')
+ if(!pattern.test(source))throw Error('Campo '+field+' ausente do cabeçalho V1.')
+ return source.replace(pattern,(_whole,start:string,end:string)=>start+html(value)+end)
+}
+export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
- // O modelo V63 não contém data de entrega confirmada. Prazo em dias não é
- // compromisso com data de calendário: não inferir entrega a partir da emissão.
- // Usar marcador explícito até existir data confirmada, persistida no WorkOrder.
- const delivery='—'
- const headerHtml=approvedHeader
-   // Compactação horizontal apenas em textos de veículo excepcionalmente longos,
-   // sem diminuir a fonte (permanece 12pt).
-   .replace('class="field vehicle-field"',
-     vehicle.length>=55?'class="field vehicle-field vehicle-field--long"':'class="field vehicle-field"')
-   .replace('{{FUNIX_LOGO_SVG}}',officialLogo)
-   .replace('{{OS_NUMBER}}',html(order.number))
-   .replace('{{VEHICLE}}',html(vehicle||'Veículo não informado'))
-   .replace('{{DELIVERY}}',html(delivery))
+ let headerHtml=setHeaderField(header,'id-field',order.number)
+ headerHtml=setHeaderField(headerHtml,'vehicle-field',vehicle||'Veículo não informado')
+ headerHtml=setHeaderField(headerHtml,'delivery-field','—')
+ headerHtml=headerHtml.replace('class="field vehicle-field"',
+   vehicle.length>=55?'class="field vehicle-field vehicle-field--long"':'class="field vehicle-field"')
+ headerHtml=headerHtml.replace(/(<div class="field page-field">[\s\S]*?<strong class="value">)[\s\S]*?(<\/strong>)/,
+   '$1<span class="pageNumber"></span>/<span class="totalPages"></span>$2')
  const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
- const chromePrint='@page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}'+
-   'html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}'+
-   // Aproximar a faixa dos clusters: a diferença entre faixa azul e tabela
-   // fica em ~4mm, igual ao recuo superior da barra azul da OS.
-   '.execution{margin:2.0mm 0 0!important;}'+
-   '.main-matrix .technical-band-label span{letter-spacing:0.18px!important;}'+
-   // Texto mais longo: preservar margem visual dos chevrons em Chromium/Arial.
-   '.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.02px!important;}'
+ // V1 foi fornecida com elementos fixed e overflow hidden para uma página.
+ // No Chromium, somente a área da matriz flui por várias páginas.
+ const chromePrint='@page plan{size:A4 landscape;margin:23mm 5mm 15mm 5mm}'+
+  'html,body{height:auto!important;width:auto!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important;}'+
+  '.plan-page{position:static!important;top:auto!important;left:auto!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;box-shadow:none!important;}'+
+  '.execution{margin:0!important;padding:0!important;}'+
+  '.main-matrix tbody tr{break-inside:avoid!important;page-break-inside:avoid!important;}'
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
-   '</style></head><body>'+body+'</body></html>'
- // Chrome's separate header/footer contexts otherwise bleed to the physical A4 edges.
- // Align both to the approved V63 reference: x=5 mm, header y≈4 mm, footer y≈198 mm.
- const marginStyle='body{margin:0!important;background:transparent!important;padding:0 5mm!important;box-sizing:border-box!important}'+
-   '.running-header,.footer-legend{position:static!important;width:100%!important;}'
- const wrapFooter=(body:string)=>
-   '<html lang="pt-BR"><head><meta charset="utf-8"><style>'+marginCss+marginStyle+
-   '.footer-legend{transform:translateY(2mm)!important;}'+
-   // Original CSS shifted icon+text groups 2.6pt upward, misaligning them with 'Legenda:'.
-   '.footer-legend .legend-item{transform:none!important;}'+
-   '</style></head><body>'+body+'</body></html>'
- // Header is self-contained to prevent legacy V63 mast CSS from overriding
- // the approved grid. Chrome head/footer templates are distinct documents.
- const chromeHeader=headerHtml.replace('</style>',
-   'body{margin:0!important;padding:0 5mm!important;background:transparent!important;box-sizing:border-box!important;}'+
-   // A matriz começa a 5mm da folha; a barra deve usar o mesmo alinhamento.
-   '.osv63-header{width:287mm!important;max-width:287mm!important;margin-left:auto!important;margin-right:auto!important;transform:translateY(-1.3mm)!important;}'+
-   '</style>')
- return{content,headerTemplate:chromeHeader,footerTemplate:wrapFooter(footer)}
+  '</style></head><body>'+body+'</body></html>'
+ const chromeHeader='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
+  '.os-header{position:static!important;top:auto!important;left:auto!important;width:287mm!important;max-width:287mm!important;margin:0!important;transform:translateY(-1.3mm)!important;}'
+ const chromeFooter='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
+  '.footer-legend{position:fixed!important;top:198.4mm!important;left:5mm!important;width:287mm!important;height:8.7mm!important;min-height:8.7mm!important;margin:0!important;transform:none!important;}'+
+  '.footer-legend .legend-item{transform:none!important;}'
+ const wrap=(fragment:string,extraCss:string)=>
+  '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+
+   marginCss+extraCss+'</style></head><body>'+fragment+'</body></html>'
+ return{content,headerTemplate:wrap(headerHtml,chromeHeader),footerTemplate:wrap(footer,chromeFooter)}
 }
