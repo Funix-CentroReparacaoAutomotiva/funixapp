@@ -298,23 +298,42 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     CREATE TRIGGER immutable_budget_cancellation_delete BEFORE DELETE ON budget_cancellations
       BEGIN SELECT RAISE(ABORT,'Budget cancellations are immutable'); END;
   `)},
-  // Catálogo do veículo inteiro: a V2 contém "Veículo completo" sem código de peça.
-  // A nova identidade é local e aditiva; nenhum serviço é incluído automaticamente.
+  // Cadastros mínimos para serviços gerais e componentes de colisão, sem alterar a V2.
   {version:21,apply:db=>{
     const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('pt-BR')
-    const aliases=new Set(['veiculo','veiculo completo'])
+    const now=new Date().toISOString()
     const all=db.prepare("SELECT id,code,name FROM catalog_items WHERE kind='peca'").all() as {id:string;code:string|null;name:string}[]
+    const insert=(id:string,code:string,name:string)=>{
+      db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES (?,'peca',?,?,'proposta','operador',?,?)").run(id,code,name,now,now)
+      const record=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id)
+      db.prepare('INSERT INTO catalog_history(item_id,revision,changed_at,data) VALUES (?,?,?,?)').run(id,1,now,JSON.stringify(record))
+    }
+    const aliases=new Set(['veiculo','veiculo completo'])
     const matches=all.filter(row=>row.code==='veiculo_completo'||aliases.has(normalize(row.name)))
     if(matches.length){
-      // An existing operator registration wins; never create a near-duplicate or rewrite its ID.
       if(matches.length!==1 || !matches[0]!.code || (matches[0]!.code==='veiculo_completo'&&!aliases.has(normalize(matches[0]!.name))))
         throw new Error('Peça Veículo ambígua ou sem código: revisar catálogo antes de migrar.')
-      return
+    }else insert('funix:peca:veiculo_completo','veiculo_completo','Veículo')
+    // Coda: Para-choque inferior + parte Traseiro. Não confundir com difusor/defletor.
+    const bumperMatches=all.filter(row=>row.code==='para_choque_traseiro_inferior'||normalize(row.name)==='para-choque traseiro inferior')
+    if(bumperMatches.length){
+      if(bumperMatches.length!==1 || !bumperMatches[0]!.code)
+        throw new Error('Para-choque traseiro inferior ambíguo ou sem código.')
+    }else insert('funix:peca:para_choque_traseiro_inferior','para_choque_traseiro_inferior','Para-choque traseiro inferior')
+    // A V2 já possui quatro IDs distintos; corrigir só o rótulo legado, nunca o ID.
+    const molduras=[
+      ['moldura_porta_dianteira__motorista','Moldura dianteira · Motorista','Moldura da porta dianteira · Motorista'],
+      ['moldura_porta_dianteira__passageiro','Moldura dianteira · Passageiro','Moldura da porta dianteira · Passageiro'],
+      ['moldura_porta_traseira__motorista','Moldura traseira · Motorista','Moldura da porta traseira · Motorista'],
+      ['moldura_porta_traseira__passageiro','Moldura traseira · Passageiro','Moldura da porta traseira · Passageiro']
+    ] as const
+    for(const [code,legacy,label] of molduras){
+      const row=db.prepare("SELECT * FROM catalog_items WHERE kind='peca' AND code=?").get(code) as ({id:string;name:string;revision:number}|undefined)
+      if(!row||row.name!==legacy)continue // preserve any human-customized label
+      db.prepare('UPDATE catalog_items SET name=?,revision=revision+1,updated_at=? WHERE id=?').run(label,now,row.id)
+      const current=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(row.id)
+      db.prepare('INSERT INTO catalog_history(item_id,revision,changed_at,data) VALUES (?,?,?,?)').run(row.id,row.revision+1,now,JSON.stringify(current))
     }
-    const id='funix:peca:veiculo_completo',now=new Date().toISOString()
-    db.prepare("INSERT INTO catalog_items(id,kind,code,name,status,source,created_at,updated_at) VALUES (?,'peca',?,'Veículo','proposta','operador',?,?)").run(id,'veiculo_completo',now,now)
-    const record=db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id)
-    db.prepare('INSERT INTO catalog_history(item_id,revision,changed_at,data) VALUES (?,?,?,?)').run(id,1,now,JSON.stringify(record))
   }}
 ]
 
