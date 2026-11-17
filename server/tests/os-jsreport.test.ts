@@ -75,7 +75,7 @@ test('cabeçalho novo escapa dados dinâmicos e não inventa uma entrega a parti
  assert(!result.headerTemplate.includes('Tracker <script>'))
  assert(result.headerTemplate.includes('class="value">-</strong>'))
  assert(!result.headerTemplate.includes('17/11/2026'))
- assert(result.headerTemplate.includes('font-weight:800'))
+ assert(result.headerTemplate.includes('font-weight:700'))
  assert(result.headerTemplate.includes('font-size:19pt'))
  assert(!result.headerTemplate.includes('Data de emissão'))
 })
