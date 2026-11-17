@@ -653,8 +653,8 @@ export function createRequestHandler(options: AppOptions) {
         if([...url.searchParams.keys()].some(k=>!['diagnosisId','intensity'].includes(k))||url.searchParams.getAll('diagnosisId').length!==1||url.searchParams.getAll('intensity').length!==1)return fail(400,'INVALID_INPUT','Informe apenas diagnosisId e intensity.')
         return send(200,{items:recommendations(options.atendimentos.db,url.searchParams.get('diagnosisId'),url.searchParams.get('intensity'))})
       }
-      // Operational OS: frozen emitted version, authenticated session confirmation,
-      // immutable local SQLite record and local PDF (no jsreport template).
+      // Operational OS: frozen emitted version and immutable SQLite record.
+      // PDF uses the configured jsreport OS template or the existing local fallback.
       const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
       if(cancellationRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
@@ -672,9 +672,9 @@ export function createRequestHandler(options: AppOptions) {
           if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
           const order=workOrders.get(at,versionId)
           if (!pdf) return send(200,order)
-          const useV63=Boolean(options.osPdfRenderer)||process.env.FUNIX_OS_JSREPORT_ENABLED==='true'
+          const useJsreportOrderPdf=Boolean(options.osPdfRenderer)||process.env.FUNIX_OS_JSREPORT_ENABLED==='true'
           let original:Buffer
-          if(!useV63) original=workOrderPdf(order)
+          if(!useJsreportOrderPdf) original=workOrderPdf(order)
           else {
             const cached=osCache!.get(order.id)
             if(cached)original=cached
