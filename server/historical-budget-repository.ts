@@ -111,6 +111,14 @@ export class HistoricalBudgetRepository{
     const previewToken=hash({source:p.digest,at:link,review:frozen})
     return {state:'preview' as const,package:p,atendimento:link,catalogReview:frozen,reviewDigest,previewToken,financialIntegrity:p.financialIntegrity}
   }
+  consult(at:string,captures:Captures){
+    this.ready()
+    return transaction(this.db,()=>{
+      const p=normalizeHistoricalCodaCapture(captures.first,captures.second)
+      const atendimento=exactAttendance(this.db,p.data,at)
+      return {package:p,atendimento}
+    })
+  }
   preview(at:string,captures:Captures,review:unknown){
     this.ready()
     return transaction(this.db,()=>this.inspect(at,captures,review))

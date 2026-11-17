@@ -57,7 +57,11 @@ import type{QuoteService}from'./component-quote-service.ts'
 import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
+import type {HistoricalBudgetRepository} from './historical-budget-repository.ts'
+import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historical-coda-provider.ts'
+
 export interface AppOptions {
+  historicalBudget?:{repo:HistoricalBudgetRepository;provider:HistoricalCaptureProvider;allowConfirmation?:boolean} // explicit isolated harness only
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -655,6 +659,34 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Operational OS: frozen emitted version and immutable SQLite record.
       // PDF uses the configured jsreport OS template or the existing local fallback.
+      // Historical import is opt-in injection only. No production startup or env activation.
+      const historicalRoute=/^\/api\/atendimentos\/([^/]{1,100})\/orcamentos-historicos(?:\/([^/]{1,100}))?$/.exec(url.pathname)
+      if(historicalRoute){
+        const historical=options.historicalBudget
+        if(!historical)return fail(503,'HISTORICAL_IMPORT_DISABLED','Importação histórica ainda não habilitada.')
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        const at=historicalRoute[1]!,action=historicalRoute[2]
+        if(req.method==='GET')return send(200,action?historical.repo.get(at,action):historical.repo.list(at))
+        if(req.method!=='POST'||!['consulta','previa','confirmar'].includes(action??''))return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(action==='confirmar'&&historical.allowConfirmation!==true)return fail(503,'HISTORICAL_CONFIRMATION_DISABLED','Confirmação indisponível nesta fase de desenvolvimento.')
+        const body=await readJson(req,512*1024)
+        if(!body||typeof body!=='object'||Array.isArray(body))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const data=body as Record<string,unknown>
+        const keys=action==='consulta'?['number']:action==='previa'?['number','review']:['number','review','previewToken','confirmed']
+        if(Object.keys(data).length!==keys.length||keys.some(k=>!Object.hasOwn(data,k)))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const number=historicalBudgetNumber(data.number)
+        if(action==='confirmar'&&(data.confirmed!==true||typeof data.previewToken!=='string'||!/^[a-f0-9]{64}$/.test(data.previewToken)))return fail(422,'HISTORICAL_CONFIRMATION_REQUIRED','Confirmação explícita e prévia válida obrigatórias.')
+        options.atendimentos.get(at)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+        const captures=await historical.provider(number)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a consulta.')
+        if(action==='consulta')return send(200,historical.repo.consult(at,captures))
+        if(action==='previa')return send(200,historical.repo.preview(at,captures,data.review))
+        const result=historical.repo.confirm({atendimentoId:at,captures,review:data.review,previewToken:String(data.previewToken),confirmed:true},'funix_operator')
+        return send(result.state==='created'?201:200,result)
+      }
       const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
       if(cancellationRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')

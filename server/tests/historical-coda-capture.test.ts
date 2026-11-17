@@ -31,6 +31,6 @@ test('fails closed on a mismatched budget relation or non-cent monetary source',
   const a=historicalCapture(),b=historicalCapture()
   a.tables.budget.pages[0]!.rows[0]!.values[c.budget.serviceRefs]={value:[]}
   assert.throws(()=>normalizeHistoricalCodaCapture(a,a),{code:'HISTORICAL_CODA_CAPTURE_INVALID'})
-  b.tables.components.pages[0]!.rows[0]!.values[c.components.unit]={value:currency(120.003)}
+  b.tables.components.pages[0]!.rows[0]!.values[c.components.unit]={value:{type:'currency',code:'BRL',scalar:120.003}}
   assert.throws(()=>normalizeHistoricalCodaCapture(b,b),{code:'HISTORICAL_CODA_CAPTURE_INVALID'})
 })

@@ -1,0 +1,7 @@
+# Issue #256 — leitura automatizada e API isolada (etapa 4)
+
+- Corrigida referência a helper de fixture que causou TS2304 no CI anterior.
+- Provider Coda v1: GET somente host fixo coda.io, documento/tabelas/colunas permitidos, consulta por identificador exato, páginas limitadas, sem redirects, sem logs, limite de resposta e tempo. Duas capturas independentes. Formato rich público adaptado à representação interna, sem adivinhar relações. Respostas não reconhecidas bloqueiam. Referência: https://coda.io/developers/apis/v1.
+- A API ainda só existe por injeção explícita de harness, sem ativação em index.ts, env ou produção. Rotas exigem sessão e POST same-origin JSON: /api/atendimentos/:id/orcamentos-historicos (GET), /:historicalId (GET), /consulta POST {number}, /previa POST {number,review}, /confirmar POST {number,review,previewToken,confirmed}. A confirmação exige gate separado allowConfirmation=true para ensaios isolados. Capturas lidas no servidor a cada POST, nunca fornecidas pelo navegador.
+- O provedor real ainda não foi ensaiado com credencial ou resposta nativa do ERP; formatos de data somente calendário, rich text ou valores ausentes podem precisar de ajustes comprovados. Não declarar integração real pronta. Comparação com motor atual, UI, provisionamento controlado e testes integrados ainda pendentes; manter gate de confirmação fechado fora de testes.
+- Não foi acessado endpoint real, alterado banco instalado ou habilitada importação. Fixtures sintéticas apenas. CI necessário.
