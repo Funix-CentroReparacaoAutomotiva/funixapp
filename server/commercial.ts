@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { CatalogItem, CatalogKind, DiagnosisItem, DiagnosisService, CommercialSave } from '../shared/commercial.ts'
 import { catalogItemUsable } from '../shared/commercial.ts'
+import { pieceDisplayName } from '../shared/piece-display-name.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
 import { selectedScenario, touchComposition } from './scenarios.ts'
@@ -33,7 +34,7 @@ function catalog(row: Row): CatalogItem {
 export class CommercialRepository {
   readonly db: DatabaseSync
   constructor(db: DatabaseSync) { this.db = db }
-  catalogs() { return { items: this.db.prepare('SELECT * FROM catalog_items ORDER BY kind,name,id').all().map(catalog), hierarchy } }
+  catalogs() { return { items: this.db.prepare('SELECT * FROM catalog_items ORDER BY kind,name,id').all().map(row=>{const item=catalog(row);return {...item,name:pieceDisplayName(item)}}), hierarchy } }
   item(id: string) { const row = this.db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id); if (!row) notFound(); return catalog(row) }
   usable(id: string, kind: CatalogKind) {
     const item = this.item(id)
@@ -55,7 +56,11 @@ export class CommercialRepository {
     const old = id ? this.item(id) : null
     const kind = old?.kind ?? data.kind
     if (!['peca','servico','diagnostico','dimensao'].includes(String(kind))) invalid('Tipo de catálogo inválido.')
-    const name = text(data.name ?? old?.name, 250, true)
+    // UI displays expanded names for four legacy V2 molduras. A status/active
+    // edit must never silently persist that read-only presentation alias.
+    const providedName=data.name
+    const unchangedAlias=old && providedName===pieceDisplayName(old) && providedName!==old.name
+    const name = text(unchangedAlias?old.name:data.name ?? old?.name, 250, true)
     const status = data.status ?? old?.status ?? 'proposta'
     if (status !== 'proposta' && status !== 'validado') invalid('Situação de validação inválida.')
     const active = old ? (data.active === undefined ? old.active : bool(data.active)) : true
