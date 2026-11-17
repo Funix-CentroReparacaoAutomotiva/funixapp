@@ -8,44 +8,28 @@ const PRINT_CLUSTERS:readonly StageCluster[]=[
   'Serviços complementares','Estética e revitalização'
 ]
 
-/** V1 is the official visual master; replace its sample data, never the persisted scope. */
-const master=readFileSync(new URL('./templates/FUNIX_OS_V1.html',import.meta.url),'utf8')
-
-const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
-const footerStart=master.indexOf('<div class="footer-legend"')
-const headerStart=master.indexOf('<div class="running-header plan-header">')
-const mainStart=master.indexOf('<main ')
-const mainEnd=master.indexOf('</main>',mainStart)
-if(!css||footerStart<0||headerStart<0||mainStart<0||mainEnd<0||
-  !master.includes('<tbody>')||!master.includes('</tbody>'))
-  throw Error('HTML mestre V1 inválido.')
-
-/** Chrome prints native header/footer from a separate document context.
- * WeasyPrint @page rules in that context can paint an opaque white sheet OVER
- * the entire body PDF. Keep all visual rules, but remove @page blocks and
- * their nested margin boxes from header/footer CSS only.
- */
-function withoutPageRules(source:string):string{
- let output='',cursor=0
- for(const match of source.matchAll(/@page[^{}]*\{/g)){
-   const at=match.index
-   if(at<cursor)continue
-   output+=source.slice(cursor,at)
-   let depth=1,position=at+match[0].length
-   while(depth&&position<source.length){
-     const current=source[position++]
-     if(current==='{')depth++
-     else if(current==='}')depth--
-   }
-   if(depth)throw Error('Regra @page incompleta no HTML da OS.')
-   cursor=position
- }
- return output+source.slice(cursor)
+/** V1.1 isolates the three Chromium document contexts. V1 remains a regression fixture. */
+const master=readFileSync(new URL('./templates/FUNIX_OS_V1_1.html',import.meta.url),'utf8')
+type Part='header'|'body'|'footer'
+function section(part:Part,kind:'style'|'template'):string{
+ const marker=kind==='style'?'<style data-os="'+part+'">':'<template id="os-'+part+'">'
+ const start=master.indexOf(marker)
+ const end=master.indexOf('</'+kind+'>',start+marker.length)
+ if(start<0||end<0||master.indexOf(marker,start+1)>=0)throw Error('Seção inválida da OS V1.1: '+part+'/'+kind)
+ return master.slice(start+marker.length,end).trim()
 }
-const marginCss=withoutPageRules(css)
-const footer=master.slice(footerStart,master.indexOf('</div>',footerStart)+6)
-const header=master.slice(headerStart,master.indexOf('</header></div>',headerStart)+15)
-const main=master.slice(mainStart,mainEnd+7)
+const bodyCss=section('body','style'),headerCss=section('header','style'),footerCss=section('footer','style')
+const header=section('header','template'),main=section('body','template'),footer=section('footer','template')
+function fill(source:string,values:Record<string,string>):string{
+ const seen=new Set<string>()
+ const output=source.replace(/\{\{([A-Z_]+)\}\}/g,(_token,key:string)=>{
+   if(!Object.hasOwn(values,key))throw Error('Campo desconhecido na OS V1.1: '+key)
+   seen.add(key)
+   return values[key]!
+ })
+ for(const key of Object.keys(values))if(!seen.has(key))throw Error('Campo ausente na OS V1.1: '+key)
+ return output
+}
 const icons=new Map<string,string>()
 for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
  const name=svg.match(/aria-label="([^"]+)"/)?.[1]
@@ -61,10 +45,17 @@ function letter(index:number):string{
 }
 function rows(order:WorkOrder):string{
  const {diagnostics,lines}=order.scope
- const ids=[...new Set([...diagnostics.map(d=>d.pieceId),...lines.map(l=>l.pieceId)])]
- return ids.map((pieceId,index)=>{
-  const diag=diagnostics.find(d=>d.pieceId===pieceId)
-  const items=lines.filter(l=>l.pieceId===pieceId)
+ // Preserve the original first-seen order and first diagnosis per piece.
+ const pieces=new Map<string,{diag?:typeof diagnostics[number];items:typeof lines}>()
+ for(const diag of diagnostics){
+  if(!pieces.has(diag.pieceId))pieces.set(diag.pieceId,{diag,items:[]})
+ }
+ for(const line of lines){
+  let piece=pieces.get(line.pieceId)
+  if(!piece){piece={items:[]};pieces.set(line.pieceId,piece)}
+  piece.items.push(line)
+ }
+ return [...pieces.values()].map(({diag,items},index)=>{
   const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
   const symbol=letter(index),components=items.filter(l=>l.kind==='component')
   const grouped=new Map<StageCluster,string[]>(PRINT_CLUSTERS.map(c=>[c,[]]))
@@ -121,17 +112,11 @@ export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')||'Veículo não informado'
  const number=order.number+(order.scope.deliveryDate!==undefined||order.revision?' R'+String(order.revision??1).padStart(2,'0'):'')
  const delivery=deliveryDateLabel(order.scope.deliveryDate)
- // Replace static sample values in a single pass, without interpreting inserted user text.
- const values:Record<string,string>={
-  'class="v50-vehicle"':vehicle.length>=55?'class="v50-vehicle vehicle-field--long"':'class="v50-vehicle"',
-  'Tracker 2023/2024 (SYL8A39)':html(vehicle),
-  'OS-000011 R01':html(number),
-  '19/11/2026':html(delivery),
-  'aria-label="Página 1 de 1"':'aria-label="Paginação"',
-  '<span class="pagecount-value">1/1</span>':'<span class="pagecount-value"><span class="pageNumber"></span>/<span class="totalPages"></span></span>'
- }
- const headerHtml=header.replace(/class="v50-vehicle"|Tracker 2023\/2024 \(SYL8A39\)|OS-000011 R01|19\/11\/2026|aria-label="Página 1 de 1"|<span class="pagecount-value">1\/1<\/span>/g,token=>values[token]!)
- const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
+ const headerHtml=fill(header,{
+  VEHICLE_CLASS:vehicle.length>=55?' vehicle-field--long':'',
+  VEHICLE:html(vehicle),NUMBER:html(number),DELIVERY:html(delivery)
+ })
+ const body=fill(main,{ROWS:rows(order)})
  // V1 foi fornecida com elementos fixed e overflow hidden para uma página.
  // No Chromium, somente a área da matriz flui por várias páginas.
  const chromePrint='@page plan{size:A4 landscape;margin:23mm 5mm 15mm 5mm}'+
@@ -139,15 +124,15 @@ export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
   '.plan-page{position:static!important;top:auto!important;left:auto!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;box-shadow:none!important;}'+
   '.execution{margin:0!important;padding:0!important;}'+
   '.main-matrix tbody tr{break-inside:avoid!important;page-break-inside:avoid!important;}'
- const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
+ const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+bodyCss+'\n'+chromePrint+
   '</style></head><body>'+body+'</body></html>'
  const chromeHeader='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
   'body .running-header.plan-header{position:static!important;top:auto!important;left:auto!important;width:287mm!important;max-width:287mm!important;margin:0!important;transform:none!important;}'
  const chromeFooter='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
   '.footer-legend{position:fixed!important;top:198.4mm!important;left:5mm!important;width:287mm!important;height:8.7mm!important;min-height:8.7mm!important;margin:0!important;transform:none!important;}'+
   '.footer-legend .legend-item{transform:none!important;}'
- const wrap=(fragment:string,extraCss:string)=>
+ const wrap=(fragment:string,styles:string,extraCss:string)=>
   '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+
-   marginCss+extraCss+'</style></head><body>'+fragment+'</body></html>'
- return{content,headerTemplate:wrap(headerHtml,chromeHeader),footerTemplate:wrap(footer,chromeFooter)}
+   styles+'\n'+extraCss+'</style></head><body>'+fragment+'</body></html>'
+ return{content,headerTemplate:wrap(headerHtml,headerCss,chromeHeader),footerTemplate:wrap(footer,footerCss,chromeFooter)}
 }
