@@ -68,7 +68,8 @@ function rows(order:WorkOrder):string{
   const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
   const symbol=letter(index),components=items.filter(l=>l.kind==='component')
   const grouped=new Map<StageCluster,string[]>(PRINT_CLUSTERS.map(c=>[c,[]]))
-  const notes=[...(diag?.diagnosis?['Diagnóstico: '+diag.diagnosis]:[]),...(diag?.notes?[diag.notes]:[])]
+  // A OS é um plano de execução: diagnóstico não é uma observação operacional.
+  const notes=diag?.notes?[diag.notes]:[]
   for(const item of items){
    if(item.kind==='component'&&item.notes)notes.push(item.name+': '+item.notes)
    if(item.kind!=='service')continue
