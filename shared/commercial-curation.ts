@@ -11,13 +11,15 @@ const technical=new Set(['i-GsuErCDZgL','i-dMshyG5NMo'])
 export interface ServicePolicy {visible:boolean;billing:'billable'|'not_billed';execution:'internal'|'external_confirmation';group?:string;canonicalBlocked?:boolean;displayName?:string;unit?:string}
 export const SERVICE_POLICIES:Record<string,ServicePolicy>=Object.fromEntries(known.map(row=>[codaServiceId(row),{
  visible:!hidden.has(row),billing:free.has(row)?'not_billed':'billable',execution:external.has(row)?'external_confirmation':'internal',
- ...(technical.has(row)?{group:TECHNICAL_ACTIVITY,canonicalBlocked:true,displayName:row==='i-GsuErCDZgL'?'Avaliação técnica e planejamento':'Diagnóstico / inspeção técnica'}:{}),
+ ...(technical.has(row)?{group:TECHNICAL_ACTIVITY,canonicalBlocked:true,displayName:'Diagnóstico / inspeção técnica'}:{}),
  ...(row==='i-6tWzUWof8c'?{displayName:'Alinhamento estrutural / da carroceria'}:{}),
  ...(row==='i-MMsEFTPdow'?{displayName:'Restauração de lentes de faróis e lanternas'}:{}),
  ...(row==='i-5zkNjBv-Zg'?{unit:'HH'}:{})
 }]))
 export const COMMERCIAL_CURATION={version:CURATION_VERSION,services:SERVICE_POLICIES}
 export const servicePolicy=(id:string)=>SERVICE_POLICIES[id]
+// #162: presentation only; the approved commercial policy/digest stays intact.
+export function serviceDisplayName(id:string,fallback:string){return id===codaServiceId('i-GsuErCDZgL')?'Avaliação técnica e planejamento':servicePolicy(id)?.displayName??fallback}
 export const isCodaCommercialService=(id:string)=>id.startsWith(prefix)
 export function newServiceSelectionIssue(id:string):string|null {
  const p=servicePolicy(id)
