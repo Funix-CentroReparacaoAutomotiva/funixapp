@@ -50,7 +50,7 @@ test('template V63 uses frozen OS data, escapes HTML and does not invent deliver
  assert(result.headerTemplate.includes('grid-template-columns:53mm 43mm minmax(0,1fr) 56mm 26mm'))
  assert(result.headerTemplate.includes('width:287mm!important;max-width:287mm!important'))
  assert(result.headerTemplate.includes('margin-left:auto!important;margin-right:auto!important'))
- assert(result.headerTemplate.includes('font-size:16pt'))
+ assert(result.headerTemplate.includes('font-size:14pt'))
  assert(result.headerTemplate.includes('font-weight:700'))
  assert(result.content.includes('.execution{margin:1.8mm 0 0!important;}'))
  assert(result.headerTemplate.includes('border-left:2px solid #fff'))
@@ -80,13 +80,13 @@ test('cabeçalho novo escapa dados dinâmicos e não inventa uma entrega a parti
  assert(!result.headerTemplate.includes('Data de emissão'))
 })
 
-test('veículo muito longo conserva 16pt com espaçamento horizontal adaptado',()=>{
+test('veículo muito longo conserva 14pt com espaçamento horizontal adaptado',()=>{
  const order=structuredClone(sample)
  order.scope.vehicle.description='Chevrolet Trailblazer Premier 2.8 Turbo Diesel 2023/2024'
  const print=renderOrderV63(order)
  assert(print.headerTemplate.includes('vehicle-field--long'))
  assert(print.headerTemplate.includes('letter-spacing:-1px'))
- assert(print.headerTemplate.includes('font-size:16pt'))
+ assert(print.headerTemplate.includes('font-size:14pt'))
 })
 
 test('etapas da matriz não apresentam dimensões, mas WorkOrder original permanece íntegra',()=>{
