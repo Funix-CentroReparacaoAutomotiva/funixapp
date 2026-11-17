@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {openDatabase} from '../database.ts'
 import {planImport} from '../coda-import.ts'
+import {planEnergyReconciliation,applyEnergyReconciliation} from '../reconcile-approved-energy.ts'
+import {approvedEnergyDimensions} from '../approved-stage-energy.ts'
 import {TABLES,sourceId} from '../coda-import-source.ts'
 import {codaFixture,table,set,ref} from './fixtures/coda-import.ts'
 import type {CodaExport} from '../coda-import-source.ts'
@@ -230,4 +232,27 @@ test('#244: Polimento M incompleto não libera três etapas parciais',()=>{
  const p=planned(source)
  assert.deepEqual(p.config.services[0]!.dimensions[0]!.stages,[])
  assert(p.report.pending.some(x=>x.reason.includes('Polimento Veículo M')))
+})
+
+test('reconciliation refuses an incomplete approved batch without writing any local configuration',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const source=caseFor('degrade'),before=db.prepare('SELECT * FROM pricing_configuration').all()
+  const p=planEnergyReconciliation(db,source)
+  assert.equal(p.findings.length,approvedEnergyDimensions().length)
+  assert(p.conflicts.length>0)
+  assert.throws(()=>applyEnergyReconciliation(db,source,p.planHash),/Conflitos/)
+  assert.deepEqual(db.prepare('SELECT * FROM pricing_configuration').all(),before)
+ }finally{db.close()}
+})
+
+test('reconciliation checks hash before applying and leaves other tables untouched',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const source=polishM(),before=db.prepare('SELECT * FROM pricing_configuration').all()
+  const catalog=db.prepare('SELECT * FROM catalog_items ORDER BY id').all()
+  assert.throws(()=>applyEnergyReconciliation(db,source,'0'.repeat(64)),/Plano mudou/)
+  assert.deepEqual(db.prepare('SELECT * FROM pricing_configuration').all(),before)
+  assert.deepEqual(db.prepare('SELECT * FROM catalog_items ORDER BY id').all(),catalog)
+ }finally{db.close()}
 })
