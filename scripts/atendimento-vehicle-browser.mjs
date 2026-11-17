@@ -19,7 +19,7 @@ try{
   const db=openDatabase(':memory:'),fixture=commercialFixture(db)
   const app=createApp({atendimentos:fixture.atendimentos,origin,password,voiceProvider:null})
   await new Promise(resolve=>app.listen(8787,'127.0.0.1',resolve))
-  const ctx=await browser.newContext({viewport:{width,height}});let page
+  const ctx=await browser.newContext({viewport:{width,height},isMobile:width<600,hasTouch:width<600});let page
   try{
    const response=await ctx.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})
    assert.equal(response.status(),200)
@@ -96,6 +96,13 @@ try{
    await notesField.focus()
    await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
    assert.equal(await notesField.evaluate(el=>document.activeElement===el),true,`${width}px: campo Observações perdeu foco no autosave`)
+   // Editar texto já salvo no meio sem reposicionamento nem Backspace inesperado.
+   await notesField.evaluate(el=>el.setSelectionRange(7,7))
+   await notesField.press('X')
+   assert.equal(await notesField.inputValue(),'Relato Xsintético de teste')
+   assert.equal(await notesField.evaluate(el=>el.selectionStart),8)
+   await notesField.press('Backspace')
+   assert.equal(await notesField.inputValue(),'Relato sintético de teste')
    await notesField.press('End')
    await notesField.type(' e continuação')
    assert.equal(await notesField.inputValue(),'Relato sintético de teste e continuação')
