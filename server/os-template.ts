@@ -13,7 +13,7 @@ const master=readFileSync(new URL('./templates/FUNIX_OS_V1.html',import.meta.url
 
 const css=master.match(/<style>([\s\S]*?)<\/style>/)?.[1]
 const footerStart=master.indexOf('<div class="footer-legend"')
-const headerStart=master.indexOf('<header ')
+const headerStart=master.indexOf('<div class="running-header plan-header">')
 const mainStart=master.indexOf('<main ')
 const mainEnd=master.indexOf('</main>',mainStart)
 if(!css||footerStart<0||headerStart<0||mainStart<0||mainEnd<0||
@@ -44,7 +44,7 @@ function withoutPageRules(source:string):string{
 }
 const marginCss=withoutPageRules(css)
 const footer=master.slice(footerStart,master.indexOf('</div>',footerStart)+6)
-const header=master.slice(headerStart,master.indexOf('</header>',headerStart)+9)
+const header=master.slice(headerStart,master.indexOf('</header></div>',headerStart)+15)
 const main=master.slice(mainStart,mainEnd+7)
 const icons=new Map<string,string>()
 for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
@@ -116,20 +116,20 @@ function rows(order:WorkOrder):string{
 
 export interface OrderPrintTemplate{content:string;headerTemplate:string;footerTemplate:string}
 
-function setHeaderField(source:string,field:string,value:string):string{
- const pattern=new RegExp('(<div class="field '+field+'">[\\s\\S]*?<strong class="value"(?: id="vehicle-text")?>)[\\s\\S]*?(<\\/strong>)')
- if(!pattern.test(source))throw Error('Campo '+field+' ausente do cabeçalho V1.')
- return source.replace(pattern,(_whole,start:string,end:string)=>start+html(value)+end)
-}
 export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
- const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')
- let headerHtml=setHeaderField(header,'id-field',order.number+(order.scope.deliveryDate!==undefined||order.revision?' R'+String(order.revision??1).padStart(2,'0'):''))
- headerHtml=setHeaderField(headerHtml,'vehicle-field',vehicle||'Veículo não informado')
- headerHtml=setHeaderField(headerHtml,'delivery-field',deliveryDateLabel(order.scope.deliveryDate))
- headerHtml=headerHtml.replace('class="field vehicle-field"',
-   vehicle.length>=55?'class="field vehicle-field vehicle-field--long"':'class="field vehicle-field"')
- headerHtml=headerHtml.replace(/(<div class="field page-field">[\s\S]*?<strong class="value">)[\s\S]*?(<\/strong>)/,
-   '$1<span class="pageNumber"></span>/<span class="totalPages"></span>$2')
+ const vehicle=[order.scope.vehicle.description,order.scope.vehicle.plate?'('+order.scope.vehicle.plate+')':''].filter(Boolean).join(' ')||'Veículo não informado'
+ const number=order.number+(order.scope.deliveryDate!==undefined||order.revision?' R'+String(order.revision??1).padStart(2,'0'):'')
+ const delivery=deliveryDateLabel(order.scope.deliveryDate)
+ // Replace static sample values in a single pass, without interpreting inserted user text.
+ const values:Record<string,string>={
+  'class="v50-vehicle"':vehicle.length>=55?'class="v50-vehicle vehicle-field--long"':'class="v50-vehicle"',
+  'Tracker 2023/2024 (SYL8A39)':html(vehicle),
+  'OS-000011 R01':html(number),
+  '19/11/2026':html(delivery),
+  'aria-label="Página 1 de 1"':'aria-label="Paginação"',
+  '<span class="pagecount-value">1/1</span>':'<span class="pagecount-value"><span class="pageNumber"></span>/<span class="totalPages"></span></span>'
+ }
+ const headerHtml=header.replace(/class="v50-vehicle"|Tracker 2023\/2024 \(SYL8A39\)|OS-000011 R01|19\/11\/2026|aria-label="Página 1 de 1"|<span class="pagecount-value">1\/1<\/span>/g,token=>values[token]!)
  const body=main.replace(/<tbody>[\s\S]*?<\/tbody>/,()=>'<tbody>'+rows(order)+'</tbody>')
  // V1 foi fornecida com elementos fixed e overflow hidden para uma página.
  // No Chromium, somente a área da matriz flui por várias páginas.
@@ -141,7 +141,7 @@ export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+css+chromePrint+
   '</style></head><body>'+body+'</body></html>'
  const chromeHeader='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
-  '.os-header{position:static!important;top:auto!important;left:auto!important;width:287mm!important;max-width:287mm!important;margin:0!important;transform:translateY(-1.3mm)!important;}'
+  'body .running-header.plan-header{position:static!important;top:auto!important;left:auto!important;width:287mm!important;max-width:287mm!important;margin:0!important;transform:none!important;}'
  const chromeFooter='html,body{height:auto!important;width:auto!important;overflow:visible!important;margin:0!important;padding:0!important;background:transparent!important;}'+
   '.footer-legend{position:fixed!important;top:198.4mm!important;left:5mm!important;width:287mm!important;height:8.7mm!important;min-height:8.7mm!important;margin:0!important;transform:none!important;}'+
   '.footer-legend .legend-item{transform:none!important;}'

@@ -37,12 +37,12 @@ test('V1 prints frozen OS scope safely, with dynamic header and no invented deli
  assert(result.content.includes('Etapa sem categoria'))
  assert(result.headerTemplate.includes('OS-000142'))
  assert(result.headerTemplate.includes('Honda City EXL 21/22 (FXN2A26)'))
- for(const label of ['ID:','VEÍCULO:','ENTREGA:','PÁG.:'])assert(result.headerTemplate.includes(label))
- assert(result.headerTemplate.includes('class="value">—</strong>'))
+ for(const marker of ['class="os-id-icon"','class="delivery-icon"','class="v50-vehicle"','class="v57-pagecount"'])assert(result.headerTemplate.includes(marker))
+ assert(result.headerTemplate.includes('style="font-size:10pt !important;">—</span>'))
  assert(result.headerTemplate.includes('class="pageNumber"'))
  assert(result.headerTemplate.includes('class="totalPages"'))
  assert(result.headerTemplate.includes('aria-label="FUNIX"'))
- assert(result.headerTemplate.includes('class="os-header"'))
+ assert(result.headerTemplate.includes('class="running-header plan-header"'))
  assert(result.headerTemplate.includes('width:287mm!important'))
  assert(result.content.includes('.plan-page{position:static!important'))
  assert(result.content.includes('@page plan{size:A4 landscape;margin:23mm 5mm 15mm 5mm}'))
@@ -62,7 +62,7 @@ test('V1 escapes header inputs and preserves explicitly unknown delivery',()=>{
  assert(result.headerTemplate.includes('OS-&lt;1&gt;'))
  assert(result.headerTemplate.includes('Tracker &lt;script&gt;injetado&lt;/script&gt; (ABC1D23)'))
  assert(!result.headerTemplate.includes('Tracker <script>'))
- assert(result.headerTemplate.includes('class="value">—</strong>'))
+ assert(result.headerTemplate.includes('style="font-size:10pt !important;">—</span>'))
  assert(!result.headerTemplate.includes('17/11/2026'))
 })
 test('V1 long vehicle label leaves print grid and page-number fields intact',()=>{
@@ -70,7 +70,7 @@ test('V1 long vehicle label leaves print grid and page-number fields intact',()=
  order.scope.vehicle.description='Chevrolet Trailblazer Premier 2.8 Turbo Diesel 2023/2024'
  const print=renderOrderV1(order)
  assert(print.headerTemplate.includes('vehicle-field--long'))
- assert(print.headerTemplate.includes('VEÍCULO:'))
+ assert(print.headerTemplate.includes('class="v50-vehicle vehicle-field--long"'))
  assert(print.headerTemplate.includes('pageNumber'))
 })
 
@@ -176,5 +176,5 @@ test('V1 prints the explicit calendar date and revision, not calendar arithmetic
  assert(result.headerTemplate.includes('OS-000142 R02'))
  assert(!result.headerTemplate.includes('99 dias'))
  order.scope.deliveryDate=null
- assert(renderOrderV1(order).headerTemplate.includes('class="value">—</strong>'))
+ assert(renderOrderV1(order).headerTemplate.includes('style="font-size:10pt !important;">—</span>'))
 })
