@@ -4,7 +4,7 @@ export const functionalGroups=['Lataria','Estrutura','Vidros','Acessórios','Int
 export type FunctionalGroup=typeof functionalGroups[number]
 // Existing V2 code families only. These are navigation rules, not a second catalog.
 const families:Record<Exclude<FunctionalGroup,'Outros'>,ReadonlySet<string>>={
- Lataria:new Set(['para_choque_dianteiro','para_choque_traseiro','capo','para_lama_dianteiro','tampa_porta_malas','porta_carga_traseira','porta_dianteira','porta_traseira','lateral_traseira','porta_carga_lateral','portinhola_combustivel','ponteira_para_choque_traseiro','teto_chapa']),
+ Lataria:new Set(['para_choque_dianteiro','para_choque_traseiro','para_choque_traseiro_inferior','capo','para_lama_dianteiro','tampa_porta_malas','porta_carga_traseira','porta_dianteira','porta_traseira','lateral_traseira','porta_carga_lateral','portinhola_combustivel','ponteira_para_choque_traseiro','teto_chapa']),
  Estrutura:new Set(['alma_para_choque_dianteiro','alma_para_choque_traseiro','painel_dianteiro','painel_traseiro','travessa_do_radiador','cofre_motor_dianteiro','cofre_motor_traseiro','longarina_dianteira','longarina_traseira','bojo_estepe','assoalho_porta_malas','caixa_roda_dianteira','caixa_roda_traseira','caixa_roda_generica','caixa_de_ar','coluna_generica','coluna_a','coluna_b','coluna_c']),
  Vidros:new Set(['para_brisa','vidro_dianteiro_outro','vidro_traseiro','vidro_porta_dianteira','vidro_porta_traseira','vidro_teto','vidro_teto_solar','vidro_panoramico']),
  Interior:new Set(['interno_porta_malas','acabamentos_porta_malas','moldura_porta_malas','interno_porta_dianteira','interno_porta_traseira','painel_lateral_interno']),
