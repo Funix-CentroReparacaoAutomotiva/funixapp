@@ -47,12 +47,17 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
               x.getBoundingClientRect().top+x.getBoundingClientRect().height/2-
               (grid.top+grid.height/2))<2),
             logoW:logo.getBoundingClientRect().width,
+            headerW:grid.width,
+            headerX:grid.left,
+            dividerW:getComputedStyle(fields[0]).borderLeftWidth,
             delivery:values[2].textContent.trim()
           };
         }""")
         assert header_metrics["labels"]==["ID:","VEÍCULO:","ENTREGA:","PÁG.:"],header_metrics
         assert header_metrics["vertical"],f"Campos sem centralização vertical: {header_metrics}"
         assert header_metrics["delivery"]=="-",header_metrics
+        assert abs(header_metrics["headerW"]-279*96/25.4)<1.0,header_metrics
+        assert header_metrics["dividerW"]=="2px",header_metrics
         assert 120<header_metrics["logoW"]<125,header_metrics
         assert 198<header_metrics["brandW"]<204,header_metrics
         header_page.close()
@@ -143,9 +148,11 @@ with TemporaryDirectory(prefix="funix-os-v63-") as tmp, sync_playwright() as pla
                 return [d["rect"] for d in p.get_drawings()
                         if d.get("fill") and all(abs(a-b)<0.022 for a,b in zip(d["fill"],target))
                         and 810<d["rect"].width<819 and d["rect"].height>18]
-            headers=[r for r in matching_rects(ink) if r.y0<55]
+            headers=[d["rect"] for d in p.get_drawings()
+                     if d.get("fill") and all(abs(a-b)<.022 for a,b in zip(d["fill"],ink))
+                     and 789<d["rect"].width<792 and d["rect"].height>18 and d["rect"].y0<55]
             footers=[r for r in matching_rects(grey) if r.y0>540]
-            assert any(abs(r.x0-14.2)<2 and abs(r.y0-11.3)<3 for r in headers), f"Header not aligned: {headers}"
+            assert any(abs(r.x0-26.25)<2 and abs(r.y0-11.3)<3 for r in headers), f"Header 279mm not aligned: {headers}"
             assert any(abs(r.x0-14.2)<2 and abs(r.y0-562.0)<3 for r in footers), f"Footer not aligned: {footers}"
             assert "OS-000142" in text, f"Missing header on page {index+1}"
             assert "Legenda:" in text, f"Missing footer on page {index+1}"
