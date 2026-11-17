@@ -46,7 +46,7 @@ test('#165: os quatro códigos V2 e os IDs originais são preservados; rótulos 
   assert.deepEqual(map.map(n=>n.id).sort(),four.map(([code])=>'v2:'+code).sort())
   assert.equal(JSON.stringify(hierarchy),rawHash)
   assert.equal(JSON.stringify(hierarchyPieces()),v2Hash)
-  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,21)
+  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,22)
  }finally{db.close()}
 })
 

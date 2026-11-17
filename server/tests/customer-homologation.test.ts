@@ -45,7 +45,7 @@ test('controlled V19 rehearsal backs up V18 with WAL, preserves commercial/PDF/m
    failed.exec('DROP TABLE customer_records') // Remove only the injected fault in this synthetic clone.
   }finally{failed.close()}
   db=openDatabase(work)
-  const check=verifyV19Copy(backup,work);assert.equal(check.beforeVersion,18);assert.equal(check.afterVersion,21)
+  const check=verifyV19Copy(backup,work);assert.equal(check.beforeVersion,18);assert.equal(check.afterVersion,22)
   assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,version.id),pdf)
   assert.deepEqual(new BudgetRepository(db).get(f.at.id,version.id),version)
   assert.equal(db.prepare('SELECT link_id FROM chat_messages').get()!.link_id,link)
@@ -75,7 +75,7 @@ test('offline verifier rejects altered records, broken references and same-file 
   const before=hash(base),after=hash(copy)
   assert.throws(()=>verifyV19Copy(base,base),/DISTINCT_FILES/)
   const cli=JSON.parse(execFileSync(process.execPath,['scripts/verify-v19-copy.ts',base,copy],{encoding:'utf8',stdio:['ignore','pipe','pipe']}))
-  assert.equal(cli.readOnly,true);assert.equal(cli.afterVersion,21)
+  assert.equal(cli.readOnly,true);assert.equal(cli.afterVersion,22)
   verifyV19Copy(base,copy);assert.equal(hash(base),before);assert.equal(hash(copy),after)
   const changed=new DatabaseSync(copy)
   try{

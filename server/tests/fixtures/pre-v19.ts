@@ -1,6 +1,7 @@
 import type {DatabaseSync} from 'node:sqlite'
 /** Synthetic fixture downgrade only; never used by application or real databases. */
 export function removeV19FixtureSchema(db:DatabaseSync) {
+ db.exec('DROP TABLE IF EXISTS contact_channel_checks; DELETE FROM schema_migrations WHERE version=22;')
  if(db.prepare('PRAGMA table_info(atendimentos)').all().some(row=>row.name==='delivery_date'))db.exec(`DROP TABLE work_order_revision_pdf_cache;DROP TABLE work_order_revisions;DROP TABLE atendimento_delivery_date_history;ALTER TABLE atendimentos DROP COLUMN delivery_date;DELETE FROM schema_migrations WHERE version=21;`)
  db.exec(`DROP TABLE IF EXISTS budget_cancellations; DELETE FROM schema_migrations WHERE version=20;
  DROP TABLE IF EXISTS conversation_message_reads; DROP TABLE IF EXISTS conversation_read_state;

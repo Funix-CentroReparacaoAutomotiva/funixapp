@@ -2,7 +2,7 @@ import {AtendimentoRepository,normalizePhone} from './atendimentos.ts'
 import type {Atendimento} from '../shared/contracts.ts'
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
-import type {CustomerRecord,CustomerReferences,CustomerReference,ReferenceKind} from '../shared/customer.ts'
+import type {EntityContactInput,CustomerRecord,CustomerReferences,CustomerReference,ReferenceKind} from '../shared/customer.ts'
 import {ConversationIdentities} from './chat/conversation-identities.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
@@ -103,7 +103,37 @@ export class CustomerRepository {
       this.db.prepare('UPDATE atendimento_references SET record_id=NULL,data=? WHERE atendimento_id=? AND kind=? AND position=0').run(JSON.stringify(data),at,kind)
     }
   }
+  contacts(entityId:string) {
+    if(this.record(entityId).kind!=='entity')invalid()
+    return this.db.prepare("SELECT id FROM customer_records WHERE kind='contact' AND entity_id=? ORDER BY rowid").all(entityId).map(r=>this.record(String(r.id)))
+  }
+  /** Exact full international number only. Existing duplicates remain reviewable, never merged. */
+  phoneMatches(phone:string) {
+    return this.db.prepare("SELECT id,data FROM customer_records WHERE kind='contact' AND (phone_normalized=? OR phone_normalized IS NULL)").all(phone)
+      .filter(r=>normalizePhone(String(JSON.parse(String(r.data)).text??''))===phone).map(r=>this.record(String(r.id)))
+  }
   save(raw:unknown,id?:string) {
+    const input=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId','contacts'])
+    const {contacts,...record}=input
+    if(contacts!==undefined&&(!Array.isArray(contacts)||contacts.length>50||(id?this.record(id).kind:input.kind)!=='entity'))invalid()
+    return transaction(this.db,()=>{
+      const saved=this.saveRecord(record,id)
+      if(contacts!==undefined) {
+        const seen=new Set<string>()
+        for(const rawContact of contacts as unknown[]) {
+          const c=inputObject(rawContact,['id','text','revision']) as EntityContactInput
+          if(c.id!==undefined&&(typeof c.id!=='string'||!/^[a-f0-9-]{36}$/.test(c.id)||seen.has(c.id)))invalid()
+          if(c.id)seen.add(c.id)
+          const old=c.id?this.record(c.id):null
+          if(old&&(old.kind!=='contact'||old.entityId&&old.entityId!==saved.id))throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este número pertence a outro cadastro. Revise a associação antes de continuar.')
+          this.saveRecord({kind:'contact',text:c.text,revision:c.revision,entityId:saved.id},c.id)
+        }
+        if(this.contacts(saved.id).length>50)throw new ServiceError(400,'CONTACT_LIMIT','Limite de 50 números por cadastro.')
+      }
+      return saved
+    })
+  }
+  private saveRecord(raw:unknown,id?:string) {
     const source=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId'])
     const old=id?this.record(id):null,kind=old?.kind??source.kind
     if(!['entity','contact','vehicle'].includes(String(kind)))invalid()
@@ -111,18 +141,24 @@ export class CustomerRepository {
     if(!ref.text.trim()&&!(kind==='contact'&&old?.conversationId))invalid()
     if(source.nickname!==undefined&&(kind!=='contact'||typeof source.nickname!=='string'||source.nickname.length>250))invalid()
     const entityId=source.entityId===undefined?old?.entityId??null:source.entityId
-    if(entityId!==null&&(typeof entityId!=='string'||this.record(entityId).kind!=='entity'))invalid()
+    if(entityId!==null&&(kind!=='contact'||typeof entityId!=='string'||this.record(entityId).kind!=='entity'))invalid()
+    if(old?.entityId&&entityId!==old.entityId)throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Transferência de cadastro exige revisão explícita; o vínculo atual foi preservado.')
+    const phone=kind==='contact'?normalizePhone(ref.text):null
+    if(kind==='contact'&&phone&&(phone!==normalizePhone(old?.text??'')||entityId!==old?.entityId)){
+      if(this.phoneMatches(phone).some(r=>r.id!==id))throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Número já cadastrado. Selecione o Contato existente; duplicidades exigem revisão.')
+    }
     if(old?.conversationId&&old.text!==ref.text)throw new ServiceError(409,'CONTACT_HISTORY_PROTECTED','Contato com histórico: use outra referência para informar outro telefone.')
-    return transaction(this.db,()=>{
+    {
       const key=id??randomUUID(),data=JSON.stringify({...ref,nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
       if(old){if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.');const changed=this.db.prepare('UPDATE customer_records SET data=?,entity_id=?,revision=revision+1 WHERE id=? AND revision=?').run(data,entityId as string|null,key,old.revision);if(!changed.changes)invalid()}
       else this.db.prepare('INSERT INTO customer_records(id,kind,data,entity_id) VALUES(?,?,?,?)').run(key,String(kind),data,entityId as string|null)
+      if(kind==='contact')this.db.prepare('UPDATE customer_records SET phone_normalized=? WHERE id=?').run(phone,key)
       for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(key)){
         const record=this.present([new AtendimentoRepository(this.db).get(String(affected.atendimento_id))])[0]!
         const search=[record.id,record.phone,record.name,record.vehicle,record.brand,record.model,record.plate].join('\n').normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
         this.db.prepare('UPDATE atendimentos SET search_text=? WHERE id=?').run(search,record.id)
       }
       return this.record(key)
-    })
+    }
   }
 }

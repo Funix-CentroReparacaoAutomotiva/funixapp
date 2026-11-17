@@ -1,3 +1,5 @@
+import type {DatabaseSync} from 'node:sqlite'
+import {ContactChannels} from './contact-channels.ts'
 import {createProfilePhotoGateway} from './profile-photo.ts'
 import type { ConversationRuntime } from './conversation-runtime.ts'
 import { createEvolutionChatBridge, type EvolutionChatBridge } from './evolution-bridge.ts'
@@ -21,6 +23,7 @@ export function loadEvolutionChat(
   associations?: V20AssociationRepository,
   codaSync?: CodaEventSyncRepository,
   local?: ConversationRuntime,
+  db?:DatabaseSync,
 ): EvolutionChatBridge | undefined {
   if (env.FUNIX_EVOLUTION_READ_ENABLED !== 'true') return undefined
   const key = env.FUNIX_EVOLUTION_READ_API_KEY
@@ -46,5 +49,7 @@ export function loadEvolutionChat(
   const media = env.FUNIX_EVOLUTION_MEDIA_ENABLED === 'true'
     ? createMediaGateway({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
     : undefined
-  return createEvolutionChatBridge(provider, Date.now, associations, local?.authority ?? codaSync, sender, media, local, createProfilePhotoGateway({origin:EXISTING_INTERNAL_ORIGIN,apiKey:key,instance:EXISTING_INSTANCE}))
+  const contacts=db?new ContactChannels(db,provider,instanceId,sender,Date.now,media,local):undefined
+  if(contacts&&!local)contacts.sends.recoverInterrupted()
+  return createEvolutionChatBridge(provider, Date.now, associations, local?.authority ?? codaSync, sender, media, local, createProfilePhotoGateway({origin:EXISTING_INTERNAL_ORIGIN,apiKey:key,instance:EXISTING_INSTANCE}),contacts)
 }

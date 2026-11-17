@@ -177,8 +177,9 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const named=(c:typeof canonical)=>c&&String(JSON.parse(String(c.data)).nickname??'').trim()
       // Canonical nickname wins; otherwise retain the seller's exact-alias nickname and editable source.
       const contact=named(canonical)?canonical:contacts.find(c=>scope.ids.includes(String(c.conversation_id))&&named(c))??canonical,data=contact?JSON.parse(String(contact.data)):null
+      const entity=scope.members&&contact?.entity_id?new CustomerRepository(this.db).record(String(contact.entity_id)):null
       const last=messages.find(m=>m.handle===scope.id)
-      result.set(scope.jid,{phoneNumber:scope.members?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,...(contact?{contactId:String(contact.id)}:{}),names:conversationNames(data?.nickname??null,contact?.entity_id?String(contact.entity_id):null,scope.members?people:[]),atendimentoCount:scope.members?new Set(related.map(l=>l.atendimento_id)).size:0,preview:last?(last.text?String(last.text):'Mídia ou mensagem indisponível'):null,profilePhoto:null,unreadCount:Number(unread.find(u=>u.handle===scope.id)?.n??0),lastMessageAt:last?String(last.occurred_at):null})
+      result.set(scope.jid,{phoneNumber:scope.members?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,...(contact?{contactId:String(contact.id)}:{}),names:entity?[{name:entity.text,entityId:entity.id}]:conversationNames(data?.nickname??null,null,scope.members?people:[]),atendimentoCount:scope.members?new Set(related.map(l=>l.atendimento_id)).size:0,preview:last?(last.text?String(last.text):'Mídia ou mensagem indisponível'):null,profilePhoto:null,unreadCount:Number(unread.find(u=>u.handle===scope.id)?.n??0),lastMessageAt:last?String(last.occurred_at):null})
     }
     return result
   }

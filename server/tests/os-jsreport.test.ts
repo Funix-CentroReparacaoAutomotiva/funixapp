@@ -192,10 +192,10 @@ test('jsreport receives print-ready V1 html directly and validates PDF',async()=
 test('OS PDF cache is immutable and returns existing PDF on repeated saves',()=>{
  const db=openDatabase(':memory:')
  try{
-   // Cache is created only when explicitly instantiated; main schema remains V20.
+   // Cache is created only when explicitly instantiated; main schema remains V22.
    const cache=new WorkOrderPdfCache(db)
    assert.equal(cache.get('missing-order'),null)
-   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,21)
+   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,22)
    // No synthetic production objects are needed to inspect the schema.
    const schema=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='work_order_pdf_cache'").get()
    assert(schema)

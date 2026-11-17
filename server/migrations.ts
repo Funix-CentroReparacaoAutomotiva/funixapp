@@ -1,3 +1,4 @@
+import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import { hierarchyPieces } from './hierarchy.ts'
@@ -345,7 +346,8 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       BEGIN SELECT RAISE(ABORT,'Work order revision PDF is immutable'); END;
     CREATE TRIGGER immutable_work_order_revision_pdf_delete BEFORE DELETE ON work_order_revision_pdf_cache
       BEGIN SELECT RAISE(ABORT,'Work order revision PDF is immutable'); END;
-  `)}
+  `)},
+  {version:22,apply:createContactChannelSchema}
 ]
 
 export function migrate(db: DatabaseSync) {

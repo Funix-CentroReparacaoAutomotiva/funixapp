@@ -1,3 +1,4 @@
+import type {ContactChannels} from './contact-channels.ts'
 import type {ProfilePhotoGateway} from './profile-photo.ts'
 import { ServiceError } from '../errors.ts'
 import { EvolutionReadError } from '../experimental/evolution-read/client.ts'
@@ -27,6 +28,7 @@ export function createEvolutionChatBridge(
   media?: MediaGateway,
   local?: { store: ConversationStore; sends: SendOperations; read: boolean },
   profilePhoto?:ProfilePhotoGateway,
+  contacts?:ContactChannels,
 ) {
   const maxEntries = 2048
   const ttlMs = 30 * 60 * 1000
@@ -77,6 +79,7 @@ export function createEvolutionChatBridge(
   const historyJid = (remoteJid: string) => codaSync?.identityJids(remoteJid)?.[0] ?? remoteJid
 
   return {
+    contacts,
     async profilePhoto(conversationId:string){
       const jid=codaSync?.providerJid(conversationId)
       const pn=jid?sendTarget(jid):null
@@ -136,6 +139,8 @@ export function createEvolutionChatBridge(
               const confirmedPn = members?.find(jid => jid.endsWith('@s.whatsapp.net'))?.split('@')[0] ?? null
               const projection = projections?.get(row.remoteJid)
               const conversationId = register(members?.[0] ?? row.remoteJid)
+              const contactName=contacts?.presentation(conversationId)
+              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??0,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection
               const activeAt=canonicalFor(row.remoteJid)
               const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
               const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn
@@ -148,10 +153,10 @@ export function createEvolutionChatBridge(
                   phoneNumber,
                   updatedAt: row.updatedAt,
                   unreadCount: row.unreadCount,
-                  ...(projection ? {
-                    commercial: {...projection,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},
-                    unreadCount: projection.unreadCount,
-                    updatedAt: projection.lastMessageAt ?? row.updatedAt,
+                  ...(commercial ? {
+                    commercial: {...commercial,profilePhoto:profilePhoto&&sendTarget(row.remoteJid)?'/api/chat/conversations/'+conversationId+'/profile-photo':null},
+                    unreadCount: projection?.unreadCount??row.unreadCount,
+                    updatedAt: projection?.lastMessageAt ?? row.updatedAt,
                   } : {}),
                   ...(codaSync ? {
                     atendimentoId: activeAt,
