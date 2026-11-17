@@ -56,6 +56,7 @@ test('template V63 uses frozen OS data, escapes HTML and does not invent deliver
  assert(result.headerTemplate.includes('-webkit-text-stroke:0.18px currentColor'))
  assert(result.content.includes('.execution{margin:3.2mm 0 0!important;}'))
  assert(result.content.includes('.main-matrix .technical-band-label span{letter-spacing:0.18px!important;}'))
+ assert(result.content.includes('.main-matrix .technical-band-label:nth-child(4) span{letter-spacing:0.05px!important;}'))
  assert(result.headerTemplate.includes('letter-spacing:.15px'))
  assert(result.headerTemplate.includes('border-left:2px solid #fff'))
  assert(!result.headerTemplate.includes('border-left:3px solid #fff'))
