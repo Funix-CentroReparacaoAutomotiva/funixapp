@@ -159,7 +159,11 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     const baseEnergy=be?number(be,'c-3-8rupyDNx'):null,actual=number(r,'c-Ii7Vzlr1ni')
     const dimensionCell=sd?cell(sd,'c-ufXqc_8vWI'):undefined
     const stageDimensionCell=cell(r,'c-B9QLxROotP')
-    const rawDimension=de?number(de,'c-3-8rupyDNx'):null
+    const rawDimensionCell=de?scalar(cell(de,'c-3-8rupyDNx')):null
+    // The normal non-negative decimal parser intentionally rejects negative values.
+    // For approved historical corrections, inspect the raw negative operand explicitly.
+    const rawDimension=rawDimensionCell===null||rawDimensionCell===undefined||rawDimensionCell===''?null:
+      /^-?\\d+(?:\\.\\d+)?$/.test(String(rawDimensionCell))?String(rawDimensionCell):null
     const explicitlyBlank=(value:unknown)=>value===null||value===''||value===undefined
     const approved=approvedEnergy({
       relationId:r.rowId,serviceId:s.rowId,dimensionId:d.row.rowId,
@@ -171,7 +175,7 @@ export function planImport(db:DatabaseSync,input:unknown):ImportPlan {
     const effectiveBase=approved?.baseEnergy??baseEnergy
     const name=st?label(cell(st,'c-TvFH_jzZ3k')):'',dimension=sd?label(cell(sd,'c-tb4TOqyqh7')):approved?d.name:''
     if(!st || (!sd&&!approved) || !name || !dimension || effectiveBase===null || dimensionEnergy===null || actual===null ||
-      (!approved&&Q.from(effectiveBase).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0)){
+      (!approved&&(dimensionEnergy.startsWith('-')||Q.from(effectiveBase).add(Q.from(dimensionEnergy)).cmp(Q.from(actual))!==0))){
      validEnergy=false
      const negative=[be,de].some(e=>e && String(scalar(cell(e,'c-3-8rupyDNx'))).startsWith('-'))
      const reason=negative?'Energia negativa histórica; inclusive quando compensada por outra parcela.':!st||!sd||!be||!de?'Referência técnica/energia ausente ou quebrada.':'Energia inválida ou soma divergente.'
