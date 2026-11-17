@@ -216,7 +216,7 @@ test('commercial APIs enforce authentication/origin/JSON and operate entirely lo
     const at = app.repository.create({ phone: '123' })
     const path = `/api/atendimentos/${at.id}/diagnosticos`
     const catalog = await (await app.request('/api/catalogos', { headers })).json()
-    assert.equal(catalog.items.length, 163)
+    assert.equal(catalog.items.length, 165)
     const piece = catalog.items.find((item: { code: string }) => item.code === 'capo')
     const itemPath = `/api/catalogos/${encodeURIComponent(piece.id)}`
     assert.equal((await app.request(itemPath, { headers })).status, 200)
