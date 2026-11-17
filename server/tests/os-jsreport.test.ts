@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {openDatabase} from '../database.ts'
 import type {WorkOrder} from '../../shared/work-order.ts'
 import {renderOrderV1} from '../os-template.ts'
+import {operationalParagraphs} from '../work-order-pdf.ts'
 import {renderOrderJsreport} from '../os-jsreport.ts'
 import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 
@@ -51,6 +52,43 @@ test('V1 prints frozen OS scope safely, with dynamic header and no invented deli
  assert(!result.footerTemplate.includes('@page'))
  assert(!result.content.includes('R$ '))
  assert(!result.content.includes('25/11/2026'))
+})
+test('OS omite diagnóstico e intensidade, preserva notas operacionais e não altera o escopo',()=>{
+ const order=structuredClone(sample)
+ order.scope.diagnostics[0]!.diagnosis='Perda de brilho'
+ order.scope.diagnostics[0]!.intensity='severo'
+ const service=order.scope.lines[0]!
+ service.diagnosis='Diagnóstico da linha QA'
+ service.quantity='2'
+ service.notes='Proteger a guarnição.'
+ order.scope.lines[1]!.notes='Conferir presilhas.'
+ order.scope.lines.push({...service,id:'s3',name:'Serviço sem etapas QA',notes:'',quantity:'1',stages:[]})
+ const before=JSON.stringify(order)
+ const print=renderOrderV1(order)
+ const legacy=operationalParagraphs(order).join('\n')
+ for(const output of [print.content,legacy]){
+   assert(!output.includes('Perda de brilho'))
+   assert(!output.includes('Diagnóstico da linha QA'))
+   assert(!output.includes('severo'))
+   assert(output.includes('Verificar após desmontagem.'))
+   assert(output.includes('Proteger a guarnição.'))
+   assert(output.includes('Conferir presilhas.'))
+ }
+ assert(print.content.includes('Reparação: quantidade 2'))
+ assert(print.content.includes('Serviço sem etapas cadastradas: Serviço sem etapas QA'))
+ assert(print.content.includes('Etapa sem categoria'))
+ assert(print.content.includes('class="piece-ladder-comment-marker"'))
+ assert.equal(JSON.stringify(order),before)
+})
+test('OS não mostra campo nem ícone de observação quando há apenas diagnóstico',()=>{
+ const order=structuredClone(sample)
+ order.scope.diagnostics[0]!.notes=''
+ order.scope.lines=order.scope.lines.filter(line=>line.id==='s1')
+ const print=renderOrderV1(order)
+ assert(!print.content.includes('Avaria externa'))
+ assert(!print.content.includes('class="piece-ladder-comment-marker"'))
+ assert(!print.content.includes('class="piece-ladder-comment-content"'))
+ assert(!operationalParagraphs(order).includes('OBSERVAÇÕES DAS PEÇAS'))
 })
 test('V1 escapes header inputs and preserves explicitly unknown delivery',()=>{
  const order=structuredClone(sample)
