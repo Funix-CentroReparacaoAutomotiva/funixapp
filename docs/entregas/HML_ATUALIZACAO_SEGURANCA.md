@@ -416,3 +416,38 @@ depois da abertura e a recuperação deve preservá-la. Não se trata de
 SIGKILL do processo nem de falha de energia; são injeções de interrupção
 com contêineres, dados e gateway reais mantidos entre as chamadas. Ainda
 não executadas no momento deste commit. CLI real permanece bloqueada.
+
+
+## Auditoria da instalação e ensaio do transporte integrado — 18/11/2026
+
+O operador executou preflight somente leitura às 13:09 UTC: Compose 5.6.0,
+revisão HML 8e801e9b0a8fc1fe5feec40d533d9e639e8b013b, healthcheck
+normalizado e efetivo, redes e membros, labels, hardening, mounts, ambientes,
+caminho/espaço do banco, IDs e HTTPS/Basic/revisões aprovados. O SHA do
+gateway.compose.yaml persistido é
+9b66a5f1f87188defc3334201123ace9fe992de0aafaadca3a73831145f7b068.
+Fonte: relatório sanitizado funix_hml_predeploy_resultado.txt recebido do
+operador; não inclui credenciais nem contrato Compose expandido. Não houve
+alteração na VPS. Não é aprovação de execução do atualizador real.
+
+CI do HEAD 6ed44ae: 11 workflows aprovados; o ciclo anterior em c4c224a
+registrou 86 testes, guard de escritores, isolamento, update, rollback e
+recuperação antes/depois de aceite com preservação de escritas.
+
+Incremento: a construção do adaptador e o coordenador com maintenance=True
+passam a ter uma função única, exercitada no ensaio descartável. O preflight
+da CLI usa a release em execução, não exige que imagens candidatas já estejam
+carregadas, e verifica saúde e HTTPS. O transporte confere revisão e IDs
+esperados antes de docker load, e IDs efetivos depois. O ensaio gera ZIP
+privado real a partir de docker save, valida a proveniência usando respostas
+sintéticas da API GitHub (sem credenciais/token), remove as imagens
+candidatas locais, carrega o pacote e testa update/rollback por essa função.
+O novo ensaio ainda depende do CI. Testes não equivalem a despacho real,
+artefato real de PR ou migrações reais. O gateway permanece fixado na imagem
+estável. A CLI real continua explicitamente bloqueada para mutações. Não
+copiar secrets, não usar sudo genérico e não instalar ou executar na VPS.
+
+Pendências de aceite: CI do incremento; revisão de contrato privado e
+proveniência do artefato real; despacho manual após integração autorizada
+do workflow; validação de pacote real e decisão separada de habilitação
+do atualizador. Nenhuma autorização de deploy produtivo.

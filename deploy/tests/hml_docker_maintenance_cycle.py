@@ -6,6 +6,8 @@ SNI/verification but connects only to the loopback synthetic edge.
 import base64
 from contextlib import closing
 import hashlib
+import gzip
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
 import importlib.util
@@ -87,7 +89,7 @@ def main():
     gateway = run("docker", "image", "inspect", "nginx:alpine", "--format", "{{.Id}}")
     container = run("docker", "create", api_old, "python", "-c", "pass")
     try:
-        api_new = run("docker", "commit", "--change", "LABEL synthetic.revision=" + NEW, container)
+        api_new = run("docker", "commit", "--change", "LABEL org.opencontainers.image.revision=" + NEW, container)
     finally:
         run("docker", "rm", container)
     # Test actual fixture under fixed HML paths only on the disposable runner.
@@ -170,7 +172,8 @@ server {
             # Use a separate Web image with the revision baked into the command's environment.
             web_container = run("docker","create",api_old,"python","-c","pass")
             try:
-                web_new = run("docker","commit","--change","ENV SYNTHETIC_WEB_REVISION="+NEW,web_container)
+                web_new = run("docker","commit","--change","ENV SYNTHETIC_WEB_REVISION="+NEW,
+                              "--change","LABEL org.opencontainers.image.revision="+NEW,web_container)
             finally:
                 run("docker","rm",web_container)
             services["web"]["command"] = ["python","-c", UPSTREAM.replace(
@@ -263,17 +266,89 @@ server {
                 # initial synthetic container startup; no weakening of policy.
                 adapter.preflight(candidate)
                 print("HML_LIVE_ISOLATION_OK", flush=True)
-                operation = transaction.Transaction(root/"operation",adapter,
-                                                    project_state=state,maintenance=True)
+                # Exercise the exact candidate transport and shared CLI entry point.
+                # Only GitHub's API response is synthetic; Docker save/load, hashing,
+                # ZIP parsing, manifest verification, transactions and HTTPS are real.
+                artifact = root / "artifact.zip"
+                archive = root / "images.tar.gz"
+                images = {}
+                for role in ("api", "web"):
+                    tag = f"funix-hml-{role}:{NEW}"
+                    run("docker", "tag", candidate[role], tag)
+                    images[role] = {"tag": tag, "image_id": candidate[role]}
+                raw = root / "images.tar"
+                run("docker", "save", "-o", str(raw), *(i["tag"] for i in images.values()))
+                with raw.open("rb") as source, gzip.open(archive, "wb", compresslevel=1) as target:
+                    shutil.copyfileobj(source, target)
+                raw.unlink()
+                with archive.open("rb") as source:
+                    archive_hash = hashlib.file_digest(source, "sha256").hexdigest()
+                manifest = {"schema": 1, "purpose": "hml-candidate-only",
+                            "revision": NEW, "pr": 262, "run_id": "123", "run_attempt": "1",
+                            "archive_sha256": archive_hash, "images": images}
+                with zipfile.ZipFile(artifact, "w") as bundle:
+                    bundle.writestr("manifest.json", json.dumps(manifest))
+                    bundle.write(archive, "images.tar.gz")
+                artifact.chmod(0o600)
+                with artifact.open("rb") as source:
+                    zip_digest = "sha256:" + hashlib.file_digest(source, "sha256").hexdigest()
+                identity = {"artifact_id": 456, "run_id": 123, "attempt": 1,
+                            "revision": NEW, "pr": 262}
+                config = {"compose": str(compose), "contract": contract, "database": str(database),
+                          "state": str(state), "credentials": str(normal_login),
+                          "candidate": candidate, "identity": identity, "artifact_zip": str(artifact)}
+                provenance = load("hml-artifact-provenance")
+                def fake_api(path):
+                    repo = provenance.REPO
+                    responses = {
+                        "actions/runs/123/attempts/1": {
+                            "id":123,"run_attempt":1,"event":"workflow_dispatch","head_branch":"main",
+                            "path":provenance.WORKFLOW,"status":"completed","conclusion":"success",
+                            "repository":{"full_name":repo}},
+                        "actions/artifacts/456": {
+                            "expired":False,"name":f"funix-hml-{NEW}-1",
+                            "workflow_run":{"id":123},"digest":zip_digest},
+                        "pulls/262":{"head":{"sha":NEW,"repo":{"full_name":repo}},
+                                     "base":{"ref":"main"}}}
+                    return responses[path]
+                verify_real = provenance.verify
+                def verify_local(archive_path, **kwargs):
+                    return verify_real(archive_path, **kwargs, query=fake_api)
+                original_load = updater.load
+                def load_for_rehearsal(name):
+                    if name == "hml-artifact-provenance":
+                        return provenance
+                    return original_load(name)
                 with patch.object(socket,"create_connection",side_effect=connect), \
-                        patch.object(updater.ssl,"create_default_context",return_value=trust):
-                    operation.update(candidate,authorized=True)
+                        patch.object(updater.ssl,"create_default_context",return_value=trust), \
+                        patch.object(provenance,"verify",side_effect=verify_local), \
+                        patch.object(updater,"load",side_effect=load_for_rehearsal):
+                    # A preflight must work before any candidate is loaded.
+                    assert updater.installed_preflight(updater.make_adapter(config)) == previous
+                    wrong = dict(config, candidate=dict(candidate, revision=OLD))
+                    try:
+                        updater.prepare_candidate(wrong, adapter, load("hml-update-safety"))
+                    except ValueError:
+                        pass
+                    else:
+                        raise AssertionError("mismatched candidate revision accepted")
+                    # Drop tags and images before load, verifying use of the archive.
+                    for image in images.values():
+                        run("docker", "image", "rm", image["tag"])
+                        check = subprocess.run(["docker", "image", "inspect", image["image_id"]],
+                                               capture_output=True)
+                        if check.returncode == 0:
+                            run("docker", "image", "rm", image["image_id"])
+                    operation = updater.execute_operation("update", config, root/"operation",
+                                                          authorized=True)
+                    print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)
                     print("HML_MAINTENANCE_UPDATE_OK", flush=True)
                     assert json.loads(operation.journal.read_text())["phase"] == "accepted"
                     adapter.assert_installed(candidate)
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("candidate migration",)
-                    operation.rollback(authorized=True,discard_post_update_data=True)
+                    operation = updater.execute_operation("rollback", config, root/"operation",
+                                                          authorized=True, discard_post_update_data=True)
                     print("HML_MAINTENANCE_ROLLBACK_OK", flush=True)
                     adapter.assert_installed(previous)
                     assert json.loads(operation.journal.read_text())["phase"] == "restored"

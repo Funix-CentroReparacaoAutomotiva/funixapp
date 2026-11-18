@@ -72,6 +72,55 @@ def validator(credentials, *, normal_credentials=None):
                 request("GET", endpoint, token, 503)
     return validate
 
+def make_adapter(config):
+    """Single adapter construction path for the CLI and isolated integration test."""
+    safety = load("hml-update-safety")
+    credentials = safety.regular(Path(config["credentials"]))
+    info = credentials.stat()
+    if info.st_uid != os.geteuid() or info.st_mode & 0o077:
+        raise ValueError("credentials must be private")
+    return load("hml-docker-maintenance").MaintenanceDockerAdapter(
+        compose=config["compose"], contract=config["contract"], database=config["database"],
+        state=config["state"], validator=validator(credentials), env_file=config.get("release_env"),
+        restricted_validator=lambda release, temporary: validator(
+            temporary, normal_credentials=credentials)(release))
+
+
+def installed_preflight(adapter):
+    """Use the running release, not a not-yet-loaded candidate."""
+    records = adapter.containers()
+    current = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"]
+               for item in records}
+    current["revision"] = adapter.configuration()["services"]["api"]["environment"]["FUNIX_REVISION"]
+    previous = adapter.preflight(current)
+    if previous != current or len(records) != 3 or any(
+            item["State"].get("Health", {}).get("Status") != "healthy" for item in records):
+        raise ValueError("installed release not healthy")
+    adapter.validator(previous)
+    return previous
+
+
+def execute_operation(action, config, operation, *, authorized=False,
+                      discard_post_update_data=False):
+    """Integration seam; only exercised by the disposable Docker rehearsal for now."""
+    if authorized is not True or action not in ("update", "recover", "rollback"):
+        raise ValueError("explicit maintenance authorization required")
+    if action == "rollback" and discard_post_update_data is not True:
+        raise ValueError("explicit post-update data loss acknowledgement required")
+    adapter = make_adapter(config)
+    transaction = load("hml-update-transaction").Transaction(
+        operation, adapter, project_state=config["state"], maintenance=True)
+    if action == "recover":
+        transaction.recover(authorized=True)
+    elif action == "rollback":
+        transaction.rollback(authorized=True, discard_post_update_data=True)
+    else:
+        transaction.update(config["candidate"], authorized=True,
+                           prepare=lambda: prepare_candidate(config, adapter,
+                                                             load("hml-update-safety")))
+    return transaction
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "update", "recover", "rollback"))
@@ -82,37 +131,25 @@ def main():
     args = parser.parse_args()
     safety = load("hml-update-safety")
     config_path = safety.regular(args.config)
-    if config_path.stat().st_mode & 0o077:
+    if config_path.stat().st_uid != os.geteuid() or config_path.stat().st_mode & 0o077:
         raise ValueError("configuration must be private")
     config = json.loads(config_path.read_text())
-    credentials = safety.regular(Path(config["credentials"]))
-    if credentials.stat().st_mode & 0o077:
-        raise ValueError("credentials must be private")
-    adapter = load("hml-docker-adapter").DockerAdapter(
-        compose=config["compose"], contract=config["contract"], database=config["database"],
-        state=config["state"], validator=validator(credentials), env_file=config.get("release_env"))
     if args.action == "preflight":
-        adapter.preflight(config["candidate"])
+        installed_preflight(make_adapter(config))
         print("PREFLIGHT_OK")
         return
-    if not args.authorize:
-        raise ValueError("explicit authorization required")
-    if args.action in ("update", "recover", "rollback"):
-        raise ValueError("mutations blocked pending integrated maintenance validation")
-    transaction = load("hml-update-transaction").Transaction(
-        args.operation, adapter, project_state=config["state"])
-    if args.action == "recover":
-        transaction.recover(authorized=True)
-    elif args.action == "rollback":
-        transaction.rollback(authorized=True, discard_post_update_data=args.discard_post_update_data)
-    else:
-        transaction.update(config["candidate"], authorized=True,
-                           prepare=lambda: prepare_candidate(config, adapter, safety))
+    # Fail closed until the shared entry point and artifact transport are rehearsed.
+    # Do not turn authorization on the command line into permission to skip validation.
+    raise ValueError("mutations blocked pending integrated artifact and maintenance validation")
 
 
 def prepare_candidate(config, adapter, safety):
         archive = safety.regular(Path(config["artifact_zip"]))
         identity = config["identity"]
+        if archive.stat().st_uid != os.geteuid() or archive.stat().st_mode & 0o077:
+            raise ValueError("artifact must be private")
+        if config["candidate"]["revision"] != identity["revision"]:
+            raise ValueError("candidate revision differs from artifact identity")
         load("hml-artifact-provenance").verify(archive, **identity)
         with tempfile.TemporaryDirectory(dir=config["state"], prefix="candidate-") as directory:
             with zipfile.ZipFile(archive) as bundle:
@@ -127,6 +164,10 @@ def prepare_candidate(config, adapter, safety):
             manifest = safety.verify_candidate(Path(directory), revision=identity["revision"],
                 pr=identity["pr"], run_id=str(identity["run_id"]), run_attempt=str(identity["attempt"]))
             safety.verify_image_archive(Path(directory) / "images.tar.gz", manifest)
+            # Validate the complete API/Web binding before any Docker mutation.
+            for role, image in manifest["images"].items():
+                if config["candidate"][role] != image["image_id"]:
+                    raise ValueError("release differs from authenticated manifest")
             # Refuse to change any existing tag, including previously loaded HML tags.
             for image in manifest["images"].values():
                 import subprocess
@@ -135,8 +176,9 @@ def prepare_candidate(config, adapter, safety):
                     raise ValueError("image tag collision")
             adapter.run(["docker", "load", "--input", str(Path(directory) / "images.tar.gz")])
             for role, image in manifest["images"].items():
-                if config["candidate"][role] != image["image_id"]:
-                    raise ValueError("release differs from authenticated manifest")
+                loaded = json.loads(adapter.run(["docker", "image", "inspect", image["tag"]]))
+                if len(loaded) != 1 or loaded[0]["Id"] != image["image_id"]:
+                    raise ValueError("loaded image differs from authenticated manifest")
 
 
 if __name__ == "__main__":
