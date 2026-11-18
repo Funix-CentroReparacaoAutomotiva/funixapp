@@ -6,6 +6,7 @@ import type {ReviewedServiceOption} from './historical-budget-reconciliation.ts'
 import {calculate} from './pricing-engine.ts'
 import {resolveMR} from '../shared/mr.ts'
 import {catalogItemUsable} from '../shared/commercial.ts'
+import {newServiceSelectionIssue,servicePolicy} from '../shared/commercial-curation.ts'
 import type {CatalogItem,DiagnosisItem,Scenario,DiagnosisIntensity} from '../shared/commercial.ts'
 import type {ComponentItem,PricingConfiguration,PricingSettings,Negotiation} from '../shared/pricing.ts'
 import {ServiceError} from './errors.ts'
@@ -53,6 +54,8 @@ export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:C
     for(const [index,o] of m.options.entries()){
       byId(o.serviceId,'servico')
       if(byId(o.dimensionId,'dimensao').serviceId!==o.serviceId||typeof o.quantity!=='string')return invalid()
+      if(newServiceSelectionIssue(o.serviceId)||servicePolicy(o.serviceId)?.execution==='external_confirmation')continue
+      if(!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(o.quantity))return invalid()
       let quantity:string
       try{const q=Q.from(o.quantity);if(q.n<=0n)return invalid();quantity=q.toString()}catch{return invalid()}
       const line={id:r.id,serviceId:o.serviceId,dimensionId:o.dimensionId,quantity,enabled:true}
