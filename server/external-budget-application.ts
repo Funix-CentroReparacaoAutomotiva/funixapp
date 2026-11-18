@@ -108,51 +108,58 @@ export class ExternalBudgetApplication{
       if(p.previewToken!==input.previewToken)return conflict()
       if(p.state==='existing')return {state:'existing' as const,record:p.record}
       const at=input.atendimentoId
-      // Reuse native validations and write methods inside one outer transaction.
-      // Their default transaction behavior is unchanged for all other callers.
-      const joinOuter=<T>(fn:()=>T):T=>fn()
-      const scenarios=new ScenarioRepository(this.db,joinOuter),commercial=new CommercialRepository(this.db,joinOuter),components=new ComponentRepository(this.db,joinOuter)
-      let scenario=scenarios.create(at,{name:'Importação externa'})
-      const pieceIds=new Map<string,string>(), serviceIds=new Map<string,string>(), componentIds=new Map<string,string>()
-      const activeRevision=()=>scenarios.revisions(at).find(([id])=>id===scenario.id)![1]
-      for(const item of p.plan.items){
-        const catalog=commercial.usable(item.pieceId,'peca')
-        const added=commercial.add(at,{pieceCodes:[catalog.code!],scenarioId:scenario.id,scenarioRevision:activeRevision()}).find(i=>i.pieceId===item.pieceId)!
-        const saved=commercial.updateDiagnosis(at,added.id,{revision:added.revision,scenarioId:scenario.id,scenarioRevision:activeRevision(),
-          diagnosisId:item.diagnosisId,intensity:item.intensity??null,enabled:true,notes:item.notes,
-          services:item.services.map(s=>({serviceId:s.serviceId,dimensionId:s.dimensionId,quantity:s.quantity,enabled:true,notes:s.notes??'',diagnosisId:s.diagnosisId??null}))})
-        pieceIds.set(item.id,saved.id)
-        for(const service of item.services){
-          const native=saved.services.find(s=>s.serviceId===service.serviceId&&s.dimensionId===service.dimensionId)
-          if(!native)return conflict()
-          serviceIds.set(service.id,native.id)
-        }
-      }
-      for(const c of p.plan.components){
-        const saved=components.save(at,{pieceId:pieceIds.get(c.pieceId)!,name:c.name,quantity:c.quantity,manualPrice:c.manualPrice,notes:c.notes,scenarioId:scenario.id,scenarioRevision:activeRevision()})
-        componentIds.set(c.id,saved.id)
-      }
-      const negotiation=p.plan.negotiation
-      // External duration semantics may differ (calendar/working days).
-      // Keep automatic native deadline; source deadline is preserved in receipt.
-      scenario=scenarios.update(at,scenario.id,{revision:activeRevision(),negotiationDraft:negotiation.mode==='none'?{mode:'none',value:''}:{mode:negotiation.mode,value:negotiation.value}})
-      const pricing=new PricingConfigurationRepository(this.db)
-      const result=calculate(commercial.list(at,scenario.id),components.list(at),commercial.catalogs().items,scenario,pricing.get().config,pricing.settings(at).settings,negotiation)
-      const target=Q.from(p.source.totals.servicesGross).sub(Q.from(p.source.totals.serviceDiscount)).toString()
-      if(result.errors.length||!eq(result.serviceNet,target)||!eq(result.componentSubtotal,p.source.totals.components)||!eq(result.total,p.source.totals.total)||!eq(result.discount,p.plan.calculation.discount))return conflict()
-      if(result.lines.filter(l=>l.included&&l.kind==='service').length!==serviceIds.size||result.lines.filter(l=>l.included&&l.kind==='component').length!==componentIds.size)return conflict()
-      for(const c of p.source.components){
-        const line=result.lines.find(l=>l.id===componentIds.get(c.id)&&l.kind==='component'&&l.included)
-        if(!line||!eq(line.finalUnit,c.unitSalePrice)||!eq(line.total,c.total))return conflict()
-      }
-      const summary={total:result.total!,servicesNet:result.serviceNet!,components:result.componentSubtotal!,discount:result.discount,pieceIds:[...pieceIds.values()],serviceIds:[...serviceIds.values()],componentIds:[...componentIds.values()]}
-      const sourceLinks={
-        diagnoses:Object.fromEntries(pieceIds), services:Object.fromEntries(serviceIds), components:Object.fromEntries(componentIds),
-      }
-      const id=randomUUID(),s=p.source.source
-      this.db.prepare('INSERT INTO external_budget_receipts(id,provider,issuer_key,document_number,atendimento_id,scenario_id,request_digest,preview_token,source_json,plan_json,result_json,operator_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        .run(id,s.provider,s.issuerKey,s.documentNumber,at,scenario.id,p.requestDigest,p.previewToken,JSON.stringify(p.source),JSON.stringify({...p.plan,sourceLinks,...(codaEvidence?{codaEvidence}:{})}),JSON.stringify(summary),operatorId,new Date().toISOString())
-      return {state:'created' as const,record:receipt(this.db,this.db.prepare('SELECT * FROM external_budget_receipts WHERE id=?').get(id)!)}
+      return applyReviewedExternalPlan(this.db,at,p,operatorId,codaEvidence?{codaEvidence}:{})
     })
   }
+}
+
+// Internal server-only helper. Caller must hold a write transaction and verify
+// provider evidence, identity, authorization, duplicate and stale-preview gates.
+type MatchedPlan=Extract<ReturnType<typeof planExternalBudget>,{plan:unknown}>['plan']
+export function applyReviewedExternalPlan(db:DatabaseSync,at:string,p:{plan:MatchedPlan;source:ExternalBudget;requestDigest:string;previewToken:string},operatorId:string,evidence:Record<string,unknown>){
+  // Reuse native validations and write methods inside one outer transaction.
+  // Their default transaction behavior is unchanged for all other callers.
+  const joinOuter=<T>(fn:()=>T):T=>fn()
+  const scenarios=new ScenarioRepository(db,joinOuter),commercial=new CommercialRepository(db,joinOuter),components=new ComponentRepository(db,joinOuter)
+  let scenario=scenarios.create(at,{name:'Importação externa'})
+  const pieceIds=new Map<string,string>(), serviceIds=new Map<string,string>(), componentIds=new Map<string,string>()
+  const activeRevision=()=>scenarios.revisions(at).find(([id])=>id===scenario.id)![1]
+  for(const item of p.plan.items){
+    const catalog=commercial.usable(item.pieceId,'peca')
+    const added=commercial.add(at,{pieceCodes:[catalog.code!],scenarioId:scenario.id,scenarioRevision:activeRevision()}).find(i=>i.pieceId===item.pieceId)!
+    const saved=commercial.updateDiagnosis(at,added.id,{revision:added.revision,scenarioId:scenario.id,scenarioRevision:activeRevision(),
+      diagnosisId:item.diagnosisId,intensity:item.intensity??null,enabled:true,notes:item.notes,
+      services:item.services.map(s=>({serviceId:s.serviceId,dimensionId:s.dimensionId,quantity:s.quantity,enabled:true,notes:s.notes??'',diagnosisId:s.diagnosisId??null}))})
+    pieceIds.set(item.id,saved.id)
+    for(const service of item.services){
+      const native=saved.services.find(s=>s.serviceId===service.serviceId&&s.dimensionId===service.dimensionId)
+      if(!native)return conflict()
+      serviceIds.set(service.id,native.id)
+    }
+  }
+  for(const c of p.plan.components){
+    const saved=components.save(at,{pieceId:pieceIds.get(c.pieceId)!,name:c.name,quantity:c.quantity,manualPrice:c.manualPrice,notes:c.notes,scenarioId:scenario.id,scenarioRevision:activeRevision()})
+    componentIds.set(c.id,saved.id)
+  }
+  const negotiation=p.plan.negotiation
+  // External duration semantics may differ (calendar/working days).
+  // Keep automatic native deadline; source deadline is preserved in receipt.
+  scenario=scenarios.update(at,scenario.id,{revision:activeRevision(),negotiationDraft:negotiation.mode==='none'?{mode:'none',value:''}:{mode:negotiation.mode,value:negotiation.value}})
+  const pricing=new PricingConfigurationRepository(db)
+  const result=calculate(commercial.list(at,scenario.id),components.list(at),commercial.catalogs().items,scenario,pricing.get().config,pricing.settings(at).settings,negotiation)
+  const target=Q.from(p.source.totals.servicesGross).sub(Q.from(p.source.totals.serviceDiscount)).toString()
+  if(result.errors.length||!eq(result.serviceNet,target)||!eq(result.componentSubtotal,p.source.totals.components)||!eq(result.total,p.source.totals.total)||!eq(result.discount,p.plan.calculation.discount))return conflict()
+  if(result.lines.filter(l=>l.included&&l.kind==='service').length!==serviceIds.size||result.lines.filter(l=>l.included&&l.kind==='component').length!==componentIds.size)return conflict()
+  for(const c of p.source.components){
+    const line=result.lines.find(l=>l.id===componentIds.get(c.id)&&l.kind==='component'&&l.included)
+    if(!line||!eq(line.finalUnit,c.unitSalePrice)||!eq(line.total,c.total))return conflict()
+  }
+  const summary={total:result.total!,servicesNet:result.serviceNet!,components:result.componentSubtotal!,discount:result.discount,pieceIds:[...pieceIds.values()],serviceIds:[...serviceIds.values()],componentIds:[...componentIds.values()]}
+  const sourceLinks={
+    diagnoses:Object.fromEntries(pieceIds), services:Object.fromEntries(serviceIds), components:Object.fromEntries(componentIds),
+  }
+  const id=randomUUID(),s=p.source.source
+  db.prepare('INSERT INTO external_budget_receipts(id,provider,issuer_key,document_number,atendimento_id,scenario_id,request_digest,preview_token,source_json,plan_json,result_json,operator_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(id,s.provider,s.issuerKey,s.documentNumber,at,scenario.id,p.requestDigest,p.previewToken,JSON.stringify(p.source),JSON.stringify({...p.plan,...evidence,sourceLinks}),JSON.stringify(summary),operatorId,new Date().toISOString())
+  return {state:'created' as const,record:receipt(db,db.prepare('SELECT * FROM external_budget_receipts WHERE id=?').get(id)!)}
 }
