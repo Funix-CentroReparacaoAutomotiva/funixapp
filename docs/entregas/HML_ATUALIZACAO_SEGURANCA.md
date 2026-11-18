@@ -218,3 +218,46 @@ montagens sobrepostas, namespaces, sidecars e falhas de permissão. Se houver
 bloqueio, não executar operação destrutiva; não enfraquecer a checagem apenas
 para passar o teste. Conservar o update bloqueado até aceite integrado da
 manutenção e recuperação. Nenhuma alteração foi aplicada à VPS.
+
+## Janela de manutenção — regra de gateway testada pelo ChatGPT
+
+`deploy/hml-maintenance.py` fornece bloco server restritivo de Nginx e
+credencial aleatória exclusiva da operação (não reutilizar senha comum).
+Apenas GET exato em /, /api/ready, /release.json e /healthz é encaminhado,
+com Basic Auth de manutenção; demais métodos, rotas e query strings ficam
+bloqueados. Não encaminha corpo, cookies, Authorization ou cabeçalhos de
+clientes; ignora X-Accel-Redirect e oculta Set-Cookie. O GET permitido
+precisa ser revisado como diagnóstico sem gravação de usuário na revisão
+candidata. Essa regra não impede writes internos da própria API.
+
+Quatro testes passaram no ambiente do ChatGPT, incluindo três testes HTTP
+com Nginx 1.26.3 real e upstream Python sintético em loopback. Nginx -t
+passou; senhas comuns/ausentes/incorretas rejeitadas, credencial temporária
+aceita nas quatro rotas, métodos e caminhos não permitidos não chegam ao
+upstream (inclusive variantes de URI), cabeçalhos e corpo descartados.
+O teste pula a parte Nginx onde o binário não existir. Não houve Docker,
+HTTPS neste ensaio, nem acesso à VPS. O bloco server não é a configuração
+completa de Nginx da instalação.
+
+Integração pendente (não habilitar update antes do aceite):
+- Após lock e journal durável, parar somente gateway HML e confirmar API
+  parada e ausência de escritores. Assegurar que arquivos de manutenção
+  e credencial privada sejam persistidos por operação; jamais alterar
+  os arquivos originais de autenticação/configuração. Usar override com
+  os dois bind mounts específicos e somente leitura, validar configuração
+  completa e imagem estável; garantir permissões do UID/GID do Nginx.
+- Manter o gateway restrito na atualização, recuperação e rollback; só
+  validar com credencial de manutenção. Confirmar HTTPS estrito, 401
+  para credencial normal e healthcheck sem auth, 200 correto nas quatro
+  rotas, rejeição de escrita, revisão e IDs. Testar gateway real, não só
+  placeholders. Conferir mounts tmpfs legítimos /tmp e demais restrições
+  independentemente do contrato. A verificação de escritores deve rodar
+  após a parada e imediatamente antes de backup/restauração.
+- Distinguir no journal fase de release aceita mas ainda em manutenção:
+  persistir aceite ANTES de reabrir acesso comum. Em interrupção após esse
+  aceite, retomar apenas a abertura do gateway, nunca restaurar backup
+  automaticamente. Se abertura falhar, manter indisponível/restrito e
+  exigir recuperação específica, sem perda de dados pós-aceite.
+- Confirmar no Docker isolado retorno seguro ao acesso normal, falhas e
+  interrupções nos pontos de troca, autenticação e persistência do gate;
+  os arquivos originais e o Traefik não devem ser modificados.
