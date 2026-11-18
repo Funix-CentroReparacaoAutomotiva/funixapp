@@ -266,3 +266,28 @@ test('explicit context resolves two active demands and two numbers can share one
   assert.equal(f.db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,0)
  }finally{f.db.close()}
 })
+
+
+test('confirmed contact send references the shared Entity; repeated and additional numbers preserve participants',async()=>{
+ const f=entityContactsFixture();try{
+  const a=f.customers.save({kind:'entity',text:'Pessoa A',contacts:[{text:phone1}]})
+  const b=f.customers.save({kind:'entity',text:'Pessoa B',contacts:[{text:phone2}]})
+  const first=(await f.channels.verifyEntity(a.id)).contacts[0]!
+  const second=(await f.channels.verifyEntity(b.id)).contacts[0]!
+  const send=(c:typeof first,text:string)=>f.channels.send(c.id,c.conversationId!,text,{requestId:randomUUID(),contextToken:f.channels.context(c.id).token},()=>{})
+  await send(first,'Primeira interação')
+  const at=f.at.list().items[0]!
+  assert.deepEqual(f.at.get(at.id,true).references!.person,[{id:a.id,text:a.text}])
+  f.customers.save({text:'Pessoa A atualizada',revision:a.revision},a.id)
+  assert.equal(f.at.get(at.id,true).references!.person[0]!.text,'Pessoa A atualizada')
+  await send(first,'Continuação')
+  assert.equal(f.at.list().total,1)
+  assert.equal(f.at.get(at.id,true).references!.person.length,1)
+  f.links.link({conversationId:second.conversationId!,atendimentoId:at.id,expectedRevision:0,requestId:randomUUID(),reason:'Participação sintética'})
+  await send(second,'Mesmo assunto')
+  assert.deepEqual(f.at.get(at.id,true).references!.person,[{id:a.id,text:'Pessoa A atualizada'},{id:b.id,text:b.text}])
+  await send(second,'Continuação do segundo número')
+  assert.equal(f.at.get(at.id,true).references!.person.length,2)
+  assert.equal(f.at.list().total,1)
+ }finally{f.db.close()}
+})
