@@ -65,3 +65,13 @@ artefato e journal. **Não constitui liberação antes dos testes e revisão.**
   inicial. Não substituir os arquivos instalados com o Compose produtivo.
 - A direção precisa aprovar a revisão funcional na HML; produção é outro
   fluxo. Não remover as travas para obter sucesso artificial.
+
+## Correção do primeiro CI da interface operacional
+
+Run 44314802858, job 134837973022: regressões Python aprovadas;
+ensaio integrado falhou antes de carregar o pacote, por importação local
+de shutil em prepare_candidate, causando UnboundLocalError no cálculo
+do espaço livre. Removidas as importações locais redundantes de shutil
+e subprocess. Acrescentado teste de prepare_candidate com ZIP temporário
+real, espaço simulado e validação de ausência de docker load no modo
+preparação. Aguardar nova execução completa; nenhuma VPS foi acessada.

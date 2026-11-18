@@ -319,7 +319,6 @@ def prepare_candidate(config, adapter, safety, *, load_images=True):
                     if entry.is_dir() or entry.file_size > 20 * 1024**3:
                         raise ValueError("invalid artifact entry")
                     with bundle.open(entry) as source, (Path(directory) / entry.filename).open("xb") as target:
-                        import shutil
                         shutil.copyfileobj(source, target)
             manifest = safety.verify_candidate(Path(directory), revision=identity["revision"],
                 pr=identity["pr"], run_id=str(identity["run_id"]), run_attempt=str(identity["attempt"]))
@@ -330,7 +329,6 @@ def prepare_candidate(config, adapter, safety, *, load_images=True):
                     raise ValueError("release differs from authenticated manifest")
             # Refuse to change any existing tag, including previously loaded HML tags.
             for image in manifest["images"].values():
-                import subprocess
                 found = subprocess.run(["docker", "image", "inspect", image["tag"]], capture_output=True)
                 if found.returncode == 0 and json.loads(found.stdout)[0]["Id"] != image["image_id"]:
                     raise ValueError("image tag collision")
