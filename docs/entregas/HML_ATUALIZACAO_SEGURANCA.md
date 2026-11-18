@@ -320,3 +320,31 @@ do gateway, tmpfs e persistência da configuração após recriações, isolamen
 de escritores host, interrupções em entrada/aceite/abertura. Testar
 o comportamento do Compose com mounts e o Nginx dentro da imagem estável,
 sem acessar ou alterar a VPS. Não confundir os testes mock com ensaio real.
+
+## Primeiro ensaio de manutenção no CI — incremento ChatGPT
+
+O validador HTTPS passou a aceitar opcionalmente o login normal para
+verificar a recusa desse login, além da credencial temporária, revisões e
+bloqueio de métodos e rotas durante manutenção. Continua verificando TLS
+estrito; modo normal mantém o contrato anterior.
+
+Workflow separado `hml-maintenance-rehearsal.yml` executa somente em PRs
+com mudanças nos componentes HML, em runner GitHub hospedado, permissões
+contents:read, sem credenciais persistentes, sem acesso a VPS ou deploy.
+O ensaio usa contêineres Python sintéticos, imagem Nginx estável (da
+execução), dois IDs candidatos, Compose com redes/mounts de teste, SQLite
+fictício e edge TLS Python em loopback com CA sintética. Requer daemon
+sem contêineres e inexistência de /etc/funix-hml; cria essa configuração
+sintética apenas no runner descartável. Prova pretendida: troca efetiva
+do gateway, acesso comum bloqueado durante validação, aceite e abertura,
+rollback com recuperação de dados, originais intactos. Não é Traefik
+real nem migração do aplicativo real. Este é um ensaio novo, ainda não
+executado na criação do commit. Aguardar evidência do workflow.
+Se a inspeção global de escritores falhar, não simular sucesso nem
+desativar silenciosamente a proteção para aprovar o teste.
+
+O pipeline produtivo não foi alterado. A CLI permanece bloqueada para
+mutações; mesmo o sucesso desse ensaio não autoriza uso na VPS. Faltam
+verificações independentes de isolamento em runtime, integração final
+do artefato à CLI, teste de interrupções na troca do gateway e verificação
+da configuração instalada.

@@ -19,38 +19,58 @@ def load(name):
     return module
 
 
-def validator(credentials):
-    def validate(release):
-        content = Path(credentials).read_text()
-        if content.lstrip().startswith("{"):
-            login = json.loads(content)
-        else:
-            fields = dict(line.split(": ", 1) for line in content.splitlines() if ": " in line)
-            login = {"username": fields["Usuario"], "password": fields["Senha"]}
-        token = base64.b64encode((login["username"] + ":" + login["password"]).encode()).decode()
-        for endpoint in ("/", "/api/ready", "/release.json", "/healthz"):
-            for auth, expected in ((None, 401), ("Basic " + base64.b64encode(b"invalid:invalid").decode(), 401),
-                                   ("Basic " + token, 200)):
-                connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=10,
-                                                         context=ssl.create_default_context())
-                try:
-                    connection.request("GET", endpoint, headers={"Authorization": auth} if auth else {})
-                    response = connection.getresponse()
-                    body = response.read(100001)
-                    if response.status != expected or len(body) > 100000:
-                        raise ValueError("HTTPS/authentication contract failed")
-                    if expected == 401 and not response.getheader("WWW-Authenticate", "").lower().startswith("basic "):
-                        raise ValueError("Basic challenge missing")
-                    if expected == 200 and endpoint in ("/api/ready", "/release.json"):
-                        data = json.loads(body)
-                        if data.get("revision") != release["revision"]:
-                            raise ValueError("application revision mismatch")
-                        if endpoint == "/api/ready" and data.get("status") != "ready":
-                            raise ValueError("API not ready")
-                finally:
-                    connection.close()
-    return validate
+def read_login(credentials):
+    content = Path(credentials).read_text()
+    if content.lstrip().startswith("{"):
+        login = json.loads(content)
+    else:
+        fields = dict(line.split(": ", 1) for line in content.splitlines() if ": " in line)
+        login = {"username": fields["Usuario"], "password": fields["Senha"]}
+    if not all(isinstance(login.get(key), str) and login[key] for key in ("username", "password")):
+        raise ValueError("invalid login")
+    return "Basic " + base64.b64encode((login["username"] + ":" + login["password"]).encode()).decode()
 
+
+def validator(credentials, *, normal_credentials=None):
+    """Strict HTTPS; in maintenance also reject normal login and unsafe requests."""
+    def validate(release):
+        token = read_login(credentials)
+        normal = read_login(normal_credentials) if normal_credentials is not None else None
+        if normal == token:
+            raise ValueError("maintenance credential matches normal login")
+
+        def request(method, endpoint, auth, expected):
+            connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=10,
+                                                     context=ssl.create_default_context())
+            try:
+                connection.request(method, endpoint, headers={"Authorization": auth} if auth else {})
+                response = connection.getresponse()
+                body = response.read(100001)
+                if response.status != expected or len(body) > 100000:
+                    raise ValueError("HTTPS/authentication contract failed")
+                if expected == 401 and not response.getheader("WWW-Authenticate", "").lower().startswith("basic "):
+                    raise ValueError("Basic challenge missing")
+                if expected == 200 and endpoint in ("/api/ready", "/release.json"):
+                    data = json.loads(body)
+                    if data.get("revision") != release["revision"]:
+                        raise ValueError("application revision mismatch")
+                    if endpoint == "/api/ready" and data.get("status") != "ready":
+                        raise ValueError("API not ready")
+            finally:
+                connection.close()
+
+        for endpoint in ("/", "/api/ready", "/release.json", "/healthz"):
+            request("GET", endpoint, None, 401)
+            request("GET", endpoint, "Basic " + base64.b64encode(b"invalid:invalid").decode(), 401)
+            if normal is not None:
+                request("GET", endpoint, normal, 401)
+            request("GET", endpoint, token, 200)
+        if normal is not None:
+            for method in ("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"):
+                request(method, "/api/ready", token, 503)
+            for endpoint in ("/api/session", "/api/atendimentos", "/api/ready?probe=1"):
+                request("GET", endpoint, token, 503)
+    return validate
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
