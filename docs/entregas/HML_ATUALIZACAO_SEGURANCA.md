@@ -261,3 +261,32 @@ Integração pendente (não habilitar update antes do aceite):
 - Confirmar no Docker isolado retorno seguro ao acesso normal, falhas e
   interrupções nos pontos de troca, autenticação e persistência do gate;
   os arquivos originais e o Traefik não devem ser modificados.
+
+## Coordenação persistente da janela de manutenção — incremento ChatGPT
+
+O coordenador agora oferece modo explícito `maintenance=True` (experimental;
+não é utilizado pela CLI real). Exige do adaptador `enter_maintenance()`,
+`assert_installed(release)` e `open_access(release)` além do contrato existente.
+O modo é registrado no journal e não pode ser alterado na recuperação.
+O adaptador deve garantir que instalar e validar ocorram exclusivamente
+com o gateway fechado/restrito, inclusive após falhas; as operações de
+fechamento e abertura devem ser idempotentes.
+
+Depois de validar a release, o coordenador grava duravelmente
+`accepted_pending_open` antes de reabrir o acesso normal. Falhas antes desse
+aceite continuam sujeitas ao rollback; falhas na abertura não provocam
+restauração automática. A recuperação dessa fase verifica a release
+instalada e retenta somente a abertura, preservando possíveis gravações
+posteriores. O mesmo ocorre para `restored_pending_open` após rollback.
+Enquanto a fase não for terminal, novas atualizações são recusadas. A
+recuperação do modo manutenção exige o journal ativo do projeto.
+
+Sete novos casos de teste usam adaptador simulado e SQLite sintético real:
+aceite antes da abertura, interrupção após abrir, bloqueio de nova
+operação, recuperação pré-aceite, rollback com backup pós-atualização e
+interrupção ao reabrir, modo incorreto/contrato incompleto e divergência de
+release. Os testes devem ser executados no CI antes de considerar esta
+alteração aprovada; não são testes Docker/HTTPS. A CLI real continua
+bloqueada. Falta ligar os hooks ao adaptador Docker, implementar e validar
+a troca efetiva do gateway, aplicar a inspeção host de escritores e
+testar todo o ciclo integrado. Não utilizar na VPS antes do aceite.
