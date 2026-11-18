@@ -21,3 +21,6 @@ Esta primeira etapa não altera banco instalado, VPS, n8n ou Evolution. Não equ
 
 ## Ensaio de recepção sem Coda
 O teste HTTP sintético usa o envelope bruto Evolution, assinatura HMAC, modo autônomo, replay, Entidade–Contato e leitura do mesmo histórico no Atendimento. Isso não prova o encaminhamento instalado: verificar a configuração real do relay e os recibos locais antes de desativar o classificador publicado.
+
+## Resultado do primeiro ensaio instalado — 18/11/2026
+Ensaio em cópia V23: 94 vínculos (19 importados, 75 existentes), 77 Atendimentos conciliados, 74 pendentes e 3 contextos para revisão. IDs preservados, integridade OK e 57 tabelas protegidas verificadas. Diagnóstico: 57 telefones não aceitos pela normalização internacional, 11 divergências telefone/Chat, 4 sem nome, 2 entidades com mesmo nome. Motivos de formato não provam que todos os números sejam recuperáveis. A revisão seguinte propõe converter somente números brasileiros completos com DDD válido, sem inserir dígito de assinante, sem adivinhar DDD e sem criar Chat para ficha manual. Contatos legados existentes que possam colidir bloqueiam duplicação. O relatório passa a discriminar motivos e normalizações, sem dados pessoais. Exige CI e segundo ensaio; produção não alterada.

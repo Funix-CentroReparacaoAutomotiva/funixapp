@@ -162,7 +162,7 @@ export class CustomerRepository {
     return this.record(existing.id)
   }
 
-  reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord,contact:CustomerRecord,legacyIndex?:number) {
+  reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord,contact:CustomerRecord,legacyIndex?:number,legacyContactIndex?:number) {
     let changed=false
     const write=(kind:'person'|'contact',index:number,record:CustomerRecord)=>{
       const ref={id:record.id,text:record.text}
@@ -190,7 +190,7 @@ export class CustomerRepository {
     append('person',person,legacyIndex)
     const phone=normalizePhone(contact.text)
     const same=refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone)
-    append('contact',contact,same<0?undefined:same)
+    append('contact',contact,legacyContactIndex??(same<0?undefined:same))
     if(changed)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     this.updateSearch(at)
   }
