@@ -15,8 +15,8 @@ API Node 24 existente com sessão de operador e banco SQLite próprio. A inicial
 | `POST /api/atendimentos` | Criação autenticada e com origem exata; 201 com registro persistido |
 | `GET /api/atendimentos/:id` | Registro autenticado por UUID técnico; 404 se inexistente/inválido |
 | `PATCH /api/atendimentos/:id` | Atualiza campos permitidos e exige `revision`; 200 com registro persistido |
-| `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação; função operacional fora do MVP; nenhuma consulta Coda |
-| Outros métodos de negócio | 405; não há exclusão de Atendimento, envio externo, agenda ou comando operacional |
+| `GET /api/workspace` e rotas `/api/experiencias*` | 410 após autenticação. A Experiência local é consultada pelo Atendimento |
+| Outros métodos de negócio | 405 para métodos sem contrato explícito. As rotas de Produção V1 estão descritas abaixo |
 
 Contrato compartilhado em `shared/contracts.ts`: `Atendimento`, `AtendimentoInput`, `AtendimentoPatch`, `AtendimentoList` e `ATENDIMENTO_STAGES`. Os tipos antigos permanecem somente para o adaptador legado isolado.
 
@@ -415,3 +415,19 @@ Novas rotas autenticadas:
 | `GET /api/customer-records/:contactId/chat/:conversationId/messages/:messageId/media?page=1` | Mídia validada pelo gateway existente; revalidação antes/depois da consulta e recuperação |
 
 Não se aceita destinatário, JID ou Entidade como autoridade de envio vinda do navegador. O token vincula Contato, revisão, titular, telefone exato, conversa, evidência de verificação e instância. Repetições usam o ledger durável existente por PN, inclusive entre texto e mídia. Conflito ou identidade alterada revoga leitura/envio. Relatório e procedimento DEV: [Entidades, Contatos e WhatsApp](entregas/ENTIDADES_CONTATOS_WHATSAPP.md).
+
+## Produção V1
+
+As rotas abaixo usam a sessão existente. Escritas exigem JSON e a mesma `Origin`. O prefixo é `/api/atendimentos/:at`. [Decisões e validação](PRODUCAO_V1.md)
+
+| Método e sufixo | Contrato |
+| --- | --- |
+| `GET /experiencia` | Retorna `{experience, atendimentoRevision, deliveryDate, references, budgets}`. `experience` é `null` até o agendamento. Cada orçamento inclui estado, histórico e número da OS quando houver. Uma OS histórica sem ciclo registrado indica `legacyOrder: true`. |
+| `POST /agendamento` | Aceita `{budgetIds, parties, scheduledEntry, deliveryDate, expectedAtendimentoRevision, expectedExperienceRevision}`. `parties` exige as referências `customer`, `vehicle` e `payer` da ficha, ou as referências da Experiência existente. A primeira confirmação requer ao menos um orçamento emitido e `expectedExperienceRevision: null`. `scheduledEntry` usa `AAAA-MM-DDTHH:mm` no horário de Brasília e `deliveryDate` é `AAAA-MM-DD` ou `null`. Retorna a consulta atualizada com HTTP 200. |
+| `POST /orcamentos/:versao/autorizacao-tecnica` | Aceita `{confirmed: true}`. Requer consentimento da versão na Experiência do Atendimento. Retorna a OS com `experienceId` e HTTP 200, inclusive no reenvio após confirmação. |
+| `POST /orcamentos/:versao/rejeicao-tecnica` | Passa de Consentido a Rejeitado. Aceita `{reason}` de 5 a 500 caracteres após aparar espaços. Retorna a consulta atualizada. |
+| `POST /orcamentos/:versao/rejeicao-comercial` | Mesmo contrato de motivo. Passa de Negociando a Rejeitado. |
+| `POST /orcamentos/:versao/cancelamento` | Preserva a API de cancelamento e os documentos históricos. O novo cancelamento entra no histórico transacional da versão. |
+| `POST /orcamentos/:versao/os` | Retorna `409 DIRECT_OS_DISABLED`. Consultas, PDFs e revisões de OS existentes continuam nas rotas anteriores. |
+
+Conflitos de revisão, estado ou referência recebem HTTP 409. Uma versão pertencente a outro Atendimento recebe HTTP 404. Os eventos registram `actorSource: "authenticated-session-confirmation"` e `operatorId: null` sob o modelo de sessão atual.

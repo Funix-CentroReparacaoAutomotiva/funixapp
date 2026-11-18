@@ -1,7 +1,7 @@
-export type DetailScreen = 'peca' | 'comparacao' | 'orcamentos'
+export type DetailScreen = 'peca' | 'comparacao' | 'orcamentos' | 'experiencia'
 export const detailScreen = (search: string): DetailScreen | null => {
   const value = new URLSearchParams(search).get('tela')
-  return value === 'peca' || value === 'comparacao' || value === 'orcamentos' ? value : null
+  return value === 'peca' || value === 'comparacao' || (value === 'orcamentos' || value === 'experiencia') ? value : null
 }
 export function parentDetail(search: string) {
   const params = new URLSearchParams(search)

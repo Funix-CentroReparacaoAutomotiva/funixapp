@@ -1,0 +1,17 @@
+.production-panel{max-width:780px;margin-inline:auto;color:#243550;overflow-wrap:anywhere}
+.production-panel h2{font-size:1rem;margin:20px 0 8px}
+.production-panel .primary-btn,.production-panel .fh-filter{min-height:44px;white-space:normal}
+.production-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:14px;margin:0 0 12px}
+.production-details dt{font-size:.78rem;font-weight:700;color:#516d85}
+.production-details dd{margin:3px 0 0}
+.production-form fieldset{min-width:0;margin:0 0 12px;padding:8px;border:1px solid #d8e3eb;border-radius:8px}
+.production-form legend{font-size:.82rem;font-weight:700}
+.production-form .at-field input,.production-form .at-field select{box-sizing:border-box;min-height:44px}
+.production-check{display:flex;align-items:center;gap:8px;min-height:44px;padding-inline:4px;font-size:.88rem}
+.production-check input{flex:none}
+.production-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.production-budget{display:grid;gap:8px}
+.production-budget>button{justify-self:start}
+.production-budget details{font-size:.85rem}
+.production-budget ul{padding-inline-start:20px;margin-block:6px}
+.production-feedback{margin-bottom:12px}

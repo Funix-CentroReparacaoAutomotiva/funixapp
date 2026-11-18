@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync,SQLOutputValue} from 'node:sqlite'
 import type {BudgetVersion} from '../shared/pricing.ts'
+import type {Experience} from '../shared/production.ts'
 import type {WorkOrder,WorkOrderScope} from '../shared/work-order.ts'
 import {BudgetRepository} from './budgets.ts'
 import {ServiceError} from './errors.ts'
@@ -52,6 +53,7 @@ function fromRow(row:Record<string,SQLOutputValue>):WorkOrder {
     budgetLabel:String(row.budget_label),createdAt:String(row.created_at),
     authorization:{confirmedAt:String(row.authorized_at),source:'authenticated-session-confirmation',operatorId:null},
     scope:JSON.parse(String(row.scope_json)) as WorkOrderScope,
+    ...(row.experience_id==null?{}:{experienceId:String(row.experience_id)}),
     ...(row.cancelled_at==null?{}:{cancellation:{cancelledAt:String(row.cancelled_at),reason:String(row.cancellation_reason)}})
   }
 }
@@ -102,34 +104,18 @@ export class WorkOrderRepository {
     writeDeliveryDate(this.db,at,current,date,'Data informada manualmente na emissão da OS',now,true)
     return date
   }
-  create(at:string,versionId:string,input:unknown):WorkOrder {
-    const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision'])
-    if(confirmation.authorized!==true)
-      throw new ServiceError(422,'OS_AUTHORIZATION_REQUIRED','Confirme a autorização de execução da versão emitida.')
-    // BEGIN IMMEDIATE serializes competing requests even across SQLite processes.
-    // A unique budget_version_id is a second line of defense against retries.
-    return transaction(this.db,()=>{
-      const version=new BudgetRepository(this.db).get(at,versionId)
-      if(version.cancellation)throw new ServiceError(409,'BUDGET_CANCELLED','Orçamento cancelado. Não é possível criar ou reemitir OS.')
-      const existing=this.db.prepare('SELECT * FROM work_orders WHERE atendimento_id=? AND budget_version_id=?').get(at,versionId)
-      if(existing){
-        const original=fromRow(existing)
-        if(confirmation.deliveryChoice!==undefined){
-          const expected=confirmation.deliveryChoice==='with'?parseDeliveryDate(confirmation.deliveryDate):confirmation.deliveryChoice==='without'&&confirmation.deliveryDate===undefined?null:undefined
-          if(expected===undefined||confirmation.deliveryChoice==='with'&&expected===null||expected!==(original.scope.deliveryDate??null))
-            throw new ServiceError(409,'OS_ALREADY_ISSUED','A OS já foi emitida com outra previsão. Consulte o documento existente.')
-        }
-        return original
-      }
-      const scope=operationalScope(version)
-      const createdAt=new Date(this.now()).toISOString(),id=randomUUID()
-      const deliveryDate=this.chosenDate(at,confirmation,createdAt)
-      if(deliveryDate!==null||confirmation.deliveryChoice!==undefined)scope.deliveryDate=deliveryDate
-      this.db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)')
-        .run(id,at,versionId,createdAt,createdAt,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(scope))
-      const row=this.db.prepare('SELECT * FROM work_orders WHERE id=?').get(id)!
-      return fromRow(row)
-    })
+  /** Caller holds the transaction and has recorded the technical decision. */
+  createAuthorized(at:string,version:BudgetVersion,experience:Experience,createdAt:string):WorkOrder {
+    if(!this.db.isTransaction)throw new Error('Work order creation requires a transaction.')
+    const scope=operationalScope(version)
+    scope.customer={name:experience.customer.text}
+    scope.vehicle={description:experience.vehicle.text,plate:experience.vehicle.plate??''}
+    scope.deliveryDate=experience.deliveryDate
+    const id=randomUUID()
+    this.db.prepare(`INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,
+      authorized_by,budget_number,budget_label,scope_json,experience_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(id,at,version.id,createdAt,createdAt,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(scope),experience.id)
+    return this.get(at,version.id)
   }
   reissue(at:string,versionId:string,input:unknown):WorkOrder {
     const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision','expectedRevision','reason','correction'])

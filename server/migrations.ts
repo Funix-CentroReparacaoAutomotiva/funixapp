@@ -1,3 +1,4 @@
+import {createProductionSchema} from './production-schema.ts'
 import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
@@ -349,7 +350,8 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   `)},
   {version:22,apply:createContactChannelSchema},
   {version:23,apply:db=>db.exec(`ALTER TABLE atendimentos ADD COLUMN purpose TEXT
-    CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)}
+    CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)},
+  {version:24,apply:createProductionSchema}
 ]
 
 export function migrate(db: DatabaseSync) {
