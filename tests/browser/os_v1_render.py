@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import statistics
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import fitz
@@ -187,4 +189,29 @@ with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as play
             assert f"QA{i:02d}" in text,("missing component",i)
         assert len(doc)>=2
     page.close()
+    # Diagnostic benchmark: same browser, alternating order, warm-up excluded.
+    # No timing threshold in shared CI; record measured distributions instead.
+    for count in (4,19,80):
+        candidate=payload(count)
+        baseline=reference(candidate)
+        variants={"V1 CSS":baseline,"V1.1 CSS":candidate}
+        times={name:[] for name in variants}
+        page=browser.new_page(viewport={"width":1122,"height":800})
+        for name,data in variants.items():
+            render(page,data,Path(tmp)/"benchmark-warmup.pdf")
+        for repeat in range(5):
+            order=list(variants) if repeat%2==0 else list(reversed(variants))
+            for name in order:
+                start=time.perf_counter()
+                render(page,variants[name],Path(tmp)/"benchmark.pdf")
+                times[name].append(round((time.perf_counter()-start)*1000,2))
+        page.close()
+        print("BENCHMARK_OS_CSS "+json.dumps({
+            "pieces":count,"samples":5,
+            "variants":{name:{
+                "html_bytes":sum(len(value.encode("utf-8")) for value in data.values()),
+                "median_ms":statistics.median(times[name]),
+                "samples_ms":times[name]
+            } for name,data in variants.items()}
+        },ensure_ascii=False),flush=True)
     browser.close()
