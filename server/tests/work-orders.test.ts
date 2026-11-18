@@ -416,7 +416,11 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   const current=fixture.pricing.get()
   current.config.services.push({serviceId:OPTICAL_SERVICE_ID,base:'100',colorFactorEnabled:true,discountable:true,dimensions:[{dimensionId:OPTICAL_DIMENSION_ID,fd:'1',stages:[]}]})
   fixture.pricing.save({revision:current.revision,config:current.config})
-  const budgets=new BudgetRepository(db),input={scenarioId:fixture.scenario.id,negotiation:{mode:'none'} as const}
+  // The legacy synthetic budget renderer rejects any technical warning, unlike
+  // the current production adapter. Use a deterministic PDF response for this
+  // regression: the real budget snapshot and adapter still run unchanged.
+  const {BudgetRepository:RealBudgetRepository}=await import('../budgets.ts')
+  const budgets=new RealBudgetRepository(db,{render:async()=>Buffer.from('%PDF-1.7\nSynthetic optical budget\n%%EOF')}),input={scenarioId:fixture.scenario.id,negotiation:{mode:'none'} as const}
   const preview=budgets.preview(at,input)
   assert.equal(preview.canEmit,true)
   const version=await budgets.emit(at,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
