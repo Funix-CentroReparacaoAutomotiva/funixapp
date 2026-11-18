@@ -4,6 +4,7 @@ import {preflightExternalBudget} from './external-budget.ts'
 import {deriveHistoricalManualPrice,chooseReviewedServiceCombination} from './historical-budget-reconciliation.ts'
 import type {ReviewedServiceOption} from './historical-budget-reconciliation.ts'
 import {calculate} from './pricing-engine.ts'
+import {chooseCiliaReviewedCombination} from './cilia-reconciliation.ts'
 import {resolveMR} from '../shared/mr.ts'
 import {catalogItemUsable} from '../shared/commercial.ts'
 import {newServiceSelectionIssue,servicePolicy} from '../shared/commercial-curation.ts'
@@ -58,6 +59,7 @@ const eq=(a:string|null|undefined,b:string)=>a!==null&&a!==undefined&&exact(a).c
 export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:CatalogItem[],configuration:PricingConfiguration,state:{revision:number;settings:PricingSettings}){
   const p=preflightExternalBudget(raw),d=p.data
   if(!p.valid)return {state:'blocked' as const,source:p,issues:p.errors}
+  if(d.source.provider==='cilia'&&Q.from(d.totals.serviceDiscount).n!==0n)return {state:'blocked' as const,source:p,issues:['CILIA_SOURCE_DISCOUNT_REVIEW']}
   const byId=(id:string,kind:CatalogItem['kind'])=>{
     const c=catalog.find(x=>x.id===id)
     if(!c||c.kind!==kind||!catalogItemUsable(c))return invalid()
@@ -105,7 +107,9 @@ export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:C
     optionGroups.push(options)
   }
   const target=Q.from(d.totals.servicesGross).sub(Q.from(d.totals.serviceDiscount)).toString()
-  const choice=chooseReviewedServiceCombination(target,optionGroups)
+  const choice=d.source.provider==='cilia'&&optionGroups.length
+    ?chooseCiliaReviewedCombination(target,optionGroups.map((options,index)=>({rowId:d.services[index]!.id,sourceTotal:d.services[index]!.total,options})))
+    :chooseReviewedServiceCombination(target,optionGroups)
   if(choice.state!=='matched'||!choice.match)return {state:'blocked' as const,source:p,issues:[choice.state==='search-limit'?'SERVICE_SEARCH_LIMIT':'SERVICE_DISCOUNT_NO_MATCH']}
   const selected=choice.match.options.map(o=>selectedOptions.get(o.optionId)!)
   for(const r of d.services){

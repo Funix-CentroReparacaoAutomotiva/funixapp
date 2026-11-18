@@ -44,6 +44,9 @@ test('native preview maps hours explicitly, reconciles derived components and le
     assert.deepEqual(db.prepare('SELECT * FROM diagnosis_items').all(),before)
     const config=f.pricing.get();config.config.services[0]!.discountable=false
     assert.equal(planExternalBudget(raw,mapping,[piece,diagnostic,f.service,f.dimension],config,f.pricing.settings(f.at.id)).state,'blocked')
+    const sourceDiscount=cilia();sourceDiscount.totals.serviceDiscount='1';sourceDiscount.totals.total='219'
+    const discountReview=planExternalBudget(sourceDiscount,mapping,[piece,diagnostic,f.service,f.dimension],f.pricing.get(),f.pricing.settings(f.at.id))
+    assert.equal(discountReview.state,'blocked');assert.ok(discountReview.issues.includes('CILIA_SOURCE_DISCOUNT_REVIEW'))
     const changed=cilia();changed.components[0]!.unitSalePrice='120.03';changed.components[0]!.total='120.03';changed.totals.components='120.03';changed.totals.total='220.03'
     assert.equal(planExternalBudget(changed,mapping,[piece,diagnostic,f.service,f.dimension],f.pricing.get(),f.pricing.settings(f.at.id)).state,'blocked')
   }finally{db.close()}
