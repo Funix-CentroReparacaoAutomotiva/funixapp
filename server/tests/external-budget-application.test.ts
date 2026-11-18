@@ -11,7 +11,8 @@ function setup(){
   const db=openDatabase(':memory:'),f=commercialFixture(db)
   createExternalBudgetApplicationSchema(db)
   const raw=historicalCapture(),data=externalBudgetFromCoda(normalizeHistoricalCodaCapture(raw,raw).data).data
-  const source={...data,source:{provider:'cilia',issuerKey:'synthetic-partner',documentNumber:'SYNTHETIC-NATIVE-IMPORT',revision:'1',evidenceSha256:'a'.repeat(64),evidenceKind:'file-bytes'}}
+  const source=data
+  db.prepare('INSERT INTO coda_sync_atendimentos VALUES(?,?,?)').run('i-synthetic-at',f.at.id,'2026-01-01T00:00:00Z')
   const piece=f.commercial.catalogs().items.find(c=>c.kind==='peca'&&c.code&&c.active&&c.id!==f.item.pieceId)!
   const diagnosis=f.commercial.saveCatalog({kind:'diagnostico',name:'Diagnóstico sintético',status:'validado'})
   const mapping={diagnoses:[{sourceId:'i-synthetic-diag',pieceId:piece.id,diagnosisId:diagnosis.id,intensity:'moderado' as const}],
@@ -76,9 +77,25 @@ test('Coda source must link exact attendance and repository is disabled by defau
   const x=setup()
   try{
     const raw=historicalCapture(),source=externalBudgetFromCoda(normalizeHistoricalCodaCapture(raw,raw).data).data
+    x.db.prepare('DELETE FROM coda_sync_atendimentos WHERE coda_row_id=?').run('i-synthetic-at')
     assert.throws(()=>x.app.preview({...x.input,source}),{code:'EXTERNAL_ATTENDANCE_UNLINKED'})
   }finally{x.db.close()}
   const db=openDatabase(':memory:')
   try{assert.throws(()=>new ExternalBudgetApplication(db).preview({atendimentoId:'synthetic',source:null,mapping:{diagnoses:[],services:[]}}),{code:'EXTERNAL_IMPORT_DISABLED'})}
   finally{db.close()}
+})
+
+test('non-Coda comparison cannot enter native write path despite valid arithmetic and explicit confirmations',()=>{
+  const x=setup()
+  try{
+    const before=x.f.scenarios.list(x.f.at.id)
+    for(const provider of ['cilia','other'] as const){
+      const source={...x.input.source,source:{...x.input.source.source,provider,issuerKey:'synthetic-partner',evidenceKind:'file-bytes'}}
+      const input={...x.input,source}
+      assert.deepEqual(x.app.preview(input),{state:'blocked',issues:['EXTERNAL_PROVIDER_WRITE_NOT_ENABLED']})
+      assert.throws(()=>x.app.confirm({...input,previewToken:'a'.repeat(64),confirmed:true,identityReviewed:true,scopeReviewed:true,financialReviewed:true},'synthetic'),{code:'EXTERNAL_PLAN_BLOCKED'})
+    }
+    assert.deepEqual(x.f.scenarios.list(x.f.at.id),before)
+    assert.equal(x.db.prepare('SELECT count(*) AS n FROM external_budget_receipts').get()!.n,0)
+  }finally{x.db.close()}
 })

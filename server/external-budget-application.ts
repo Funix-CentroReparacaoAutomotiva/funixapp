@@ -65,6 +65,10 @@ export class ExternalBudgetApplication{
     const at=new AtendimentoRepository(this.db).get(input.atendimentoId)
     const source=preflightExternalBudget(input.source)
     if(!source.valid)return {state:'blocked' as const,issues:source.errors}
+    // The authorized write channel is Coda only. Cilia comparison packages
+    // omit non-billable third-party parts from native totals, so they must
+    // never be accepted as complete persistence evidence.
+    if(source.data.source.provider!=='coda')return {state:'blocked' as const,issues:['EXTERNAL_PROVIDER_WRITE_NOT_ENABLED']}
     checkCodaLink(this.db,source.data,at.id)
     const s=source.data.source
     // One native import per source document, including revisions. Supplements

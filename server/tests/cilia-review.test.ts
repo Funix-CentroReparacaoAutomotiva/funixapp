@@ -2,6 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {previewCiliaXml,assembleCiliaReviewedScope} from '../cilia-review.ts'
 import type {CiliaScopeReview} from '../cilia-review.ts'
+import {compareCiliaReviewedBudget} from '../cilia-comparison.ts'
+import {planExternalBudget} from '../external-budget-plan.ts'
+import type {CatalogItem} from '../../shared/commercial.ts'
+import type {PricingConfiguration} from '../../shared/pricing.ts'
 
 const tag=(name:string,value:string)=>'<'+name+'>'+value+'</'+name+'>'
 const fields=(v:Record<string,string>)=>Object.entries(v).map(([k,x])=>tag(k,x)).join('')
@@ -17,9 +21,9 @@ const xml=()=>Buffer.from(tag('orcamento',[
 ].join('')))
 const prefix='coda:2zsjI-nqWr:grid-lhdFxol6x-:'
 const montage=prefix+'i-vmJ3Org23i',paint=prefix+'i-XDTMBmueos',mechanics=prefix+'i-RoaRcVLUCo'
-const piece=(id:string)=>({id,kind:'peca',code:id,name:id,active:true,serviceId:null})
-const service=(id:string)=>({id,kind:'servico',code:null,name:id,active:true,serviceId:null})
-const dimension=(id:string,serviceId:string)=>({id,kind:'dimensao',code:null,name:id,active:true,serviceId})
+const piece=(id:string)=>({id,kind:'peca' as const,code:id,name:id,active:true,serviceId:null})
+const service=(id:string)=>({id,kind:'servico' as const,code:null,name:id,active:true,serviceId:null})
+const dimension=(id:string,serviceId:string)=>({id,kind:'dimensao' as const,code:null,name:id,active:true,serviceId})
 const catalog=[piece('capo'),piece('farol__passageiro'),piece('veiculo_completo'),service(montage),service(paint),service(mechanics),dimension('mont-p',montage),dimension('paint-full',paint),dimension('mech-p',mechanics)]
 const preview=()=>previewCiliaXml(xml(),catalog,'left')
 const scope=():CiliaScopeReview=>({evidenceSha256:preview().source.evidenceSha256,scopeReviewed:true,pieces:[{pieceId:'capo',sourceRowIds:['row-1','row-2'],diagnosisId:null,intensity:null,reason:'Hipótese sintética de conjunto'},{pieceId:'farol__passageiro',sourceRowIds:['row-3'],diagnosisId:null,intensity:null,reason:''},{pieceId:'veiculo_completo',sourceRowIds:['row-4'],diagnosisId:null,intensity:null,reason:'Identidade revisada no exemplo'}],groups:[{operationIds:['row-1:op-1','row-2:op-1'],options:[{serviceId:montage,dimensionId:'mont-p',quantity:'1'}],reason:'Montagem inclui dobradiça no exemplo sintético'},{operationIds:['row-1:op-2'],options:[{serviceId:paint,dimensionId:'paint-full',quantity:'1'}],reason:''},{operationIds:['row-3:op-1'],options:[{serviceId:montage,dimensionId:'mont-p',quantity:'1'}],reason:''},{operationIds:['row-4:manual'],options:[{serviceId:mechanics,dimensionId:'mech-p',quantity:'1'}],reason:'Revisão técnica sintética de serviço manual'}]})
@@ -44,4 +48,40 @@ test('Cilia review: prohibit unjustified grouping, mixed scope and incompatible 
  for(const mutate of [(s:CiliaScopeReview)=>{s.pieces[0]!.reason=''},(s:CiliaScopeReview)=>{s.groups[0]!.reason=''},(s:CiliaScopeReview)=>{s.groups[0]!.operationIds.push('row-1:op-2')},(s:CiliaScopeReview)=>{s.groups[0]!.operationIds.push('row-3:op-1')},(s:CiliaScopeReview)=>{s.groups[0]!.options[0]!.dimensionId='paint-full'},(s:CiliaScopeReview)=>{s.groups[0]!.options[0]!.quantity='0'},(s:CiliaScopeReview)=>{s.groups[3]!.reason=''}]){
   const s=scope();mutate(s);assert.throws(()=>assemble(s),{code:'CILIA_SCOPE_INVALID'})
  }
+})
+
+// The native engine is exercised in memory using only synthetic catalog prices.
+const nativeCatalog:CatalogItem[]=catalog.map(c=>({...c,status:'validado',source:'operador',suggestion:false,side:'',revision:1,createdAt:'',updatedAt:''}))
+const configuration=():PricingConfiguration=>({revision:1,updatedAt:'',config:{tables:[{id:'table',name:'QA',factor:'1'}],colors:[],risks:[{id:'risk',name:'QA',factor:'1'}],resaleMultipliers:[{id:'mr',name:'QA',factor:'2'}],capacity:'4',conditions:'QA synthetic',specialPrices:[],services:[[montage,'mont-p','75'],[paint,'paint-full','150'],[mechanics,'mech-p','15']].map(([serviceId,dimensionId,base])=>({serviceId,base,colorFactorEnabled:false,discountable:true,dimensions:[{dimensionId,fd:'1',stages:[{id:'qa-stage',name:'QA',dimension:'QA',baseEnergy:'1',dimensionEnergy:'1'}]}]}))}})
+const pricingState={revision:1,settings:{tableId:'table',colorId:null,riskId:'risk',mrId:'mr'}}
+const compare=(config=configuration(),review=scope())=>compareCiliaReviewedBudget(xml(),nativeCatalog,'left',review,config,pricingState)
+
+test('Cilia comparison reconciles grouped XML with native engine, including manual specialty and partner parts',()=>{
+ const config=configuration(),before=JSON.stringify(config),r=compare(config)
+ assert.equal(r.state,'matched',JSON.stringify(r.blockers))
+ assert.equal(r.financialMatch,true);assert.equal(r.canWrite,false)
+ assert.equal(r.calculation?.originalServiceSubtotal,'315');assert.equal(r.calculation?.discount,'100')
+ assert.equal(r.calculation?.serviceNet,'215');assert.equal(r.calculation?.componentSubtotal,'70');assert.equal(r.calculation?.total,'285')
+ assert.equal(r.calculation?.energy,'8');assert.equal(r.calculation?.days,'2')
+ assert.equal(r.calculation?.lines.filter(l=>l.kind==='component').length,1)
+ assert.equal(r.scope.partnerComponents.length,2);assert.equal(r.scope.sourceLinks.components.length,3)
+ assert.deepEqual(r.externalServices,[{groupId:'group-4',serviceId:mechanics,dimensionId:'mech-p',authorizationVerified:false}])
+ assert.equal(r.calculation?.lines.find(l=>l.id==='group-4')?.executionConfirmed,false)
+ assert.ok(r.blockers.includes('EXTERNAL_EXECUTION_REVIEW'));assert.ok(r.blockers.includes('PARTNER_COMPONENT_PERSISTENCE_PENDING'))
+ assert.ok(r.blockers.includes('ATTENDANCE_IDENTITY_REVIEW'));assert.equal(JSON.stringify(config),before)
+ const neutral=assemble();const normal=planExternalBudget(neutral.comparisonOnly,neutral.mapping,nativeCatalog,config,pricingState)
+ assert.equal(normal.state,'blocked');assert.ok(normal.issues.includes('SERVICE_OPTIONS_UNPRICED:group-4'))
+})
+test('Cilia comparison rejects ineligible discounts, missing stages and irreproducible component price',()=>{
+ const noDiscount=configuration();for(const service of noDiscount.config.services)service.discountable=false
+ const r=compare(noDiscount);assert.equal(r.financialMatch,false);assert.ok(r.blockers.includes('SERVICE_DISCOUNT_NO_MATCH'))
+ const missing=configuration();missing.config.services[0]!.dimensions[0]!.stages=[]
+ const s=compare(missing);assert.equal(s.financialMatch,false);assert.ok(s.blockers.includes('SERVICE_OPTIONS_UNPRICED:group-1'))
+ const mr=configuration();mr.config.resaleMultipliers=[]
+ const t=compare(mr);assert.equal(t.financialMatch,false);assert.ok(t.blockers.includes('COMPONENT_PRICE_NOT_REPRODUCIBLE:row-3'))
+})
+test('Cilia comparison revalidates original bytes and source scope, never treats a financial match as write authority',()=>{
+ const r=compare();assert.ok(r.blockers.includes('PREVIEW_ONLY'));assert.equal(r.canWrite,false)
+ const stale=scope();stale.evidenceSha256='a'.repeat(64)
+ assert.throws(()=>compare(configuration(),stale),{code:'CILIA_SCOPE_INVALID'})
 })

@@ -56,10 +56,11 @@ const eq=(a:string|null|undefined,b:string)=>a!==null&&a!==undefined&&exact(a).c
  * not authority to edit records. Never uses source hours as a native quantity
  * automatically. No I/O, DB mutation, global factor changes or issuance.
  */
-export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:CatalogItem[],configuration:PricingConfiguration,state:{revision:number;settings:PricingSettings}){
+export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:CatalogItem[],configuration:PricingConfiguration,state:{revision:number;settings:PricingSettings},mode?:{ciliaComparisonOnly:true}){
   const p=preflightExternalBudget(raw),d=p.data
   if(!p.valid)return {state:'blocked' as const,source:p,issues:p.errors}
   if(d.source.provider==='cilia'&&Q.from(d.totals.serviceDiscount).n!==0n)return {state:'blocked' as const,source:p,issues:['CILIA_SOURCE_DISCOUNT_REVIEW']}
+  const ciliaComparisonOnly=d.source.provider==='cilia'&&mode?.ciliaComparisonOnly===true
   const byId=(id:string,kind:CatalogItem['kind'])=>{
     const c=catalog.find(x=>x.id===id)
     if(!c||c.kind!==kind||!catalogItemUsable(c))return invalid()
@@ -90,7 +91,7 @@ export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:C
     for(const [index,o] of m.options.entries()){
       byId(o.serviceId,'servico')
       if(byId(o.dimensionId,'dimensao').serviceId!==o.serviceId||typeof o.quantity!=='string')return invalid()
-      if(newServiceSelectionIssue(o.serviceId)||servicePolicy(o.serviceId)?.execution==='external_confirmation')continue
+      if(newServiceSelectionIssue(o.serviceId)||(!ciliaComparisonOnly&&servicePolicy(o.serviceId)?.execution==='external_confirmation'))continue
       if(!/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(o.quantity))return invalid()
       let quantity:string
       try{const q=Q.from(o.quantity);if(q.n<=0n)return invalid();quantity=q.toString()}catch{return invalid()}
