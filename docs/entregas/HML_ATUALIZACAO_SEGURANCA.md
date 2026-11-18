@@ -191,3 +191,30 @@ A validação offline do docker-save agora rejeita tags fora da HML, IDs de
 config divergentes, revisões incorretas, camadas ausentes, links, caminhos
 inseguros e expansão acima do limite antes de qualquer carregamento. Isso
 complementa integridade; não autentica o produtor do pacote.
+
+## Verificação independente de escritores — incremento ChatGPT
+
+`deploy/hml-writer-guard.py` adiciona a checagem conservadora de sobreposição
+de caminhos de mounts (incluindo ancestrais e descendentes) e inspeção Linux
+somente leitura de descritores e mapas de memória por dispositivo/inode dos
+arquivos SQLite e sidecars. Não lê dados do banco nem imprime nomes de
+processos, credenciais ou conteúdos de mapas. Bloqueia também leitores, links
+inesperados, inspeção incompleta e execução global sem root.
+
+Sete testes específicos passaram no ambiente Linux do ChatGPT, com arquivos
+sintéticos, processo filho real com descritor aberto e mapa simulado para
+identidade alternativa. Sintaxe Python aprovada. A tentativa de varredura
+global de /proc nesse ambiente retornou bloqueio por inspeção incompleta
+(as permissões/isolamento local não permitem confirmar todos os processos).
+Não há Docker disponível nesse ambiente, nem teste da varredura na VPS.
+
+A checagem é observacional: não impede aberturas futuras nem substitui a
+janela de manutenção, exclusividade administrativa, controle de mounts ou
+o lock do coordenador. Não é prova absoluta de ausência de escritores.
+Antes de ativá-la no adaptador, testar em host Linux isolado com acesso
+integral a /proc e Docker local; executar após quiescência e antes de backup
+e substituição do banco, sem revelar metadados de outros serviços. Testar
+montagens sobrepostas, namespaces, sidecars e falhas de permissão. Se houver
+bloqueio, não executar operação destrutiva; não enfraquecer a checagem apenas
+para passar o teste. Conservar o update bloqueado até aceite integrado da
+manutenção e recuperação. Nenhuma alteração foi aplicada à VPS.
