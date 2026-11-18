@@ -290,3 +290,33 @@ alteração aprovada; não são testes Docker/HTTPS. A CLI real continua
 bloqueada. Falta ligar os hooks ao adaptador Docker, implementar e validar
 a troca efetiva do gateway, aplicar a inspeção host de escritores e
 testar todo o ciclo integrado. Não utilizar na VPS antes do aceite.
+
+## Adaptador de manutenção — integração experimental
+
+`hml-docker-maintenance.py` integra os hooks do coordenador com geração
+atômica de arquivos privados por operação, override de dois mounts do
+gateway, configuração completa Nginx, parada/recriação direcionada e seleção
+do validador de manutenção. O gateway original não é reescrito. Verifica
+o Compose resultante contra o normal, exceto os dois mounts intencionais;
+confere os mounts efetivos do gateway. A inspeção de escritores inclui
+montagens sobrepostas e o guard Linux após a parada. A classe base aceita
+tmpfs /tmp sem origem para API/Web e persiste o diretório da release.
+A abertura recria somente o gateway, depois de aceite durável do coordenador.
+Em falha de abertura tenta parar apenas o gateway; não restaura o SQLite.
+
+Sete testes novos exercitam o contrato de comandos com mock Docker e
+arquivos sintéticos reais: configuração, início restrito, abertura apenas
+do gateway, falha de abertura, escolha de credencial e bloqueio de escritores.
+Ainda não executados neste ambiente; aguardar CI. Os testes não validam
+a semântica real de merge dos overrides pelo Compose.
+
+Bloqueio explícito mantido e ampliado na CLI: update, recover e rollback
+não podem efetuar mutações enquanto a integração não for validada.
+O preflight não inicia contêineres. A classe experimental não foi conectada
+à CLI real. Pendências para o ensaio Docker: contrato de caminhos reais,
+validador restrito com rejeição da credencial normal e das escritas, política
+independente de env/rede/mounts em configuração e runtime, permissões
+do gateway, tmpfs e persistência da configuração após recriações, isolamento
+de escritores host, interrupções em entrada/aceite/abertura. Testar
+o comportamento do Compose com mounts e o Nginx dentro da imagem estável,
+sem acessar ou alterar a VPS. Não confundir os testes mock com ensaio real.

@@ -34,8 +34,10 @@ class DockerAdapter:
         return result.stdout
 
     def configuration(self):
-        override = ["-f", str(self.override)] if self.override.exists() else []
-        return json.loads(self.run(self.base + override + ["config", "--format", "json"]))
+        return json.loads(self.run(self.release_args() + ["config", "--format", "json"]))
+
+    def release_args(self):
+        return self.base + (["-f", str(self.override)] if self.override.exists() else [])
 
     def containers(self):
         ids = self.run(self.base + ["ps", "--all", "--quiet"]).split()
@@ -93,6 +95,9 @@ class DockerAdapter:
             if physical != expected:
                 raise ValueError("unexpected networks")
             for mount in service.get("volumes", []):
+                if (mount.get("type") == "tmpfs" and role in ("api", "web")
+                        and mount.get("target") == "/tmp" and not mount.get("source")):
+                    continue
                 source = Path(mount.get("source", ""))
                 if mount.get("type") != "bind" or not source.is_absolute() or source.resolve() != source:
                     raise ValueError("unsupported or noncanonical mount")
@@ -129,7 +134,7 @@ class DockerAdapter:
                     if source == self.database.parent or source == self.database:
                         raise ValueError("another container can write HML database")
 
-    def install(self, release):
+    def write_release(self, release):
         self.check_release(release)
         data = {"services": {role: {"image": release[role]} for role in ("api", "web", "gateway")}}
         data["services"]["api"]["environment"] = {"FUNIX_REVISION": release["revision"]}
@@ -140,8 +145,16 @@ class DockerAdapter:
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, self.override)
-        self.run(self.base + ["-f", str(self.override), "up", "--detach", "--no-build",
-                             "--pull", "never", "--no-deps", "api", "web", "gateway"])
+        fd = os.open(self.state, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def install(self, release):
+        self.write_release(release)
+        self.run(self.release_args() + ["up", "--detach", "--no-build",
+                                        "--pull", "never", "--no-deps", "api", "web", "gateway"])
 
     def validate(self, release):
         for _ in range(30):

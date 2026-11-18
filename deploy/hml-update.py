@@ -77,8 +77,8 @@ def main():
         return
     if not args.authorize:
         raise ValueError("explicit authorization required")
-    if args.action == "update":
-        raise ValueError("installation blocked pending validated user-write maintenance gate")
+    if args.action in ("update", "recover", "rollback"):
+        raise ValueError("mutations blocked pending integrated maintenance validation")
     transaction = load("hml-update-transaction").Transaction(
         args.operation, adapter, project_state=config["state"])
     if args.action == "recover":
