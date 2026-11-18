@@ -73,6 +73,8 @@ test('LID without evidence, contradictory aliases, stale confirmations and owner
   assert.equal(f.customers.record(original.id).conversationId,null)
   f.channels.identities.rememberProviderAliases([{remoteJid:lid,remoteJidAlt:'5531999990333@s.whatsapp.net'}])
   assert.equal(service.preview(cid).blocked,true)
+  assert.equal(await f.bridge.messages(cid,1),null)
+  assert.deepEqual(f.reads,[])
   assert.throws(()=>service.confirm(cid,{...input,token:view.token}),/mudou/)
   assert.equal(f.customers.search('entity','Pessoa da ficha').length,0)
   assert.equal(f.at.get(at.id).phone,'')

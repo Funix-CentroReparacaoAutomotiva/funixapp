@@ -464,7 +464,7 @@ export function createEvolutionChatBridge(
         codaSync?.providerJid(conversationId) ??
         associations?.resolveRemoteJid(conversationId, 'funix_comercial') ??
         entry?.jid
-      if (!jid) return null
+      if (!jid || (contacts&&!contacts.identities.identityJids(jid))) return null
       if (entry) entry.at = now()
       const active = codaSync ? canonicalFor(jid) : null
       if (codaSync && !active) return null
@@ -506,8 +506,9 @@ export function createEvolutionChatBridge(
       if (cursor) return null
       const result = await provider.findMessages(historyJid(jid), { page })
       local?.store.observePage(jid, result.items, page)
-      codaSync?.rememberProviderAliases(result.items, false, 'findMessages')
-      if (codaSync && canonicalFor(jid) !== active) return null
+      if(codaSync)codaSync.rememberProviderAliases(result.items,false,'findMessages')
+      else contacts?.identities.rememberProviderAliases(result.items,false,'findMessages')
+      if ((contacts&&!contacts.identities.identityJids(jid))||(codaSync&&canonicalFor(jid)!==active)) return null
       return {
         conversationId,
         items: result.items.map(
