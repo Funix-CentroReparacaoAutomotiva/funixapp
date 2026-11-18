@@ -76,11 +76,18 @@ db.close()
         await editor.locator("fieldset").nth(2).locator("summary").click()
         await editor.get_by_label("Justificativa técnica").fill("Serviço sintético equivalente no ensaio")
         await editor.get_by_role("button",name="Adicionar alternativa técnica").click()
-        await editor.get_by_label("Serviço",exact=True).select_option(ids["service"])
-        await editor.get_by_label("Dimensão",exact=True).select_option(ids["dimension"])
+        service = editor.get_by_role("combobox",name="Serviço",exact=True)
+        await expect(service).to_be_visible()
+        await service.select_option(ids["service"])
+        await expect(service).to_have_value(ids["service"])
+        dimension = editor.get_by_role("combobox",name="Dimensão",exact=True)
+        await dimension.select_option(ids["dimension"])
+        await expect(dimension).to_have_value(ids["dimension"])
+        h.mark("Alternativa de serviço e dimensão selecionada",width=width)
         await editor.get_by_label("Revisei todas as peças",exact=False).check()
         await editor.get_by_role("button",name="Comparar com o motor FUNIX").click()
         await expect(editor.get_by_role("heading",name="Valores conciliados")).to_be_visible()
+        h.mark("Comparação financeira via interface",width=width)
         await editor.get_by_role("button",name="Preparar criação do cenário").click()
         confirm = editor.get_by_role("button",name="Confirmar e criar cenário")
         await expect(confirm).to_be_disabled()
@@ -100,6 +107,7 @@ db.close()
         result = await saved.json()
         assert result["state"]=="created", result
         await expect(editor.get_by_text("Cenário registrado.",exact=False)).to_be_visible()
+        h.mark("Confirmação via interface concluída",width=width)
         replay = await ctx.request.post(endpoint+"/confirmar",headers={"Origin":ORIGIN},data=input)
         assert replay.status==200 and (await replay.json())["state"]=="existing"
         with sqlite3.connect(dbfile) as db:
@@ -127,7 +135,7 @@ db.close()
         h.mark("Cilia: revisão, comparação, confirmação, replay e histórico após restart com escrita OFF",width=width)
     finally:
         (ARTIFACTS/f"{width}-resultados.json").write_text(json.dumps({"synthetic":True,"results":h.results,"external":h.external,"pageErrors":h.page_errors},ensure_ascii=False,indent=2))
-        if page and not h.results:
+        if page and not any("restart" in x["name"] for x in h.results):
             try:
                 await page.screenshot(path=str(ARTIFACTS/f"{width}-falha.png"),timeout=3000)
             except Exception:
