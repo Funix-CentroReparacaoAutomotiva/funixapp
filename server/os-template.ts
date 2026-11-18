@@ -81,7 +81,7 @@ function rows(order:WorkOrder):string{
     .map(category=>icons.get(category)||'').join('')
   const componentHtml=components.map((item,i)=>{
     const code=symbol+(i+1)
-    const variant=i===0?' piece-ladder-code--first':i===components.length-1?' piece-ladder-code--last':''
+    const variant=(i===0?' piece-ladder-code--first':'')+(i===components.length-1?' piece-ladder-code--last':'')
     const quantity=item.quantity?item.quantity+' un.':''
     return '<div class="piece-ladder-code'+variant+'">'+html(code)+'</div>'+
       '<div class="piece-ladder-component'+(i===0?' piece-ladder-component--first':'')+'">'+
