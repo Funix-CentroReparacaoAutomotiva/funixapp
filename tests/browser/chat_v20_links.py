@@ -137,12 +137,17 @@ async def device_case(browser, width, height):
                     state["active"] = None
                 state["revision"] += 1
                 return await route.fulfill(**response(200, {"linkId": target, "revision": state["revision"]}))
+            if method == "GET" and path.endswith("/identity"):
+                return await route.fulfill(**response(200, {"phone": None, "blocked": False, "targets": [], "owner": None}))
+            if method == "GET" and path.endswith("/messages"):
+                return await route.fulfill(**response(200, {"conversationId": path.split("/")[-2], "items": [], "page": 1, "nextPage": None}))
             raise AssertionError(f"Unexpected API call {method} {path}")
 
         await ctx.route("**/api/chat/conversations**", mock)
         await ctx.route("**/api/atendimentos?*", mock)
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Alfa", exact=True).click()
+        await page.get_by_text("Gerenciar vínculos", exact=True).click()
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
         await expect(panel).to_be_visible()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
@@ -193,6 +198,7 @@ async def device_case(browser, width, height):
 
         await page.get_by_role("button", name="Fechar detalhes").click()
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Beta", exact=True).click()
+        await page.get_by_text("Gerenciar vínculos", exact=True).click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
         h.mark(f"{width}px: conversation switch isolates manual association panels")
 

@@ -25,8 +25,9 @@ function initialFields(record?: Atendimento): AtendimentoInput {
   }
 }
 
-export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy, onAuthRequired, onMessage }: {
+export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, onDirty, onBusy, onAuthRequired, onMessage }: {
   record?: Atendimento
+  conversationId?:string|null
   onSaved: (record: Atendimento) => void
   onAutoSaved?: (record: Atendimento, contactsChanged: boolean) => void
   onDirty: (dirty: boolean) => void
@@ -69,7 +70,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
     inFlight.current=true
     setBusy(true);onBusy(true);setFailure('')
     try {
-      const saved=await api<Atendimento>(`/api/atendimentos/${encodeURIComponent(record.id)}`,{
+      const saved=await api<Atendimento>(`/api/atendimentos/${encodeURIComponent(record.id)}${conversationId?'?conversa='+encodeURIComponent(conversationId):''}`,{
         method:'PATCH',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({...snapshot,revision:revisionRef.current})
       })

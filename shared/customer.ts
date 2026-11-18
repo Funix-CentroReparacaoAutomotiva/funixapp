@@ -2,6 +2,7 @@ export type ReferenceKind = 'person' | 'contact' | 'vehicle' | 'payer'
 export type CustomerReference = {
   id: string | null
   text: string
+  entityId?: string|null
   plate?: string
   fabricationYear?: string | null
   modelYear?: string | null

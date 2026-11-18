@@ -22,7 +22,7 @@ export class CustomerRepository {
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
-    const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear'])
+    const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear','entityId'])
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
@@ -73,17 +73,26 @@ export class CustomerRepository {
       this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(r))
       // Selecting a known channel Contact is explicit; a textual phone match never reaches here.
       const cid=kind==='contact'&&r.id?this.record(r.id).conversationId:null
-      if(cid&&!this.db.prepare('SELECT 1 FROM v20_associations WHERE conversation_id=? AND atendimento_id=? AND unlinked_at IS NULL').get(cid,at)){
+      if(cid&&!this.hasConversationReference(cid,at)){
         this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(randomUUID(),cid,at,new Date().toISOString(),'operator','explicit_contact_reference')
         this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
       }
     })
   }
+  private hasConversationReference(conversationId:string,at:string) {
+    const identities=new ConversationIdentities(this.db)
+    const jid=identities.providerJid(conversationId),members=jid?identities.identityJids(jid):null
+    if(!members)return !!this.db.prepare('SELECT 1 FROM v20_associations WHERE conversation_id=? AND atendimento_id=? AND unlinked_at IS NULL').get(conversationId,at)
+    return !!this.db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
+      WHERE a.atendimento_id=? AND a.unlinked_at IS NULL AND c.instance='funix_comercial'
+      AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(at,...members)
+  }
+
   references(at:string):CustomerReferences {
     const row=this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(at)!
     const refs:CustomerReferences={person:[{id:null,text:String(row.name)}],contact:[{id:null,text:String(row.phone)}],vehicle:[{id:null,text:String(row.vehicle),plate:String(row.plate),fabricationYear:row.fabrication_year as string|null,modelYear:row.model_year as string|null}],payer:[]}
     const stored=this.db.prepare('SELECT * FROM atendimento_references WHERE atendimento_id=? ORDER BY position').all(at)
-    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(kind==='vehicle'?{plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
+    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
     return refs
   }
   present(items:Atendimento[]):Atendimento[] {
@@ -133,6 +142,66 @@ export class CustomerRepository {
       return saved
     })
   }
+  /** Caller holds the identity confirmation transaction and has checked aliases and ownership. */
+  confirmChannelContact(person:CustomerRecord|null,name:string,existing:CustomerRecord|null,phone:string,conversationId:string) {
+    const entity=person??this.saveRecord({kind:'entity',text:name})
+    return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId)}
+  }
+
+  private bindConfirmedPhone(existing:CustomerRecord|null,phone:string,entityId:string,conversationId:string) {
+    if(!existing){
+      const contact=this.saveRecord({kind:'contact',text:phone,entityId})
+      this.db.prepare('UPDATE customer_records SET conversation_id=? WHERE id=?').run(conversationId,contact.id)
+      return this.record(contact.id)
+    }
+    if(existing.entityId!==entityId||!existing.conversationId||!existing.text){
+      this.db.prepare(`UPDATE customer_records SET entity_id=?,conversation_id=COALESCE(conversation_id,?),
+        data=json_set(data,'$.text',?),phone_normalized=?,revision=revision+1 WHERE id=?`)
+        .run(entityId,conversationId,existing.text||phone,phone,existing.id)
+    }
+    return this.record(existing.id)
+  }
+
+  reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord,contact:CustomerRecord,legacyIndex?:number) {
+    let changed=false
+    const write=(kind:'person'|'contact',index:number,record:CustomerRecord)=>{
+      const ref={id:record.id,text:record.text}
+      this.db.prepare(`INSERT INTO atendimento_references VALUES(?,?,?,?,?)
+        ON CONFLICT(atendimento_id,kind,position) DO UPDATE SET record_id=excluded.record_id,data=excluded.data`)
+        .run(at,kind,index,ref.id,JSON.stringify(ref))
+      refs[kind][index]=ref
+      changed=true
+    }
+    const append=(kind:'person'|'contact',record:CustomerRecord,index?:number)=>{
+      const rows=refs[kind]
+      if(rows.some(ref=>ref.id===record.id))return
+      if(!rows.length||rows.length===1&&!rows[0]!.id&&!rows[0]!.text)write(kind,0,record)
+      else if(index!==undefined)write(kind,index,record)
+      else {
+        // Persist the implicit first legacy reference before appending a distinct participant.
+        const stored=this.db.prepare('SELECT MAX(position) AS position FROM atendimento_references WHERE atendimento_id=? AND kind=?').get(at,kind)
+        if(stored?.position==null){
+          const first=rows[0]!
+          this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,0,first.id,JSON.stringify(first))
+        }
+        write(kind,Number(stored?.position??0)+1,record)
+      }
+    }
+    append('person',person,legacyIndex)
+    const phone=normalizePhone(contact.text)
+    const same=refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone)
+    append('contact',contact,same<0?undefined:same)
+    if(changed)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
+    this.updateSearch(at)
+  }
+
+  private updateSearch(at:string) {
+    const [record]=this.present([new AtendimentoRepository(this.db).get(at)])
+    const search=[record!.id,record!.phone,record!.name,record!.vehicle,record!.brand,record!.model,record!.plate].join('\n')
+      .normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
+    this.db.prepare('UPDATE atendimentos SET search_text=? WHERE id=?').run(search,at)
+  }
+
   private saveRecord(raw:unknown,id?:string) {
     const source=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId'])
     const old=id?this.record(id):null,kind=old?.kind??source.kind
@@ -153,11 +222,8 @@ export class CustomerRepository {
       if(old){if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.');const changed=this.db.prepare('UPDATE customer_records SET data=?,entity_id=?,revision=revision+1 WHERE id=? AND revision=?').run(data,entityId as string|null,key,old.revision);if(!changed.changes)invalid()}
       else this.db.prepare('INSERT INTO customer_records(id,kind,data,entity_id) VALUES(?,?,?,?)').run(key,String(kind),data,entityId as string|null)
       if(kind==='contact')this.db.prepare('UPDATE customer_records SET phone_normalized=? WHERE id=?').run(phone,key)
-      for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(key)){
-        const record=this.present([new AtendimentoRepository(this.db).get(String(affected.atendimento_id))])[0]!
-        const search=[record.id,record.phone,record.name,record.vehicle,record.brand,record.model,record.plate].join('\n').normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
-        this.db.prepare('UPDATE atendimentos SET search_text=? WHERE id=?').run(search,record.id)
-      }
+      for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(key))
+        this.updateSearch(String(affected.atendimento_id))
       return this.record(key)
     }
   }

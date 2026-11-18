@@ -35,6 +35,7 @@ export function createEvolutionChatBridge(
   const byId = new Map<string, { jid: string; at: number }>()
   const byJid = new Map<string, string>()
   const pendingSends = new Set<string>()
+  const observed = new Map<string,number>()
   // Durable provider evidence and canonical Coda association have distinct owners.
   const canonicalFor = (primary: string): string | null =>
     codaSync?.resolveIdentityActive(primary) ?? null
@@ -80,6 +81,7 @@ export function createEvolutionChatBridge(
 
   return {
     contacts,
+    observedConversation(jid:string){return now()-(observed.get(jid)??-Infinity)<ttlMs},
     async profilePhoto(conversationId:string){
       const jid=codaSync?.providerJid(conversationId)
       const pn=jid?sendTarget(jid):null
@@ -121,7 +123,14 @@ export function createEvolutionChatBridge(
         if (!rows.length && skip === 0) throw error
       }
 
-      if (source === 'evolution') local?.store.observeChats(rows)
+      if (source === 'evolution') {
+        local?.store.observeChats(rows)
+        for(const row of rows){
+          observed.delete(row.remoteJid)
+          observed.set(row.remoteJid,now())
+        }
+        while(observed.size>maxEntries)observed.delete(observed.keys().next().value!)
+      }
       // Scan the entire provider page before resolving any links to detect collisions.
       if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
       else if(associations)associations.observePhoneAliases(rows)
@@ -141,8 +150,8 @@ export function createEvolutionChatBridge(
               const projection = projections?.get(row.remoteJid)
               const conversationId = register(members?.[0] ?? row.remoteJid)
               const contactName=contacts?.presentation(conversationId)
-              const linkedCount=contactName&&contacts?new Set(contacts.identities.links(row.remoteJid).map(link=>link.atendimento_id)).size:0
-              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??linkedCount,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection
+              const linkedCount=contacts&&!projection?new Set(contacts.identities.links(row.remoteJid).map(link=>link.atendimento_id)).size:0
+              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??linkedCount,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection??(linkedCount?{names:[],atendimentoCount:linkedCount,preview:null,profilePhoto:null}:undefined)
               const activeAt=canonicalFor(row.remoteJid)
               const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
               const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn
