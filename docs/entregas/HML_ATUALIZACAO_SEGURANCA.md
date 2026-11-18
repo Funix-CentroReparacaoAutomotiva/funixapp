@@ -97,3 +97,26 @@ mudanças na VPS com estes componentes. O ambiente especializado com Docker
 e testes de ciclos de recuperação traz vantagem concreta nesta etapa; se
 for usado Codex, limitar a esse contrato e reaproveitar os componentes,
 sem merge, deploy, acesso à VPS ou dados reais.
+
+## Incremento do coordenador transacional
+
+`hml-update-transaction.py` implementa lock exclusivo, journal com fsync e
+substituição atômica, snapshot definitivo após quiescência, rollback em falha
+e recuperação explícita de operação interrompida. O journal é privado e deve
+receber apenas identificadores de release, nunca credenciais. Cada operação
+usa um diretório novo. `recover(authorized=True)` permite também reverter uma
+atualização aceita e é idempotente após restauração concluída.
+
+Os testes usam um adaptador simulado e SQLite sintético real, incluindo uma
+alteração de dados representando migração incompatível. Não são testes Docker.
+O Docker local responde, mas ainda não foi executado um ciclo integrado nele.
+O adaptador deve garantir ausência de escritores, isolamento HML, preservação
+do banco falho e sidecars, restauração atômica, UID/GID e validação HTTPS.
+Essas obrigações ainda não estão implementadas; este módulo não oferece CLI
+de atualização real. Procedência autenticada no GitHub também permanece
+pendente. Não utilizar o coordenador com dados da VPS nesta etapa.
+
+A validação offline do docker-save agora rejeita tags fora da HML, IDs de
+config divergentes, revisões incorretas, camadas ausentes, links, caminhos
+inseguros e expansão acima do limite antes de qualquer carregamento. Isso
+complementa integridade; não autentica o produtor do pacote.
