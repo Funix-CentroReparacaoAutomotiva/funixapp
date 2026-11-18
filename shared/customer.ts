@@ -2,6 +2,7 @@ export type ReferenceKind = 'person' | 'contact' | 'vehicle' | 'payer'
 export type CustomerReference = {
   id: string | null
   text: string
+  entityId?: string|null
   plate?: string
   fabricationYear?: string | null
   modelYear?: string | null
@@ -16,6 +17,14 @@ export type CustomerRecord = CustomerReference & {
   conversationId?: string | null
   channelState?: 'informed' | 'observed' | 'response_received'
 }
+export type ContactAvailability = {
+  state: 'pending' | 'available' | 'unavailable' | 'conflict' | 'incomplete'
+  checkedAt: string | null
+  conversationId: string | null
+}
+export type EntityContact = CustomerRecord & {whatsapp: ContactAvailability}
+export type EntityRecord = CustomerRecord & {contacts: EntityContact[]}
+export type EntityContactInput = {id?: string; text: string; revision?: number}
 export type NamePart = { name: string; entityId: string | null }
 export type CommercialConversation = {
   contactId?: string

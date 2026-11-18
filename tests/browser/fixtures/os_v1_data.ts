@@ -4,6 +4,7 @@ import type {StageCluster} from '../../../shared/stage-clusters.ts'
 
 const count=Number(process.argv[2]??4)
 if(!Number.isInteger(count)||count<1||count>80)throw Error('invalid piece count')
+const stress=process.argv[3]==='stress'
 const categories:StageCluster[]=['Preparação técnica','Correção estrutural','Pintura e acabamento','Estética e revitalização','Serviços complementares']
 const diagnostics:WorkOrder['scope']['diagnostics']=[]
 const lines:WorkOrder['scope']['lines']=[]
@@ -12,9 +13,27 @@ for(let i=0;i<count;i++){
  diagnostics.push({pieceId,pieceName:'Peça sintética '+String(i+1).padStart(2,'0'),
    diagnosis:'Diagnóstico sintético '+(i+1),intensity:'leve',notes:'Conferir montagem após desmontagem.'})
  lines.push({id:'s-'+i,pieceId,kind:'service',pieceName:diagnostics[i]!.pieceName,name:'Reparação técnica',diagnosis:'Avaria externa',dimension:'',quantity:'1',notes:'',
-   stages:categories.slice(0,3).map(cluster=>({name:'Etapa de '+cluster,dimension:i%2===0?'Parcial':'M',cluster}))})
+   stages:(stress?categories:categories.slice(0,3)).map(cluster=>({name:'Etapa de '+cluster,dimension:i%2===0?'Parcial':'M',cluster}))})
  if(i%2===0)lines.push({id:'c-'+i,pieceId,kind:'component',pieceName:diagnostics[i]!.pieceName,
    name:'Presilha '+(i+1),diagnosis:'',dimension:'',quantity:'4',notes:'',stages:[]})
+}
+if(stress){
+ const first=diagnostics[0]!
+ first.notes=Array.from({length:70},(_,i)=>'Nota'+String(i).padStart(3,'0')+' verificar montagem e alinhamento.').join(' ')
+ for(let i=0;i<20;i++)lines.push({id:'stress-c-'+i,pieceId:first.pieceId,kind:'component',pieceName:first.pieceName,
+   name:'Componente QA'+String(i).padStart(2,'0')+' com descrição extensa',diagnosis:'',dimension:'',quantity:'12',notes:'',stages:[]})
+}
+// Four pieces: one component, several, no components, and a component with notes.
+if(process.argv[3]==='component-borders'){
+ if(count!==4)throw Error('component-borders requires four pieces')
+ for(const diag of diagnostics)diag.notes=''
+ diagnostics[3]!.notes='Conferir após montagem.'
+ for(let i=lines.length-1;i>=0;i--)if(lines[i]!.kind==='component')lines.splice(i,1)
+ for(const [pieceIndex,quantity] of [[0,1],[1,3],[3,1]] as const){
+  const diag=diagnostics[pieceIndex]!
+  for(let j=0;j<quantity;j++)lines.push({id:'border-c-'+pieceIndex+'-'+j,pieceId:diag.pieceId,kind:'component',pieceName:diag.pieceName,
+    name:'Componente teste '+(j+1),diagnosis:'',dimension:'',quantity:'1',notes:'',stages:[]})
+ }
 }
 const order:WorkOrder={
  id:'synthetic-os',number:'OS-000142',atendimentoId:'synthetic-at',budgetVersionId:'synthetic-budget',

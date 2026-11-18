@@ -16,7 +16,7 @@ export type HttpTransportOptions = Readonly<{
 
 const MAX_RESPONSE_BYTES = 1024 * 1024
 const MAX_REQUEST_BYTES = 2048
-const ALLOWED_PATH = /^\/chat\/(?:findChats|findMessages)\/[A-Za-z0-9_-]{1,80}$/
+const ALLOWED_PATH = /^\/chat\/(?:findChats|findMessages|whatsappNumbers)\/[A-Za-z0-9_-]{1,80}$/
 
 function invalidConfiguration(): never { throw new Error('Evolution HTTP transport configuration invalid') }
 function invalidResponse(): never { throw new EvolutionReadError('RESPONSE') }

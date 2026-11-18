@@ -22,7 +22,7 @@ export function loadConversationRuntime(
       throw Error('CHAT_LOCAL_READ_REQUIRES_STORAGE')
     return undefined
   }
-  const authority = !identities || env.FUNIX_CHAT_AUTONOMOUS_ENABLED === 'true' ? new LocalConversationAssociations(db) : undefined
+  const authority = !identities || env.FUNIX_CHAT_AUTONOMOUS_ENABLED === 'true' ? new LocalConversationAssociations(db, undefined, env.FUNIX_CHAT_AUTONOMOUS_ENABLED==='true') : undefined
   createConversationStoreSchema(db)
   createSendOperationSchema(db)
   const sends = new SendOperations(db)

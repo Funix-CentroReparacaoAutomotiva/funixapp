@@ -49,7 +49,16 @@ export const ATENDIMENTO_STAGES = [
 
 export type AtendimentoStage = typeof ATENDIMENTO_STAGES[number]['id']
 
+export const ATENDIMENTO_PURPOSES = {
+  unclassified: 'A classificar',
+  non_commercial: 'Não comercial',
+  commercial: 'Comercial',
+} as const
+export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
+
 export interface Atendimento {
+  purpose?: AtendimentoPurpose
+  chatIdentity?: {name:string;phone:string}
   closedAt?: string | null
   references?: CustomerReferences
   lastContactAt?: string | null
@@ -84,6 +93,6 @@ export interface AtendimentoList {
 }
 
 export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string} & Partial<Pick<Atendimento, 'phone' | 'references' |
-  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
+  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }

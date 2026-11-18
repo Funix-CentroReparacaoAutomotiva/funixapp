@@ -2,7 +2,7 @@ import {CustomerLines} from './CustomerLines'
 import type {CustomerReferences} from '../shared/customer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ATENDIMENTO_STAGES } from '../shared/contracts'
+import { ATENDIMENTO_PURPOSES, ATENDIMENTO_STAGES } from '../shared/contracts'
 import type { Atendimento, AtendimentoInput } from '../shared/contracts'
 import { api } from './api'
 import type { RequestFailure } from './api'
@@ -13,6 +13,7 @@ import './vehicle-registration.css'
 function initialFields(record?: Atendimento): AtendimentoInput {
   return {
     closed:!!record?.closedAt,
+    purpose:record ? record.purpose : 'unclassified',
     references:record?.references??{person:[{id:null,text:record?.name??''}],contact:[{id:null,text:record?.phone??''}],vehicle:[{id:null,text:record?.vehicle??'',plate:record?.plate??'',fabricationYear:record?.fabricationYear??'',modelYear:record?.modelYear??''}],payer:[]},
     phone: record?.phone ?? '', name: record?.name ?? '', vehicle: record?.vehicle ?? '',
     brand: record?.brand ?? '', model: record?.model ?? '', plate: record?.plate ?? '',
@@ -24,8 +25,9 @@ function initialFields(record?: Atendimento): AtendimentoInput {
   }
 }
 
-export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy, onAuthRequired, onMessage }: {
+export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, onDirty, onBusy, onAuthRequired, onMessage }: {
   record?: Atendimento
+  conversationId?:string|null
   onSaved: (record: Atendimento) => void
   onAutoSaved?: (record: Atendimento, contactsChanged: boolean) => void
   onDirty: (dirty: boolean) => void
@@ -68,7 +70,7 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
     inFlight.current=true
     setBusy(true);onBusy(true);setFailure('')
     try {
-      const saved=await api<Atendimento>(`/api/atendimentos/${encodeURIComponent(record.id)}`,{
+      const saved=await api<Atendimento>(`/api/atendimentos/${encodeURIComponent(record.id)}${conversationId?'?conversa='+encodeURIComponent(conversationId):''}`,{
         method:'PATCH',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({...snapshot,revision:revisionRef.current})
       })
@@ -118,7 +120,11 @@ export function AtendimentoForm({ record, onSaved, onAutoSaved, onDirty, onBusy,
       <div className="at-field"><label htmlFor="at-reason">Motivo / descrição do ocorrido</label><textarea id="at-reason" value={fields.reason} onChange={event => update('reason', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>
       <div className="at-field"><label htmlFor="at-delivery-date">Data prevista de entrega (opcional)</label><input id="at-delivery-date" type="date" value={fields.deliveryDate??''} onChange={event=>update('deliveryDate',event.target.value||null)} disabled={busy&&!record}/><small>Preenchimento manual; não altera o prazo de execução do orçamento. Uma mudança exige nova emissão das OS existentes.</small></div>
        <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>
-      {record && <><div className="at-field"><label htmlFor="at-stage">Fase comercial</label><select id="at-stage" value={fields.stage} onChange={event => update('stage', event.target.value as Atendimento['stage'])} disabled={busy}>{ATENDIMENTO_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></div><p className="at-form-hint">Movimentação manual. Os prazos dos nomes não mudam a fase automaticamente.</p></>}
+      <div className="at-field"><label htmlFor="at-purpose">Finalidade</label><select id="at-purpose" value={fields.purpose??'commercial'} disabled={busy} onChange={event=>{
+        const purpose=event.target.value as Atendimento['purpose']
+        setDraft(previous=>({...previous,purpose,...(purpose==='commercial'?{}:{stage:'novo-lead',explicitRefusal:false,rejectionReason:''})}))
+      }}>{Object.entries(ATENDIMENTO_PURPOSES).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></div>
+      {record && (!fields.purpose||fields.purpose==='commercial') && <><div className="at-field"><label htmlFor="at-stage">Fase comercial</label><select id="at-stage" value={fields.stage} onChange={event => update('stage', event.target.value as Atendimento['stage'])} disabled={busy}>{ATENDIMENTO_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></div><p className="at-form-hint">Movimentação manual. Os prazos dos nomes não mudam a fase automaticamente.</p></>}
       {fields.stage === 'rejeitados' && <div className="at-refusal"><label><input type="checkbox" checked={fields.explicitRefusal} required onChange={event => update('explicitRefusal', event.target.checked)} disabled={busy} /> Houve recusa explícita do cliente.</label><div className="at-field"><label htmlFor="at-rejection-reason">Motivo da recusa</label><textarea id="at-rejection-reason" required value={fields.rejectionReason} onChange={event => update('rejectionReason', event.target.value)} maxLength={2000} rows={2} disabled={busy} /></div></div>}
       {record && <label><input type="checkbox" checked={!!fields.closed} onChange={e=>update('closed',e.target.checked)}/> Atendimento encerrado</label>}
       {record && <p className="at-technical-id">ID técnico: {record.id}</p>}

@@ -20,18 +20,16 @@ export function operationalParagraphs(order:WorkOrder):string[] {
       ' | Placa: '+(scope.vehicle.plate||'Não informada'),
     '',
     ...(scope.deliveryDate!==undefined?['Data prevista de entrega: '+deliveryDateLabel(scope.deliveryDate),'']:[]),
-    'DIAGNÓSTICOS'
   ]
-  for(const item of scope.diagnostics) {
-    paragraphs.push(item.pieceName+(item.diagnosis?' | '+item.diagnosis:'')+
-      (item.intensity?' | Intensidade: '+item.intensity:''))
-    if(item.notes)paragraphs.push('Observação do diagnóstico: '+item.notes)
+  const pieceNotes=scope.diagnostics.filter(item=>item.notes?.trim())
+  if(pieceNotes.length){
+    paragraphs.push('OBSERVAÇÕES DAS PEÇAS')
+    for(const item of pieceNotes)paragraphs.push(item.pieceName+' | Observação: '+item.notes)
   }
   paragraphs.push('','SERVIÇOS E COMPONENTES AUTORIZADOS')
   for(const item of scope.lines) {
     paragraphs.push('',item.pieceName+' | '+(item.kind==='service'?'Serviço: ':'Componente: ')+item.name,
-      'Quantidade: '+item.quantity+(item.dimension?' | Dimensão: '+item.dimension:'')+
-      (item.diagnosis?' | Diagnóstico: '+item.diagnosis:''))
+      'Quantidade: '+item.quantity+(item.dimension?' | Dimensão: '+item.dimension:''))
     if(item.notes)paragraphs.push('Observação: '+item.notes)
     for(const stage of item.stages)
       paragraphs.push('Etapa técnica: '+stage.name+(stage.dimension?' | Dimensão: '+stage.dimension:''))

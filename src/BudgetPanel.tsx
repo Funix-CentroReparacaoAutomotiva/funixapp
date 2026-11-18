@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useEffectEvent,useLayoutEffect,useRef,useState} from 'react'
 import type {BudgetPreview,BudgetVersion} from '../shared/pricing'
 import type {WorkOrder} from '../shared/work-order'
+import {correctOpticalWorkOrderScope} from '../shared/optical-work-order'
 import type {Atendimento} from '../shared/contracts'
 import {deliveryDateLabel,validDeliveryDate} from '../shared/delivery-date'
 import {api} from './api'
@@ -75,6 +76,15 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
    }
   })
  }
+ async function correctOpticalStages(id:string,current:WorkOrder){
+  if(busy||checkingOrder||deliveryPrompt||current.cancellation)return
+  if(!window.confirm('Corrigir as etapas de restauração de lentes para Lixamento, Envernização e Polimento? Uma nova revisão da OS será emitida; o orçamento e a data de entrega serão preservados.'))return
+  await operation(async()=>{
+   const os=await api<WorkOrder>(osPath(id)+'/revisoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authorized:true,expectedRevision:current.revision??1,correction:'optical-stages-v1'})})
+   if(versionId===id){setOrder(os);setOrderHistory(await api<WorkOrder[]>(osPath(id)+'/revisoes'))}
+   await load()
+  })
+ }
  async function confirmDelivery(withDate:boolean){
   if(busy||!deliveryPrompt)return
   if(withDate?!validDeliveryDate(deliveryDraft):deliveryDraft!=='')return
@@ -120,7 +130,8 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
   </div>
   {order&&<><p className="at-form-hint">{order.number} · R{String(order.revision??1).padStart(2,'0')} · {order.scope.lines.length} itens · Entrega: {deliveryDateLabel(order.scope.deliveryDate)} · {order.cancellation?'OS cancelada':selectedMeta?.workOrderNeedsReissue?'Reemissão necessária':'OS autorizada'}</p>
    {selectedMeta?.workOrderNeedsReissue&&!order.cancellation&&<><p role="status">A previsão do Atendimento mudou para {deliveryDateLabel(selectedMeta.deliveryDate)}. A OS anterior foi preservada.</p><button className="primary-btn" disabled={busy} onClick={()=>void createOrder(selected.id,order.revision??1)}>Emitir nova revisão</button></>}
-   {orderHistory.length>1&&<details><summary>Histórico de emissões da OS</summary>{orderHistory.map((item,index)=><p key={item.revision??1}><a href={orderUrl(selected.id,item.revision??1)} target="_blank" rel="noopener noreferrer">R{String(item.revision??1).padStart(2,'0')} · {deliveryDateLabel(item.scope.deliveryDate)}</a> · {item.cancellation?'Cancelada':index===0?selectedMeta?.workOrderNeedsReissue?'Desatualizada':'Vigente':'Substituída'}</p>)}</details>}
+   {!order.cancellation&&!selected.cancellation&&correctOpticalWorkOrderScope(order.scope,selected.snapshot)&&<button type="button" className="primary-btn" disabled={busy} onClick={()=>void correctOpticalStages(selected.id,order)}>Corrigir etapas da restauração óptica</button>}
+    {orderHistory.length>1&&<details><summary>Histórico de emissões da OS</summary>{orderHistory.map((item,index)=><p key={item.revision??1}><a href={orderUrl(selected.id,item.revision??1)} target="_blank" rel="noopener noreferrer">R{String(item.revision??1).padStart(2,'0')} · {deliveryDateLabel(item.scope.deliveryDate)}</a> · {item.cancellation?'Cancelada':index===0?selectedMeta?.workOrderNeedsReissue?'Desatualizada':'Vigente':'Substituída'}</p>)}</details>}
   </>}
  </div>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>
  {budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}>
