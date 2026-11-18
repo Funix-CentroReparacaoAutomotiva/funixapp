@@ -24,131 +24,9 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .sheet {
-    width: var(--header-width);
-    max-width: none; /* No celular, preservar medidas reais e permitir rolagem horizontal. */
-    margin: 48px auto 0;
-  }
-  .os-header {
-    width: 100%;
-    min-width: 0;
-    height: 15mm;
-    display: grid;
-    grid-template-columns: var(--brand-width) var(--id-width) minmax(0, 1fr) var(--delivery-width) var(--page-width);
-    background: var(--navy);
-    color: var(--white);
-    overflow: hidden;
-  }
-  .brand, .field {
-    display: flex;
-    height: 100%;
-    min-width: 0;
-    align-items: center; /* todos os elementos centrados verticalmente */
-  }
-  /* Marca: restauro óptico inspirado na OS V63; a tipografia é Arimo Bold,
-     fonte que o PDF original utilizava para o "OS". */
-  .brand {
-    justify-content: center;
-    gap: 2.8mm;
-    padding: 0 2mm;
-    white-space: nowrap;
-  }
-  .os-prefix {
-    font-family: Arimo, Arial, Helvetica, sans-serif;
-    font-size: 19pt;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -.35px;
-    flex: none;
-  }
-  /* Logo FUNIX vetorial oficial; tamanho intrínseco sem distorção. */
-  .brand svg {
-    display: block;
-    width: 32mm;
-    height: auto;
-    max-height: none;
-    flex: 0 0 auto;
-    transform: translateY(.2mm);
-  }
-  .field {
-    border-left: 2px solid var(--white);
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    align-content: center;
-    align-items: center;
-    gap: 1.6mm;
-    padding-inline: 2.5mm;
-    white-space: nowrap;
-  }
-  .label {
-    font-size: 10pt;
-    font-weight: 400;
-    line-height: 1;
-    text-align: left;
-    white-space: nowrap;
-  }
-  .value {
-    min-width: 0;
-    font-size: 12.5pt;
-    font-weight: 800;
-    line-height: 1.06;
-    letter-spacing: -.15px;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .id-field .value { font-size: 12.5pt; }
-  .delivery-field .value { font-size: 13pt; }
-  .page-field { gap: 1.2mm; padding-inline: 1.9mm; }
-  .page-field .value { font-size: 12pt; }
-
-  /* Seção elástica: o rótulo fica à esquerda e o veículo é centralizado no espaço livre.
-     Nomes longos podem quebrar em 2 linhas, sem deslocar ID/ENTREGA/PÁG. */
-  .vehicle-field { gap: 1.6mm; padding-inline: 2.6mm; }
-  .vehicle-field .value {
-    justify-self: stretch;
-    font-size: 12pt;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-wrap: balance;
-    line-height: 1.04;
-  }
-
-  .controls {
-    padding-top: 23px;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-size: 13px;
-  }
-  .controls label { font-weight: 700; }
-  .controls input {
-    flex: 1 1 380px;
-    min-width: 140px;
-    border: 1px solid #cad4e1;
-    border-radius: 6px;
-    padding: 10px 11px;
-    font: inherit;
-    background: #fff;
-    color: #0A1F44;
-  }
-  .testcase {
-    appearance: none;
-    border: 1px solid #c2d0df;
-    background: #fff;
-    border-radius: 5px;
-    color: #0A1F44;
-    font: 12px Arial, sans-serif;
-    padding: 7px 10px;
-    cursor: pointer;
-  }
-  .note { font-size: 12px; color: #586a83; margin: 9px 0; }
   
   @media print {
-    html, body { background: white; }
-    .sheet { width: 279mm; max-width: none; margin: 0; }
-    .controls, .note { display: none !important; }
-  }
+    html, body { background: white; }}
 
 
 :root{
@@ -165,14 +43,7 @@
 html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:10pt;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{background:#eef1f5}
 
-/* Margin boxes are page-specific to prevent the running OS header showing the wrong subtitle. */
-
-
-.cover-page{page:cover;break-after:page;min-height:0}
-.plan-page{page:plan;min-height:0}
-
 .running-header{height:18mm;min-height:18mm;max-height:18mm;background:var(--navy);color:white;margin:0;padding:0 23mm 0 4mm;display:block}
-.cover-header{position:running(coverhead)}
 .plan-header{position:running(planhead)}
 .running-header .mast{height:18mm;display:grid;grid-template-columns:24% 48% 28%;align-items:center;gap:0;min-width:0}
 .running-header .logo{min-width:0;padding:0 6mm 0 3.5mm}
@@ -180,187 +51,34 @@ body{background:#eef1f5}
 .running-header .title{text-align:center;min-width:0}
 .running-header .title h1{margin:0;color:#fff;font-size:16pt;font-weight:800;line-height:1.08;letter-spacing:.25px;text-align:center}
 .running-header .title p{margin:2px 0 0;font-size:10pt;color:#fff;font-weight:800;line-height:1.16;text-align:center;letter-spacing:.15px}
-.running-header .docref{min-width:0;color:#e9eff6;font-size:10pt;line-height:1.13;text-align:right;padding:0 2mm 0 0;overflow-wrap:anywhere}
-.running-header .docref strong{font-size:10pt;font-weight:800}
 
 .footer-legend{position:running(iconlegend);height:11mm;min-height:11mm;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 3mm;border:1px solid var(--navy);background:var(--footer);color:#233b59;font-size:10pt;white-space:nowrap}
 .footer-legend .legend-heading{font-weight:800;white-space:nowrap}
 .footer-legend .legend-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:#233b59}
 .footer-legend .legend-text{font-size:10pt;line-height:1.05}
 .footer-legend svg{display:block;width:14px;height:14px;flex:0 0 14px;color:#224c7b}
-
-.cover-page,.plan-page{background:#fff;width:100%;max-width:100%;padding:0;margin:0}
-.identity{display:grid;grid-template-columns:33% 24% 13% 10% 20%;align-items:start;border:1px solid var(--navy);padding:9px 13px;gap:0;margin:3mm 0 0}
-.identity-field{min-width:0;padding:0 3px}
-.identity-field:first-child{padding-left:0}
-.identity-field:last-child{text-align:right;padding-right:0}
-.idlabel{display:block;text-transform:uppercase;color:#5c6c81;font-size:10pt;font-weight:800;letter-spacing:0;line-height:1.18;margin-bottom:4px}
-.idvalue{display:block;color:var(--navy);font-size:10pt;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
-.summary-intro{display:flex;align-items:baseline;justify-content:space-between;margin:7mm 0 3mm}
-.summary-intro h2{margin:0;padding:0 0 0 4mm;font-size:14pt;font-weight:800;line-height:1.15;color:var(--navy)}
-.summary-intro span{font-size:10pt;color:var(--muted)}
-
-/* Summary has two balanced, independent cards; no surrounding shared frame. */
-.closing-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm;align-items:stretch;margin:0;break-inside:avoid}
-.closing-grid > section{border:1px solid var(--navy);padding:11px 12px;display:flex;flex-direction:column;min-width:0;background:#fff}
-.closing-grid h2,.notes-section h2{margin:0 0 9px;font-size:12pt;line-height:1.1;color:var(--navy);font-weight:800}
-.piece-summary-table,.component-table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0;border:0}
-.piece-summary-table thead th,.component-table thead th{padding:8px 7px;border-bottom:1px solid #c2cedc;text-align:left;background:#e2e8f0;color:var(--navy);font-size:10pt;font-weight:800;line-height:1.15;vertical-align:middle}
-.piece-summary-table tbody td,.component-table tbody td{border-bottom:1px solid var(--grid);padding:10px 7px;vertical-align:middle;color:var(--ink);font-size:10pt;line-height:1.2}
-.piece-summary-table tbody tr:last-child td,.component-table tbody tr:last-child td{border-bottom:0}
-.piece-summary-table tbody tr,.component-table tbody tr{background:#fff;break-inside:avoid}
 .piece-summary-table th:nth-child(1){width:13%}
 .piece-summary-table th:nth-child(2){width:48%}
 .piece-summary-table th:nth-child(3){width:39%}
 .component-table th:nth-child(1){width:16%}
 .component-table th:nth-child(2){width:62%}
 .component-table th:nth-child(3){width:22%;text-align:right}
-.component-table .component-qty{text-align:right;white-space:nowrap}
-.summary-letter{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--navy);color:#fff;font-size:10pt;font-weight:800;line-height:1}
-.summary-name,.component-name,.component-ref{font-size:10pt;font-weight:600;line-height:1.2;color:var(--ink)}
-.summary-icons{display:flex;align-items:center;justify-content:flex-start;flex-wrap:nowrap;white-space:nowrap;gap:7px}
-.summary-icons svg{display:block;width:16px;height:16px;flex:0 0 16px;color:#315987}
-.component-note{display:none}
-.notes-section{border:1px solid var(--navy);padding:12px 15px;margin-top:3mm;background:#fff;break-inside:avoid}
-.notes-section p{margin:0 0 7px;color:var(--ink);font-size:10pt;line-height:1.24}
-.notes-section p:last-of-type{margin-bottom:0}
-.notes-section .lines{display:none}
-
-/* The service matrix begins immediately beneath the differentiated second-page header. */
-.execution{padding:0;margin:3mm 0 0;border:0}
-.execution .section-head{display:none}
-.main-matrix{table-layout:fixed;width:100%;border:2px solid var(--navy);border-collapse:separate;border-spacing:0;margin:0;background:#fff}
-.main-matrix col.marker-col{width:4%}
-.main-matrix col.piece-col{width:28%}
-.main-matrix col.cluster-col{width:13.6%}
-.main-matrix thead{display:table-header-group}
-.main-matrix thead tr{height:40px}
-.main-matrix thead th{height:40px;min-height:40px;vertical-align:middle;padding:0;border:0;border-bottom:2px solid var(--navy);color:#fff;background:var(--blue);font-size:10pt;font-weight:800;line-height:1}
-.main-matrix thead th .th-centered{height:40px;width:100%;font-size:10pt;line-height:1.1;color:#fff;font-weight:800;text-align:center}
 .main-matrix thead th:nth-child(2),.main-matrix tbody tr>th:nth-child(2){border-right:2px solid var(--navy)}
-.main-matrix thead th.integrated-header{position:relative;overflow:hidden;background:var(--blue);border-left:0;border-right:0}
-.main-matrix thead th.integrated-header .header-arrow{position:absolute;inset:0;width:100%;height:40px;border:0}
-.main-matrix thead th.integrated-header .arrow-text{z-index:1;height:40px;padding:0 3px 0 8px;text-align:center;color:#fff;font-size:10pt;font-weight:800;line-height:1.05}
-.main-matrix tbody tr{break-inside:avoid}
 .main-matrix tbody tr:nth-child(odd)>th,.main-matrix tbody tr:nth-child(odd)>td{background:#fff}
 .main-matrix tbody tr:nth-child(even)>th,.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe)}
-.main-matrix tbody tr>th,.main-matrix tbody tr>td{padding:9px 6px;vertical-align:top;text-align:left;border-bottom:1px solid var(--grid);border-right:1px solid #c4cfdb;font-size:10pt;line-height:1.2;overflow-wrap:break-word}
-.main-matrix tbody tr>th:last-child,.main-matrix tbody tr>td:last-child{border-right:0}
-.main-matrix tbody tr:last-child>th,.main-matrix tbody tr:last-child>td{border-bottom:0}
 .main-matrix tbody tr>th:nth-child(2){padding-left:9px;padding-right:9px}
-.main-matrix tbody th.piece-marker{padding:9px 2px;text-align:center}
-.piece-letter{display:inline-flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;width:20px;height:20px;font-size:10pt;font-weight:800;line-height:1}
-.status-stack{display:flex;align-items:center;flex-direction:column;gap:7px;margin:8px 0 0}
-.status-stack svg{width:14px;height:14px;color:#315987;display:block}
-.part-title{margin:0 0 12px;font-size:10pt}
-.part-name{font-size:10pt;font-weight:800;color:var(--navy);line-height:1.2}
-.piece-components{margin:0;padding:0;font-size:10pt;line-height:1.22;color:#526781}
-.piece-components .piece-component-item{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px;align-items:start;margin:0 0 6px;font-size:10pt;line-height:1.2}
-.piece-component-id{font-size:10pt;font-weight:800}
-.piece-component-name,.piece-component-qty,.piece-component-empty{font-size:10pt}
-.piece-component-empty{display:block;color:#526781}
-.stage-entry{display:flex;align-items:flex-start;gap:5px;margin:0 0 5px;color:#293d56;font-size:10pt;line-height:1.18}
-.stage-entry:last-child{margin-bottom:0}
-.stage-entry .stage-code{display:none}
-.stage-entry .stage-name{font-size:10pt;font-weight:400;line-height:1.15;color:#293d56}
-.service-name{display:none}
-.service-group+.service-group{margin-top:5px}
-.empty{display:block;color:#697c92;text-align:center;font-size:10pt}
 
 @media screen{
- body{background:#e9edf2}
- .cover-page,.plan-page{width:279mm;max-width:none;padding:0;margin:18px auto 26px;box-shadow:0 4px 20px #16263d20}
-}
-@media print{body{background:#fff}.cover-page,.plan-page{box-shadow:none!important}}
-
-/* FUNIX V33: page-specific subheads and consistent OS identifier */
-.summary-intro-only-count{display:flex;justify-content:flex-end;align-items:center;margin:8px 0 7px!important;min-height:0!important}
-.summary-intro-only-count span{font-size:10pt!important;color:#596f8b!important;line-height:1.25}
-.running-header .docref strong{display:block;color:#fff;font-size:11pt;line-height:1.15;margin:0 0 3px}
-.running-header .docref span{display:block;font-size:10pt;line-height:1.12;color:#e9eff6}
-
-/* V34 — contagens integradas aos títulos das seções, sem linha de resumo solta */
-.closing-grid .section-title-row{
-  display:flex !important;
-  align-items:baseline !important;
-  justify-content:space-between !important;
-  gap:10px !important;
-  margin:0 0 9px !important;
-  min-height:17px !important;
-}
-.closing-grid .section-title-row h2{
-  margin:0 !important;
-  font-size:12pt !important;
-  font-weight:800 !important;
-  line-height:1.2 !important;
-  flex:none;
-}
-.closing-grid .section-title-row .section-total{
-  display:block;
-  font-family:Arial,Helvetica,sans-serif;
-  font-size:10pt;
-  line-height:1.18;
-  color:#5c6c81;
-  font-weight:700;
-  text-align:right;
-  white-space:nowrap;
-}
+ body{background:#e9edf2}}
+@media print{body{background:#fff}}
 
 
 /* V35 adjustments */
 :root{--grid-strong:#a6b3c1;}
-/* More breathing room between identity and summary tables */
-.identity{padding:10px 16px 10px 16px !important; margin:3mm 0 0 !important;}
-.identity-field{padding:0 4px !important;}
-.closing-grid{margin-top:4.5mm !important; gap:4mm !important;}
-.notes-section{margin-top:4mm !important;}
-/* Reinforce internal grid lines, but keep them lighter than outer borders */
-.piece-summary-table thead th,.component-table thead th{border-bottom:2pt solid var(--grid-strong) !important;}
-.piece-summary-table tbody td,.component-table tbody td{border-bottom:2pt solid var(--grid-strong) !important;}
-.main-matrix tbody tr>th,.main-matrix tbody tr>td{border-bottom:2pt solid var(--grid-strong) !important; border-right:2pt solid var(--grid-strong) !important;}
-.main-matrix tbody tr>th:last-child,.main-matrix tbody tr>td:last-child{border-right:0 !important;}
-/* Make plan header arrows more evident */
-.main-matrix thead tr{height:46px !important;}
-.main-matrix thead th{height:46px !important; min-height:46px !important;}
-.main-matrix thead th .th-centered{height:46px !important; align-items:center !important;}
-.main-matrix thead th.integrated-header .header-arrow{height:46px !important;}
-.main-matrix thead th.integrated-header .arrow-text{height:46px !important; line-height:1.04 !important; padding:0 6px 0 10px !important;}
-/* Slightly stronger separation in header without dark internal vertical lines */
-.main-matrix thead th{border-bottom:2px solid var(--navy) !important;}
-/* Keep left/right content alignment closer to header logic */
-.identity-field:last-child{text-align:right !important;}
-
-/* Nudge first-page body blocks to preserve top rhythm */
-.cover-page .closing-grid{margin-top:5mm !important;}
 
 
 /* V36 – title case headers and refined arrows */
 .running-header .title p{letter-spacing:0 !important;text-transform:none !important;font-size:10pt !important;}
-.piece-summary h2,.components-section h2,.notes-section h2{letter-spacing:0 !important;text-transform:none !important;}
-.piece-summary-table thead th,.component-table thead th,.main-matrix thead th{letter-spacing:0 !important;text-transform:none !important;}
-.main-matrix thead tr{height:48px !important;}
-.main-matrix thead th{height:48px !important;min-height:48px !important;}
-.main-matrix thead th .th-centered{height:48px !important;font-size:10pt !important;font-weight:800 !important;line-height:1.05 !important;display:flex;align-items:center;justify-content:center;}
-.main-matrix thead th.integrated-header .header-arrow{height:48px !important;display:block;}
-.main-matrix thead th.integrated-header .arrow-text{height:48px !important;display:flex;align-items:center;justify-content:center;padding:0 5px 0 10px !important;font-size:10pt !important;font-weight:800 !important;line-height:1.03 !important;position:relative;z-index:2;}
-/* keep no vertical lines between the cluster columns in header */
-.main-matrix thead th.integrated-header{border-left:0 !important;border-right:0 !important;overflow:hidden !important;}
-
-/* V37 — single filled white chevrons matching photographic reference */
-.main-matrix thead tr,
-.main-matrix thead th{height:48px!important;min-height:48px!important}
-.main-matrix thead th.integrated-header{background:#527AA3!important;border-left:0!important;border-right:0!important;overflow:hidden!important}
-.main-matrix thead th.integrated-header .header-arrow{height:48px!important;width:100%!important;display:block!important;position:absolute!important;inset:0!important}
-.main-matrix thead th.integrated-header .arrow-text{
-  height:48px!important;
-  font-size:10pt!important;
-  text-transform:uppercase!important;
-  padding:0 30px 0 6px!important;
-  line-height:1.08!important;
-  z-index:2!important;
-}
-.main-matrix thead th.integrated-header:last-child .arrow-text{padding-right:6px!important}
-.main-matrix thead th .th-centered{text-transform:uppercase!important}
 
 
 
@@ -375,106 +93,11 @@ body{background:#eef1f5}
   text-align:center!important;
   text-transform:none!important;
 }
-/* First-page table boxes: strong outer edge, fine inner separators. */
-.closing-grid > section{
-  border:2px solid #0A1F44!important;
-  background:#fff!important;
-}
-.piece-summary-table thead th,.component-table thead th{
-  background:var(--header-table)!important;
-  color:#fff!important;
-  border-bottom:1px solid var(--inner-grid)!important;
-  font-size:10pt!important;
-  font-weight:800!important;
-  text-transform:uppercase!important;
-}
-.piece-summary-table tbody td,.component-table tbody td{
-  border-bottom:1px solid var(--inner-grid)!important;
-}
-.piece-summary-table tbody tr:last-child td,.component-table tbody tr:last-child td{
-  border-bottom:0!important;
-}
-/* The outer outline of the first-page tables is heavier than their internal grid. */
-/* A single colspan=5 table header uses exact column boundaries, not cell-local arrows. */
-.main-matrix thead tr,.main-matrix thead th{
-  height:48px!important;
-  min-height:48px!important;
-}
-.main-matrix thead th{
-  background:var(--header-table)!important;
-  color:#fff!important;
-  font-size:10pt!important;
-  font-weight:800!important;
-}
-.main-matrix thead th.th-flat{
-  background:var(--header-table)!important;
-}
-.main-matrix thead th .th-centered{
-  height:48px!important;
-  align-items:center!important;
-  justify-content:center!important;
-  color:#fff!important;
-  font-size:10pt!important;
-  font-weight:800!important;
-}
-.main-matrix thead th.technical-band{
-  height:48px!important;
-  position:relative!important;
-  padding:0!important;
-  background:var(--header-table)!important;
-  border-left:0!important;
-  border-right:0!important;
-  overflow:hidden!important;
-  vertical-align:middle!important;
-}
-.technical-band-art{
-  position:absolute!important;
-  top:0!important;
-  left:0!important;
-  z-index:0!important;
-}
-.technical-band-labels{
-  position:relative!important;
-  z-index:1!important;
-  width:100%!important;
-  height:48px!important;
-  display:flex!important;
-  align-items:stretch!important;
-}
-.technical-band-label{
-  flex:0 0 20%!important;
-  min-width:0!important;
-  max-width:20%!important;
-  height:48px!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  text-align:center!important;
-  font-size:10pt!important;
-  line-height:1.08!important;
-  font-weight:800!important;
-  color:#fff!important;
-  white-space:nowrap!important;
-}
-/* Leave the five-cluster header without internal grid strokes. */
-.main-matrix thead th.technical-band::before,.main-matrix thead th.technical-band::after{
-  content:none!important;
-}
 
 /* FUNIX V39 — alinhamento óptico, paleta, contornos e chevrons */
 :root {
   --header-table: #345A85;
   --inner-grid: #8998A9;
-}
-/* Three tables share the same medium navy-blue heading; header stripe remains dark navy. */
-.piece-summary-table thead th,
-.component-table thead th,
-.main-matrix thead th,
-.main-matrix thead th.th-flat,
-.main-matrix thead th.technical-band {
-  background:var(--header-table)!important;
-  color:#fff!important;
-  font-size:10pt!important;
 }
 /* All meaningful external borders use the same 2px dark navy. */
 .identity,.closing-grid > section,.notes-section,
@@ -482,32 +105,11 @@ body{background:#eef1f5}
   border:2px solid #0A1F44!important;
   border-radius:0!important;
 }
-/* Interior separators: one restrained but print-visible gray pixel. */
-.piece-summary-table thead th,
-.component-table thead th,
-.piece-summary-table tbody td,
-.component-table tbody td {
-  border-bottom:1px solid var(--inner-grid)!important;
-}
-.piece-summary-table tbody tr:last-child td,
-.component-table tbody tr:last-child td {
-  border-bottom:0!important;
-}
-.main-matrix tbody tr > th,
-.main-matrix tbody tr > td {
-  border-bottom:1px solid var(--inner-grid)!important;
-  border-right:1px solid var(--inner-grid)!important;
-}
-.main-matrix tbody tr > th:last-child,
-.main-matrix tbody tr > td:last-child {border-right:0!important;}
-.main-matrix tbody tr:last-child > th,
-.main-matrix tbody tr:last-child > td {border-bottom:0!important;}
 /* Structural separation between piece description and first technical cluster: navy. */
 .main-matrix thead th:nth-child(2),
 .main-matrix tbody tr > th:nth-child(2) {
   border-right:2px solid #0A1F44!important;
 }
-.main-matrix thead th {border-bottom:2px solid #0A1F44!important;}
 /* Consistent typographic width and centering for comparable summary fields. */
 .piece-summary-table thead th:nth-child(1),
 .piece-summary-table tbody td:nth-child(1),
@@ -520,13 +122,6 @@ body{background:#eef1f5}
 }
 .component-table th:nth-child(3),
 .component-table td.component-qty {text-align:center!important;}
-/* Match client/term inner edges to logo and printed page number. */
-.identity {
-  padding-left:26px!important;
-  padding-right:26px!important;
-}
-.identity-field:first-child{padding-left:0!important;}
-.identity-field:last-child{padding-right:0!important;text-align:right!important;}
 /* Re-center title 'Legenda:' against icon explanations on their real baselines.
    The SVG+inline-flex group is naturally ~5pt lower in the PDF renderer. */
 .footer-legend {
@@ -546,50 +141,6 @@ body{background:#eef1f5}
 .footer-legend .legend-item .legend-text {
   vertical-align:middle!important;
 }
-/* Draw larger chevrons centrally in the unified five-column header cell. */
-.technical-band-art {
-  height:48px!important;
-  width:100%!important;
-  display:block!important;
-}
-.main-matrix thead th.technical-band,
-.main-matrix thead th.technical-band .technical-band-labels {
-  background:var(--header-table)!important;
-}
-.main-matrix thead th.technical-band .technical-band-labels {
-  background:transparent!important;
-}
-
-
-/* V40 - divisória branca entre paginação e bloco do ID/data */
-
-
-
-/* FUNIX V41 — Cabeçalho técnico levemente mais baixo e chevrons mais espessos */
-.main-matrix thead tr,
-.main-matrix thead th,
-.main-matrix thead th.technical-band {
-  height:44px!important;
-  min-height:44px!important;
-}
-.main-matrix thead th .th-centered,
-.main-matrix thead th.technical-band .technical-band-labels,
-.main-matrix thead th.technical-band .technical-band-label {
-  height:44px!important;
-}
-.main-matrix thead th.technical-band .technical-band-art {
-  height:44px!important;
-  inset:0!important;
-}
-/* Regras tipográficas do cabeçalho não alteradas: mínimo de 10pt. */
-
-/* FUNIX V42: official ERP cluster names, solid icons, compact print legend */
-.main-matrix .technical-band-label{font-family:'Liberation Sans Narrow',Arial,Helvetica,sans-serif!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;font-size:10pt!important;line-height:1.06!important;font-weight:800!important;padding:0 6px!important;white-space:normal!important;}
-.main-matrix .technical-band-label span{font-family:inherit!important;display:block!important;white-space:nowrap!important;font-size:10pt!important;line-height:1.04!important;}
-.summary-icons{gap:6px!important;}
-.summary-icons svg{width:16px!important;height:16px!important;flex:0 0 16px!important;color:#0A1F44!important;}
-.status-stack{gap:7px!important;}
-.status-stack svg{width:15px!important;height:15px!important;color:#0A1F44!important;}
 .footer-legend{gap:9px!important;padding:0 3mm!important;}
 .footer-legend .legend-item{flex-shrink:0!important;}
 .footer-legend svg{color:#0A1F44!important;}
@@ -619,328 +170,9 @@ body{background:#eef1f5}
   width:14px!important;height:14px!important;flex:0 0 14px!important;
 }
 .footer-legend .legend-text{font-size:10pt!important;line-height:1.1!important;white-space:nowrap!important;}
-/* Disc bullets - standard black dots, not small icon codes. */
-.main-matrix .stage-list{
-  margin:0!important;
-  padding:0 0 0 14px!important;
-  list-style:disc outside!important;
-}
-.main-matrix .stage-list + .stage-list{margin-top:3px!important;}
-.main-matrix .stage-entry{
-  display:list-item!important;
-  list-style-type:disc!important;
-  list-style-position:outside!important;
-  margin:0 0 4px 0!important;
-  padding:0!important;
-  color:#111!important;
-  font-size:10pt!important;
-  line-height:1.2!important;
-}
-.main-matrix .stage-entry::marker{color:#111!important;font-size:10pt!important;}
-.main-matrix .stage-entry .stage-name{
-  display:inline!important;
-  font-size:10pt!important;
-  color:#293d56!important;
-  font-weight:400!important;
-  line-height:1.16!important;
-}
 
 /* V43 footer optical centering in print render */
 .footer-legend .legend-item{transform:translateY(-2.6pt)!important;}
-
-
-/* V44 – centralização e alinhamento dos eixos internos */
-.identity{
-  grid-template-columns:30% 28% 13% 11% 18% !important;
-  align-items:stretch !important;
-  padding:9px 4mm 9px 4mm !important;
-  margin:3.6mm 0 0 !important;
-}
-.identity-field{
-  min-width:0 !important;
-  padding:0 2px !important;
-  text-align:center !important;
-  display:flex !important;
-  flex-direction:column !important;
-  justify-content:flex-start !important;
-  align-items:center !important;
-}
-.identity-field:first-child{padding-left:0 !important;}
-.identity-field:last-child{padding-right:0 !important;}
-.idlabel{
-  width:100% !important;
-  text-align:center !important;
-  margin-bottom:4px !important;
-}
-.idvalue{
-  width:100% !important;
-  text-align:center !important;
-}
-/* Make first and last cells visually align with header inner axes */
-.identity-field:first-child .idlabel,
-.identity-field:first-child .idvalue{padding-left:0 !important;}
-.identity-field:last-child .idlabel,
-.identity-field:last-child .idvalue{padding-right:0 !important;}
-
-/* Summary cards aligned to same left/right rhythm */
-.closing-grid{
-  margin-top:4.2mm !important;
-  gap:3mm !important;
-}
-.closing-grid > section{
-  padding:10px 4mm 10px 4mm !important;
-}
-.section-title-row{
-  display:flex !important;
-  align-items:baseline !important;
-  justify-content:space-between !important;
-  gap:10px !important;
-  margin:0 0 9px 0 !important;
-}
-.piece-summary h2,
-.components-section h2,
-.notes-section h2{
-  margin:0 !important;
-  padding:0 !important;
-}
-.section-total{font-size:10pt !important; color:var(--muted) !important; white-space:nowrap !important;}
-.notes-section{
-  padding:10px 4mm 10px 4mm !important;
-  margin-top:4.2mm !important;
-}
-/* Keep table content centered where needed */
-.piece-summary-table thead th:first-child,
-.component-table thead th:first-child,
-.component-table thead th:last-child,
-.piece-summary-table tbody td:first-child,
-.component-table tbody td:first-child,
-.component-table tbody td:last-child{
-  text-align:center !important;
-}
-
-
-/* V45 – referência integrada à coluna Peças */
-.main-matrix col.piece-col{width:31% !important;}
-.main-matrix thead th.th-piece{width:31% !important;}
-.main-matrix thead th.th-piece,
-.main-matrix tbody th.piece-block-cell{
-  border-right:2px solid var(--navy) !important;
-}
-.main-matrix thead th.th-piece .th-centered{align-items:center !important; justify-content:flex-start !important; padding-left:12px !important;}
-.main-matrix tbody th.piece-block-cell{
-  padding:9px 10px 9px 10px !important;
-  vertical-align:top !important;
-  text-align:left !important;
-}
-.piece-topline{display:flex !important; align-items:center !important; gap:8px !important; margin:0 0 8px !important;}
-.piece-topline .piece-letter{margin:0 !important; flex:0 0 22px !important;}
-.part-name-inline{font-size:10pt !important; line-height:1.18 !important; font-weight:800 !important; color:var(--navy) !important;}
-.piece-icons-inline{
-  display:flex !important;
-  flex-wrap:wrap !important;
-  gap:6px !important;
-  align-items:center !important;
-  margin:0 0 10px 0 !important;
-}
-.piece-icons-inline svg{width:14px !important; height:14px !important; color:#0A1F44 !important; flex:0 0 14px !important;}
-.piece-components{
-  margin:0 !important;
-  color:#55667c !important;
-  font-size:10pt !important;
-  line-height:1.22 !important;
-}
-.piece-component-item{
-  display:grid !important;
-  grid-template-columns:auto 1fr auto !important;
-  gap:5px !important;
-  margin:0 0 5px !important;
-  font-size:10pt !important;
-  line-height:1.18 !important;
-}
-.piece-component-id{font-weight:800 !important; color:var(--navy) !important;}
-.piece-component-name,.piece-component-qty{color:#55667c !important;}
-/* after removing ref col */
-.main-matrix thead th.technical-band{width:auto !important;}
-.main-matrix thead th.technical-band .header-arrow-row{margin-left:0 !important;}
-.main-matrix tbody td:first-of-type{border-left:0 !important;}
-
-/* FUNIX V46: título PEÇAS alinhado aos demais cabeçalhos nos dois eixos */
-.main-matrix thead th.th-piece{
-  padding:0 !important;
-  vertical-align:middle !important;
-  text-align:center !important;
-}
-.main-matrix thead th.th-piece .piece-header-centered{
-  display:flex !important;
-  width:100% !important;
-  height:44px !important;
-  margin:0 !important;
-  padding:0 !important;
-  box-sizing:border-box !important;
-  align-items:center !important;
-  justify-content:center !important;
-  text-align:center !important;
-  color:#fff !important;
-  font-size:10pt !important;
-  font-weight:800 !important;
-  line-height:1.05 !important;
-}
-
-
-/* V48 – célula Peças com letra ocupando duas linhas */
-.main-matrix tbody th.piece-block-cell{
-  padding:10px 10px 9px 10px !important;
-}
-.piece-head-grid{
-  display:grid !important;
-  grid-template-columns:28px minmax(0,1fr) !important;
-  grid-template-rows:auto auto !important;
-  column-gap:10px !important;
-  row-gap:4px !important;
-  align-items:start !important;
-  margin:0 0 10px 0 !important;
-}
-.piece-head-grid .piece-letter{
-  grid-column:1 !important;
-  grid-row:1 / span 2 !important;
-  align-self:stretch !important;
-  justify-self:start !important;
-  width:24px !important;
-  min-width:24px !important;
-  height:auto !important;
-  min-height:42px !important;
-  border-radius:0 !important;
-  margin:0 !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  font-size:10pt !important;
-  line-height:1 !important;
-}
-.piece-name-grid{
-  grid-column:2 !important;
-  grid-row:1 !important;
-  font-size:10pt !important;
-  line-height:1.18 !important;
-  font-weight:800 !important;
-  color:var(--navy) !important;
-  margin:0 !important;
-  padding-top:1px !important;
-}
-.piece-icons-grid{
-  grid-column:2 !important;
-  grid-row:2 !important;
-  display:flex !important;
-  flex-wrap:wrap !important;
-  gap:6px !important;
-  align-items:center !important;
-  margin:0 !important;
-  min-height:16px !important;
-}
-.piece-icons-grid svg{width:14px !important;height:14px !important;flex:0 0 14px !important;color:#0A1F44 !important;display:block !important;}
-.piece-components-grid{
-  margin:0 !important;
-}
-
-/* V49: componentes ligados à referência da peça + opção 01, linha contínua fina */
-.main-matrix tbody th.piece-block-cell { padding:9px 9px !important; }
-.piece-ladder {
-    grid-auto-rows:auto !important;
-    width:100% !important;
-    margin:0 !important;
-    align-items:stretch !important;
-    font-family:Arial,Helvetica,sans-serif !important;
-}
-.piece-ladder > .piece-letter {
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    font-weight:800 !important;
-    font-size:10pt !important;
-    line-height:1 !important;
-    background:var(--navy) !important;
-    color:white !important;
-    width:24px !important;
-    height:auto !important;
-    min-height:43px !important;
-    margin:0 !important;
-    padding:0 !important;
-}
-.piece-ladder-head {
-    display:flex !important;
-    flex-direction:column !important;
-    justify-content:flex-start !important;
-    min-height:43px !important;
-    min-width:0 !important;
-    gap:5px !important;
-}
-.piece-ladder-name {
-    display:block !important;
-    font-size:10pt !important;
-    font-weight:800 !important;
-    line-height:1.14 !important;
-    color:var(--navy) !important;
-    margin:0 !important;
-}
-.piece-ladder-icons {
-    display:flex !important;
-    flex-wrap:wrap !important;
-    align-items:center !important;
-    gap:6px !important;
-    min-height:14px !important;
-    margin:0 !important;
-}
-.piece-ladder-icons svg {
-    color:var(--navy) !important;
-    width:14px !important;
-    height:14px !important;
-    flex:0 0 14px !important;
-    display:block !important;
-}
-.piece-ladder-code {
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:24px !important;
-    min-width:24px !important;
-    min-height:23px !important;
-    padding:2px 0 !important;
-    border-left:1px solid var(--navy) !important;
-    border-right:1px solid var(--navy) !important;
-    color:var(--navy) !important;
-    background:transparent !important;
-    font-size:10pt !important;
-    font-weight:800 !important;
-    line-height:1.1 !important;
-}
-
-
-.piece-ladder-component {
-    display:grid !important;
-    grid-template-columns:minmax(0,1fr) auto !important;
-    gap:4px !important;
-    align-items:center !important;
-    min-height:23px !important;
-    padding:2px 0 !important;
-    color:#526781 !important;
-    font-size:10pt !important;
-    font-weight:700 !important;
-    line-height:1.16 !important;
-    min-width:0 !important;
-}
-/* Opção 01: linha fina sem introduzir uma linha adicional de conteúdo. */
-.piece-ladder-component--first { border-top:1px solid #9cb0c6 !important; }
-.piece-ladder-desc { min-width:0 !important; color:#526781 !important; }
-.piece-ladder-qty { white-space:nowrap !important; text-align:right !important; color:#526781 !important; }
-
-/* Ajuste tipográfico exclusivo dos componentes para manter uma linha por item no exemplo */
-.piece-ladder-component{font-size:9.3pt !important;gap:3px !important;}
-.piece-ladder-desc{letter-spacing:-.12px !important;}
-
-
-/* V50 — OS em uma única página. Retirada da página de resumo e cabeçalho compacto. */
-
-.plan-page{page:plan !important;break-before:auto !important;break-after:auto !important;}
 .plan-header {
   height:15mm !important;
   min-height:15mm !important;
@@ -972,13 +204,6 @@ body{background:#eef1f5}
  text-align:center !important;
  color:#fff !important;
 }
-.v50-os-title {
- font-size:14pt !important;
- line-height:1.1 !important;
- font-weight:800 !important;
- letter-spacing:.1px !important;
- white-space:nowrap !important;
-}
 .v50-vehicle {
  font-size:10pt !important;
  line-height:1.15 !important;
@@ -997,16 +222,6 @@ body{background:#eef1f5}
 }
 .v50-number{line-height:1.1 !important;white-space:nowrap !important;}
 .v50-delivery{font-size:10pt !important;line-height:1.1 !important;font-weight:700 !important;white-space:nowrap !important;color:#ecf3fc !important;}
-.execution{margin:2.5mm 0 0 !important;}
-
-
-/* V51 — cabeçalho e comentários por peça, sem célula PEÇAS */
-.v50-os-title {
-  font-size:10pt !important;
-  line-height:1.12 !important;
-  font-weight:700 !important;
-  letter-spacing:.05px !important;
-}
 .v50-vehicle {
   font-size:14pt !important;
   line-height:1.08 !important;
@@ -1020,34 +235,6 @@ body{background:#eef1f5}
   gap:5px !important;
 }
 .delivery-icon {width:14px !important; height:14px !important; flex:0 0 14px !important; stroke:#ecf3fc !important; display:block !important;}
-/* Padronizar cor dos nomes das peças à cor das atividades da matriz. */
-.main-matrix tbody .piece-ladder-name {color:#293d56 !important;}
-/* Célula de título PEÇAS removida visualmente; o espaço preserva o alinhamento de linhas. */
-.main-matrix thead td.matrix-header-empty{
-  background:transparent !important;
-  border:0 !important;
-  box-shadow:none !important;
-  height:48px !important;
-  min-height:48px !important;
-}
-/* Puxar o conteúdo da primeira peça para a faixa liberada pelo título removido. */
-.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{
-  margin-top:-47px !important;
-}
-/* Comentários em seção condicional, após os componentes, sem título ou linha vazia. */
-.piece-comment-block{
-  width:100% !important;
-  box-sizing:border-box !important;
-  border-top:1px solid #9cb0c6 !important;
-  margin:6px 0 0 !important;
-  padding:5px 0 0 !important;
-  font-size:9.2pt !important;
-  line-height:1.20 !important;
-  color:#293d56 !important;
-  font-weight:500 !important;
-  text-align:left !important;
-  overflow-wrap:break-word !important;
-}
 
 
 /* FUNIX V52 – ajustes aprovados no cabeçalho e plano de serviços */
@@ -1073,111 +260,10 @@ body{background:#eef1f5}
 .plan-header .v50-identidade{gap:0 !important;}
 .plan-header .v50-vehicle{line-height:1.1 !important;}
 
-/* Mantém a célula da primeira coluna vazia sem sobrepor a primeira peça. */
-.main-matrix thead td.matrix-header-empty{
-  background:#fff !important;
-  height:44px !important;
-  min-height:44px !important;
-  border-bottom:2px solid var(--navy) !important;
-  border-right:2px solid var(--navy) !important;
-  padding:0 !important;
-}
-
-/* Distribui o trabalho com mais respiro até perto do rodapé, sem sobrepor a legenda. */
-/* V63: altura determinada somente pelo conteúdo; larguras já aprovadas preservadas. */
-.main-matrix{min-height:0 !important;height:auto !important;}
-.main-matrix tbody tr{min-height:0 !important;}
-.main-matrix tbody tr>th,.main-matrix tbody tr>td{padding-top:7px !important;padding-bottom:7px !important;}
-
 
 /* Linhas brancas e linhas em cinza-azulado muito leve. */
 .main-matrix tbody tr:nth-child(odd)>th,
 .main-matrix tbody tr:nth-child(odd)>td{}
-
-
-/* Todos os textos da área de dados no mesmo azul corporativo. */
-.main-matrix tbody tr>th,
-.main-matrix tbody tr>td,
-.main-matrix tbody tr>th .piece-ladder-name,
-.main-matrix tbody tr>th .piece-ladder-code,
-.main-matrix tbody tr>th .piece-ladder-desc,
-.main-matrix tbody tr>th .piece-ladder-qty,
-.main-matrix tbody tr>th .piece-comment-text,
-.main-matrix tbody tr>td .stage-entry,
-.main-matrix tbody tr>td .stage-entry .stage-name,
-.main-matrix tbody tr>td .empty {
-  color:var(--table-blue) !important;
-}
-/* Exceção obrigatória: a letra branca no bloco azul mantém contraste. */
-.main-matrix tbody .piece-letter{color:#fff !important;}
-
-/* Comentário como continuação do retângulo vertical de códigos.
-   A célula de texto fica ao lado, alinhada à descrição de componentes. */
-.piece-ladder-comment-marker{
-  grid-column:1 !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  min-height:30px !important;
-  width:24px !important;
-  border-left:1px solid var(--navy) !important;
-  border-right:1px solid var(--navy) !important;
-  border-top:1px solid var(--navy) !important;
-  color:var(--navy) !important;
-}
-.piece-ladder-comment-marker svg{color:var(--navy) !important;}
-.piece-ladder-comment-content{
-  grid-column:2 !important;
-  display:block !important;
-  min-width:0 !important;
-  min-height:30px !important;
-  padding:5px 0 4px !important;
-  border-top:1px solid #9cb0c6 !important;
-  color:var(--table-blue) !important;
-  font-size:9.2pt !important;
-  line-height:1.2 !important;
-  font-weight:500 !important;
-  overflow-wrap:break-word !important;
-}
-.piece-ladder-comment-content .piece-comment-text{color:var(--table-blue) !important;}
-/* O espaço entre a seção de dados e a legenda continua disponível para conteúdo dinâmico. */
-
-
-/* V53 – paginação, alinhamento das setas e trilhos contínuos */
-
-
-/* Blank space where PEÇAS title used to be: no outer top/left borders */
-.matrix-header-empty{
-  background:transparent !important;
-  border-top:0 !important;
-  border-left:0 !important;
-  border-right:2px solid var(--navy) !important;
-  border-bottom:2px solid var(--navy) !important;
-  box-shadow:none !important;
-  padding:0 !important;
-  height:48px !important;
-  min-height:48px !important;
-}
-/* cancel earlier upward pull of first piece */
-.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{margin-top:0 !important;}
-
-/* All body table text in the same blue */
-.main-matrix tbody th,
-.main-matrix tbody td,
-.main-matrix tbody .piece-ladder-name,
-.main-matrix tbody .piece-ladder-desc,
-.main-matrix tbody .piece-ladder-qty,
-.main-matrix tbody .stage-entry .stage-name,
-.main-matrix tbody .empty,
-.main-matrix tbody .piece-comment-text{
-  color:var(--table-blue) !important;
-}
-
-/* Clean right edge to avoid double line in Serviços complementares */
-.main-matrix tbody tr > td:last-child,
-.main-matrix tbody tr > th:last-child{border-right:0 !important;}
-.main-matrix thead th.technical-band{border-right:0 !important; border-left:0 !important;}
-.main-matrix thead tr > td.matrix-header-empty{border-right:2px solid var(--navy) !important;}
 
 /* Fine tune cluster-label positions */
 .technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-10px) !important;}
@@ -1185,37 +271,6 @@ body{background:#eef1f5}
 .technical-band-labels .technical-band-label:nth-child(3),
 .technical-band-labels .technical-band-label:nth-child(4){transform:translateX(4px) !important;}
 .technical-band-labels .technical-band-label:nth-child(5){transform:translateX(12px) !important;}
-
-/* Left rail rebuilt as continuous boxed ladder */
-.piece-ladder{
-  display:grid !important;
-  grid-template-columns:24px minmax(0,1fr) !important;
-  column-gap:8px !important;
-  row-gap:0 !important;
-}
-.piece-ladder > .piece-letter{
-  box-sizing:border-box !important;
-  border:1px solid var(--navy) !important;
-  border-bottom:0 !important;
-}
-.piece-ladder-code,
-.piece-ladder-comment-marker{
-  box-sizing:border-box !important;
-  border-left:1px solid var(--navy) !important;
-  border-right:1px solid var(--navy) !important;
-  border-top:1px solid var(--navy) !important;
-  border-bottom:0 !important;
-  margin:0 !important;
-}
-
-.piece-ladder-code--last{border-bottom:0 !important;}
-.piece-ladder-comment-marker{
-  border-bottom:1px solid var(--navy) !important;
-  min-height:28px !important;
-}
-.piece-ladder-head{padding:0 0 5px !important;}
-.piece-ladder-component--first,
-.piece-ladder-comment-content{border-top:1px solid #9cb0c6 !important;}
 
 /* Subtle row stripe preserved */
 .main-matrix tbody tr:nth-child(odd)>th,
@@ -1229,34 +284,6 @@ body{background:#eef1f5}
 .plan-header .mast{position:relative !important;}
 .v50-os-info{
   padding-right:13mm !important;
-}
-.v54-pagecount{
-  position:absolute !important;
-  top:50% !important;
-  right:0 !important;
-  transform:translateY(-50%) !important;
-  font-size:10.5pt !important;
-  width:11mm !important;
-  text-align:right !important;
-}
-.matrix-header-empty{position:relative !important;}
-.matrix-header-empty::before{
-  content:'' !important;
-  position:absolute !important;
-  left:-2px !important;
-  top:-2px !important;
-  width:calc(100% + 2px) !important;
-  height:2px !important;
-  background:#fff !important;
-}
-.matrix-header-empty::after{
-  content:'' !important;
-  position:absolute !important;
-  left:-2px !important;
-  top:-2px !important;
-  width:2px !important;
-  height:calc(100% + 2px) !important;
-  background:#fff !important;
 }
 
 
@@ -1291,67 +318,13 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
 }
 .v50-os-info > .v50-number{align-self:end !important;}
 .v50-os-info > .v50-delivery{align-self:start !important;}
-.v54-pagecount{
-  grid-column:2 !important;
-  grid-row:1 / span 2 !important;
-  position:relative !important;
-  inset:auto !important;
-  transform:none !important;
-  width:15mm !important;
-  min-width:15mm !important;
-  height:15mm !important;
-  align-self:center !important;
-  justify-self:end !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  text-align:center !important;
-  color:#fff !important;
-  font-size:12pt !important;
-  font-weight:800 !important;
-  line-height:1 !important;
-  border-left:1px solid #fff !important;
-  box-sizing:border-box !important;
-  padding:0 !important;
-}
-
-/* cluster header arrows slightly further right */
-.technical-band-art path:nth-of-type(1){transform:translateX(10px) !important; transform-origin:center;}
-.technical-band-art path:nth-of-type(2){transform:translateX(10px) !important; transform-origin:center;}
-.technical-band-art path:nth-of-type(3){transform:translateX(10px) !important; transform-origin:center;}
-.technical-band-art path:nth-of-type(4){transform:translateX(10px) !important; transform-origin:center;}
 .technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-6px) !important;}
 .technical-band-labels .technical-band-label:nth-child(2),
 .technical-band-labels .technical-band-label:nth-child(3),
 .technical-band-labels .technical-band-label:nth-child(4){transform:translateX(8px) !important;}
 .technical-band-labels .technical-band-label:nth-child(5){transform:translateX(18px) !important;}
-.technical-band-label{font-size:11pt !important;line-height:1.02 !important;}
-
-/* no internal horizontal separators between component codes */
-.piece-ladder-code{
-  min-height:24px !important;
-  padding:1px 0 !important;
-  border-top:0 !important;
-  border-bottom:0 !important;
-}
-.piece-ladder-code--first{border-top:1px solid var(--navy) !important;}
-.piece-ladder-code--last{border-bottom:1px solid var(--navy) !important;}
-.piece-ladder-component{
-  min-height:24px !important;
-  padding:1px 0 !important;
-  font-size:11pt !important;
-  gap:6px !important;
-  line-height:1.12 !important;
-}
 .piece-ladder-desc,.piece-ladder-qty,.piece-ladder-name,.piece-comment-text,.stage-entry .stage-name,.empty,
 .footer-legend .legend-text{font-size:11pt !important;}
-.piece-ladder-comment-content{font-size:11pt !important;line-height:1.14 !important;}
-.piece-ladder > .piece-letter,
-.piece-ladder-comment-marker,
-.piece-ladder-code{font-size:11pt !important;}
-.main-matrix tbody tr>th,.main-matrix tbody tr>td{font-size:11pt !important;line-height:1.16 !important;}
-.stage-entry{font-size:11pt !important;line-height:1.14 !important; margin:0 0 6px !important;}
-.main-matrix thead th,.main-matrix thead th .th-centered{font-size:11pt !important;}
 .legend-heading{font-size:11pt !important;}
 
 
@@ -1443,15 +416,6 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
   padding:0 !important;
   transform:none !important;
 }
-
-/* Confere o texto realmente renderizado: CSS antigo fazia as etapas ficarem em 10pt */
-.main-matrix .stage-entry,
-.main-matrix .stage-entry .stage-name,
-.main-matrix .stage-entry::marker {
-  font-size:11pt !important;
-  line-height:1.15 !important;
-}
-.main-matrix .stage-entry .stage-name {font-weight:400 !important;}
 .main-matrix tbody .piece-ladder-component,
 .main-matrix tbody .piece-ladder-component span,
 .main-matrix tbody .piece-ladder-comment-content,
@@ -1464,36 +428,6 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
 .footer-legend .legend-heading,
 .technical-band-label {
   font-size:11pt !important;
-}
-/* Uma só coluna contornada por fora: sem linhas horizontais em A/A1/A2/comentário. */
-.main-matrix .piece-ladder > .piece-letter {border-bottom:0 !important;}
-.main-matrix .piece-ladder-code,
-.main-matrix .piece-ladder-code--first,
-.main-matrix .piece-ladder-code--last,
-.main-matrix .piece-ladder-comment-marker {
-  border-top:0 !important;
-  border-bottom:0 !important;
-  border-left:1px solid var(--navy) !important;
-  border-right:1px solid var(--navy) !important;
-}
-.main-matrix .piece-ladder-comment-marker {border-bottom:1px solid var(--navy) !important;}
-
-/* V57: detalhes finais – duas linhas separadoras removidas, textos do cabeçalho técnico >= 11pt */
-.main-matrix .piece-ladder-component--first,
-.main-matrix .piece-ladder-comment-content,
-.main-matrix .piece-ladder-head,
-.main-matrix .piece-ladder-code,
-.main-matrix .piece-ladder-code--first,
-.main-matrix .piece-ladder-code--last {
-  border-top:0 !important;
-}
-.main-matrix .piece-ladder-head {border-bottom:0 !important;}
-.main-matrix .piece-ladder-comment-content {border-bottom:0 !important;}
-.main-matrix .technical-band-label,
-.main-matrix .technical-band-label span {
-  font-size:11pt !important;
-  line-height:1.0 !important;
-  letter-spacing:-.35px !important;
 }
 .main-matrix .technical-band-label:nth-child(5) span {letter-spacing:-.48px !important;}
 
@@ -1522,59 +456,6 @@ body .plan-header .v50-vehicle {font-size:16pt !important;}
 body .plan-header .v57-pagecount,
 body .plan-header .v57-pagecount .pagecount-value {font-size:12pt !important;}
 
-/* Marcadores das etapas também em 10 pt, sem herdar regra antiga de 11 pt. */
-body .main-matrix .stage-entry::marker,
-body .main-matrix .stage-list .stage-entry::marker {font-size:10pt !important;}
-
-/* Apenas duas linhas de grupo: entre dados da peça/componentes e componentes/comentário.
-   Nenhuma linha entre A1/A2/A3... */
-body .piece-ladder .piece-ladder-code,
-body .piece-ladder .piece-ladder-code--last{
-  border-top:0 !important;
-  border-bottom:0 !important;
-  border-left:1px solid var(--navy) !important;
-  border-right:1px solid var(--navy) !important;
-}
-body .piece-ladder .piece-ladder-code--first{
-  border-top:1px solid var(--navy) !important;
-}
-body .piece-ladder .piece-ladder-component--first{
-  border-top:1px solid #9cb0c6 !important;
-}
-body .piece-ladder .piece-ladder-comment-marker{
-  border-top:1px solid var(--navy) !important;
-  border-bottom:1px solid var(--navy) !important;
-  border-left:1px solid var(--navy) !important;
-  border-right:1px solid var(--navy) !important;
-}
-body .piece-ladder .piece-ladder-comment-content{
-  border-top:1px solid #9cb0c6 !important;
-}
-
-/* Header vazio superior esquerdo: sem bordas de cima e esquerda.
-   Preservar contorno da matriz nas células de dados. */
-body .main-matrix{
-  border-top:0 !important;
-  border-left:0 !important;
-  border-right:2px solid var(--navy) !important;
-  border-bottom:2px solid var(--navy) !important;
-}
-body .main-matrix thead .matrix-header-empty{
-  border-top:0 !important;
-  border-left:0 !important;
-  border-right:2px solid var(--navy) !important;
-  border-bottom:2px solid var(--navy) !important;
-  background:transparent !important;
-  box-shadow:none !important;
-}
-body .main-matrix thead th.technical-band{
-  border-top:2px solid var(--navy) !important;
-  border-right:0 !important;
-}
-body .main-matrix tbody tr > th:first-child{
-  border-left:2px solid var(--navy) !important;
-}
-
 /* Page count: square with centered text and balanced visual side spaces. */
 body .plan-header .mast > .v57-pagecount{
   width:15mm !important;
@@ -1599,22 +480,6 @@ body .plan-header .v57-pagecount .pagecount-value{
 
 /* V59 — apenas a linha vertical branca entre o bloco OS/entrega e paginação */
 body .plan-header .mast > .v57-pagecount{
-}
-
-
-/* V60 — nomes das peças em 12 pt, ícone de observação simplificado */
-.main-matrix tbody .piece-ladder-name {
-  font-size:12pt !important;
-  line-height:1.14 !important;
-  font-weight:800 !important;
-  color:#0A1F44 !important;
-  overflow-wrap:break-word !important;
-}
-.piece-ladder-comment-marker svg {
-  display:block !important;
-  width:14px !important;
-  height:14px !important;
-  color:#0A1F44 !important;
 }
 
 
@@ -1676,29 +541,13 @@ body .footer-legend .legend-heading{
   background-color: #D5DBE4 !important;
 }
 .footer-legend { background-color: #D5DBE4 !important; }
-
-/* V63 – normalização final da altura, sem tocar nas proporções horizontais */
-.main-matrix tbody tr{height:auto !important;}
-.main-matrix tbody tr>th,
-.main-matrix tbody tr>td {vertical-align:top !important;}
-.main-matrix tbody th.piece-block-cell {padding:7px 8px !important;}
-.main-matrix tbody tr > td {padding:7px 6px !important;}
-
-/* V63 Chromium/WeasyPrint parity: technical steps = regular 10pt */
-body .main-matrix tbody tr > td .stage-entry,
-body .main-matrix tbody tr > td .stage-entry .stage-name{
-  font-size:10pt !important;
-  font-weight:400 !important;
-  line-height:1.16 !important;
-}
 /* PR239: last arrow fallback correction moved to fourth technical cluster. */
 body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span:last-child {
   transform:translateX(2px) scaleX(.85) !important;
   transform-origin:center center !important;
 }
 /* PR240: native gray grid borders only, no synthetic dark separators. */
-html,body{} .plan-page{width:100%!important;max-width:100%!important;}.execution{margin:3.2mm 0 0!important;}
-body .main-matrix .technical-band-label span{letter-spacing:-0.15px!important;}
+html,body{}
 body .main-matrix .technical-band-label:nth-child(4) span,
 body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:-0.25px!important;}
 
@@ -1706,25 +555,6 @@ body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:-0.25px
 
 html,body{height:210mm!important;width:297mm!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important;color:#0A1F44}
 *,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-.os-header{
- position:fixed!important;top:4mm!important;left:5mm!important;
- width:287mm!important;max-width:287mm!important;margin:0!important;
- grid-template-columns:53mm 43mm minmax(0,1fr) 56mm 26mm!important;
- transform:none!important;z-index:20;
-}
-.os-header .field{border-left:2px solid #fff!important}
-.os-header .field .value{
- font-size:12pt!important;font-weight:900!important;
- -webkit-text-stroke:0.18px currentColor!important;
- letter-spacing:0.15px!important
-}
-.os-header .vehicle-field--long .value{letter-spacing:-1px!important}
-.plan-page{
- position:fixed!important;top:23.0mm!important;left:5mm!important;
- width:287mm!important;max-width:287mm!important;min-height:0!important;
- margin:0!important;padding:0!important;background:transparent!important;box-shadow:none!important
-}
-.execution{padding:0!important;margin:0!important}
 .footer-legend{
  position:fixed!important;top:198.4mm!important;left:5mm!important;
  width:287mm!important;height:8.7mm!important;min-height:8.7mm!important;
@@ -1739,9 +569,7 @@ html,body{height:210mm!important;width:297mm!important;margin:0!important;paddin
 body .running-header.plan-header{display:block!important;position:fixed!important;top:4mm!important;left:5mm!important;width:287mm!important;max-width:287mm!important;margin:0!important;z-index:20}
 body .plan-header .v50-vehicle{white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.05!important}
 body .plan-header .v50-vehicle.vehicle-field--long{font-size:14pt!important}
-body .plan-header .pagecount-value>span{font-size:12pt!important}
-
-</style>
+body .plan-header .pagecount-value>span{font-size:12pt!important}</style>
 <style data-os="body">
 :root {
     --navy: #0A1F44;
