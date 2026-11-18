@@ -181,7 +181,7 @@ body{background:#eef1f5}
 .running-header .title h1{margin:0;color:#fff;font-size:16pt;font-weight:800;line-height:1.08;letter-spacing:.25px;text-align:center}
 .running-header .title p{margin:2px 0 0;font-size:10pt;color:#fff;font-weight:800;line-height:1.16;text-align:center;letter-spacing:.15px}
 .running-header .docref{min-width:0;color:#e9eff6;font-size:10pt;line-height:1.13;text-align:right;padding:0 2mm 0 0;overflow-wrap:anywhere}
-.running-header .docref strong{display:block;color:#fff;font-size:10pt;font-weight:800}
+.running-header .docref strong{font-size:10pt;font-weight:800}
 
 .footer-legend{position:running(iconlegend);height:11mm;min-height:11mm;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 3mm;border:1px solid var(--navy);background:var(--footer);color:#233b59;font-size:10pt;white-space:nowrap}
 .footer-legend .legend-heading{font-weight:800;white-space:nowrap}
@@ -236,11 +236,11 @@ body{background:#eef1f5}
 .main-matrix thead{display:table-header-group}
 .main-matrix thead tr{height:40px}
 .main-matrix thead th{height:40px;min-height:40px;vertical-align:middle;padding:0;border:0;border-bottom:2px solid var(--navy);color:#fff;background:var(--blue);font-size:10pt;font-weight:800;line-height:1}
-.main-matrix thead th .th-centered{display:flex;align-items:center;justify-content:center;height:40px;width:100%;font-size:10pt;line-height:1.1;color:#fff;font-weight:800;text-align:center}
+.main-matrix thead th .th-centered{height:40px;width:100%;font-size:10pt;line-height:1.1;color:#fff;font-weight:800;text-align:center}
 .main-matrix thead th:nth-child(2),.main-matrix tbody tr>th:nth-child(2){border-right:2px solid var(--navy)}
 .main-matrix thead th.integrated-header{position:relative;overflow:hidden;background:var(--blue);border-left:0;border-right:0}
-.main-matrix thead th.integrated-header .header-arrow{display:block;position:absolute;inset:0;width:100%;height:40px;border:0}
-.main-matrix thead th.integrated-header .arrow-text{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;height:40px;padding:0 3px 0 8px;text-align:center;color:#fff;font-size:10pt;font-weight:800;line-height:1.05}
+.main-matrix thead th.integrated-header .header-arrow{position:absolute;inset:0;width:100%;height:40px;border:0}
+.main-matrix thead th.integrated-header .arrow-text{z-index:1;height:40px;padding:0 3px 0 8px;text-align:center;color:#fff;font-size:10pt;font-weight:800;line-height:1.05}
 .main-matrix tbody tr{break-inside:avoid}
 .main-matrix tbody tr:nth-child(odd)>th,.main-matrix tbody tr:nth-child(odd)>td{background:#fff}
 .main-matrix tbody tr:nth-child(even)>th,.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe)}
@@ -322,14 +322,14 @@ body{background:#eef1f5}
 /* Make plan header arrows more evident */
 .main-matrix thead tr{height:46px !important;}
 .main-matrix thead th{height:46px !important; min-height:46px !important;}
-.main-matrix thead th .th-centered{height:46px !important; line-height:1.05 !important; align-items:center !important;}
+.main-matrix thead th .th-centered{height:46px !important; align-items:center !important;}
 .main-matrix thead th.integrated-header .header-arrow{height:46px !important;}
-.main-matrix thead th.integrated-header .arrow-text{height:46px !important; font-size:10pt !important; line-height:1.04 !important; padding:0 6px 0 10px !important;}
+.main-matrix thead th.integrated-header .arrow-text{height:46px !important; line-height:1.04 !important; padding:0 6px 0 10px !important;}
 /* Slightly stronger separation in header without dark internal vertical lines */
 .main-matrix thead th{border-bottom:2px solid var(--navy) !important;}
 /* Keep left/right content alignment closer to header logic */
-.identity-field:last-child{text-align:right !important; padding-right:0 !important;}
-.identity-field:first-child{padding-left:0 !important;}
+.identity-field:last-child{text-align:right !important;}
+
 /* Nudge first-page body blocks to preserve top rhythm */
 .cover-page .closing-grid{margin-top:5mm !important;}
 
@@ -360,8 +360,8 @@ body{background:#eef1f5}
   z-index:2!important;
 }
 .main-matrix thead th.integrated-header:last-child .arrow-text{padding-right:6px!important}
-.main-matrix thead th .th-centered{height:48px!important;font-size:10pt!important;text-transform:uppercase!important}
-.piece-summary-table thead th,.component-table thead th{font-size:10pt!important;text-transform:uppercase!important}
+.main-matrix thead th .th-centered{text-transform:uppercase!important}
+
 
 
 /* FUNIX V38: centred chevrons, consistent medium-blue table headers and readable borders */
@@ -405,7 +405,6 @@ body{background:#eef1f5}
   color:#fff!important;
   font-size:10pt!important;
   font-weight:800!important;
-  border-bottom:2px solid #0A1F44!important;
 }
 .main-matrix thead th.th-flat{
   background:var(--header-table)!important;
@@ -432,9 +431,6 @@ body{background:#eef1f5}
   position:absolute!important;
   top:0!important;
   left:0!important;
-  width:100%!important;
-  height:48px!important;
-  display:block!important;
   z-index:0!important;
 }
 .technical-band-labels{
@@ -534,8 +530,6 @@ body{background:#eef1f5}
 /* Re-center title 'Legenda:' against icon explanations on their real baselines.
    The SVG+inline-flex group is naturally ~5pt lower in the PDF renderer. */
 .footer-legend {
-  align-items:center!important;
-  justify-content:center!important;
   background:#D5DBE4!important;
   box-sizing:border-box!important;
 }
@@ -547,7 +541,6 @@ body{background:#eef1f5}
 .footer-legend .legend-item {
   position:relative!important;
   top:-1.25pt!important;
-  align-items:center!important;
 }
 .footer-legend .legend-item svg,
 .footer-legend .legend-item .legend-text {
@@ -597,10 +590,10 @@ body{background:#eef1f5}
 .summary-icons svg{width:16px!important;height:16px!important;flex:0 0 16px!important;color:#0A1F44!important;}
 .status-stack{gap:7px!important;}
 .status-stack svg{width:15px!important;height:15px!important;color:#0A1F44!important;}
-.footer-legend{gap:9px!important;justify-content:space-between!important;padding:0 3mm!important;}
-.footer-legend .legend-item{gap:3px!important;flex-shrink:0!important;}
-.footer-legend svg{width:14px!important;height:14px!important;flex:0 0 14px!important;color:#0A1F44!important;}
-.footer-legend .legend-text{font-size:10pt!important;line-height:1.1!important;}
+.footer-legend{gap:9px!important;padding:0 3mm!important;}
+.footer-legend .legend-item{flex-shrink:0!important;}
+.footer-legend svg{color:#0A1F44!important;}
+
 .footer-legend .legend-heading,.footer-legend .legend-item{top:0!important;position:static!important;}
 
 /* FUNIX V43 - smaller balanced footer, stage bullets and readable label */
@@ -613,7 +606,6 @@ body{background:#eef1f5}
   max-height:8.6mm!important;
   padding:0.7mm 2.2mm!important;
   gap:5px!important;
-  align-items:center!important;
   justify-content:space-between!important;
   border:2px solid #0A1F44!important;
 }
@@ -853,11 +845,7 @@ body{background:#eef1f5}
 /* V49: componentes ligados à referência da peça + opção 01, linha contínua fina */
 .main-matrix tbody th.piece-block-cell { padding:9px 9px !important; }
 .piece-ladder {
-    display:grid !important;
-    grid-template-columns:24px minmax(0,1fr) !important;
     grid-auto-rows:auto !important;
-    column-gap:8px !important;
-    row-gap:0 !important;
     width:100% !important;
     margin:0 !important;
     align-items:stretch !important;
@@ -885,7 +873,6 @@ body{background:#eef1f5}
     min-height:43px !important;
     min-width:0 !important;
     gap:5px !important;
-    padding:0 0 5px !important;
 }
 .piece-ladder-name {
     display:block !important;
@@ -926,8 +913,8 @@ body{background:#eef1f5}
     font-weight:800 !important;
     line-height:1.1 !important;
 }
-.piece-ladder-code--first { border-top:1px solid var(--navy) !important; }
-.piece-ladder-code--last { border-bottom:1px solid var(--navy) !important; }
+
+
 .piece-ladder-component {
     display:grid !important;
     grid-template-columns:minmax(0,1fr) auto !important;
@@ -962,10 +949,7 @@ body{background:#eef1f5}
   background:var(--navy) !important;
 }
 .plan-header .mast {
-  height:15mm !important;
   grid-template-columns:21% minmax(0,1fr) 23% !important;
-  align-items:center !important;
-  gap:0 !important;
 }
 .plan-header .logo {
   padding:0 !important;
@@ -1011,7 +995,7 @@ body{background:#eef1f5}
  gap:3px !important;
  color:#fff !important;
 }
-.v50-number{font-size:11pt !important;line-height:1.1 !important;font-weight:800 !important;white-space:nowrap !important;}
+.v50-number{line-height:1.1 !important;white-space:nowrap !important;}
 .v50-delivery{font-size:10pt !important;line-height:1.1 !important;font-weight:700 !important;white-space:nowrap !important;color:#ecf3fc !important;}
 .execution{margin:2.5mm 0 0 !important;}
 
@@ -1026,7 +1010,6 @@ body{background:#eef1f5}
 .v50-vehicle {
   font-size:14pt !important;
   line-height:1.08 !important;
-  font-weight:800 !important;
   letter-spacing:0 !important;
   color:#fff !important;
 }
@@ -1044,7 +1027,6 @@ body{background:#eef1f5}
   background:transparent !important;
   border:0 !important;
   box-shadow:none !important;
-  padding:0 !important;
   height:48px !important;
   min-height:48px !important;
 }
@@ -1083,14 +1065,13 @@ body{background:#eef1f5}
   font-family:Arial,Helvetica,sans-serif;
   display:inline-flex;
   color:#fff !important;
-  font-size:22pt !important;
   font-weight:800 !important;
   line-height:1 !important;
   letter-spacing:-.5px !important;
   flex:none;
 }
 .plan-header .v50-identidade{gap:0 !important;}
-.plan-header .v50-vehicle{font-size:14pt !important;font-weight:800 !important;line-height:1.1 !important;}
+.plan-header .v50-vehicle{line-height:1.1 !important;}
 
 /* Mantém a célula da primeira coluna vazia sem sobrepor a primeira peça. */
 .main-matrix thead td.matrix-header-empty{
@@ -1101,21 +1082,18 @@ body{background:#eef1f5}
   border-right:2px solid var(--navy) !important;
   padding:0 !important;
 }
-.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{
-  margin-top:0 !important;
-}
+
 /* Distribui o trabalho com mais respiro até perto do rodapé, sem sobrepor a legenda. */
 /* V63: altura determinada somente pelo conteúdo; larguras já aprovadas preservadas. */
 .main-matrix{min-height:0 !important;height:auto !important;}
-.main-matrix tbody tr{height:auto !important;min-height:0 !important;}
+.main-matrix tbody tr{min-height:0 !important;}
 .main-matrix tbody tr>th,.main-matrix tbody tr>td{padding-top:7px !important;padding-bottom:7px !important;}
-.main-matrix tbody th.piece-block-cell{padding:7px 8px !important;}
+
 
 /* Linhas brancas e linhas em cinza-azulado muito leve. */
 .main-matrix tbody tr:nth-child(odd)>th,
-.main-matrix tbody tr:nth-child(odd)>td{background:#fff !important;}
-.main-matrix tbody tr:nth-child(even)>th,
-.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe) !important;}
+.main-matrix tbody tr:nth-child(odd)>td{}
+
 
 /* Todos os textos da área de dados no mesmo azul corporativo. */
 .main-matrix tbody tr>th,
@@ -1144,11 +1122,10 @@ body{background:#eef1f5}
   width:24px !important;
   border-left:1px solid var(--navy) !important;
   border-right:1px solid var(--navy) !important;
-  border-bottom:1px solid var(--navy) !important;
   border-top:1px solid var(--navy) !important;
   color:var(--navy) !important;
 }
-.piece-ladder-comment-marker svg{width:14px !important;height:14px !important;display:block !important;color:var(--navy) !important;}
+.piece-ladder-comment-marker svg{color:var(--navy) !important;}
 .piece-ladder-comment-content{
   grid-column:2 !important;
   display:block !important;
@@ -1230,7 +1207,7 @@ body{background:#eef1f5}
   border-bottom:0 !important;
   margin:0 !important;
 }
-.piece-ladder-code--first{border-top:1px solid var(--navy) !important;}
+
 .piece-ladder-code--last{border-bottom:0 !important;}
 .piece-ladder-comment-marker{
   border-bottom:1px solid var(--navy) !important;
@@ -1251,7 +1228,6 @@ body{background:#eef1f5}
 
 .plan-header .mast{position:relative !important;}
 .v50-os-info{
-  position:relative !important;
   padding-right:13mm !important;
 }
 .v54-pagecount{
@@ -1259,10 +1235,7 @@ body{background:#eef1f5}
   top:50% !important;
   right:0 !important;
   transform:translateY(-50%) !important;
-  color:#fff !important;
   font-size:10.5pt !important;
-  font-weight:800 !important;
-  line-height:1 !important;
   width:11mm !important;
   text-align:right !important;
 }
@@ -1621,13 +1594,11 @@ body .plan-header .v57-pagecount .pagecount-value{
   margin:0 !important;
   padding:0 !important;
   line-height:1 !important;
-  text-align:center !important;
   transform:translateX(0.7mm) !important;
 }
 
 /* V59 — apenas a linha vertical branca entre o bloco OS/entrega e paginação */
 body .plan-header .mast > .v57-pagecount{
-  border-left:2pt solid #FFFFFF !important;
 }
 
 
@@ -1726,7 +1697,7 @@ body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span
   transform-origin:center center !important;
 }
 /* PR240: native gray grid borders only, no synthetic dark separators. */
-html,body{background:#fff!important} .plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}.execution{margin:3.2mm 0 0!important;}
+html,body{} .plan-page{width:100%!important;max-width:100%!important;}.execution{margin:3.2mm 0 0!important;}
 body .main-matrix .technical-band-label span{letter-spacing:-0.15px!important;}
 body .main-matrix .technical-band-label:nth-child(4) span,
 body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:-0.25px!important;}
@@ -1901,7 +1872,6 @@ body{background:#fff}
   color:#fff!important;
   font-size:10pt!important;
   font-weight:800!important;
-  border-bottom:2px solid #0A1F44!important;
 }
 .main-matrix thead th.technical-band{
   height:48px!important;
@@ -1917,9 +1887,6 @@ body{background:#fff}
   position:absolute!important;
   top:0!important;
   left:0!important;
-  width:100%!important;
-  height:48px!important;
-  display:block!important;
   z-index:0!important;
 }
 .technical-band-labels{
@@ -1981,8 +1948,6 @@ body{background:#fff}
 }
 .main-matrix thead th {border-bottom:2px solid #0A1F44!important;}
 .footer-legend {
-  align-items:center!important;
-  justify-content:center!important;
   background:#D5DBE4!important;
   box-sizing:border-box!important;
 }
@@ -1994,7 +1959,6 @@ body{background:#fff}
 .footer-legend .legend-item {
   position:relative!important;
   top:-1.25pt!important;
-  align-items:center!important;
 }
 .footer-legend .legend-item svg,
 .footer-legend .legend-item .legend-text {
@@ -2056,10 +2020,10 @@ body{background:#fff}
 }
 .main-matrix .technical-band-label{font-family:'Liberation Sans Narrow',Arial,Helvetica,sans-serif!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;font-size:10pt!important;line-height:1.06!important;font-weight:800!important;padding:0 6px!important;white-space:normal!important;}
 .main-matrix .technical-band-label span{font-family:inherit!important;display:block!important;white-space:nowrap!important;font-size:10pt!important;line-height:1.04!important;}
-.footer-legend{gap:9px!important;justify-content:space-between!important;padding:0 3mm!important;}
-.footer-legend .legend-item{gap:3px!important;flex-shrink:0!important;}
-.footer-legend svg{width:14px!important;height:14px!important;flex:0 0 14px!important;color:#0A1F44!important;}
-.footer-legend .legend-text{font-size:10pt!important;line-height:1.1!important;}
+.footer-legend{gap:9px!important;padding:0 3mm!important;}
+.footer-legend .legend-item{flex-shrink:0!important;}
+.footer-legend svg{color:#0A1F44!important;}
+
 .footer-legend .legend-heading,.footer-legend .legend-item{top:0!important;position:static!important;}
 @page cover{
   margin-bottom:15mm;
@@ -2075,7 +2039,6 @@ body{background:#fff}
   max-height:8.6mm!important;
   padding:0.7mm 2.2mm!important;
   gap:5px!important;
-  align-items:center!important;
   justify-content:space-between!important;
   border:2px solid #0A1F44!important;
 }
@@ -2131,11 +2094,7 @@ body{background:#fff}
 }
 .main-matrix tbody th.piece-block-cell { padding:9px 9px !important; }
 .piece-ladder {
-    display:grid !important;
-    grid-template-columns:24px minmax(0,1fr) !important;
     grid-auto-rows:auto !important;
-    column-gap:8px !important;
-    row-gap:0 !important;
     width:100% !important;
     margin:0 !important;
     align-items:stretch !important;
@@ -2163,7 +2122,6 @@ body{background:#fff}
     min-height:43px !important;
     min-width:0 !important;
     gap:5px !important;
-    padding:0 0 5px !important;
 }
 .piece-ladder-name {
     display:block !important;
@@ -2204,8 +2162,8 @@ body{background:#fff}
     font-weight:800 !important;
     line-height:1.1 !important;
 }
-.piece-ladder-code--first { border-top:1px solid var(--navy) !important; }
-.piece-ladder-code--last { border-bottom:1px solid var(--navy) !important; }
+
+
 .piece-ladder-component {
     display:grid !important;
     grid-template-columns:minmax(0,1fr) auto !important;
@@ -2253,10 +2211,7 @@ body{background:#fff}
   background:var(--navy) !important;
 }
 .plan-header .mast {
-  height:15mm !important;
   grid-template-columns:21% minmax(0,1fr) 23% !important;
-  align-items:center !important;
-  gap:0 !important;
 }
 .plan-header .logo {
   padding:0 !important;
@@ -2295,13 +2250,12 @@ body{background:#fff}
  gap:3px !important;
  color:#fff !important;
 }
-.v50-number{font-size:11pt !important;line-height:1.1 !important;font-weight:800 !important;white-space:nowrap !important;}
+.v50-number{line-height:1.1 !important;white-space:nowrap !important;}
 .v50-delivery{font-size:10pt !important;line-height:1.1 !important;font-weight:700 !important;white-space:nowrap !important;color:#ecf3fc !important;}
 .execution{margin:2.5mm 0 0 !important;}
 .v50-vehicle {
   font-size:14pt !important;
   line-height:1.08 !important;
-  font-weight:800 !important;
   letter-spacing:0 !important;
   color:#fff !important;
 }
@@ -2317,7 +2271,6 @@ body{background:#fff}
   background:transparent !important;
   border:0 !important;
   box-shadow:none !important;
-  padding:0 !important;
   height:48px !important;
   min-height:48px !important;
 }
@@ -2345,14 +2298,13 @@ body{background:#fff}
   font-family:Arial,Helvetica,sans-serif;
   display:inline-flex;
   color:#fff !important;
-  font-size:22pt !important;
   font-weight:800 !important;
   line-height:1 !important;
   letter-spacing:-.5px !important;
   flex:none;
 }
 .plan-header .v50-identidade{gap:0 !important;}
-.plan-header .v50-vehicle{font-size:14pt !important;font-weight:800 !important;line-height:1.1 !important;}
+.plan-header .v50-vehicle{line-height:1.1 !important;}
 .main-matrix thead td.matrix-header-empty{
   background:#fff !important;
   height:44px !important;
@@ -2361,17 +2313,13 @@ body{background:#fff}
   border-right:2px solid var(--navy) !important;
   padding:0 !important;
 }
-.main-matrix tbody tr:first-child th.piece-block-cell .piece-ladder{
-  margin-top:0 !important;
-}
+
 .main-matrix{min-height:0 !important;height:auto !important;}
-.main-matrix tbody tr{height:auto !important;min-height:0 !important;}
+.main-matrix tbody tr{min-height:0 !important;}
 .main-matrix tbody tr>th,.main-matrix tbody tr>td{padding-top:7px !important;padding-bottom:7px !important;}
-.main-matrix tbody th.piece-block-cell{padding:7px 8px !important;}
-.main-matrix tbody tr:nth-child(odd)>th,
-.main-matrix tbody tr:nth-child(odd)>td{background:#fff !important;}
-.main-matrix tbody tr:nth-child(even)>th,
-.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe) !important;}
+
+
+
 .main-matrix tbody tr>th,
 .main-matrix tbody tr>td,
 .main-matrix tbody tr>th .piece-ladder-name,
@@ -2394,11 +2342,10 @@ body{background:#fff}
   width:24px !important;
   border-left:1px solid var(--navy) !important;
   border-right:1px solid var(--navy) !important;
-  border-bottom:1px solid var(--navy) !important;
   border-top:1px solid var(--navy) !important;
   color:var(--navy) !important;
 }
-.piece-ladder-comment-marker svg{width:14px !important;height:14px !important;display:block !important;color:var(--navy) !important;}
+.piece-ladder-comment-marker svg{color:var(--navy) !important;}
 .piece-ladder-comment-content{
   grid-column:2 !important;
   display:block !important;
@@ -2484,7 +2431,7 @@ body{background:#fff}
   border-bottom:0 !important;
   margin:0 !important;
 }
-.piece-ladder-code--first{border-top:1px solid var(--navy) !important;}
+
 .piece-ladder-code--last{border-bottom:0 !important;}
 .piece-ladder-comment-marker{
   border-bottom:1px solid var(--navy) !important;
@@ -2509,7 +2456,6 @@ body{background:#fff}
 }
 .plan-header .mast{position:relative !important;}
 .v50-os-info{
-  position:relative !important;
   padding-right:13mm !important;
 }
 .matrix-header-empty{position:relative !important;}
@@ -2808,12 +2754,9 @@ body .plan-header .v57-pagecount .pagecount-value{
   margin:0 !important;
   padding:0 !important;
   line-height:1 !important;
-  text-align:center !important;
   transform:translateX(0.7mm) !important;
 }
-body .plan-header .mast > .v57-pagecount{
-  border-left:2pt solid #FFFFFF !important;
-}
+
 .main-matrix tbody .piece-ladder-name {
   font-size:12pt !important;
   line-height:1.14 !important;
@@ -2891,8 +2834,8 @@ body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span
   transform-origin:center center !important;
 }
 @page{size:A4 landscape;margin:28mm 9mm 18mm 9mm;}
-html,body{background:#fff!important}
-.plan-page{width:100%!important;max-width:100%!important;margin:0!important;box-shadow:none!important;}
+
+.plan-page{width:100%!important;max-width:100%!important;}
 .execution{margin:3.2mm 0 0!important;}
 body .main-matrix .technical-band-label span{letter-spacing:-0.15px!important;}
 body .main-matrix .technical-band-label:nth-child(4) span,
