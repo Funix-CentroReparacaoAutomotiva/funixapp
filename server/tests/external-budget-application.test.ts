@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {openDatabase} from '../database.ts'
+import {createCodaEventSchema} from '../chat/coda-sync.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {historicalCapture} from './fixtures/historical-capture.ts'
 import {normalizeHistoricalCodaCapture} from '../historical-coda-capture.ts'
@@ -9,6 +10,7 @@ import {ExternalBudgetApplication,createExternalBudgetApplicationSchema} from '.
 
 function setup(){
   const db=openDatabase(':memory:'),f=commercialFixture(db)
+  createCodaEventSchema(db)
   createExternalBudgetApplicationSchema(db)
   const raw=historicalCapture(),data=externalBudgetFromCoda(normalizeHistoricalCodaCapture(raw,raw).data).data
   const source=data
