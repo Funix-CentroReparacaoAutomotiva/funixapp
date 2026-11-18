@@ -16,11 +16,13 @@ def payload(count:int, stress:bool=False)->dict:
 
 # The approved V1 master remains unchanged and acts as visual-reference CSS.
 MASTER=(ROOT/"server/templates/FUNIX_OS_V1.html").read_text(encoding="utf-8")
-REFERENCE_CSS=re.search(r"<style>([\\s\\S]*?)</style>",MASTER).group(1)
+REFERENCE_MATCH=re.search(r"<style>([\s\S]*?)</style>",MASTER)
+assert REFERENCE_MATCH is not None, "CSS do mestre V1 não encontrado"
+REFERENCE_CSS=REFERENCE_MATCH.group(1)
 def without_page_rules(css):
     output=[]
     cursor=0
-    for match in re.finditer(r"@page[^{}]*\\{",css):
+    for match in re.finditer(r"@page[^{}]*\{",css):
         if match.start()<cursor:
             continue
         output.append(css[cursor:match.start()])
