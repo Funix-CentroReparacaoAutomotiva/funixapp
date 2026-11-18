@@ -142,7 +142,13 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const id=this.rememberProviderConversation(jid)
     const previous=this.links(jid)
     const created=!at
-    at??=new AtendimentoRepository(this.db).create({phone,name,purpose:'unclassified'},true).id
+    // Only the explicitly assigned Entity participates; provider names and phone text are not identity evidence.
+    const owner=contactId?this.db.prepare(`SELECT e.id,e.data FROM customer_records c
+      JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
+      WHERE c.id=? AND c.kind='contact'`).get(contactId):undefined
+    const ownerName=owner?String(JSON.parse(String(owner.data)).text??''):null
+    at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified'},true).id
+    let referencesChanged=false
     if(!previous.some(link=>link.atendimento_id===at)){
       const linkId=randomUUID()
       this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)')
@@ -163,8 +169,27 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const keepPrevious=position===0&&!created&&old.phone&&old.phone!==phone
       if(keepPrevious)add.run(at,0,null,JSON.stringify({id:null,text:String(old.phone)}))
       add.run(at,keepPrevious?1:position,contactId,JSON.stringify({id:contactId,text:phone}))
-      if(!created)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
+      referencesChanged=true
     }
+    if(owner&&!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='person' AND record_id=?").get(at,owner.id!)){
+      const people=this.db.prepare("SELECT position,record_id,data FROM atendimento_references WHERE atendimento_id=? AND kind='person' ORDER BY position").all(at)
+      const ref=JSON.stringify({id:String(owner.id),text:ownerName??''})
+      const add=this.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'person',?,?,?)")
+      // Do not overwrite existing people or infer that a free-text name denotes the same Entity.
+      // A sole empty placeholder has no participant to preserve.
+      if(people.length===1&&people[0]!.record_id===null&&!String(JSON.parse(String(people[0]!.data)).text??'').trim()){
+        this.db.prepare("UPDATE atendimento_references SET record_id=?,data=? WHERE atendimento_id=? AND kind='person' AND position=?")
+          .run(owner.id!,ref,at,people[0]!.position!)
+      }else{
+        const previousName=String(this.db.prepare('SELECT name FROM atendimentos WHERE id=?').get(at)!.name??'')
+        const keepPrevious=!created&&!people.length&&!!previousName.trim()
+        if(keepPrevious)add.run(at,0,null,JSON.stringify({id:null,text:previousName}))
+        const position=people.length?Number(people.at(-1)!.position)+1:keepPrevious?1:0
+        add.run(at,position,owner.id!,ref)
+      }
+      referencesChanged=true
+    }
+    if(!created&&referencesChanged)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     return at
   }
 
