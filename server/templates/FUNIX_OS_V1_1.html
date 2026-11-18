@@ -1531,6 +1531,11 @@ body .piece-ladder .piece-ladder-code--last{
 body .piece-ladder .piece-ladder-code--first{
   border-top:1px solid var(--navy) !important;
 }
+/* Fechar a coluna de códigos somente quando não há observação logo abaixo.
+   Se houver, a borda superior do marcador de observação já faz a divisão. */
+body .piece-ladder > .piece-ladder-code--last:nth-last-child(2){
+  border-bottom:1px solid var(--navy) !important;
+}
 body .piece-ladder .piece-ladder-component--first{
   border-top:1px solid #9cb0c6 !important;
 }
