@@ -5,6 +5,9 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+import io
+import tarfile
+import hashlib
 
 spec = importlib.util.spec_from_file_location(
     "hml_update_safety", Path(__file__).resolve().parents[1] / "hml-update-safety.py")
@@ -15,6 +18,30 @@ REV = "a" * 40
 
 
 class CandidateTest(unittest.TestCase):
+    def test_archive_binds_config_ids_and_rejects_productive_tag(self):
+        for bad in (False, True):
+            records = []
+            with tarfile.open(self.archive, "w:gz") as bundle:
+                def add(name, content):
+                    item = tarfile.TarInfo(name)
+                    item.size = len(content)
+                    bundle.addfile(item, io.BytesIO(content))
+                for role in ("api", "web"):
+                    config = json.dumps({"config": {"Labels": {
+                        "org.opencontainers.image.revision": REV}}, "role": role}).encode()
+                    digest = hashlib.sha256(config).hexdigest()
+                    self.data["images"][role]["image_id"] = "sha256:" + digest
+                    add(digest + ".json", config)
+                    add(role + "/layer.tar", b"synthetic")
+                    records.append({"Config": digest + ".json", "Layers": [role + "/layer.tar"],
+                                    "RepoTags": ["funixapp:latest" if bad else f"funix-hml-{role}:{REV}"]})
+                add("manifest.json", json.dumps(records).encode())
+            if bad:
+                with self.assertRaises(safety.Blocked):
+                    safety.verify_image_archive(self.archive, self.data)
+            else:
+                self.assertTrue(safety.verify_image_archive(self.archive, self.data))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

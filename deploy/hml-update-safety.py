@@ -13,6 +13,59 @@ import shutil
 import sqlite3
 import stat
 import time
+import tarfile
+
+
+def verify_image_archive(archive, manifest, *, max_bytes=20 * 1024**3):
+    """Inspect docker-save metadata without extracting or loading any image.
+
+    Provenance must already have been authenticated independently. Reject
+    extra tags, duplicate paths, links and config IDs not bound to manifest.
+    """
+    with tarfile.open(regular(archive), mode="r:gz") as bundle:
+        members = {}
+        total = 0
+        for member in bundle:
+            name = member.name
+            require(name not in members and not name.startswith("/")
+                    and ".." not in Path(name).parts, "unsafe archive path")
+            require(member.isfile() or member.isdir(), "archive contains link or special file")
+            total += member.size
+            require(total <= max_bytes, "archive expansion limit exceeded")
+            members[name] = member
+        require("manifest.json" in members, "missing docker-save manifest")
+        def read(name, limit):
+            require(name in members and members[name].isfile()
+                    and members[name].size <= limit, "invalid image metadata")
+            stream = bundle.extractfile(members[name])
+            require(stream is not None, "missing image metadata")
+            with stream:
+                return stream.read(limit + 1)
+        records = json.loads(read("manifest.json", 65536))
+        require(isinstance(records, list) and len(records) == 2,
+                "unexpected archive image count")
+        expected = {item["tag"]: item["image_id"]
+                    for item in manifest["images"].values()}
+        seen = set()
+        for record in records:
+            tags = record.get("RepoTags")
+            require(isinstance(tags, list) and len(tags) == 1
+                    and tags[0] in expected and tags[0] not in seen,
+                    "unexpected or duplicate image tag")
+            seen.add(tags[0])
+            config = read(record["Config"], 4 * 1024**2)
+            require("sha256:" + hashlib.sha256(config).hexdigest() == expected[tags[0]],
+                    "archive image ID mismatch")
+            metadata = json.loads(config)
+            require(metadata.get("config", {}).get("Labels", {}).get(
+                "org.opencontainers.image.revision") == manifest["revision"],
+                "archive revision mismatch")
+            require(isinstance(record.get("Layers"), list) and record["Layers"],
+                    "missing image layers")
+            for layer in record["Layers"]:
+                require(layer in members and members[layer].isfile(), "missing image layer")
+        require(seen == set(expected), "incomplete archive")
+    return True
 
 
 class Blocked(ValueError):
@@ -109,6 +162,8 @@ def reserve(path):
     require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid()
             and stat.S_IMODE(info.st_mode) == 0o700,
             "destination directory must be private (0700)")
+    if path.exists() or path.is_symlink():
+        raise FileExistsError("destination already exists")
     no_sidecars(path)
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags, 0o600)
