@@ -3,12 +3,25 @@
 The caller supplies an independently reviewed normalized Compose contract.
 Only image IDs may differ between releases; gateway remains pinned.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import time
+
+
+def contract_digest(value):
+    """Pin the normalized Compose without persisting a second copy of its secrets."""
+    value = json.loads(json.dumps(value))
+    if value.get("name") != "funix-hml" or set(value.get("services", {})) != {"api", "web", "gateway"}:
+        raise ValueError("unexpected Compose project or services")
+    for role, service in value["services"].items():
+        service.pop("image", None)
+        if role == "api":
+            service.get("environment", {}).pop("FUNIX_REVISION", None)
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 class DockerAdapter:
@@ -69,18 +82,16 @@ class DockerAdapter:
         if environment.get("FUNIX_REVISION") != release["revision"]:
             raise ValueError("installed revision differs from operation")
 
+    def assert_contract(self):
+        config = self.configuration()
+        expected = self.contract if isinstance(self.contract, str) else contract_digest(self.contract)
+        if contract_digest(config) != expected:
+            raise ValueError("Compose differs from reviewed contract")
+        return config
+
     def preflight(self, candidate):
         self.check_release(candidate)
-        config = self.configuration()
-        def policy(value):
-            value = json.loads(json.dumps(value))
-            for role, service in value["services"].items():
-                service.pop("image", None)
-                if role == "api":
-                    service.get("environment", {}).pop("FUNIX_REVISION", None)
-            return value
-        if policy(config) != policy(self.contract) or config.get("name") != "funix-hml":
-            raise ValueError("Compose differs from reviewed contract")
+        config = self.assert_contract()
         if set(config["services"]) != {"api", "web", "gateway"}:
             raise ValueError("unexpected service set")
         for role, service in config["services"].items():
