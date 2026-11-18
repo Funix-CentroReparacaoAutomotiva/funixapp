@@ -395,3 +395,23 @@ Esta decisão substitui as restrições anteriores de telefone obrigatório e de
 - `GET /api/chat/conversations/:id/profile-photo` devolve JPEG validado ou 404, com cache privado e cache backend positivo/negativo. Indisponibilidade não bloqueia a lista.
 
 Todos esses endpoints de dados exigem a sessão existente; escritas exigem Origin exata e JSON. Inbound continua exigindo relay HMAC/allowlist independente de cookie. Primeiro inbound elegível, mensagem e decisão de criação/reutilização são confirmados juntos. Retries não refazem snapshot nem criam nova ficha. LID sem PN conserva telefone desconhecido; conflitos permanecem bloqueados para leitura/envio. Preparação e recebimento não autorizam mensagem automática; o composer exige ação e confirmação do vendedor, além dos gates de envio.
+
+### Entidades, N telefones e Chat por Contato (V22)
+
+`POST /api/customer-records` e `PATCH /api/customer-records/:entityId` aceitam em Entidade `contacts?: Array<{id?:UUID,text:string,revision?:number}>` (máximo 50). Cadastro e números são transacionais; verifica-se WhatsApp apenas depois do commit. Omissão não remove telefones anteriores. Novo número completo duplicado retorna `409 CONTACT_PHONE_CONFLICT`. Seleção por ID de Contato sem titular é explícita; Contato de outra Entidade retorna `409 CONTACT_OWNER_CONFLICT`. UUIDs/históricos não são fundidos. `GET` de Entidade retorna `contacts`, cada qual com `whatsapp:{state,checkedAt,conversationId}`; estados `incomplete|pending|available|unavailable|conflict`. Indisponibilidade do provedor preserva o cadastro e retorna `pending`.
+
+Nome apresentado na Conversa é o da Entidade explicitamente ligada ao Contato. Não é necessário copiar esse nome para nickname. `references.person` admite várias Entidades no mesmo Atendimento; seus Contatos são obtidos do cadastro. Selecionar Entidades não cria `v20_associations`.
+
+Novas rotas autenticadas:
+
+| Rota | Contrato |
+| --- | --- |
+| `POST /api/customer-records/:contactId/verify-whatsapp` | `{}`; verifica número salvo, respeita lease/cache/limites, sem enviar |
+| `POST /api/customer-records/:contactId/open-chat` | `{}`; revalida e retorna `{conversationId}` opaco; sem Atendimento obrigatório, vínculo ou mensagem automática |
+| `GET /api/customer-records/:contactId/chat/:conversationId/messages?page=1&cursor=...` | Mesma projeção de mensagens, token e capacidades do Chat; cursor somente na fonte local já habilitada |
+| `POST /api/customer-records/:contactId/chat/:conversationId/message-states` | `{messages:[{messageId,version?}]}`, 1–50; revalida Contato e consulta estados locais |
+| `POST /api/customer-records/:contactId/chat/:conversationId/send-text` | `{text,requestId,contextToken,confirmed:true}`; flag existente de envio, Origin e sessão |
+| `POST /api/customer-records/:contactId/chat/:conversationId/send-media` | `{kind,mimeType,base64,caption?,requestId,contextToken,confirmed:true}`; gateway/limites/flag existentes de mídia |
+| `GET /api/customer-records/:contactId/chat/:conversationId/messages/:messageId/media?page=1` | Mídia validada pelo gateway existente; revalidação antes/depois da consulta e recuperação |
+
+Não se aceita destinatário, JID ou Entidade como autoridade de envio vinda do navegador. O token vincula Contato, revisão, titular, telefone exato, conversa, evidência de verificação e instância. Repetições usam o ledger durável existente por PN, inclusive entre texto e mídia. Conflito ou identidade alterada revoga leitura/envio. Relatório e procedimento DEV: [Entidades, Contatos e WhatsApp](entregas/ENTIDADES_CONTATOS_WHATSAPP.md).

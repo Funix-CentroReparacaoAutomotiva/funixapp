@@ -20,6 +20,7 @@ export class SendOperations {
     scope: string,
     payload: unknown,
     send: () => Promise<{ messageId: string }>,
+    prepare?: () => void,
   ) {
     if (
       !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
@@ -58,6 +59,8 @@ export class SendOperations {
           'CHAT_SEND_IN_PROGRESS',
           'Há um envio em andamento nesta conversa.',
         )
+      // Reserve the interaction and operation together before touching the provider.
+      prepare?.()
       const now = new Date().toISOString()
       this.db
         .prepare("INSERT INTO chat_send_operations VALUES(?,?,?,'sending',NULL,?,?)")
