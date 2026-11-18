@@ -1,0 +1,61 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {openDatabase} from '../database.ts'
+import {AtendimentoRepository} from '../atendimentos.ts'
+import {CustomerRepository} from '../customers.ts'
+import {createCodaEventSchema,CodaEventSyncRepository} from '../chat/coda-sync.ts'
+import {LocalConversationAssociations} from '../chat/local-associations.ts'
+import {consolidateLegacyCustomers} from '../chat/legacy-consolidation.ts'
+
+const pn='5531999990101@s.whatsapp.net'
+function fixture(){
+  const db=openDatabase(':memory:');createCodaEventSchema(db)
+  const coda=new CodaEventSyncRepository(db),at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
+  const record=(id:string,name:string)=>coda.sync({version:1,source:'coda',eventId:'synthetic:'+id,codaRowId:'i-'+id,instance:'funix_comercial',remoteJid:pn,phoneE164:null,displayName:name,occurredAt:1794144000+Number(id.slice(-1))}).atendimentoId
+  return {db,at,customers,record}
+}
+test('Coda legacy name without phone: preview rolls back, apply shares person and number, replay is idempotent',()=>{
+  const f=fixture()
+  try{
+    const at=f.record('TEST1','Pessoa sintética')
+    assert.equal(f.at.get(at,true).phone,'')
+    const preview=consolidateLegacyCustomers(f.db)
+    assert.equal(preview.copiedLinks,1);assert.equal(preview.reconciled,1)
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM customer_records').get()!.n,0)
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM v20_associations').get()!.n,0)
+    assert.deepEqual(consolidateLegacyCustomers(f.db,true),preview)
+    const after=f.at.get(at,true),local=new LocalConversationAssociations(f.db)
+    assert.equal(after.phone,'+5531999990101')
+    const person=after.references!.person[0]!.id!,contact=after.references!.contact[0]!.id!
+    assert.ok(person);assert.ok(contact)
+    assert.equal(f.customers.record(contact).entityId,person)
+    assert.equal(local.resolveIdentityActive(pn),at)
+    assert.equal(local.projection(pn).names[0]?.name,'Pessoa sintética')
+    const replay=consolidateLegacyCustomers(f.db,true)
+    assert.equal(replay.reconciled,0);assert.equal(replay.alreadyShared,1);assert.equal(replay.copiedLinks,0)
+    assert.equal(f.at.list().total,1)
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM chat_messages').get()!.n,0)
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM customer_records').get()!.n,2)
+  }finally{f.db.close()}
+})
+test('different participants on the same number require review',()=>{
+  const f=fixture()
+  try{
+    f.record('TEST1','Pessoa A');f.record('TEST2','Pessoa B')
+    const result=consolidateLegacyCustomers(f.db,true)
+    assert.equal(result.copiedLinks,2);assert.equal(result.pending,2);assert.equal(result.reconciled,0)
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM customer_records').get()!.n,0)
+    assert.equal(f.at.list().total,2)
+  }finally{f.db.close()}
+})
+test('existing owner with another name is preserved without a duplicate',()=>{
+  const f=fixture()
+  try{
+    const at=f.record('TEST1','Outra pessoa')
+    const entity=f.customers.save({kind:'entity',text:'Titular',contacts:[{text:'+5531999990101'}]})
+    const result=consolidateLegacyCustomers(f.db,true)
+    assert.equal(result.pending,1);assert.equal(result.reconciled,0)
+    assert.equal(f.customers.contacts(entity.id).length,1)
+    assert.equal(f.at.get(at,true).phone,'')
+  }finally{f.db.close()}
+})
