@@ -10,7 +10,7 @@ const PRINT_CLUSTERS:readonly StageCluster[]=[
 
 /** V1.1 isolates the three Chromium document contexts. V1 remains a regression fixture. */
 const master=readFileSync(new URL('./templates/FUNIX_OS_V1_1.html',import.meta.url),'utf8')
-type Part='header'|'body'|'footer'
+type Part='header'|'body'|'footer'|'margins'
 function section(part:Part,kind:'style'|'template'):string{
  const marker=kind==='style'?'<style data-os="'+part+'">':'<template id="os-'+part+'">'
  const start=master.indexOf(marker)
@@ -18,7 +18,9 @@ function section(part:Part,kind:'style'|'template'):string{
  if(start<0||end<0||master.indexOf(marker,start+1)>=0)throw Error('Seção inválida da OS V1.1: '+part+'/'+kind)
  return master.slice(start+marker.length,end).trim()
 }
-const bodyCss=section('body','style'),headerCss=section('header','style'),footerCss=section('footer','style')
+// Native Chromium margins are sensitive to the original complete cascade.
+// Retain that exact cascade until independent render regression proves a reduction.
+const bodyCss=section('body','style'),marginCss=section('margins','style')
 const header=section('header','template'),main=section('body','template'),footer=section('footer','template')
 function fill(source:string,values:Record<string,string>):string{
  const seen=new Set<string>()
@@ -134,5 +136,5 @@ export function renderOrderV1(order:WorkOrder):OrderPrintTemplate{
  const wrap=(fragment:string,styles:string,extraCss:string)=>
   '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>'+
    styles+'\n'+extraCss+'</style></head><body>'+fragment+'</body></html>'
- return{content,headerTemplate:wrap(headerHtml,headerCss,chromeHeader),footerTemplate:wrap(footer,footerCss,chromeFooter)}
+ return{content,headerTemplate:wrap(headerHtml,marginCss,chromeHeader),footerTemplate:wrap(footer,marginCss,chromeFooter)}
 }
