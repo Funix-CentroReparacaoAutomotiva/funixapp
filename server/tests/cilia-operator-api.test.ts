@@ -26,7 +26,7 @@ test('Cilia operator route is gated by session, feature, origin, and has no writ
     assert.equal(login.status,200)
     const cookie=login.headers.get('set-cookie')!.split(';')[0]!
     await login.text()
-    assert.deepEqual(await (await fetch(url,{headers:{Cookie:cookie}})).json(),{enabled})
+    assert.deepEqual(await (await fetch(url,{headers:{Cookie:cookie}})).json(),{enabled,writeEnabled:false,historyEnabled:false})
     const post=(data:unknown,from=origin,method='POST')=>fetch(url,{method,headers:{Cookie:cookie,Origin:from,'Content-Type':'application/json'},body:JSON.stringify(data)})
     const malformed={xmlBase64:Buffer.from('<orcamento/>').toString('base64'),steering:'left'}
     assert.equal((await post(malformed)).status,enabled?422:503)

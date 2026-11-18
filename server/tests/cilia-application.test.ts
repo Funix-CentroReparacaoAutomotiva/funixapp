@@ -4,6 +4,8 @@ import {openDatabase} from '../database.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {CiliaApplication,createCiliaApplicationSchema} from '../cilia-application.ts'
 import {previewCiliaXml} from '../cilia-review.ts'
+import {createApp} from '../app.ts'
+import {once} from 'node:events'
 
 const tag=(name:string,value:string)=>'<'+name+'>'+value+'</'+name+'>'
 const fields=(v:Record<string,string>)=>Object.entries(v).map(([k,x])=>tag(k,x)).join('')
@@ -31,7 +33,7 @@ function setup(){
 function confirmation(x:ReturnType<typeof setup>){
  const p=x.app.preview(x.at.id,x.raw);assert.equal(p.state,'preview')
  if(p.state!=='preview')assert.fail('expected preview')
- return {...x.raw,previewToken:p.previewToken,confirmed:true,identityReviewed:true,scopeReviewed:true,financialReviewed:true,sourceAuthorized:true,externalReviewed:false}
+ return {...x.raw,previewToken:p.previewToken,confirmed:true,identityReviewed:true,scopeReviewed:true,financialReviewed:true,sourceAuthorized:true,sourceAuthorizationReference:'Autorização sintética QA',externalReviewed:false}
 }
 test('Cilia opt-in application atomically creates native draft and preserves partner component evidence without billing',()=>{
  const x=setup()
@@ -69,5 +71,37 @@ test('Cilia rejects stale composition, and rolls back native insert when event r
   assert.equal(x.app.list(x.at.id).length,0)
   x.db.exec('DROP TRIGGER qa_fail_cilia')
   assert.equal(x.app.confirm(x.at.id,input,'qa').state,'created')
+ }finally{x.db.close()}
+})
+
+test('Cilia authenticated write flow checks flags, origin, authorizations, receipt and retry',async()=>{
+ const x=setup();createCiliaApplicationSchema(x.db)
+ try{
+  for(const write of [false,true]){
+   const server=createApp({atendimentos:x.f.atendimentos,password:'synthetic-password',voiceProvider:null,ciliaPreviewEnabled:true,ciliaWriteEnabled:write})
+   server.listen(0,'127.0.0.1');await once(server,'listening')
+   try{
+    const addr=server.address();assert.ok(addr&&typeof addr==='object')
+    const root='http://127.0.0.1:'+addr.port,origin='http://127.0.0.1:5173',url=root+'/api/atendimentos/'+x.at.id+'/importar-cilia'
+    assert.equal((await fetch(url+'/recibos')).status,401)
+    const login=await fetch(root+'/api/session',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password:'synthetic-password'})})
+    assert.equal(login.status,200);const cookie=login.headers.get('set-cookie')!.split(';')[0]!;await login.text()
+    const post=async(action:string,input:unknown,from=origin)=>{const res=await fetch(url+'/'+action,{method:'POST',headers:{Origin:from,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify(input)});return {status:res.status,value:await res.json()}}
+    const caps=await (await fetch(url,{headers:{Cookie:cookie}})).json();assert.deepEqual(caps,{enabled:true,writeEnabled:write,historyEnabled:true})
+    assert.equal((await post('preparar',x.raw,'https://example.invalid')).status,write?403:503)
+    const p=await post('preparar',x.raw);assert.equal(p.status,write?200:503)
+    if(!write)continue
+    assert.equal(p.value.state,'preview')
+    const input={...x.raw,previewToken:p.value.previewToken,confirmed:true,identityReviewed:true,scopeReviewed:true,financialReviewed:true,sourceAuthorized:true,sourceAuthorizationReference:'QA e-mail',externalReviewed:false}
+    assert.equal((await post('confirmar',{...input,sourceAuthorizationReference:''})).status,422)
+    assert.equal(x.f.scenarios.list(x.at.id).length,1)
+    const saved=await post('confirmar',input);assert.equal(saved.status,200);assert.equal(saved.value.state,'created')
+    const replay=await post('confirmar',input);assert.equal(replay.value.state,'existing');assert.deepEqual(replay.value.record,saved.value.record)
+    const list=await (await fetch(url+'/recibos',{headers:{Cookie:cookie}})).json()
+    assert.equal(list.length,1);assert.equal(list[0].partnerComponents[0].total,'300')
+    assert.equal(x.f.scenarios.list(x.at.id).length,2)
+    assert.equal(x.db.prepare('SELECT count(*) AS n FROM budget_versions').get()!.n,0)
+   }finally{await new Promise<void>(resolve=>server.close(()=>resolve()))}
+  }
  }finally{x.db.close()}
 })

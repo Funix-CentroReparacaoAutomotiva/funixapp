@@ -13,6 +13,7 @@ import type {HistoricalBudgetPackage} from './historical-budget-preflight.ts'
 import {calculate} from './pricing-engine.ts'
 import {Q} from './exact.ts'
 import {ServiceError} from './errors.ts'
+import {executionScope,servicePolicy} from '../shared/commercial-curation.ts'
 
 /** Install the receipt schema only when native imports are explicitly enabled. */
 export function createExternalBudgetApplicationSchema(db:DatabaseSync){
@@ -116,7 +117,7 @@ export class ExternalBudgetApplication{
 // Internal server-only helper. Caller must hold a write transaction and verify
 // provider evidence, identity, authorization, duplicate and stale-preview gates.
 type MatchedPlan=Extract<ReturnType<typeof planExternalBudget>,{plan:unknown}>['plan']
-export function applyReviewedExternalPlan(db:DatabaseSync,at:string,p:{plan:MatchedPlan;source:ExternalBudget;requestDigest:string;previewToken:string},operatorId:string,evidence:Record<string,unknown>){
+export function applyReviewedExternalPlan(db:DatabaseSync,at:string,p:{plan:MatchedPlan;source:ExternalBudget;requestDigest:string;previewToken:string},operatorId:string,evidence:Record<string,unknown>,confirmedExternalGroups:readonly string[]=[]){
   // Reuse native validations and write methods inside one outer transaction.
   // Their default transaction behavior is unchanged for all other callers.
   const joinOuter=<T>(fn:()=>T):T=>fn()
@@ -135,6 +136,10 @@ export function applyReviewedExternalPlan(db:DatabaseSync,at:string,p:{plan:Matc
       const native=saved.services.find(s=>s.serviceId===service.serviceId&&s.dimensionId===service.dimensionId)
       if(!native)return conflict()
       serviceIds.set(service.id,native.id)
+      if(servicePolicy(service.serviceId)?.execution==='external_confirmation'){
+        if(p.source.source.provider!=='cilia'||!confirmedExternalGroups.includes(service.id))return conflict()
+        scenarios.confirmService(at,scenario.id,native.id,{revision:activeRevision(),pieceRevision:saved.revision,scope:executionScope(native),confirmed:true})
+      }
     }
   }
   for(const c of p.plan.components){

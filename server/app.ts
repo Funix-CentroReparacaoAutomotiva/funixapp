@@ -65,9 +65,11 @@ import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historica
 import { createExternalBudgetEndpoint, type ExternalBudgetApi } from './external-budget-api.ts'
 
 import {consultCiliaUpload,compareCiliaUpload} from './cilia-operator-api.ts'
+import {CiliaApplication} from './cilia-application.ts'
 
 export interface AppOptions {
   ciliaPreviewEnabled?: boolean
+  ciliaWriteEnabled?: boolean
   externalBudget?: ExternalBudgetApi
   historicalBudget?:{repo:HistoricalBudgetRepository;provider:HistoricalCaptureProvider;allowConfirmation?:boolean} // explicit isolated harness only
   gmailAnalysis?: GmailAnalysisService
@@ -97,6 +99,8 @@ export function createRequestHandler(options: AppOptions) {
   const externalBudget = options.externalBudget && createExternalBudgetEndpoint(options.atendimentos.db, options.externalBudget)
   const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
   const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
+  const ciliaApplication=new CiliaApplication(options.atendimentos.db)
+  const ciliaWriteEnabled=()=>options.ciliaPreviewEnabled===true&&options.ciliaWriteEnabled===true&&ciliaApplication.available()
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -261,18 +265,26 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia(?:\/(comparar))?$/.exec(url.pathname)
+      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia(?:\/(comparar|preparar|confirmar|recibos))?$/.exec(url.pathname)
       if(ciliaRoute){
         if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
-        if(req.method==='GET'&&!ciliaRoute[2])return send(200,{enabled:options.ciliaPreviewEnabled===true})
+        if(req.method==='GET'&&!ciliaRoute[2])return send(200,{enabled:options.ciliaPreviewEnabled===true,writeEnabled:ciliaWriteEnabled(),historyEnabled:options.ciliaPreviewEnabled===true&&ciliaApplication.available()})
+        if(ciliaRoute[2]==='recibos'){
+          if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+          if(options.ciliaPreviewEnabled!==true||!ciliaApplication.available())return fail(503,'CILIA_PREVIEW_DISABLED','Histórico Cilia ainda não habilitado.')
+          return send(200,ciliaApplication.list(ciliaRoute[1]!))
+        }
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if(options.ciliaPreviewEnabled!==true)return fail(503,'CILIA_PREVIEW_DISABLED','Prévia Cilia ainda não habilitada.')
+        if((ciliaRoute[2]==='preparar'||ciliaRoute[2]==='confirmar')&&!ciliaWriteEnabled())return fail(503,'CILIA_WRITE_DISABLED','Gravação Cilia ainda não habilitada.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(req.headers['content-type']?.split(';',1)[0]?.trim().toLowerCase()!=='application/json')return fail(415,'JSON_REQUIRED','Envie JSON.')
         const raw=await readJson(req,1024*1024)
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
         const at=options.atendimentos.get(ciliaRoute[1]!)
         if(ciliaRoute[2]==='comparar')return send(200,compareCiliaUpload(raw,commercial.catalogs().items,at,pricing.get(),pricing.settings(at.id)))
+        if(ciliaRoute[2]==='preparar')return send(200,ciliaApplication.preview(at.id,raw))
+        if(ciliaRoute[2]==='confirmar')return send(200,ciliaApplication.confirm(at.id,raw,'funix_operator'))
         return send(200,consultCiliaUpload(raw,commercial.catalogs().items,at))
       }
       if(url.pathname==='/api/atualizacoes/analises-gmail'){

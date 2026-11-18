@@ -35,7 +35,8 @@ const baseKeys=['xmlBase64','steering','review','attendanceRevision']
 export class CiliaApplication {
  readonly db:DatabaseSync
  constructor(db:DatabaseSync){this.db=db}
- private ready(){if(!has(this.db))fail(503,'CILIA_WRITE_DISABLED','Gravação Cilia ainda não habilitada.')}
+ available(){return has(this.db)}
+ private ready(){if(!this.available())fail(503,'CILIA_WRITE_DISABLED','Gravação Cilia ainda não habilitada.')}
  private inspect(atId:string,r:Record<string,unknown>){
   const at=new AtendimentoRepository(this.db).get(atId),commercial=new CommercialRepository(this.db),pricing=new PricingConfigurationRepository(this.db),scenarios=new ScenarioRepository(this.db)
   if(at.revision!==r.attendanceRevision) return conflict()
@@ -69,20 +70,20 @@ export class CiliaApplication {
   return transaction(this.db,()=>{
    const p=this.inspect(atId,r)
    if(p.state!=='preview')return p
-   return {state:p.state,previewToken:p.previewToken,calculation:p.plan.calculation,externalGroupIds:p.external,partnerComponents:p.evidence.ciliaEvidence.partnerComponents,requiresConfirmation:true as const}
+   return {state:p.state,previewToken:p.previewToken,calculation:{...p.plan.calculation,lines:p.plan.calculation.lines.map(l=>l.execution==='external_confirmation'?{...l,executionConfirmed:false}:l)},externalGroupIds:p.external,partnerComponents:p.evidence.ciliaEvidence.partnerComponents,requiresConfirmation:true as const}
   },'read')
  }
  confirm(atId:string,raw:unknown,actor:string){
   this.ready()
-  const r=fields(raw,[...baseKeys,'previewToken','identityReviewed','scopeReviewed','financialReviewed','sourceAuthorized','externalReviewed','confirmed'])
-  if(typeof actor!=='string'||!actor.trim()||actor.length>150||typeof r.previewToken!=='string'||! /^[a-f0-9]{64}$/.test(r.previewToken)||r.identityReviewed!==true||r.scopeReviewed!==true||r.financialReviewed!==true||r.sourceAuthorized!==true||r.confirmed!==true||typeof r.externalReviewed!=='boolean')return invalid()
+  const r=fields(raw,[...baseKeys,'previewToken','identityReviewed','scopeReviewed','financialReviewed','sourceAuthorized','sourceAuthorizationReference','externalReviewed','confirmed'])
+  if(typeof actor!=='string'||!actor.trim()||actor.length>150||typeof r.previewToken!=='string'||! /^[a-f0-9]{64}$/.test(r.previewToken)||r.identityReviewed!==true||r.scopeReviewed!==true||r.financialReviewed!==true||r.sourceAuthorized!==true||typeof r.sourceAuthorizationReference!=='string'||!r.sourceAuthorizationReference.trim()||r.sourceAuthorizationReference.length>500||/[\u0000-\u001f\u007f]/.test(r.sourceAuthorizationReference)||r.confirmed!==true||typeof r.externalReviewed!=='boolean')return invalid()
   return transaction(this.db,()=>{
    const p=this.inspect(atId,r)
    if(p.state==='blocked')return fail(422,'CILIA_PLAN_BLOCKED','A composição possui pendências. Confira a prévia.')
    if(p.previewToken!==r.previewToken)return conflict()
    if(p.state==='existing')return {state:'existing' as const,record:p.record}
    if(p.external.length&&r.externalReviewed!==true)return invalid()
-   const result=applyReviewedExternalPlan(this.db,atId,p,actor,{...p.evidence,ciliaConfirmation:{identityReviewed:true,scopeReviewed:true,financialReviewed:true,sourceAuthorizedByOperator:true,externalReviewed:r.externalReviewed}})
+   const result=applyReviewedExternalPlan(this.db,atId,p,actor,{...p.evidence,ciliaConfirmation:{identityReviewed:true,scopeReviewed:true,financialReviewed:true,sourceAuthorizedByOperator:true,sourceAuthorizationReference:r.sourceAuthorizationReference,externalReviewed:r.externalReviewed}},p.external)
    this.db.prepare('INSERT INTO cilia_import_events(issuer_key,event_key,receipt_id) VALUES(?,?,?)').run(p.source.source.issuerKey,p.event,result.record.id)
    return {state:'created' as const,record:{id:result.record.id,scenarioId:result.record.scenarioId,result:result.record.result}}
   })

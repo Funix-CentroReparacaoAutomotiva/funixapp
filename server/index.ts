@@ -20,6 +20,7 @@ import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliat
 import { ServiceError } from './errors.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
 import { loadExternalBudgetApi } from './external-budget-api.ts'
+import {createCiliaApplicationSchema} from './cilia-application.ts'
 import {loadGmailAnalysis} from './gmail-analysis-providers.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -63,7 +64,11 @@ const sourceLedger = sourceLedgerKey ? (() => {
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
 const gmailAnalysis=loadGmailAnalysis(db,process.env)
 const externalBudget = loadExternalBudgetApi(process.env, db)
-const app = createApp({ ciliaPreviewEnabled:process.env.FUNIX_CILIA_PREVIEW_ENABLED==='true', externalBudget, gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime, db), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const ciliaPreviewEnabled=process.env.FUNIX_CILIA_PREVIEW_ENABLED==='true'
+const ciliaWriteEnabled=process.env.FUNIX_CILIA_WRITE_ENABLED==='true'
+if(ciliaWriteEnabled&&!ciliaPreviewEnabled)throw Error('CILIA_WRITE_REQUIRES_PREVIEW')
+if(ciliaWriteEnabled)createCiliaApplicationSchema(db)
+const app = createApp({ ciliaPreviewEnabled,ciliaWriteEnabled, externalBudget, gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime, db), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
