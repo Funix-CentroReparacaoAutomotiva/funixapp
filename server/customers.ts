@@ -143,18 +143,18 @@ export class CustomerRepository {
     })
   }
   /** Caller holds the identity confirmation transaction and has checked aliases and ownership. */
-  confirmChannelContact(person:CustomerRecord|null,name:string,existing:CustomerRecord|null,phone:string,conversationId:string) {
+  confirmChannelContact(person:CustomerRecord|null,name:string,existing:CustomerRecord|null,phone:string,conversationId:string|null) {
     const entity=person??this.saveRecord({kind:'entity',text:name})
     return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId)}
   }
 
-  private bindConfirmedPhone(existing:CustomerRecord|null,phone:string,entityId:string,conversationId:string) {
+  private bindConfirmedPhone(existing:CustomerRecord|null,phone:string,entityId:string,conversationId:string|null) {
     if(!existing){
       const contact=this.saveRecord({kind:'contact',text:phone,entityId})
       this.db.prepare('UPDATE customer_records SET conversation_id=? WHERE id=?').run(conversationId,contact.id)
       return this.record(contact.id)
     }
-    if(existing.entityId!==entityId||!existing.conversationId||!existing.text){
+    if(existing.entityId!==entityId||(!existing.conversationId&&conversationId)||!existing.text){
       this.db.prepare(`UPDATE customer_records SET entity_id=?,conversation_id=COALESCE(conversation_id,?),
         data=json_set(data,'$.text',?),phone_normalized=?,revision=revision+1 WHERE id=?`)
         .run(entityId,conversationId,existing.text||phone,phone,existing.id)

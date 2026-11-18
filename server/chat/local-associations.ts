@@ -12,7 +12,8 @@ import type { ConversationEvent } from './conversation-event.ts'
 const instance = 'funix_comercial'
 /** Local commercial authority. Technical aliases remain owned by ConversationIdentities. */
 export class LocalConversationAssociations extends ConversationIdentities implements ConversationAssociationReader {
-  constructor(db: DatabaseSync, now = () => new Date().toISOString()) { super(db, now) }
+  private readonly unifiedCustomers:boolean
+  constructor(db: DatabaseSync, now = () => new Date().toISOString(), unifiedCustomers=false) { super(db, now);this.unifiedCustomers=unifiedCustomers }
   private members(jid: string) { return this.identityJids(jid) }
   private handles(jid: string): string[] {
     const members = this.members(jid)
@@ -208,15 +209,26 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const phone=members.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]
     const initial={phone:phone?'+'+phone:'',name:e.displayName??'',source:'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
     const channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
-    const matches=initial.phone?new CustomerRepository(this.db).phoneMatches(initial.phone):[]
+    const customers=new CustomerRepository(this.db)
+    const matches=initial.phone?customers.phoneMatches(initial.phone):[]
     const blocked=plan.blocked||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)
     const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
     let at:string|null=null
     if(!blocked&&!historical){
       let contactId=channels.length?String(channels[0]!.id):null
-      // A phone-only record is not proof of ownership of this channel.
-      if(!contactId&&!matches.length){
+      // In the autonomous target model, the first real interaction produces one shared
+      // Entity + Contact for a confirmed PN. The channel label is provisional, not ID proof.
+      const known=contactId?customers.record(contactId):matches[0]??null
+      if(this.unifiedCustomers&&!plan.at&&!prior&&normalizePhone(initial.phone)&&
+        (!known?.conversationId||handles.includes(known.conversationId))&&
+        (!known?.text||normalizePhone(known.text)===initial.phone)){
+        const owner=known?.entityId?customers.record(known.entityId):null
+        const saved=customers.confirmChannelContact(owner,owner?.text||initial.name.trim()||initial.phone,known,initial.phone,id)
+        contactId=saved.contact.id
+        this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
+      // Compatibility path, retained until the coordinated cutover. No inferred owner.
+      }else if(!contactId&&!matches.length){
         contactId=randomUUID()
         this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
           .run(contactId,JSON.stringify({text:initial.phone,channelState:'response_received'}),id,initial.phone||null)
