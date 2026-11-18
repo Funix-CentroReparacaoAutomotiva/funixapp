@@ -154,7 +154,8 @@ server {
                         'revision = os.environ["FUNIX_REVISION"]',
                         'revision = os.environ["FUNIX_REVISION"]' if role == "api"
                         else 'revision = os.environ.get("FUNIX_REVISION", "' + OLD + '")')],
-                    "environment": {"SYNTHETIC_ROLE": role, "FUNIX_REVISION": OLD},
+                    "environment": {"SYNTHETIC_ROLE": role},
+                    "labels": {"traefik.enable": "false"},
                     "networks": ["privada"], "tmpfs": ["/tmp"],
                     "healthcheck": {"test": ["CMD","python","-c",
                         "import urllib.request; urllib.request.urlopen('http://127.0.0.1:" +
@@ -171,10 +172,16 @@ server {
             services["web"]["command"] = ["python","-c", UPSTREAM.replace(
                 'revision = os.environ["FUNIX_REVISION"]',
                 'revision = os.environ.get("SYNTHETIC_WEB_REVISION","' + OLD + '")')]
+            services["api"]["environment"].update(adapter_module.isolation.FIXED)
+            services["api"]["environment"].update({
+                key: "false" for key in adapter_module.isolation.FLAGS})
+            services["api"]["environment"].update({
+                "FUNIX_REVISION": OLD, "FUNIX_OPERATOR_PASSWORD": secrets.token_urlsafe(24)})
             services["api"]["volumes"] = [{"type":"bind","source":str(data),"target":"/data",
                                            "bind":{"create_host_path":False}}]
             services["gateway"] = {
                 "image":gateway, "read_only":True, "user":"101:101",
+                "labels": adapter_module.isolation.LABELS,
                 "cap_drop":["ALL"], "security_opt":["no-new-privileges:true"],
                 "entrypoint":["nginx","-g","daemon off;"], "command":[],
                 "networks":["privada","edge"], "tmpfs":["/tmp"],
@@ -246,6 +253,10 @@ server {
                     validator=updater.validator(normal_login),restricted_validator=restricted)
                 previous = dict(api=api_old,web=api_old,gateway=gateway,revision=OLD)
                 candidate = dict(api=api_new,web=web_new,gateway=gateway,revision=NEW)
+                # Check actual Docker isolation before any update. Wait only for
+                # initial synthetic container startup; no weakening of policy.
+                adapter.preflight(candidate)
+                print("HML_LIVE_ISOLATION_OK", flush=True)
                 operation = transaction.Transaction(root/"operation",adapter,
                                                     project_state=state,maintenance=True)
                 with patch.object(socket,"create_connection",side_effect=connect), \

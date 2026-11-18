@@ -21,6 +21,7 @@ def load(name):
 base = load("hml-docker-adapter")
 guard = load("hml-writer-guard")
 maintenance = load("hml-maintenance")
+isolation = load("hml-isolation")
 
 
 def private_file(path, content, mode=0o600, gid=None):
@@ -125,7 +126,9 @@ class MaintenanceDockerAdapter(base.DockerAdapter):
 
     def preflight(self, candidate):
         previous = super().preflight(candidate)
-        self.normal_mounts()
+        mounts = self.normal_mounts()
+        isolation.compose(self.configuration(), self.database, mounts, previous["revision"])
+        self.check_live_isolation(previous, restricted=False)
         return previous
 
     def stop_gateway(self):
@@ -212,9 +215,25 @@ class MaintenanceDockerAdapter(base.DockerAdapter):
         if len(mounts) != len(expected) or actual != expected:
             raise ValueError("live gateway mounts differ from expected mode")
 
+    def check_live_isolation(self, release, *, restricted):
+        if restricted:
+            root = self.operation_path()
+            mounts = {"/etc/nginx/nginx.conf": str(root / "maintenance-nginx.conf"),
+                      "/etc/nginx/hml.htpasswd": str(root / "maintenance.htpasswd")}
+            config = json.loads(self.run(self.gate_args() + ["config", "--format", "json"]))
+        else:
+            mounts = self.normal_mounts()
+            config = self.configuration()
+        isolation.compose(config, self.database, mounts, release["revision"])
+        network = json.loads(self.run(["docker", "network", "inspect", isolation.PRIVATE]))
+        if len(network) != 1:
+            raise ValueError("private network inspection incomplete")
+        isolation.runtime(self.containers(), config, self.database, mounts, release, network[0])
+
     def validate(self, release):
         self.assert_installed(release)
         self.assert_gateway_mounts(restricted=True)
+        self.check_live_isolation(release, restricted=True)
         original = self.validator
         try:
             self.validator = lambda value: self.restricted_validator(
@@ -234,6 +253,7 @@ class MaintenanceDockerAdapter(base.DockerAdapter):
                                            "--no-deps", "--force-recreate", "gateway"])
             self.assert_installed(release)
             self.assert_gateway_mounts(restricted=False)
+            self.check_live_isolation(release, restricted=False)
             super().validate(release)
         except BaseException:
             self.stop_gateway()

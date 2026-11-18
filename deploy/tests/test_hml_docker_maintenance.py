@@ -41,6 +41,7 @@ class MaintenanceAdapterTest(unittest.TestCase):
         self.a.assert_installed = Mock()
         self.a.assert_gateway_mounts = Mock()
         self.a.write_release = Mock()
+        self.a.check_live_isolation = Mock()
 
     def test_enter_stops_gateway_then_writes_separate_mounts(self):
         self.a.enter_maintenance()

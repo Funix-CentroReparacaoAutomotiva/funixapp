@@ -366,3 +366,30 @@ verificação positiva após fechar, usando a varredura host completa
 sem mocks ou exceções para o PID do ensaio. Aguardando nova execução.
 A guarda de escritores não foi enfraquecida. Nenhuma operação na VPS;
 CI verde de regressão não equivale à conclusão do ciclo integrado.
+
+## Primeiro ciclo integrado aprovado e verificação independente de isolamento
+
+Evidência do HEAD 7b2f0d5: run 44234241492, job 134566415386.
+78 testes passaram; logs registram HML_HOST_WRITER_GUARD_OK,
+HML_MAINTENANCE_UPDATE_OK, HML_MAINTENANCE_ROLLBACK_OK e
+HML_DOCKER_MAINTENANCE_TLS_ROLLBACK_OK. Teste real em Docker/Nginx com
+edge TLS e SQLite sintéticos. Não é teste da VPS ou de Traefik real.
+
+Novo componente hml-isolation.py estabelece política independente do
+contrato fornecido, derivada do relatório sanitizado da auditoria
+HML: serviços, labels de roteamento, redes físicas, mounts exatos,
+proteção de rootfs/capabilities, namespaces, flags explicitamente
+desligadas, origem e caminho do SQLite, ausência de configurações
+externas não autorizadas. Verifica também o Docker inspect e todos
+os membros da rede privada. As verificações são executadas no adaptador
+experimental no preflight e durante validação e reabertura, nunca
+imprimem valores de ambiente. O ensaio sintético agora reproduz as
+flags e labels auditadas. Sete testes negativos/positivos adicionados;
+aguardam CI. Política conservadora: valores/formatos novos não são
+autorizados automaticamente. Revisar no host apenas em leitura antes de
+qualquer utilização real; não presumir correspondência exata com o
+Compose instalado apenas por sucesso do fixture.
+
+CLI de mutações continua bloqueada. Ainda não testados pacote real
+gerado pelo workflow manual, configuração instalada e recuperação de
+interrupção nas trocas reais do gateway. Sem uso de Codex ou VPS.
