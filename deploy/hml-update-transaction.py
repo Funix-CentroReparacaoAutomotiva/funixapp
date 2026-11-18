@@ -56,6 +56,11 @@ class Transaction:
     def update(self, candidate, *, authorized=False):
         safety.require(authorized is True, "explicit update authorization required")
         with self.locked():
+            active = self.project_state / "active.json"
+            if active.exists():
+                pending = json.loads(safety.regular(active).read_text())
+                phase = json.loads(safety.regular(Path(pending["journal"])).read_text())["phase"]
+                safety.require(phase in ("accepted", "restored"), "project has pending recovery")
             if self.journal.exists():
                 old = json.loads(safety.regular(self.journal).read_text())
                 safety.require(old["phase"] in ("accepted", "restored"),
@@ -65,6 +70,14 @@ class Transaction:
             record = {"schema": 1, "project": "funix-hml", "phase": "prepared",
                       "previous": previous, "candidate": candidate}
             self.save(record)
+            temporary = self.project_state / "active.new"
+            fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w") as stream:
+                json.dump({"journal": str(self.journal)}, stream)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, active)
+            safety.durable(active)
             try:
                 # Persist intent before every potentially interrupted mutation.
                 record["phase"] = "quiescing"
@@ -100,6 +113,8 @@ class Transaction:
             record = json.loads(safety.regular(self.journal).read_text())
             safety.require(record.get("schema") == 1 and record.get("project") == "funix-hml"
                            and record.get("phase") == "accepted", "not an accepted update")
+            record["phase"] = "rollback_requested"
+            self.save(record)
             self.adapter.quiesce()
             # Preserve later writes independently before authorizing restoration.
             digest = safety.snapshot(self.adapter.database, self.root / "post-update.sqlite")
@@ -109,6 +124,11 @@ class Transaction:
             self.restore(record)
 
     def restore(self, record):
+        if record["phase"] == "rollback_requested":
+            self.adapter.quiesce()
+            target = self.root / "post-update.sqlite"
+            if not target.exists():
+                record["post_update_sha256"] = safety.snapshot(self.adapter.database, target)
         record["phase"] = "restoring"
         self.save(record)
         self.adapter.quiesce()

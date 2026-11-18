@@ -24,6 +24,14 @@ def main():
     if run("docker", "ps", "-aq").strip():
         raise RuntimeError("rehearsal requires empty local daemon")
     image = json.loads(run("docker", "image", "inspect", "python:3.12-alpine"))[0]["Id"]
+    variants = []
+    for revision in ("b" * 40, "c" * 40):
+        container = run("docker", "create", image, "python", "-c", "pass").strip()
+        try:
+            variants.append(run("docker", "commit", "--change",
+                                "LABEL org.opencontainers.image.revision=" + revision, container).strip())
+        finally:
+            run("docker", "rm", container)
     with tempfile.TemporaryDirectory(prefix="funix-hml-synthetic-") as directory:
         root = Path(directory)
         os.chmod(root, 0o700)
@@ -51,8 +59,13 @@ def main():
             adapter = adapter_module.DockerAdapter(compose=compose, contract=contract,
                 database=database, state=root, validator=lambda release: None)
             operation = transaction.Transaction(root / "operation", adapter, project_state=root / "state")
-            candidate = dict(api=image, web=image, gateway=image, revision="b" * 40)
+            candidate = dict(api=variants[0], web=variants[0], gateway=image, revision="b" * 40)
             operation.update(candidate, authorized=True)
+            second = transaction.Transaction(root / "second", adapter, project_state=root / "state")
+            next_candidate = dict(api=variants[1], web=variants[1], gateway=image, revision="c" * 40)
+            second.update(next_candidate, authorized=True)
+            assert json.loads(second.journal.read_text())["previous"]["revision"] == "b" * 40
+            second.rollback(authorized=True, discard_post_update_data=True)
             # Incompatible data migration, executed inside the candidate API.
             run(*base, "exec", "-T", "api", "python", "-c",
                 "import sqlite3; c=sqlite3.connect('/data/funix.sqlite'); c.execute(\"UPDATE atendimentos SET value='migrated'\"); c.commit()")

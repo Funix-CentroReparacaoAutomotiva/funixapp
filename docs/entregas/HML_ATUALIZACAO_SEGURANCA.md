@@ -100,6 +100,23 @@ sem merge, deploy, acesso à VPS ou dados reais.
 
 ## Ensaio integrado local do adaptador
 
+Incremento CLI: `python3 deploy/hml-update.py ACTION --config /caminho/config.json
+--operation /caminho/operacao` oferece preflight, update, recover e rollback.
+As mutações exigem --authorize; rollback exige também
+--discard-post-update-data. Config JSON privado contém compose, contract
+(configuração normalizada revisada), database, state, credentials (JSON privado
+com username/password), candidate (api/web/gateway IDs e revision), artifact_zip
+e identity (artifact_id/run_id/attempt/revision/pr). Preflight não cria journal
+nem carrega imagens. O fluxo update consulta procedência autenticada, valida
+ZIP e docker-save, recusa colisões de tags e carrega as imagens. A validação
+exige TLS estrito do hostname HML, Basic Auth, endpoints e revisões.
+
+Estado: CLI experimental, ainda sem autorização de uso real. Faltam testes
+integrados de HTTPS/Basic reais, isolamento de mounts/integrações independente
+do contrato fornecido e coordenação do carregamento de imagens sob o lock.
+Não executar na VPS. As pendências anteriores continuam aplicáveis quando não
+explicitamente cobertas pelo incremento.
+
 `hml-docker-adapter.py` conecta o coordenador a Docker Compose com projeto
 fixo funix-hml, configuração normalizada comparada integralmente a um contrato
 revisado, imagens por ID, gateway estável, stop direcionado e restauração do

@@ -29,7 +29,8 @@ class DockerAdapter:
         return result.stdout
 
     def configuration(self):
-        return json.loads(self.run(self.base + ["config", "--format", "json"]))
+        override = ["-f", str(self.override)] if self.override.exists() else []
+        return json.loads(self.run(self.base + override + ["config", "--format", "json"]))
 
     def containers(self):
         ids = self.run(self.base + ["ps", "--all", "--quiet"]).split()
@@ -55,7 +56,14 @@ class DockerAdapter:
     def preflight(self, candidate):
         self.check_release(candidate)
         config = self.configuration()
-        if config != self.contract or config.get("name") != "funix-hml":
+        def policy(value):
+            value = json.loads(json.dumps(value))
+            for role, service in value["services"].items():
+                service.pop("image", None)
+                if role == "api":
+                    service.get("environment", {}).pop("FUNIX_REVISION", None)
+            return value
+        if policy(config) != policy(self.contract) or config.get("name") != "funix-hml":
             raise ValueError("Compose differs from reviewed contract")
         if set(config["services"]) != {"api", "web", "gateway"}:
             raise ValueError("unexpected service set")
@@ -67,7 +75,8 @@ class DockerAdapter:
             expected = {"funix-hml_privada"}
             if role == "gateway":
                 expected.add("traefik_default")
-            if set(service.get("networks", {})) != expected:
+            physical = {config["networks"][name]["name"] for name in service.get("networks", {})}
+            if physical != expected:
                 raise ValueError("unexpected networks")
         records = self.containers()
         previous = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"]
