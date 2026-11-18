@@ -64,7 +64,7 @@ import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historica
 
 import { createExternalBudgetEndpoint, type ExternalBudgetApi } from './external-budget-api.ts'
 
-import {consultCiliaUpload} from './cilia-operator-api.ts'
+import {consultCiliaUpload,compareCiliaUpload} from './cilia-operator-api.ts'
 
 export interface AppOptions {
   ciliaPreviewEnabled?: boolean
@@ -261,17 +261,18 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
-      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia$/.exec(url.pathname)
+      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia(?:\/(comparar))?$/.exec(url.pathname)
       if(ciliaRoute){
         if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
-        if(req.method==='GET')return send(200,{enabled:options.ciliaPreviewEnabled===true})
+        if(req.method==='GET'&&!ciliaRoute[2])return send(200,{enabled:options.ciliaPreviewEnabled===true})
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if(options.ciliaPreviewEnabled!==true)return fail(503,'CILIA_PREVIEW_DISABLED','Prévia Cilia ainda não habilitada.')
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(req.headers['content-type']?.split(';',1)[0]?.trim().toLowerCase()!=='application/json')return fail(415,'JSON_REQUIRED','Envie JSON.')
-        const raw=await readJson(req,720*1024)
+        const raw=await readJson(req,1024*1024)
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
         const at=options.atendimentos.get(ciliaRoute[1]!)
+        if(ciliaRoute[2]==='comparar')return send(200,compareCiliaUpload(raw,commercial.catalogs().items,at,pricing.get(),pricing.settings(at.id)))
         return send(200,consultCiliaUpload(raw,commercial.catalogs().items,at))
       }
       if(url.pathname==='/api/atualizacoes/analises-gmail'){

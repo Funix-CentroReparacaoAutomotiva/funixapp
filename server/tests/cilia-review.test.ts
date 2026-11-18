@@ -4,6 +4,7 @@ import {previewCiliaXml,assembleCiliaReviewedScope} from '../cilia-review.ts'
 import type {CiliaScopeReview} from '../cilia-review.ts'
 import {compareCiliaReviewedBudget} from '../cilia-comparison.ts'
 import {planExternalBudget} from '../external-budget-plan.ts'
+import {compareCiliaUpload,consultCiliaUpload,readCiliaScopeReview} from '../cilia-operator-api.ts'
 import type {CatalogItem} from '../../shared/commercial.ts'
 import type {PricingConfiguration} from '../../shared/pricing.ts'
 
@@ -84,4 +85,17 @@ test('Cilia comparison revalidates original bytes and source scope, never treats
  const r=compare();assert.ok(r.blockers.includes('PREVIEW_ONLY'));assert.equal(r.canWrite,false)
  const stale=scope();stale.evidenceSha256='a'.repeat(64)
  assert.throws(()=>compare(configuration(),stale),{code:'CILIA_SCOPE_INVALID'})
+})
+
+test('operator consultation and comparison validate source, attendance revision, plate and scope shape',()=>{
+ const upload={xmlBase64:xml().toString('base64'),steering:'left'},at={id:'qa',plate:'ZZZ-0Z00',revision:1}
+ const c=consultCiliaUpload(upload,nativeCatalog,at)
+ assert.equal(c.plateComparison,'match')
+ assert.ok(c.catalog.some(c=>c.id===montage))
+ const raw={...upload,review:scope(),attendanceRevision:1}
+ const result=compareCiliaUpload(raw,nativeCatalog,at,configuration(),pricingState)
+ assert.equal(result.financialMatch,true);assert.equal(result.calculation?.total,'285');assert.equal(result.canWrite,false)
+ assert.throws(()=>compareCiliaUpload(raw,nativeCatalog,{...at,plate:'ZZZ0Z01'},configuration(),pricingState),{code:'CILIA_PLATE_REVIEW'})
+ assert.throws(()=>compareCiliaUpload(raw,nativeCatalog,{...at,revision:2},configuration(),pricingState),{code:'CILIA_ATTENDANCE_CHANGED'})
+ for(const r of [null,{...scope(),extra:true},{...scope(),pieces:[null]},{...scope(),groups:[{operationIds:['row-1:op-1'],reason:'',options:[null]}]}])assert.throws(()=>readCiliaScopeReview(r),{code:'CILIA_SCOPE_INVALID'})
 })

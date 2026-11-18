@@ -2,14 +2,11 @@ import {useEffect,useRef,useState} from 'react'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
+import {CiliaScopeEditor} from './CiliaScopeEditor'
+import type {CiliaConsultation} from './CiliaScopeEditor'
 import './cilia-preview.css'
 
-type Response={
- plateComparison:'match'|'mismatch'|'unknown';attendance:{plate:string};canWrite:false;
- preview:{source:{identity:{number:string;revision:string;plate:string|null;status:string;issuerName:string};financialIntegrity:boolean;issues:string[];calculated:{labor:string;workshopParts:string;partnerParts:string;workshopTotal:string;global:string}|null;items:{id:string;name:string;supply:string;netPrice:string}[]};
- rows:{sourceId:string;piece:{state:string;candidates:{code:string}[];issues:string[]};operations:{sourceId:string;kind:string;hours:string|null;amount:string|null;state:string;issues:string[];candidates:{serviceId:string;dimensions:{dimensionId:string;name:string}[]}[]}[]}[];
- groupingCandidates:{pieceId:string;sourceRowIds:string[]}[];components:{sourceId:string;description:string;supply:string;sourceUnitNet:string}[]}
-}
+type Response=CiliaConsultation
 
 export function CiliaPreviewPanel({at,disabled,onAuthRequired}:{at:string;disabled:boolean;onAuthRequired:()=>void}){
  const [enabled,setEnabled]=useState(false),[open,setOpen]=useState(false),[file,setFile]=useState<File|null>(null),[steering,setSteering]=useState<'unknown'|'left'|'right'>('unknown')
@@ -51,7 +48,7 @@ export function CiliaPreviewPanel({at,disabled,onAuthRequired}:{at:string;disabl
     <h4>{p.rows.length} itens · {p.groupingCandidates.length} possíveis agrupamentos</h4>
     {p.rows.map(row=>{const item=p.source.items.find(i=>i.id===row.sourceId);return <details key={row.sourceId} className="cilia-row"><summary>{item?.name??row.sourceId} · {row.operations.length} operações {row.piece.state==='candidate'?'':'· revisar'}</summary><p>{item?.supply} · {row.piece.candidates.map(c=>c.code).join(', ')||'Peça a identificar'}</p>{row.operations.map(op=><div key={op.sourceId}><strong>{op.kind} · {op.hours??'—'} h · {money(op.amount)}</strong><p>{op.candidates.map(c=>c.dimensions.map(d=>d.name).join(', ')).filter(Boolean).join(' / ')||'Dimensão a revisar'}{op.state==='review'?' · revisão necessária':''}</p>{!!op.issues.length&&<small>{op.issues.join(' · ')}</small>}</div>)}</details>})}
     <h4>Componentes de terceiros</h4>{p.components.filter(c=>c.supply==='partner').map(c=><p key={c.sourceId}>{c.description} · {money(c.sourceUnitNet)}</p>)}
-    <p className="at-form-hint">Prévia somente leitura. Agrupamentos, diagnóstico, dimensões, autorização e gravação dependem de revisão posterior.</p>
+    {p.source.financialIntegrity&&result.plateComparison==='match'&&file?<CiliaScopeEditor key={p.source.evidenceSha256+':'+steering} consultation={result} at={at} file={file} steering={steering} disabled={disabled||busy} onAuthRequired={onAuthRequired}/>:<p className="at-form-hint">Corrija as pendências de origem e identidade antes da comparação.</p>}
    </div>}
   </div>}
  </section>
