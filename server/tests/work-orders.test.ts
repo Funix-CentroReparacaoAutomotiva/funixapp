@@ -18,6 +18,8 @@ import {BudgetCancellationRepository} from '../budget-cancellations.ts'
 import {cancelledPdf} from '../cancelled-pdf.ts'
 import {operationalParagraphs,workOrderPdf} from '../work-order-pdf.ts'
 import {ServiceError} from '../errors.ts'
+import {OPTICAL_SERVICE_ID,OPTICAL_DIMENSION_ID,correctOpticalWorkOrderScope} from '../../shared/optical-work-order.ts'
+import {renderOrderV1} from '../os-template.ts'
 
 const error=(status:number,code:string)=>(cause:unknown)=>cause instanceof ServiceError&&cause.status===status&&cause.code===code
 async function emitted(db:ReturnType<typeof openDatabase>){
@@ -394,5 +396,75 @@ test('Date registered before OS issuance is reused; invalid date or concurrent c
   assert.equal(order.scope.deliveryDate,'2028-02-29')
   assert.equal(repo.get(at).revision,saved.revision)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
+ }finally{db.close()}
+})
+
+test('optical restoration: exact frozen identities, missing stages and immutable revision',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const fixture=commercialFixture(db),at=fixture.at.id
+  const insert=db.prepare("INSERT INTO catalog_items(id,kind,name,status,source,service_id,created_at,updated_at) VALUES(?,?,?,'validado','operador',?,?,?)")
+  const now='2026-11-17T12:00:00.000Z'
+  insert.run(OPTICAL_SERVICE_ID,'servico','Restauração óptica',null,now,now)
+  insert.run(OPTICAL_DIMENSION_ID,'dimensao','Completa',OPTICAL_SERVICE_ID,now,now)
+  const original=fixture.item.services[0]!
+  fixture.commercial.updateDiagnosis(at,fixture.item.id,{revision:fixture.item.revision,services:[
+   {id:original.id,serviceId:original.serviceId,dimensionId:original.dimensionId,quantity:original.quantity},
+   {serviceId:OPTICAL_SERVICE_ID,dimensionId:OPTICAL_DIMENSION_ID,quantity:'1'},
+   {serviceId:OPTICAL_SERVICE_ID,dimensionId:OPTICAL_DIMENSION_ID,quantity:'1',enabled:false}
+  ]})
+  const current=fixture.pricing.get()
+  current.config.services.push({serviceId:OPTICAL_SERVICE_ID,base:'100',colorFactorEnabled:true,discountable:true,dimensions:[{dimensionId:OPTICAL_DIMENSION_ID,fd:'1',stages:[]}]})
+  fixture.pricing.save({revision:current.revision,config:current.config})
+  // The legacy synthetic budget renderer rejects any technical warning, unlike
+  // the current production adapter. Use a deterministic PDF response for this
+  // regression: the real budget snapshot and adapter still run unchanged.
+  const {BudgetRepository:RealBudgetRepository}=await import('../budgets.ts')
+  const budgets=new RealBudgetRepository(db,{render:async()=>Buffer.from('%PDF-1.7\nSynthetic optical budget\n%%EOF')}),input={scenarioId:fixture.scenario.id,negotiation:{mode:'none'} as const}
+  const preview=budgets.preview(at,input)
+  assert.equal(preview.canEmit,true)
+  const version=await budgets.emit(at,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
+  const frozen=structuredClone(version),pdf=budgets.pdf(at,version.id)
+  const expected=['Lixamento','Envernização','Polimento']
+  const scope=operationalScope(version)
+  const optical=scope.lines.filter(l=>l.name==='Restauração de lentes de faróis e lanternas')
+  assert.equal(optical.length,1)
+  assert.deepEqual(optical[0]!.stages.map(s=>s.name),expected)
+  assert.equal(scope.lines.find(l=>l.id===original.id)?.stages[0]?.name,'Etapa sintética')
+  assert.deepEqual(version,frozen)
+  assert.equal(correctOpticalWorkOrderScope(scope,version.snapshot),null)
+  const old={...scope,deliveryDate:'2026-11-30',lines:scope.lines.map(l=>l.id===optical[0]!.id?{...l,stages:[]}:l)}
+  const id=randomUUID()
+  db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,at,version.id,now,now,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(old))
+  const orders=new WorkOrderRepository(db),first=orders.get(at,version.id)
+  assert.match(renderOrderV1(first).content,/Serviço sem etapas cadastradas: Restauração de lentes/)
+  const request={authorized:true,correction:'optical-stages-v1',expectedRevision:1}
+  assert.throws(()=>orders.reissue(at,version.id,{...request,authorized:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
+  assert.throws(()=>orders.reissue(at,version.id,{...request,deliveryChoice:'without'}),error(422,'OS_INVALID_CORRECTION'))
+  const revision=orders.reissue(at,version.id,request)
+  assert.equal(revision.id,first.id)
+  assert.equal(revision.revision,2)
+  assert.equal(revision.scope.deliveryDate,old.deliveryDate)
+  assert.deepEqual(revision.scope.lines.find(l=>l.id===optical[0]!.id)?.stages.map(s=>s.name),expected)
+  assert.deepEqual(revision.scope.lines.find(l=>l.id===original.id),first.scope.lines.find(l=>l.id===original.id))
+  const html=renderOrderV1(revision).content
+  assert.doesNotMatch(html,/Serviço sem etapas cadastradas: Restauração de lentes/)
+  for(const stage of expected)assert(html.includes('<span class="stage-name">'+stage+'</span>'))
+  assert.deepEqual(orders.get(at,version.id),first)
+  assert.deepEqual(budgets.get(at,version.id),frozen)
+  assert.deepEqual(budgets.pdf(at,version.id),pdf)
+  assert.throws(()=>orders.reissue(at,version.id,request),error(409,'OS_REVISION_CONFLICT'))
+  assert.throws(()=>orders.reissue(at,version.id,{...request,expectedRevision:2}),error(409,'OS_REVISION_UNCHANGED'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_order_revisions').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  const other=structuredClone(version.snapshot)
+  const master=other.composition.items[0]!.services.find(s=>s.id===optical[0]!.id)!
+  master.serviceId=fixture.service.id
+  assert.equal(correctOpticalWorkOrderScope(old,other),null)
+  const customized={...old,lines:old.lines.map(l=>l.id===optical[0]!.id?{...l,stages:[{name:'Etapa manual',dimension:'Peça'}]}:l)}
+  assert.equal(correctOpticalWorkOrderScope(customized,version.snapshot),null)
+  const legacy=structuredClone(version)
+  legacy.snapshot.calculation.lines.find(l=>l.id===optical[0]!.id)!.stages=[{id:'coda:2zsjI-nqWr:grid-p-wZJbfjUD:i-7W5F-LUwBk',name:'Polimento de farol',dimension:'Peça',baseEnergy:'3',dimensionEnergy:'0'}]
+  assert.deepEqual(operationalScope(legacy).lines.find(l=>l.id===optical[0]!.id)?.stages.map(s=>s.name),expected)
  }finally{db.close()}
 })

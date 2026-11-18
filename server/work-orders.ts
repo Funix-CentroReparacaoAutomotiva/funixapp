@@ -6,6 +6,7 @@ import {BudgetRepository} from './budgets.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
 import {stagePresentation} from './stage-presentation.ts'
+import {correctOpticalWorkOrderScope} from '../shared/optical-work-order.ts'
 import {AtendimentoRepository} from './atendimentos.ts'
 import {parseDeliveryDate,writeDeliveryDate,deliveryReason} from './delivery-date.ts'
 
@@ -32,7 +33,7 @@ export function operationalScope(version:BudgetVersion):WorkOrderScope {
     })
   }))
   const days=frozen.executionDeadline?.effectiveDays
-  return {
+  const scope:WorkOrderScope={
     customer:{name:frozen.atendimento.name},
     vehicle:{
       description:frozen.atendimento.vehicle||[frozen.atendimento.brand,frozen.atendimento.model].filter(Boolean).join(' '),
@@ -40,6 +41,7 @@ export function operationalScope(version:BudgetVersion):WorkOrderScope {
     },
     diagnostics,lines,deadlineDays:typeof days==='number'&&Number.isSafeInteger(days)&&days>0?days:null
   }
+  return correctOpticalWorkOrderScope(scope,frozen)??scope
 }
 
 const number=(serial:number)=>'OS-'+String(serial).padStart(6,'0')
@@ -130,8 +132,11 @@ export class WorkOrderRepository {
     })
   }
   reissue(at:string,versionId:string,input:unknown):WorkOrder {
-    const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision','expectedRevision','reason'])
-    if(confirmation.authorized!==true||confirmation.deliveryChoice===undefined)
+    const confirmation=inputObject(input,['authorized','deliveryChoice','deliveryDate','expectedAtendimentoRevision','expectedRevision','reason','correction'])
+    const optical=confirmation.correction==='optical-stages-v1'
+    if(confirmation.correction!==undefined&&(!optical||confirmation.deliveryChoice!==undefined||confirmation.deliveryDate!==undefined||confirmation.expectedAtendimentoRevision!==undefined||confirmation.reason!==undefined))
+      throw new ServiceError(422,'OS_INVALID_CORRECTION','Correção técnica inválida ou combinada com outra alteração.')
+    if(confirmation.authorized!==true||(!optical&&confirmation.deliveryChoice===undefined))
       throw new ServiceError(422,'OS_AUTHORIZATION_REQUIRED','Confirme explicitamente a nova emissão.')
     return transaction(this.db,()=>{
       const version=new BudgetRepository(this.db).get(at,versionId)
@@ -141,12 +146,20 @@ export class WorkOrderRepository {
       if(confirmation.expectedRevision!==revision)
         throw new ServiceError(409,'OS_REVISION_CONFLICT','A OS já possui outra revisão. Atualize a consulta.')
       const now=new Date(this.now()).toISOString()
-      const date=this.chosenDate(at,confirmation,now)
-      if(date===(latest.scope.deliveryDate??null))
-        throw new ServiceError(409,'OS_REVISION_UNCHANGED','A data prevista não mudou. Consulte a emissão existente.')
-      const scope={...latest.scope,deliveryDate:date}
+      let scope:WorkOrderScope,reason:string
+      if(optical){
+        const corrected=correctOpticalWorkOrderScope(latest.scope,version.snapshot)
+        if(!corrected)throw new ServiceError(409,'OS_REVISION_UNCHANGED','Nenhuma etapa de restauração óptica elegível para correção.')
+        scope=corrected
+        reason='Correção de etapas de restauração óptica: lixamento, envernização e polimento'
+      }else{
+        const date=this.chosenDate(at,confirmation,now)
+        if(date===(latest.scope.deliveryDate??null))
+          throw new ServiceError(409,'OS_REVISION_UNCHANGED','A data prevista não mudou. Consulte a emissão existente.')
+        scope={...latest.scope,deliveryDate:date}
+        reason=deliveryReason(confirmation.reason,'Atualização da data prevista de entrega')
+      }
       const id=randomUUID()
-      const reason=deliveryReason(confirmation.reason,'Atualização da data prevista de entrega')
       this.db.prepare('INSERT INTO work_order_revisions(id,work_order_id,revision,created_at,authorized_at,reason,scope_json) VALUES(?,?,?,?,?,?,?)').run(id,latest.id,revision+1,now,now,reason,JSON.stringify(scope))
       return this.get(at,versionId,revision+1)
     })
