@@ -18,8 +18,14 @@ export const SERVICE_POLICIES:Record<string,ServicePolicy>=Object.fromEntries(kn
 }]))
 export const COMMERCIAL_CURATION={version:CURATION_VERSION,services:SERVICE_POLICIES}
 export const servicePolicy=(id:string)=>SERVICE_POLICIES[id]
-// #162: presentation only; the approved commercial policy/digest stays intact.
-export function serviceDisplayName(id:string,fallback:string){return id===codaServiceId('i-GsuErCDZgL')?'Avaliação técnica e planejamento':servicePolicy(id)?.displayName??fallback}
+// Presentation only (#162 and 17/11 optical restoration naming decision).
+// Keep the historical approved policy/digest intact; its long optical label
+// describes the service, not its current display name.
+export function serviceDisplayName(id:string,fallback:string){
+ if(id===codaServiceId('i-GsuErCDZgL'))return 'Avaliação técnica e planejamento'
+ if(id===codaServiceId('i-MMsEFTPdow'))return 'Restauração óptica'
+ return servicePolicy(id)?.displayName??fallback
+}
 export const isCodaCommercialService=(id:string)=>id.startsWith(prefix)
 export function newServiceSelectionIssue(id:string):string|null {
  const p=servicePolicy(id)
