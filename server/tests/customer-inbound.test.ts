@@ -238,3 +238,21 @@ test('V19 reuses previously confirmed bindings stored in the app database and pr
   }finally{db.close()}
  }
 })
+
+
+test('authenticated inbound references the explicitly assigned Entity without copying provider name',()=>{
+ const f=fixture();try{
+  const entity=f.customers.save({kind:'entity',text:'Pessoa cadastrada',contacts:[{text:'+5531999990101'}]})
+  const contact=f.customers.contacts(entity.id)[0]!
+  const cid=f.runtime.authority!.rememberProviderConversation(PN)
+  f.db.prepare('UPDATE customer_records SET conversation_id=? WHERE id=?').run(cid,contact.id)
+  f.ingest(event('first-known',PN,null,'Nome do WhatsApp'))
+  const a=f.at.list().items[0]!
+  assert.deepEqual(f.at.get(a.id,true).references!.person,[{id:entity.id,text:entity.text}])
+  f.ingest(event('second-known'))
+  assert.equal(f.at.list().total,1)
+  assert.equal(f.at.get(a.id,true).references!.person.length,1)
+  f.customers.save({text:'Pessoa renomeada',revision:entity.revision},entity.id)
+  assert.equal(f.at.get(a.id,true).references!.person[0]!.text,'Pessoa renomeada')
+ }finally{f.db.close()}
+})
