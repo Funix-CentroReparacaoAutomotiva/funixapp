@@ -57,18 +57,18 @@ class TransactionTest(unittest.TestCase):
                                      "CREATE TABLE scenarios(id INTEGER);"
                                      "CREATE TABLE budget_versions(id INTEGER);")
                 adapter = Adapter(database, failure)
-                operation = transaction.Transaction(root / "operation", adapter)
+                operation = transaction.Transaction(root / "operation", adapter,
+                                                    project_state=root / "state")
                 if failure:
                     with self.assertRaisesRegex(RuntimeError, "health"):
                         operation.update("new", authorized=True)
                 else:
                     operation.update("new", authorized=True)
                     self.assertEqual(adapter.release, "new")
-                    # Simulate restart after accepted update, request rollback.
-                    record = json.loads(operation.journal.read_text())
-                    record["phase"] = "restoring"
-                    operation.save(record)
-                    operation.recover(authorized=True)
+                    with self.assertRaises(transaction.safety.Blocked):
+                        operation.recover(authorized=True)
+                    operation.rollback(authorized=True, discard_post_update_data=True)
+                    self.assertTrue((operation.root / "post-update.sqlite").exists())
                 self.assertEqual(adapter.release, "old")
                 with sqlite3.connect(database) as db:
                     self.assertEqual(db.execute("SELECT value FROM atendimentos").fetchone(),
@@ -77,9 +77,12 @@ class TransactionTest(unittest.TestCase):
 
     def test_authorization_and_concurrent_lock(self):
         with tempfile.TemporaryDirectory() as directory:
-            operation = transaction.Transaction(Path(directory) / "operation", None)
+            operation = transaction.Transaction(Path(directory) / "operation", None,
+                                                project_state=Path(directory) / "state")
+            other = transaction.Transaction(Path(directory) / "other", None,
+                                            project_state=Path(directory) / "state")
             with self.assertRaises(transaction.safety.Blocked):
                 operation.update("new")
             with operation.locked():
                 with self.assertRaises(BlockingIOError):
-                    operation.recover(authorized=True)
+                    other.recover(authorized=True)

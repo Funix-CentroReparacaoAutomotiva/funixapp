@@ -104,8 +104,12 @@ sem merge, deploy, acesso à VPS ou dados reais.
 substituição atômica, snapshot definitivo após quiescência, rollback em falha
 e recuperação explícita de operação interrompida. O journal é privado e deve
 receber apenas identificadores de release, nunca credenciais. Cada operação
-usa um diretório novo. `recover(authorized=True)` permite também reverter uma
-atualização aceita e é idempotente após restauração concluída.
+usa um diretório novo. O lock fica no estado global do projeto
+`/var/lib/funix-hml/updater`, independente do diretório da operação.
+`recover(authorized=True)` recusa atualização aceita. Para essa situação,
+`rollback(authorized=True, discard_post_update_data=True)` exige reconhecimento
+explícito e preserva um snapshot dos dados atuais antes de restaurar os antigos.
+Recuperação é idempotente após restauração concluída.
 
 Os testes usam um adaptador simulado e SQLite sintético real, incluindo uma
 alteração de dados representando migração incompatível. Não são testes Docker.
@@ -114,7 +118,16 @@ O adaptador deve garantir ausência de escritores, isolamento HML, preservação
 do banco falho e sidecars, restauração atômica, UID/GID e validação HTTPS.
 Essas obrigações ainda não estão implementadas; este módulo não oferece CLI
 de atualização real. Procedência autenticada no GitHub também permanece
-pendente. Não utilizar o coordenador com dados da VPS nesta etapa.
+pendente de integração ao adaptador. `hml-artifact-provenance.py` consulta a
+API autenticada via gh, exige run manual aprovado do workflow na main e confere
+o digest GitHub do ZIP baixado, identidade do artefato e SHA da PR. Não utiliza
+checksum local como prova de autenticidade. Ainda falta ligar essa função à
+extração segura e à operação Docker. Não utilizar o coordenador com dados da
+VPS nesta etapa.
+
+Validação adicional: Docker local executou Python/SQLite com rede desabilitada
+e rootfs somente leitura, retornando integrity_check=ok. Isso é apenas um smoke
+test de disponibilidade; não constitui ciclo integrado de atualização/rollback.
 
 A validação offline do docker-save agora rejeita tags fora da HML, IDs de
 config divergentes, revisões incorretas, camadas ausentes, links, caminhos

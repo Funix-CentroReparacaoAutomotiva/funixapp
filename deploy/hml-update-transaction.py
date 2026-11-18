@@ -16,7 +16,7 @@ SPEC.loader.exec_module(safety)
 
 
 class Transaction:
-    def __init__(self, directory, adapter):
+    def __init__(self, directory, adapter, *, project_state=None):
         self.root = Path(directory)
         safety.require(self.root.is_absolute() and self.root.resolve() == self.root,
                        "noncanonical journal directory")
@@ -24,6 +24,13 @@ class Transaction:
         safety.require(self.root.stat().st_mode & 0o777 == 0o700,
                        "journal directory must be private")
         self.adapter = adapter
+        self.project_state = Path(project_state or "/var/lib/funix-hml/updater")
+        safety.require(self.project_state.is_absolute()
+                       and self.project_state.resolve() == self.project_state,
+                       "noncanonical project state")
+        self.project_state.mkdir(mode=0o700, parents=True, exist_ok=True)
+        safety.require(self.project_state.stat().st_mode & 0o777 == 0o700,
+                       "project state must be private")
         self.journal = self.root / "operation.json"
 
     def save(self, record):
@@ -38,7 +45,7 @@ class Transaction:
         safety.durable(self.journal)
 
     def locked(self):
-        fd = os.open(self.root / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        fd = os.open(self.project_state / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BaseException:
@@ -82,6 +89,23 @@ class Transaction:
                            "invalid recovery journal")
             if record["phase"] == "restored":
                 return
+            safety.require(record["phase"] != "accepted",
+                           "accepted update requires explicit rollback and current-data backup")
+            self.restore(record)
+
+    def rollback(self, *, authorized=False, discard_post_update_data=False):
+        safety.require(authorized is True and discard_post_update_data is True,
+                       "rollback requires explicit acknowledgement of post-update data loss")
+        with self.locked():
+            record = json.loads(safety.regular(self.journal).read_text())
+            safety.require(record.get("schema") == 1 and record.get("project") == "funix-hml"
+                           and record.get("phase") == "accepted", "not an accepted update")
+            self.adapter.quiesce()
+            # Preserve later writes independently before authorizing restoration.
+            digest = safety.snapshot(self.adapter.database, self.root / "post-update.sqlite")
+            record["post_update_sha256"] = digest
+            record["phase"] = "restoring"
+            self.save(record)
             self.restore(record)
 
     def restore(self, record):
