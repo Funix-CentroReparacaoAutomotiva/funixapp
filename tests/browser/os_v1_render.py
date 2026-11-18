@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import re
+import shutil
 import subprocess
 import statistics
 import time
@@ -85,6 +86,8 @@ def compare_reference(page,data,doc,output):
 
 with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as playwright:
     browser=playwright.chromium.launch(headless=True)
+    evidence=ROOT/"docs/evidencias/os-browser"
+    evidence.mkdir(parents=True,exist_ok=True)
     for count in (1,4,10,19,40,80):
         data=payload(count)
         assert "@page" not in data["headerTemplate"]
@@ -145,6 +148,8 @@ with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as play
             compare_reference(page,data,doc,Path(tmp)/f"reference-{count}.pdf")
         print(f"PASS: official OS V1, {count} synthetic pieces, {len(doc)} pages")
         doc.close()
+        if count in (4,19):
+            shutil.copyfile(output,evidence/f"FUNIX-OS-V1.1-exemplo-{count}-pecas.pdf")
         page.close()
     # Border regression in actual rendered print CSS, including the single-component case.
     data=json.loads(subprocess.check_output(
@@ -174,6 +179,7 @@ with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as play
         text=" ".join(p.get_text() for p in doc)
         for token in ("A1","B1","B2","B3","D1"):
             assert re.search(r"\b"+token+r"\b",text),("missing code",token)
+    shutil.copyfile(output,evidence/"FUNIX-OS-V1.1-exemplo-componentes.pdf")
     print("PASS: component-code borders — single, multiple, none, and with notes")
     page.close()
     stress=payload(4,True)
