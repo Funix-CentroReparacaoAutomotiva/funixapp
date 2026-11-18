@@ -121,18 +121,24 @@ test('confirmed exact PN/LID retrieves the established opaque handle; changing p
  }finally{f.db.close()}
 })
 
-test('contact sends use durable recipient-scoped idempotency and reject stale context/session; no Atendimento required',async()=>{
+test('contact sends use durable recipient-scoped idempotency and reject stale context/session and reserve the Atendimento before dispatch',async()=>{
  const f=entityContactsFixture();try{
   const c=f.customers.save({kind:'contact',text:phone1}),other=f.customers.save({kind:'contact',text:phone2});await f.channels.verify(c.id);await f.channels.verify(other.id)
   const context=f.channels.context(c.id),command={requestId:randomUUID(),contextToken:context.token}
   assert.equal(f.sends(),0)
-  const receipt=await f.channels.send(c.id,context.conversationId,'Mensagem sintética',command,()=>{})
-  assert.deepEqual(await f.channels.send(c.id,context.conversationId,'Mensagem sintética',command,()=>{}),receipt);assert.equal(f.sends(),1);assert.deepEqual(f.sent,[jid(phone1)])
+  const checked=new ContactChannels(f.db,f.provider,'synthetic-entities',async()=>{
+    assert.equal(f.at.list().total,1)
+    assert.equal(f.at.list().items[0]!.purpose,'unclassified')
+    assert.equal(f.links.listActive(context.conversationId).items.length,1)
+    return {messageId:'confirmed'}
+  },()=>Date.UTC(2026,0,1))
+  const receipt=await checked.send(c.id,context.conversationId,'Mensagem sintética',command,()=>{})
+  assert.deepEqual(await f.channels.send(c.id,context.conversationId,'Mensagem sintética',command,()=>{}),receipt);assert.equal(f.sends(),0)
   await assert.rejects(()=>f.channels.send(other.id,context.conversationId,'X',command,()=>{}),code('CONTACT_CHANNEL_CONFLICT'))
-  await assert.rejects(()=>f.channels.send(c.id,context.conversationId,'X',{...command,requestId:randomUUID()},()=>{throw Error('session revoked')}),/session revoked/);assert.equal(f.sends(),1)
+  await assert.rejects(()=>f.channels.send(c.id,context.conversationId,'X',{...command,requestId:randomUUID()},()=>{throw Error('session revoked')}),/session revoked/);assert.equal(f.sends(),0)
   const latest=f.customers.record(c.id);f.customers.save({text:latest.text,revision:latest.revision,nickname:'historical'},c.id)
-  await assert.rejects(()=>f.channels.send(c.id,context.conversationId,'X',{...command,requestId:randomUUID()},()=>{}),code('CONTACT_CHANNEL_CONFLICT'))
-  assert.equal(f.sends(),1)
+  await assert.rejects(()=>f.channels.send(c.id,context.conversationId,'X',{...command,requestId:randomUUID()},()=>{}),code('CHAT_CONTEXT_CHANGED'))
+  assert.equal(f.sends(),0)
  }finally{f.db.close()}
 })
 
@@ -194,7 +200,7 @@ test('uncertain contact send is never replayed and concurrent sends share the ca
   const first=channels.send(c.id,context.conversationId,'Sintético',command,()=>{})
   await assert.rejects(()=>channels.send(c.id,context.conversationId,'Outra',{...command,requestId:randomUUID()},()=>{}),code('CHAT_SEND_IN_PROGRESS'))
   release({messageId:'only-one'});await first;assert.equal(calls,1)
-  const failing=new ContactChannels(f.db,f.provider,'synthetic-entities',async()=>{calls++;throw Error('provider timeout')},()=>Date.UTC(2026,0,1)),uncertain={...command,requestId:randomUUID()}
+  const failing=new ContactChannels(f.db,f.provider,'synthetic-entities',async()=>{calls++;throw Error('provider timeout')},()=>Date.UTC(2026,0,1)),uncertain={requestId:randomUUID(),contextToken:failing.context(c.id).token}
   await assert.rejects(()=>failing.send(c.id,context.conversationId,'Falha',uncertain,()=>{}),/provider timeout/)
   await assert.rejects(()=>failing.send(c.id,context.conversationId,'Falha',uncertain,()=>{}),code('CHAT_SEND_UNCERTAIN'));assert.equal(calls,2)
  }finally{f.db.close()}
@@ -205,7 +211,7 @@ test('contact media reuses format/size guards, exact context and durable send le
   const c=f.customers.save({kind:'contact',text:phone1});await f.channels.verify(c.id)
   let reads=0,mediaSends=0,change=false
   const provider={checkNumber:f.provider.checkNumber.bind(f.provider),findMessages:f.provider.findMessages.bind(f.provider),findMediaEnvelope:async()=>({envelope:{key:{id:'media-synthetic',remoteJid:jid(phone1)}},kind:'image' as const,bytes:4})}
-  const gateway={send:async(recipient:string)=>{assert.equal(recipient,jid(phone1));mediaSends++;return {messageId:'media-receipt'}},get:async()=>{reads++;if(change)f.channels.identities.rememberProviderAliases([{remoteJid:'media-conflict@lid',remoteJidAlt:jid(phone1)},{remoteJid:'media-conflict@lid',remoteJidAlt:jid(phone2)}]);return {kind:'image' as const,mimeType:'image/jpeg',base64:'/9j/AA=='}}}
+  const gateway={send:async(recipient:string)=>{assert.equal(recipient,jid(phone1));assert.equal(f.at.list().total,1);assert.equal(f.links.listActive(f.channels.context(c.id).conversationId).items.length,1);mediaSends++;return {messageId:'media-receipt'}},get:async()=>{reads++;if(change)f.channels.identities.rememberProviderAliases([{remoteJid:'media-conflict@lid',remoteJidAlt:jid(phone1)},{remoteJid:'media-conflict@lid',remoteJidAlt:jid(phone2)}]);return {kind:'image' as const,mimeType:'image/jpeg',base64:'/9j/AA=='}}}
   const channels=new ContactChannels(f.db,provider,'synthetic-entities',undefined,()=>Date.UTC(2026,0,1),gateway),context=channels.context(c.id),item={kind:'image' as const,mimeType:'image/jpeg',base64:'/9j/AA=='},command={requestId:randomUUID(),contextToken:context.token}
   const receipt=await channels.sendMedia(c.id,context.conversationId,item,command,()=>{});assert.deepEqual(await channels.sendMedia(c.id,context.conversationId,item,command,()=>{}),receipt);assert.equal(mediaSends,1)
   await assert.rejects(()=>channels.sendMedia(c.id,context.conversationId,{...item,base64:'invalid'}, {...command,requestId:randomUUID()},()=>{}),code('CHAT_MEDIA_INVALID'));assert.equal(mediaSends,1)
@@ -227,5 +233,36 @@ test('existing enabled local history remains authoritative for Contact reads eve
   assert.equal(local.authority!.projection(jid(phone1)).unreadCount,0)
   assert.equal(channels.states(c.id,context.conversationId,[{messageId:result.items[0]!.messageId}]).items[0]!.text,'Histórico já salvo')
   assert.deepEqual(f.db.prepare('SELECT * FROM chat_messages').all(),before);assert.equal(f.at.list().total,0);assert.equal(f.db.prepare('SELECT count(*) n FROM v20_associations').get()!.n,0)
+ }finally{f.db.close()}
+})
+
+test('explicit context resolves two active demands and two numbers can share one Atendimento without sharing history',async()=>{
+ const f=entityContactsFixture()
+ try{
+  const entity=f.customers.save({kind:'entity',text:'Pessoa sintética',contacts:[{text:phone1},{text:phone2}]})
+  const {contacts:[first,second]}=await f.channels.verifyEntity(entity.id)
+  const [a,b]=[f.at.create({purpose:'non_commercial'}),f.at.create({purpose:'unclassified'})]
+  const add=(conversationId:string,atendimentoId:string,expectedRevision:number)=>
+   f.links.link({conversationId,atendimentoId,expectedRevision,requestId:randomUUID(),reason:'Seleção sintética'})
+  const cid=first!.conversationId!,otherId=second!.conversationId!
+  const selected=add(cid,a.id,0)
+  add(cid,b.id,1)
+  add(otherId,a.id,0)
+  const command=(id:string)=>({requestId:randomUUID(),contextToken:f.channels.context(id).token})
+  const blocked=command(first!.id)
+  await assert.rejects(()=>f.channels.send(first!.id,cid,'Dúvida',blocked,()=>{}),code('CHAT_CONTEXT_CONFLICT'))
+  assert.equal(f.sends(),0)
+  assert.equal(f.db.prepare('SELECT count(*) n FROM chat_send_operations').get()!.n,0)
+  f.links.selectAtendimento(cid,selected.linkId)
+  await assert.rejects(()=>f.channels.send(first!.id,cid,'Dúvida',blocked,()=>{}),code('CHAT_CONTEXT_CHANGED'))
+  await f.channels.send(first!.id,cid,'Dúvida',command(first!.id),()=>{})
+  await f.channels.send(second!.id,otherId,'Resposta',command(second!.id),()=>{})
+  assert.deepEqual(f.sent,[jid(phone1),jid(phone2)])
+  assert.equal(f.at.list().total,2)
+  assert.equal(f.at.get(a.id,true).references!.contact.length,2)
+  assert.equal(f.at.get(b.id,true).references!.contact.some(contact=>contact.id||contact.text),false)
+  assert.equal(f.links.listActive(cid).items.length,2)
+  assert.equal(f.links.listActive(otherId).items[0]!.atendimentoId,a.id)
+  assert.equal(f.db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,0)
  }finally{f.db.close()}
 })

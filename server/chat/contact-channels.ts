@@ -6,19 +6,18 @@ import {CustomerRepository} from '../customers.ts'
 import {normalizePhone} from '../atendimentos.ts'
 import {ServiceError} from '../errors.ts'
 import {transaction} from '../scenarios.ts'
-import {ConversationIdentities} from './conversation-identities.ts'
+import {LocalConversationAssociations} from './local-associations.ts'
+import type {CodaEventSyncRepository} from './coda-sync.ts'
 import {SendOperations,type SendCommand} from './send-operations.ts'
 import type {EvolutionReadPoc} from '../experimental/evolution-read/client.ts'
 import type {EvolutionTextSender} from './evolution-send.ts'
 import type {ContactAvailability,EntityRecord} from '../../shared/customer.ts'
 
 const conflict=():never=>{throw new ServiceError(409,'CONTACT_CHANNEL_CONFLICT','Contato ou identidade mudou. Atualize o cadastro e verifique o WhatsApp novamente.')}
-/** Contact-scoped authorization, separate from Atendimento context. Same identity and send ledger.
- * Never creates commercial links, ingests messages or moves history between people/numbers.
- */
+/** Read by verified Contact. Reserve the Atendimento only on confirmed dispatch. */
 export class ContactChannels {
   readonly customers:CustomerRepository
-  readonly identities:ConversationIdentities
+  readonly identities:LocalConversationAssociations
   readonly sends:SendOperations
   private windowAt=0
   private attempts=0
@@ -27,12 +26,13 @@ export class ContactChannels {
   readonly providerInstance:string
   readonly sender?:EvolutionTextSender
   readonly local?:ConversationRuntime
+  private readonly legacy?:CodaEventSyncRepository
   readonly media?:MediaGateway
   readonly now:()=>number
   constructor(db:DatabaseSync,provider:Pick<EvolutionReadPoc,'checkNumber'|'findMessages'> & Partial<Pick<EvolutionReadPoc,'findMediaEnvelope'>>,
-    providerInstance:string,sender?:EvolutionTextSender,now:()=>number=Date.now,media?:MediaGateway,local?:ConversationRuntime) {
-    this.local=local;this.media=media;this.db=db;this.provider=provider;this.providerInstance=providerInstance;this.sender=sender;this.now=now
-    this.customers=new CustomerRepository(db);this.identities=new ConversationIdentities(db);this.sends=new SendOperations(db)
+    providerInstance:string,sender?:EvolutionTextSender,now:()=>number=Date.now,media?:MediaGateway,local?:ConversationRuntime,legacy?:CodaEventSyncRepository) {
+    this.legacy=legacy;this.local=local;this.media=media;this.db=db;this.provider=provider;this.providerInstance=providerInstance;this.sender=sender;this.now=now
+    this.customers=new CustomerRepository(db);this.identities=local?.authority??new LocalConversationAssociations(db);this.sends=new SendOperations(db)
   }
   private contact(id:string) {
     const c=this.customers.record(id)
@@ -122,22 +122,43 @@ export class ContactChannels {
     const owners=this.db.prepare(`SELECT c.id FROM customer_records c JOIN chat_provider_conversations p ON p.id=c.conversation_id WHERE p.instance='funix_comercial' AND p.remote_jid IN (${members.map(()=>'?').join(',')})`).all(...members)
     if(owners.length!==1||owners[0]!.id!==id)return conflict()
     const check=this.db.prepare('SELECT checked_at FROM contact_channel_checks WHERE contact_id=?').get(id)!
-    const token=createHash('sha256').update(JSON.stringify([id,c.revision,c.entityId,status.conversationId,phone,members,this.providerInstance,check.checked_at])).digest('hex')
-    return {conversationId:status.conversationId,phone,jid,members,token}
+    const identityToken=createHash('sha256').update(JSON.stringify([id,c.revision,c.entityId,status.conversationId,phone,members,this.providerInstance,check.checked_at])).digest('hex')
+    const interaction=this.interaction(jid)
+    const token=createHash('sha256').update(JSON.stringify([identityToken,interaction.version])).digest('hex')
+    return {conversationId:status.conversationId,phone,jid,members,token,identityToken,interaction}
+  }
+
+  private interaction(jid:string) {
+    const local=this.identities.interaction(jid)
+    const legacyState=this.legacy?.identityState(jid)
+    const legacyId=this.legacy?.resolveIdentityActive(jid)
+    const legacyOpen=legacyId&&this.isOpen(legacyId)?legacyId:null
+    const blocked=local.blocked||legacyState==='context_conflict'||legacyState==='identity_conflict'||
+      !!(local.at&&legacyOpen&&local.at!==legacyOpen)
+    return {at:local.at??legacyOpen,blocked,version:[local.version,this.legacy?.contextToken(jid),legacyOpen,blocked]}
+  }
+
+  allowsExistingSend(id:string,jid:string) {
+    const plan=this.interaction(jid)
+    return this.isOpen(id)&&!plan.blocked&&(!plan.at||plan.at===id)
+  }
+
+  private isOpen(id:string) {
+    return !!this.db.prepare("SELECT 1 FROM atendimentos WHERE id=? AND closed_at IS NULL AND stage!='rejeitados'").get(id)
   }
   async messages(id:string,conversationId:string,page:number,cursor?:string) {
     const before=this.context(id,conversationId)
     if(this.local?.read&&this.local.store.page(before.jid,1).reportedTotal>0){
       const result=this.local.store.page(before.jid,page,cursor)
-      if(this.context(id,conversationId).token!==before.token)return conflict()
+      if(this.context(id,conversationId).identityToken!==before.identityToken)return conflict()
       this.local.authority?.markRead(before.jid,result.items.map(m=>m.messageId))
-      return {...result,conversationId,contextToken:before.token,sendTextAvailable:!!this.sender,mediaSendAvailable:!!this.media,mediaReadAvailable:!!this.media&&!!this.provider.findMediaEnvelope,...this.local.store.health(before.jid)}
+      return {...result,conversationId,contextToken:this.context(id,conversationId).token,sendTextAvailable:!!this.sender,mediaSendAvailable:!!this.media,mediaReadAvailable:!!this.media&&!!this.provider.findMediaEnvelope,...this.local.store.health(before.jid)}
     }
     if(cursor)throw new ServiceError(400,'CHAT_INVALID_QUERY','Cursor indisponível nesta fonte.')
     const result=await this.provider.findMessages(before.members[0]!,{page})
     this.identities.rememberProviderAliases(result.items,false,'findMessages')
-    if(this.context(id,conversationId).token!==before.token)return conflict()
-    return {conversationId,contextToken:before.token,sendTextAvailable:!!this.sender,mediaSendAvailable:!!this.media,mediaReadAvailable:!!this.media&&!!this.provider.findMediaEnvelope,
+    if(this.context(id,conversationId).identityToken!==before.identityToken)return conflict()
+    return {conversationId,contextToken:this.context(id,conversationId).token,sendTextAvailable:!!this.sender,mediaSendAvailable:!!this.media,mediaReadAvailable:!!this.media&&!!this.provider.findMediaEnvelope,
       items:result.items.map(({messageId,timestamp,fromMe,origin,kind,text,media,statuses})=>({messageId,timestamp,fromMe,origin,kind,text,media,statuses})),
       page:result.currentPage,nextPage:result.nextPage,reportedTotal:result.reportedTotal,reportedPages:result.reportedPages,
       consistency:'offset-not-snapshot',historyComplete:'unknown',source:'evolution'}
@@ -170,25 +191,41 @@ export class ContactChannels {
     const expected=localState()
     if(expected===null)throw new ServiceError(404,'CHAT_MEDIA_NOT_FOUND','Mídia não disponível.')
     const item=await this.provider.findMediaEnvelope(before.members[0]!,messageId,page)
-    if(this.context(id,conversationId).token!==before.token)return conflict()
+    if(this.context(id,conversationId).identityToken!==before.identityToken)return conflict()
     if(!item)throw new ServiceError(404,'CHAT_MEDIA_NOT_FOUND','Mídia não encontrada nesta conversa.')
     const key=item.envelope.key as {remoteJid:string;remoteJidAlt?:string}
     this.identities.rememberProviderAliases([{remoteJid:key.remoteJid,remoteJidAlt:key.remoteJidAlt}],false,'findMessages')
-    if(this.context(id,conversationId).token!==before.token)return conflict()
+    if(this.context(id,conversationId).identityToken!==before.identityToken)return conflict()
     if(item.bytes!==null&&item.bytes>12*1024*1024)throw new ServiceError(413,'CHAT_MEDIA_TOO_LARGE','Mídia acima de 12 MB.')
     const result=await this.media.get(item.envelope,item.kind)
-    if(this.context(id,conversationId).token!==before.token||localState()!==expected)return conflict()
+    if(this.context(id,conversationId).identityToken!==before.identityToken||localState()!==expected)return conflict()
     return result
   }
   private async dispatch(id:string,conversationId:string,command:SendCommand,payload:unknown,authorize:()=>void,send:(recipient:string)=>Promise<{messageId:string}>) {
     const context=this.context(id,conversationId)
-    if(command.contextToken!==context.token)return conflict()
     const recipient=context.phone.slice(1)+'@s.whatsapp.net'
     authorize()
-    return this.sends.run(command,recipient,payload,()=>{
+    let atendimentoId:string, preparedToken:string
+    return this.sends.run(command,recipient,[context.identityToken,payload],async()=>{
       authorize()
-      if(this.context(id,conversationId).token!==context.token)return conflict()
-      return send(recipient)
+      const prepared=this.context(id,conversationId)
+      if(prepared.token!==preparedToken||prepared.interaction.at!==atendimentoId||prepared.interaction.blocked)
+        throw new ServiceError(409,'CHAT_SEND_UNCERTAIN','O contexto mudou durante a operação. Confira o WhatsApp antes de tentar novamente.')
+      const receipt=await send(recipient)
+      this.identities.recordAccepted(atendimentoId,context.jid,receipt.messageId)
+      return receipt
+    },()=>{
+      authorize()
+      const current=this.context(id,conversationId)
+      if(command.contextToken!==current.token){
+        throw new ServiceError(409,'CHAT_CONTEXT_CHANGED','O Atendimento ou Contato mudou. Atualize o Chat antes de confirmar o envio.')
+      }
+      if(current.interaction.blocked)
+        throw new ServiceError(409,'CHAT_CONTEXT_CONFLICT','Selecione o Atendimento em Detalhes da conversa antes de enviar.')
+      const contact=this.contact(id)
+      const name=contact.entityId?this.customers.record(contact.entityId).text:''
+      atendimentoId=this.identities.ensureInteraction(current.jid,current.interaction.at,id,current.phone,name,'confirmed_contact_send')
+      preparedToken=this.context(id,conversationId).token
     })
   }
 }

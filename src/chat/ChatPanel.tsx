@@ -121,8 +121,8 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, drafts, onSendBusy }: {
-  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void
+export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void
 }) {
   const apiBase=contactId?`/api/customer-records/${encodeURIComponent(contactId)}/chat/${encodeURIComponent(conversationId)}`:`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}`
   const [items, setItems] = useState<ReadUiMessage[]>([])
@@ -152,7 +152,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   const [autoError, setAutoError] = useState(false)
   const [newMessages, setNewMessages] = useState(0)
   const contextToken=useRef<string|null>(null)
-  const sendOperation=useRef<{fingerprint:string;id:string}|null>(contactId&&drafts?.get('operation:'+contactId)?JSON.parse(drafts.get('operation:'+contactId)!):null)
+  const sendOperation=useRef<{fingerprint:string;id:string;token?:string}|null>(contactId&&drafts?.get('operation:'+contactId)?JSON.parse(drafts.get('operation:'+contactId)!):null)
   const cursors=useRef(new Map<number,string>())
   const [localHistory,setLocalHistory]=useState(false)
   const [syncBusy,setSyncBusy]=useState(false)
@@ -160,9 +160,9 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   const [olderProviderPage,setOlderProviderPage]=useState<number|null>(1)
   function command(fingerprint:string){
     if(!contextToken.current)return {}
-    if(sendOperation.current?.fingerprint!==fingerprint)sendOperation.current={fingerprint,id:crypto.randomUUID()}
+    if(sendOperation.current?.fingerprint!==fingerprint)sendOperation.current={fingerprint,id:crypto.randomUUID(),token:contextToken.current}
     if(contactId)drafts?.set('operation:'+contactId,JSON.stringify(sendOperation.current))
-    return {requestId:sendOperation.current.id,contextToken:contextToken.current}
+    return {requestId:sendOperation.current.id,contextToken:contactId?sendOperation.current.token??contextToken.current:contextToken.current}
   }
 
 
@@ -293,6 +293,19 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [load])
+  function handleSendContext(cause:unknown) {
+    const error=cause as RequestFailure
+    if(error.status===401){onUnauthorized();return true}
+    if(contactId&&['CHAT_CONTEXT_CHANGED','CHAT_CONTEXT_CONFLICT'].includes(error.code??'')){
+      sendOperation.current=null
+      drafts?.delete('operation:'+contactId)
+      setSendFailure(error.code==='CHAT_CONTEXT_CONFLICT'
+        ? (contactLinksEnabled ? 'Selecione um Atendimento em Atendimentos desta conversa antes de enviar.' : 'O Atendimento desta conversa precisa de revisão antes do envio.')
+        : 'O Atendimento ou Contato mudou. Atualize as mensagens antes de confirmar novamente.')
+      return true
+    }
+    return false
+  }
   async function sendMedia() {
     if(!file||!canMedia||sending)return
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' :
@@ -322,7 +335,8 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setFile(null);setDraft('')
       setSendNotice('Arquivo aceito pela Evolution. Confira no WhatsApp antes de reenviar.')
       void load(1)
-    }catch{
+    }catch(cause){
+      if(handleSendContext(cause))return
       setSendFailure('Envio de mídia não confirmado. Confira o WhatsApp antes de tentar novamente.')
     }finally{sendingRef.current = false;setSending(false);onSendBusy?.(false)}
   }
@@ -342,7 +356,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setSendNotice('Mensagem aceita pelo WhatsApp. Confira o histórico antes de enviar novamente.')
       void load(1)
     } catch (cause) {
-      if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
+      if (handleSendContext(cause)) return
       setSendFailure('Envio não confirmado. Verifique a conversa antes de tentar outra vez, para evitar mensagem duplicada.')
     } finally { sendingRef.current = false; setSending(false);onSendBusy?.(false) }
   }
@@ -368,7 +382,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       <section className="chat-history" aria-label={contactId?'Histórico WhatsApp deste Contato':'Histórico Evolution deste Atendimento'} aria-busy={busy}>
         <div className="chat-read-toolbar">
           {autoError && <span className="chat-auto-state" role="status">Atualização pausada</span>}
-          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy||syncBusy} onClick={() => void (localHistory?syncHistory(1):load(1))}>↻</button>
+          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy||syncBusy} onClick={() => void (localHistory&&!contactId?syncHistory(1):load(1))}>↻</button>
         </div>
         {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
           const element = scroll.current
@@ -387,7 +401,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
-        {localHistory && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
+        {localHistory && !contactId && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
       </section>
     </div></div>
     {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); if(window.confirm('Enviar esta mensagem à conversa selecionada?')) void (file ? sendMedia() : sendText()) }}>

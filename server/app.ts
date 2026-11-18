@@ -417,7 +417,10 @@ export function createRequestHandler(options: AppOptions) {
         if(action==='open-chat'&&!conversationId&&Object.keys(input).length===0){
           await contactChannels.verify(contactId!)
           if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
-          return send(200,{conversationId:contactChannels.context(contactId!).conversationId})
+          return send(200,{
+            conversationId:contactChannels.context(contactId!).conversationId,
+            linksEnabled:!!options.v20Associations&&(!options.conversationRuntime||!!options.conversationRuntime.authority),
+          })
         }
         if(action==='chat'&&operation==='send-text'&&conversationId){
           if(process.env.FUNIX_EVOLUTION_SEND_ENABLED!=='true')return fail(503,'CHAT_SEND_DISABLED','Envio WhatsApp não habilitado.')
@@ -458,7 +461,10 @@ export function createRequestHandler(options: AppOptions) {
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         if (associationRoute || contextRoute) {
           const conversationId = (associationRoute?.[1] ?? contextRoute?.[1])!
-          const scope=options.conversationRuntime?.authority?.associationScope(conversationId)
+          const authority=options.conversationRuntime?.authority
+          const contacts=options.evolutionChat.contacts
+          const scope=authority?.associationScope(conversationId) ??
+            (contacts?.identities.providerJid(conversationId)?contacts.identities.associationScope(conversationId):undefined)
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
           if (associationRoute && req.method === 'GET' && !associationRoute[3])

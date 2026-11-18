@@ -49,7 +49,7 @@ export function loadEvolutionChat(
   const media = env.FUNIX_EVOLUTION_MEDIA_ENABLED === 'true'
     ? createMediaGateway({ origin: EXISTING_INTERNAL_ORIGIN, apiKey: key, instance: EXISTING_INSTANCE })
     : undefined
-  const contacts=db?new ContactChannels(db,provider,instanceId,sender,Date.now,media,local):undefined
+  const contacts=db?new ContactChannels(db,provider,instanceId,sender,Date.now,media,local,local?.authority?undefined:codaSync):undefined
   if(contacts&&!local)contacts.sends.recoverInterrupted()
   return createEvolutionChatBridge(provider, Date.now, associations, local?.authority ?? codaSync, sender, media, local, createProfilePhotoGateway({origin:EXISTING_INTERNAL_ORIGIN,apiKey:key,instance:EXISTING_INSTANCE}),contacts)
 }

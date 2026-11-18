@@ -28,7 +28,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
  const [source,setSource]=useState<'evolution'|'local'>('evolution')
  const extraPagesLoaded=useRef(false),lastRefresh=useRef(Date.now())
- const [contactChat,setContactChat]=useState<{contact:EntityContact;conversationId:string}|null>(null),[drafts]=useState(()=>new Map<string,string>())
+ const [contactChat,setContactChat]=useState<{contact:EntityContact;conversationId:string;linksEnabled?:boolean}|null>(null),[drafts]=useState(()=>new Map<string,string>())
  const dialog=useRef<HTMLDialogElement>(null),request=useRef<AbortController|null>(null)
  const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else setError((e as Error).message||'Não foi possível carregar as conversas.')},[onUnauthorized])
  const load=useCallback(async(skip:number,signal:AbortSignal)=>{
@@ -54,7 +54,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  },[busy,selected])
  async function details(row:ConversationRow){setSelected(row);setLinks(null);setError('');if(!linksEnabled)return;try{setLinks(await api<Links>('/api/chat/conversations/'+row.conversationId+'/atendimentos'))}catch(e){fail(e)}}
  async function open(row:ConversationRow){
-  if(row.commercial?.contactId){try{const contact=await api<EntityContact>('/api/customer-records/'+row.commercial.contactId);if(contact.whatsapp?.state==='available'){const result=await api<{conversationId:string}>('/api/customer-records/'+contact.id+'/open-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});setContactChat({contact,conversationId:result.conversationId});return}}catch(e){fail(e);return}}
+  if(row.commercial?.contactId){try{const contact=await api<EntityContact>('/api/customer-records/'+row.commercial.contactId);if(contact.whatsapp?.state==='available'){const result=await api<{conversationId:string;linksEnabled?:boolean}>('/api/customer-records/'+contact.id+'/open-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});setContactChat({contact,...result});return}}catch(e){fail(e);return}}
 
   if((row.commercial?.atendimentoCount??0)!==1&&!row.atendimentoId){await details(row);return}
   try{const value=await api<{atendimentoId:string|null;state?:string}>('/api/chat/conversations/'+row.conversationId+'/active-atendimento');if(value.atendimentoId)onOpenAtendimento?.(value.atendimentoId,'chat',row.conversationId);else await details(row)}catch(e){fail(e)}

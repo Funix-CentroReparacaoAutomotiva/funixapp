@@ -220,7 +220,7 @@ test('QA integrated: restore energies and install approved pieces on an isolated
   assert.deepEqual(budgets.pdf(f.at.id,issued.id),pdf)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
-  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,22)
+  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,23)
   assert.deepEqual(configRow(original),originalConfig)
   assert.deepEqual(snapshot(original),originalOther)
  }finally{db?.close();original.close();rmSync(folder,{recursive:true,force:true})}

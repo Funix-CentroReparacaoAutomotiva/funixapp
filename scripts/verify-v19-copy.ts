@@ -34,7 +34,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
   try{
    before.exec('BEGIN');after.exec('BEGIN')
    const beforeVersion=healthy(before),afterVersion=healthy(after)
-   requireCheck([18,19,20,21,22].includes(beforeVersion)&&[19,20,21,22].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20_V21_V22')
+   requireCheck([18,19,20,21,22,23].includes(beforeVersion)&&[19,20,21,22,23].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20_V21_V22_V23')
    const growing=new Set(['schema_migrations','chat_provider_conversations','v20_conversations','v20_associations'])
    const tables=before.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
    const results=[]
@@ -58,6 +58,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
     requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE closed_at IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_CLOSURE')
     requireCheck(!after.prepare('SELECT 1 FROM v20_conversations WHERE context_revision!=0 LIMIT 1').get(),'V19_COPY_UNEXPECTED_CONTEXT_CHANGE')
    }
+   if(afterVersion>=23&&beforeVersion<23)requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE purpose IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_PURPOSE_BACKFILL')
    if(afterVersion===21&&beforeVersion<21){
     requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE delivery_date IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_DELIVERY_BACKFILL')
     for(const table of ['atendimento_delivery_date_history','work_order_revisions','work_order_revision_pdf_cache'])requireCheck(after.prepare(`SELECT COUNT(*) n FROM ${quote(table)}`).get()!.n===0,'V19_COPY_UNEXPECTED_V21_BACKFILL:'+table)

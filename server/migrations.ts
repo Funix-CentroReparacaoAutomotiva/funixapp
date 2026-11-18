@@ -347,7 +347,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     CREATE TRIGGER immutable_work_order_revision_pdf_delete BEFORE DELETE ON work_order_revision_pdf_cache
       BEGIN SELECT RAISE(ABORT,'Work order revision PDF is immutable'); END;
   `)},
-  {version:22,apply:createContactChannelSchema}
+  {version:22,apply:createContactChannelSchema},
+  {version:23,apply:db=>db.exec(`ALTER TABLE atendimentos ADD COLUMN purpose TEXT
+    CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)}
 ]
 
 export function migrate(db: DatabaseSync) {

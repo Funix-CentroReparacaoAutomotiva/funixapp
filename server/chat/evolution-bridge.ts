@@ -141,7 +141,8 @@ export function createEvolutionChatBridge(
               const projection = projections?.get(row.remoteJid)
               const conversationId = register(members?.[0] ?? row.remoteJid)
               const contactName=contacts?.presentation(conversationId)
-              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??0,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection
+              const linkedCount=contactName&&contacts?new Set(contacts.identities.links(row.remoteJid).map(link=>link.atendimento_id)).size:0
+              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??linkedCount,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection
               const activeAt=canonicalFor(row.remoteJid)
               const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
               const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn
@@ -236,6 +237,7 @@ export function createEvolutionChatBridge(
         !remoteJid ||
         !recipient ||
         canonicalFor(remoteJid) !== atendimentoId ||
+        (contacts&&!contacts.allowsExistingSend(atendimentoId,remoteJid)) ||
         codaSync.resolveActive(recipient) !== atendimentoId
       )
         return { state: 'unlinked' as const }
@@ -247,6 +249,7 @@ export function createEvolutionChatBridge(
         // Revalidate before any network side effect, including an active-context switch.
         if (
           canonicalFor(remoteJid) !== atendimentoId ||
+          (contacts&&!contacts.allowsExistingSend(atendimentoId,remoteJid)) ||
           codaSync.resolveActive(recipient) !== atendimentoId
         )
           return { state: 'unlinked' as const }
@@ -280,6 +283,7 @@ export function createEvolutionChatBridge(
         !jid ||
         !recipient ||
         canonicalFor(jid) !== atendimentoId ||
+        (contacts&&!contacts.allowsExistingSend(atendimentoId,jid)) ||
         codaSync.resolveActive(recipient) !== atendimentoId
       )
         return { state: 'unlinked' as const }
@@ -290,6 +294,7 @@ export function createEvolutionChatBridge(
       try {
         if (
           canonicalFor(jid) !== atendimentoId ||
+          (contacts&&!contacts.allowsExistingSend(atendimentoId,jid)) ||
           codaSync.resolveActive(recipient) !== atendimentoId
         )
           return { state: 'unlinked' as const }
@@ -430,11 +435,13 @@ export function createEvolutionChatBridge(
             sendTextAvailable: Boolean(
               sendText &&
                 sendTarget(jid) &&
+                (!contacts||contacts.allowsExistingSend(atendimentoId,jid)) &&
                 codaSync.resolveActive(sendTarget(jid)!) === atendimentoId,
             ),
             mediaSendAvailable: Boolean(
               media &&
                 sendTarget(jid) &&
+                (!contacts||contacts.allowsExistingSend(atendimentoId,jid)) &&
                 codaSync.resolveActive(sendTarget(jid)!) === atendimentoId,
             ),
             mediaReadAvailable: Boolean(media),

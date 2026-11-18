@@ -297,8 +297,10 @@ function App() {
             {!loading && list && <><div className="query-meta"><span>{list.items.length} de {list.total} Atendimento{list.total !== 1 ? 's' : ''}</span><button onClick={() => setReload(value => value + 1)}>Atualizar</button></div>
               {!list.items.length && <div className="fh-surface"><Notice title={query ? 'Nenhum Atendimento encontrado' : 'Nenhum Atendimento cadastrado'}>{query ? 'Tente outro nome, telefone, placa ou identificador.' : 'Use Novo Atendimento para registrar o primeiro contato.'}</Notice></div>}
               {mode === 'lista' ? <div className="fh-surface fh-board-list">{list.items.map(item => <RecordButton key={item.id} item={item} list onOpen={openRecord} />)}</div> : <div className="fh-kboard" ref={board} onScroll={event => positions.set(routeKey, { top: viewport.current?.scrollTop || 0, left: event.currentTarget.scrollLeft })} aria-label="Funil de Atendimentos">
-                {ATENDIMENTO_STAGES.map(stage => {
-                  const closed = collapsed.has(stage.id), items = list.items.filter(item => stage.id==='rejeitados' ? !!item.closedAt||item.stage==='rejeitados' : !item.closedAt&&item.stage===stage.id)
+                 {[{id:'triagem',name:'A classificar'},{id:'non_commercial',name:'Não comercial'},...ATENDIMENTO_STAGES].map(stage => {
+                  const closed = collapsed.has(stage.id), items = list.items.filter(item => stage.id==='rejeitados' ? !!item.closedAt||item.stage==='rejeitados' : !item.closedAt&&item.stage!=='rejeitados'&&(
+                    item.purpose==='unclassified'?stage.id==='triagem':
+                      item.purpose==='non_commercial'?stage.id==='non_commercial':item.stage===stage.id))
                   return <section key={stage.id} className={`fh-lane ${closed ? 'collapsed' : ''}`} aria-label={stage.name}><button className="fh-lanehead" aria-expanded={!closed} title={`${closed ? 'Expandir' : 'Recolher'} ${stage.name}`} onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(stage.id)) next.delete(stage.id); else next.add(stage.id); return next })}><span className="fh-toggle" aria-hidden="true">{closed ? '▸' : '▾'}</span><span className="fh-lane-title">{stage.name}</span><em aria-label={`${items.length} registros carregados`}>{items.length}</em></button>{!closed && <div className="fh-lane-items">{items.map(item => <RecordButton key={item.id} item={item} onOpen={openRecord} />)}</div>}</section>
                 })}
               </div>}
