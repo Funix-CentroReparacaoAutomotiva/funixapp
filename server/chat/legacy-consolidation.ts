@@ -64,33 +64,39 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
         report.restoredContexts++
       }
     }
-    type Candidate={at:string;phone:string;jid:string;name:string;personId:string|null}
+    type Candidate={at:string;phone:string;jid:string|null;name:string;personId:string|null;contactId:string|null}
     const groups=new Map<string,Candidate[]>(),unsafe=new Set<string>()
     for(const row of db.prepare('SELECT id FROM atendimentos ORDER BY id').all()){
       const at=String(row.id),refs=customers.references(at)
       const links=db.prepare(`SELECT DISTINCT c.remote_jid FROM v20_associations l JOIN v20_conversations c ON c.id=l.conversation_id
         WHERE l.atendimento_id=? AND l.unlinked_at IS NULL AND c.instance='funix_comercial'`).all(at)
-      if(!links.length){report.withoutChannel++;continue}
+      if(!links.length)report.withoutChannel++
       const jids=links.map(link=>String(link.remote_jid)),members=jids.map(jid=>local.identityJids(jid))
-      const phones=[...new Set(members.flatMap(set=>set?.filter(jid=>/^[1-9][0-9]{7,14}@s\.whatsapp\.net$/.test(jid)).map(jid=>'+'+jid.split('@')[0]!)??[]))]
+      const savedPhones=refs.contact.flatMap(ref=>{const phone=normalizePhone(ref.text);return phone?[phone]:[]})
+      const phones=[...new Set(links.length
+        ?members.flatMap(set=>set?.filter(jid=>/^[1-9][0-9]{7,14}@s\.whatsapp\.net$/.test(jid)).map(jid=>'+'+jid.split('@')[0]!)??[])
+        :savedPhones)]
       const person=refs.person[0],phone=phones[0]
       const valid=!!phone&&phones.length===1&&members.every(set=>set?.includes(phone.slice(1)+'@s.whatsapp.net'))&&
         refs.person.length===1&&!!person?.text.trim()&&refs.contact.length<=1&&
         refs.contact.every(ref=>!ref.text||normalizePhone(ref.text)===phone)
-      if(!valid){report.pending++;for(const p of phones)unsafe.add(p);continue}
-      const candidate={at,phone:phone!,jid:jids[0]!,name:person!.text.trim(),personId:person!.id}
+      if(!valid){report.pending++;for(const p of [...phones,...savedPhones])unsafe.add(p);continue}
+      const candidate={at,phone:phone!,jid:jids[0]??null,name:person!.text.trim(),personId:person!.id,contactId:refs.contact[0]?.id??null}
       const list=groups.get(candidate.phone)??[];list.push(candidate);groups.set(candidate.phone,list)
     }
     for(const [phone,list]of groups){
       const ids=[...new Set(list.map(c=>c.personId).filter((id):id is string=>id!==null))]
       const names=new Set(list.map(c=>c.name))
       if(unsafe.has(phone)||ids.length>1||names.size!==1){report.pending+=list.length;continue}
-      const channel=local.rememberProviderConversation(list[0]!.jid),scope=local.associationScope(channel)
-      const matches=[...new Map([...customers.phoneMatches(phone),...db.prepare(`SELECT id FROM customer_records WHERE kind='contact'
-        AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope).map(row=>customers.record(String(row.id)))].map(c=>[c.id,c])).values()]
+      const jid=list.find(c=>c.jid)?.jid??null
+      const channel=jid?local.rememberProviderConversation(jid):null,scope=channel?local.associationScope(channel):[]
+      const byChannel=scope.length?db.prepare(`SELECT id FROM customer_records WHERE kind='contact'
+        AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope).map(row=>customers.record(String(row.id))):[]
+      const byReference=list.flatMap(c=>c.contactId?[customers.record(c.contactId)]:[])
+      const matches=[...new Map([...customers.phoneMatches(phone),...byChannel,...byReference].map(c=>[c.id,c])).values()]
       const contact=matches[0]??null
-      if(matches.length>1||contact?.conversationId&&!scope.includes(contact.conversationId)||
-        contact?.text&&normalizePhone(contact.text)!==phone){report.pending+=list.length;continue}
+      if(matches.length>1||contact&&contact.kind!=='contact'||contact?.conversationId&&channel&&!scope.includes(contact.conversationId)||
+        contact?.text&&normalizePhone(contact.text)!==phone||contact?.conversationId&&!channel&&!contact.text){report.pending+=list.length;continue}
       let person=ids.length?customers.record(ids[0]!):null
       if(contact?.entityId){
         const owner=customers.record(contact.entityId)

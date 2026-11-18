@@ -75,3 +75,24 @@ test('multiple historical links retain the last confirmed context, without overw
   assert.equal(replay.restoredContexts,0);assert.equal(replay.reconciled,0)
  }finally{f.db.close()}
 })
+
+
+test('legacy manual fichas share an Entity and Contact by the exact number, without inventing a conversation',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
+  const first=at.create({name:'Pessoa manual',phone:'+5531999990777'})
+  const second=at.create({name:'Pessoa manual',phone:'+55 (31) 99999-0777'})
+  const result=consolidateLegacyCustomers(db,true)
+  assert.equal(result.withoutChannel,2);assert.equal(result.reconciled,2);assert.equal(result.pending,0)
+  const a=at.get(first.id,true),b=at.get(second.id,true)
+  assert.equal(a.references!.person[0]!.id,b.references!.person[0]!.id)
+  assert.equal(a.references!.contact[0]!.id,b.references!.contact[0]!.id)
+  const contact=customers.record(a.references!.contact[0]!.id!)
+  assert.equal(contact.entityId,a.references!.person[0]!.id)
+  assert.equal(contact.conversationId,null)
+  assert.equal(db.prepare('SELECT count(*) AS n FROM v20_associations').get()!.n,0)
+  assert.equal(db.prepare('SELECT count(*) AS n FROM chat_provider_conversations').get()!.n,0)
+  assert.equal(consolidateLegacyCustomers(db,true).alreadyShared,2)
+ }finally{db.close()}
+})

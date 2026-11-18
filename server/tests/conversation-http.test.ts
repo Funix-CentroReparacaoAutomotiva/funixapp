@@ -7,6 +7,8 @@ import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
+import { CustomerRepository } from '../customers.ts'
+import { V20AssociationRepository } from '../chat/v20-associations.ts'
 import { CodaEventSyncRepository, createCodaEventSchema } from '../chat/coda-sync.ts'
 import { loadConversationRuntime } from '../chat/conversation-runtime.ts'
 import { createEvolutionChatBridge } from '../chat/evolution-bridge.ts'
@@ -18,7 +20,7 @@ const PN = '000000000001@s.whatsapp.net',
   origin = 'http://localhost:5173',
   secret = Buffer.alloc(32, 8),
   password = 'synthetic-operator-password'
-async function fixture() {
+async function fixture(autonomous=false) {
   const db = openDatabase(':memory:')
   createCodaEventSchema(db)
   const repo = new CodaEventSyncRepository(db),
@@ -27,6 +29,7 @@ async function fixture() {
         FUNIX_CHAT_LOCAL_ENABLED: 'true',
         FUNIX_CHAT_LOCAL_READ_ENABLED: 'true',
         FUNIX_EVOLUTION_READ_ENABLED: 'true',
+        ...(autonomous?{FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'}:{}),
       },
       db,
       repo,
@@ -44,7 +47,7 @@ async function fixture() {
     },
     Date.now,
     undefined,
-    repo,
+    local.authority??repo,
     async () => {
       sends++
       return { messageId: 'receipt-1' }
@@ -71,7 +74,7 @@ async function fixture() {
         ],
       },
     },
-    codaSync: { repo, secret },
+    ...(autonomous?{v20Associations:new V20AssociationRepository(db)}:{codaSync:{repo,secret}}),
     voiceProvider: null,
   })
   async function request(
@@ -385,4 +388,32 @@ test('observed webhook without provider database row ID passes normalization and
   } finally {
     f.db.close()
   }
+})
+
+
+test('autonomous signed raw Evolution inbound creates shared registration, exposes same identity and history without Coda',async()=>{
+ const f=await fixture(true)
+ try{
+  const raw={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,
+    key:{...observedEvolutionUpsert.data.key,remoteJid:'5531999990555@s.whatsapp.net',remoteJidAlt:null,id:'autonomous-synthetic'}}}
+  assert.equal((await f.sendEvent(raw,true)).status,401)
+  const delivered=await f.sendEvent(raw)
+  assert.equal(delivered.status,202)
+  assert.deepEqual(await (await f.sendEvent(raw)).json(),await delivered.json())
+  const repo=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db)
+  assert.equal(repo.list().total,1)
+  const at=repo.get(repo.list().items[0]!.id,true)
+  const entity=at.references!.person[0]!,contact=at.references!.contact[0]!
+  assert.ok(entity.id);assert.ok(contact.id)
+  assert.equal(customers.record(contact.id!).entityId,entity.id)
+  assert.equal(at.name,'Cliente Sintético');assert.equal(at.phone,'+5531999990555')
+  const id=f.local.authority!.rememberProviderConversation(raw.data.key.remoteJid)
+  assert.equal(f.local.authority!.resolveIdentityActive(raw.data.key.remoteJid),at.id)
+  const shown=await (await f.request('/api/atendimentos/'+at.id+'?conversa='+id,'GET',undefined,f.browser)).json()
+  assert.deepEqual(shown.chatIdentity,{name:at.name,phone:at.phone})
+  const history=await (await f.request('/api/atendimentos/'+at.id+'/evolution-conversations/'+id+'/messages','GET',undefined,f.browser)).json()
+  assert.equal(history.items[0]?.text,raw.data.message.conversation)
+  assert.equal(f.reads,0);assert.equal(f.sends,0)
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM coda_sync_atendimentos').get()!.n,0)
+ }finally{f.db.close()}
 })
