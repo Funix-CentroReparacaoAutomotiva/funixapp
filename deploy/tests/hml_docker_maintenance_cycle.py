@@ -4,6 +4,7 @@ No real hostnames are contacted; the HTTPS client retains the HML hostname for
 SNI/verification but connects only to the loopback synthetic edge.
 """
 import base64
+from contextlib import closing
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
@@ -40,11 +41,12 @@ def run(*args):
 # No application or production data is imported.
 UPSTREAM = """
 import json, os, sqlite3
+from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 role = os.environ["SYNTHETIC_ROLE"]
 revision = os.environ["FUNIX_REVISION"]
 if role == "api" and revision == "b"*40:
-    with sqlite3.connect("/data/funix.sqlite") as db:
+    with closing(sqlite3.connect("/data/funix.sqlite")) as db, db:
         db.execute("UPDATE atendimentos SET value='candidate migration'")
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -53,7 +55,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"revision":revision,"status":"ready"}).encode())
     def do_POST(self):
         if role == "api":
-            with sqlite3.connect("/data/funix.sqlite") as db:
+            with closing(sqlite3.connect("/data/funix.sqlite")) as db, db:
                 db.execute("UPDATE atendimentos SET value='unexpected user write'")
         self.send_response(200)
         self.end_headers()
@@ -94,7 +96,7 @@ def main():
             data = root / "data"
             data.mkdir(mode=0o700)
             database = data / "funix.sqlite"
-            with sqlite3.connect(database) as db:
+            with closing(sqlite3.connect(database)) as db, db:
                 db.executescript("CREATE TABLE schema_migrations(version INTEGER);"
                                  "INSERT INTO schema_migrations VALUES(1);"
                                  "CREATE TABLE atendimentos(value TEXT);"
@@ -102,6 +104,19 @@ def main():
                                  "CREATE TABLE scenarios(id INTEGER);"
                                  "CREATE TABLE budget_versions(id INTEGER);")
             database.chmod(0o600)
+            # Prove that a real open SQLite connection blocks the guard, then
+            # close it and let the adapter run the full host scan unchanged.
+            with closing(sqlite3.connect(database)) as opened:
+                opened.execute("SELECT value FROM atendimentos").fetchone()
+                try:
+                    adapter_module.guard.assert_quiescent(data)
+                except adapter_module.guard.WriterGuardError as exc:
+                    if str(exc) != "database handle open":
+                        raise
+                else:
+                    raise AssertionError("host writer guard accepted open SQLite handle")
+            adapter_module.guard.assert_quiescent(data)
+            print("HML_HOST_WRITER_GUARD_OK", flush=True)
             normal_login = root / "normal.json"
             password = secrets.token_urlsafe(32)
             normal_login.write_text(json.dumps({"username":"synthetic-normal","password":password}))
@@ -224,7 +239,7 @@ server {
                 contract = json.loads(run(*base,"config","--format","json"))
                 def restricted(release, credentials):
                     updater.validator(credentials,normal_credentials=normal_login)(release)
-                    with sqlite3.connect(database) as db:
+                    with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone()[0] != "unexpected user write"
                 adapter = adapter_module.MaintenanceDockerAdapter(
                     compose=compose,contract=contract,database=database,state=state,
@@ -236,14 +251,16 @@ server {
                 with patch.object(socket,"create_connection",side_effect=connect), \
                         patch.object(updater.ssl,"create_default_context",return_value=trust):
                     operation.update(candidate,authorized=True)
+                    print("HML_MAINTENANCE_UPDATE_OK", flush=True)
                     assert json.loads(operation.journal.read_text())["phase"] == "accepted"
                     adapter.assert_installed(candidate)
-                    with sqlite3.connect(database) as db:
+                    with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("candidate migration",)
                     operation.rollback(authorized=True,discard_post_update_data=True)
+                    print("HML_MAINTENANCE_ROLLBACK_OK", flush=True)
                     adapter.assert_installed(previous)
                     assert json.loads(operation.journal.read_text())["phase"] == "restored"
-                    with sqlite3.connect(database) as db:
+                    with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("original",)
                 assert all(file.read_bytes()==content for file,content in before.items())
                 print("HML_DOCKER_MAINTENANCE_TLS_ROLLBACK_OK")

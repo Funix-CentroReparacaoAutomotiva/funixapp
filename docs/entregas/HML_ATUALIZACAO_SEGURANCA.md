@@ -348,3 +348,21 @@ mutações; mesmo o sucesso desse ensaio não autoriza uso na VPS. Faltam
 verificações independentes de isolamento em runtime, integração final
 do artefato à CLI, teste de interrupções na troca do gateway e verificação
 da configuração instalada.
+
+### Resultado da primeira execução de integração
+
+Run 44233421886, job 134563704894, HEAD 18165b3: os 78 testes de
+regressão passaram, inclusive Nginx, mas o ciclo Docker parou antes
+do snapshot, em WriterGuardError: database handle open. A recuperação
+também foi bloqueada pelo mesmo guard. A causa provável é o próprio
+fixture: o context manager sqlite3.Connection gerencia a transação,
+mas não fecha a conexão. Reproduzido no Linux do ChatGPT com /proc/self/fd:
+o padrão antigo deixou um descritor aberto; contextlib.closing junto
+ao context manager da transação persistiu os dados e fechou o descritor.
+
+Correção: fechamento explícito das seis conexões do ensaio (host e
+upstream Python). Acrescentada prova negativa com SQLite aberto e
+verificação positiva após fechar, usando a varredura host completa
+sem mocks ou exceções para o PID do ensaio. Aguardando nova execução.
+A guarda de escritores não foi enfraquecida. Nenhuma operação na VPS;
+CI verde de regressão não equivale à conclusão do ciclo integrado.
