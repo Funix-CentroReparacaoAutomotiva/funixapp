@@ -1,0 +1,153 @@
+{
+  "viewport": {
+    "width": 320,
+    "height": 844
+  },
+  "results": [
+    {
+      "scenario": "A",
+      "number": "OR-000001",
+      "buttons": [
+        {
+          "state": "issued",
+          "backgroundColor": "rgb(20, 109, 56)",
+          "borderColor": "rgb(20, 109, 56)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7167832167832168
+        },
+        {
+          "state": "pending",
+          "backgroundColor": "rgb(23, 79, 169)",
+          "borderColor": "rgb(23, 79, 169)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-create",
+            "color": "rgb(33, 136, 61)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4.2\" stroke-linecap=\"round\"><path d=\"M12 4v16M4 12h16\"></path></svg>"
+          },
+          "fillPixelRatio": 0.7301587301587301
+        }
+      ]
+    },
+    {
+      "scenario": "B",
+      "number": "OR-000002",
+      "buttons": [
+        {
+          "state": "issued",
+          "backgroundColor": "rgb(20, 109, 56)",
+          "borderColor": "rgb(20, 109, 56)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7167832167832168
+        },
+        {
+          "state": "issued",
+          "backgroundColor": "rgb(20, 109, 56)",
+          "borderColor": "rgb(20, 109, 56)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7301587301587301
+        }
+      ]
+    },
+    {
+      "scenario": "C",
+      "number": "OR-000003",
+      "buttons": [
+        {
+          "state": "cancelled",
+          "backgroundColor": "rgb(160, 35, 61)",
+          "borderColor": "rgb(160, 35, 61)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7167832167832168
+        },
+        {
+          "state": "cancelled",
+          "backgroundColor": "rgb(160, 35, 61)",
+          "borderColor": "rgb(160, 35, 61)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7301587301587301
+        }
+      ]
+    },
+    {
+      "scenario": "D",
+      "number": "OR-000004",
+      "buttons": [
+        {
+          "state": "cancelled",
+          "backgroundColor": "rgb(160, 35, 61)",
+          "borderColor": "rgb(160, 35, 61)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": {
+            "className": "budget-action-badge badge-view",
+            "color": "rgb(33, 102, 199)",
+            "backgroundColor": "rgb(255, 255, 255)",
+            "html": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.7\"></circle></svg>"
+          },
+          "fillPixelRatio": 0.7167832167832168
+        },
+        {
+          "state": "unavailable",
+          "backgroundColor": "rgb(102, 117, 138)",
+          "borderColor": "rgb(102, 117, 138)",
+          "color": "rgb(255, 255, 255)",
+          "opacity": "1",
+          "backgroundImage": "none",
+          "marker": null,
+          "fillPixelRatio": 0.8235930735930735
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "mobile320: A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed",
+      "pass": true
+    }
+  ]
+}

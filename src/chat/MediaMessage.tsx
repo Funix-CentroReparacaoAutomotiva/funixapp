@@ -3,21 +3,21 @@ import { api } from '../api'
 import type { RequestFailure } from '../api'
 
 type Kind = 'image' | 'video' | 'audio'
-export function MediaMessage({ atendimentoId, conversationId, messageId, page, kind, enabled }:{
-  atendimentoId:string; conversationId:string;messageId:string;page:number;kind:Kind;enabled:boolean
+export function MediaMessage({ atendimentoId, conversationId, messageId, page, kind, enabled, apiBase }:{
+  atendimentoId:string; conversationId:string;messageId:string;page:number;kind:Kind;enabled:boolean;apiBase?:string
 }) {
   const [uri,setUri]=useState('')
   const [error,setError]=useState('')
   const [busy,setBusy]=useState(false)
   const [expanded,setExpanded]=useState(false)
-  useEffect(()=>{setUri('');setError('');setExpanded(false)},[messageId,page,conversationId,atendimentoId])
+  useEffect(()=>{setUri('');setError('');setExpanded(false)},[messageId,page,conversationId,atendimentoId,apiBase])
   async function open() {
     if(!enabled||busy||uri)return
     setBusy(true);setError('')
     try{
       const result=await api<{kind:Kind;mimeType:string;base64:string}>(
-        '/api/atendimentos/'+encodeURIComponent(atendimentoId)+
-        '/evolution-conversations/'+encodeURIComponent(conversationId)+
+        (apiBase??('/api/atendimentos/'+encodeURIComponent(atendimentoId)+
+        '/evolution-conversations/'+encodeURIComponent(conversationId)))+
         '/messages/'+encodeURIComponent(messageId)+'/media?page='+page)
       if(result.kind!==kind || !result.mimeType.startsWith(kind+'/') ||
           !result.base64 || result.base64.length>17*1024*1024)throw Error('Invalid media')

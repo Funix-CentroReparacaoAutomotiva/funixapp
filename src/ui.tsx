@@ -1,3 +1,4 @@
+import {ATENDIMENTO_PURPOSES} from '../shared/contracts'
 import {money} from './money'
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
@@ -53,7 +54,7 @@ export function RecordButton({ item, list = false, onOpen }: {item: Atendimento;
   return <button type="button" className={(list?'fh-row':'fh-card')+' funnel-compact urgency-'+urgency} onClick={()=>onOpen(item)}>
    <span className="funnel-first"><strong>{title}</strong><span title={item.lastContactAt?'Último contato: '+item.lastContactAt:'Horário do último contato desconhecido'} aria-label={elapsed===null?'Horário do último contato desconhecido':'Último contato há '+age}>{age}</span></span>
    <span className="funnel-phone">{item.phone||'Sem telefone'}</span>
-   <span className="funnel-last"><span><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" style={{width:13,height:13,verticalAlign:'middle'}}><path d="m5 10 2-5h10l2 5M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2"/></svg> {vehicle}{item.plate?' · '+item.plate:''}</span><b title={'Faixa entre cenários calculados: '+amount}>{amount}</b></span>
+   <span className="funnel-last"><span><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" style={{width:13,height:13,verticalAlign:'middle'}}><path d="m5 10 2-5h10l2 5M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2"/></svg> {vehicle}{item.plate?' · '+item.plate:''}</span>{item.purpose&&item.purpose!=='commercial'?<b>{ATENDIMENTO_PURPOSES[item.purpose]}</b>:<b title={'Faixa entre cenários calculados: '+amount}>{amount}</b>}</span>
   </button>
 }
 export function Login({ session, error, refresh, onSession }: {session: Session | null; error: string; refresh: () => void; onSession: (session: Session) => void}) {

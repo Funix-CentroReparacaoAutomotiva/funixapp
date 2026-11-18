@@ -13,10 +13,13 @@ import {openDatabase} from '../database.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {WorkOrderRepository,operationalScope} from '../work-orders.ts'
+import {WorkOrderPdfCache} from '../os-pdf-cache.ts'
 import {BudgetCancellationRepository} from '../budget-cancellations.ts'
 import {cancelledPdf} from '../cancelled-pdf.ts'
 import {operationalParagraphs,workOrderPdf} from '../work-order-pdf.ts'
 import {ServiceError} from '../errors.ts'
+import {OPTICAL_SERVICE_ID,OPTICAL_DIMENSION_ID,correctOpticalWorkOrderScope} from '../../shared/optical-work-order.ts'
+import {renderOrderV1} from '../os-template.ts'
 
 const error=(status:number,code:string)=>(cause:unknown)=>cause instanceof ServiceError&&cause.status===status&&cause.code===code
 async function emitted(db:ReturnType<typeof openDatabase>){
@@ -58,6 +61,33 @@ test('V18 creates a frozen, operational-only OS, with no commercial fields or ex
   assert.equal(workOrderPdf(os).subarray(0,8).toString(),'%PDF-1.7')
   assert.throws(()=>db.prepare("UPDATE work_orders SET scope_json='{}'").run(),/immutable/i)
   assert.throws(()=>db.prepare('DELETE FROM work_orders').run(),/immutable/i)
+ }finally{db.close()}
+})
+
+test('OS V1 PDF cache preserves historical template PDFs',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,version}=await emitted(db)
+  const order=new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true})
+  const cache=new WorkOrderPdfCache(db)
+  const legacy=Buffer.from('%PDF-1.7\nV63 original synthetic\n%%EOF')
+  const current=Buffer.from('%PDF-1.7\nV1 official synthetic\n%%EOF')
+  db.prepare('INSERT INTO work_order_pdf_cache(work_order_id,template_version,pdf,created_at) VALUES(?,?,?,?)')
+    .run(order.id,'v63-jsreport-8',legacy,'2026-11-16T12:00:00.000Z')
+  const previous=Buffer.from('%PDF-1.7\nPrevious V1 synthetic\n%%EOF')
+  db.prepare('INSERT INTO work_order_pdf_cache(work_order_id,template_version,pdf,created_at) VALUES(?,?,?,?)').run(order.id,'v1-jsreport-1',previous,'2026-11-17T12:00:00.000Z')
+  assert.equal(cache.get(order.id),null,'Prior layout cannot be returned as current V1')
+  assert.deepEqual(cache.save(order.id,current),current)
+  assert.deepEqual(cache.get(order.id),current)
+  assert.deepEqual(cache.save(order.id,Buffer.from('%PDF-1.7\nSecond V1 render\n%%EOF')),current,
+    'a repeated V1 render cannot replace the first PDF')
+  const rows=db.prepare('SELECT template_version,pdf FROM work_order_pdf_cache WHERE work_order_id=? ORDER BY template_version')
+    .all(order.id) as Array<{template_version:string;pdf:Uint8Array}>
+  assert.deepEqual(rows.map(r=>r.template_version),['v1-jsreport-1','v1-jsreport-3','v63-jsreport-8'])
+  assert.deepEqual(Buffer.from(rows[0]!.pdf),previous)
+  assert.deepEqual(Buffer.from(rows[1]!.pdf),current)
+  assert.deepEqual(Buffer.from(rows[2]!.pdf),legacy)
+  assert.throws(()=>db.prepare('DELETE FROM work_order_pdf_cache WHERE work_order_id=?').run(order.id),/immutable/i)
  }finally{db.close()}
 })
 
@@ -267,4 +297,181 @@ test('Separate SQLite connections cannot create two OS records for the same issu
   assert.equal(results[0]!.id,results[1]!.id)
   assert.equal(firstDb.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,1)
  }finally{firstDb.close();secondDb.close();rmSync(directory,{recursive:true,force:true})}
+})
+
+test('Manual delivery choice is independent from the estimated duration and atomic with OS issuance',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const before=repo.get(at),sourcePdf=budgets.pdf(at,version.id),source=budgets.get(at,version.id)
+  const choose={authorized:true,expectedAtendimentoRevision:before.revision}
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without',deliveryDate:'2026-11-27'}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-02-30'}),error(422,'INVALID_DELIVERY_DATE'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with'}),error(422,'INVALID_DELIVERY_DATE'))
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-11-27',expectedAtendimentoRevision:before.revision-1}),error(409,'VERSION_CONFLICT'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,0)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  assert.deepEqual(repo.get(at),before)
+  const input={...choose,deliveryChoice:'with',deliveryDate:'2026-11-27'}
+  const first=orders.create(at,version.id,input)
+  assert.equal(first.scope.deliveryDate,'2026-11-27')
+  assert.equal(first.scope.deadlineDays,operationalScope(version).deadlineDays)
+  assert.equal(repo.get(at).deliveryDate,'2026-11-27')
+  assert.equal(repo.get(at).revision,before.revision+1)
+  assert.deepEqual(orders.create(at,version.id,input),first)
+  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without'}),error(409,'OS_ALREADY_ISSUED'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
+  assert.deepEqual(budgets.get(at,version.id),source)
+  assert.deepEqual(budgets.pdf(at,version.id),sourcePdf)
+ }finally{db.close()}
+})
+
+test('Optional empty delivery, explicit reissue, historical PDFs and cancellation remain independent',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,budgets,version}=await emitted(db)
+  const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const first=orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:repo.get(at).revision})
+  assert.equal(first.scope.deliveryDate,null)
+  assert.equal(repo.get(at).deliveryDate??null,null)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  const original=Buffer.from('%PDF-1.7\noriginal synthetic\n%%EOF')
+  const next=Buffer.from('%PDF-1.7\nrevision synthetic\n%%EOF')
+  const cache=new WorkOrderPdfCache(db)
+  cache.save(first.id,original)
+  const updated=repo.update(at,{revision:repo.get(at).revision,deliveryDate:'2026-12-02'})
+  const meta=()=>{
+   const listed=budgets.list(at) as unknown as {id:string;workOrderNeedsReissue:boolean;workOrderRevision:number}[]
+   const entry=listed.find(v=>v.id===version.id)
+   assert.ok(entry,'Issued budget must remain listed')
+   return entry
+  }
+  assert.equal(meta().workOrderNeedsReissue,true)
+  assert.deepEqual(orders.get(at,version.id),first)
+  const request={authorized:true,deliveryChoice:'with',deliveryDate:'2026-12-02',expectedAtendimentoRevision:updated.revision,expectedRevision:1}
+  const revision=orders.reissue(at,version.id,request)
+  assert.equal(revision.id,first.id)
+  assert.equal(revision.revision,2)
+  assert.equal(revision.scope.deliveryDate,'2026-12-02')
+  assert.deepEqual({...revision.scope,deliveryDate:null},first.scope)
+  assert.equal(meta().workOrderNeedsReissue,false)
+  assert.equal(meta().workOrderRevision,2)
+  assert.throws(()=>orders.reissue(at,version.id,request),error(409,'OS_REVISION_CONFLICT'))
+  assert.equal(cache.get(first.id,revision.revisionId!),null)
+  cache.save(first.id,next,revision.revisionId!)
+  assert.deepEqual(cache.get(first.id),original)
+  assert.deepEqual(cache.get(first.id,revision.revisionId!),next)
+  assert.deepEqual(cache.save(first.id,original,revision.revisionId!),next)
+  assert.throws(()=>db.prepare("UPDATE work_order_revisions SET scope_json='{}'").run(),/immutable/i)
+  assert.throws(()=>db.prepare('DELETE FROM work_order_revision_pdf_cache').run(),/immutable/i)
+  const cleared=repo.update(at,{revision:updated.revision,deliveryDate:null})
+  assert.equal(meta().workOrderNeedsReissue,true)
+  const third=orders.reissue(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:cleared.revision,expectedRevision:2})
+  assert.equal(third.revision,3)
+  assert.equal(third.scope.deliveryDate,null)
+  assert.deepEqual(orders.listRevisions(at,version.id).map(o=>o.revision??1),[3,2,1])
+  assert.equal(orders.get(at,version.id,2).scope.deliveryDate,'2026-12-02')
+  assert.deepEqual(orders.get(at,version.id),first)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,2)
+  assert.throws(()=>db.prepare('DELETE FROM atendimento_delivery_date_history').run(),/immutable/i)
+  new BudgetCancellationRepository(db).cancel(at,version.id,{})
+  assert(orders.get(at,version.id,2).cancellation)
+  assert.throws(()=>orders.reissue(at,version.id,{...request,expectedRevision:3}),error(409,'BUDGET_CANCELLED'))
+ }finally{db.close()}
+})
+
+test('Date registered before OS issuance is reused; invalid date or concurrent changes do not overwrite it',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const {fixture,version}=await emitted(db),at=fixture.at.id
+  const repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const before=repo.get(at)
+  assert.throws(()=>repo.update(at,{revision:before.revision,deliveryDate:'2026-02-29'}),error(422,'INVALID_DELIVERY_DATE'))
+  const saved=repo.update(at,{revision:before.revision,deliveryDate:'2028-02-29'})
+  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:'2028-03-01',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
+  const order=orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:saved.deliveryDate,expectedAtendimentoRevision:saved.revision})
+  assert.equal(order.scope.deliveryDate,'2028-02-29')
+  assert.equal(repo.get(at).revision,saved.revision)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
+ }finally{db.close()}
+})
+
+test('optical restoration: exact frozen identities, missing stages and immutable revision',async()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const fixture=commercialFixture(db),at=fixture.at.id
+  const insert=db.prepare("INSERT INTO catalog_items(id,kind,name,status,source,service_id,created_at,updated_at) VALUES(?,?,?,'validado','operador',?,?,?)")
+  const now='2026-11-17T12:00:00.000Z'
+  insert.run(OPTICAL_SERVICE_ID,'servico','Restauração óptica',null,now,now)
+  insert.run(OPTICAL_DIMENSION_ID,'dimensao','Completa',OPTICAL_SERVICE_ID,now,now)
+  const original=fixture.item.services[0]!
+  fixture.commercial.updateDiagnosis(at,fixture.item.id,{revision:fixture.item.revision,services:[
+   {id:original.id,serviceId:original.serviceId,dimensionId:original.dimensionId,quantity:original.quantity},
+   {serviceId:OPTICAL_SERVICE_ID,dimensionId:OPTICAL_DIMENSION_ID,quantity:'1'},
+   {serviceId:OPTICAL_SERVICE_ID,dimensionId:OPTICAL_DIMENSION_ID,quantity:'1',enabled:false}
+  ]})
+  const current=fixture.pricing.get()
+  current.config.services.push({serviceId:OPTICAL_SERVICE_ID,base:'100',colorFactorEnabled:true,discountable:true,dimensions:[{dimensionId:OPTICAL_DIMENSION_ID,fd:'1',stages:[]}]})
+  fixture.pricing.save({revision:current.revision,config:current.config})
+  // The legacy synthetic budget renderer rejects any technical warning, unlike
+  // the current production adapter. Use a deterministic PDF response for this
+  // regression: the real budget snapshot and adapter still run unchanged.
+  const {BudgetRepository:RealBudgetRepository}=await import('../budgets.ts')
+  const budgets=new RealBudgetRepository(db,{render:async()=>Buffer.from('%PDF-1.7\nSynthetic optical budget\n%%EOF')}),input={scenarioId:fixture.scenario.id,negotiation:{mode:'none'} as const}
+  const preview=budgets.preview(at,input)
+  assert.equal(preview.canEmit,true)
+  const version=await budgets.emit(at,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
+  const frozen=structuredClone(version),pdf=budgets.pdf(at,version.id)
+  const expected=['Lixamento','Envernização','Polimento']
+  const scope=operationalScope(version)
+  const optical=scope.lines.filter(l=>l.name==='Restauração óptica')
+  assert.equal(version.snapshot.calculation.lines.filter(l=>l.included&&l.name==='Restauração óptica').length,1)
+  assert.equal(version.snapshot.calculation.lines.some(l=>l.name==='Restauração de lentes de faróis e lanternas'),false)
+  assert.equal(optical.length,1)
+  assert.deepEqual(optical[0]!.stages.map(s=>s.name),expected)
+  assert.equal(scope.lines.find(l=>l.id===original.id)?.stages[0]?.name,'Etapa sintética')
+  assert.deepEqual(version,frozen)
+  assert.equal(correctOpticalWorkOrderScope(scope,version.snapshot),null)
+  const old={...scope,deliveryDate:'2026-11-30',lines:scope.lines.map(l=>l.id===optical[0]!.id?{...l,stages:[]}:l)}
+  const id=randomUUID()
+  db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,at,version.id,now,now,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(old))
+  const orders=new WorkOrderRepository(db),first=orders.get(at,version.id)
+  assert.match(renderOrderV1(first).content,/Serviço sem etapas cadastradas: Restauração óptica/)
+  const request={authorized:true,correction:'optical-stages-v1',expectedRevision:1}
+  assert.throws(()=>orders.reissue(at,version.id,{...request,authorized:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
+  assert.throws(()=>orders.reissue(at,version.id,{...request,deliveryChoice:'without'}),error(422,'OS_INVALID_CORRECTION'))
+  const revision=orders.reissue(at,version.id,request)
+  assert.equal(revision.id,first.id)
+  assert.equal(revision.revision,2)
+  assert.equal(revision.scope.deliveryDate,old.deliveryDate)
+  assert.deepEqual(revision.scope.lines.find(l=>l.id===optical[0]!.id)?.stages.map(s=>s.name),expected)
+  assert.deepEqual(revision.scope.lines.find(l=>l.id===original.id),first.scope.lines.find(l=>l.id===original.id))
+  const html=renderOrderV1(revision).content
+  assert.doesNotMatch(html,/Serviço sem etapas cadastradas: Restauração (?:óptica|de lentes)/)
+  for(const stage of expected)assert(html.includes('<span class="stage-name">'+stage+'</span>'))
+  assert.deepEqual(orders.get(at,version.id),first)
+  assert.deepEqual(budgets.get(at,version.id),frozen)
+  assert.deepEqual(budgets.pdf(at,version.id),pdf)
+  assert.throws(()=>orders.reissue(at,version.id,request),error(409,'OS_REVISION_CONFLICT'))
+  assert.throws(()=>orders.reissue(at,version.id,{...request,expectedRevision:2}),error(409,'OS_REVISION_UNCHANGED'))
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_order_revisions').get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
+  const other=structuredClone(version.snapshot)
+  const master=other.composition.items[0]!.services.find(s=>s.id===optical[0]!.id)!
+  master.serviceId=fixture.service.id
+  assert.equal(correctOpticalWorkOrderScope(old,other),null)
+  const customized={...old,lines:old.lines.map(l=>l.id===optical[0]!.id?{...l,stages:[{name:'Etapa manual',dimension:'Peça'}]}:l)}
+  assert.equal(correctOpticalWorkOrderScope(customized,version.snapshot),null)
+  const legacy=structuredClone(version)
+  legacy.snapshot.calculation.lines.find(l=>l.id===optical[0]!.id)!.stages=[{id:'coda:2zsjI-nqWr:grid-p-wZJbfjUD:i-7W5F-LUwBk',name:'Polimento de farol',dimension:'Peça',baseEnergy:'3',dimensionEnergy:'0'}]
+  // Historical budgets may still contain the old name; correction uses IDs,
+  // never a label match, and preserves their frozen presentation.
+  legacy.snapshot.calculation.lines.find(l=>l.id===optical[0]!.id)!.name='Restauração de lentes de faróis e lanternas'
+  const legacyLine=operationalScope(legacy).lines.find(l=>l.id===optical[0]!.id)!
+  assert.deepEqual(legacyLine.stages.map(s=>s.name),expected)
+  assert.equal(legacyLine.name,'Restauração de lentes de faróis e lanternas')
+ }finally{db.close()}
 })

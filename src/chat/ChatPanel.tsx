@@ -121,9 +121,10 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized }: {
-  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode
+export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void
 }) {
+  const apiBase=readOnly?'/api/chat/conversations/'+encodeURIComponent(conversationId):contactId?`/api/customer-records/${encodeURIComponent(contactId)}/chat/${encodeURIComponent(conversationId)}`:`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}`
   const [items, setItems] = useState<ReadUiMessage[]>([])
   const [nextPage, setNextPage] = useState<number | null>(null)
   const [busy, setBusy] = useState(true)
@@ -131,7 +132,8 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [canSendText, setCanSendText] = useState(false)
   const [canMedia, setCanMedia] = useState(false)
   const [file, setFile] = useState<File | null>(null)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraftState] = useState(()=>drafts?.get(contactId??'')??'')
+  function setDraft(value:string){setDraftState(value);if(contactId)drafts?.set(contactId,value)}
   const [sending, setSending] = useState(false)
   const [sendNotice, setSendNotice] = useState('')
   const [sendFailure, setSendFailure] = useState('')
@@ -150,7 +152,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [autoError, setAutoError] = useState(false)
   const [newMessages, setNewMessages] = useState(0)
   const contextToken=useRef<string|null>(null)
-  const sendOperation=useRef<{fingerprint:string;id:string}|null>(null)
+  const sendOperation=useRef<{fingerprint:string;id:string;token?:string}|null>(contactId&&drafts?.get('operation:'+contactId)?JSON.parse(drafts.get('operation:'+contactId)!):null)
   const cursors=useRef(new Map<number,string>())
   const [localHistory,setLocalHistory]=useState(false)
   const [syncBusy,setSyncBusy]=useState(false)
@@ -158,8 +160,9 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
   const [olderProviderPage,setOlderProviderPage]=useState<number|null>(1)
   function command(fingerprint:string){
     if(!contextToken.current)return {}
-    if(sendOperation.current?.fingerprint!==fingerprint)sendOperation.current={fingerprint,id:crypto.randomUUID()}
-    return {requestId:sendOperation.current.id,contextToken:contextToken.current}
+    if(sendOperation.current?.fingerprint!==fingerprint)sendOperation.current={fingerprint,id:crypto.randomUUID(),token:contextToken.current}
+    if(contactId)drafts?.set('operation:'+contactId,JSON.stringify(sendOperation.current))
+    return {requestId:sendOperation.current.id,contextToken:contactId?sendOperation.current.token??contextToken.current:contextToken.current}
   }
 
 
@@ -198,21 +201,21 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     lastCheckedAt.current = Date.now()
     if (!silent) { autoPaused.current = false; setAutoError(false); setBusy(true); setFailure('') }
     try {
-      const raw = await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/messages?page=${page}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
+      const raw = await api<unknown>(`${apiBase}/messages?page=${page}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
-      setCanSendText((raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
-      setCanMedia((raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
+      setCanSendText(!readOnly&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
+      setCanMedia(!readOnly&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
-      setLocalHistory(result.source==='local')
-      if(result.nextCursor)cursors.current.set(page+1,result.nextCursor)
+      setLocalHistory(result.source==='local'&&!contactId&&!readOnly)
+      if(result.nextCursor&&!readOnly)cursors.current.set(page+1,result.nextCursor)
       const refreshed:ReadUiMessage[]=[]
-      if(result.source==='local'&&page===1){
+      if(!readOnly&&result.source==='local'&&page===1){
         const recent=new Set(result.items.map(item=>item.messageId))
         const older=itemsRef.current.filter(item=>!recent.has(item.messageId))
         for(let i=0;i<older.length;i+=50){
           const batch=older.slice(i,i+50)
-          const rawStates=await api<unknown>(`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/message-states`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:batch.map(item=>({messageId:item.messageId,...(item.version?{version:item.version}:{})}))}),signal:controller.signal})
+          const rawStates=await api<unknown>(`${apiBase}/message-states`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:batch.map(item=>({messageId:item.messageId,...(item.version?{version:item.version}:{})}))}),signal:controller.signal})
           const updates=parseConversationMessages(rawStates,conversationId)
           refreshed.push(...updates.items.map(item=>({...item,page:batch.find(old=>old.messageId===item.messageId)?.page})))
         }
@@ -265,7 +268,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         if (!controller.signal.aborted && !silent) setBusy(false)
       }
     }
-  }, [atendimentoId, conversationId, onUnauthorized, readingPosition])
+  }, [readOnly, apiBase, atendimentoId, conversationId, contactId, onUnauthorized, readingPosition])
 
   useEffect(() => {
     let active = true
@@ -290,6 +293,19 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [load])
+  function handleSendContext(cause:unknown) {
+    const error=cause as RequestFailure
+    if(error.status===401){onUnauthorized();return true}
+    if(contactId&&['CHAT_CONTEXT_CHANGED','CHAT_CONTEXT_CONFLICT'].includes(error.code??'')){
+      sendOperation.current=null
+      drafts?.delete('operation:'+contactId)
+      setSendFailure(error.code==='CHAT_CONTEXT_CONFLICT'
+        ? (contactLinksEnabled ? 'Selecione um Atendimento em Atendimentos desta conversa antes de enviar.' : 'O Atendimento desta conversa precisa de revisão antes do envio.')
+        : 'O Atendimento ou Contato mudou. Atualize as mensagens antes de confirmar novamente.')
+      return true
+    }
+    return false
+  }
   async function sendMedia() {
     if(!file||!canMedia||sending)return
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' :
@@ -297,7 +313,7 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
     if(!kind || file.size > 12*1024*1024 || !file.size) {
       setSendFailure('Formato de arquivo inválido ou acima de 12 MB.'); return
     }
-    sendingRef.current = true
+    sendingRef.current = true;onSendBusy?.(true)
     setSending(true);setSendFailure('');setSendNotice('')
     try {
       const base64 = await new Promise<string>((resolve,reject)=>{
@@ -311,36 +327,38 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         reader.readAsDataURL(file)
       })
       await api<{state:'accepted';messageId:string}>(
-        '/api/atendimentos/'+encodeURIComponent(atendimentoId)+
-        '/evolution-conversations/'+encodeURIComponent(conversationId)+'/send-media',
+        apiBase+'/send-media',
         {method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({kind,mimeType:file.type,base64,...command(JSON.stringify(['media',file.type,base64,draft])),...(kind!=='audio'?{caption:draft}: {})})})
+          body:JSON.stringify({kind,mimeType:file.type,base64,...(contactId?{confirmed:true}:{}),...command(JSON.stringify(['media',file.type,base64,draft])),...(kind!=='audio'?{caption:draft}: {})})})
       sendOperation.current=null
+      if(contactId)drafts?.delete('operation:'+contactId)
       setFile(null);setDraft('')
       setSendNotice('Arquivo aceito pela Evolution. Confira no WhatsApp antes de reenviar.')
       void load(1)
-    }catch{
+    }catch(cause){
+      if(handleSendContext(cause))return
       setSendFailure('Envio de mídia não confirmado. Confira o WhatsApp antes de tentar novamente.')
-    }finally{sendingRef.current = false;setSending(false)}
+    }finally{sendingRef.current = false;setSending(false);onSendBusy?.(false)}
   }
   async function sendText() {
     const text = draft.trim()
     if (!canSendText || sending || !text || [...text].length > 4096) return
-    sendingRef.current = true
+    sendingRef.current = true;onSendBusy?.(true)
     setSending(true); setSendFailure(''); setSendNotice('')
     try {
       await api<{ state: 'accepted'; messageId: string }>(
-        `/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}/send-text`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text,...command(JSON.stringify(['text',text])) }) },
+        `${apiBase}/send-text`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text,...command(JSON.stringify(['text',text])),...(contactId?{confirmed:true}:{}) }) },
       )
       sendOperation.current=null
+      if(contactId)drafts?.delete('operation:'+contactId)
       setDraft('')
       setSendNotice('Mensagem aceita pelo WhatsApp. Confira o histórico antes de enviar novamente.')
       void load(1)
     } catch (cause) {
-      if ((cause as RequestFailure).status === 401) { onUnauthorized(); return }
+      if (handleSendContext(cause)) return
       setSendFailure('Envio não confirmado. Verifique a conversa antes de tentar outra vez, para evitar mensagem duplicada.')
-    } finally { sendingRef.current = false; setSending(false) }
+    } finally { sendingRef.current = false; setSending(false);onSendBusy?.(false) }
   }
   async function syncHistory(page=1){
     if(syncBusy)return
@@ -361,10 +379,10 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
 
   return <div className="detail-page chat-page chat-readonly chat-evolution">
     <div className="chat-stage"><div className="at-chat-scroll" ref={scroll}>
-      <section className="chat-history" aria-label="Histórico Evolution deste Atendimento" aria-busy={busy}>
+      <section className="chat-history" aria-label={contactId?'Histórico WhatsApp deste Contato':'Histórico Evolution deste Atendimento'} aria-busy={busy}>
         <div className="chat-read-toolbar">
           {autoError && <span className="chat-auto-state" role="status">Atualização pausada</span>}
-          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy||syncBusy} onClick={() => void (localHistory?syncHistory(1):load(1))}>↻</button>
+          <button type="button" className="fh-filter chat-refresh" title="Atualizar mensagens" aria-label="Atualizar mensagens" disabled={busy||syncBusy} onClick={() => void (localHistory&&!contactId?syncHistory(1):load(1))}>↻</button>
         </div>
         {newMessages > 0 && <button type="button" className="fh-filter chat-new-messages" onClick={() => {
           const element = scroll.current
@@ -378,12 +396,12 @@ function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorize
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           
-          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}
         {nextPage !== null && !failure && <button type="button" className="fh-filter chat-more" disabled={busy} onClick={() => void load(nextPage)}>Carregar mensagens anteriores</button>}
-        {localHistory && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
+        {localHistory && !contactId && olderProviderPage!==null && !failure && <button type="button" className="fh-filter chat-more" disabled={syncBusy||busy} onClick={()=>void syncHistory(olderProviderPage)}>{syncBusy?'Sincronizando…':'Buscar histórico anterior no WhatsApp'}</button>}
       </section>
     </div></div>
     {(canSendText||canMedia) && <form className="chat-send-text" onSubmit={event => { event.preventDefault(); if(window.confirm('Enviar esta mensagem à conversa selecionada?')) void (file ? sendMedia() : sendText()) }}>

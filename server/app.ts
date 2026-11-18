@@ -1,3 +1,5 @@
+import {SharedConversationIdentity} from './chat/shared-identity.ts'
+import {ContactChannels} from './chat/contact-channels.ts'
 import { CustomerRepository } from './customers.ts'
 import { funnelProjection } from './funnel.ts'
 import { identifier as chatIdentifier } from './chat/events.ts'
@@ -19,6 +21,8 @@ import { WorkOrderRepository } from './work-orders.ts'
 import {BudgetCancellationRepository} from './budget-cancellations.ts'
 import {cancelledPdf} from './cancelled-pdf.ts'
 import { workOrderPdf } from './work-order-pdf.ts'
+import {configuredOrderRenderer,renderOrderJsreport} from './os-jsreport.ts'
+import {WorkOrderPdfCache} from './os-pdf-cache.ts'
 import { PricingConfigurationRepository } from './pricing-config.ts'
 import { ComponentRepository } from './components.ts'
 import { calculate } from './pricing-engine.ts'
@@ -70,6 +74,7 @@ export interface AppOptions {
   voiceContextMode?:'standard'|'omit_recommendations' // explicit synthetic QA override
   budgetRenderer?:BudgetOptions['render']
   cancelledPdfRenderer?:(pdf:Buffer)=>Promise<Buffer>
+  osPdfRenderer?:(order:import('../shared/work-order.ts').WorkOrder)=>Promise<Buffer> // synthetic QA only
   atendimentos: AtendimentoRepository
   password?: string
   origin?: string
@@ -79,6 +84,8 @@ export interface AppOptions {
 }
 
 export function createRequestHandler(options: AppOptions) {
+  const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
+  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -102,6 +109,8 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
+  // V21 revisions and new explicit issues freeze the first successfully rendered PDF.
+  const osCache=new WorkOrderPdfCache(options.atendimentos.db)
   const cancellations = new BudgetCancellationRepository(options.atendimentos.db,options.now)
   const stampPdf=options.cancelledPdfRenderer??cancelledPdf
   const voiceContextMode=options.voiceContextMode??(process.env.FUNIX_VOICE_CONTEXT_MODE==='omit_recommendations'?'omit_recommendations':'standard')
@@ -370,13 +379,80 @@ export function createRequestHandler(options: AppOptions) {
         if(!photo)return fail(404,'PHOTO_UNAVAILABLE','Foto indisponível.')
         res.writeHead(200,{'Content-Type':photo.mime,'Content-Length':photo.bytes.length,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'});res.end(photo.bytes);return
       }
+      const contactMediaRoute=/^\/api\/customer-records\/([a-f0-9-]{36})\/chat\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
+      if(contactMediaRoute){
+        if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
+        if(process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
+        const page=url.searchParams.get('page')??'1'
+        if([...url.searchParams.keys()].some(k=>k!=='page')||url.searchParams.getAll('page').length>1||!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
+        try{const result=await contactChannels.readMedia(contactMediaRoute[1]!,contactMediaRoute[2]!,contactMediaRoute[3]!,Number(page))
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          return send(200,result)
+        }catch(e){if(e instanceof ServiceError)throw e;return fail(503,'CHAT_MEDIA_UNAVAILABLE','Não foi possível recuperar a mídia.')}
+      }
+      const contactChannelRoute=/^\/api\/customer-records\/([a-f0-9-]{36})\/(verify-whatsapp|open-chat|chat)(?:\/([a-f0-9-]{36})\/(messages|send-text|send-media|message-states))?$/.exec(url.pathname)
+      if(contactChannelRoute){
+        const [,contactId,action,conversationId,operation]=contactChannelRoute
+        if(req.method==='GET'&&action==='chat'&&conversationId&&operation==='messages'){
+          if([...url.searchParams.keys()].some(k=>!['page','cursor'].includes(k))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('cursor').length>1)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+          const cursor=url.searchParams.get('cursor')??undefined
+          if(cursor&&!/^[A-Za-z0-9_-]{1,900}$/.test(cursor))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
+          const page=url.searchParams.get('page')??'1'
+          if(!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
+          try{const result=await contactChannels.messages(contactId!,conversationId,Number(page),cursor)
+            if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+            return send(200,result)
+          }catch(e){if(e instanceof ServiceError)throw e;return providerFailure(e,'history')}
+        }
+        if(req.method!=='POST'||url.search)return fail(405,'METHOD_NOT_ALLOWED','Use POST.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,operation==='send-media'?17*1024*1024:operation==='message-states'?32768:8192)
+        if(!body||typeof body!=='object'||Array.isArray(body))return fail(400,'INVALID_CONTACT','Dados inválidos.')
+        const input=body as Record<string,unknown>
+        if(action==='chat'&&operation==='message-states'&&conversationId){
+          if(Object.keys(input).length!==1||!Array.isArray(input.messages)||input.messages.length<1||input.messages.length>50||input.messages.some(m=>!m||typeof m!=='object'||Array.isArray(m)||Object.keys(m).some(k=>!['messageId','version'].includes(k))||!chatIdentifier(m.messageId,200)||m.version!==undefined&&(typeof m.version!=='string'||!/^[a-f0-9]{64}$/.test(m.version))))return fail(400,'CHAT_INVALID_QUERY','Mensagens inválidas.')
+          return send(200,contactChannels.states(contactId!,conversationId,input.messages))
+        }
+        if(action==='verify-whatsapp'&&!conversationId&&Object.keys(input).length===0){const result=await contactChannels.verify(contactId!);if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.');return send(200,result)}
+        if(action==='open-chat'&&!conversationId&&Object.keys(input).length===0){
+          await contactChannels.verify(contactId!)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+          return send(200,{
+            conversationId:contactChannels.context(contactId!).conversationId,
+            linksEnabled:!!options.v20Associations&&(!options.conversationRuntime||!!options.conversationRuntime.authority),
+          })
+        }
+        if(action==='chat'&&operation==='send-text'&&conversationId){
+          if(process.env.FUNIX_EVOLUTION_SEND_ENABLED!=='true')return fail(503,'CHAT_SEND_DISABLED','Envio WhatsApp não habilitado.')
+          if(Object.keys(input).some(k=>!['text','requestId','contextToken','confirmed'].includes(k))||input.confirmed!==true||typeof input.text!=='string'||typeof input.requestId!=='string'||typeof input.contextToken!=='string')return fail(400,'CHAT_SEND_INVALID','Confirme explicitamente a mensagem e o destinatário.')
+          try{const receipt=await contactChannels.send(contactId!,conversationId,input.text,{requestId:input.requestId,contextToken:input.contextToken},()=>{if((sessions.get(cookie)??0)<=now())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada.')})
+            return send(200,{state:'accepted',messageId:receipt.messageId})
+          }catch(e){if(e instanceof ServiceError)throw e;return fail(502,'CHAT_SEND_UNCERTAIN','Envio não confirmado. Confira o WhatsApp antes de tentar novamente.')}
+        }
+        if(action==='chat'&&operation==='send-media'&&conversationId){
+          if(process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
+          if(Object.keys(input).some(k=>!['kind','mimeType','base64','caption','requestId','contextToken','confirmed'].includes(k))||input.confirmed!==true||typeof input.requestId!=='string'||typeof input.contextToken!=='string'||typeof input.kind!=='string'||!['image','video','audio'].includes(input.kind)||typeof input.mimeType!=='string'||typeof input.base64!=='string'||input.caption!==undefined&&typeof input.caption!=='string')return fail(400,'CHAT_MEDIA_INVALID','Confirme a mídia e o destinatário.')
+          const item={kind:input.kind as MediaKind,mimeType:input.mimeType,base64:input.base64,...(typeof input.caption==='string'?{caption:input.caption}:{})}
+          try{const receipt=await contactChannels.sendMedia(contactId!,conversationId,item,{requestId:input.requestId,contextToken:input.contextToken},()=>{if((sessions.get(cookie)??0)<=now())throw new ServiceError(401,'AUTH_REQUIRED','Sessão encerrada.')})
+            return send(200,{state:'accepted',messageId:receipt.messageId})
+          }catch(e){if(e instanceof ServiceError)throw e;return fail(502,'CHAT_SEND_UNCERTAIN','Envio não confirmado. Confira a conversa antes de repetir.')}
+        }
+        return fail(400,'INVALID_CONTACT','Operação inválida.')
+      }
       const customerRoute=/^\/api\/customer-records(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
       if(customerRoute){
         const customers=new CustomerRepository(options.atendimentos.db),id=customerRoute[1]
-        if(req.method==='GET')return send(200,id?customers.record(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
+        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
-        if(req.method==='POST'&&!id || req.method==='PATCH'&&id)return send(id?200:201,customers.save(await readJson(req,8192),id))
+        if(req.method==='POST'&&!id || req.method==='PATCH'&&id){
+          const saved=customers.save(await readJson(req,32768),id)
+          if(saved.kind==='entity')await contactChannels.verifyEntity(saved.id)
+          else if(saved.kind==='contact')await contactChannels.verify(saved.id)
+          if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Cadastro salvo; a sessão encerrou durante a verificação. Entre novamente para consultá-lo.')
+          return send(id?200:201,customerView(saved.id))
+        }
         return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
       }
       // V20 N:N associations: opt-in, single authenticated operator and explicit Origin on writes.
@@ -384,11 +460,17 @@ export function createRequestHandler(options: AppOptions) {
       if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
-        if (associationRoute || contextRoute) {
-          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1])!
-          const scope=options.conversationRuntime?.authority?.associationScope(conversationId)
+        const identityRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/identity$/.exec(url.pathname)
+        if (associationRoute || contextRoute || identityRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1])!
+          const authority=options.conversationRuntime?.authority
+          const contacts=options.evolutionChat.contacts
+          const scope=identityRoute?undefined:(authority?.associationScope(conversationId) ??
+            (contacts?.identities.providerJid(conversationId)?contacts.identities.associationScope(conversationId):undefined))
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          const identity=identityRoute?new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
+          if(identity&&req.method==='GET')return send(200,identity.preview(conversationId))
           if (associationRoute && req.method === 'GET' && !associationRoute[3])
             return send(200, options.v20Associations.listActive(conversationId,scope))
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
@@ -396,6 +478,7 @@ export function createRequestHandler(options: AppOptions) {
           const body = await readJson(req, 2048)
           if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
           const input = body as Record<string, unknown>
+          if(identity&&req.method==='POST')return send(200,identity.confirm(conversationId,input))
           if (associationRoute && req.method === 'POST' && !associationRoute[3]) {
             if (Object.keys(input).some(key => !['atendimentoId','expectedRevision','requestId','reason'].includes(key)))
               return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
@@ -557,7 +640,7 @@ export function createRequestHandler(options: AppOptions) {
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
-      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
+      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
@@ -648,8 +731,8 @@ export function createRequestHandler(options: AppOptions) {
         if([...url.searchParams.keys()].some(k=>!['diagnosisId','intensity'].includes(k))||url.searchParams.getAll('diagnosisId').length!==1||url.searchParams.getAll('intensity').length!==1)return fail(400,'INVALID_INPUT','Informe apenas diagnosisId e intensity.')
         return send(200,{items:recommendations(options.atendimentos.db,url.searchParams.get('diagnosisId'),url.searchParams.get('intensity'))})
       }
-      // Operational OS: frozen emitted version, authenticated session confirmation,
-      // immutable local SQLite record and local PDF (no jsreport template).
+      // Operational OS: frozen emitted version and immutable SQLite record.
+      // PDF uses the configured jsreport OS template or the existing local fallback.
       const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
       if(cancellationRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
@@ -660,26 +743,44 @@ export function createRequestHandler(options: AppOptions) {
         if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante o cancelamento.')
         return send(200,cancellations.cancel(cancellationRoute[1]!,cancellationRoute[2]!,body))
       }
-      const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(\/pdf)?$/.exec(url.pathname)
+      const orderRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/os(?:\/(revisoes)(?:\/([1-9][0-9]{0,8}))?)?(\/pdf)?$/.exec(url.pathname)
       if (orderRoute) {
-        const at=orderRoute[1]!,versionId=orderRoute[2]!,pdf=orderRoute[3]
+        const at=orderRoute[1]!,versionId=orderRoute[2]!,revisions=orderRoute[3],revision=orderRoute[4],pdf=orderRoute[5]
         if (req.method==='GET') {
           if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
-          const order=workOrders.get(at,versionId)
+          if(revisions&&!revision){
+            if(pdf)return fail(404,'NOT_FOUND','Informe a revisão da OS.')
+            return send(200,workOrders.listRevisions(at,versionId))
+          }
+          const order=workOrders.get(at,versionId,revision?Number(revision):1)
           if (!pdf) return send(200,order)
-          const data=order.cancellation?await stampPdf(workOrderPdf(order)):workOrderPdf(order)
+          const useJsreportOrderPdf=Boolean(options.osPdfRenderer)||process.env.FUNIX_OS_JSREPORT_ENABLED==='true'
+          let original:Buffer
+          // Keep the old fallback behavior only for legacy records without an explicit delivery field.
+          const frozenPdf=order.scope.deliveryDate!==undefined||!!order.revisionId
+          if(!useJsreportOrderPdf&&!frozenPdf) original=workOrderPdf(order)
+          else {
+            const cached=osCache.get(order.id,order.revisionId)
+            if(cached)original=cached
+            else{
+              const renderer=options.osPdfRenderer??((item:typeof order)=>renderOrderJsreport(item,configuredOrderRenderer()))
+              const rendered=useJsreportOrderPdf?await renderer(order):workOrderPdf(order)
+              original=osCache.save(order.id,rendered,order.revisionId)
+            }
+          }
+          const data=order.cancellation?await stampPdf(original):original
           res.setHeader('Content-Type','application/pdf')
-          res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+'.pdf"')
+          res.setHeader('Content-Disposition','inline; filename="FUNIX-'+order.number+(order.revision&&order.revision>1?'-R'+String(order.revision).padStart(2,'0'):'')+'.pdf"')
           res.setHeader('Content-Length',data.length)
           res.writeHead(200);res.end(data);return
         }
-        if (req.method!=='POST'||pdf) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if (req.method!=='POST'||pdf||revision) return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
         if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
         const body=await readJson(req,1024)
         if ((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
-        return send(201,workOrders.create(at,versionId,body))
+        return send(201,revisions?workOrders.reissue(at,versionId,body):workOrders.create(at,versionId,body))
       }
       const budgetRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos(?:\/([^/]{1,100}))?(\/pdf)?$/.exec(url.pathname)
       if (budgetRoute) {
@@ -816,13 +917,23 @@ export function createRequestHandler(options: AppOptions) {
         const result=options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) })
         return send(200,{...result,items:funnelProjection(options.atendimentos.db,new CustomerRepository(options.atendimentos.db).present(result.items))})
       }
-      if (record && req.method === 'GET') return send(200, options.atendimentos.get(record[1]!,true))
+      const withChatIdentity=(atendimento:ReturnType<AtendimentoRepository['get']>)=>{
+        const cid=url.searchParams.get('conversa')
+        if(cid&&/^[a-f0-9-]{36}$/.test(cid)&&options.evolutionChat&&options.v20Associations&&
+          options.v20Associations.resolveRemoteJid(cid,'funix_comercial')){
+          const identity=new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation)
+          const chatIdentity=identity.forAtendimento(cid,atendimento.id)
+          if(chatIdentity)atendimento.chatIdentity=chatIdentity
+        }
+        return atendimento
+      }
+      if (record && req.method === 'GET') return send(200,withChatIdentity(options.atendimentos.get(record[1]!,true)))
       if ((collection && req.method === 'POST') || (record && req.method === 'PATCH')) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
         if (collection) return send(201, options.atendimentos.create(body))
-        return send(200, options.atendimentos.update(record![1]!, body,true))
+        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true)))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')

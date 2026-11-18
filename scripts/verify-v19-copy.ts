@@ -34,7 +34,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
   try{
    before.exec('BEGIN');after.exec('BEGIN')
    const beforeVersion=healthy(before),afterVersion=healthy(after)
-   requireCheck([18,19,20].includes(beforeVersion)&&[19,20].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20')
+   requireCheck([18,19,20,21,22,23].includes(beforeVersion)&&[19,20,21,22,23].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20_V21_V22_V23')
    const growing=new Set(['schema_migrations','chat_provider_conversations','v20_conversations','v20_associations'])
    const tables=before.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
    const results=[]
@@ -48,7 +48,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
     const oldRows=fingerprints(before,table,columns),newRows=fingerprints(after,table,columns)
     for(const [hash,count]of oldRows)requireCheck((newRows.get(hash)??0)>=count,'V19_COPY_DATA_CHANGED:'+table)
     const oldCount=[...oldRows.values()].reduce((a,b)=>a+b,0),newCount=[...newRows.values()].reduce((a,b)=>a+b,0)
-    requireCheck((beforeVersion===18&&growing.has(table))?newCount>=oldCount:newCount===oldCount,'V19_COPY_UNEXPECTED_ROWS:'+table)
+    requireCheck((table==='schema_migrations'||beforeVersion===18&&growing.has(table))?newCount>=oldCount:newCount===oldCount,'V19_COPY_UNEXPECTED_ROWS:'+table)
     if(beforeVersion===18&&table==='v20_conversations')for(const r of before.prepare('SELECT id,revision FROM v20_conversations').all())requireCheck(Number(after.prepare('SELECT revision FROM v20_conversations WHERE id=?').get(r.id!)?.revision)>=Number(r.revision),'V19_COPY_REVISION_REGRESSION')
     results.push({table,beforeRows:oldCount,afterRows:newCount,preserved:true})
    }
@@ -57,6 +57,11 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
    if(beforeVersion===18){
     requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE closed_at IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_CLOSURE')
     requireCheck(!after.prepare('SELECT 1 FROM v20_conversations WHERE context_revision!=0 LIMIT 1').get(),'V19_COPY_UNEXPECTED_CONTEXT_CHANGE')
+   }
+   if(afterVersion>=23&&beforeVersion<23)requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE purpose IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_PURPOSE_BACKFILL')
+   if(afterVersion===21&&beforeVersion<21){
+    requireCheck(!after.prepare('SELECT 1 FROM atendimentos WHERE delivery_date IS NOT NULL LIMIT 1').get(),'V19_COPY_UNEXPECTED_DELIVERY_BACKFILL')
+    for(const table of ['atendimento_delivery_date_history','work_order_revisions','work_order_revision_pdf_cache'])requireCheck(after.prepare(`SELECT COUNT(*) n FROM ${quote(table)}`).get()!.n===0,'V19_COPY_UNEXPECTED_V21_BACKFILL:'+table)
    }
    return {readOnly:true,beforeVersion,afterVersion,integrity:true,foreignKeys:true,tables:results,limitation:'Comparação de preservação; vínculos promovidos, ambiguidades e contratos externos exigem os casos do roteiro.'}
   }finally{after.close()}

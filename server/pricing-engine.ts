@@ -1,5 +1,5 @@
 import{resolveMR}from'../shared/mr.ts'
-import{servicePolicy,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
+import{serviceDisplayName,servicePolicy,TECHNICAL_ACTIVITY}from'../shared/commercial-curation.ts'
 import type { CatalogItem, DiagnosisItem, Scenario } from '../shared/commercial.ts'
 import { catalogItemUsable, scenarioLabel } from '../shared/commercial.ts'
 import type { Calculation, ComponentItem, Negotiation, PricedLine, PricingConfig, PricingSettings } from '../shared/pricing.ts'
@@ -26,7 +26,7 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
    const enabled=parent && Boolean(scenario.serviceFlags[service.id])
    const line:PricedLine={id:service.id,pieceId:item.id,kind:'service',name:byId(service.serviceId)?.name ?? 'Serviço ausente',pieceName:piece?.name ?? 'Peça ausente',dimension:byId(service.dimensionId)?.name ?? 'Pendente',diagnosis:byId(service.diagnosisId ?? item.diagnosisId)?.name ?? '',notes:service.notes ?? '',quantity:service.quantity,included:enabled,unit:null,finalUnit:null,total:null,path:null,factors:{},stages:[],energy:null}
    const policy=servicePolicy(service.serviceId)
-   if(policy){line.billing=policy.billing;line.execution=policy.execution;line.name=policy.displayName??line.name}
+   if(policy){line.billing=policy.billing;line.execution=policy.execution;line.name=serviceDisplayName(service.serviceId,line.name)}
    lines.push(line)
    if(!enabled)continue
    try {

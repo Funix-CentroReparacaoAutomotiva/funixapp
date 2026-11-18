@@ -172,10 +172,11 @@ function App() {
     }, cached ? 0 : 250)
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query, expireSession])
+  const detailConversation=params.get('conversa')
   useEffect(() => {
     if (!session?.authenticated || !isDetail) { setRecord(null); return }
     const controller = new AbortController(); setRecord(null); setFailure(''); setLoading(true)
-    api<Atendimento>(`/api/atendimentos/${encodeURIComponent(detailId)}`, { signal: controller.signal }).then(result => {
+    api<Atendimento>(`/api/atendimentos/${encodeURIComponent(detailId)}${detailConversation?'?conversa='+encodeURIComponent(detailConversation):''}`, { signal: controller.signal }).then(result => {
       if (!controller.signal.aborted) setRecord(result)
     }).catch((cause: RequestFailure) => {
       if (cause.name === 'AbortError') return
@@ -183,7 +184,7 @@ function App() {
       setFailure(cause.message)
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [session?.authenticated, isDetail, detailId, reload, expireSession])
+  }, [session?.authenticated, isDetail, detailId, detailConversation, reload, expireSession])
   useLayoutEffect(() => {
     if (isDetail || loading) return
     const position = positions.get(routeKey)
@@ -297,8 +298,10 @@ function App() {
             {!loading && list && <><div className="query-meta"><span>{list.items.length} de {list.total} Atendimento{list.total !== 1 ? 's' : ''}</span><button onClick={() => setReload(value => value + 1)}>Atualizar</button></div>
               {!list.items.length && <div className="fh-surface"><Notice title={query ? 'Nenhum Atendimento encontrado' : 'Nenhum Atendimento cadastrado'}>{query ? 'Tente outro nome, telefone, placa ou identificador.' : 'Use Novo Atendimento para registrar o primeiro contato.'}</Notice></div>}
               {mode === 'lista' ? <div className="fh-surface fh-board-list">{list.items.map(item => <RecordButton key={item.id} item={item} list onOpen={openRecord} />)}</div> : <div className="fh-kboard" ref={board} onScroll={event => positions.set(routeKey, { top: viewport.current?.scrollTop || 0, left: event.currentTarget.scrollLeft })} aria-label="Funil de Atendimentos">
-                {ATENDIMENTO_STAGES.map(stage => {
-                  const closed = collapsed.has(stage.id), items = list.items.filter(item => stage.id==='rejeitados' ? !!item.closedAt||item.stage==='rejeitados' : !item.closedAt&&item.stage===stage.id)
+                 {[{id:'triagem',name:'A classificar'},{id:'non_commercial',name:'Não comercial'},...ATENDIMENTO_STAGES].map(stage => {
+                  const closed = collapsed.has(stage.id), items = list.items.filter(item => stage.id==='rejeitados' ? !!item.closedAt||item.stage==='rejeitados' : !item.closedAt&&item.stage!=='rejeitados'&&(
+                    item.purpose==='unclassified'?stage.id==='triagem':
+                      item.purpose==='non_commercial'?stage.id==='non_commercial':item.stage===stage.id))
                   return <section key={stage.id} className={`fh-lane ${closed ? 'collapsed' : ''}`} aria-label={stage.name}><button className="fh-lanehead" aria-expanded={!closed} title={`${closed ? 'Expandir' : 'Recolher'} ${stage.name}`} onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(stage.id)) next.delete(stage.id); else next.add(stage.id); return next })}><span className="fh-toggle" aria-hidden="true">{closed ? '▸' : '▾'}</span><span className="fh-lane-title">{stage.name}</span><em aria-label={`${items.length} registros carregados`}>{items.length}</em></button>{!closed && <div className="fh-lane-items">{items.map(item => <RecordButton key={item.id} item={item} onOpen={openRecord} />)}</div>}</section>
                 })}
               </div>}
@@ -309,7 +312,7 @@ function App() {
           <div className="secondary-nav"><button onClick={()=>navigate('/configuracoes')}>Configurações</button><button onClick={()=>navigate('/atualizacoes')}>Atualizações</button></div><button className="session-exit" onClick={logout}>Sair</button>
         </>}
       </main> : <>
-        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.name || record.phone || '?').slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? record.name || 'Sem nome' : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{record.phone.trim() || 'Não informado'}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
+        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? (record.chatIdentity?.name || record.name || record.phone || '?').slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? record.chatIdentity?.name || record.name || 'Sem nome' : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{(record.chatIdentity?.phone??record.phone).trim() || 'Não informado'}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
         {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
@@ -330,7 +333,7 @@ function App() {
       }
     }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={()=>canLeaveEditor()}>×</button></header>
       {!session?.authenticated && <div className="at-reauth"><p>Sua sessão expirou. Entre novamente para continuar; as alterações do formulário foram mantidas.</p>{login}</div>}
-      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} onSaved={saved} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} onMessage={conversationId=>{if(editor.record&&canLeaveEditor()){const id=editor.record.id;setEditor(null);navigate(`/atendimentos/${id}?aba=chat&conversa=${conversationId}`)}}} /></div>
+      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} conversationId={detailConversation} onSaved={saved} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} onMessage={conversationId=>{if(editor.record&&canLeaveEditor()){const id=editor.record.id;setEditor(null);navigate(`/atendimentos/${id}?aba=chat&conversa=${conversationId}`)}}} /></div>
     </section></div>}
   </div>
 }

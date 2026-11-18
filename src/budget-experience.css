@@ -76,11 +76,11 @@
 }
 
 /* Documento: emitido=verde, a criar=azul, cancelado=vermelho, não criado=cinza. */
-.budget-action-issued{background:#e0f3e6;border-color:#7ebd93;color:#146d38}
-.budget-action-pending{background:#e1edff;border-color:#80abe8;color:#174fa9}
-.budget-action-cancelled{background:#fce1e5;border-color:#db8997;color:#a0233d}
-.budget-action-unavailable{background:#edf0f3;border-color:#c5cdd5;color:#818e9e}
-.budget-action-unavailable:disabled{opacity:1}
+.budget-action.budget-action-issued{background:#146d38;border-color:#146d38;color:#fff}
+.budget-action.budget-action-pending{background:#174fa9;border-color:#174fa9;color:#fff}
+.budget-action.budget-action-cancelled{background:#a0233d;border-color:#a0233d;color:#fff}
+.budget-action.budget-action-unavailable{background:#66758a;border-color:#66758a;color:#fff}
+.budget-action:is(.budget-action-issued,.budget-action-pending,.budget-action-cancelled,.budget-action-unavailable):disabled{opacity:1}
 .budget-action-cancel:disabled{opacity:1;background:#edf0f3;border-color:#c5cdd5;color:#818e9e}
 .budget-history-row.is-cancelled .budget-history-open,
 .budget-history-row.is-cancelled .budget-history-identity time{color:#8793a2}

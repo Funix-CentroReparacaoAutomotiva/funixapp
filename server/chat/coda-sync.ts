@@ -1,3 +1,4 @@
+import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { ConversationIdentities, createConversationIdentitySchema } from './conversation-identities.ts'
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
@@ -147,6 +148,14 @@ export class CodaEventSyncRepository extends ConversationIdentities {
     if (!members || members.some(value => this.contextConflict(value))) return null
     const active = new Set(members.map(value => this.resolveActive(value)).filter((value): value is string => value !== null))
     return active.size === 1 ? [...active][0]! : null
+  }
+
+
+  /** Display-only number from the uniquely active Atendimento. Not PN/LID evidence. */
+  linkedAtendimentoPhone(remoteJid: string): string | null {
+    const atendimentoId = this.resolveIdentityActive(remoteJid)
+    if (!atendimentoId) return null
+    return atendimentoDisplayPhone(this.db,atendimentoId)
   }
 
   /** One shared resolution for Funil and list. Prefer the provider's LID domain.

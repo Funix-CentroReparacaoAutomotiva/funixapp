@@ -8,6 +8,7 @@ export type ConversationRow = {
   conversationId: string
   displayName: string | null
   phoneNumber: string | null
+  atendimentoPhone?: string | null // linked Atendimento only; not a provider-verified WhatsApp number
   updatedAt: string | null
   unreadCount: number | null
   atendimentoId?: string | null
@@ -89,7 +90,7 @@ export function parseConversationList(raw: unknown): ConversationList {
       if(!Array.isArray(c.names)||c.names.length>10000)return invalid()
       commercial={names:c.names.map(v=>{const p=record(v);if(typeof p.name!=='string'||p.name.length>250)return invalid();return {name:p.name,entityId:p.entityId===null?null:opaqueId(p.entityId)}}),atendimentoCount:count(c.atendimentoCount,100000),preview:c.preview===null?null:typeof c.preview==='string'&&c.preview.length<=16384?c.preview:invalid(),profilePhoto:typeof c.profilePhoto==='string'&&c.profilePhoto==='/api/chat/conversations/'+conversationId+'/profile-photo'?c.profilePhoto:null,...(c.contactId?{contactId:opaqueId(c.contactId)}:{})}
     }
-    return { ...(commercial?{commercial}:{}), conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount), ...(Object.hasOwn(row, 'atendimentoId') ? { atendimentoId: row.atendimentoId === null ? null : opaqueId(row.atendimentoId) } : {}) }
+    return { ...(commercial?{commercial}:{}), conversationId, displayName: label(row.displayName), phoneNumber: phone(row.phoneNumber), ...(Object.hasOwn(row,'atendimentoPhone') ? {atendimentoPhone: phone(row.atendimentoPhone)} : {}), updatedAt: dateOrNull(row.updatedAt), unreadCount: nullableNonnegative(row.unreadCount), ...(Object.hasOwn(row, 'atendimentoId') ? { atendimentoId: row.atendimentoId === null ? null : opaqueId(row.atendimentoId) } : {}) }
   })
   const nextSkip = data.nextSkip === null ? null : count(data.nextSkip)
   return {items,nextSkip,source:data.source as 'evolution'|'local',...(data.linksEnabled===true?{linksEnabled:true as const}:{}),...(data.source==='local'?{providerUnavailable:data.providerUnavailable===true}:{})}
