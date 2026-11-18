@@ -7,6 +7,7 @@ import {deliveryDateLabel,validDeliveryDate} from '../shared/delivery-date'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
+import {CiliaPreviewPanel} from './CiliaPreviewPanel'
 import{budgetHistory}from'../shared/budget-history'
 import './budget-experience.css'
 import './os-delivery-dialog.css'
@@ -134,6 +135,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
     {orderHistory.length>1&&<details><summary>Histórico de emissões da OS</summary>{orderHistory.map((item,index)=><p key={item.revision??1}><a href={orderUrl(selected.id,item.revision??1)} target="_blank" rel="noopener noreferrer">R{String(item.revision??1).padStart(2,'0')} · {deliveryDateLabel(item.scope.deliveryDate)}</a> · {item.cancellation?'Cancelada':index===0?selectedMeta?.workOrderNeedsReissue?'Desatualizada':'Vigente':'Substituída'}</p>)}</details>}
   </>}
  </div>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>
+ <CiliaPreviewPanel key={at} at={at} disabled={busy} onAuthRequired={onAuthRequired}/>
  {budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}>
  <h2>{group.name}</h2>
  {group.versions.map(v=><div className={`budget-history-row${v.cancelledAt?' is-cancelled':''}`} key={v.id}>

@@ -63,7 +63,7 @@ const sourceLedger = sourceLedgerKey ? (() => {
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
 const gmailAnalysis=loadGmailAnalysis(db,process.env)
 const externalBudget = loadExternalBudgetApi(process.env, db)
-const app = createApp({ externalBudget, gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime, db), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const app = createApp({ ciliaPreviewEnabled:process.env.FUNIX_CILIA_PREVIEW_ENABLED==='true', externalBudget, gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime, db), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000
