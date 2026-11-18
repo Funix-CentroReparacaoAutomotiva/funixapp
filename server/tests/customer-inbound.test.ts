@@ -256,3 +256,33 @@ test('authenticated inbound references the explicitly assigned Entity without co
   assert.equal(f.at.get(a.id,true).references!.person[0]!.text,'Pessoa renomeada')
  }finally{f.db.close()}
 })
+
+
+test('target autonomous runtime creates the shared Entity and Contact atomically; exact known number reuses owner',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  const ingest=(value:ReturnType<typeof event>)=>runtime.store.ingest(JSON.stringify(value))
+  const first=event('canonical-new')
+  const receipt=ingest(first)
+  assert.deepEqual(ingest(first),receipt)
+  const a=at.get(at.list().items[0]!.id,true)
+  const person=a.references!.person[0]!,contact=a.references!.contact[0]!
+  assert.ok(person.id);assert.ok(contact.id)
+  assert.equal(customers.record(contact.id!).entityId,person.id)
+  assert.equal(customers.contacts(person.id!).length,1)
+  assert.equal(runtime.authority!.projection(PN).names[0]?.name,a.name)
+  const known=customers.save({kind:'entity',text:'Cadastro compartilhado',contacts:[{text:'+5531999990888'}]})
+  const pn2='5531999990888@s.whatsapp.net'
+  ingest(event('canonical-existing',pn2,null,'Nome do canal'))
+  const b=at.get(runtime.authority!.resolveIdentityActive(pn2)!,true)
+  assert.equal(b.references!.person[0]!.id,known.id)
+  assert.equal(b.references!.contact[0]!.id,customers.contacts(known.id)[0]!.id)
+  assert.equal(b.name,known.text)
+  assert.notEqual(customers.record(contact.id!).conversationId,customers.contacts(known.id)[0]!.conversationId)
+  assert.equal(at.list().total,2)
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM customer_records WHERE kind='entity'").get()!.n,2)
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{db.close()}
+})

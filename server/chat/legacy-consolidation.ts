@@ -3,13 +3,14 @@ import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
 import {normalizePhone} from '../atendimentos.ts'
 import {LocalConversationAssociations} from './local-associations.ts'
+import {CodaEventSyncRepository} from './coda-sync.ts'
 
 /** Offline preparation on a database copy. No network, no message or Atendimento changes in count.
  * Preview rolls back the same transaction that apply would commit.
  */
 export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
   const report={legacyLinks:0,copiedLinks:0,existingLinks:0,unlinkedPreserved:0,blockedLinks:0,
-    reconciled:0,alreadyShared:0,pending:0,withoutChannel:0,contextReview:0}
+    reconciled:0,alreadyShared:0,pending:0,withoutChannel:0,contextReview:0,restoredContexts:0}
   const customers=new CustomerRepository(db),local=new LocalConversationAssociations(db)
   const table=(name:string)=>!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name)
   db.exec('BEGIN IMMEDIATE')
@@ -36,15 +37,31 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
         report.copiedLinks++
       }
     }
-    // Do not silently replace a selected, revoked or ambiguous working context.
+    // Restore a confirmed active context only when there is no local decision to override.
+    // Conflicts and unresolved differences are held; no historical links are removed.
     if(table('coda_sync_active_conversations')){
-      for(const row of db.prepare(`SELECT c.remote_jid,a.atendimento_id FROM coda_sync_active_conversations c
-        JOIN coda_sync_atendimentos a ON a.coda_row_id=c.coda_row_id WHERE c.instance='funix_comercial'`).all()){
+      const legacy=new CodaEventSyncRepository(db),seen=new Set<string>()
+      for(const row of db.prepare("SELECT remote_jid FROM coda_sync_active_conversations WHERE instance='funix_comercial'").all()){
         const jid=String(row.remote_jid)
-        const conflict=table('coda_sync_context_conflicts')&&!!db.prepare(`SELECT 1 FROM coda_sync_context_conflicts x
-          JOIN coda_sync_active_conversations a ON a.instance=x.instance AND a.remote_jid=x.remote_jid
-          WHERE x.instance='funix_comercial' AND x.remote_jid=? AND x.occurred_at>=a.occurred_at`).get(jid)
-        if(conflict||local.resolveIdentityActive(jid)!==row.atendimento_id)report.contextReview++
+        if(!local.identityJids(jid)){report.contextReview++;continue}
+        const cid=local.rememberProviderConversation(jid),scope=local.associationScope(cid)
+        const key=[...scope].sort().join(',')
+        if(seen.has(key))continue
+        seen.add(key)
+        const expected=legacy.resolveIdentityActive(jid)
+        const actual=local.resolveIdentityActive(jid)
+        const marks=scope.map(()=>'?').join(',')
+        const hold=()=>{db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(cid,'legacy_cutover_context_review');report.contextReview++}
+        if(!expected){hold();continue}
+        if(actual===expected)continue
+        const explicit=db.prepare(`SELECT 1 FROM v20_conversations WHERE id IN (${marks}) AND context_revision>0`).get(...scope)
+          ||db.prepare(`SELECT 1 FROM v20_active_context WHERE conversation_id IN (${marks})`).get(...scope)
+          ||db.prepare(`SELECT 1 FROM chat_local_context_holds WHERE conversation_id IN (${marks})`).get(...scope)
+        const links=local.links(jid).filter(l=>l.atendimento_id===expected)
+        if(explicit||links.length!==1){hold();continue}
+        db.prepare('INSERT INTO v20_active_context(conversation_id,link_id) VALUES(?,?)').run(links[0]!.conversation_id!,links[0]!.id!)
+        db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${marks})`).run(...scope)
+        report.restoredContexts++
       }
     }
     type Candidate={at:string;phone:string;jid:string;name:string;personId:string|null}

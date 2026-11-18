@@ -59,3 +59,19 @@ test('existing owner with another name is preserved without a duplicate',()=>{
     assert.equal(f.at.get(at,true).phone,'')
   }finally{f.db.close()}
 })
+
+
+test('multiple historical links retain the last confirmed context, without overwriting a local decision',()=>{
+ const f=fixture()
+ try{
+  const first=f.record('TEST1','Pessoa sintética'),latest=f.record('TEST2','Pessoa sintética')
+  const report=consolidateLegacyCustomers(f.db,true)
+  assert.equal(report.copiedLinks,2);assert.equal(report.restoredContexts,1)
+  assert.equal(report.contextReview,0)
+  const local=new LocalConversationAssociations(f.db)
+  assert.equal(local.resolveIdentityActive(pn),latest)
+  assert.equal(f.at.get(first,true).references!.person[0]!.id,f.at.get(latest,true).references!.person[0]!.id)
+  const replay=consolidateLegacyCustomers(f.db,true)
+  assert.equal(replay.restoredContexts,0);assert.equal(replay.reconciled,0)
+ }finally{f.db.close()}
+})
