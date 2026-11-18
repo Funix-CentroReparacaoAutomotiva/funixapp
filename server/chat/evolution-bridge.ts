@@ -433,7 +433,20 @@ export function createEvolutionChatBridge(
         codaSync?.providerJid(conversationId) ??
         associations?.resolveRemoteJid(conversationId, 'funix_comercial') ??
         entry?.jid
-      if (!jid || !codaSync || canonicalFor(jid) !== atendimentoId) return null
+      if (!jid) return null
+      // Provider-only V20 mode already exposes conversation history. Require the explicit
+      // selected link, recheck it after the read, and never grant send or media capabilities.
+      if (!codaSync) {
+        if (!associations || !contacts || local || cursor) return null
+        const selected = () => {
+          const scope = contacts.identities.associationScope(conversationId)
+          return associations.listActive(conversationId, scope).activeAtendimentoId === atendimentoId
+        }
+        if (!selected()) return null
+        const result = await this.messages(conversationId, page)
+        return result && selected() ? {...result,sendTextAvailable:false,mediaSendAvailable:false,mediaReadAvailable:false} : null
+      }
+      if (canonicalFor(jid) !== atendimentoId) return null
       const result = await this.messages(conversationId, page, cursor)
       // The canonical active Atendimento may change while Evolution responds.
       // Never return a stale conversation under a different Atendimento.

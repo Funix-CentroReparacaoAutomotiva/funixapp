@@ -640,7 +640,7 @@ export function createRequestHandler(options: AppOptions) {
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
-      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
+      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')

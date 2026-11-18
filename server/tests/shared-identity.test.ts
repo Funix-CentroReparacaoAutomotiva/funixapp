@@ -80,3 +80,26 @@ test('LID without evidence, contradictory aliases, stale confirmations and owner
   assert.equal(f.at.get(at.id).phone,'')
  }finally{f.db.close()}
 })
+
+
+test('provider-only V20 reads the selected Atendimento history without granting send or access after deselection',async()=>{
+ const f=entityContactsFixture({unnamed:true})
+ try{
+  const at=f.at.create({name:'Pessoa da ficha'}),other=f.at.create({name:'Outra ficha'})
+  const cid=link(f,pn,at.id)
+  f.rows.push(pn);f.histories.set(pn,'Histórico preservado')
+  await f.bridge.list(0)
+  assert.equal(await f.bridge.messagesForAtendimento(at.id,cid,1),null)
+  const active=f.links.listActive(cid).items[0]!
+  f.links.selectAtendimento(cid,active.linkId)
+  assert.equal(await f.bridge.messagesForAtendimento(other.id,cid,1),null)
+  const history=await f.bridge.messagesForAtendimento(at.id,cid,1)
+  assert.equal(history?.items[0]?.text,'Histórico preservado')
+  assert.equal(history?.sendTextAvailable,false)
+  assert.equal(history?.mediaSendAvailable,false)
+  assert.equal(history?.mediaReadAvailable,false)
+  f.links.selectAtendimento(cid,null)
+  assert.equal(await f.bridge.messagesForAtendimento(at.id,cid,1),null)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
