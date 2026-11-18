@@ -53,7 +53,7 @@ class Transaction:
             raise
         return os.fdopen(fd, "r+")
 
-    def update(self, candidate, *, authorized=False):
+    def update(self, candidate, *, authorized=False, prepare=None):
         safety.require(authorized is True, "explicit update authorization required")
         with self.locked():
             active = self.project_state / "active.json"
@@ -66,7 +66,11 @@ class Transaction:
                 safety.require(old["phase"] in ("accepted", "restored"),
                                "interrupted operation requires recovery")
                 raise safety.Blocked("use a new private operation directory")
+            if prepare is not None:
+                prepare()
             previous = self.adapter.preflight(candidate)
+            if hasattr(self.adapter, "operation_directory"):
+                self.adapter.operation_directory = self.root
             record = {"schema": 1, "project": "funix-hml", "phase": "prepared",
                       "previous": previous, "candidate": candidate}
             self.save(record)
@@ -97,6 +101,8 @@ class Transaction:
     def recover(self, *, authorized=False):
         safety.require(authorized is True, "explicit recovery authorization required")
         with self.locked():
+            if hasattr(self.adapter, "operation_directory"):
+                self.adapter.operation_directory = self.root
             record = json.loads(safety.regular(self.journal).read_text())
             safety.require(record.get("schema") == 1 and record.get("project") == "funix-hml",
                            "invalid recovery journal")
@@ -113,6 +119,12 @@ class Transaction:
             record = json.loads(safety.regular(self.journal).read_text())
             safety.require(record.get("schema") == 1 and record.get("project") == "funix-hml"
                            and record.get("phase") == "accepted", "not an accepted update")
+            active = json.loads(safety.regular(self.project_state / "active.json").read_text())
+            safety.require(active.get("journal") == str(self.journal), "superseded operation cannot roll back")
+            if hasattr(self.adapter, "assert_installed"):
+                self.adapter.assert_installed(record["candidate"])
+            if hasattr(self.adapter, "operation_directory"):
+                self.adapter.operation_directory = self.root
             record["phase"] = "rollback_requested"
             self.save(record)
             self.adapter.quiesce()
@@ -127,7 +139,15 @@ class Transaction:
         if record["phase"] == "rollback_requested":
             self.adapter.quiesce()
             target = self.root / "post-update.sqlite"
-            if not target.exists():
+            # A file without a committed digest may be a partial interrupted backup.
+            safety.require(not target.exists() or "post_update_sha256" in record,
+                           "uncommitted rollback backup requires manual inspection")
+            if target.exists():
+                safety.require(safety.sha256(target) == record["post_update_sha256"],
+                               "rollback backup checksum mismatch")
+                with safety.closing(safety.readonly(target)) as db:
+                    safety.inspect(db)
+            else:
                 record["post_update_sha256"] = safety.snapshot(self.adapter.database, target)
         record["phase"] = "restoring"
         self.save(record)

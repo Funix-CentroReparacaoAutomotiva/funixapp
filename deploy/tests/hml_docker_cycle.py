@@ -65,11 +65,15 @@ def main():
             next_candidate = dict(api=variants[1], web=variants[1], gateway=image, revision="c" * 40)
             second.update(next_candidate, authorized=True)
             assert json.loads(second.journal.read_text())["previous"]["revision"] == "b" * 40
-            second.rollback(authorized=True, discard_post_update_data=True)
             # Incompatible data migration, executed inside the candidate API.
             run(*base, "exec", "-T", "api", "python", "-c",
                 "import sqlite3; c=sqlite3.connect('/data/funix.sqlite'); c.execute(\"UPDATE atendimentos SET value='migrated'\"); c.commit()")
-            operation.rollback(authorized=True, discard_post_update_data=True)
+            try:
+                operation.rollback(authorized=True, discard_post_update_data=True)
+                raise AssertionError("old operation rollback accepted")
+            except transaction.safety.Blocked:
+                pass
+            second.rollback(authorized=True, discard_post_update_data=True)
             with sqlite3.connect(database) as db:
                 assert db.execute("SELECT value FROM atendimentos").fetchone() == ("original",)
             interrupted = transaction.Transaction(root / "interrupted", adapter,

@@ -117,6 +117,24 @@ do contrato fornecido e coordenação do carregamento de imagens sob o lock.
 Não executar na VPS. As pendências anteriores continuam aplicáveis quando não
 explicitamente cobertas pelo incremento.
 
+Correções posteriores: o carregamento agora é callback executado dentro do
+lock global, após verificar recuperação pendente. O rollback exige que a
+operação seja a ativa e que IDs/revisão instalados coincidam. Bancos falhos
+ficam no diretório de cada operação. Um post-update.sqlite sem digest
+confirmado no journal bloqueia recuperação para inspeção; não é presumido
+completo. Compose aceita lista ordenada de arquivos e release_env explícito,
+compatível com compose.yaml + gateway.compose.yaml + release.env. Credenciais
+aceitam também o formato Usuario/Senha instalado. Mounts são limitados a /data
+da API e arquivos somente leitura em /etc/funix-hml, e flags de integração
+habilitadas bloqueiam preflight.
+
+O teste HTTPS local usa uma CA sintética, handshake real e servidor HTTP real:
+rejeita certificado não confiável, verifica Basic Auth e revisões. Não é um
+teste de gateway/Traefik Docker. A CLI continua experimental: falta impedir
+novas gravações durante validação com gateway ativo, validar todos os
+escritores externos ao Docker e testar as políticas negativas completas.
+Portanto não há comando de instalação autorizado para a VPS nesta entrega.
+
 `hml-docker-adapter.py` conecta o coordenador a Docker Compose com projeto
 fixo funix-hml, configuração normalizada comparada integralmente a um contrato
 revisado, imagens por ID, gateway estável, stop direcionado e restauração do

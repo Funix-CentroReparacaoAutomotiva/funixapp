@@ -21,7 +21,12 @@ def load(name):
 
 def validator(credentials):
     def validate(release):
-        login = json.loads(Path(credentials).read_text())
+        content = Path(credentials).read_text()
+        if content.lstrip().startswith("{"):
+            login = json.loads(content)
+        else:
+            fields = dict(line.split(": ", 1) for line in content.splitlines() if ": " in line)
+            login = {"username": fields["Usuario"], "password": fields["Senha"]}
         token = base64.b64encode((login["username"] + ":" + login["password"]).encode()).decode()
         for endpoint in ("/", "/api/ready", "/release.json", "/healthz"):
             for auth, expected in ((None, 401), ("Basic " + base64.b64encode(b"invalid:invalid").decode(), 401),
@@ -65,13 +70,15 @@ def main():
         raise ValueError("credentials must be private")
     adapter = load("hml-docker-adapter").DockerAdapter(
         compose=config["compose"], contract=config["contract"], database=config["database"],
-        state=config["state"], validator=validator(credentials))
+        state=config["state"], validator=validator(credentials), env_file=config.get("release_env"))
     if args.action == "preflight":
         adapter.preflight(config["candidate"])
         print("PREFLIGHT_OK")
         return
     if not args.authorize:
         raise ValueError("explicit authorization required")
+    if args.action == "update":
+        raise ValueError("installation blocked pending validated user-write maintenance gate")
     transaction = load("hml-update-transaction").Transaction(
         args.operation, adapter, project_state=config["state"])
     if args.action == "recover":
@@ -79,6 +86,11 @@ def main():
     elif args.action == "rollback":
         transaction.rollback(authorized=True, discard_post_update_data=args.discard_post_update_data)
     else:
+        transaction.update(config["candidate"], authorized=True,
+                           prepare=lambda: prepare_candidate(config, adapter, safety))
+
+
+def prepare_candidate(config, adapter, safety):
         archive = safety.regular(Path(config["artifact_zip"]))
         identity = config["identity"]
         load("hml-artifact-provenance").verify(archive, **identity)
@@ -105,7 +117,6 @@ def main():
             for role, image in manifest["images"].items():
                 if config["candidate"][role] != image["image_id"]:
                     raise ValueError("release differs from authenticated manifest")
-            transaction.update(config["candidate"], authorized=True)
 
 
 if __name__ == "__main__":

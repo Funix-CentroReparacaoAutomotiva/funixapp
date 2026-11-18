@@ -12,15 +12,20 @@ import time
 
 
 class DockerAdapter:
-    def __init__(self, *, compose, contract, database, state, validator):
-        self.compose = Path(compose).resolve(strict=True)
+    def __init__(self, *, compose, contract, database, state, validator, env_file=None):
+        files = compose if isinstance(compose, list) else [compose]
+        self.compose = Path(files[0]).resolve(strict=True)
         self.contract = contract
         self.database = Path(database).resolve(strict=True)
         self.state = Path(state).resolve(strict=True)
         self.validator = validator
+        self.operation_directory = self.state
         self.override = self.state / "images.json"
-        self.base = ["docker", "compose", "--project-name", "funix-hml",
-                     "-f", str(self.compose)]
+        self.base = ["docker", "compose", "--project-name", "funix-hml"]
+        if env_file:
+            self.base += ["--env-file", str(Path(env_file).resolve(strict=True))]
+        for file in files:
+            self.base += ["-f", str(Path(file).resolve(strict=True))]
 
     def run(self, arguments):
         result = subprocess.run(arguments, capture_output=True, text=True, timeout=120)
@@ -53,6 +58,15 @@ class DockerAdapter:
                 raise ValueError("image must be pinned by ID")
             self.run(["docker", "image", "inspect", release[role]])
 
+    def assert_installed(self, release):
+        records = self.containers()
+        actual = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"] for item in records}
+        if any(actual.get(role) != release[role] for role in ("api", "web", "gateway")):
+            raise ValueError("installed release differs from operation")
+        environment = self.configuration()["services"]["api"].get("environment", {})
+        if environment.get("FUNIX_REVISION") != release["revision"]:
+            raise ValueError("installed revision differs from operation")
+
     def preflight(self, candidate):
         self.check_release(candidate)
         config = self.configuration()
@@ -78,6 +92,17 @@ class DockerAdapter:
             physical = {config["networks"][name]["name"] for name in service.get("networks", {})}
             if physical != expected:
                 raise ValueError("unexpected networks")
+            for mount in service.get("volumes", []):
+                source = Path(mount.get("source", ""))
+                if mount.get("type") != "bind" or not source.is_absolute() or source.resolve() != source:
+                    raise ValueError("unsupported or noncanonical mount")
+                data = role == "api" and source == self.database.parent and mount.get("target") == "/data"
+                configuration = (source.is_relative_to("/etc/funix-hml") and mount.get("read_only") is True)
+                if not (data or configuration):
+                    raise ValueError("mount outside HML policy")
+            for key, value in service.get("environment", {}).items():
+                if key.endswith(("_ENABLED", "_ENABLE")) and str(value).lower() not in ("false", "0", ""):
+                    raise ValueError("external integration flag enabled")
         records = self.containers()
         previous = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"]
                     for item in records}
@@ -131,7 +156,7 @@ class DockerAdapter:
     def restore_database(self, staged):
         self.quiesce()
         metadata = self.database.stat()
-        failed = self.state / "failed-database"
+        failed = self.operation_directory / "failed-database"
         failed.mkdir(mode=0o700, exist_ok=True)
         # Preserve failed database and auxiliary files, idempotently on recovery.
         for suffix in ("", "-wal", "-shm", "-journal"):
