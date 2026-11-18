@@ -70,7 +70,7 @@ export function createEvolutionChatBridge(
       byId.delete(oldest)
       byJid.delete(entry.jid)
     }
-    const id = randomUUID()
+    const id = contacts?.identities.rememberProviderConversation(jid) ?? randomUUID()
     byId.set(id, { jid, at: now() })
     byJid.set(jid, id)
     return id
@@ -124,7 +124,8 @@ export function createEvolutionChatBridge(
       if (source === 'evolution') local?.store.observeChats(rows)
       // Scan the entire provider page before resolving any links to detect collisions.
       if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
-      else associations?.observePhoneAliases(rows)
+      else if(associations)associations.observePhoneAliases(rows)
+      else contacts?.identities.rememberProviderAliases(rows, false, 'findChats')
       if (local?.read) {
         rows = local.store.list(skip)
         sourceCount = rows.length

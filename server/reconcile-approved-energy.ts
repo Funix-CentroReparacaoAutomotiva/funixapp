@@ -16,7 +16,7 @@ const canonical=(v:unknown):unknown=>Array.isArray(v)?v.map(canonical):v!==null&
 const same=(a:unknown,b:unknown)=>digest(canonical(a))===digest(canonical(b))
 function check(db:DatabaseSync){
  const versions=db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(r=>Number(r.version))
- if(![20,21].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw Error('Reconciliação exige SQLite V20 ou V21 existente, sem migração.')
+ if(![20,21,22].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw Error('Reconciliação exige SQLite V20, V21 ou V22 existente, sem migração.')
  if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Banco inconsistente; operação recusada.')
 }
 

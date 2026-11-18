@@ -48,7 +48,30 @@ Leitura e mídia revalidam Contato, revisão, instância, PN/LID, titularidade n
 
 ## Verificações
 
-Resultados finais e evidências sintéticas serão registrados após a conclusão da suíte e do CI. As verificações incluem contratos HTTP, concorrência/idempotência, PN/LID, migração e Chromium 320/390/1440, além das regressões existentes.
+Todos os testes desta entrega usam SQLite descartável e provedores sintéticos. Nenhum envio ou consulta foi feito à Evolution instalada.
+
+- `npm run check`: **aprovado**, com build de produção, TypeScript do servidor, **1.099 testes de servidor**, lint sem erros e **8 testes de custo de voz**. Avisos de lint não foram tratados como falha nem ocultados.
+- `node --test server/tests/entity-contacts.test.ts server/tests/entity-migration.test.ts`: **16 testes aprovados**. Incluem contratos HTTP autenticados, concorrência, lease/cache, PN/LID contraditório, resultado tardio, idempotência e resultado incerto de texto/mídia, preservação de histórico local offline e backup/rollback em arquivo.
+- Chromium: `node scripts/customer-experience-browser.mjs`, `node scripts/conversation-phone-browser.mjs`, `node scripts/entity-contacts-browser.mjs`, `python3 tests/browser/chat_v20_conversations.py` e `python3 tests/browser/chat_v20_links.py`: **cinco roteiros aprovados** após atualização da base.
+- O novo roteiro de Entidades usa frontend e API reais com transporte e envio sintéticos. Em **320/390/1440 px**, confirmou três números (dois disponíveis e um negativo), dois históricos independentes, rascunhos preservados ao alternar Contatos, confirmação/cancelamento de texto e mídia, vários responsáveis e ausência de vínculos comerciais implícitos, overflow e erros JavaScript. [Resultados estruturados](../evidencias/entidades-contatos-whatsapp/chromium.json).
+- `python3 tests/browser/pdf_emission.py`: aprovado em 1440/390/320, incluindo emissão, falhas, recuperação idempotente, reinício, integridade e preservação dos PDFs. [Desktop](../evidencias/entidades-contatos-whatsapp/pdf-desktop.json), [390](../evidencias/entidades-contatos-whatsapp/pdf-mobile390.json), [320](../evidencias/entidades-contatos-whatsapp/pdf-mobile320.json).
+- Capturas: [cadastro 320](../evidencias/entidades-contatos-whatsapp/entity-320.png), [390](../evidencias/entidades-contatos-whatsapp/entity-390.png), [1440](../evidencias/entidades-contatos-whatsapp/entity-1440.png); [Chat 320](../evidencias/entidades-contatos-whatsapp/chat-320.png), [390](../evidencias/entidades-contatos-whatsapp/chat-390.png), [1440](../evidencias/entidades-contatos-whatsapp/chat-1440.png); [responsáveis 320](../evidencias/entidades-contatos-whatsapp/responsibles-320.png), [390](../evidencias/entidades-contatos-whatsapp/responsibles-390.png), [1440](../evidencias/entidades-contatos-whatsapp/responsibles-1440.png).
+
+Correções comprovadas na integração com a nova main: dois validadores de catálogo/energia ainda limitavam o schema a V20/V21 e o teste de PDF esperava V21; foram atualizados para admitir V22, sem alterar catálogos ou cálculos. Um teste adicional reproduziu a perda de nome/handle estável no modo sem serviços de associação comercial: a lista agora reutiliza `ConversationIdentities` também nesse modo, sem exigir Coda ou vínculo com Atendimento.
+
+| Critério | Evidência e limite |
+| --- | --- |
+| 1. Entidade com vários números | Cadastro transacional e Chromium com três Contatos. |
+| 2–4. Disponível, negativo e indisponível | Contrato estrito do adaptador, estados persistidos e cadastro mantido após falha; disponível/negativo também no navegador. |
+| 5–6. Históricos separados e recuperação | Dois números, handle PN/LID existente preservado, leitura local offline e histórico do provedor sintético. |
+| 7–8. Vários responsáveis e nome único | Mesmas Entidades em vários Atendimentos, telefones na interface e atualização de nome sem duplicá-lo no Chat. |
+| 9. Preservação | Migração V22, falha provocada, retry, reabertura, comparação de colunas antigas e restauração do backup V21. |
+| 10. Sem envio automático | Contadores zero ao cadastrar/verificar/abrir; envio sintético somente após confirmação. |
+| 11. Conflitos | Duplicidade histórica, titular diferente, resposta tardia, PN divergente/LID isolado e mudança de sessão/contexto recusados. |
+| 12. Chromium | 320/390/1440 aprovados; aparelhos físicos ainda pendentes. |
+| 13. Suíte e CI | Execuções da [PR #261](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/261/checks); resultado final por SHA registrado na descrição da PR. |
+
+Essas evidências comprovam os contratos em desenvolvimento; não substituem validação do build instalado da Evolution, inventário de dados autorizados nem aparelhos físicos.
 
 ## Procedimento de migração e recuperação — somente cópia DEV autorizada
 

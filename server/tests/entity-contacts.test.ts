@@ -3,11 +3,26 @@ import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {entityContactsFixture} from './fixtures/entity-contacts.ts'
 import {ContactChannels} from '../chat/contact-channels.ts'
+import {createEvolutionChatBridge} from '../chat/evolution-bridge.ts'
 import {EvolutionReadPoc} from '../experimental/evolution-read/client.ts'
 import {createApp} from '../app.ts'
 import {parseConversationMessages} from '../../src/chat/evolution-read-model.ts'
 const phone1='+5531999990101',phone2='+5531999990202',jid=(p:string)=>p.slice(1)+'@s.whatsapp.net'
 const code=(value:string)=>(e:unknown)=>(e as {code?:string}).code===value
+
+test('standalone Contacts keep the verified handle and Entity name without commercial association services',async()=>{
+ const f=entityContactsFixture();try{
+  const entity=f.customers.save({kind:'entity',text:'Pessoa independente',contacts:[{text:phone1}]})
+  const contact=(await f.channels.verifyEntity(entity.id)).contacts[0]!
+  f.rows.push(jid(phone1))
+  const bridge=createEvolutionChatBridge(f.provider,Date.now,undefined,undefined,undefined,undefined,undefined,undefined,f.channels)
+  const row=(await bridge.list(0)).items[0]!
+  assert.equal(row.conversationId,contact.conversationId)
+  assert.deepEqual(row.commercial?.names,[{name:entity.text,entityId:entity.id}])
+  assert.equal((await bridge.list(0)).items[0]!.conversationId,contact.conversationId)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
 
 test('entity has multiple phones; availability/negative/pending retain all records and send nothing',async()=>{
  const f=entityContactsFixture();try{
