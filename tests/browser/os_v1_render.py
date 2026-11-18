@@ -144,6 +144,36 @@ with TemporaryDirectory(prefix="funix-os-v1-") as tmp, sync_playwright() as play
         print(f"PASS: official OS V1, {count} synthetic pieces, {len(doc)} pages")
         doc.close()
         page.close()
+    # Border regression in actual rendered print CSS, including the single-component case.
+    data=json.loads(subprocess.check_output(
+        ["node","tests/browser/fixtures/os_v1_data.ts","4","component-borders"],
+        cwd=ROOT,text=True))
+    page=browser.new_page(viewport={"width":1122,"height":800})
+    page.emulate_media(media="print")
+    page.set_content(data["content"],wait_until="load")
+    rows=page.locator(".main-matrix tbody tr")
+    assert rows.count()==4
+    for index,expected in enumerate(([("A1",True,True,1,1)],
+        [("B1",True,False,1,0),("B2",False,False,0,0),("B3",False,True,0,1)],
+        [],[("D1",True,True,1,0)])):
+        actual=rows.nth(index).locator(".piece-ladder-code").evaluate_all("""els=>els.map(e=>{
+            const s=getComputedStyle(e);
+            return [e.textContent,e.classList.contains('piece-ladder-code--first'),
+                e.classList.contains('piece-ladder-code--last'),
+                parseFloat(s.borderTopWidth),parseFloat(s.borderBottomWidth)]
+        })""")
+        assert actual==[list(x) for x in expected],("component borders",index,actual)
+    marker=rows.nth(3).locator(".piece-ladder-comment-marker")
+    assert marker.evaluate("e=>getComputedStyle(e).borderTopWidth")=="1px"
+    output=Path(tmp)/"component-borders.pdf"
+    render(page,data,output)
+    with fitz.open(str(output)) as doc:
+        assert_geometry(doc)
+        text=" ".join(p.get_text() for p in doc)
+        for token in ("A1","B1","B2","B3","D1"):
+            assert re.search(r"\b"+token+r"\b",text),("missing code",token)
+    print("PASS: component-code borders — single, multiple, none, and with notes")
+    page.close()
     stress=payload(4,True)
     page=browser.new_page()
     output=Path(tmp)/"stress.pdf"
