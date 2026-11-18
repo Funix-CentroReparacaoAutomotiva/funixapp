@@ -393,3 +393,26 @@ Compose instalado apenas por sucesso do fixture.
 CLI de mutações continua bloqueada. Ainda não testados pacote real
 gerado pelo workflow manual, configuração instalada e recuperação de
 interrupção nas trocas reais do gateway. Sem uso de Codex ou VPS.
+
+### Ajuste de normalização Compose e ensaios de recuperação
+
+Run 44235324170, job 134569950890, HEAD 9005c4d: todos os 85 testes
+passaram. Guard de escritores confirmou o bloqueio e a liberação.
+O preflight Docker bloqueou em "implicit host path creation", apesar
+de os binds do fixture declararem create_host_path:false. Isso é
+compatível com a omissão de campos false no JSON normalizado de Compose.
+O ajuste aceita ausência do campo como false somente na representação
+normalizada, exige origem existente e preserva a comparação de caminho
+canônico, destino e permissão com a política independente. Valor true
+continua bloqueado. Novo teste cobre omissão, true explícito e origem
+ausente. Aguardar novo CI para confirmar a hipótese.
+
+O ensaio Docker foi ampliado com interrupções controladas por BaseException
+em dois pontos, sem executar o rollback automático: após validação restrita
+e após aceite persistente + reabertura efetiva do gateway normal. Em ambos,
+reconstrói adaptador/coordenador com o journal persistido e usa recover.
+No segundo cenário, um POST HTTPS autenticado realiza gravação sintética
+depois da abertura e a recuperação deve preservá-la. Não se trata de
+SIGKILL do processo nem de falha de energia; são injeções de interrupção
+com contêineres, dados e gateway reais mantidos entre as chamadas. Ainda
+não executadas no momento deste commit. CLI real permanece bloqueada.

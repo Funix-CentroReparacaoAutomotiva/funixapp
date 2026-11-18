@@ -19,6 +19,8 @@ class IsolationTest(unittest.TestCase):
         self.db.parent.mkdir()
         self.mounts = {"/etc/nginx/nginx.conf": str(root/"nginx"),
                        "/etc/nginx/hml.htpasswd": str(root/"auth")}
+        for source in self.mounts.values():
+            Path(source).touch()
         self.release = {role: "sha256:" + str(i)*64 for i, role in enumerate(sorted(iso.ROLES), 1)}
         self.release["revision"] = "a"*40
         env = {**iso.FIXED, **{key:"false" for key in iso.FLAGS},
@@ -62,6 +64,18 @@ class IsolationTest(unittest.TestCase):
     def test_expected_configuration_and_runtime(self):
         self.compose()
         self.runtime()
+
+    def test_normalized_bind_false_may_be_omitted_but_creation_is_blocked(self):
+        mount = self.config["services"]["api"]["volumes"][0]
+        mount["bind"] = {}
+        self.compose()
+        mount["bind"] = {"create_host_path": True}
+        with self.assertRaisesRegex(ValueError, "implicit host path"):
+            self.compose()
+        mount["bind"] = {}
+        self.db.parent.rmdir()
+        with self.assertRaisesRegex(ValueError, "bind source missing"):
+            self.compose()
 
     def test_unsafe_config_is_not_authorized_by_an_equal_contract(self):
         for patch in ({"privileged":True},{"cap_add":["SYS_ADMIN"]},{"ports":["8787:8787"]},

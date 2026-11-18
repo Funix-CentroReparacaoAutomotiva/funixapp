@@ -26,6 +26,10 @@ ROOT = Path(__file__).resolve().parents[1]
 OLD, NEW = "a" * 40, "b" * 40
 
 
+class SimulatedInterruption(BaseException):
+    """Bypass automatic rollback; leave actual Docker state and journal intact."""
+
+
 def load(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
@@ -248,9 +252,11 @@ server {
                     updater.validator(credentials,normal_credentials=normal_login)(release)
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone()[0] != "unexpected user write"
-                adapter = adapter_module.MaintenanceDockerAdapter(
-                    compose=compose,contract=contract,database=database,state=state,
-                    validator=updater.validator(normal_login),restricted_validator=restricted)
+                def fresh_adapter():
+                    return adapter_module.MaintenanceDockerAdapter(
+                        compose=compose,contract=contract,database=database,state=state,
+                        validator=updater.validator(normal_login),restricted_validator=restricted)
+                adapter = fresh_adapter()
                 previous = dict(api=api_old,web=api_old,gateway=gateway,revision=OLD)
                 candidate = dict(api=api_new,web=web_new,gateway=gateway,revision=NEW)
                 # Check actual Docker isolation before any update. Wait only for
@@ -273,6 +279,71 @@ server {
                     assert json.loads(operation.journal.read_text())["phase"] == "restored"
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("original",)
+                    # Interrupt after real restricted validation but before
+                    # durable acceptance. No automatic restore on BaseException.
+                    interrupted_adapter = fresh_adapter()
+                    interrupted = transaction.Transaction(root/"interrupted",interrupted_adapter,
+                                                           project_state=state,maintenance=True)
+                    validate_real = interrupted_adapter.validate
+                    def interrupt_before_accept(release):
+                        validate_real(release)
+                        raise SimulatedInterruption("before acceptance")
+                    with patch.object(interrupted_adapter,"validate",side_effect=interrupt_before_accept):
+                        try:
+                            interrupted.update(candidate,authorized=True)
+                        except SimulatedInterruption:
+                            pass
+                        else:
+                            raise AssertionError("pre-accept interruption not injected")
+                    assert json.loads(interrupted.journal.read_text())["phase"] == "installing"
+                    interrupted_adapter.assert_gateway_mounts(restricted=True)
+                    recovered = transaction.Transaction(interrupted.root,fresh_adapter(),
+                                                         project_state=state,maintenance=True)
+                    recovered.recover(authorized=True)
+                    assert json.loads(recovered.journal.read_text())["phase"] == "restored"
+                    with closing(sqlite3.connect(database)) as db, db:
+                        assert db.execute("SELECT value FROM atendimentos").fetchone() == ("original",)
+                    print("HML_PRE_ACCEPT_RECOVERY_OK", flush=True)
+
+                    # Interrupt after durable acceptance and actual normal
+                    # gateway reopening. A real POST makes a synthetic later
+                    # write; recovery must reopen, never restore old data.
+                    opening_adapter = fresh_adapter()
+                    opening = transaction.Transaction(root/"opening",opening_adapter,
+                                                       project_state=state,maintenance=True)
+                    open_real = opening_adapter.open_access
+                    def interrupt_after_open(release):
+                        open_real(release)
+                        connection = http.client.HTTPSConnection("hml.funix.com.br",timeout=10,
+                                                                  context=trust)
+                        try:
+                            connection.request("POST","/api/ready",headers={
+                                "Authorization":updater.read_login(normal_login)})
+                            response = connection.getresponse()
+                            assert response.status == 200
+                            response.read()
+                        finally:
+                            connection.close()
+                        raise SimulatedInterruption("after normal access")
+                    with patch.object(opening_adapter,"open_access",side_effect=interrupt_after_open):
+                        try:
+                            opening.update(candidate,authorized=True)
+                        except SimulatedInterruption:
+                            pass
+                        else:
+                            raise AssertionError("post-accept interruption not injected")
+                    assert json.loads(opening.journal.read_text())["phase"] == "accepted_pending_open"
+                    opening_adapter.assert_gateway_mounts(restricted=False)
+                    with closing(sqlite3.connect(database)) as db, db:
+                        assert db.execute("SELECT value FROM atendimentos").fetchone() == ("unexpected user write",)
+                    resumed = transaction.Transaction(opening.root,fresh_adapter(),
+                                                       project_state=state,maintenance=True)
+                    resumed.recover(authorized=True)
+                    assert json.loads(resumed.journal.read_text())["phase"] == "accepted"
+                    resumed.adapter.assert_installed(candidate)
+                    with closing(sqlite3.connect(database)) as db, db:
+                        assert db.execute("SELECT value FROM atendimentos").fetchone() == ("unexpected user write",)
+                    print("HML_POST_ACCEPT_RECOVERY_PRESERVES_WRITES_OK", flush=True)
                 assert all(file.read_bytes()==content for file,content in before.items())
                 print("HML_DOCKER_MAINTENANCE_TLS_ROLLBACK_OK")
             finally:

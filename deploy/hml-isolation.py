@@ -129,7 +129,11 @@ def check_mounts(role, mounts, database, gateway_mounts, *, live=False):
             readonly = not mount["RW"]
         else:
             readonly = mount.get("read_only", False) is True
-            require(mount.get("bind", {}).get("create_host_path") is False, "implicit host path creation")
+            # Compose's normalized JSON can omit false (zero-value) fields.
+            # Only an existing, canonical, explicitly allowed source is valid.
+            require(mount.get("bind", {}).get("create_host_path", False) is False,
+                    "implicit host path creation")
+            require(Path(source).exists(), "bind source missing")
         actual[target] = (source, readonly)
     require(actual == expected_binds(role, database, gateway_mounts), "unexpected bind mounts")
 
