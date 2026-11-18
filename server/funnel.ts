@@ -15,6 +15,8 @@ export function funnelProjection(db:DatabaseSync,items:Atendimento[]):Atendiment
   const config=pricing.get().config,catalog=commercial.catalogs().items
   return items.map(item=>{
     const last=db.prepare('SELECT MAX(occurred_at) AS at FROM atendimento_contact_events WHERE atendimento_id=?').get(item.id)?.at
+    if(item.purpose==='unclassified'||item.purpose==='non_commercial')
+      return {...item,lastContactAt:last?String(last):null,commercialValue:null}
     const scenarios=new ScenarioRepository(db).list(item.id),values:string[]=[]
     let incomplete=false
     for(const scenario of scenarios){

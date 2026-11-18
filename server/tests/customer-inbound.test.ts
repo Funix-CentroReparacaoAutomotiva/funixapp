@@ -28,7 +28,8 @@ test('autonomous inbound creates once, snapshots once, preserves manual changes 
  assert.equal(f.at.list().total,1);assert.equal(f.at.get(first.id).name,'Pedro');assert.equal(f.at.get(first.id).phone,'')
  const snapshot=f.db.prepare('SELECT * FROM conversation_initialization').get()!;assert.equal(snapshot.decision,'created');assert.equal(JSON.parse(String(snapshot.snapshot)).name,'Maria')
  assert.equal(f.db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,2)
- assert.equal(f.db.prepare('SELECT COUNT(*) n FROM atendimento_contact_events').get()!.n,2)
+ assert.equal(f.db.prepare('SELECT COUNT(*) n FROM atendimento_contact_events').get()!.n,1)
+ assert.equal(f.runtime.authority!.interaction(PN).blocked,true)
  assert.equal(f.runtime.authority!.projection(PN).unreadCount,2)
  const page=f.runtime.store.page(PN,1);assert.equal(page.items.length,2)
  }finally{f.db.close()}
@@ -70,8 +71,28 @@ test('individual seals, distinct names, own nickname and empty fallback',()=>{
  assert.deepEqual(conversationNames('',null,people),[people[0],people[2]])
  assert.deepEqual(conversationNames('Dona Maria',null,people),[{name:'Dona Maria',entityId:null}])
 })
-test('commercial clock stays unchanged after cadastral edit; closed ficha stays closed after new inbound',()=>{
- const f=fixture();try{f.ingest();const a=f.at.list().items[0]!,before=funnelProjection(f.db,[a])[0]!;assert.equal(before.lastContactAt,'2026-01-01T00:00:00.000Z');assert.equal(before.commercialValue,null);f.at.update(a.id,{revision:a.revision,plate:'ABC1D23',closed:true});f.ingest(event('after-closed'));assert.equal(f.at.list().total,1);assert.ok(f.at.get(a.id).closedAt);assert.equal(funnelProjection(f.db,[f.at.get(a.id)])[0]!.lastContactAt,before.lastContactAt)}finally{f.db.close()}
+test('closed interaction is preserved; old/replayed messages do not start a new Atendimento',()=>{
+ const f=fixture();try{
+  const first=event()
+  f.ingest(first)
+  const a=f.at.list().items[0]!,before=funnelProjection(f.db,[a])[0]!
+  assert.equal(a.purpose,'unclassified')
+  assert.equal(before.lastContactAt,first.occurredAt)
+  const closed=f.at.update(a.id,{revision:a.revision,plate:'ABC1D23',purpose:'non_commercial',closed:true})
+  assert.equal(closed.explicitRefusal,false)
+  f.ingest({...first,eventId:'another-event-same-message'})
+  f.ingest(event('late-history'))
+  assert.equal(f.at.list().total,1)
+  // Close precedes a genuinely new inbound with a different message ID.
+  const next=event('new-demand')
+  next.message.timestamp=Math.floor(Date.parse(closed.closedAt!)/1000)+2
+  next.occurredAt=new Date(next.message.timestamp*1000).toISOString()
+  f.ingest(next);f.ingest(next)
+  assert.equal(f.at.list().total,2)
+  assert.equal(f.runtime.authority!.projection(PN).atendimentoCount,2)
+  assert.equal(f.at.get(a.id).closedAt,closed.closedAt)
+  assert.equal(funnelProjection(f.db,[f.at.get(a.id)])[0]!.lastContactAt,before.lastContactAt)
+ }finally{f.db.close()}
 })
 test('independent concurrent SQLite processes and restart create exactly one Atendimento',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'funix-autonomous-')),path=join(dir,'synthetic.sqlite'),script=join(dir,'worker.mjs')
@@ -216,4 +237,22 @@ test('V19 reuses previously confirmed bindings stored in the app database and pr
    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   }finally{db.close()}
  }
+})
+
+
+test('authenticated inbound references the explicitly assigned Entity without copying provider name',()=>{
+ const f=fixture();try{
+  const entity=f.customers.save({kind:'entity',text:'Pessoa cadastrada',contacts:[{text:'+5531999990101'}]})
+  const contact=f.customers.contacts(entity.id)[0]!
+  const cid=f.runtime.authority!.rememberProviderConversation(PN)
+  f.db.prepare('UPDATE customer_records SET conversation_id=? WHERE id=?').run(cid,contact.id)
+  f.ingest(event('first-known',PN,null,'Nome do WhatsApp'))
+  const a=f.at.list().items[0]!
+  assert.deepEqual(f.at.get(a.id,true).references!.person,[{id:entity.id,text:entity.text}])
+  f.ingest(event('second-known'))
+  assert.equal(f.at.list().total,1)
+  assert.equal(f.at.get(a.id,true).references!.person.length,1)
+  f.customers.save({text:'Pessoa renomeada',revision:entity.revision},entity.id)
+  assert.equal(f.at.get(a.id,true).references!.person[0]!.text,'Pessoa renomeada')
+ }finally{f.db.close()}
 })

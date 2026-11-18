@@ -303,7 +303,6 @@ export class ConversationStore {
           (this.identities.identityState(e.message.remoteJid) === 'linked' || !!this.identities.inbound && this.identities.identityState(e.message.remoteJid) === 'missing_confirmation')
         ) {
           this.apply(e, this.ensure(e.message.remoteJid))
-          this.identities.inbound?.(e)
           this.db
             .prepare(
               "UPDATE chat_events SET disposition='projected',reason='RECONCILED_AFTER_CONFIRMATION' WHERE instance=? AND event_id=?",
@@ -332,8 +331,11 @@ export class ConversationStore {
           .prepare('UPDATE chat_conversation_coverage SET display_name=? WHERE conversation_id=?')
           .run(e.displayName, id)
       if (disposition !== 'quarantined' || !!this.identities.inbound) {
+        const members=this.identities.identityJids(e.message.remoteJid)
+        const known=members&&this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id
+          WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) AND m.message_id=? LIMIT 1`).get(instance,...members,e.message.messageId)
         this.apply(e, id)
-        this.identities.inbound?.(e)
+        this.identities.inbound?.(e,!known)
         if (identity === 'context_conflict') disposition = 'pending'
       }
       const receiptId = randomUUID()
