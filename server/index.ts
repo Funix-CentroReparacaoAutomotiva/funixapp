@@ -19,6 +19,7 @@ import { createCodaBackedDevelopmentReconciliationCycle } from './chat/coda-reco
 import { startDevelopmentReconciliationScheduler } from './chat/coda-reconciliation-scheduler-dev.ts'
 import { ServiceError } from './errors.ts'
 import { loadQuotePilot } from './component-quote-bootstrap.ts'
+import { loadExternalBudgetApi } from './external-budget-api.ts'
 import {loadGmailAnalysis} from './gmail-analysis-providers.ts'
 
 const port = Number(process.env.FUNIX_API_PORT ?? 8787)
@@ -61,7 +62,8 @@ const sourceLedger = sourceLedgerKey ? (() => {
 })() : undefined
 const decisionLedger=sourceLedger ? {ledger:sourceLedger.decisionLedger,secret:sourceLedger.secret} : undefined
 const gmailAnalysis=loadGmailAnalysis(db,process.env)
-const app = createApp({ gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
+const externalBudget = loadExternalBudgetApi(process.env, db)
+const app = createApp({ externalBudget, gmailAnalysis, conversationRuntime, codaSync, sourceLedger, decisionLedger, atendimentos, password: process.env.FUNIX_OPERATOR_PASSWORD, origin: process.env.FUNIX_APP_ORIGIN, revision: process.env.FUNIX_REVISION, whatsappIngest: loadIngestOptions(process.env), evolutionChat: loadEvolutionChat(process.env, v20Associations, codaSync?.repo, conversationRuntime), v20Associations: conversationRuntime ? new V20AssociationRepository(db) : v20Associations, quotePilot: loadQuotePilot(process.env,databasePath) })
 // Media uploads are capped to 12 MiB; allow slow mobile connections up to 60s.
 app.requestTimeout = 60_000
 app.headersTimeout = 10_000

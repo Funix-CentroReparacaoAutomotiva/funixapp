@@ -11,8 +11,8 @@ export function inputObject(input: unknown, keys: string[]): Record<string, unkn
   if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !keys.includes(k))) invalid('Campos inválidos ou não permitidos.')
   return input as Record<string, unknown>
 }
-export function transaction<T>(db: DatabaseSync, action: () => T): T {
-  db.exec('BEGIN IMMEDIATE')
+export function transaction<T>(db: DatabaseSync, action: () => T, mode: 'read' | 'write' = 'write'): T {
+  db.exec(mode === 'read' ? 'BEGIN' : 'BEGIN IMMEDIATE')
   try { const result = action(); db.exec('COMMIT'); return result }
   catch (error) { db.exec('ROLLBACK'); throw error }
 }
@@ -36,6 +36,10 @@ export class ScenarioRepository {
   readonly db: DatabaseSync
   readonly runTransaction:NativeTransactionRunner
   constructor(db: DatabaseSync,runTransaction?:NativeTransactionRunner) { this.db = db;this.runTransaction=runTransaction??(action=>transaction(db,action)) }
+  revisions(at: string): [id: string, revision: number][] {
+    return this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at)
+      .map(row => [String(row.id), Number(row.revision)])
+  }
   list(at: string): Scenario[] {
     new AtendimentoRepository(this.db).get(at)
     const confirmations=new Map<string,Record<string,string>>()

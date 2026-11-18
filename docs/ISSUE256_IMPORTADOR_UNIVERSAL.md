@@ -2,6 +2,8 @@
 
 Decisão da direção: o destino primário é uma composição nativa, editável, com valores comerciais conciliados; Coda é temporário, Cilia é recorrente. Não criar telas antes de validar o canal ChatGPT/n8n e o fluxo nativo. Preservar rastreabilidade da origem, sem nova emissão ou OS automática. Esta fase reutiliza PR #257, ainda draft; código de histórico separado existente permanece provisório/desligado e não deve ser habilitado como resultado final.
 
+O [contrato da API nativa e os artefatos ChatGPT/n8n](ISSUE256_API_NATIVA.md) descrevem a etapa mais recente. A aplicação transacional e a API de máquina para Coda já estão implementadas. A homologação com ERP real e a validação de formato do Cilia seguem pendentes.
+
 ## Implementação desta revisão
 - `server/external-budget.ts`: contrato neutro V1, validação estrita e aritmética exata, identidades por origem/documento/revisão, digest canônico e adaptador Coda a partir do pacote já validado. Campos do Cilia são **contrato proposto**, não formato de exportação verificado. SHA-256 de evidência não autentica documento. Preservar documento original no futuro fluxo autorizado.
 - Valores de serviço bruto/desconto/peças/total obrigatórios e conciliados; quantidade de origem e unidade (operação/hora/etc.) independentes da quantidade nativa. Distinguir faturamento e fornecimento; itens faturados por terceiros, origem incerta e franquias/impostos/complementos ficam bloqueados até definir representação correta. Não inferir receita, pagamento, autorização ou custo.

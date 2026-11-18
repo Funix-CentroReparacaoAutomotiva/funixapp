@@ -1,5 +1,7 @@
 # Issue #256 — aplicação nativa isolada
 
+A etapa seguinte conecta este serviço ao canal autenticado Coda → FunixApp via n8n e ChatGPT. Consulte a [API nativa](ISSUE256_API_NATIVA.md) para o contrato atual. O relatório abaixo descreve a implementação anterior ao canal de máquina.
+
 A etapa implementa um serviço interno de aplicação nativa. Uso exclusivo de ambiente de desenvolvimento/testes; schema de recibos explícito e não instalado por startup/migração; nenhuma rota ou credencial habilitada.
 
 - Reutiliza os repositórios comerciais existentes, com executor transacional interno opcional para compor operações dentro de uma única transação externa. O caminho comum conserva BEGIN/COMMIT/ROLLBACK. Uma falha desfaz cenário, composição, máscaras, revisão, lançamentos e recibo em conjunto.

@@ -60,7 +60,10 @@ import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 import type {HistoricalBudgetRepository} from './historical-budget-repository.ts'
 import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historical-coda-provider.ts'
 
+import { createExternalBudgetEndpoint, type ExternalBudgetApi } from './external-budget-api.ts'
+
 export interface AppOptions {
+  externalBudget?: ExternalBudgetApi
   historicalBudget?:{repo:HistoricalBudgetRepository;provider:HistoricalCaptureProvider;allowConfirmation?:boolean} // explicit isolated harness only
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
@@ -86,6 +89,7 @@ export interface AppOptions {
 }
 
 export function createRequestHandler(options: AppOptions) {
+  const externalBudget = options.externalBudget && createExternalBudgetEndpoint(options.atendimentos.db, options.externalBudget)
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -159,6 +163,18 @@ export function createRequestHandler(options: AppOptions) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+      const externalBudgetRoute = /^\/api\/integrations\/external-budgets\/(consulta|previa|confirmar)$/.exec(url.pathname)
+      if (externalBudgetRoute) {
+        if (!externalBudget) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'INVALID_QUERY', 'Parâmetros não permitidos.')
+        const result = await externalBudget(externalBudgetRoute[1]!, req.headers.authorization, () => {
+          if (req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
+            throw new ServiceError(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
+          return readJson(req, 512 * 1024)
+        })
+        return send(result.status, result.value)
+      }
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
         if (!decisionIntake) return fail(404,'NOT_FOUND','Rota não encontrada.')

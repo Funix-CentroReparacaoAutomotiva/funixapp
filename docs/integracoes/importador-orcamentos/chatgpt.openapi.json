@@ -1,0 +1,342 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Importador de orçamentos FunixApp",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://n8n.example.invalid/webhook"
+    }
+  ],
+  "security": [
+    {
+      "n8nBearer": []
+    }
+  ],
+  "paths": {
+    "/funix-orcamentos/consulta": {
+      "post": {
+        "operationId": "consultarOrcamentoCoda",
+        "summary": "Consultar orçamento do Coda",
+        "description": "Informe o ID do Atendimento escolhido pelo operador e o número exato no Coda. Apresente os dados de origem. Use os IDs de catálogo para propor o mapeamento técnico.",
+        "x-openai-isConsequential": false,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lookup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado JSON da operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro de autenticação, validação, conflito ou leitura da origem."
+          }
+        }
+      }
+    },
+    "/funix-orcamentos/previa": {
+      "post": {
+        "operationId": "prepararImportacaoCoda",
+        "summary": "Preparar prévia de cenário nativo",
+        "description": "Apresente identidade, peças, serviços, dimensões, quantidades, componentes, desconto, totais, prazo e avisos. Peça aprovação humana explícita da prévia. Em blocked ou existing, não chame a confirmação.",
+        "x-openai-isConsequential": false,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado JSON da operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro de autenticação, validação, conflito ou leitura da origem."
+          }
+        }
+      }
+    },
+    "/funix-orcamentos/confirmar": {
+      "post": {
+        "operationId": "confirmarImportacaoCoda",
+        "summary": "Gravar o cenário nativo revisado",
+        "description": "Use apenas após o operador aprovar explicitamente identidade, escopo técnico e valores da prévia atual. Envie o mesmo Atendimento, número, mapeamento e token da prévia, sem alterar nenhum campo. Em erro de conflito, prepare nova prévia para nova revisão.",
+        "x-openai-isConsequential": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Confirmation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado JSON da operação.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Cenário criado e recibo persistido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro de autenticação, validação, conflito ou leitura da origem."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "n8nBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Mapping": {
+        "type": "object",
+        "properties": {
+          "diagnoses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                },
+                "pieceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                },
+                "diagnosisId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "intensity": {
+                  "enum": [
+                    null,
+                    "leve",
+                    "moderado",
+                    "severo"
+                  ]
+                }
+              },
+              "required": [
+                "sourceId",
+                "pieceId",
+                "diagnosisId",
+                "intensity"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 250
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                },
+                "options": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "serviceId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                      },
+                      "dimensionId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_.:-]{1,150}$"
+                      },
+                      "quantity": {
+                        "type": "string",
+                        "description": "Quantidade nativa positiva em string decimal, com ponto e até 6 casas."
+                      }
+                    },
+                    "required": [
+                      "serviceId",
+                      "dimensionId",
+                      "quantity"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 20
+                }
+              },
+              "required": [
+                "sourceId",
+                "options"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "diagnoses",
+          "services"
+        ],
+        "additionalProperties": false
+      },
+      "Lookup": {
+        "type": "object",
+        "properties": {
+          "atendimentoId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Identificador do Atendimento escolhido pelo operador no FunixApp."
+          },
+          "number": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Número exato do orçamento no Coda."
+          }
+        },
+        "required": [
+          "atendimentoId",
+          "number"
+        ],
+        "additionalProperties": false
+      },
+      "Preview": {
+        "type": "object",
+        "properties": {
+          "atendimentoId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Identificador do Atendimento escolhido pelo operador no FunixApp."
+          },
+          "number": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Número exato do orçamento no Coda."
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          }
+        },
+        "required": [
+          "atendimentoId",
+          "number",
+          "mapping"
+        ],
+        "additionalProperties": false
+      },
+      "Confirmation": {
+        "type": "object",
+        "properties": {
+          "atendimentoId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Identificador do Atendimento escolhido pelo operador no FunixApp."
+          },
+          "number": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$",
+            "description": "Número exato do orçamento no Coda."
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/Mapping"
+          },
+          "previewToken": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "identityReviewed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "scopeReviewed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "financialReviewed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "atendimentoId",
+          "number",
+          "mapping",
+          "previewToken",
+          "confirmed",
+          "identityReviewed",
+          "scopeReviewed",
+          "financialReviewed"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

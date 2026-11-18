@@ -16,6 +16,39 @@ export type ExternalMapping={
   services:{sourceId:string;options:{serviceId:string;dimensionId:string;quantity:string}[]}[]
 }
 const invalid=():never=>{throw new ServiceError(422,'EXTERNAL_MAPPING_INVALID','Mapeamento externo inválido ou incompleto.')}
+export function parseExternalMapping(raw: unknown): ExternalMapping {
+  function fields(value: unknown, keys: string[]) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        Object.keys(value).length !== keys.length || !keys.every(key => Object.hasOwn(value, key))) return invalid()
+    return value as Record<string, unknown>
+  }
+  function id(value: unknown) {
+    if (typeof value !== 'string' || !/^[A-Za-z0-9_.:-]{1,150}$/.test(value)) return invalid()
+    return value
+  }
+  const { diagnoses, services } = fields(raw, ['diagnoses', 'services'])
+  if (!Array.isArray(diagnoses) || diagnoses.length > 250 ||
+      !Array.isArray(services) || services.length > 100) return invalid()
+  return {
+    diagnoses: diagnoses.map(value => {
+      const { sourceId, pieceId, diagnosisId, intensity } = fields(value, ['sourceId', 'pieceId', 'diagnosisId', 'intensity'])
+      if (intensity !== null && intensity !== 'leve' && intensity !== 'moderado' && intensity !== 'severo') return invalid()
+      return { sourceId: id(sourceId), pieceId: id(pieceId), diagnosisId: diagnosisId === null ? null : id(diagnosisId), intensity }
+    }),
+    services: services.map(value => {
+      const { sourceId, options } = fields(value, ['sourceId', 'options'])
+      if (!Array.isArray(options) || options.length < 1 || options.length > 20) return invalid()
+      return {
+        sourceId: id(sourceId),
+        options: options.map(value => {
+          const { serviceId, dimensionId, quantity } = fields(value, ['serviceId', 'dimensionId', 'quantity'])
+          if (typeof quantity !== 'string' || !/^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(quantity) || Q.from(quantity).n <= 0n) return invalid()
+          return { serviceId: id(serviceId), dimensionId: id(dimensionId), quantity }
+        }),
+      }
+    }),
+  }
+}
 function exact(v:string){const [w,f='']=v.split('.');return new Q(BigInt(w+f),10n**BigInt(f.length))}
 const eq=(a:string|null|undefined,b:string)=>a!==null&&a!==undefined&&exact(a).cmp(exact(b))===0
 /** Pure planner. Input mappings are proposed/technically reviewed options,
@@ -44,6 +77,7 @@ export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:C
   // Native composition has a unique physical piece. Do not combine diagnoses silently.
   if(new Set(items.map(i=>i.pieceId)).size!==items.length)return {state:'blocked' as const,source:p,issues:['NATIVE_PIECE_COLLISION']}
   const scenario=(items:DiagnosisItem[],components:ComponentItem[]):Scenario=>({id:'external-preview',atendimentoId:'external-preview',name:'Importação externa',position:1,revision:1,pieceFlags:Object.fromEntries(items.map(i=>[i.id,true])),serviceFlags:Object.fromEntries(items.flatMap(i=>i.services.map(l=>[l.id,true]))),componentFlags:Object.fromEntries(components.map(c=>[c.id,true]))})
+  if(d.services.length>100)return {state:'blocked' as const,source:p,issues:['SERVICE_SCOPE_OVER_SEARCH_LIMIT']}
   const optionGroups:ReviewedServiceOption[][]=[]
   const selectedOptions=new Map<string,{sourceId:string;serviceId:string;dimensionId:string;quantity:string}>()
   for(const r of d.services){
@@ -70,7 +104,6 @@ export function planExternalBudget(raw:unknown,mapping:ExternalMapping,catalog:C
     if(!options.length)return {state:'blocked' as const,source:p,issues:['SERVICE_OPTIONS_UNPRICED:'+r.id]}
     optionGroups.push(options)
   }
-  if(optionGroups.length>100)return {state:'blocked' as const,source:p,issues:['SERVICE_SCOPE_OVER_SEARCH_LIMIT']}
   const target=Q.from(d.totals.servicesGross).sub(Q.from(d.totals.serviceDiscount)).toString()
   const choice=chooseReviewedServiceCombination(target,optionGroups)
   if(choice.state!=='matched'||!choice.match)return {state:'blocked' as const,source:p,issues:[choice.state==='search-limit'?'SERVICE_SEARCH_LIMIT':'SERVICE_DISCOUNT_NO_MATCH']}
