@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto'
 import {ServiceError} from './errors.ts'
-import {Q,ZERO,sum} from './exact.ts'
+import {Q,sum} from './exact.ts'
 
 // Initial Cilia data-only XML profile. No general-purpose XML, DTD, attributes,
 // comments, processing instructions, CDATA, external entities or network access.
