@@ -1,0 +1,128 @@
+name: FUNIX - Homologacao (candidato)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR revisada do repositorio FUNIX, com CI aprovado"
+        required: true
+        type: string
+      revision:
+        description: "SHA completo de 40 caracteres da PR revisada"
+        required: true
+        type: string
+      authorized:
+        description: "Confirmo revisao da fonte e autorizo build isolado, sem deploy"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: funix-hml-candidate-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  select:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      revision: ${{ steps.candidate.outputs.revision }}
+      pr: ${{ steps.candidate.outputs.pr }}
+    steps:
+      - name: Reject unapproved dispatch or non-main workflow
+        env:
+          AUTHORIZED: ${{ inputs.authorized }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$AUTHORIZED" = true
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Select immutable tested PR head
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HML_PR: ${{ inputs.pr_number }}
+          HML_REVISION: ${{ inputs.revision }}
+          HML_AUTHORIZED: ${{ inputs.authorized }}
+        run: python3 deploy/hml-candidate.py
+
+  build:
+    needs: select
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      REVISION: ${{ needs.select.outputs.revision }}
+      PR_NUMBER: ${{ needs.select.outputs.pr }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.select.outputs.revision }}
+          persist-credentials: false
+      - name: Confirm exact candidate checkout
+        run: |
+          set -euo pipefail
+          [[ "$REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$REVISION"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+      - name: Retest candidate without real data or secrets
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+          python3 -m unittest discover -s deploy/tests -v
+      - name: Build and smoke-test exact API and Web locally on runner
+        run: |
+          set -euo pipefail
+          docker build --target api --label "org.opencontainers.image.revision=$REVISION" -t funix-api:ci .
+          docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
+          GITHUB_SHA="$REVISION" bash deploy/test-containers.sh
+      - name: Export HML-only candidate artifact, no registry or VPS access
+        run: |
+          set -euo pipefail
+          docker tag funix-api:ci "funix-hml-api:$REVISION"
+          docker tag funix-web:ci "funix-hml-web:$REVISION"
+          out="$RUNNER_TEMP/funix-hml-candidate"
+          mkdir -p "$out"
+          docker save "funix-hml-api:$REVISION" "funix-hml-web:$REVISION" | gzip -1 > "$out/images.tar.gz"
+          export OUT="$out"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          revision = os.environ["REVISION"]
+          out = pathlib.Path(os.environ["OUT"])
+          with (out / "images.tar.gz").open("rb") as stream:
+              archive_sha = hashlib.file_digest(stream, "sha256").hexdigest()
+          images = {}
+          for service in ("api", "web"):
+              tag = f"funix-hml-{service}:{revision}"
+              record = json.loads(subprocess.check_output(
+                  ["docker", "image", "inspect", tag], text=True))[0]
+              if record["Config"]["Labels"].get("org.opencontainers.image.revision") != revision:
+                  raise SystemExit("Image revision mismatch")
+              images[service] = {"tag": tag, "image_id": record["Id"]}
+          manifest = {
+              "schema": 1, "purpose": "hml-candidate-only",
+              "revision": revision, "pr": int(os.environ["PR_NUMBER"]),
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "archive_sha256": archive_sha, "images": images,
+          }
+          (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: funix-hml-${{ needs.select.outputs.revision }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/funix-hml-candidate/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
