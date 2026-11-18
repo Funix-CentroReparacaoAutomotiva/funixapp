@@ -57,16 +57,6 @@ body{background:#eef1f5}
 .footer-legend .legend-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:#233b59}
 .footer-legend .legend-text{font-size:10pt;line-height:1.05}
 .footer-legend svg{display:block;width:14px;height:14px;flex:0 0 14px;color:#224c7b}
-.piece-summary-table th:nth-child(1){width:13%}
-.piece-summary-table th:nth-child(2){width:48%}
-.piece-summary-table th:nth-child(3){width:39%}
-.component-table th:nth-child(1){width:16%}
-.component-table th:nth-child(2){width:62%}
-.component-table th:nth-child(3){width:22%;text-align:right}
-.main-matrix thead th:nth-child(2),.main-matrix tbody tr>th:nth-child(2){border-right:2px solid var(--navy)}
-.main-matrix tbody tr:nth-child(odd)>th,.main-matrix tbody tr:nth-child(odd)>td{background:#fff}
-.main-matrix tbody tr:nth-child(even)>th,.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe)}
-.main-matrix tbody tr>th:nth-child(2){padding-left:9px;padding-right:9px}
 
 @media screen{
  body{background:#e9edf2}}
@@ -100,28 +90,10 @@ body{background:#eef1f5}
   --inner-grid: #8998A9;
 }
 /* All meaningful external borders use the same 2px dark navy. */
-.identity,.closing-grid > section,.notes-section,
-.main-matrix,.footer-legend {
+.footer-legend {
   border:2px solid #0A1F44!important;
   border-radius:0!important;
 }
-/* Structural separation between piece description and first technical cluster: navy. */
-.main-matrix thead th:nth-child(2),
-.main-matrix tbody tr > th:nth-child(2) {
-  border-right:2px solid #0A1F44!important;
-}
-/* Consistent typographic width and centering for comparable summary fields. */
-.piece-summary-table thead th:nth-child(1),
-.piece-summary-table tbody td:nth-child(1),
-.component-table thead th:nth-child(1),
-.component-table tbody td:nth-child(1),
-.component-table thead th:nth-child(3),
-.component-table tbody td:nth-child(3) {
-  text-align:center!important;
-  vertical-align:middle!important;
-}
-.component-table th:nth-child(3),
-.component-table td.component-qty {text-align:center!important;}
 /* Re-center title 'Legenda:' against icon explanations on their real baselines.
    The SVG+inline-flex group is naturally ~5pt lower in the PDF renderer. */
 .footer-legend {
@@ -261,24 +233,6 @@ body{background:#eef1f5}
 .plan-header .v50-vehicle{line-height:1.1 !important;}
 
 
-/* Linhas brancas e linhas em cinza-azulado muito leve. */
-.main-matrix tbody tr:nth-child(odd)>th,
-.main-matrix tbody tr:nth-child(odd)>td{}
-
-/* Fine tune cluster-label positions */
-.technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-10px) !important;}
-.technical-band-labels .technical-band-label:nth-child(2),
-.technical-band-labels .technical-band-label:nth-child(3),
-.technical-band-labels .technical-band-label:nth-child(4){transform:translateX(4px) !important;}
-.technical-band-labels .technical-band-label:nth-child(5){transform:translateX(12px) !important;}
-
-/* Subtle row stripe preserved */
-.main-matrix tbody tr:nth-child(odd)>th,
-.main-matrix tbody tr:nth-child(odd)>td{background:#fff !important;}
-.main-matrix tbody tr:nth-child(even)>th,
-.main-matrix tbody tr:nth-child(even)>td{background:var(--stripe) !important;}
-
-
 /* V54 – paginação dentro do header e máscara do blank cell */
 
 .plan-header .mast{position:relative !important;}
@@ -318,12 +272,6 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
 }
 .v50-os-info > .v50-number{align-self:end !important;}
 .v50-os-info > .v50-delivery{align-self:start !important;}
-.technical-band-labels .technical-band-label:nth-child(1){transform:translateX(-6px) !important;}
-.technical-band-labels .technical-band-label:nth-child(2),
-.technical-band-labels .technical-band-label:nth-child(3),
-.technical-band-labels .technical-band-label:nth-child(4){transform:translateX(8px) !important;}
-.technical-band-labels .technical-band-label:nth-child(5){transform:translateX(18px) !important;}
-.piece-ladder-desc,.piece-ladder-qty,.piece-ladder-name,.piece-comment-text,.stage-entry .stage-name,.empty,
 .footer-legend .legend-text{font-size:11pt !important;}
 .legend-heading{font-size:11pt !important;}
 
@@ -416,33 +364,16 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
   padding:0 !important;
   transform:none !important;
 }
-.main-matrix tbody .piece-ladder-component,
-.main-matrix tbody .piece-ladder-component span,
-.main-matrix tbody .piece-ladder-comment-content,
-.main-matrix tbody .piece-ladder-comment-content span,
-.main-matrix tbody .piece-ladder-name,
-.main-matrix tbody .piece-ladder-code,
-.main-matrix tbody .piece-letter,
-.main-matrix tbody .empty,
 .footer-legend .legend-text,
-.footer-legend .legend-heading,
-.technical-band-label {
+.footer-legend .legend-heading {
   font-size:11pt !important;
 }
-.main-matrix .technical-band-label:nth-child(5) span {letter-spacing:-.48px !important;}
 
 /* Contrato para dados FunixApp: modelo/ano com 1 ano = YYYY, 2 anos = YY/YY.
    Placa sem hífen ou espaços: XXX#### ou XXX#X##. */
 
 
 /* FUNIX V58: tipografia padrão 10pt; exceções hierárquicas deliberadas. */
-body .main-matrix,
-body .main-matrix th,
-body .main-matrix td,
-body .main-matrix div,
-body .main-matrix span,
-body .main-matrix li,
-body .main-matrix p,
 body .footer-legend,
 body .footer-legend div,
 body .footer-legend span,
@@ -476,10 +407,6 @@ body .plan-header .v57-pagecount .pagecount-value{
   padding:0 !important;
   line-height:1 !important;
   transform:translateX(0.7mm) !important;
-}
-
-/* V59 — apenas a linha vertical branca entre o bloco OS/entrega e paginação */
-body .plan-header .mast > .v57-pagecount{
 }
 
 
@@ -523,10 +450,6 @@ body .plan-header .delivery-icon path{
 body .plan-header .logo svg path{
   fill:#FFFFFF !important;
 }
-/* Afastar "Serviços complementares" da margem direita. */
-body .main-matrix .technical-band-labels .technical-band-label:nth-child(5){
-  transform:translateX(6px) !important;
-}
 /* Rótulo da legenda com peso de negrito explícito. */
 body .footer-legend .legend-heading{
   font-weight:900 !important;
@@ -536,20 +459,7 @@ body .footer-legend .legend-heading{
 
 /* V62 — linhas alternadas com exatamente o mesmo fundo da legenda. */
 :root { --stripe: #D5DBE4 !important; }
-.main-matrix tbody tr:nth-child(even) > th,
-.main-matrix tbody tr:nth-child(even) > td {
-  background-color: #D5DBE4 !important;
-}
 .footer-legend { background-color: #D5DBE4 !important; }
-/* PR239: last arrow fallback correction moved to fourth technical cluster. */
-body .main-matrix .technical-band-labels .technical-band-label:nth-child(4) span:last-child {
-  transform:translateX(2px) scaleX(.85) !important;
-  transform-origin:center center !important;
-}
-/* PR240: native gray grid borders only, no synthetic dark separators. */
-html,body{}
-body .main-matrix .technical-band-label:nth-child(4) span,
-body .main-matrix .technical-band-label:nth-child(5) span{letter-spacing:-0.25px!important;}
 
 
 
@@ -563,7 +473,7 @@ html,body{height:210mm!important;width:297mm!important;margin:0!important;paddin
 }
 .footer-legend .legend-item{transform:none!important}
 /* Quarto título evita encostar no chevron com fonte de substituição mais larga. */
-.controls,.note,.sheet,.running-header{display:none!important}
+.running-header{display:none!important}
 
 /* Faixa V63 aprovada, com identificação do veículo em 16pt. */
 body .running-header.plan-header{display:block!important;position:fixed!important;top:4mm!important;left:5mm!important;width:287mm!important;max-width:287mm!important;margin:0!important;z-index:20}
@@ -625,7 +535,7 @@ body{background:#eef1f5}
  @bottom-left{content:none} @bottom-right{content:none}
 }
 .plan-page{page:plan;min-height:0}
-.cover-page,.plan-page{background:#fff;width:100%;max-width:100%;padding:0;margin:0}
+.plan-page{background:#fff;width:100%;max-width:100%;padding:0;margin:0}
 .execution{padding:0;margin:3mm 0 0;border:0}
 .main-matrix{table-layout:fixed;width:100%;border:2px solid var(--navy);border-collapse:separate;border-spacing:0;margin:0;background:#fff}
 .main-matrix col.piece-col{width:28%}
@@ -649,17 +559,17 @@ body{background:#eef1f5}
 .empty{display:block;color:#697c92;text-align:center;font-size:10pt}
 @media screen{
 body{background:#e9edf2}
-.cover-page,.plan-page{width:279mm;max-width:none;padding:0;margin:18px auto 26px;box-shadow:0 4px 20px #16263d20}}
+.plan-page{width:279mm;max-width:none;padding:0;margin:18px auto 26px;box-shadow:0 4px 20px #16263d20}}
 @media print{
 body{background:#fff}
-.cover-page,.plan-page{box-shadow:none!important}}
+.plan-page{box-shadow:none!important}}
 :root{--grid-strong:#a6b3c1;}
 .main-matrix tbody tr>th,.main-matrix tbody tr>td{border-bottom:2pt solid var(--grid-strong) !important; border-right:2pt solid var(--grid-strong) !important;}
 .main-matrix tbody tr>th:last-child,.main-matrix tbody tr>td:last-child{border-right:0 !important;}
 .main-matrix thead tr{height:46px !important;}
 .main-matrix thead th{height:46px !important; min-height:46px !important;}
 .main-matrix thead th{border-bottom:2px solid var(--navy) !important;}
-.piece-summary-table thead th,.component-table thead th,.main-matrix thead th{letter-spacing:0 !important;text-transform:none !important;}
+.main-matrix thead th{letter-spacing:0 !important;text-transform:none !important;}
 .main-matrix thead tr{height:48px !important;}
 .main-matrix thead th{height:48px !important;min-height:48px !important;}
 .main-matrix thead tr,
@@ -721,17 +631,13 @@ body{background:#fff}
   --header-table: #345A85;
   --inner-grid: #8998A9;
 }
-.piece-summary-table thead th,
-.component-table thead th,
 .main-matrix thead th,
-.main-matrix thead th.th-flat,
 .main-matrix thead th.technical-band {
   background:var(--header-table)!important;
   color:#fff!important;
   font-size:10pt!important;
 }
-.identity,.closing-grid > section,.notes-section,
-.main-matrix,.footer-legend {
+.main-matrix {
   border:2px solid #0A1F44!important;
   border-radius:0!important;
 }
@@ -794,7 +700,6 @@ body{background:#fff}
   height:44px!important;
   min-height:44px!important;
 }
-.main-matrix thead th .th-centered,
 .main-matrix thead th.technical-band .technical-band-labels,
 .main-matrix thead th.technical-band .technical-band-label {
   height:44px!important;
@@ -838,7 +743,6 @@ body{background:#fff}
   line-height:1.16!important;
 }
 .main-matrix col.piece-col{width:31% !important;}
-.main-matrix thead th.th-piece,
 .main-matrix tbody th.piece-block-cell{
   border-right:2px solid var(--navy) !important;
 }
@@ -1186,15 +1090,19 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
   gap:6px !important;
   line-height:1.12 !important;
 }
-.piece-ladder-desc,.piece-ladder-qty,.piece-ladder-name,.piece-comment-text,.stage-entry .stage-name,.empty,
-.footer-legend .legend-text{font-size:11pt !important;}
+.piece-ladder-desc,
+.piece-ladder-qty,
+.piece-ladder-name,
+.piece-comment-text,
+.stage-entry .stage-name,
+.empty{font-size:11pt !important;}
 .piece-ladder-comment-content{font-size:11pt !important;line-height:1.14 !important;}
 .piece-ladder > .piece-letter,
 .piece-ladder-comment-marker,
 .piece-ladder-code{font-size:11pt !important;}
 .main-matrix tbody tr>th,.main-matrix tbody tr>td{font-size:11pt !important;line-height:1.16 !important;}
 .stage-entry{font-size:11pt !important;line-height:1.14 !important; margin:0 0 6px !important;}
-.main-matrix thead th,.main-matrix thead th .th-centered{font-size:11pt !important;}
+.main-matrix thead th{font-size:11pt !important;}
 .main-matrix .stage-entry,
 .main-matrix .stage-entry .stage-name,
 .main-matrix .stage-entry::marker {
@@ -1210,8 +1118,6 @@ body, table, th, td, div, span, p, li { font-size: var(--body-min); }
 .main-matrix tbody .piece-ladder-code,
 .main-matrix tbody .piece-letter,
 .main-matrix tbody .empty,
-.footer-legend .legend-text,
-.footer-legend .legend-heading,
 .technical-band-label {
   font-size:11pt !important;
 }
@@ -1249,12 +1155,7 @@ body .main-matrix td,
 body .main-matrix div,
 body .main-matrix span,
 body .main-matrix li,
-body .main-matrix p,
-body .footer-legend,
-body .footer-legend div,
-body .footer-legend span,
-body .plan-header .v50-number,
-body .plan-header .v50-delivery {
+body .main-matrix p {
   font-size:10pt !important;
 }
 body .main-matrix .stage-entry::marker,
