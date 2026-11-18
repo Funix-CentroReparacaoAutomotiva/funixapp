@@ -92,3 +92,10 @@
 @media(max-width:365px){.conversation-row{grid-template-columns:40px minmax(0,1fr) 62px;gap:7px;padding:10px 5px}.conversation-avatar{height:40px;width:40px}.conversation-names{font-size:12px}}
 .conversation-context{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#f2f6fc;color:#526b85;font-size:10px;flex:none}.conversation-context label{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%}.conversation-context select{max-width:190px;min-width:0;padding:5px;border:1px solid #cbddeb;border-radius:6px;background:white;color:#25466b}
 .entity-seal svg{width:14px;height:14px;vertical-align:-3px}
+.conversation-workspace{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-sizing:border-box;overflow:auto}
+.conversation-workspace .chat-page{width:100%;height:min(380px,55dvh);min-height:220px}
+.conversation-identity{display:grid;gap:8px;margin:10px 0}
+.conversation-identity label{display:grid;gap:4px}
+.conversation-identity :is(input,select){box-sizing:border-box;width:100%;min-width:0;padding:8px}
+.conversation-identity button{min-height:36px;padding:6px 10px;border:1px solid #cbddeb;border-radius:7px;background:#f1f6fc;color:#285d8c;font:inherit}
+.conversation-identity button[type=submit]:not(:disabled){background:#1f5888;color:white}

@@ -13,9 +13,10 @@ function errorText(error: unknown): string {
   return 'Não foi possível concluir. Confira os dados e tente novamente.'
 }
 /** Explicit operator choice only; no phone/PN/LID-based automatic association. */
-export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange }: {
+export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange, onLinksChange }: {
   conversationId: string
   onUnauthorized: () => void
+  onLinksChange?: (links:Links)=>void
   onActiveAtendimentoChange?: (atendimentoId: string | null) => void
 }) {
   const base = '/api/chat/conversations/' + encodeURIComponent(conversationId)
@@ -34,7 +35,7 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
       if (controller.signal.aborted) return
       void api<Links>(base + '/atendimentos', { signal: controller.signal })
         .then(value => { if (!controller.signal.aborted) {
-            setLinks(value)
+            setLinks(value);onLinksChange?.(value)
             onActiveAtendimentoChange?.(value.activeAtendimentoId)
           } })
         .catch(cause => {
@@ -44,12 +45,12 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
         })
     })
     return () => controller.abort()
-  }, [base, onUnauthorized, onActiveAtendimentoChange])
+  }, [base, onUnauthorized, onActiveAtendimentoChange, onLinksChange])
 
   async function reload() {
     try {
       const value = await api<Links>(base + '/atendimentos')
-      setLinks(value)
+      setLinks(value);onLinksChange?.(value)
       onActiveAtendimentoChange?.(value.activeAtendimentoId)
     }
     catch (cause) {

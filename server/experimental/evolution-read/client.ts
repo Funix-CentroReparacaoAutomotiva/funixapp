@@ -154,7 +154,7 @@ export class EvolutionReadPoc {
     this.instanceId = input(() => string(options.instanceId))
     this.timeoutMs = input(() => integer(options.timeoutMs ?? 5000, 1, 60000))
   }
-  private async request(operation: 'findChats' | 'findMessages', body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  private async request(operation: 'findChats' | 'findMessages' | 'whatsappNumbers', body: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     if (signal?.aborted) return fail('CANCELLED')
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -180,6 +180,19 @@ export class EvolutionReadPoc {
     } finally {
       clearTimeout(timer); signal?.removeEventListener('abort', cancel)
     }
+  }
+  /** Evolution 2.3.7 whatsappNumbers; exact PN only, never its approximate country rewrites.
+   * A bare LID/"lid" marker does not prove the requested PN association.
+   */
+  async checkNumber(phone:string):Promise<'available'|'unavailable'|'conflict'> {
+    if(!/^\+[1-9]\d{7,14}$/.test(phone))return fail('INPUT')
+    const number=phone.slice(1),expected=number+'@s.whatsapp.net'
+    const raw=await this.request('whatsappNumbers',{numbers:[number]})
+    if(!Array.isArray(raw)||raw.length!==1)return fail()
+    const row=object(raw[0])
+    if(row.number!==number||typeof row.exists!=='boolean')return fail()
+    if(row.jid!==expected)return 'conflict'
+    return row.exists?'available':'unavailable'
   }
   /**
    * One bounded Evolution source page, not a page of *visible* contacts.
