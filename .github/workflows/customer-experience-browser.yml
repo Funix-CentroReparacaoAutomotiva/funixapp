@@ -25,9 +25,12 @@ jobs:
       - run: node scripts/customer-experience-browser.mjs
       - run: node scripts/conversation-phone-browser.mjs
       - run: node scripts/entity-contacts-browser.mjs
+      - run: node scripts/shared-identity-browser.mjs
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: customer-experience-chromium
-          path: artifacts/customer-experience/
+          path: |
+            artifacts/customer-experience/
+            artifacts/shared-identity/
           if-no-files-found: ignore

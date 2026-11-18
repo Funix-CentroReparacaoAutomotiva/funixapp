@@ -1,3 +1,4 @@
+import {SharedConversationIdentity} from './chat/shared-identity.ts'
 import {ContactChannels} from './chat/contact-channels.ts'
 import { CustomerRepository } from './customers.ts'
 import { funnelProjection } from './funnel.ts'
@@ -459,14 +460,17 @@ export function createRequestHandler(options: AppOptions) {
       if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
-        if (associationRoute || contextRoute) {
-          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1])!
+        const identityRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/identity$/.exec(url.pathname)
+        if (associationRoute || contextRoute || identityRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1])!
           const authority=options.conversationRuntime?.authority
           const contacts=options.evolutionChat.contacts
-          const scope=authority?.associationScope(conversationId) ??
-            (contacts?.identities.providerJid(conversationId)?contacts.identities.associationScope(conversationId):undefined)
+          const scope=identityRoute?undefined:(authority?.associationScope(conversationId) ??
+            (contacts?.identities.providerJid(conversationId)?contacts.identities.associationScope(conversationId):undefined))
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          const identity=identityRoute?new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
+          if(identity&&req.method==='GET')return send(200,identity.preview(conversationId))
           if (associationRoute && req.method === 'GET' && !associationRoute[3])
             return send(200, options.v20Associations.listActive(conversationId,scope))
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
@@ -474,6 +478,7 @@ export function createRequestHandler(options: AppOptions) {
           const body = await readJson(req, 2048)
           if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
           const input = body as Record<string, unknown>
+          if(identity&&req.method==='POST')return send(200,identity.confirm(conversationId,input))
           if (associationRoute && req.method === 'POST' && !associationRoute[3]) {
             if (Object.keys(input).some(key => !['atendimentoId','expectedRevision','requestId','reason'].includes(key)))
               return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
@@ -635,7 +640,7 @@ export function createRequestHandler(options: AppOptions) {
       // Authenticated canonical read: a client-supplied conversationId must be
       // confirmed against the current Coda→Atendimento mapping on the server.
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
-      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority)) {
+      if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
         if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
@@ -912,13 +917,23 @@ export function createRequestHandler(options: AppOptions) {
         const result=options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) })
         return send(200,{...result,items:funnelProjection(options.atendimentos.db,new CustomerRepository(options.atendimentos.db).present(result.items))})
       }
-      if (record && req.method === 'GET') return send(200, options.atendimentos.get(record[1]!,true))
+      const withChatIdentity=(atendimento:ReturnType<AtendimentoRepository['get']>)=>{
+        const cid=url.searchParams.get('conversa')
+        if(cid&&/^[a-f0-9-]{36}$/.test(cid)&&options.evolutionChat&&options.v20Associations&&
+          options.v20Associations.resolveRemoteJid(cid,'funix_comercial')){
+          const identity=new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation)
+          const chatIdentity=identity.forAtendimento(cid,atendimento.id)
+          if(chatIdentity)atendimento.chatIdentity=chatIdentity
+        }
+        return atendimento
+      }
+      if (record && req.method === 'GET') return send(200,withChatIdentity(options.atendimentos.get(record[1]!,true)))
       if ((collection && req.method === 'POST') || (record && req.method === 'PATCH')) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
         if (collection) return send(201, options.atendimentos.create(body))
-        return send(200, options.atendimentos.update(record![1]!, body,true))
+        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true)))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')
