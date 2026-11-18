@@ -23,6 +23,18 @@ if(stress){
  for(let i=0;i<20;i++)lines.push({id:'stress-c-'+i,pieceId:first.pieceId,kind:'component',pieceName:first.pieceName,
    name:'Componente QA'+String(i).padStart(2,'0')+' com descrição extensa',diagnosis:'',dimension:'',quantity:'12',notes:'',stages:[]})
 }
+// Four pieces: one component, several, no components, and a component with notes.
+if(process.argv[3]==='component-borders'){
+ if(count!==4)throw Error('component-borders requires four pieces')
+ for(const diag of diagnostics)diag.notes=''
+ diagnostics[3]!.notes='Conferir após montagem.'
+ for(let i=lines.length-1;i>=0;i--)if(lines[i]!.kind==='component')lines.splice(i,1)
+ for(const [pieceIndex,quantity] of [[0,1],[1,3],[3,1]] as const){
+  const diag=diagnostics[pieceIndex]!
+  for(let j=0;j<quantity;j++)lines.push({id:'border-c-'+pieceIndex+'-'+j,pieceId:diag.pieceId,kind:'component',pieceName:diag.pieceName,
+    name:'Componente teste '+(j+1),diagnosis:'',dimension:'',quantity:'1',notes:'',stages:[]})
+ }
+}
 const order:WorkOrder={
  id:'synthetic-os',number:'OS-000142',atendimentoId:'synthetic-at',budgetVersionId:'synthetic-budget',
  budgetNumber:'OR-000100',budgetLabel:'Principal',createdAt:'2026-11-16T13:00:00.000Z',
