@@ -11,7 +11,7 @@ import{BudgetRepository}from'./fixtures/budget-renderer.ts'
 import{planImport,applyImport}from'../coda-import.ts'
 import{TABLES}from'../coda-import-source.ts'
 import{CURATION_STAMP}from'../curation.ts'
-import{SERVICE_POLICIES,newServiceSelectionIssue,executionScope,codaServiceId}from'../../shared/commercial-curation.ts'
+import{SERVICE_POLICIES,newServiceSelectionIssue,executionScope,codaServiceId,serviceDisplayName,servicePolicy}from'../../shared/commercial-curation.ts'
 const request=(scenarioId:string)=>({scenarioId,negotiation:{mode:'none'}})
 function errorCode(e:unknown,code:string){return(e as{code:string}).code===code}
 
@@ -124,4 +124,15 @@ test('V7 to V8 is additive, preserves actual legacy rows/snapshots/PDF bytes and
   assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,23);tables.forEach((t,i)=>assert.deepEqual(db.prepare(`SELECT ${t==='scenarios'?'id,atendimento_id,name,position,revision,created_at':t==='diagnosis_items'?'id,atendimento_id,piece_id,diagnosis_id,notes,enabled,revision,created_at,updated_at':t==='atendimentos'?'id,phone,phone_normalized,name,vehicle,brand,model,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision':t==='diagnosis_services'?'id,diagnosis_item_id,service_id,dimension_id,quantity,enabled,notes,diagnosis_id':'*'} FROM ${t} ORDER BY rowid`).all(),before[i]));assert.equal(db.prepare('SELECT COUNT(*) n FROM scenario_service_confirmations').get()!.n,0)
   assert.deepEqual(new BudgetRepository(db).get(f.at.id,v.id),v);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf);db.close();db=openDatabase(file);assert.deepEqual(new BudgetRepository(db).pdf(f.at.id,v.id),pdf);assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('optical restoration keeps the canonical short display name by exact service ID without changing the approved policy',()=>{
+ const optical=codaServiceId('i-MMsEFTPdow'),legacy='Restauração de lentes de faróis e lanternas'
+ assert.equal(serviceDisplayName(optical,'Restauração óptica'),'Restauração óptica')
+ assert.equal(serviceDisplayName(optical,legacy),'Restauração óptica')
+ assert.equal(serviceDisplayName('unrelated-operator-id',legacy),legacy)
+ assert.equal(serviceDisplayName(codaServiceId('i-GsuErCDZgL'),'QA'),'Avaliação técnica e planejamento')
+ assert.equal(serviceDisplayName(codaServiceId('i-6tWzUWof8c'),'QA'),'Alinhamento estrutural / da carroceria')
+ assert.deepEqual(servicePolicy(optical),{visible:true,billing:'billable',execution:'internal',displayName:legacy})
+ assert.equal(newServiceSelectionIssue(optical),null)
 })

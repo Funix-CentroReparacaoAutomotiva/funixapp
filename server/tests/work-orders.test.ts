@@ -427,7 +427,9 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   const frozen=structuredClone(version),pdf=budgets.pdf(at,version.id)
   const expected=['Lixamento','Envernização','Polimento']
   const scope=operationalScope(version)
-  const optical=scope.lines.filter(l=>l.name==='Restauração de lentes de faróis e lanternas')
+  const optical=scope.lines.filter(l=>l.name==='Restauração óptica')
+  assert.equal(version.snapshot.calculation.lines.filter(l=>l.included&&l.name==='Restauração óptica').length,1)
+  assert.equal(version.snapshot.calculation.lines.some(l=>l.name==='Restauração de lentes de faróis e lanternas'),false)
   assert.equal(optical.length,1)
   assert.deepEqual(optical[0]!.stages.map(s=>s.name),expected)
   assert.equal(scope.lines.find(l=>l.id===original.id)?.stages[0]?.name,'Etapa sintética')
@@ -437,7 +439,7 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   const id=randomUUID()
   db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,at,version.id,now,now,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(old))
   const orders=new WorkOrderRepository(db),first=orders.get(at,version.id)
-  assert.match(renderOrderV1(first).content,/Serviço sem etapas cadastradas: Restauração de lentes/)
+  assert.match(renderOrderV1(first).content,/Serviço sem etapas cadastradas: Restauração óptica/)
   const request={authorized:true,correction:'optical-stages-v1',expectedRevision:1}
   assert.throws(()=>orders.reissue(at,version.id,{...request,authorized:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
   assert.throws(()=>orders.reissue(at,version.id,{...request,deliveryChoice:'without'}),error(422,'OS_INVALID_CORRECTION'))
@@ -448,7 +450,7 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   assert.deepEqual(revision.scope.lines.find(l=>l.id===optical[0]!.id)?.stages.map(s=>s.name),expected)
   assert.deepEqual(revision.scope.lines.find(l=>l.id===original.id),first.scope.lines.find(l=>l.id===original.id))
   const html=renderOrderV1(revision).content
-  assert.doesNotMatch(html,/Serviço sem etapas cadastradas: Restauração de lentes/)
+  assert.doesNotMatch(html,/Serviço sem etapas cadastradas: Restauração (?:óptica|de lentes)/)
   for(const stage of expected)assert(html.includes('<span class="stage-name">'+stage+'</span>'))
   assert.deepEqual(orders.get(at,version.id),first)
   assert.deepEqual(budgets.get(at,version.id),frozen)
@@ -465,6 +467,11 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   assert.equal(correctOpticalWorkOrderScope(customized,version.snapshot),null)
   const legacy=structuredClone(version)
   legacy.snapshot.calculation.lines.find(l=>l.id===optical[0]!.id)!.stages=[{id:'coda:2zsjI-nqWr:grid-p-wZJbfjUD:i-7W5F-LUwBk',name:'Polimento de farol',dimension:'Peça',baseEnergy:'3',dimensionEnergy:'0'}]
-  assert.deepEqual(operationalScope(legacy).lines.find(l=>l.id===optical[0]!.id)?.stages.map(s=>s.name),expected)
+  // Historical budgets may still contain the old name; correction uses IDs,
+  // never a label match, and preserves their frozen presentation.
+  legacy.snapshot.calculation.lines.find(l=>l.id===optical[0]!.id)!.name='Restauração de lentes de faróis e lanternas'
+  const legacyLine=operationalScope(legacy).lines.find(l=>l.id===optical[0]!.id)!
+  assert.deepEqual(legacyLine.stages.map(s=>s.name),expected)
+  assert.equal(legacyLine.name,'Restauração de lentes de faróis e lanternas')
  }finally{db.close()}
 })
