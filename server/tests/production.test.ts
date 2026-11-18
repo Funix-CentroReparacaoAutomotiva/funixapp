@@ -20,13 +20,15 @@ const code=(name:string)=>(error:unknown)=>error instanceof ServiceError && erro
 const instant=Date.parse('2026-11-18T11:45:00Z')
 type Db=ReturnType<typeof openDatabase>
 
+function emit(budgets:BudgetRepository,at:string,scenarioId:string) {
+  const input={scenarioId,negotiation:{mode:'none'} as const}
+  const preview=budgets.preview(at,input)
+  return budgets.emit(at,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
+}
+
 async function issued(db:Db, count:number) {
   const f=commercialFixture(db), budgets=new BudgetRepository(db), versions=[]
-  for(let index=0;index<count;index++){
-    const input={scenarioId:f.scenario.id,negotiation:{mode:'none'} as const}
-    const preview=budgets.preview(f.at.id,input)
-    versions.push(await budgets.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()}))
-  }
+  for(let index=0;index<count;index++)versions.push(await emit(budgets,f.at.id,f.scenario.id))
   return {at:f.at.id, budgets, versions}
 }
 
@@ -135,6 +137,107 @@ test('Guarda de integridade, revisão concorrente e rollback em falhas durante a
     assert.throws(()=>db.prepare(`INSERT INTO production_budget_transitions
       (atendimento_id,budget_version_id,previous_state,state,origin,occurred_at)
       VALUES(?,?,'consented','executed','technical','synthetic')`).run(at,second),/Invalid budget lifecycle/)
+  }finally{db.close()}
+})
+
+test('Agendamento rejeita cliente ou placa de outra referência e reverte o lote inteiro',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    const f=commercialFixture(db), at=f.at.id, budgets=new BudgetRepository(db)
+    const who={id:null,text:f.at.name}, other={id:null,text:'Outro cliente sintético'}
+    const carA={id:null,text:'Mesmo modelo sintético',plate:'SYN1A01',modelYear:'2023'}
+    const carB={...carA,plate:'SYN1B02'}
+    const missingPlate={...carA,plate:''}, differentYear={...carA,modelYear:'2024'}
+    const payer=[{id:null,text:'Pagador sintético'}]
+    const setReferences=(vehicle:typeof carA[])=>{
+      const record=f.atendimentos.get(at,true)
+      f.atendimentos.update(at,{revision:record.revision,references:{
+        ...record.references!,person:[who,other],vehicle,payer,
+      }})
+    }
+    setReferences([carA,carB])
+    const first=await emit(budgets,at,f.scenario.id)
+    setReferences([carB,carA,missingPlate,differentYear])
+    const second=await emit(budgets,at,f.scenario.id)
+    const production=new ProductionRepository(db)
+    const schedule=scheduleInput(db,at,[first.id,second.id])
+    const toA={...schedule,deliveryDate:'2026-11-24',parties:{...schedule.parties,vehicle:carA}}
+    const original=production.get(at)
+    assert.throws(()=>production.schedule(at,toA),code('BUDGET_IDENTITY_CONFLICT'))
+    assert.deepEqual(production.get(at),original)
+    const toB={...schedule,budgetIds:[first.id]}
+    assert.throws(()=>production.schedule(at,toB),code('BUDGET_IDENTITY_CONFLICT'))
+    const forFirst={...toA,budgetIds:[first.id]}
+    assert.throws(()=>production.schedule(at,{...forFirst,parties:{...forFirst.parties,customer:other}}),code('BUDGET_IDENTITY_CONFLICT'))
+    for(const vehicle of [missingPlate,differentYear])
+      assert.throws(()=>production.schedule(at,{...forFirst,parties:{...forFirst.parties,vehicle}}),code('BUDGET_IDENTITY_CONFLICT'))
+    assert.deepEqual(production.get(at),original)
+    assert.equal(production.schedule(at,forFirst).experience?.vehicle.plate,carA.plate)
+    assert.throws(()=>production.schedule(at,scheduleInput(db,at,[second.id])),code('BUDGET_IDENTITY_CONFLICT'))
+    const order=production.authorize(at,first.id,{confirmed:true})
+    assert.equal(order.scope.vehicle.plate,carA.plate)
+    assert.equal(production.get(at).budgets.find(b=>b.id===second.id)?.state,'negotiating')
+  }finally{db.close()}
+})
+
+test('Autorização bloqueia consentimento incompatível gravado pela revisão anterior',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    const {at,budgets,versions}=await issued(db,1), version=versions[0]!
+    const record=identifyForProduction(db,at)
+    new AtendimentoRepository(db).update(at,{revision:record.revision,plate:'SYN1B02'})
+    const production=new ProductionRepository(db)
+    // Reproduce the consent recorded by the previous implementation.
+    const {parties,scheduledEntry}=scheduleInput(db,at,[version.id])
+    const now=new Date(instant).toISOString()
+    db.prepare(`INSERT INTO production_experiences
+      (id,atendimento_id,customer_json,vehicle_json,payer_json,scheduled_entry,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?)`).run(randomUUID(),at,JSON.stringify(parties.customer),
+        JSON.stringify(parties.vehicle),JSON.stringify(parties.payer),scheduledEntry,now,now)
+    db.prepare(`INSERT INTO production_budget_transitions
+      (atendimento_id,budget_version_id,previous_state,state,origin,occurred_at)
+      VALUES(?,?,'negotiating','consented','commercial',?)`).run(at,version.id,now)
+    const before=production.get(at), pdf=budgets.pdf(at,version.id)
+    assert.throws(()=>production.authorize(at,version.id,{confirmed:true}),code('BUDGET_IDENTITY_CONFLICT'))
+    assert.deepEqual(production.get(at),before)
+    assert.equal(db.prepare('SELECT count(*) n FROM work_orders').get()!.n,0)
+    assert.deepEqual(budgets.get(at,version.id),version)
+    assert.deepEqual(budgets.pdf(at,version.id),pdf)
+  }finally{db.close()}
+})
+
+test('Identificação ausente pode ser completada e dados já emitidos mantêm a grafia original na OS',async()=>{
+  const db=openDatabase(':memory:')
+  try{
+    const f=commercialFixture(db),at=f.at.id,budgets=new BudgetRepository(db)
+    f.atendimentos.update(at,{revision:f.at.revision,name:'Cliente Sintético',vehicle:'',plate:'SYN-1A01'})
+    const partial=await emit(budgets,at,f.scenario.id)
+    f.atendimentos.update(at,{revision:f.atendimentos.get(at).revision,name:'',vehicle:'Modelo Sintético',plate:''})
+    const missingPlate=await emit(budgets,at,f.scenario.id)
+    const pdfs=[partial,missingPlate].map(version=>budgets.pdf(at,version.id))
+    const record=f.atendimentos.get(at,true)
+    f.atendimentos.update(at,{revision:record.revision,references:{
+      ...record.references!,person:[{id:null,text:'cliente  sintético'}],
+      vehicle:[{id:null,text:'Modelo Sintético',plate:'SYN1A01',modelYear:'2023'},
+        {id:null,text:'Outro modelo sintético',plate:'SYN1A01',modelYear:'2023'}],
+      payer:[{id:null,text:'Pagador sintético'}],
+    }})
+    const production=new ProductionRepository(db)
+    const incompatible=scheduleInput(db,at,[missingPlate.id])
+    incompatible.parties.vehicle=production.get(at).references.vehicle[1]!
+    assert.throws(()=>production.schedule(at,incompatible),code('BUDGET_IDENTITY_CONFLICT'))
+    const scheduled=production.schedule(at,scheduleInput(db,at,[partial.id,missingPlate.id]))
+    assert.equal(scheduled.experience?.vehicle.modelYear,'2023')
+    const order=production.authorize(at,partial.id,{confirmed:true})
+    assert.deepEqual(order.scope.customer,{name:'Cliente Sintético'})
+    assert.deepEqual(order.scope.vehicle,{description:'Modelo Sintético',plate:'SYN-1A01'})
+    const complete=production.authorize(at,missingPlate.id,{confirmed:true})
+    assert.deepEqual(complete.scope.customer,{name:'cliente  sintético'})
+    assert.deepEqual(complete.scope.vehicle,{description:'Modelo Sintético',plate:'SYN1A01'})
+    for(const [index,version] of [partial,missingPlate].entries()){
+      assert.deepEqual(budgets.get(at,version.id),version)
+      assert.deepEqual(budgets.pdf(at,version.id),pdfs[index])
+    }
   }finally{db.close()}
 })
 

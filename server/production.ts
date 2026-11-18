@@ -9,7 +9,7 @@ import {CustomerRepository} from './customers.ts'
 import {parseDeliveryDate, writeDeliveryDate} from './delivery-date.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject, transaction} from './scenarios.ts'
-import {WorkOrderRepository} from './work-orders.ts'
+import {assertBudgetIdentity,WorkOrderRepository} from './work-orders.ts'
 
 type Row = Record<string, SQLOutputValue>
 const parties = {customer:'person', vehicle:'vehicle', payer:'payer'} as const
@@ -142,6 +142,7 @@ export class ProductionRepository {
           throw new ServiceError(409,'BUDGET_NOT_SCHEDULABLE','Um dos orçamentos selecionados está indisponível para agendamento.')
       }
       const selected=this.scheduleParties(data.parties,record.references!,existing)
+      for(const id of ids as string[])assertBudgetIdentity(this.budgets.get(at,id),selected)
       const sameSchedule=existing?.scheduledEntry===entry && previousDate===deliveryDate
       const unchanged=!!sameSchedule && !pending.length
       if(unchanged)return this.overview(at)

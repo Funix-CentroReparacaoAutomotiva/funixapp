@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync,SQLOutputValue} from 'node:sqlite'
 import type {BudgetVersion} from '../shared/pricing.ts'
-import type {Experience} from '../shared/production.ts'
+import type {Experience,ExperienceParties} from '../shared/production.ts'
 import type {WorkOrder,WorkOrderScope} from '../shared/work-order.ts'
 import {BudgetRepository} from './budgets.ts'
 import {ServiceError} from './errors.ts'
@@ -10,6 +10,31 @@ import {stagePresentation} from './stage-presentation.ts'
 import {correctOpticalWorkOrderScope} from '../shared/optical-work-order.ts'
 import {AtendimentoRepository} from './atendimentos.ts'
 import {parseDeliveryDate,writeDeliveryDate,deliveryReason} from './delivery-date.ts'
+
+function issuedIdentity(version:BudgetVersion):Pick<WorkOrderScope,'customer'|'vehicle'> {
+  const at=version.snapshot.atendimento
+  return {
+    customer:{name:at.name},
+    vehicle:{description:at.vehicle||[at.brand,at.model].filter(Boolean).join(' '),plate:at.plate},
+  }
+}
+
+const identityText=(value?:string|null)=>(value??'').normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase('pt-BR')
+const plateText=(value?:string|null)=>identityText(value).replace(/[\s-]+/g,'')
+const conflicts=(issued:string,selected:string)=>issued!==''&&issued!==selected
+
+export function assertBudgetIdentity(version:BudgetVersion,parties:Pick<ExperienceParties,'customer'|'vehicle'>) {
+  const issued=issuedIdentity(version), at=version.snapshot.atendimento
+  const {customer,vehicle}=parties
+  const number=version.documentNumber??version.label
+  if(conflicts(identityText(issued.customer.name),identityText(customer.text)))
+    throw new ServiceError(409,'BUDGET_IDENTITY_CONFLICT',`O cliente do orçamento ${number} diverge do cliente selecionado. Confira a identificação ou emita um novo orçamento.`)
+  if(conflicts(plateText(issued.vehicle.plate),plateText(vehicle.plate))||
+    conflicts(identityText(issued.vehicle.description),identityText(vehicle.text))||
+    conflicts(identityText(at.fabricationYear),identityText(vehicle.fabricationYear))||
+    conflicts(identityText(at.modelYear),identityText(vehicle.modelYear)))
+    throw new ServiceError(409,'BUDGET_IDENTITY_CONFLICT',`O veículo do orçamento ${number} diverge do veículo selecionado. Confira a identificação ou emita um novo orçamento.`)
+}
 
 export function operationalScope(version:BudgetVersion):WorkOrderScope {
   // Only the immutable issued calculation decides which work is authorized.
@@ -35,11 +60,7 @@ export function operationalScope(version:BudgetVersion):WorkOrderScope {
   }))
   const days=frozen.executionDeadline?.effectiveDays
   const scope:WorkOrderScope={
-    customer:{name:frozen.atendimento.name},
-    vehicle:{
-      description:frozen.atendimento.vehicle||[frozen.atendimento.brand,frozen.atendimento.model].filter(Boolean).join(' '),
-      plate:frozen.atendimento.plate
-    },
+    ...issuedIdentity(version),
     diagnostics,lines,deadlineDays:typeof days==='number'&&Number.isSafeInteger(days)&&days>0?days:null
   }
   return correctOpticalWorkOrderScope(scope,frozen)??scope
@@ -107,9 +128,11 @@ export class WorkOrderRepository {
   /** Caller holds the transaction and has recorded the technical decision. */
   createAuthorized(at:string,version:BudgetVersion,experience:Experience,createdAt:string):WorkOrder {
     if(!this.db.isTransaction)throw new Error('Work order creation requires a transaction.')
+    assertBudgetIdentity(version,experience)
     const scope=operationalScope(version)
-    scope.customer={name:experience.customer.text}
-    scope.vehicle={description:experience.vehicle.text,plate:experience.vehicle.plate??''}
+    if(!identityText(scope.customer.name))scope.customer.name=experience.customer.text
+    if(!identityText(scope.vehicle.description))scope.vehicle.description=experience.vehicle.text
+    if(!plateText(scope.vehicle.plate))scope.vehicle.plate=experience.vehicle.plate??''
     scope.deliveryDate=experience.deliveryDate
     const id=randomUUID()
     this.db.prepare(`INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,
