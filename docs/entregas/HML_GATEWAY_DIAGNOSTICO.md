@@ -1,5 +1,131 @@
 # Homologação: diagnóstico e publicação do gateway
 
+## Estado vigente — publicação validada pelo operador (17/11/2026)
+
+A homologação foi publicada em https://hml.funix.com.br, com revisão
+`8e801e9b0a8fc1fe5feec40d533d9e639e8b013b`. Esta seção prevalece sobre
+os diagnósticos e roteiros históricos abaixo (inclusive a afirmação antiga de
+que o gateway não teria HEALTHCHECK). Não executar os roteiros de criação,
+remoção ou ensaio com gateway ausente sobre a instalação atualmente publicada.
+Esta atualização documental e de configuração versionada não acessa a VPS,
+não executa merge/deploy e não declara homologação funcional completa.
+
+### Evidência e correção
+
+O gateway usa a imagem Web que herda um HEALTHCHECK com wget em /healthz
+na porta 8080. A autenticação obrigatória do gateway faz a rota retornar
+401 sem credenciais. A configuração planejada não sobrescrevia o teste
+herdado. Em ensaio ativo anterior, as labels efetivas e as redes estavam
+corretas, os testes diretos passaram e sete sondas HTTPS sem credenciais
+retornaram 404 e o mesmo certificado não confiável (verify_code=18).
+Não há histórico de saúde preservado do contêiner anterior.
+
+O ensaio controlado V2, com alteração exclusiva do healthcheck, observou:
+
+| Segundos | Saúde | HTTP sem credencial | TLS confiável |
+| --- | --- | --- | --- |
+| 0 | starting | 404 | não |
+| 6 | healthy | 401 Basic | não |
+| 12 | healthy | 401 Basic | sim |
+
+A reversão do ensaio foi confirmada. A publicação seguinte persistiu o
+healthcheck, manteve a autenticação e validou HTTPS em loopback, IP da VPS
+e externamente pelo Windows. As rotas /, /api/ready, /release.json e
+/healthz retornaram 401 Basic sem credenciais; os testes autenticados
+internos e HTTPS confirmaram a mesma revisão da API, Web e release. O
+gateway permaneceu healthy e ativo. As conferências dos demais serviços
+e arquivos retornaram inalterados. Fonte: relatórios fornecidos pelo
+operador, funix_hml_healthcheck_teste_v2_resultado.txt e
+funix_hml_publicacao_definitiva_resultado.txt. A transição de 404 para
+401 com o estado healthy é evidência causal forte da incompatibilidade
+do healthcheck herdado; não reconstrói seu estado histórico. Não foi
+necessário alterar Traefik, DNS ou configuração produtiva.
+
+### Contrato versionado somente HML
+
+O fragmento [deploy/hml-gateway-healthcheck.compose.json](../../deploy/hml-gateway-healthcheck.compose.json)
+contém exatamente o healthcheck validado e atua somente em services.gateway.
+Formato JSON aceito como YAML/Compose; não é um Compose completo nem um
+instalador. A configuração efetiva já foi persistida pelo operador em
+/opt/funix-hml/gateway.compose.yaml. Não aplicar novamente ao gateway
+ativo apenas por existir este fragmento no Git. O backup original foi
+preservado na VPS. SHA-256 do gateway.compose.yaml persistido conforme
+relatório: 9b66a5f1f87188defc3334201123ace9fe992de0aafaadca3a73831145f7b068.
+
+O teste local do Nginx reconhece 401 sem enviar senha. Isso comprova
+resposta local compatível com a barreira de autenticação, não saúde dos
+backends nem cadeia TLS, nem valida isoladamente o desafio Basic.
+Os smoke tests autenticados e externos continuam obrigatórios. Não
+usar este healthcheck nas imagens Web/API de produção, desativar a
+autenticação de /healthz ou configurar healthcheck Traefik sem credencial
+sobre a rota protegida. Manter os upstreams exclusivos
+funix-hml-api-1:8787 e funix-hml-web-1:8080.
+
+Antes de uma atualização autorizada, comparar a configuração normalizada
+do projeto funix-hml no servidor com o contrato versionado; nunca imprimir
+o Compose expandido ou variáveis de ambiente. Se houver divergência,
+bloquear e revisar. O arquivo completo de operação da HML não está
+versionado nesta PR; não substituir a configuração instalada por um
+fragmento ou pelo compose.yaml produtivo.
+
+Validação desta contribuição: dois testes unitários locais verificam a
+estrutura isolada, o contrato exato e o comando shell com wget simulado
+(401 aceito; 200, 404, 500 e falha de conexão rejeitados). O teste real
+de Compose/Docker/Traefik é a evidência operacional anterior, não uma
+nova execução desta PR. O CI do novo commit deve ser conferido.
+
+### Próxima entrega: atualização por revisão da homologação (proposta)
+
+O workflow .github/workflows/funix.yml valida PRs, mas o job publish
+só publica imagens de main; deploy requer despacho manual de main com
+deploy=true e usa o ambiente production. Portanto, ainda não há fluxo
+aprovado para publicar uma revisão de PR diretamente na HML. Não usar
+deploy produtivo, não fazer merge para obter um artefato de teste e não
+copiar a chave SSH de root para o GitHub.
+
+Implementar a atualização em mudança separada, com CI de ponta a ponta
+em ambiente sintético, antes de habilitar qualquer acesso remoto:
+
+1. Selecionar SHA imutável de PR revisada, aprovada nos checks da
+   revisão exata. Construir API e Web dessa mesma revisão e publicar
+   artefatos de HML separados dos packages produtivos, com digests
+   vinculados ao SHA e permissões mínimas. Sem secrets produtivos no
+   código de PR; nenhum workflow privilegiado executa código não
+   confiável. A primeira implementação deve exigir despacho/autorização
+   explícita e nunca atualizar automaticamente a produção.
+2. Preparar manifesto SHA/digests, sem segredo. Preferir operação SSH
+   restrita, própria da HML, com comando fixo e sem shell arbitrário,
+   sem sudo genérico, sem Docker socket exposto e com validações de
+   alcance. Se ainda não estiver implantado, usar procedimento manual
+   revisado pelo administrador; não compartilhar chave privada.
+3. Pré-check do Compose instalado: projeto funix-hml, redes privadas,
+   gateway exclusivo com healthcheck acima, origem hml.funix.com.br,
+   armazenamento e credenciais separados, ausência de integrações
+   externas reais. Confirmar identidade e revisão atual, capacidade,
+   backup consistente do SQLite HML e compatibilidade de migrações.
+4. Com autorização, baixar somente os digests candidatos; serializar
+   operação, registrar release anterior e trocar exclusivamente
+   API/Web/gateway da HML conforme dependências. Gateway usa imagem
+   Web: ao mudar a imagem Web, preservar também seu override e
+   autenticação. Admitir breve indisponibilidade da HML; não usar
+   compose down, prune ou alterar serviços compartilhados.
+5. Validar serviços healthy, DNS/TLS estrito, 401 Basic nas quatro rotas,
+   autenticação da aplicação e igualdade da revisão; em falha, restaurar
+   a configuração e imagens anteriores, inclusive banco de HML se
+   necessário mediante backup e compatibilidade previamente validados.
+   Rollback de imagem não basta se a migração for incompatível.
+6. Entregar o endereço protegido e a revisão para aprovação funcional
+   da direção com dados sintéticos. Registrar resultado e só então
+   discutir implantação produtiva separada, sujeita à aprovação.
+
+Este fluxo é uma especificação de aceite, não automação já implantada.
+Nenhuma modificação de workflow, credencial, produção ou VPS foi feita
+nesta regularização.
+
+---
+
+## Histórico de investigação (preservado; não constitui instrução vigente)
+
 ## Atualização: HTTPS após correção dos upstreams
 
 Segundo o ensaio relatado pelo responsável, trocar os upstreams genéricos por

@@ -1,0 +1,13 @@
+{
+  "services": {
+    "gateway": {
+      "healthcheck": {
+        "test": ["CMD-SHELL", "wget -S -O /dev/null http://127.0.0.1:8080/healthz 2>&1 | grep -q ' 401 '"],
+        "interval": "6s",
+        "timeout": "5s",
+        "retries": 3,
+        "start_period": "15s"
+      }
+    }
+  }
+}
