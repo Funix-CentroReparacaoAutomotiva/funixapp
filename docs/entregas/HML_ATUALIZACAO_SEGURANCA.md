@@ -98,6 +98,29 @@ e testes de ciclos de recuperação traz vantagem concreta nesta etapa; se
 for usado Codex, limitar a esse contrato e reaproveitar os componentes,
 sem merge, deploy, acesso à VPS ou dados reais.
 
+## Ensaio integrado local do adaptador
+
+`hml-docker-adapter.py` conecta o coordenador a Docker Compose com projeto
+fixo funix-hml, configuração normalizada comparada integralmente a um contrato
+revisado, imagens por ID, gateway estável, stop direcionado e restauração do
+SQLite após parada. Não tem CLI de instalação. O validador de aplicação é
+injetado pelo caller; uma função vazia só é usada no ensaio sintético.
+
+`python3 deploy/tests/hml_docker_cycle.py` exige daemon local sem contêineres,
+usa python:3.12-alpine, cria SQLite fictício e três contêineres. Executa update,
+alteração incompatível dos dados dentro da API, rollback e conferência do
+conteúdo original. Também reconstrói o coordenador com journal em installing
+para ensaiar recuperação de interrupção. Remove apenas os três contêineres
+do ensaio. As redes internas sintéticas permanecem para repetição local.
+
+O ciclo retornou DOCKER_SYNTHETIC_UPDATE_ROLLBACK_OK. Não testa migração real
+do aplicativo, HTTPS, Basic Auth ou roteamento: os serviços são placeholders.
+Não utilizar este adaptador na VPS: ainda faltam contrato completo de mounts,
+credenciais e integrações, controle de escritores fora do Docker, coordenação
+persistente entre operações interrompidas, extração/carregamento autenticado
+e validador HTTPS integrado. A comparação com contrato fornecido pelo caller
+não substitui sua auditoria. O fluxo de instalação real continua bloqueado.
+
 ## Incremento do coordenador transacional
 
 `hml-update-transaction.py` implementa lock exclusivo, journal com fsync e

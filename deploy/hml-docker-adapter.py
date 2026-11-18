@@ -1,0 +1,142 @@
+"""Docker Compose adapter for a reviewed, pinned HML configuration.
+
+The caller supplies an independently reviewed normalized Compose contract.
+Only image IDs may differ between releases; gateway remains pinned.
+"""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import time
+
+
+class DockerAdapter:
+    def __init__(self, *, compose, contract, database, state, validator):
+        self.compose = Path(compose).resolve(strict=True)
+        self.contract = contract
+        self.database = Path(database).resolve(strict=True)
+        self.state = Path(state).resolve(strict=True)
+        self.validator = validator
+        self.override = self.state / "images.json"
+        self.base = ["docker", "compose", "--project-name", "funix-hml",
+                     "-f", str(self.compose)]
+
+    def run(self, arguments):
+        result = subprocess.run(arguments, capture_output=True, text=True, timeout=120)
+        if result.returncode:
+            raise RuntimeError("HML Docker command failed")
+        return result.stdout
+
+    def configuration(self):
+        return json.loads(self.run(self.base + ["config", "--format", "json"]))
+
+    def containers(self):
+        ids = self.run(self.base + ["ps", "--all", "--quiet"]).split()
+        records = json.loads(self.run(["docker", "inspect", *ids])) if ids else []
+        for item in records:
+            labels = item["Config"].get("Labels", {})
+            if (labels.get("com.docker.compose.project") != "funix-hml"
+                    or labels.get("com.docker.compose.service") not in ("api", "web", "gateway")):
+                raise ValueError("out-of-scope Docker resource")
+        return records
+
+    def check_release(self, release):
+        import re
+        if set(release) != {"api", "web", "gateway", "revision"}:
+            raise ValueError("invalid release")
+        if not re.fullmatch(r"[a-f0-9]{40}", release["revision"]):
+            raise ValueError("invalid revision")
+        for role in ("api", "web", "gateway"):
+            if not re.fullmatch(r"sha256:[a-f0-9]{64}", release[role]):
+                raise ValueError("image must be pinned by ID")
+            self.run(["docker", "image", "inspect", release[role]])
+
+    def preflight(self, candidate):
+        self.check_release(candidate)
+        config = self.configuration()
+        if config != self.contract or config.get("name") != "funix-hml":
+            raise ValueError("Compose differs from reviewed contract")
+        if set(config["services"]) != {"api", "web", "gateway"}:
+            raise ValueError("unexpected service set")
+        for role, service in config["services"].items():
+            if (service.get("privileged") or service.get("ports")
+                    or service.get("network_mode") or not service.get("read_only")
+                    or service.get("devices") or service.get("cap_add")):
+                raise ValueError("unsafe service")
+            expected = {"funix-hml_privada"}
+            if role == "gateway":
+                expected.add("traefik_default")
+            if set(service.get("networks", {})) != expected:
+                raise ValueError("unexpected networks")
+        records = self.containers()
+        previous = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"]
+                    for item in records}
+        if set(previous) != {"api", "web", "gateway"} or len(records) != 3:
+            raise ValueError("incomplete or duplicated HML")
+        if candidate["gateway"] != previous["gateway"]:
+            raise ValueError("gateway image must remain stable")
+        previous["revision"] = config["services"]["api"]["environment"]["FUNIX_REVISION"]
+        if shutil.disk_usage(self.database.parent).free < self.database.stat().st_size * 4 + 64 * 1024**2:
+            raise ValueError("insufficient backup space")
+        return previous
+
+    def quiesce(self):
+        self.containers()
+        self.run(self.base + ["stop", "gateway", "api", "web"])
+        if any(item["State"]["Running"] for item in self.containers()):
+            raise ValueError("HML containers still running")
+        # Reject another Docker container sharing the database directory.
+        ids = self.run(["docker", "ps", "--quiet"]).split()
+        if ids:
+            for item in json.loads(self.run(["docker", "inspect", *ids])):
+                for mount in item.get("Mounts", []):
+                    source = Path(mount.get("Source", "/nonexistent"))
+                    if source == self.database.parent or source == self.database:
+                        raise ValueError("another container can write HML database")
+
+    def install(self, release):
+        self.check_release(release)
+        data = {"services": {role: {"image": release[role]} for role in ("api", "web", "gateway")}}
+        data["services"]["api"]["environment"] = {"FUNIX_REVISION": release["revision"]}
+        temporary = self.state / "images.new"
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w") as stream:
+            json.dump(data, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, self.override)
+        self.run(self.base + ["-f", str(self.override), "up", "--detach", "--no-build",
+                             "--pull", "never", "--no-deps", "api", "web", "gateway"])
+
+    def validate(self, release):
+        for _ in range(30):
+            records = self.containers()
+            if len(records) == 3 and all(item["State"].get("Health", {}).get("Status") == "healthy"
+                                         for item in records):
+                self.validator(release)
+                return
+            time.sleep(1)
+        raise ValueError("HML health deadline exceeded")
+
+    def restore_database(self, staged):
+        self.quiesce()
+        metadata = self.database.stat()
+        failed = self.state / "failed-database"
+        failed.mkdir(mode=0o700, exist_ok=True)
+        # Preserve failed database and auxiliary files, idempotently on recovery.
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            source = Path(str(self.database) + suffix)
+            target = failed / ("funix.sqlite" + suffix)
+            if source.exists() and not target.exists():
+                shutil.copy2(source, target)
+            if suffix and source.exists():
+                source.unlink()
+        temporary = self.database.with_name("funix.restore-new")
+        with staged.open("rb") as inp, temporary.open("wb") as out:
+            shutil.copyfileobj(inp, out)
+            out.flush()
+            os.fsync(out.fileno())
+        os.chown(temporary, metadata.st_uid, metadata.st_gid)
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, self.database)
