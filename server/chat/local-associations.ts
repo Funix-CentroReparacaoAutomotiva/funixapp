@@ -12,7 +12,8 @@ import type { ConversationEvent } from './conversation-event.ts'
 const instance = 'funix_comercial'
 /** Local commercial authority. Technical aliases remain owned by ConversationIdentities. */
 export class LocalConversationAssociations extends ConversationIdentities implements ConversationAssociationReader {
-  constructor(db: DatabaseSync, now = () => new Date().toISOString(), private readonly unifiedCustomers=false) { super(db, now) }
+  private readonly unifiedCustomers:boolean
+  constructor(db: DatabaseSync, now = () => new Date().toISOString(), unifiedCustomers=false) { super(db, now);this.unifiedCustomers=unifiedCustomers }
   private members(jid: string) { return this.identityJids(jid) }
   private handles(jid: string): string[] {
     const members = this.members(jid)
