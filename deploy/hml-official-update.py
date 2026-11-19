@@ -50,7 +50,8 @@ def pending_status(report):
 @contextmanager
 def sanitized_output():
     """Capture Python and inherited subprocess descriptors; emit only safe HTTPS categories."""
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as captured:
+    # Preserve invalid bytes as surrogates, never drop them into a valid line.
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="surrogateescape") as captured:
         sys.stdout.flush()
         sys.stderr.flush()
         saved = [os.dup(1), os.dup(2)]
@@ -60,14 +61,27 @@ def sanitized_output():
             with redirect_stdout(captured), redirect_stderr(captured):
                 yield
         finally:
-            captured.flush()
-            for descriptor, original in zip((1, 2), saved):
-                os.dup2(original, descriptor)
-                os.close(original)
-            captured.seek(0)
-            for line in captured:
-                if re.fullmatch(r"HTTPS attempt=[1-3] category=(?:tls-security|transient|contract) retry=(?:true|false)\n?", line):
-                    sys.stderr.write(line)
+            try:
+                captured.flush()
+            except OSError:
+                pass
+            finally:
+                for descriptor, original in zip((1, 2), saved):
+                    os.dup2(original, descriptor)
+                    os.close(original)
+            replay_diagnostics(captured)
+
+
+def replay_diagnostics(captured):
+    """Optional diagnostics cannot invalidate a completed transaction's result."""
+    try:
+        captured.seek(0)
+        for line in captured:
+            if re.fullmatch(r"HTTPS attempt=[1-3] category=(?:tls-security|transient|contract) retry=(?:true|false)\n?", line):
+                sys.stderr.write(line)
+    except Exception:
+        # No exception text or raw fallback output; journal remains authoritative.
+        pass
 
 
 def coordinate(operation_id, identity, *, authorize_operation, authorize_revision):

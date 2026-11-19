@@ -14,6 +14,37 @@ SPEC.loader.exec_module(official)
 
 
 class OfficialUpdateTest(unittest.TestCase):
+    def test_unreadable_optional_diagnostics_are_ignored(self):
+        captured = Mock()
+        captured.seek.side_effect = OSError("SENSITIVE_MARKER")
+        official.replay_diagnostics(captured)
+
+    def test_cli_accepted_survives_invalid_bytes_and_broken_diagnostic_stream(self):
+        program = r'''
+import importlib.util, subprocess, sys
+spec=importlib.util.spec_from_file_location('official',sys.argv[1]); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+broken=sys.argv[2]=='broken'
+class Broken:
+ def write(self,value): raise OSError('SENSITIVE_MARKER')
+ def flush(self): pass
+if broken: sys.stderr=Broken()
+def coordinate(*args,**kwargs):
+ subprocess.run([sys.executable,'-c',"import os; os.write(2,b'\\xff\\n\\xffHTTPS attempt=1 category=contract retry=false\\n'); os.write(1,b'\\xffSENSITIVE_MARKER\\n')"],check=True)
+ print('HTTPS attempt=1 category=transient retry=true',file=sys.stderr)
+ return {'result':'accepted','journal':'accepted'}
+m.coordinate=coordinate
+sys.argv=['official','--operation','op-test','--revision','a'*40,'--artifact-id','1','--run-id','2','--attempt','1','--pr','3','--authorize-operation','op-test','--authorize-revision','a'*40]
+raise SystemExit(m.main())
+'''
+        for mode in ("normal", "broken"):
+            result = subprocess.run([sys.executable, "-c", program, str(Path(official.__file__)), mode],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["result"], "accepted")
+            self.assertNotIn("SENSITIVE_MARKER", result.stdout + result.stderr)
+            self.assertNotIn("category=contract", result.stderr)
+            self.assertEqual(result.stderr, "" if mode == "broken" else
+                             "HTTPS attempt=1 category=transient retry=true\n")
     def test_pending_and_concurrent_operations_never_prepare(self):
         for scenario in ("other", "same", "busy"):
             pending = scenario != "busy"
