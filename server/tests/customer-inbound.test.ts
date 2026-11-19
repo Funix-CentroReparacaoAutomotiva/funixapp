@@ -345,3 +345,27 @@ test('standalone late PN cannot silently adopt another Entity Contact',()=>{
   assert.equal(db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,2)
  }finally{db.close()}
 })
+
+test('explicit autonomous cutover creates a shared registration on first authenticated upsert even after history observation',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true',FUNIX_CHAT_AUTONOMOUS_SINCE:'2026-01-01T00:00:00.000Z'},db)!
+  const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
+  const first=event('snapshot-then-webhook')
+  runtime.store.observePage(PN,[{...first.message,recordId:'synthetic',instanceId:'synthetic',origin:'unknown',kind:'text'}],1)
+  assert.equal(at.list().total,0)
+  const receipt=runtime.store.ingest(JSON.stringify(first))
+  assert.deepEqual(runtime.store.ingest(JSON.stringify(first)),receipt)
+  runtime.store.ingest(JSON.stringify({...first,eventId:'same-authenticated-message'}))
+  assert.equal(at.list().total,1)
+  const record=at.get(at.list().items[0]!.id,true)
+  assert.equal(customers.record(record.references!.contact[0]!.id!).entityId,record.references!.person[0]!.id)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_contact_events').get()!.n,1)
+  const before=event('before-cutover','5531999990999@s.whatsapp.net')
+  before.message.timestamp-=1;before.occurredAt=new Date(before.message.timestamp*1000).toISOString()
+  runtime.store.ingest(JSON.stringify(before))
+  assert.equal(at.list().total,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,2)
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{db.close()}
+})

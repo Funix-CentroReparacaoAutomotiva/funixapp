@@ -59,6 +59,7 @@ export class ConversationStore {
     db: DatabaseSync,
     identities: ConversationIdentities & ConversationAssociationReader & Partial<Pick<LocalConversationAssociations, 'inbound'>>,
     now = () => new Date().toISOString(),
+    private readonly autonomousSince?: string,
   ) {
     this.db = db
     this.identities = identities
@@ -334,8 +335,22 @@ export class ConversationStore {
         const members=this.identities.identityJids(e.message.remoteJid)
         const known=members&&this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id
           WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) AND m.message_id=? LIMIT 1`).get(instance,...members,e.message.messageId)
+        // An authenticated upsert may arrive after the provider history was read.
+        // A snapshot is not a commercial receipt. Only activate new interactions
+        // after the explicit cutover, and never repeat one already receipted.
+        let newMessage = !known
+        if (this.autonomousSince && e.type === 'message.upsert') {
+          const accepted = members && this.db.prepare(`SELECT 1 FROM chat_events
+            WHERE instance=? AND occurred_at>=? AND json_valid(payload)
+              AND json_extract(payload,'$.type')='message.upsert'
+              AND json_extract(payload,'$.message.messageId')=?
+              AND (json_extract(payload,'$.message.remoteJid') IN (${members.map(()=>'?').join(',')})
+                OR json_extract(payload,'$.message.remoteJidAlt') IN (${members.map(()=>'?').join(',')}))
+            LIMIT 1`).get(instance,this.autonomousSince,e.message.messageId,...members,...members)
+          newMessage = e.occurredAt >= this.autonomousSince && !accepted
+        }
         this.apply(e, id)
-        this.identities.inbound?.(e,!known)
+        this.identities.inbound?.(e,newMessage)
         if (identity === 'context_conflict') disposition = 'pending'
       }
       const receiptId = randomUUID()
