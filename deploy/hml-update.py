@@ -60,37 +60,52 @@ def validator(credentials, *, normal_credentials=None):
             raise ValueError("maintenance credential matches normal login")
 
         def request(method, endpoint, auth, expected):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("HTTPS validation deadline")
-            connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=min(5, remaining),
+            def remaining():
+                budget = deadline - time.monotonic()
+                if budget <= 0:
+                    raise TimeoutError("HTTPS validation deadline")
+                return min(5, budget)
+            connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=remaining(),
                                                      context=ssl.create_default_context())
             try:
                 connection.request(method, endpoint, headers={"Authorization": auth} if auth else {})
+                budget = remaining()
+                if connection.sock is not None:
+                    connection.sock.settimeout(budget)
                 response = connection.getresponse()
+                # An observed security violation must not become a retriable body error.
+                if expected == 200 and response.status in (502, 503, 504):
+                    raise TransientHttpsError()
+                if response.status != expected:
+                    raise ValueError("HTTPS/authentication contract failed")
+                if expected == 401 and not response.getheader("WWW-Authenticate", "").lower().startswith("basic "):
+                    raise ValueError("Basic challenge missing")
+                remaining()
                 chunks = []
                 size = 0
                 while size <= 100000:
-                    if time.monotonic() >= deadline:
-                        raise TimeoutError("HTTPS body deadline")
+                    budget = remaining()
+                    transport = connection.sock or getattr(getattr(response.fp, "raw", None), "_sock", None)
+                    if transport is not None:
+                        transport.settimeout(budget)
                     chunk = response.read1(min(16384, 100001 - size))
+                    remaining()
                     if not chunk:
+                        if response.length not in (None, 0):
+                            raise http.client.IncompleteRead(b"", response.length)
                         break
                     chunks.append(chunk)
                     size += len(chunk)
                 body = b"".join(chunks)
-                if expected == 200 and response.status in (502, 503, 504):
-                    raise TransientHttpsError()
-                if response.status != expected or len(body) > 100000:
+                if len(body) > 100000:
                     raise ValueError("HTTPS/authentication contract failed")
-                if expected == 401 and not response.getheader("WWW-Authenticate", "").lower().startswith("basic "):
-                    raise ValueError("Basic challenge missing")
                 if expected == 200 and endpoint in ("/api/ready", "/release.json"):
                     data = json.loads(body)
                     if data.get("revision") != release["revision"]:
                         raise ValueError("application revision mismatch")
                     if endpoint == "/api/ready" and data.get("status") != "ready":
                         raise ValueError("API not ready")
+                remaining()
             finally:
                 connection.close()
 
@@ -111,6 +126,8 @@ def validator(credentials, *, normal_credentials=None):
         for attempt in range(1, 4):
             try:
                 once(release)
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("HTTPS acceptance deadline")
                 return
             except ssl.SSLError:
                 print(f"HTTPS attempt={attempt} category=tls-security retry=false", file=sys.stderr)

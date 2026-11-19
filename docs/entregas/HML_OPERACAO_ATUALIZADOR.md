@@ -19,7 +19,16 @@ A sessão do gh não é reutilizada implicitamente. Download do artefato continu
 sendo uma etapa separada do transporte autorizado.
 
 O validador HTTPS repete a suíte completa até três vezes, espera um segundo
-entre tentativas e limita a janela a 60s, com timeout de operação de até 5s.
+entre tentativas e impõe orçamento de aceite de 60s, com timeout de socket de
+até 5s ajustado ao tempo remanescente antes de headers e leituras. Nunca aceita
+resultado após o prazo, inclusive no EOF final. Isso não é uma garantia rígida
+de retorno em 60s: resolução DNS e chamadas internas da biblioteca (incluindo
+recepção fragmentada de headers) podem exceder o orçamento antes de retornar
+ao controle Python. A próxima checagem reprova o resultado vencido.
+EOF com Content-Length remanescente é leitura incompleta e segue o retry
+limitado; HEAD e respostas sem corpo mantêm a semântica HTTP, e chunked
+continua suportado. Status/challenge incompatíveis são rejeitados antes de
+ler corpo, sem retry mesmo se o corpo também estiver truncado.
 Somente erros de transporte e 502/503/504 de endpoints esperados como 200 são
 transitórios. Certificado/TLS, autenticação, revisão, prontidão, limites de corpo
 e bloqueio de escrita falham imediatamente. Diagnóstico em stderr contém
