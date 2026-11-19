@@ -4,6 +4,8 @@ import argparse
 import importlib.util
 import json
 import re
+import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location("updater", Path(__file__).with_name("hml-update.py"))
@@ -27,6 +29,7 @@ def coordinate(operation_id, identity, *, authorize_operation, authorize_revisio
               "previous_revision": None, "completed": [], "result": "rejected",
               "journal": "absent", "recovery": "not_required", "next_action": "review_failure"}
     scoped = False
+    execution_started = False
     try:
         updater.host_scope(operation, config_path)
         scoped = True
@@ -56,12 +59,13 @@ def coordinate(operation_id, identity, *, authorize_operation, authorize_revisio
             previous = updater.installed_preflight(updater.make_adapter(config))
             report["previous_revision"] = previous["revision"]
             report["completed"].append("preflight")
+        execution_started = True
         updater.execute_operation("update", config, operation, authorized=True)
         report["completed"].append("update")
     except Exception:
         # Never render exception messages, expanded config, credentials or logs.
         pass
-    if scoped and (operation / "operation.json").exists():
+    if scoped and execution_started and (operation / "operation.json").exists():
         try:
             journal = json.loads(updater.root_file(operation / "operation.json").read_text())
             phase = journal["phase"]
@@ -91,8 +95,9 @@ def main():
     args = parser.parse_args()
     identity = {key: getattr(args, key) for key in ("artifact_id", "run_id", "attempt", "pr", "revision")}
     try:
-        result = coordinate(args.operation, identity, authorize_operation=args.authorize_operation,
-                            authorize_revision=args.authorize_revision)
+        with redirect_stdout(sys.stderr):
+            result = coordinate(args.operation, identity, authorize_operation=args.authorize_operation,
+                                authorize_revision=args.authorize_revision)
     except Exception:
         print(json.dumps({"result": "rejected", "next_action": "review_authorization"}))
         return 1
