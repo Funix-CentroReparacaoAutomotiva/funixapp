@@ -28,9 +28,17 @@ dispensa a nova checagem oficial de operação pendente. Operação existente n�
 atualizador oficial já realiza.
 
 O JSON final contém identidade da operação/artefato, revisões, etapas,
-accepted/rejected/rejected_restored/pending_recovery e próxima ação.
+accepted/rejected/rejected_restored/pending_recovery/busy/inspection_required
+e próxima ação. `operation` sempre identifica o pedido; `recovery_operation`
+é o ID canônico distinto da operação efetivamente apontada pelo estado global,
+somente após validar caminho, nome operation.json, schema, projeto e fase.
+Um alvo ilegível/inválido exige inspeção administrativa, sem recomendar recover.
+Contenção ou impossibilidade de confirmar o estado global produz recovery=unknown,
+nunca not_required. O coordenador reconcilia o resultado sob o lock oficial
+após falhas entre preparação/preflight e execução, sem nova mutação.
 Código de saída zero somente para accepted. Falhas antes do journal exigem
-revisão; pendência exige recover oficial autorizado no mesmo diretório.
+revisão; pendência exige recover oficial autorizado no diretório de
+recovery_operation, não necessariamente o diretório do pedido atual.
 Rollback de aceite continua sendo comando separado com confirmação de perda
 dos dados posteriores. O entrypoint nunca o executa automaticamente.
 
@@ -38,6 +46,13 @@ Interface remota futura: um executor local previamente aprovado poderia
 receber apenas esses identificadores/autorização e devolver JSON/código de
 saída. Transporte, identidade remota e concessão de escrita não são
 implementados aqui, nem podem usar a credencial de diagnóstico de leitura.
+
+Saídas CLI: stdout contém apenas o JSON final. Durante a coordenação, stdout e
+stderr Python e descritores herdados por subprocessos são capturados em arquivo
+temporário anônimo; somente linhas completas do diagnóstico HTTPS com campos
+fechados attempt/category/retry são emitidas em stderr. Texto bruto, exceções,
+config e mensagens Docker não são retransmitidos. O parser também não repete
+argumentos inválidos. Captura local não é serviço nem mecanismo remoto.
 
 Issues #271/#272: a consulta de procedência usa urllib da biblioteca padrão,
 HTTPS verificado para api.github.com, sem gh obrigatório e sem seguir redirects.
