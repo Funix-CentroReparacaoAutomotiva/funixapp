@@ -42,14 +42,20 @@ class OfficialUpdateTest(unittest.TestCase):
             host.assert_not_called()
 
     def test_results_and_sanitization(self):
-        for phase in ("accepted", "restored", "installing", None):
+        for phase in ("accepted", "restored", "installing", None, "artifact_failure", "preflight_failure"):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 operation = root / "op-test"
                 operation.mkdir(mode=0o700)
                 identity = dict(revision="b" * 40, artifact_id=1, run_id=2, attempt=1, pr=3)
                 def prepare(*args):
+                    if phase == "artifact_failure":
+                        raise ValueError("NEVER_PRINT")
                     (operation / "config.json").write_text('{}')
+                def preflight(*args):
+                    if phase == "preflight_failure":
+                        raise ValueError("NEVER_PRINT")
+                    return {"revision": "a" * 40}
                 def execute(*args, **kwargs):
                     if phase:
                         (operation / "operation.json").write_text(json.dumps({"phase": phase,
@@ -62,11 +68,12 @@ class OfficialUpdateTest(unittest.TestCase):
                      patch.object(official.updater, "prepare_operation", side_effect=prepare), \
                      patch.object(official.updater, "check_config"), \
                      patch.object(official.updater, "make_adapter"), \
-                     patch.object(official.updater, "installed_preflight", return_value={"revision": "a" * 40}), \
+                     patch.object(official.updater, "installed_preflight", side_effect=preflight), \
                      patch.object(official.updater, "execute_operation", side_effect=execute):
                     result = official.coordinate("op-test", identity, authorize_operation="op-test",
                                                  authorize_revision=identity["revision"])
                 expected = {"accepted": "accepted", "restored": "rejected_restored",
-                            "installing": "pending_recovery", None: "rejected"}[phase]
+                            "installing": "pending_recovery", None: "rejected",
+                            "artifact_failure": "rejected", "preflight_failure": "rejected"}[phase]
                 self.assertEqual(result["result"], expected)
                 self.assertNotIn("NEVER_PRINT", json.dumps(result))
