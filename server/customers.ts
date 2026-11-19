@@ -148,6 +148,17 @@ export class CustomerRepository {
     return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId)}
   }
 
+  /** A new authenticated LID-only channel can register one shared provisional owner
+   * without inventing a telephone. Caller owns the transaction and checked uniqueness.
+   */
+  createUnnumberedChannelContact(name:string,conversationId:string) {
+    const entity=this.saveRecord({kind:'entity',text:name.trim()||'Sem nome'})
+    const id=randomUUID()
+    this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,entity_id) VALUES(?,'contact',?,?,?)")
+      .run(id,JSON.stringify({text:'',channelState:'response_received'}),conversationId,entity.id)
+    return {person:entity,contact:this.record(id)}
+  }
+
   private bindConfirmedPhone(existing:CustomerRecord|null,phone:string,entityId:string,conversationId:string|null) {
     if(!existing){
       const contact=this.saveRecord({kind:'contact',text:phone,entityId})
@@ -158,6 +169,12 @@ export class CustomerRepository {
       this.db.prepare(`UPDATE customer_records SET entity_id=?,conversation_id=COALESCE(conversation_id,?),
         data=json_set(data,'$.text',?),phone_normalized=?,revision=revision+1 WHERE id=?`)
         .run(entityId,conversationId,existing.text||phone,phone,existing.id)
+      // A verified number can complete an already referenced provisional Contact.
+      // Refresh derived search values, without modifying frozen documents or ownership.
+      if(!existing.text)for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(existing.id)){
+        this.updateSearch(String(affected.atendimento_id))
+        this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(affected.atendimento_id!)
+      }
     }
     return this.record(existing.id)
   }
