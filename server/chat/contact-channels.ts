@@ -91,7 +91,7 @@ export class ContactChannels {
         if(owner||(oldJid&&!members!.includes(oldJid)))state='conflict'
         else {
           conversationId=this.identities.rememberProviderConversation(jid)
-          this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(conversationId,id)
+          this.customers.resolveChannelContact(conversationId,id)
           // Preserve a pre-existing exact alias handle/UUID; no historical rewrites.
           conversationId=this.contact(id).conversationId??conversationId
         }

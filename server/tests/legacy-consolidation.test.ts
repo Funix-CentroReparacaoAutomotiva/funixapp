@@ -1,3 +1,4 @@
+import {DatabaseSync} from 'node:sqlite'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {execFileSync} from 'node:child_process'
@@ -13,7 +14,7 @@ import {LocalConversationAssociations} from '../chat/local-associations.ts'
 import {loadConversationRuntime} from '../chat/conversation-runtime.ts'
 import {V20AssociationRepository} from '../chat/v20-associations.ts'
 import {consolidateLegacyCustomers,normalizeLegacyPhone} from '../chat/legacy-consolidation.ts'
-import {issueProductionOrder,removeV24FixtureSchema} from './fixtures/production.ts'
+import {issueProductionOrder,removeV24FixtureSchema,removeV25FixtureSchema} from './fixtures/production.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
 
@@ -114,7 +115,7 @@ test('legacy phone normalization preserves digits and rejects ambiguity',()=>{
  assert.equal(normalizeLegacyPhone('(31) 3333-0777'),'+553133330777')
  for(const value of ['99999-0777','3199990777','031999990777','(00) 99999-0777','31 99999-0777 / 88888-0777','31 99999-0777 ramal 2','Não informado'])assert.equal(normalizeLegacyPhone(value),null)
 })
-test('V24 reconciles complete national and country-prefixed numbers without duplicate references',()=>{
+test('V25 reconciles complete national and country-prefixed numbers without duplicate references',()=>{
  const db=openDatabase(':memory:')
  try{
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
@@ -162,8 +163,8 @@ test('an existing legacy-format Contact blocks accidental creation of a duplicat
   customers.save({kind:'entity',text:'Pessoa manual',contacts:[{text:'(31) 99999-0777'}]})
   at.create({name:'Pessoa manual',phone:'+5531999990777'})
   const report=consolidateLegacyCustomers(db,true)
-  assert.equal(report.pendingReasons.legacy_contact_requires_review,1)
-  assert.equal(report.reconciled,0)
+  assert.equal(report.pending,0)
+  assert.equal(report.reconciled,1)
   assert.equal(db.prepare("SELECT count(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
  }finally{db.close()}
 })
@@ -189,6 +190,7 @@ test('V24 offline backup preserves issued documents and operational records and 
   }}))
   assert.equal(runtime.store.page(remoteJid,1).items.length,1)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM v20_association_receipts').get()!.n,1)
+  removeV25FixtureSchema(db)
   const phone='+5531999990888'
   for(const text of [phone,'(31) 99999-0888'])
    db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(randomUUID(),JSON.stringify({text}))
@@ -200,7 +202,7 @@ test('V24 offline backup preserves issued documents and operational records and 
   assert.equal(report.duplicateContactPhones,1)
   assert.equal(report.contactsInDuplicateGroups,2)
   assert.equal(new AtendimentoRepository(db).get(legacy.id,true).references!.contact[0]!.id,null)
-  const trial=openDatabase(copy)
+  const trial=new DatabaseSync(copy)
   try{
    assert.deepEqual(snapshot(trial),before)
    assert.deepEqual(trial.prepare('SELECT id FROM atendimentos ORDER BY id').all(),atIds)
@@ -210,7 +212,7 @@ test('V24 offline backup preserves issued documents and operational records and 
    assert.equal(consolidateLegacyCustomers(trial,true).reconciled,0)
   }finally{trial.close()}
   await backupDatabase(db,restored)
-  const reopened=openDatabase(restored)
+  const reopened=new DatabaseSync(restored)
   try{
    assert.deepEqual(snapshot(reopened),before)
    assert.deepEqual(reopened.prepare('SELECT id FROM atendimentos ORDER BY id').all(),atIds)

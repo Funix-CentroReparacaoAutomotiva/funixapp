@@ -183,13 +183,13 @@ test('preparing a conversation reuses the equivalent PN only for the selected ow
  }finally{f.db.close()}
 })
 
-test('previously separate PN/LID handles retain both processes; exact alias evidence permits explicit context selection without a third ficha',()=>{
+test('previously separate PN/LID handles retain both processes and identity hold survives context selection',()=>{
  const f=fixture();try{
   f.ingest(event('pn-independent',PN,null,'Pedro'));f.ingest(event('lid-independent',LID,null,'Maria'))
   f.ingest(event('alias-evidence',LID,PN,'Canal'))
   const cid=f.runtime.authority!.rememberProviderConversation(PN),scope=f.runtime.authority!.associationScope(cid),links=f.links.listActive(cid,scope)
   assert.equal(f.at.list().total,2);assert.equal(links.items.length,2);assert.equal(f.runtime.authority!.resolveIdentityActive(PN),null)
-  for(const link of links.items){f.links.selectAtendimento(cid,link.linkId,scope);assert.equal(f.runtime.authority!.resolveIdentityActive(LID),link.atendimentoId);assert.equal(f.runtime.store.page(PN,1).items.length,3)}
+  for(const link of links.items){assert.throws(()=>f.links.selectAtendimento(cid,link.linkId,scope),/identidade/);assert.equal(f.runtime.authority!.resolveIdentityActive(LID),null);assert.equal(f.runtime.store.page(PN,1).items.length,3)}
   f.links.unlink({conversationId:cid,linkId:links.items[0]!.linkId,expectedRevision:links.revision,requestId:randomUUID(),reason:'synthetic explicit unlink'},scope)
   assert.equal(f.links.listActive(cid,scope).items.length,1);assert.equal(f.runtime.store.page(LID,1).items.length,3)
  }finally{f.db.close()}
@@ -343,6 +343,26 @@ test('standalone LID without a name keeps phone empty and a shared provisional i
   assert.equal(new CustomerRepository(db).record(a.references!.contact[0]!.id!).entityId,a.references!.person[0]!.id)
  }finally{db.close()}
 })
+test('same-owner LID then existing PN reconciles references and replays without moving messages',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  runtime.store.ingest(JSON.stringify(event('lid-before-known-phone',LID)))
+  const first=at.get(at.list().items[0]!.id,true),owner=customers.record(first.references!.person[0]!.id!)
+  const provisional=first.references!.contact[0]!.id!
+  const known=customers.save({kind:'contact',text:'(31) 99999-0101',entityId:owner.id})
+  const signed=JSON.stringify(event('same-owner-pn',PN,LID))
+  const receipt=runtime.store.ingest(signed)
+  assert.deepEqual(runtime.store.ingest(signed),receipt)
+  assert.equal(at.list().total,1)
+  assert.equal(at.get(first.id,true).references!.contact[0]!.id,known.id)
+  assert.equal(customers.record(provisional).conversationId,null)
+  assert.deepEqual(customers.contacts(owner.id).map(contact=>contact.id),[known.id])
+  assert.equal(runtime.store.page(LID,1).items.length,2)
+ }finally{db.close()}
+})
+
 test('standalone late PN cannot silently adopt another Entity Contact',()=>{
  const db=openDatabase(':memory:')
  try{

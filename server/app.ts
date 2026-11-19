@@ -620,14 +620,19 @@ export function createRequestHandler(options: AppOptions) {
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
         if(!options.evolutionChat||!(options.codaSync || options.conversationRuntime?.authority)||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
           return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
-        if([...url.searchParams.keys()].some(key=>key!=='page')||url.searchParams.getAll('page').length>1)
+        if([...url.searchParams.keys()].some(key=>!['page','scope'].includes(key))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('scope').length>1)
           return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const scope=url.searchParams.get('scope')
+        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const [at,conversation]=[mediaReadRoute[1]!,mediaReadRoute[2]!]
+        const runtime=options.conversationRuntime
+        const allowsLinkedRead=scope==='linked'?(jid:string)=>!!runtime?.read&&runtime.authority?.linkedHistoryJid(at,conversation)===jid:undefined
         const page=url.searchParams.get('page')??'1'
         if(!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)
           return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
         try{
           const result=await options.evolutionChat.mediaForAtendimento(
-            mediaReadRoute[1]!,mediaReadRoute[2]!,mediaReadRoute[3]!,Number(page))
+            at,conversation,mediaReadRoute[3]!,Number(page),allowsLinkedRead)
           if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
           if(!result)return fail(404,'CHAT_MEDIA_NOT_FOUND','Mídia indisponível neste Atendimento.')
           if(result.state==='too_large')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo excede o limite suportado.')
@@ -662,7 +667,7 @@ export function createRequestHandler(options: AppOptions) {
             const conversationId=syncedEvolutionRoute[2]!
             const jid=runtime?.authority?.linkedHistoryJid(syncedEvolutionRoute[1]!,conversationId)
             if(!runtime?.read||!jid)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor)})
+            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor),mediaReadAvailable:options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
           }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
@@ -957,7 +962,7 @@ export function createRequestHandler(options: AppOptions) {
           options.v20Associations.resolveRemoteJid(cid,'funix_comercial')){
           const identity=new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation)
           const chatIdentity=identity.forAtendimento(cid,atendimento.id)
-          if(chatIdentity)atendimento.chatIdentity=chatIdentity
+          if(chatIdentity)atendimento.chatIdentity={...chatIdentity,conversationId:cid}
         }
         return atendimento
       }

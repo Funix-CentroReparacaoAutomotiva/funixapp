@@ -20,8 +20,9 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
   const table=(name:string)=>!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name)
   db.exec('BEGIN IMMEDIATE')
   try {
-    if(![23,24].includes(Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)))
-      throw Error('Requer cópia do banco V23 ou V24.')
+    const version=Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)
+    if(![23,24,25].includes(version))
+      throw Error('Requer cópia do banco V23, V24 ou V25.')
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Banco com referências inválidas.')
     if(table('coda_sync_conversation_links')){
       const rows=db.prepare(`SELECT l.remote_jid,l.first_seen_at,a.atendimento_id
@@ -36,6 +37,11 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
           AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(at,...scope)
         if(old.some(link=>link.unlinked_at===null)){report.existingLinks++;continue}
         if(old.length){report.unlinkedPreserved++;continue}
+        if(version>=25&&
+          Number(db.prepare('SELECT COUNT(*) AS n FROM customer_channel_contacts WHERE conversation_id=?').get(cid)?.n)!==1){
+          report.blockedLinks++
+          continue
+        }
         db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)')
           .run(randomUUID(),cid,at,String(row.first_seen_at),'system','legacy_cutover_confirmed_coda_link')
         db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
@@ -82,11 +88,11 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
         ?members.flatMap(set=>set?.filter(jid=>/^[1-9][0-9]{7,14}@s\.whatsapp\.net$/.test(jid)).map(jid=>'+'+jid.split('@')[0]!)??[])
         :savedPhones)]
       const person=refs.person[0],phone=phones[0]
-      const valid=!!phone&&phones.length===1&&members.every(set=>set?.includes(phone.slice(1)+'@s.whatsapp.net'))&&
+      const valid=!!phone&&normalizeLegacyPhone(phone)===phone&&phones.length===1&&members.every(set=>set?.includes(phone.slice(1)+'@s.whatsapp.net'))&&
         refs.person.length===1&&!!person?.text.trim()&&refs.contact.length<=1&&
         refs.contact.every(ref=>!ref.text||normalizeLegacyPhone(ref.text)===phone)
       if(!valid){
-        pending(!phone?(links.length?'chat_without_confirmed_number':refs.contact.some(r=>r.text.trim())?'invalid_phone':'missing_phone'):
+        pending(phone&&normalizeLegacyPhone(phone)!==phone?'unusable_provider_number':!phone?(links.length?'chat_without_confirmed_number':refs.contact.some(r=>r.text.trim())?'invalid_phone':'missing_phone'):
           phones.length>1?'multiple_numbers':refs.person.length>1?'multiple_people':!person?.text.trim()?'missing_name':
           refs.contact.length>1?'multiple_contacts':'phone_chat_mismatch')
         for(const p of [...phones,...savedPhones])unsafe.add(p);continue
@@ -116,7 +122,10 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
       const matches=[...new Map([...customers.phoneMatches(phone),...byChannel,...byReference].map(c=>[c.id,c])).values()]
       const contact=matches[0]??null
       if(matches.length>1||contact&&contact.kind!=='contact'||contact?.conversationId&&channel&&!scope.includes(contact.conversationId)||
-        contact?.text&&normalizePhone(contact.text)!==phone||contact?.conversationId&&!channel&&!contact.text){pending(matches.length===1&&contact?.text&&normalizeLegacyPhone(contact.text)===phone&&!normalizePhone(contact.text)?'legacy_contact_requires_review':'contact_conflict',list.length);continue}
+        contact?.text&&normalizeLegacyPhone(contact.text)!==phone||contact?.conversationId&&!channel&&!contact.text){
+        pending('contact_conflict',list.length)
+        continue
+      }
       let person=ids.length?customers.record(ids[0]!):null
       if(contact?.entityId){
         const owner=customers.record(contact.entityId)

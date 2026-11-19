@@ -5,8 +5,13 @@ import {AtendimentoRepository} from '../../atendimentos.ts'
 import {ProductionRepository} from '../../production.ts'
 import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 
+export function removeV25FixtureSchema(db: DatabaseSync) {
+  db.exec('DROP TRIGGER IF EXISTS customer_association_contact_insert; DROP TRIGGER IF EXISTS customer_association_contact_update; DROP VIEW IF EXISTS customer_channel_contacts; DROP TRIGGER IF EXISTS customer_phone_key_insert; DROP TRIGGER IF EXISTS customer_phone_key_update; DROP INDEX IF EXISTS customer_contact_phone_unique; DELETE FROM schema_migrations WHERE version=25;')
+}
+
 /** Synthetic downgrade for migration fixtures. */
 export function removeV24FixtureSchema(db: DatabaseSync) {
+  removeV25FixtureSchema(db)
   db.exec(`
     DROP TRIGGER production_budget_cancellation;
     DROP TRIGGER production_transition_guard;

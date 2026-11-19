@@ -131,6 +131,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   const [failure, setFailure] = useState('')
   const [canSendText, setCanSendText] = useState(false)
   const [canMedia, setCanMedia] = useState(false)
+  const [canReadMedia,setCanReadMedia]=useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [draft, setDraftState] = useState(()=>drafts?.get(contactId??'')??'')
   function setDraft(value:string){setDraftState(value);if(contactId)drafts?.set(contactId,value)}
@@ -205,6 +206,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
       setCanSendText(!readOnly&&!linkedHistory&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
+      setCanReadMedia((raw as {mediaReadAvailable?:unknown}).mediaReadAvailable===true)
       setCanMedia(!readOnly&&!linkedHistory&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
       setLocalHistory(result.source==='local'&&!contactId&&!readOnly&&!linkedHistory)
@@ -250,6 +252,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       // Revoke composer capabilities on every failed authorization/refresh.
       setCanSendText(false)
       setCanMedia(false)
+      setCanReadMedia(false)
       contextToken.current=null
       if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
         itemsRef.current = []
@@ -396,7 +399,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           
-          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canReadMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canReadMedia} linkedHistory={linkedHistory}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}

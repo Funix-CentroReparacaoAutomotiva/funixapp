@@ -73,10 +73,8 @@ export class SharedConversationIdentity {
 
   forAtendimento(conversationId:string,atendimentoId:string) {
     const {blocked,contact,owner,targets}=this.inspect(conversationId)
-    if(blocked||!contact?.conversationId||!owner||!normalizePhone(contact.text))return null
-    const refs=targets.find(target=>target.id===atendimentoId)?.refs
-    if(!refs?.person.some(person=>person.id===owner.id)||!refs.contact.some(ref=>ref.id===contact.id))return null
-    return {name:owner.text,phone:contact.text}
+    if(blocked||!contact?.conversationId||!owner||!targets.some(target=>target.id===atendimentoId))return null
+    return {name:owner.text,phone:normalizePhone(contact.text)??''}
   }
 
   confirm(conversationId:string,body:unknown) {
@@ -99,7 +97,7 @@ export class SharedConversationIdentity {
       if(!view.phone||view.blocked)return review('Número ou titularidade precisa de revisão.')
       const target=view.targets.find(row=>row.id===atendimentoId)
       if(view.targets.length?!target:atendimentoId!==null)return invalid()
-      if(view.owner&&view.owner.id!==entityId)return review('Este telefone já pertence a outra pessoa. Titularidade preservada.')
+      if(view.owner&&view.owner.id!==entityId&&!this.customers.canReplaceProvisionalOwner(view.owner.id))return review('Este telefone já pertence a outra pessoa. Titularidade preservada.')
       const entity=entityId?this.customers.record(entityId):null
       if(entity&&entity.kind!=='entity')return invalid()
       const label=entity?.text??String(name).trim()

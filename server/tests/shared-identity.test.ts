@@ -1,3 +1,4 @@
+import {removeV25FixtureSchema} from './fixtures/production.ts'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -41,7 +42,7 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
   assert.deepEqual(refs.contact.map(contact=>contact.text),['+5531999990202',phone])
   assert.equal(f.customers.contacts(existing.id)[0]!.id,result.contactId)
   assert.deepEqual(service.forAtendimento(cid,at.id),{name:existing.text,phone})
-  assert.equal(service.forAtendimento(cid,second.id),null)
+  assert.deepEqual(service.forAtendimento(cid,second.id),{name:existing.text,phone})
   const renamed=f.customers.save({text:'Nome corrigido',revision:existing.revision},existing.id)
   const afterRestart=new SharedConversationIdentity(f.db,()=>false)
   assert.equal(afterRestart.forAtendimento(cid,at.id)?.name,renamed.text)
@@ -53,8 +54,9 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
  }finally{f.db.close()}
 })
 
-test('LID without evidence, contradictory aliases, stale confirmations and ownership conflicts fail closed',async()=>{
+test('legacy LID without evidence and contradictory aliases fail closed',async()=>{
  const f=entityContactsFixture()
+ removeV25FixtureSchema(f.db)
  try{
   const owner=f.customers.save({kind:'entity',text:'Titular',contacts:[{text:phone}]})
   const original=f.customers.contacts(owner.id)[0]!

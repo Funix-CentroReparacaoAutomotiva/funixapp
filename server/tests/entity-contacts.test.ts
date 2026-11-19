@@ -1,3 +1,4 @@
+import {removeV25FixtureSchema} from './fixtures/production.ts'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -170,6 +171,7 @@ test('authenticated entity HTTP save persists before provider checks, gates writ
 
 test('duplicate legacy phone records remain intact and block new verification; late provider response cannot bind an edited contact',async()=>{
  const f=entityContactsFixture();try{
+  removeV25FixtureSchema(f.db)
   const a=f.customers.save({kind:'contact',text:phone1}),id=randomUUID()
   f.db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(id,JSON.stringify({text:phone1}))
   assert.equal((await f.channels.verify(a.id)).state,'conflict');assert.equal(f.checks.length,0)

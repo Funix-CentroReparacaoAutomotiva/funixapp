@@ -1,20 +1,18 @@
 # Issue #282 — Identidade cadastral
 
-Base de desenvolvimento 7228e12, a mesma da auditoria registrada na issue. Esta revisão implementa parte dos critérios de aceite.
+Base da PR #283 em `7228e12`. A rodada de revisão foi registrada no parecer 5982543162.
 
-- Cadastro e consulta de canal compartilham a normalização de números brasileiros completos e de internacionais explícitos. Valores incompletos continuam visíveis e não geram chave, consulta ou envio. A evidência de provedor continua sujeita às regras do canal.
-- A abertura explícita da conversa verifica colisões por número e por handles relacionados. Quando o número já pertence a um titular, exige que esse titular esteja referenciado no Atendimento antes de reutilizar o Contato. O primeiro evento recebido pode reutilizar um Contato cadastrado sem criar outro titular. Colisões identificadas retêm a mensagem e bloqueiam o contexto.
-- A seleção de histórico no Atendimento usa a conversa na URL. Uma conversa elegível é selecionada automaticamente. Ao trocar de Contato, o backend lê somente o histórico local de um vínculo existente e bloqueia identidades conflitantes. A seleção do contexto de envio permanece explícita.
-- A consolidação offline aceita V23 e V24, mantém o preview transacional e informa a contagem anônima de grupos com telefones duplicados.
+Cadastro, busca, consulta de canal e abertura de conversas usam a mesma chave para telefones brasileiros completos e internacionais explícitos. A evidência de PN/LID continua sujeita às regras do canal. Um número recebido que não pode se tornar uma chave válida gera pendência de identidade e o histórico é preservado.
+
+A V25 calcula as chaves em transação, recusa grupos duplicados antes de gravar e protege a coerência e a unicidade por gatilhos e índice SQLite. A ligação comercial nova exige um Contato associado a uma Entidade e compatível com o canal. O histórico anterior à V25 permanece para conciliação. O procedimento de confirmação pode substituir um titular provisório que ainda não tenha participado de um Atendimento. Quando PN e LID identificam Contatos do mesmo titular, o inbound autenticado pode reconciliar as referências e reter o identificador provisório para auditoria, desde que o contexto permita. Conflito de titularidade mantém os cadastros e bloqueia envio e seleção de contexto.
+
+O cabeçalho do Chat usa a identidade do canal selecionado. A abertura automática usa substituição da entrada de navegação. Alternar históricos mantém o contexto de envio. A leitura vinculada usa mensagens locais, permite recuperar mídia autorizada pelo vínculo e conserva a indicação de histórico incompleto.
 
 ## Ensaio e reversão
 
-Execute `node server/consolidate-legacy-copy.ts ORIGEM COPIA_NOVA` em um banco sintético V23 ou V24. Guarde a origem para restauração e use somente a cópia no ensaio. Confira `PRAGMA integrity_check`, `PRAGMA foreign_key_check`, as pendências anônimas e os IDs e contagens das tabelas protegidas. Repita o ensaio a partir da cópia, gerando um terceiro arquivo, para conferir a idempotência. Para reverter, pare o ensaio e reabra a origem com a versão compatível do aplicativo. Dados instalados e homologação em ambiente compartilhado dependem de autorização própria.
+1. Em uma base sintética V23 ou V24, execute `node server/consolidate-legacy-copy.ts ORIGEM COPIA_NOVA`. O programa cria uma cópia consistente do SQLite e retorna contagens de prévia e aplicação, sem dados pessoais. O mesmo comando aceita V25. Preserve a origem.
+2. Confira os grupos duplicados e as razões de pendência. Resolva duplicidades com evidência de titularidade e preserve os IDs históricos. Se o preflight da V25 detectar grupos de números iguais, a migração reverte por inteiro. Consulte o inventário e ensaie novamente após a revisão. Um vínculo histórico sem Contato que a V25 não possa reproduzir entra na contagem de bloqueios.
+3. Compare IDs, recibos e documentos protegidos. Confira `PRAGMA integrity_check` e `PRAGMA foreign_key_check`. Repita a consolidação em nova cópia para verificar idempotência. Abra a aplicação a partir da cópia autorizada e confira o histórico, o cabeçalho e os bloqueios antes de qualquer proposta de corte.
+4. Para voltar, pare o ensaio e reabra a cópia original com a versão anterior compatível. Uma conexão que escreve Contatos V25 precisa registrar a função canônica usada pelos gatilhos. O servidor e a CLI de consolidação registram essa função.
 
-O ensaio sintético V24 executou a CLI em uma cópia nova, conferiu os IDs dos Atendimentos e comparou as tabelas protegidas linha a linha, incluindo mensagens, vínculos e recibos de Chat, orçamento emitido, PDF, OS e Experiência. A cópia passou nos dois PRAGMAs e na segunda execução. O backup da origem foi reaberto e comparado com o estado anterior à conciliação. O relatório contou um PN duplicado em dois Contatos, preservados para revisão.
-
-## Pendências de aceite
-
-- Restrição SQLite para unicidade de PN e vínculo comercial obrigatório com Contato, com preflight e tratamento auditável das duplicidades.
-- Autoridade transacional única para edições textuais e todos os vínculos legados. Reconciliação de LID provisório com PN já cadastrado quando houver prova suficiente, preservando os casos conflitantes.
-- Cobertura integrada de múltiplos Chats, seleção de contexto, atualização de nome e telefone no cabeçalho.
+O ensaio sintético V24 comparou mensagens, vínculos, recibos, IDs de Atendimentos, orçamento emitido, PDF, OS e Experiência após consolidação e restauração. Dois Contatos com o mesmo número foram preservados e relatados para revisão. A V25 foi testada com rollback, nova execução, restrições diretas e chaves de formatos equivalentes. Casos sem prova de titularidade ou de compatibilidade de contexto exigem revisão humana. Dados instalados e homologação compartilhada dependem de autorização própria.
