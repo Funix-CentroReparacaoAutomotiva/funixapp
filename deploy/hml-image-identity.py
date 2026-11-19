@@ -2,6 +2,7 @@
 import hashlib
 import gzip
 import json
+import re
 from pathlib import Path
 import subprocess
 import tarfile
@@ -24,7 +25,9 @@ def verify_saved_image(path, *, tag, config_digest):
             with archive.extractfile(item) as stream:
                 return stream.read()
         records = json.loads(read("manifest.json", 65536))
-        if not isinstance(records, list) or len(records) != 1 or records[0].get("RepoTags") != [tag]:
+        if (not isinstance(records, list) or len(records) != 1
+                or (records[0].get("RepoTags") not in (None, []) if tag is None
+                    else records[0].get("RepoTags") != [tag])):
             raise ValueError("unexpected saved image selection")
         record = records[0]
         config = read(record["Config"], 4 * 1024**2)
@@ -54,17 +57,18 @@ def verify_saved_image(path, *, tag, config_digest):
 
 def verify_local_image(tag, config_digest, *, directory):
     """Export only the selected image; no retagging, loading or global mutation."""
+    result = subprocess.run(["docker", "image", "inspect", tag], capture_output=True, timeout=30)
+    if result.returncode:
+        raise ValueError("unable to inspect selected image")
+    records = json.loads(result.stdout)
+    if len(records) != 1 or not re.fullmatch(r"sha256:[0-9a-f]{64}", records[0].get("Id", "")):
+        raise ValueError("ambiguous selected image")
+    selected_id = records[0]["Id"]
     with tempfile.TemporaryDirectory(prefix="identity-", dir=directory) as temporary:
         path = Path(temporary) / "image.tar"
-        result = subprocess.run(["docker", "image", "save", "--output", str(path), tag],
+        result = subprocess.run(["docker", "image", "save", "--output", str(path), selected_id],
                                 capture_output=True, timeout=180)
         if result.returncode:
             raise ValueError("unable to export selected image")
-        verify_saved_image(path, tag=tag, config_digest=config_digest)
-    result = subprocess.run(["docker", "image", "inspect", tag], capture_output=True, timeout=30)
-    if result.returncode:
-        raise ValueError("unable to inspect verified image")
-    records = json.loads(result.stdout)
-    if len(records) != 1:
-        raise ValueError("ambiguous verified image")
-    return records[0]["Id"]
+        verify_saved_image(path, tag=None, config_digest=config_digest)
+    return selected_id

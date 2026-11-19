@@ -11,6 +11,16 @@ digest exato dos bytes da configuração e SHA-256 de cada camada descomprimida
 contra os diff_ids dessa configuração. A configuração autenticada também
 vincula plataforma, parâmetros e revisão; label isolada nunca autoriza aceite.
 
+A tag é resolvida uma única vez, antes da exportação. docker image save recebe
+o ID imutável capturado, não a tag. O ID retornado é exatamente esse ID cujo
+conteúdo foi validado; nenhuma nova resolução de tag ocorre após exportar.
+Uma troca concorrente da tag não pode redirecionar a exportação nem o retorno.
+
+Os três skips locais são os métodos NginxTest em test_hml_maintenance.py,
+condicionados à presença do executável nginx no host. Não indicam falha de
+identidade; o workflow sintético deve executar o contrato de manutenção no
+ambiente Docker/Nginx próprio. Skips locais não substituem o aceite do CI.
+
 Após a verificação, o candidato em memória recebe o ID local inspecionado para
 uso no journal, Compose e validação dos contêineres. O manifesto/pacote e a
 configuração privada original não são reescritos. Carregamento e verificação
