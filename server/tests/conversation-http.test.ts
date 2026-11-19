@@ -417,3 +417,38 @@ test('autonomous signed raw Evolution inbound creates shared registration, expos
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM coda_sync_atendimentos').get()!.n,0)
  }finally{f.db.close()}
 })
+
+
+test('signed live-format upsert with redundant identical PN or LID is accepted; distinct same-domain alias remains rejected', async () => {
+  const f = await fixture(true)
+  try {
+    const raw = {
+      ...observedEvolutionUpsert,
+      data: { ...observedEvolutionUpsert.data, instanceId: INSTANCE,
+        key: { ...observedEvolutionUpsert.data.key, id: 'duplicate-pn-synthetic',
+          remoteJid: '5531999990555@s.whatsapp.net', remoteJidAlt: '5531999990555@s.whatsapp.net' } },
+    }
+    const expected = { instance: 'funix_comercial', instanceId: INSTANCE }
+    const normalized = await normalizeEvolutionUpsert(raw, expected)
+    assert.equal(normalized.message.remoteJidAlt, null)
+    const response = await f.sendEvent(raw)
+    assert.equal(response.status, 202)
+    const receipt = await response.json()
+    assert.deepEqual(await (await f.sendEvent(raw)).json(), receipt)
+    const repo = new AtendimentoRepository(f.db), customers = new CustomerRepository(f.db)
+    assert.equal(repo.list().total, 1)
+    const at = repo.get(repo.list().items[0]!.id, true)
+    assert.equal(customers.record(at.references!.contact[0]!.id!).entityId, at.references!.person[0]!.id)
+    assert.equal(at.phone, '+5531999990555')
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM chat_provider_alias_evidence').get()!.n, 0)
+    const lid = { ...raw, data: { ...raw.data, key: { ...raw.data.key, id: 'duplicate-lid-synthetic',
+      remoteJid: LID, remoteJidAlt: LID } } }
+    assert.equal((await normalizeEvolutionUpsert(lid, expected)).message.remoteJidAlt, null)
+    assert.equal((await f.sendEvent(lid)).status, 202)
+    const conflict = { ...raw, data: { ...raw.data, key: { ...raw.data.key, id: 'conflict-synthetic',
+      remoteJidAlt: '5531999990666@s.whatsapp.net' } } }
+    await assert.rejects(normalizeEvolutionUpsert(conflict, expected))
+    assert.equal((await f.sendEvent(conflict)).status, 422)
+    assert.equal(repo.list().total, 2)
+  } finally { f.db.close() }
+})
