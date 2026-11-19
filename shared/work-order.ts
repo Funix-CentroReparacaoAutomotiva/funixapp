@@ -14,6 +14,7 @@ export interface WorkOrderScope {
   deliveryDate?:string|null;
 }
 export interface WorkOrder {
+  experienceId?:string;
   cancellation?: {cancelledAt:string;reason:string};
   id:string;number:string;atendimentoId:string;budgetVersionId:string;
   /** Document revision. Older records without revision are revision 1. */
