@@ -68,7 +68,17 @@ def validator(credentials, *, normal_credentials=None):
             try:
                 connection.request(method, endpoint, headers={"Authorization": auth} if auth else {})
                 response = connection.getresponse()
-                body = response.read(100001)
+                chunks = []
+                size = 0
+                while size <= 100000:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("HTTPS body deadline")
+                    chunk = response.read1(min(16384, 100001 - size))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    size += len(chunk)
+                body = b"".join(chunks)
                 if expected == 200 and response.status in (502, 503, 504):
                     raise TransientHttpsError()
                 if response.status != expected or len(body) > 100000:
