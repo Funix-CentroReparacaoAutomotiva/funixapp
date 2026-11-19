@@ -15,13 +15,14 @@ SPEC.loader.exec_module(official)
 
 class OfficialUpdateTest(unittest.TestCase):
     def test_pending_and_concurrent_operations_never_prepare(self):
-        for pending in (True, False):
+        for scenario in ("other", "same", "busy"):
+            pending = scenario != "busy"
             with tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 operation = root / "op-test"
                 operation.mkdir(mode=0o700)
-                other = root / "op-other"
-                other.mkdir(mode=0o700)
+                other = operation if scenario == "same" else root / "op-other"
+                other.mkdir(mode=0o700, exist_ok=True)
                 (other / "operation.json").write_text('{"schema":1,"project":"funix-hml","phase":"installing"}')
                 (root / "active.json").write_text(json.dumps({"journal": str(other / "operation.json")}))
                 identity = dict(revision="b" * 40, artifact_id=1, run_id=2, attempt=1, pr=3)
@@ -36,7 +37,7 @@ class OfficialUpdateTest(unittest.TestCase):
                                                  authorize_revision=identity["revision"])
                     prepare.assert_not_called()
                     self.assertEqual(report["result"], "pending_recovery" if pending else "busy")
-                    self.assertEqual(report["recovery_operation"], "op-other" if pending else None)
+                    self.assertEqual(report["recovery_operation"], other.name if pending else None)
 
     def test_exact_authorization_before_host_access(self):
         with patch.object(official.updater, "host_scope") as host:
