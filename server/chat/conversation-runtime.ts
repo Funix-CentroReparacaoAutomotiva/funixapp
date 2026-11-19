@@ -23,12 +23,14 @@ export function loadConversationRuntime(
     return undefined
   }
   const authority = !identities || env.FUNIX_CHAT_AUTONOMOUS_ENABLED === 'true' ? new LocalConversationAssociations(db, undefined, env.FUNIX_CHAT_AUTONOMOUS_ENABLED==='true') : undefined
+  const autonomousSince=env.FUNIX_CHAT_AUTONOMOUS_ENABLED==='true'?env.FUNIX_CHAT_AUTONOMOUS_SINCE:undefined
+  if(autonomousSince!==undefined && (!Number.isFinite(Date.parse(autonomousSince)) || new Date(autonomousSince).toISOString()!==autonomousSince))throw Error('CHAT_AUTONOMOUS_INVALID_CUTOVER')
   createConversationStoreSchema(db)
   createSendOperationSchema(db)
   const sends = new SendOperations(db)
   sends.recoverInterrupted()
   return {
-    store: new ConversationStore(db, authority ?? identities!),
+    store: new ConversationStore(db, authority ?? identities!, undefined, autonomousSince),
     authority,
     sends,
     providerIdentity: env.FUNIX_EVOLUTION_INSTANCE_ID
