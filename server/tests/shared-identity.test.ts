@@ -118,8 +118,10 @@ test('identity review alone clears a recovered identity hold after revalidating 
   const identity=new SharedConversationIdentity(f.db,()=>true)
   const preview=identity.preview(cid)
   const input={requestId:randomUUID(),token:preview.token,entityId:owner.id,atendimentoId:at.id}
+  const revision=Number(f.db.prepare('SELECT context_revision FROM v20_conversations WHERE id=?').get(cid)!.context_revision)
   const confirmed=identity.confirm(cid,input)
   assert.deepEqual(identity.confirm(cid,input),confirmed)
+  assert.equal(f.db.prepare('SELECT context_revision FROM v20_conversations WHERE id=?').get(cid)!.context_revision,revision+1)
   assert.equal(f.db.prepare('SELECT reason FROM chat_local_context_holds WHERE conversation_id=?').get(cid),undefined)
   assert.equal(f.sends(),0)
  }finally{f.db.close()}

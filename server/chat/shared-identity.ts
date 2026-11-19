@@ -107,8 +107,11 @@ export class SharedConversationIdentity {
       const {person,contact}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel)
       if(target)this.customers.reconcileParticipant(target.id,target.refs,person,contact,legacyIndex===undefined?undefined:Number(legacyIndex))
       if(view.handles.length){
-        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE reason='autonomous_contact_conflict'
-          AND conversation_id IN (${view.handles.map(()=>'?').join(',')})`).run(...view.handles)
+        const placeholders=view.handles.map(()=>'?').join(',')
+        const cleared=this.db.prepare(`DELETE FROM chat_local_context_holds WHERE reason='autonomous_contact_conflict'
+          AND conversation_id IN (${placeholders})`).run(...view.handles)
+        if(cleared.changes)this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1
+          WHERE id IN (${placeholders})`).run(...view.handles)
       }
       const result={entityId:person.id,contactId:contact.id,atendimentoId:target?.id??null}
       this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
