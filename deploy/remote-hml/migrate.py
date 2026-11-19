@@ -183,6 +183,7 @@ def migrate(mapping, directory, approval, *, recover=False, validate=lambda: Non
             if digest(source)!=record['old'][str(target)]: raise ValueError('backup changed')
             replace_code(source,target,record['modes'][str(target)])
         if inventory(mapping)!=record['old']: raise ValueError('restoration differs')
+        validate()
         record['phase']='restored'
     else:
         record['phase']='accepted'
@@ -207,7 +208,7 @@ def main():
         if not args.authorize: raise ValueError('administrative authorization required')
         approval=json.loads(regular(STATE/'migration-approval.json').read_text()) if args.action=='apply' else None
         def validate():
-            command('/usr/bin/python3','-I','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
+            command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
         result=migrate(mapping,STATE/'migration',approval,recover=args.action=='recover',validate=validate)
         print(json.dumps({'scope':'funix-hml','migration':result}))
 

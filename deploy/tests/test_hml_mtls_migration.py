@@ -36,14 +36,15 @@ class MigrationTest(unittest.TestCase):
                 approval={'old':migration.inventory(mapping),'new':{str(t):migration.digest(s) for t,s in mapping.items()}}
                 operation=root/'migration'
                 def validate():
-                    if failure=='exception': raise ValueError('synthetic validation')
-                    if failure=='interrupt': raise KeyboardInterrupt()
+                    if target.read_bytes()==b'new':
+                        if failure=='exception': raise ValueError('synthetic validation')
+                        if failure=='interrupt': raise KeyboardInterrupt()
                 with patch.object(migration,'command',return_value='active') as commands:
                     if failure=='interrupt':
                         with self.assertRaises(KeyboardInterrupt):
                             migration.migrate(mapping,operation,approval,validate=validate)
                         self.assertEqual(json.loads((operation/'journal.json').read_text())['phase'],'installing')
-                        result=migration.migrate(mapping,operation,None,recover=True)
+                        result=migration.migrate(mapping,operation,None,recover=True,validate=validate)
                     else:
                         result=migration.migrate(mapping,operation,approval,validate=validate)
                     self.assertEqual(result,'accepted' if failure=='none' else 'restored')
