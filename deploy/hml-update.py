@@ -330,15 +330,15 @@ def prepare_candidate(config, adapter, safety, *, load_images=True):
             # Refuse to change any existing tag, including previously loaded HML tags.
             for image in manifest["images"].values():
                 found = subprocess.run(["docker", "image", "inspect", image["tag"]], capture_output=True)
-                if found.returncode == 0 and json.loads(found.stdout)[0]["Id"] != image["image_id"]:
-                    raise ValueError("image tag collision")
+                if found.returncode == 0:
+                    load("hml-image-identity").verify_local_image(
+                        image["tag"], image["image_id"], directory=config["state"])
             if not load_images:
                 return
             adapter.run(["docker", "load", "--input", str(Path(directory) / "images.tar.gz")])
             for role, image in manifest["images"].items():
-                loaded = json.loads(adapter.run(["docker", "image", "inspect", image["tag"]]))
-                if len(loaded) != 1 or loaded[0]["Id"] != image["image_id"]:
-                    raise ValueError("loaded image differs from authenticated manifest")
+                config["candidate"][role] = load("hml-image-identity").verify_local_image(
+                    image["tag"], image["image_id"], directory=config["state"])
 
 
 if __name__ == "__main__":

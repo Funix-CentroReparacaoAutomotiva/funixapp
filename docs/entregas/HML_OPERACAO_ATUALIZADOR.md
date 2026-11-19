@@ -8,6 +8,15 @@ aceite. API GitHub simulada; Docker/SQLite/Nginx/TLS sintéticos reais.
 
 ## Escopo e ordem
 
+Distribuição do código: gerar o pacote **da revisão aprovada** com
+`git archive --format=tar REVISAO_APROVADA deploy/` e transportar o arquivo
+íntegro pelo canal já autorizado. Instalar o diretório `deploy` completo em um
+diretório versionado de código confiável; não copiar apenas hml-update.py.
+Isso inclui hml-image-identity.py e todos os módulos carregados dinamicamente.
+Antes de prepare/preflight, conferir o SHA aprovado e a presença de
+`deploy/hml-image-identity.py` no pacote e na instalação. Não misturar módulos
+de revisões diferentes nem sobrescrever código de uma operação em andamento.
+
 1. Integrar #230 e #262 somente após revisão, CI da revisão exata e autorização
    separada de merge. A ação produtiva permanece manual e inalterada.
 2. Despachar **FUNIX - Homologacao (candidato)** na main, para PR interna
