@@ -16,7 +16,7 @@ import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
 PREP=Path('/usr/local/lib/funix-hml-prepare/control.py')
-PREP_SHA='19ef14be8a59d45963bc73cbb0b69617f799a927a8231743508c05832de1ee0e'
+PREP_SHA='6c363584fd769fa727f699f654574842097a133068789f11daed3e442f7acd9d'
 WORKER='funix-hml-ops-worker.service'
 SCHEMA='funix-hml-ops/1'
 PHASES={'prepared','quiescing','installing','restoring','accepted_pending_open','restored_pending_open','accepted','restored','rollback_requested'}
@@ -238,8 +238,8 @@ def worker():
         u.checked_update_package=checked
         invocation=True
         # Preserve the official transaction, maintenance gate and automatic restoration.
-        with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
-            coordinator=u.load('hml-official-update')
+        coordinator=u.load('hml-official-update')
+        with coordinator.sanitized_output():
             coordinator.execute_prepared(op,cfg,cfg['identity'],authorize_operation=op.name,
                                          authorize_revision=v['revision'],official_updater=u)
         rec=p.read_json(op/'operation.json'); result['journal_phase']=rec.get('phase')

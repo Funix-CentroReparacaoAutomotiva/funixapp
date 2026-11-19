@@ -26,9 +26,15 @@ Write-Host 'Este script NAO executa deploy. O acionamento sera feito pelo ChatGP
 $confirmation = 'AUTORIZAR ' + $Revision.Substring(0,12)
 $answer = Read-Host "Digite exatamente $confirmation para aprovar"
 if ($answer -cne $confirmation) { Write-Host 'Cancelado. Nenhuma autorizacao criada.'; exit 0 }
-& ssh.exe @sshArgs "$cmd approve $($p.preview_sha256)" 2>&1 | Tee-Object -FilePath $report
+$approvalRaw = @(& ssh.exe @sshArgs "$cmd approve $($p.preview_sha256)" 2>$null)
 $code = $LASTEXITCODE
-"SSH_EXIT=$code" | Tee-Object -FilePath $report -Append
+if ($code -eq 0) {
+    $approval = ($approvalRaw -join "`n") | ConvertFrom-Json
+    if ($approval.status -ne 'armed' -or $approval.scope -ne 'funix-hml') { throw 'Resposta de aprovacao invalida.' }
+}
+$approvalRaw = $null
+# Ticket remains only on the server. Persist no request/ticket/response content.
+"SSH_EXIT=$code" | Set-Content -LiteralPath $report
 Write-Host "Relatorio: $report"
 if ($code -ne 0) { Write-Host 'Autorizacao bloqueada. Nao acione o deploy.'; exit $code }
 Write-Host 'Autorizacao de uso unico registrada. O deploy ainda nao foi executado.'

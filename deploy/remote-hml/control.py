@@ -156,6 +156,14 @@ def external_snapshot():
         ext[row['Id']]=(row['State']['StartedAt'],row['RestartCount'])
     must(len(ext)>=9,'external_services'); return ext
 
+def installed_from_journal(rec):
+    must(rec.get('schema')==1 and rec.get('project')=='funix-hml' and
+         rec.get('phase') in ('accepted','restored'),'current_transaction')
+    release=rec.get('candidate' if rec['phase']=='accepted' else 'previous')
+    must(isinstance(release,dict) and re.fullmatch(r'[a-f0-9]{40}',release.get('revision','')) is not None,
+         'current_transaction')
+    return release
+
 def prepare():
     must(os.geteuid()==0 and len(sys.argv)==1,'local_scope'); private_dir(PRIVATE); private_dir(STATE)
     a=read_json(PRIVATE/'approval.json'); i=check_approval(a)
@@ -167,10 +175,11 @@ def prepare():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         pointer=read_json(STATE/'active.json'); journal=Path(pointer['journal']); active=journal.parent
         must(journal.name=='operation.json' and active.parent==STATE and re.fullmatch(r'op-[A-Za-z0-9_-]{1,80}',active.name) is not None,'active_pointer'); private_dir(active)
-        rec=read_json(journal); must(rec.get('phase')=='accepted' and rec.get('project')=='funix-hml' and rec.get('candidate',{}).get('revision')==a['installed_revision'],'current_transaction')
+        rec=read_json(journal); installed=installed_from_journal(rec)
+        must(installed['revision']==a['installed_revision'],'current_transaction')
         u=load_updater(token); u.host_scope(active,active/'config.json')
         cfg=read_json(active/'config.json'); u.check_config(cfg,active)
-        current=u.installed_preflight(u.make_adapter(cfg)); must(current==rec['candidate'],'installed_release')
+        current=u.installed_preflight(u.make_adapter(cfg)); must(current==installed,'installed_release')
         before=external_snapshot(); metadata(a,token)
         db=Path(u.DATABASE); must(shutil.disk_usage(STATE).free>a['size']*4+db.stat().st_size*4+512*1024**2,'space')
         if not op.exists(): op.mkdir(mode=0o700)

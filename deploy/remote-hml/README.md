@@ -42,3 +42,15 @@ Limitações: testes sintéticos novos verificam tickets, parsing, fronteira mTL
 ausência de aprovação, pins e delegação oficial. Ainda faltam ensaio de
 instalação e mTLS de ponta a ponta com worker/systemd, expiração/reutilização e
 revogação/rotação completas. Esta PR não declara o piloto pronto para deploy.
+
+Incremento de revisão: migrate.py e MIGRATION.md propõem migração administrativa
+de código com inventário old/new aprovado, locks existentes, backup/staging
+privados, interrupção recuperável e parada exclusiva do transporte. Testes
+locais simulam systemctl, mas trocam/restauram arquivos reais sintéticos.
+Teste TLS real com certificados sintéticos cobre CA/cliente/origem/fingerprint
+e rejeição sem aprovação, com backend privilegiado isolado. Isso ainda não
+constitui cadeia transporte → wrappers sudo → worker → transação em systemd
+real. O ensaio oficial de Docker continua separado. O CI Windows apenas analisa
+PowerShell, sem SSH ou emissão de aprovação. O relatório administrativo não
+persiste resposta/ticket; o procedimento para candidatos novos e retenção
+está em MIGRATION.md. O preparador agora aceita restored usando previous.
