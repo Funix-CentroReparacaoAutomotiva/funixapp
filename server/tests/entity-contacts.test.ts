@@ -265,7 +265,7 @@ test('explicit context resolves two active demands and two numbers can share one
   assert.deepEqual(f.sent,[jid(phone1),jid(phone2)])
   assert.equal(f.at.list().total,2)
   assert.equal(f.at.get(a.id,true).references!.contact.length,2)
-  assert.equal(f.at.get(b.id,true).references!.contact.some(contact=>contact.id||contact.text),false)
+  assert.equal(f.at.get(b.id,true).references!.contact[0]!.id,first!.id)
   assert.equal(f.links.listActive(cid).items.length,2)
   assert.equal(f.links.listActive(otherId).items[0]!.atendimentoId,a.id)
   assert.equal(f.db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,0)

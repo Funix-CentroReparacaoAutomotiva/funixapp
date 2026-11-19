@@ -369,6 +369,8 @@ export function migrate(db: DatabaseSync) {
       applied = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => Number(row.version))
       if (applied.some(version => version > migrations.length)) throw new Error('Banco de versão mais recente; restaure o aplicativo compatível.')
       if (!applied.length || applied.some((version, index) => version !== index + 1)) throw new Error('Histórico de migrações inconsistente; banco preservado.')
+      if(applied.includes(25)&&!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='customer_archived_contact_update'").get())
+        throw Error('Cópia V25 de uma revisão preliminar. Refaça o ensaio a partir da cópia V23/V24 preservada.')
     }
     for (const migration of migrations.slice(applied.length)) {
       migration.apply(db)

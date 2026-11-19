@@ -85,3 +85,29 @@ test('V25 rejects SQL duplicates, mismatched keys and links without a channel Co
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
+
+test('V25 validates PN scope on direct insert, reactivation and later contact mutations',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const at=new AtendimentoRepository(db).create({name:'Ficha sintética'})
+  const result=db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'entity',?)")
+  const owner=randomUUID(),contact=randomUUID(),handle=randomUUID(),link=randomUUID()
+  result.run(owner,'{"text":"Titular sintético"}')
+  const jid='5531999990102@s.whatsapp.net'
+  db.prepare("INSERT INTO chat_provider_conversations(id,instance,remote_jid) VALUES(?,'funix_comercial',?)").run(handle,jid)
+  db.prepare("INSERT INTO v20_conversations(id,instance,remote_jid,created_at) VALUES(?,'funix_comercial',?,'2026-11-19')").run(handle,jid)
+  db.prepare("INSERT INTO customer_records(id,kind,data,entity_id,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?,?)")
+    .run(contact,'{"text":"+5531999990101"}',owner,handle,'+5531999990101')
+  const insert=db.prepare("INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,'2026-11-19','operator','synthetic')")
+  assert.throws(()=>insert.run(link,handle,at.id),/canonical contact/)
+  const change=db.prepare("UPDATE customer_records SET phone_normalized=?,data=json_set(data,'$.text',?) WHERE id=?")
+  change.run('+5531999990102','(31) 99999-0102',contact)
+  insert.run(link,handle,at.id)
+  assert.throws(()=>change.run('+5531999990101','+5531999990101',contact),/canonical contact/)
+  assert.throws(()=>db.prepare('UPDATE customer_records SET entity_id=NULL WHERE id=?').run(contact),/canonical contact/)
+  assert.throws(()=>db.prepare('UPDATE customer_records SET conversation_id=NULL WHERE id=?').run(contact),/canonical contact/)
+  db.prepare("UPDATE v20_associations SET unlinked_at='2026-11-19',unlinked_by='operator',unlink_reason='synthetic' WHERE id=?").run(link)
+  change.run('+5531999990101','+5531999990101',contact)
+  assert.throws(()=>db.prepare('UPDATE v20_associations SET unlinked_at=NULL,unlinked_by=NULL,unlink_reason=NULL WHERE id=?').run(link),/canonical contact/)
+ }finally{db.close()}
+})

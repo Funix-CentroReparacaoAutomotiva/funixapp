@@ -16,3 +16,27 @@ O cabeçalho do Chat usa a identidade do canal selecionado. A abertura automáti
 4. Para voltar, pare o ensaio e reabra a cópia original com a versão anterior compatível. Uma conexão que escreve Contatos V25 precisa registrar a função canônica usada pelos gatilhos. O servidor e a CLI de consolidação registram essa função.
 
 O ensaio sintético V24 comparou mensagens, vínculos, recibos, IDs de Atendimentos, orçamento emitido, PDF, OS e Experiência após consolidação e restauração. Dois Contatos com o mesmo número foram preservados e relatados para revisão. A V25 foi testada com rollback, nova execução, restrições diretas e chaves de formatos equivalentes. Casos sem prova de titularidade ou de compatibilidade de contexto exigem revisão humana. Dados instalados e homologação compartilhada dependem de autorização própria.
+
+## Roteiro de pré-homologação
+
+Trabalhe em diretório restrito, com `umask 077`, a partir de backup SQLite consistente e autorizado. Registre a versão retornada pelo inventário da cópia e a revisão da aplicação que gerou o backup. O inventário aceita V23, V24 e V25. Para ensaiar o corte V25, parta de uma cópia V23/V24. Cópias V25 de builds draft anteriores não servem como ensaio de migração.
+
+```sh
+umask 077
+node server/inventory-customer-copy.ts "$ORIGEM" "$PENDENCIAS"
+node server/consolidate-legacy-copy.ts "$ORIGEM" "$CONCILIADA"
+node server/inventory-customer-copy.ts "$CONCILIADA" "$PENDENCIAS_CONCILIADAS"
+```
+
+O inventário retorna somente contagens em stdout. O arquivo opcional é criado exclusivamente com permissão 0600 e contém os IDs, incluindo cada grupo de duplicatas, os Contatos sem titular, as chaves nulas ou divergentes, os Atendimentos com telefone identificado textual e os vínculos sem Contato ou incompatíveis. Use esses IDs somente na área restrita para confrontar o cadastro e a evidência do canal. Divulgue apenas as contagens. Código de saída 2 indica pendências e bloqueia a proposta de corte. Fichas de fato sem número e referências textuais sem identidade comprovada podem permanecer pendentes. A consolidação não funde Contatos conflitantes.
+
+Depois de resolver cada grupo e vínculo identificado com evidência documentada, rode o inventário novamente. Separe os resultados esperados da preparação, como a recomposição de chaves derivadas, e confira-os após o upgrade. Crie uma segunda cópia consistente da versão conciliada para o upgrade e retenha a conciliada pré-upgrade:
+
+```sh
+node --input-type=module -e 'import {DatabaseSync} from "node:sqlite"; import {backupDatabase} from "./server/database.ts"; const db=new DatabaseSync(process.argv[1],{readOnly:true}); try { await backupDatabase(db,process.argv[2]) } finally { db.close() }' "$CONCILIADA" "$ENSAIO"
+node --input-type=module -e 'import {openDatabase} from "./server/database.ts"; openDatabase(process.argv[1]).close()' "$ENSAIO"
+node scripts/verify-v19-copy.ts "$CONCILIADA" "$ENSAIO"
+node server/inventory-customer-copy.ts "$ENSAIO"
+```
+
+Repita a abertura e o inventário na mesma cópia e compare contagens. Para o rollback do ensaio, restaure a cópia pré-upgrade em outro arquivo a partir do backup retido e abra com a revisão anterior compatível. Valide integridade, vínculos e documentos preservados antes de apresentar o resultado da homologação. Uma base instalada ainda depende de aceite separado.

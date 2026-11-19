@@ -105,6 +105,7 @@ export class SharedConversationIdentity {
       if(legacyIndex!==undefined&&(!legacy||legacy.id||legacy.text!==label))return review('O nome escolhido deve corresponder à pessoa informada na ficha.')
       const channel=this.identities.rememberProviderConversation(view.jid)
       const {person,contact}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel)
+      this.customers.confirmChannelOwnerLabel(person.id)
       if(target)this.customers.reconcileParticipant(target.id,target.refs,person,contact,legacyIndex===undefined?undefined:Number(legacyIndex))
       if(view.handles.length){
         const placeholders=view.handles.map(()=>'?').join(',')

@@ -14,6 +14,13 @@ export class CustomerRepository {
   constructor(db:DatabaseSync){this.db=db}
   available(){return !!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='customer_records'").get()}
   record(id:string):CustomerRecord {
+    const record=this.readRecord(id)
+    if(!record.canonicalContactId)return record
+    const canonical=this.readRecord(record.canonicalContactId)
+    if(canonical.kind!=='contact'||canonical.canonicalContactId)invalid()
+    return canonical
+  }
+  private readRecord(id:string):CustomerRecord&{canonicalContactId?:string;channelProvisional?:number} {
     const r=this.db.prepare('SELECT * FROM customer_records WHERE id=?').get(id)
     if(!r)throw new ServiceError(404,'NOT_FOUND','Cadastro não encontrado.')
     return {...JSON.parse(String(r.data)),id:String(r.id),kind:r.kind,revision:Number(r.revision),conversationId:r.conversation_id,entityId:r.entity_id}
@@ -22,7 +29,7 @@ export class CustomerRepository {
     if(!['entity','vehicle','contact'].includes(kind)||q.length>150)invalid()
     const phone=kind==='contact'?normalizePhone(q):null
     if(phone)return this.phoneMatches(phone).slice(0,20)
-    return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
+    return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
     const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear','entityId'])
@@ -34,7 +41,7 @@ export class CustomerRepository {
       result.plate=String(r.plate??'').trim().toUpperCase()
       for(const key of ['fabricationYear','modelYear']as const){if(r[key]!==undefined&&r[key]!==null&&(typeof r[key]!=='string'||(r[key]!==''&&!/^(19|20)\d{2}$/.test(String(r[key])))))invalid();result[key]=r[key] as string|null|undefined}
     }
-    if(result.id){const found=this.record(result.id);if(found.kind!==(kind==='person'||kind==='payer'?'entity':kind))invalid()}
+    if(result.id){const found=this.record(result.id);if(found.kind!==(kind==='person'||kind==='payer'?'entity':kind))invalid();result.id=found.id}
     return result
   }
   validate(raw:unknown):CustomerReferences {
@@ -69,24 +76,43 @@ export class CustomerRepository {
       this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(cid)
     }
   }
-  private resolveManualContactReferences(refs:CustomerReferences) {
-    const ownerIds=[...new Set(refs.person.flatMap(person=>person.id?[person.id]:[]))]
-    if(ownerIds.length!==1)return refs
-    const ownerId=ownerIds[0]!
-    const contact=refs.contact.map(ref=>{
-      const phone=ref.id?null:normalizePhone(ref.text)
+  resolveManualContactReferences(refs:CustomerReferences,previous?:CustomerReferences) {
+    if(!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='customer_contact_phone_unique'").get())return refs
+    const person=[...refs.person]
+    let ownerIds=[...new Set(person.flatMap(ref=>ref.id?[ref.id]:[]))]
+    const contact=refs.contact.map((ref,index)=>{
+      if(ref.id){
+        const selected=this.record(ref.id)
+        if(selected.entityId&&!person.some(row=>row.id||row.text)){
+          const owner=this.record(selected.entityId)
+          person.splice(0,person.length,{id:owner.id,text:owner.text})
+          ownerIds=[owner.id]
+        }
+        return ref
+      }
+      const phone=normalizePhone(ref.text)
       if(!phone)return ref
-      const matches=this.phoneMatches(phone)
-      if(matches.length>1||matches[0]&&matches[0].entityId!==ownerId)
-        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Selecione o Contato e o titular cadastrados para este número.')
-      const saved=matches[0]??this.saveRecord({kind:'contact',text:ref.text,entityId:ownerId})
+      // Existing unresolved legacy text may survive unrelated edits.
+      if(previous?.contact[index]?.id===null&&previous.contact[index]?.text===ref.text)return ref
+      const matches=this.phoneMatches(phone),existing=matches[0]
+      if(matches.length>1||existing?.entityId&&!ownerIds.includes(existing.entityId)||ownerIds.length>1)
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Busque pelo telefone e selecione o Contato cadastrado, ou selecione o titular deste número.')
+      let ownerId=ownerIds[0]
+      if(!ownerId){
+        if(person.length!==1||!person[0]!.text)
+          throw new ServiceError(409,'CONTACT_OWNER_REQUIRED','Informe ou selecione o titular deste número, ou deixe o telefone em branco.')
+        const owner=this.saveRecord({kind:'entity',text:person[0]!.text})
+        ownerId=owner.id
+        ownerIds=[ownerId]
+        person[0]={id:owner.id,text:owner.text}
+      }
+      const saved=existing?.entityId?existing:this.saveRecord({kind:'contact',text:existing?.text??ref.text,entityId:ownerId,revision:existing?.revision},existing?.id)
       return {id:saved.id,text:saved.text}
     })
-    return {...refs,contact}
+    return {...refs,person,contact}
   }
 
   saveReferences(at:string,refs:CustomerReferences,previous=this.references(at).contact) {
-    refs=this.resolveManualContactReferences(refs)
     this.invalidateContactContexts(at,previous,refs.contact)
     this.db.prepare('DELETE FROM atendimento_references WHERE atendimento_id=?').run(at)
     for(const kind of kinds)refs[kind].forEach((r,i)=>{
@@ -122,7 +148,7 @@ export class CustomerRepository {
     const rows=this.db.prepare(`SELECT r.atendimento_id,r.kind,r.data,c.data AS record FROM atendimento_references r LEFT JOIN customer_records c ON c.id=r.record_id WHERE r.position=0 AND r.atendimento_id IN (${items.map(()=>'?').join(',')})`).all(...items.map(i=>i.id))
     return items.map(item=>{const out={...item};for(const row of rows.filter(r=>r.atendimento_id===item.id)){const r=JSON.parse(String(row.record??row.data));if(row.kind==='person')out.name=String(r.text??'');if(row.kind==='contact')out.phone=String(r.text??'');if(row.kind==='vehicle'){out.vehicle=String(r.text??'');out.plate=String(r.plate??'');out.fabricationYear=r.fabricationYear??null;out.modelYear=r.modelYear??null}}out.phoneNormalized=normalizePhone(out.phone);return out})
   }
-  applyLegacyFields(at:string,fields:Record<string,string|boolean|number|null>) {
+  applyLegacyFields(at:string,fields:Record<string,string|boolean|number|null>,manual=false) {
     for(const [kind,key]of [['person','name'],['contact','phone'],['vehicle','vehicle']]as const){
       if(fields[key]===undefined&&!(kind==='vehicle'&&['plate','fabricationYear','modelYear'].some(k=>fields[k]!==undefined)))continue
       const row=this.db.prepare('SELECT data,record_id FROM atendimento_references WHERE atendimento_id=? AND kind=? AND position=0').get(at,kind)
@@ -130,6 +156,7 @@ export class CustomerRepository {
       const r=row.record_id?this.record(String(row.record_id)):JSON.parse(String(row.data))
       if(kind!=='vehicle'&&fields[key]===r.text)continue
       if(row.record_id&&(
+        manual&&kind!=='vehicle'||
         kind==='person'&&!this.channelOwnerIsProvisional(String(row.record_id))||
         kind==='contact'&&r.entityId&&!this.channelOwnerIsProvisional(r.entityId)
       ))throw new ServiceError(409,'SHARED_CUSTOMER_REFERENCE','Edite o cadastro compartilhado ou selecione outra referência neste Atendimento.')
@@ -181,6 +208,11 @@ export class CustomerRepository {
     return this.db.prepare("SELECT json_extract(data,'$.channelProvisional') AS pending FROM customer_records WHERE id=?").get(id)?.pending===1
   }
 
+  confirmChannelOwnerLabel(id:string) {
+    this.db.prepare(`UPDATE customer_records SET data=json_remove(data,'$.channelProvisional'),revision=revision+1
+      WHERE id=? AND kind='entity' AND json_extract(data,'$.channelProvisional')=1`).run(id)
+  }
+
   canReplaceProvisionalOwner(id:string) {
     return this.channelOwnerIsProvisional(id)&&!this.db.prepare('SELECT 1 FROM atendimento_references WHERE record_id=? LIMIT 1').get(id)
   }
@@ -226,6 +258,7 @@ export class CustomerRepository {
       const owner=contact?.entityId?this.record(contact.entityId):this.provisionalChannelOwner(name)
       return this.confirmChannelContact(owner,name.trim()||phone,contact,phone,conversationId).contact
     }
+    if(candidate)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O número informado pelo canal precisa de revisão.')
     if(!contact)return this.createUnnumberedChannelContact(name,conversationId).contact
     if(!contact.entityId||!contact.conversationId){
       const owner=contact.entityId?this.record(contact.entityId):this.provisionalChannelOwner(name)
@@ -285,7 +318,7 @@ export class CustomerRepository {
     return this.record(existing.id)
   }
 
-  reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord,contact:CustomerRecord,legacyIndex?:number,legacyContactIndex?:number) {
+  reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord|null,contact:CustomerRecord,legacyIndex?:number,legacyContactIndex?:number) {
     let changed=false
     const write=(kind:'person'|'contact',index:number,record:CustomerRecord)=>{
       const ref={id:record.id,text:record.text}
@@ -310,7 +343,7 @@ export class CustomerRepository {
         write(kind,Number(stored?.position??0)+1,record)
       }
     }
-    append('person',person,legacyIndex)
+    if(person)append('person',person,legacyIndex)
     const phone=normalizePhone(contact.text)
     const same=phone?refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone):-1
     append('contact',contact,legacyContactIndex??(same<0?undefined:same))
@@ -327,7 +360,8 @@ export class CustomerRepository {
 
   private saveRecord(raw:unknown,id?:string) {
     const source=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId'])
-    const old=id?this.record(id):null,kind=old?.kind??source.kind
+    const old=id?this.readRecord(id):null,kind=old?.kind??source.kind
+    if(old?.canonicalContactId)throw new ServiceError(409,'CONTACT_ARCHIVED','O Contato foi arquivado. Atualize o cadastro para editar o Contato canônico.')
     if(!['entity','contact','vehicle'].includes(String(kind)))invalid()
     const ref=this.validateReference({id:null,text:source.text, ...(kind==='vehicle'?{plate:source.plate,fabricationYear:source.fabricationYear,modelYear:source.modelYear}:{})},kind==='entity'?'person':kind as ReferenceKind)
     if(!ref.text.trim()&&!(kind==='contact'&&old?.conversationId))invalid()
@@ -341,7 +375,7 @@ export class CustomerRepository {
     }
     if(old?.conversationId&&old.text!==ref.text)throw new ServiceError(409,'CONTACT_HISTORY_PROTECTED','Contato com histórico: use outra referência para informar outro telefone.')
     {
-      const key=id??randomUUID(),data=JSON.stringify({...ref,nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
+      const key=id??randomUUID(),data=JSON.stringify({...ref,...(old?.channelProvisional===1?{channelProvisional:1}:{}),nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
       if(old){if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.');const changed=this.db.prepare('UPDATE customer_records SET data=?,entity_id=?,phone_normalized=?,revision=revision+1 WHERE id=? AND revision=?').run(data,entityId as string|null,phone,key,old.revision);if(!changed.changes)invalid()}
       else this.db.prepare('INSERT INTO customer_records(id,kind,data,entity_id,phone_normalized) VALUES(?,?,?,?,?)').run(key,String(kind),data,entityId as string|null,phone)
       for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(key))

@@ -211,7 +211,10 @@ export class V20AssociationRepository {
         const provider=this.db.prepare(`SELECT p.id FROM chat_provider_conversations p JOIN v20_conversations v
           ON v.instance=p.instance AND v.remote_jid=p.remote_jid WHERE v.id=?`).get(conversationId)
         if(!provider)return missing()
-        new CustomerRepository(this.db).resolveChannelContact(String(provider.id))
+        const customers=new CustomerRepository(this.db)
+        const contact=customers.resolveChannelContact(String(provider.id))
+        const owner=contact.entityId&&!customers.channelOwnerIsProvisional(contact.entityId)?customers.record(contact.entityId):null
+        customers.reconcileParticipant(atendimentoId,customers.references(atendimentoId),owner,contact)
       }
       const linkId = randomUUID()
       this.db.prepare(

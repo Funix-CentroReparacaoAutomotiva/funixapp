@@ -357,7 +357,9 @@ test('same-owner LID then existing PN reconciles references and replays without 
   assert.deepEqual(runtime.store.ingest(signed),receipt)
   assert.equal(at.list().total,1)
   assert.equal(at.get(first.id,true).references!.contact[0]!.id,known.id)
-  assert.equal(customers.record(provisional).conversationId,null)
+  assert.equal(customers.record(provisional).id,known.id)
+  assert.throws(()=>customers.save({text:'+5531999990711',revision:1},provisional),/arquivado/)
+  assert.ok(customers.search('contact','').every(contact=>contact.id!==provisional))
   assert.deepEqual(customers.contacts(owner.id).map(contact=>contact.id),[known.id])
   assert.equal(runtime.store.page(LID,1).items.length,2)
  }finally{db.close()}

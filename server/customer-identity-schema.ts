@@ -37,7 +37,16 @@ export function createCustomerIdentitySchema(db:DatabaseSync) {
       ))
     JOIN customer_records c ON c.conversation_id=p.id AND c.kind='contact'
     JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
-    WHERE NOT EXISTS (
+    WHERE json_extract(c.data,'$.canonicalContactId') IS NULL
+    AND CASE
+      WHEN v.remote_jid LIKE '%@s.whatsapp.net' THEN
+        c.phone_normalized = '+' || substr(v.remote_jid,1,instr(v.remote_jid,'@')-1)
+      WHEN EXISTS (SELECT 1 FROM chat_provider_alias_evidence a WHERE a.instance=v.instance AND a.lid=v.remote_jid) THEN
+        EXISTS (SELECT 1 FROM chat_provider_alias_evidence a WHERE a.instance=v.instance AND a.lid=v.remote_jid
+          AND c.phone_normalized = '+' || substr(a.pn,1,instr(a.pn,'@')-1))
+      ELSE v.remote_jid LIKE '%@lid' AND c.phone_normalized IS NULL AND json_extract(c.data,'$.text')=''
+    END
+    AND NOT EXISTS (
       SELECT 1 FROM chat_provider_alias_evidence a
       JOIN chat_provider_alias_evidence x ON x.instance=a.instance
       AND ((x.pn=a.pn AND x.lid<>a.lid) OR (x.lid=a.lid AND x.pn<>a.pn))
@@ -46,7 +55,34 @@ export function createCustomerIdentitySchema(db:DatabaseSync) {
     CREATE TRIGGER customer_association_contact_insert BEFORE INSERT ON v20_associations
     WHEN (SELECT COUNT(*) FROM customer_channel_contacts WHERE conversation_id=NEW.conversation_id)<>1
     BEGIN SELECT RAISE(ABORT,'Commercial association requires a canonical contact'); END;
-    CREATE TRIGGER customer_association_contact_update BEFORE UPDATE OF conversation_id,atendimento_id ON v20_associations
+    CREATE TRIGGER customer_association_contact_update BEFORE UPDATE OF conversation_id,atendimento_id,unlinked_at ON v20_associations
     WHEN NEW.unlinked_at IS NULL AND (SELECT COUNT(*) FROM customer_channel_contacts WHERE conversation_id=NEW.conversation_id)<>1
-    BEGIN SELECT RAISE(ABORT,'Commercial association requires a canonical contact'); END`)
+    BEGIN SELECT RAISE(ABORT,'Commercial association requires a canonical contact'); END;
+    CREATE TRIGGER customer_active_channel_update BEFORE UPDATE OF kind,entity_id,conversation_id,phone_normalized,data ON customer_records
+    WHEN EXISTS (
+      SELECT 1 FROM customer_channel_contacts c JOIN v20_associations a USING(conversation_id)
+      WHERE c.contact_id=OLD.id AND a.unlinked_at IS NULL
+    ) AND (
+      NEW.kind <> 'contact' OR NEW.conversation_id IS NOT OLD.conversation_id
+      OR NEW.phone_normalized IS NOT OLD.phone_normalized
+      OR json_extract(NEW.data,'$.canonicalContactId') IS NOT NULL
+      OR (OLD.phone_normalized IS NULL AND json_extract(NEW.data,'$.text') IS NOT '')
+      OR NOT EXISTS (SELECT 1 FROM customer_records e WHERE e.id=NEW.entity_id AND e.kind='entity')
+    )
+    BEGIN SELECT RAISE(ABORT,'Active commercial association requires its canonical contact'); END;
+    CREATE TRIGGER customer_active_channel_delete BEFORE DELETE ON customer_records
+    WHEN EXISTS (
+      SELECT 1 FROM customer_channel_contacts c JOIN v20_associations a USING(conversation_id)
+      WHERE c.contact_id=OLD.id AND a.unlinked_at IS NULL
+    )
+    BEGIN SELECT RAISE(ABORT,'Active commercial association requires its canonical contact'); END;
+    CREATE TRIGGER customer_channel_owner_kind BEFORE UPDATE OF kind ON customer_records
+    WHEN NEW.kind<>'entity' AND EXISTS (
+      SELECT 1 FROM customer_records r JOIN customer_channel_contacts c ON c.contact_id=r.id
+      JOIN v20_associations a ON a.conversation_id=c.conversation_id WHERE r.entity_id=OLD.id AND a.unlinked_at IS NULL
+    )
+    BEGIN SELECT RAISE(ABORT,'Active commercial association requires a contact owner'); END;
+    CREATE TRIGGER customer_archived_contact_update BEFORE UPDATE ON customer_records
+    WHEN json_extract(OLD.data,'$.canonicalContactId') IS NOT NULL
+    BEGIN SELECT RAISE(ABORT,'Archived contact is immutable'); END`)
 }

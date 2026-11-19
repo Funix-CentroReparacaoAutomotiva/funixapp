@@ -86,7 +86,7 @@ export interface AppOptions {
 
 export function createRequestHandler(options: AppOptions) {
   const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
-  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
+  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(r.id)}:r}
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -448,7 +448,8 @@ export function createRequestHandler(options: AppOptions) {
       const customerRoute=/^\/api\/customer-records(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
       if(customerRoute){
         const customers=new CustomerRepository(options.atendimentos.db),id=customerRoute[1]
-        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
+        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'').map(record=>
+          record.kind==='contact'&&record.entityId?{...record,ownerName:customers.record(record.entityId).text}:record)})
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
         if(req.method==='POST'&&!id || req.method==='PATCH'&&id){
@@ -971,8 +972,8 @@ export function createRequestHandler(options: AppOptions) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
-        if (collection) return send(201, options.atendimentos.create(body))
-        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true)))
+        if (collection) return send(201, options.atendimentos.create(body,false,true))
+        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true,true)))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')
