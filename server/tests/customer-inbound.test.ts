@@ -286,3 +286,58 @@ test('target autonomous runtime creates the shared Entity and Contact atomically
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
+
+
+test('standalone first LID interaction shares one provisional registration; later confirmed PN completes that same Contact',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const at=new AtendimentoRepository(db),customers=new CustomerRepository(db),authority=runtime.authority!
+  const ingest=(value:ReturnType<typeof event>)=>runtime.store.ingest(JSON.stringify(value))
+  const first=event('new-lid-only',LID,null,'Pessoa do canal')
+  assert.deepEqual(ingest(first),ingest(first))
+  const a=at.get(at.list().items[0]!.id,true),person=a.references!.person[0]!,contact=a.references!.contact[0]!
+  assert.ok(person.id);assert.ok(contact.id);assert.equal(a.phone,'')
+  assert.equal(customers.record(contact.id!).entityId,person.id)
+  assert.equal(authority.projection(LID).names[0]!.entityId,person.id)
+  ingest(event('late-confirmed-pn',PN,LID,'Outro nome do canal'))
+  const b=at.get(a.id,true)
+  assert.equal(b.references!.person[0]!.id,person.id)
+  assert.equal(b.references!.contact[0]!.id,contact.id)
+  assert.equal(b.phone,'+5531999990101');assert.equal(b.name,'Pessoa do canal')
+  assert.equal(authority.projection(PN).contactId,contact.id)
+  assert.equal(authority.projection(LID).contactId,contact.id)
+  assert.equal(at.list().total,1)
+  assert.equal(db.prepare('SELECT count(*) n FROM customer_records').get()!.n,2)
+  assert.equal(db.prepare("SELECT search_text FROM atendimentos WHERE id=?").get(a.id)!.search_text?.toString().includes('+5531999990101'),true)
+  assert.equal(runtime.store.page(PN,1).items.length,2)
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{db.close()}
+})
+test('standalone LID without a name keeps phone empty and a shared provisional identity',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  runtime.store.ingest(JSON.stringify(event('unknown-lid',LID,null,'')))
+  const at=new AtendimentoRepository(db),a=at.get(at.list().items[0]!.id,true)
+  assert.equal(a.phone,'');assert.equal(a.name,'Sem nome')
+  assert.ok(a.references!.person[0]!.id);assert.ok(a.references!.contact[0]!.id)
+  assert.equal(new CustomerRepository(db).record(a.references!.contact[0]!.id!).entityId,a.references!.person[0]!.id)
+ }finally{db.close()}
+})
+test('standalone late PN cannot silently adopt another Entity Contact',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  const existing=customers.save({kind:'entity',text:'Outro titular',contacts:[{text:'+5531999990101'}]})
+  runtime.store.ingest(JSON.stringify(event('lid-before-collision',LID)))
+  const a=at.get(at.list().items[0]!.id,true),contactId=a.references!.contact[0]!.id!
+  runtime.store.ingest(JSON.stringify(event('pn-collision',PN,LID)))
+  assert.equal(customers.record(contactId).text,'')
+  assert.notEqual(customers.record(contactId).entityId,existing.id)
+  assert.equal(customers.contacts(existing.id)[0]!.text,'+5531999990101')
+  assert.equal(at.list().total,1)
+  assert.equal(db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,2)
+ }finally{db.close()}
+})

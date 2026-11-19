@@ -211,23 +211,29 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
+    const known=channels.length===1?customers.record(String(channels[0]!.id)):matches.length===1?matches[0]!:null
+    const confirmedPhone=normalizePhone(initial.phone)
+    const incompatible=!!known&&(!!known.conversationId&&!handles.includes(known.conversationId)||
+      !!known.text&&!!confirmedPhone&&normalizePhone(known.text)!==confirmedPhone)
     const blocked=plan.blocked||channels.length>1||matches.length>1||
-      (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)
+      (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
+      (this.unifiedCustomers&&incompatible)
     const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
     let at:string|null=null
     if(!blocked&&!historical){
       let contactId=channels.length?String(channels[0]!.id):null
       // In the autonomous target model, the first real interaction produces one shared
       // Entity + Contact for a confirmed PN. The channel label is provisional, not ID proof.
-      const known=contactId?customers.record(contactId):matches[0]??null
-      if(this.unifiedCustomers&&!plan.at&&!prior&&normalizePhone(initial.phone)&&
-        (!known?.conversationId||handles.includes(known.conversationId))&&
-        (!known?.text||normalizePhone(known.text)===initial.phone)){
-        const owner=known?.entityId?customers.record(known.entityId):null
-        const saved=customers.confirmChannelContact(owner,owner?.text||initial.name.trim()||initial.phone,known,initial.phone,id)
+      const owner=known?.entityId?customers.record(known.entityId):null
+      if(this.unifiedCustomers&&confirmedPhone&&(owner||!plan.at&&!prior)){
+        const saved=customers.confirmChannelContact(owner,owner?.text||initial.name.trim()||confirmedPhone,known,confirmedPhone,id)
         contactId=saved.contact.id
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
-      // Compatibility path, retained until the coordinated cutover. No inferred owner.
+      }else if(this.unifiedCustomers&&!initial.phone&&!plan.at&&!prior&&!known){
+        // LID-only first interaction: the same Entity and Contact survive until
+        // authenticated PN evidence arrives. Never use the LID digits as a number.
+        contactId=customers.createUnnumberedChannelContact(initial.name,id).contact.id
+      // Compatibility path for previously separate registrations; no inferred owner.
       }else if(!contactId&&!matches.length){
         contactId=randomUUID()
         this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
