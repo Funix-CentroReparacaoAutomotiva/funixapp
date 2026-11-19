@@ -167,6 +167,22 @@ test('manual contact prepares an explicit conversation without sending; phone co
  }finally{f.db.close()}
 })
 
+test('preparing a conversation reuses the equivalent PN only for the selected owner',()=>{
+ const f=fixture()
+ try{
+  const customers=new CustomerRepository(f.db)
+  const owner=customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:'(31) 99999-0888'}]})
+  const [contact]=customers.contacts(owner.id)
+  const other=f.at.create({name:'Outro nome',phone:'+5531999990888'})
+  assert.throws(()=>f.runtime.authority!.prepareConversation(other.id,0,other.revision),/titular/)
+  const at=f.at.create({references:{person:[{id:owner.id,text:owner.text}],contact:[{id:null,text:'5531999990888'}],vehicle:[],payer:[]}})
+  const prepared=f.runtime.authority!.prepareConversation(at.id,0,at.revision)
+  assert.equal(f.at.get(at.id,true).references!.contact[0]!.id,contact!.id)
+  assert.equal(customers.record(contact!.id).conversationId,prepared.conversationId)
+  assert.equal(f.db.prepare("SELECT COUNT(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
+ }finally{f.db.close()}
+})
+
 test('previously separate PN/LID handles retain both processes; exact alias evidence permits explicit context selection without a third ficha',()=>{
  const f=fixture();try{
   f.ingest(event('pn-independent',PN,null,'Pedro'));f.ingest(event('lid-independent',LID,null,'Maria'))

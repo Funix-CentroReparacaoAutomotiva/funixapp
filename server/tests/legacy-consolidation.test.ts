@@ -1,12 +1,19 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {openDatabase} from '../database.ts'
+import {execFileSync} from 'node:child_process'
+import {randomUUID} from 'node:crypto'
+import {mkdtempSync,rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {backupDatabase,openDatabase} from '../database.ts'
 import {AtendimentoRepository} from '../atendimentos.ts'
 import {CustomerRepository} from '../customers.ts'
 import {createCodaEventSchema,CodaEventSyncRepository} from '../chat/coda-sync.ts'
 import {LocalConversationAssociations} from '../chat/local-associations.ts'
 import {consolidateLegacyCustomers,normalizeLegacyPhone} from '../chat/legacy-consolidation.ts'
-import {removeV24FixtureSchema} from './fixtures/production.ts'
+import {issueProductionOrder,removeV24FixtureSchema} from './fixtures/production.ts'
+import {commercialFixture} from './fixtures/commercial.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
 
 const pn='5531999990101@s.whatsapp.net'
 function fixture(){
@@ -157,4 +164,45 @@ test('an existing legacy-format Contact blocks accidental creation of a duplicat
   assert.equal(report.reconciled,0)
   assert.equal(db.prepare("SELECT count(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
  }finally{db.close()}
+})
+
+
+test('V24 offline backup preserves issued documents and operational records and can be restored',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'funix-282-'))
+ const source=join(dir,'original.sqlite'),copy=join(dir,'trial.sqlite'),restored=join(dir,'restored.sqlite')
+ const db=openDatabase(source)
+ try{
+  const f=commercialFixture(db),budgets=new BudgetRepository(db)
+  const input={scenarioId:f.scenario.id,negotiation:{mode:'none'} as const}
+  const quote=await budgets.emit(f.at.id,{...input,previewToken:budgets.preview(f.at.id,input).token,idempotencyKey:randomUUID()})
+  issueProductionOrder(db,f.at.id,quote.id)
+  const legacy=new AtendimentoRepository(db).create({name:'Pessoa sintética legada',phone:'(31) 99999-0777'})
+  const phone='+5531999990888'
+  for(const text of [phone,'(31) 99999-0888'])
+   db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(randomUUID(),JSON.stringify({text}))
+  const protectedTables=db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT IN ('customer_records','atendimento_references','atendimentos') ORDER BY name").all().map(row=>String(row.name))
+  const snapshot=(file:typeof db)=>protectedTables.map(table=>file.prepare('SELECT * FROM "'+table.replaceAll('"','""')+'"').all())
+  const before=snapshot(db),atIds=db.prepare('SELECT id FROM atendimentos ORDER BY id').all()
+  const run=(from:string,to:string)=>JSON.parse(execFileSync(process.execPath,['server/consolidate-legacy-copy.ts',from,to],{encoding:'utf8'}))
+  const report=run(source,copy)
+  assert.equal(report.duplicateContactPhones,1)
+  assert.equal(report.contactsInDuplicateGroups,2)
+  assert.equal(new AtendimentoRepository(db).get(legacy.id,true).references!.contact[0]!.id,null)
+  const trial=openDatabase(copy)
+  try{
+   assert.deepEqual(snapshot(trial),before)
+   assert.deepEqual(trial.prepare('SELECT id FROM atendimentos ORDER BY id').all(),atIds)
+   assert.ok(new AtendimentoRepository(trial).get(legacy.id,true).references!.contact[0]!.id)
+   assert.equal(trial.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
+   assert.deepEqual(trial.prepare('PRAGMA foreign_key_check').all(),[])
+   assert.equal(consolidateLegacyCustomers(trial,true).reconciled,0)
+  }finally{trial.close()}
+  await backupDatabase(db,restored)
+  const reopened=openDatabase(restored)
+  try{
+   assert.deepEqual(snapshot(reopened),before)
+   assert.deepEqual(reopened.prepare('SELECT id FROM atendimentos ORDER BY id').all(),atIds)
+   assert.equal(new AtendimentoRepository(reopened).get(legacy.id,true).references!.contact[0]!.id,null)
+  }finally{reopened.close()}
+ }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })

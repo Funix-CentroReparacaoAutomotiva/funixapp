@@ -84,22 +84,26 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const messages=this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(instance,...members)
       if(!linked&&(links.length||messages))throw new ServiceError(409,'CHAT_EXPLICIT_LINK_REQUIRED','Já existe histórico para este canal. Associe explicitamente pela lista de Conversas; editar o telefone não transfere histórico.')
       const matches=phone?customers.phoneMatches(phone):[]
-      if(matches.some(contact=>contact.id!==knownContact?.id))
-        throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Selecione o Contato cadastrado antes de abrir a conversa. Duplicidades exigem revisão.')
+      const matched=matches[0]??null
+      if(matches.length>1||knownContact&&matched&&matched.id!==knownContact.id)
+        throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Número com cadastro conflitante. Revise a associação antes de abrir a conversa.')
+      if(!knownContact&&matched?.entityId&&!record.references?.person.some(person=>person.id===matched.entityId))
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Selecione o titular e o Contato cadastrados antes de abrir a conversa.')
+      const selected=knownContact??matched
       const id=this.rememberProviderConversation(jid),linkId=linked?String(linked.id):randomUUID()
       if(!linked){this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(linkId,id,at,this.now(),'operator','explicit_saved_contact');this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)}
       const scope=this.handles(jid)
       const registered=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope)
-      if(registered.length>1||registered.length===1&&registered[0]!.id!==knownContact?.id)
+      if(selected?.conversationId&&!scope.includes(selected.conversationId)||registered.length>1||registered.length===1&&registered[0]!.id!==selected?.id)
         throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O cadastro do canal exige revisão antes de abrir a conversa.')
-      const contactId=knownContact?.id??randomUUID()
-      if(knownContact&&!knownContact.conversationId)
+      const contactId=selected?.id??randomUUID()
+      if(selected&&!selected.conversationId)
         this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=?').run(id,contactId)
-      if(!knownContact)
+      if(!selected)
         this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
           .run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id,phone)
       const refs=record.references!
-      refs.contact[index]={id:contactId,text:knownContact?.text??phone!}
+      refs.contact[index]={id:contactId,text:selected?.text??phone!}
       customers.saveReferences(at,refs)
       const placeholders=scope.map(()=>'?').join(',')
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
