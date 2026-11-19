@@ -1,0 +1,9 @@
+[Unit]
+Description=FUNIX HML explicitly approved official update worker
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root /usr/bin/python3 -I /usr/local/lib/funix-hml-ops/rootctl.py worker
+TimeoutStartSec=infinity
+UMask=0077
+Restart=no

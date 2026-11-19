@@ -1,0 +1,1 @@
+funix-hml-ops ALL=(root) NOPASSWD: /usr/local/sbin/funix-hml-ops-status "", /usr/local/sbin/funix-hml-ops-request ""

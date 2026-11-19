@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'deploy/hml-*.py'
+      - 'deploy/remote-hml/**'
       - 'deploy/tests/*hml*.py'
       - '.github/workflows/hml-maintenance-rehearsal.yml'
 
