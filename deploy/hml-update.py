@@ -14,6 +14,8 @@ import shutil
 import stat
 import subprocess
 import zipfile
+import time
+import sys
 
 
 # Scope of the real operator entrypoint, recorded by the approved audit.
@@ -48,19 +50,27 @@ def read_login(credentials):
 
 def validator(credentials, *, normal_credentials=None):
     """Strict HTTPS; in maintenance also reject normal login and unsafe requests."""
-    def validate(release):
+    deadline = None
+    class TransientHttpsError(Exception):
+        pass
+    def once(release):
         token = read_login(credentials)
         normal = read_login(normal_credentials) if normal_credentials is not None else None
         if normal == token:
             raise ValueError("maintenance credential matches normal login")
 
         def request(method, endpoint, auth, expected):
-            connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=10,
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("HTTPS validation deadline")
+            connection = http.client.HTTPSConnection("hml.funix.com.br", timeout=min(5, remaining),
                                                      context=ssl.create_default_context())
             try:
                 connection.request(method, endpoint, headers={"Authorization": auth} if auth else {})
                 response = connection.getresponse()
                 body = response.read(100001)
+                if expected == 200 and response.status in (502, 503, 504):
+                    raise TransientHttpsError()
                 if response.status != expected or len(body) > 100000:
                     raise ValueError("HTTPS/authentication contract failed")
                 if expected == 401 and not response.getheader("WWW-Authenticate", "").lower().startswith("basic "):
@@ -85,6 +95,25 @@ def validator(credentials, *, normal_credentials=None):
                 request(method, "/api/ready", token, 503)
             for endpoint in ("/api/session", "/api/atendimentos", "/api/ready?probe=1"):
                 request("GET", endpoint, token, 503)
+    def validate(release):
+        nonlocal deadline
+        deadline = time.monotonic() + 60
+        for attempt in range(1, 4):
+            try:
+                once(release)
+                return
+            except ssl.SSLError:
+                print(f"HTTPS attempt={attempt} category=tls-security retry=false", file=sys.stderr)
+                raise
+            except (OSError, http.client.RemoteDisconnected, http.client.IncompleteRead, TransientHttpsError):
+                retry = attempt < 3 and time.monotonic() + 1 < deadline
+                print(f"HTTPS attempt={attempt} category=transient retry={str(retry).lower()}", file=sys.stderr)
+                if not retry:
+                    raise ValueError("HTTPS transient attempts exhausted") from None
+                time.sleep(1)
+            except (ValueError, http.client.HTTPException):
+                print(f"HTTPS attempt={attempt} category=contract retry=false", file=sys.stderr)
+                raise
     return validate
 
 def make_adapter(config):

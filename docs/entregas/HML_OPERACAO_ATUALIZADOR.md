@@ -8,6 +8,24 @@ aceite. API GitHub simulada; Docker/SQLite/Nginx/TLS sintéticos reais.
 
 ## Escopo e ordem
 
+Issues #271/#272: a consulta de procedência usa urllib da biblioteca padrão,
+HTTPS verificado para api.github.com, sem gh obrigatório e sem seguir redirects.
+Para repositório privado, disponibilizar FUNIX_HML_GITHUB_TOKEN apenas no
+ambiente do processo autorizado, com token de curta duração e leitura mínima
+de Actions/Pull requests/metadata no repositório FUNIX. Não colocar token na
+linha de comando, config, logs ou pacote. Sem token, acesso público só funciona
+se os metadados estiverem públicos; 401/403/404 ou resposta inválida bloqueiam.
+A sessão do gh não é reutilizada implicitamente. Download do artefato continua
+sendo uma etapa separada do transporte autorizado.
+
+O validador HTTPS repete a suíte completa até três vezes, espera um segundo
+entre tentativas e limita a janela a 60s, com timeout de operação de até 5s.
+Somente erros de transporte e 502/503/504 de endpoints esperados como 200 são
+transitórios. Certificado/TLS, autenticação, revisão, prontidão, limites de corpo
+e bloqueio de escrita falham imediatamente. Diagnóstico em stderr contém
+somente tentativa/categoria/retry, nunca URL arbitrária, corpo ou credenciais.
+A causa da instabilidade histórica permanece não demonstrada.
+
 Distribuição do código: gerar o pacote **da revisão aprovada** com
 `git archive --format=tar REVISAO_APROVADA deploy/` e transportar o arquivo
 íntegro pelo canal já autorizado. Instalar o diretório `deploy` completo em um

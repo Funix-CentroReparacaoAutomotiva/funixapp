@@ -59,9 +59,29 @@ class HttpsValidationTest(unittest.TestCase):
                     trusted = ssl.create_default_context(cafile=str(cert))
                     with patch.object(updater.ssl, "create_default_context", return_value=trusted):
                         updater.validator(credentials)({"revision": revision})
+                        attempts = 0
+                        def transient(address, *args, **kwargs):
+                            nonlocal attempts
+                            attempts += 1
+                            if attempts == 1:
+                                raise TimeoutError("secret must not appear")
+                            return connection(address, *args, **kwargs)
+                        with patch.object(socket, "create_connection", side_effect=transient), \
+                             patch.object(updater.time, "sleep") as sleep:
+                            updater.validator(credentials)({"revision": revision})
+                            sleep.assert_called_once_with(1)
                         with self.assertRaisesRegex(ValueError, "revision"):
                             updater.validator(credentials)({"revision": "a" * 40})
             finally:
                 server.shutdown()
                 server.server_close()
                 thread.join()
+
+    def test_persistent_transport_failure_has_three_attempts(self):
+        with patch.object(updater, "read_login", return_value="Basic synthetic"), \
+             patch.object(updater.http.client, "HTTPSConnection", side_effect=TimeoutError("secret")) as connection, \
+             patch.object(updater.time, "sleep") as sleep:
+            with self.assertRaisesRegex(ValueError, "attempts exhausted"):
+                updater.validator("unused")({"revision": "a" * 40})
+        self.assertEqual(connection.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
