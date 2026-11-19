@@ -3,7 +3,7 @@ import {validateMedia,type MediaGateway,type MediaInput} from './evolution-media
 import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from '../phone.ts'
 import {ServiceError} from '../errors.ts'
 import {transaction} from '../scenarios.ts'
 import {LocalConversationAssociations} from './local-associations.ts'

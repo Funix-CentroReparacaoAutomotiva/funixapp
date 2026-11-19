@@ -369,10 +369,13 @@ export function createRequestHandler(options: AppOptions) {
         return send(200,options.conversationRuntime.authority.prepareConversation(prepareConversationRoute[1]!,input.contactIndex,input.revision))
       }
       const localConversationsRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/conversations$/.exec(url.pathname)
-      if(localConversationsRoute&&options.conversationRuntime?.authority){
+      if(localConversationsRoute&&(options.conversationRuntime?.authority||options.codaSync&&options.evolutionChat)){
         if(req.method!=='GET'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
         options.atendimentos.get(localConversationsRoute[1]!)
-        return send(200,{items:options.conversationRuntime.authority.conversationsForAtendimento(localConversationsRoute[1]!)})
+        const items=options.conversationRuntime?.authority?.conversationsForAtendimento(localConversationsRoute[1]!)??[]
+        if(items.length||options.conversationRuntime?.authority)return send(200,{items})
+        const existing=options.evolutionChat?.conversationForAtendimento(localConversationsRoute[1]!)
+        return send(200,{items:existing?[{...existing,phone:null}]:[]})
       }
       const photoRoute=/^\/api\/chat\/conversations\/([a-f0-9-]{36})\/profile-photo$/.exec(url.pathname)
       if(photoRoute&&options.evolutionChat){

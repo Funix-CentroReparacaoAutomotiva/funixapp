@@ -8,16 +8,13 @@ import type { Atendimento, AtendimentoList, AtendimentoStage } from '../shared/c
 import { ServiceError } from './errors.ts'
 import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-date.ts'
 
+import {normalizeCustomerPhone} from './phone.ts'
+
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
 const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
-
-export function normalizePhone(phone: string): string | null {
-  const clean = phone.replace(/[\s().-]/g, '')
-  return /^\+[1-9]\d{7,14}$/.test(clean) ? clean : null
-}
 
 function validate(input: unknown, patch: boolean) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Envie os campos do Atendimento em um objeto JSON.')
@@ -116,7 +113,7 @@ export class AtendimentoRepository {
     if(refs)Object.assign(fields,customers.primaryFields(refs))
     const now = new Date().toISOString()
     const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', fabricationYear: null, modelYear: null, plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
-    record.phoneNormalized = normalizePhone(record.phone)
+    record.phoneNormalized = normalizeCustomerPhone(record.phone)
     checkRefusal(record)
     if (!inTransaction) this.db.exec('BEGIN IMMEDIATE')
     try{
@@ -150,7 +147,7 @@ export class AtendimentoRepository {
     const previousContacts=customers.available()?customers.references(id).contact:[]
     if(refs)Object.assign(fields,customers.primaryFields(refs,old))
     const record: Atendimento = { ...old, ...fields, revision: revision + 1, updatedAt: new Date().toISOString() }
-    record.phoneNormalized = normalizePhone(record.phone)
+    record.phoneNormalized = normalizeCustomerPhone(record.phone)
     if (fields.purpose && record.purpose!=='commercial' && fields.stage===undefined) record.stage='novo-lead'
     checkRefusal(record)
     let result

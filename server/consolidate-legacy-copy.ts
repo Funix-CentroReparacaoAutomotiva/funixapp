@@ -10,8 +10,8 @@ const source=resolve(sourceArg),target=resolve(targetArg)
 if(source===target||existsSync(target)||!lstatSync(source).isFile())throw Error('Use uma origem regular e um destino novo e diferente.')
 const readOnly=new DatabaseSync(source,{readOnly:true})
 try{
-  if(Number(readOnly.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)!==23)
-    throw Error('Requer origem V23; nenhuma migração automática.')
+  if(![23,24].includes(Number(readOnly.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)))
+    throw Error('Requer origem V23 ou V24; nenhuma migração automática.')
   await backupDatabase(readOnly,target)
 }finally{readOnly.close()}
 const db=new DatabaseSync(target)

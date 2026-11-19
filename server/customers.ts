@@ -1,4 +1,5 @@
-import {AtendimentoRepository,normalizePhone} from './atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from './phone.ts'
+import {AtendimentoRepository} from './atendimentos.ts'
 import type {Atendimento} from '../shared/contracts.ts'
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
@@ -19,6 +20,8 @@ export class CustomerRepository {
   }
   search(kind:string,q:string) {
     if(!['entity','vehicle','contact'].includes(kind)||q.length>150)invalid()
+    const phone=kind==='contact'?normalizePhone(q):null
+    if(phone)return this.phoneMatches(phone).slice(0,20)
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
@@ -118,7 +121,7 @@ export class CustomerRepository {
   }
   /** Exact full international number only. Existing duplicates remain reviewable, never merged. */
   phoneMatches(phone:string) {
-    return this.db.prepare("SELECT id,data FROM customer_records WHERE kind='contact' AND (phone_normalized=? OR phone_normalized IS NULL)").all(phone)
+    return this.db.prepare("SELECT id,data FROM customer_records WHERE kind='contact'").all()
       .filter(r=>normalizePhone(String(JSON.parse(String(r.data)).text??''))===phone).map(r=>this.record(String(r.id)))
   }
   save(raw:unknown,id?:string) {
@@ -206,7 +209,7 @@ export class CustomerRepository {
     }
     append('person',person,legacyIndex)
     const phone=normalizePhone(contact.text)
-    const same=refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone)
+    const same=phone?refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone):-1
     append('contact',contact,legacyContactIndex??(same<0?undefined:same))
     if(changed)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     this.updateSearch(at)

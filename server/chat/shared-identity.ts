@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from '../phone.ts'
 import {ServiceError} from '../errors.ts'
 import {inputObject,transaction} from '../scenarios.ts'
 import {ConversationIdentities} from './conversation-identities.ts'

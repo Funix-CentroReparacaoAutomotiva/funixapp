@@ -157,13 +157,13 @@ test('local A→B→A context epochs revoke old send commands, without changing 
 
 test('manual contact prepares an explicit conversation without sending; phone correction cannot adopt existing history',()=>{
  const f=fixture();try{
-  const manual=f.at.create({name:'Manual',phone:'+5531999990888'}),prepared=f.runtime.authority!.prepareConversation(manual.id,0,manual.revision)
+  const manual=f.at.create({name:'Manual',phone:'(31) 99999-0888'}),prepared=f.runtime.authority!.prepareConversation(manual.id,0,manual.revision)
   assert.ok(prepared.conversationId);assert.equal(f.at.list().total,1);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,0)
   const manualJid='5531999990888@s.whatsapp.net';f.ingest(event('manual-inbound',manualJid,null,'Nome canal'));assert.equal(f.at.list().total,1);assert.equal(f.at.get(manual.id).name,'Manual')
   const other=f.at.create({phone:'+5531999990888',name:'Pessoa diferente'})
   assert.throws(()=>f.runtime.authority!.prepareConversation(other.id,0,other.revision),/Já existe histórico/)
   assert.equal(f.runtime.authority!.resolveIdentityActive(manualJid),manual.id)
-  const partial=f.at.create({phone:'31999990000'});assert.throws(()=>f.runtime.authority!.prepareConversation(partial.id,0,partial.revision),/DDI/)
+  const partial=f.at.create({phone:'99999-0000'});assert.throws(()=>f.runtime.authority!.prepareConversation(partial.id,0,partial.revision),/DDI/)
  }finally{f.db.close()}
 })
 

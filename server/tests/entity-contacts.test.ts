@@ -78,7 +78,10 @@ test('duplicate numbers and ownership transfer reject atomically; exact existing
   assert.throws(()=>f.customers.save({kind:'entity',text:'Pessoa B alterada',revision:b.revision,contacts:[{id:contact.id,text:phone1,revision:contact.revision}]},b.id),code('CONTACT_OWNER_CONFLICT'))
   assert.throws(()=>f.customers.save({text:phone1,revision:contact.revision,entityId:b.id},contact.id),code('CONTACT_OWNER_CONFLICT'))
   assert.equal(f.customers.record(b.id).text,'Pessoa B');assert.equal(f.customers.record(existing.id).entityId,a.id)
-  assert.throws(()=>f.customers.save({kind:'contact',text:'+55 (31) 99999-0101'}),code('CONTACT_PHONE_CONFLICT'))
+  for(const text of ['+55 (31) 99999-0101','(31) 99999-0101','5531999990101']){
+   assert.throws(()=>f.customers.save({kind:'contact',text}),code('CONTACT_PHONE_CONFLICT'))
+   assert.deepEqual(f.customers.search('contact',text).map(record=>record.id),[existing.id])
+  }
  }finally{f.db.close()}
 })
 

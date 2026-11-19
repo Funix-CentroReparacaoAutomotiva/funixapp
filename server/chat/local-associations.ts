@@ -4,7 +4,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { ConversationIdentities, type ConversationAssociationReader } from './conversation-identities.ts'
 import {ServiceError} from '../errors.ts'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone,normalizePhone} from '../phone.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { conversationNames, type NamePart, type CommercialConversation } from '../../shared/customer.ts'
 import type { ConversationEvent } from './conversation-event.ts'
@@ -73,21 +73,35 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const repository=new AtendimentoRepository(this.db),record=repository.get(at,true)
       if(record.revision!==revision)throw new ServiceError(409,'VERSION_CONFLICT','Salve e atualize o Atendimento antes de abrir a conversa.')
       if(!Number.isSafeInteger(index)||index<0||index>=100)throw new ServiceError(400,'INVALID_REFERENCE','Contato inválido.')
-      const ref=record.references?.contact[index],phone=ref?normalizePhone(ref.text):null
-      const knownContact=ref?.id?new CustomerRepository(this.db).record(ref.id):null
+      const ref=record.references?.contact[index],phone=ref?normalizeCustomerPhone(ref.text):null
+      const customers=new CustomerRepository(this.db)
+      const knownContact=ref?.id?customers.record(ref.id):null
       const existingJid=knownContact?.conversationId?this.providerJid(knownContact.conversationId):null
-      if(!ref||(!phone&&!existingJid))throw new ServiceError(400,'PHONE_COUNTRY_REQUIRED','Informe o telefone completo com + e DDI antes de abrir a conversa.')
+      if(!ref||(!phone&&!existingJid))throw new ServiceError(400,'PHONE_COUNTRY_REQUIRED','Informe o telefone completo com DDD ou com + e DDI antes de abrir a conversa.')
       const jid=existingJid??phone!.slice(1)+'@s.whatsapp.net',members=this.members(jid)
       if(!members)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Identidade do canal precisa de revisão.')
       const links=this.links(jid),linked=links.find(l=>l.atendimento_id===at)
       const messages=this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(instance,...members)
       if(!linked&&(links.length||messages))throw new ServiceError(409,'CHAT_EXPLICIT_LINK_REQUIRED','Já existe histórico para este canal. Associe explicitamente pela lista de Conversas; editar o telefone não transfere histórico.')
+      const matches=phone?customers.phoneMatches(phone):[]
+      if(matches.some(contact=>contact.id!==knownContact?.id))
+        throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Selecione o Contato cadastrado antes de abrir a conversa. Duplicidades exigem revisão.')
       const id=this.rememberProviderConversation(jid),linkId=linked?String(linked.id):randomUUID()
       if(!linked){this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(linkId,id,at,this.now(),'operator','explicit_saved_contact');this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)}
-      const known=this.db.prepare('SELECT id FROM customer_records WHERE conversation_id=?').get(id),contactId=known?String(known.id):ref.id??randomUUID()
-      if(!known){if(ref.id)this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(id,ref.id);else this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,?)").run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id)}
-      const refs=record.references!;refs.contact[index]={id:contactId,text:phone??ref.text};new CustomerRepository(this.db).saveReferences(at,refs)
-      const scope=this.handles(jid),placeholders=scope.map(()=>'?').join(',')
+      const scope=this.handles(jid)
+      const registered=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope)
+      if(registered.length>1||registered.length===1&&registered[0]!.id!==knownContact?.id)
+        throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O cadastro do canal exige revisão antes de abrir a conversa.')
+      const contactId=knownContact?.id??randomUUID()
+      if(knownContact&&!knownContact.conversationId)
+        this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=?').run(id,contactId)
+      if(!knownContact)
+        this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
+          .run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id,phone)
+      const refs=record.references!
+      refs.contact[index]={id:contactId,text:knownContact?.text??phone!}
+      customers.saveReferences(at,refs)
+      const placeholders=scope.map(()=>'?').join(',')
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(linked?linked.conversation_id!:id,linkId)
       this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${placeholders})`).run(...scope)
@@ -139,14 +153,14 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
 
   /** Caller owns the transaction. Add references without rewriting an existing ficha. */
-  ensureInteraction(jid:string, at:string|null, contactId:string|null, phone:string, name:string, reason:string) {
+  ensureInteraction(jid:string, at:string|null, contactId:string, phone:string, name:string, reason:string) {
     const id=this.rememberProviderConversation(jid)
     const previous=this.links(jid)
     const created=!at
     // Only the explicitly assigned Entity participates; provider names and phone text are not identity evidence.
-    const owner=contactId?this.db.prepare(`SELECT e.id,e.data FROM customer_records c
+    const owner=this.db.prepare(`SELECT e.id,e.data FROM customer_records c
       JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
-      WHERE c.id=? AND c.kind='contact'`).get(contactId):undefined
+      WHERE c.id=? AND c.kind='contact'`).get(contactId)
     const ownerName=owner?String(JSON.parse(String(owner.data)).text??''):null
     at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified'},true).id
     let referencesChanged=false
@@ -163,11 +177,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         this.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(id,linkId)
       }
     }
-    if(contactId&&!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='contact' AND record_id=?").get(at,contactId)){
+    if(!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='contact' AND record_id=?").get(at,contactId)){
       const old=this.db.prepare('SELECT phone FROM atendimentos WHERE id=?').get(at)!
       const position=Number(this.db.prepare("SELECT COALESCE(MAX(position),-1)+1 AS n FROM atendimento_references WHERE atendimento_id=? AND kind='contact'").get(at)!.n)
       const add=this.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'contact',?,?,?)")
-      const keepPrevious=position===0&&!created&&old.phone&&old.phone!==phone
+      const keepPrevious=position===0&&!created&&old.phone&&String(old.phone)!==phone&&(!phone||normalizeCustomerPhone(String(old.phone))!==phone)
       if(keepPrevious)add.run(at,0,null,JSON.stringify({id:null,text:String(old.phone)}))
       add.run(at,keepPrevious?1:position,contactId,JSON.stringify({id:contactId,text:phone}))
       referencesChanged=true
@@ -214,14 +228,14 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const known=channels.length===1?customers.record(String(channels[0]!.id)):matches.length===1?matches[0]!:null
     const confirmedPhone=normalizePhone(initial.phone)
     const incompatible=!!known&&(!!known.conversationId&&!handles.includes(known.conversationId)||
-      !!known.text&&!!confirmedPhone&&normalizePhone(known.text)!==confirmedPhone)
+      !!known.text&&!!confirmedPhone&&normalizeCustomerPhone(known.text)!==confirmedPhone)
     const contactConflict=channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
-      (this.unifiedCustomers&&incompatible)
+      incompatible
     const blocked=plan.blocked||contactConflict
     // Keep the received message, but require explicit review before associating
     // or sending against a contradictory Contact in autonomous mode.
-    if(this.unifiedCustomers&&contactConflict)
+    if(contactConflict)
       this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
     const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
     let at:string|null=null
@@ -239,7 +253,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         // authenticated PN evidence arrives. Never use the LID digits as a number.
         contactId=customers.createUnnumberedChannelContact(initial.name,id).contact.id
       // Compatibility path for previously separate registrations; no inferred owner.
-      }else if(!contactId&&!matches.length){
+      }else if(!contactId&&known){
+        contactId=known.id
+        this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(id,contactId)
+      }else if(!contactId){
         contactId=randomUUID()
         this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
           .run(contactId,JSON.stringify({text:initial.phone,channelState:'response_received'}),id,initial.phone||null)

@@ -1,5 +1,5 @@
 import type {DatabaseSync} from 'node:sqlite'
-import {normalizePhone} from './atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from './phone.ts'
 /** Read-only inventory. IDs/counts only: no names, phone numbers, messages or documents in report. */
 export function customerInventory(db:DatabaseSync) {
  const records=db.prepare('SELECT id,kind,data,entity_id,conversation_id FROM customer_records ORDER BY id').all()

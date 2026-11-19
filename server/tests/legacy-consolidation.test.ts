@@ -105,9 +105,8 @@ test('legacy phone normalization preserves digits and rejects ambiguity',()=>{
  assert.equal(normalizeLegacyPhone('(31) 3333-0777'),'+553133330777')
  for(const value of ['99999-0777','3199990777','031999990777','(00) 99999-0777','31 99999-0777 / 88888-0777','31 99999-0777 ramal 2','Não informado'])assert.equal(normalizeLegacyPhone(value),null)
 })
-test('complete national and country-prefixed legacy numbers reconcile in place, without duplicate text references',()=>{
+test('V24 reconciles complete national and country-prefixed numbers without duplicate references',()=>{
  const db=openDatabase(':memory:')
- removeV24FixtureSchema(db)
  try{
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
   const first=at.create({name:'Pessoa manual',phone:'(31) 99999-0777'})
@@ -123,6 +122,8 @@ test('complete national and country-prefixed legacy numbers reconcile in place, 
   assert.equal(customers.record(a.references!.contact[0]!.id!).conversationId,null)
   const again=consolidateLegacyCustomers(db,true)
   assert.equal(again.alreadyShared,2);assert.equal(again.pending,0)
+  assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
 test('a legacy national number must match the linked Chat exactly; no ninth digit guessing',()=>{

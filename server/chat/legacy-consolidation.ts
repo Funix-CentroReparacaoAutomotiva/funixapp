@@ -1,39 +1,27 @@
 import {randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizePhone} from '../phone.ts'
 import {LocalConversationAssociations} from './local-associations.ts'
 import {CodaEventSyncRepository} from './coda-sync.ts'
 
-/** Only complete Brazilian national numbers or explicit country code without '+'.
- * Never add a subscriber digit, guess DDD, strip extensions, or repair a different number.
- * This is a legacy migration rule, not a change to the normal outbound phone contract.
- */
-export function normalizeLegacyPhone(raw:string):string|null {
-  const exact=normalizePhone(raw)
-  if(exact)return exact
-  if(!/^[0-9\s().-]+$/.test(raw.trim()))return null
-  const digits=raw.replace(/[\s().-]/g,'')
-  const national=(digits.length===12||digits.length===13)&&digits.startsWith('55')?digits.slice(2):digits
-  const ddd=/^(?:1[1-9]|2[12478]|3[1-578]|4[1-9]|5[1345]|6[1-9]|7[134579]|8[1-9]|9[1-9])$/
-  if(!ddd.test(national.slice(0,2))||! /^(?:[2-5]\d{7}|9\d{8})$/.test(national.slice(2)))return null
-  return '+55'+national
-}
+export {normalizeCustomerPhone as normalizeLegacyPhone} from '../phone.ts'
+import {normalizeCustomerPhone as normalizeLegacyPhone} from '../phone.ts'
 
 /** Offline preparation on a database copy. No network, no message or Atendimento changes in count.
  * Preview rolls back the same transaction that apply would commit.
  */
 export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
   const report={legacyLinks:0,copiedLinks:0,existingLinks:0,unlinkedPreserved:0,blockedLinks:0,
-    reconciled:0,alreadyShared:0,pending:0,withoutChannel:0,contextReview:0,restoredContexts:0,normalizedLegacy:0,pendingReasons:{} as Record<string,number>,contextReasons:{} as Record<string,number>}
+    reconciled:0,alreadyShared:0,pending:0,withoutChannel:0,contextReview:0,restoredContexts:0,normalizedLegacy:0,duplicateContactPhones:0,contactsInDuplicateGroups:0,pendingReasons:{} as Record<string,number>,contextReasons:{} as Record<string,number>}
   const pending=(reason:string,n=1)=>{report.pending+=n;report.pendingReasons[reason]=(report.pendingReasons[reason]??0)+n}
   const contextReview=(reason:string)=>{report.contextReview++;report.contextReasons[reason]=(report.contextReasons[reason]??0)+1}
   const customers=new CustomerRepository(db),local=new LocalConversationAssociations(db)
   const table=(name:string)=>!!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name)
   db.exec('BEGIN IMMEDIATE')
   try {
-    if(Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)!==23)
-      throw Error('Requer cópia do banco V23.')
+    if(![23,24].includes(Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)))
+      throw Error('Requer cópia do banco V23 ou V24.')
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Banco com referências inválidas.')
     if(table('coda_sync_conversation_links')){
       const rows=db.prepare(`SELECT l.remote_jid,l.first_seen_at,a.atendimento_id
@@ -106,13 +94,15 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
       const candidate={at,phone:phone!,jid:jids[0]??null,name:person!.text.trim(),personId:person!.id,contactId:refs.contact[0]?.id??null,normalized:refs.contact.some(r=>!!r.text&&!normalizePhone(r.text)&&normalizeLegacyPhone(r.text)===phone)}
       const list=groups.get(candidate.phone)??[];list.push(candidate);groups.set(candidate.phone,list)
     }
-    // Include old contact records that the strict phone index cannot discover, so
-    // converting a text reference cannot create a duplicate of a legacy Contact.
-    const legacyContacts=new Map<string,string[]>()
-    for(const row of db.prepare("SELECT id,data FROM customer_records WHERE kind='contact'").all()){
-      const raw=String(JSON.parse(String(row.data)).text??''),phone=normalizeLegacyPhone(raw)
-      if(!phone||normalizePhone(raw))continue
-      const ids=legacyContacts.get(phone)??[];ids.push(String(row.id));legacyContacts.set(phone,ids)
+    // Count all ambiguous keys, including contacts without an Atendimento.
+    const contactCounts=new Map<string,number>()
+    for(const row of db.prepare("SELECT data FROM customer_records WHERE kind='contact'").all()){
+      const phone=normalizeLegacyPhone(String(JSON.parse(String(row.data)).text??''))
+      if(phone)contactCounts.set(phone,(contactCounts.get(phone)??0)+1)
+    }
+    for(const count of contactCounts.values())if(count>1){
+      report.duplicateContactPhones++
+      report.contactsInDuplicateGroups+=count
     }
     for(const [phone,list]of groups){
       const ids=[...new Set(list.map(c=>c.personId).filter((id):id is string=>id!==null))]
@@ -123,7 +113,7 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
       const byChannel=scope.length?db.prepare(`SELECT id FROM customer_records WHERE kind='contact'
         AND conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope).map(row=>customers.record(String(row.id))):[]
       const byReference=list.flatMap(c=>c.contactId?[customers.record(c.contactId)]:[])
-      const matches=[...new Map([...customers.phoneMatches(phone),...(legacyContacts.get(phone)??[]).map(id=>customers.record(id)),...byChannel,...byReference].map(c=>[c.id,c])).values()]
+      const matches=[...new Map([...customers.phoneMatches(phone),...byChannel,...byReference].map(c=>[c.id,c])).values()]
       const contact=matches[0]??null
       if(matches.length>1||contact&&contact.kind!=='contact'||contact?.conversationId&&channel&&!scope.includes(contact.conversationId)||
         contact?.text&&normalizePhone(contact.text)!==phone||contact?.conversationId&&!channel&&!contact.text){pending(matches.length===1&&contact?.text&&normalizeLegacyPhone(contact.text)===phone&&!normalizePhone(contact.text)?'legacy_contact_requires_review':'contact_conflict',list.length);continue}
