@@ -341,7 +341,7 @@ server {
                             run("docker", "image", "rm", image["image_id"])
                     official = load("hml-official-update")
                     official.updater = updater
-                    op = root / "op-official"
+                    op = state / "op-official"
                     op.mkdir(mode=0o700)
                     def prepare_local(operation, config_path, requested):
                         assert requested == identity
@@ -350,14 +350,14 @@ server {
                         config_path.chmod(0o600)
                     # Only host path/bootstrap binding is replaced for the disposable
                     # runner. Package validation, lock, preflight and update are real.
-                    with patch.object(updater, "STATE", root), \
+                    with patch.object(updater, "STATE", state), \
                          patch.object(updater, "host_scope"), \
                          patch.object(updater, "check_config"), \
                          patch.object(updater, "prepare_operation", side_effect=prepare_local):
                         report = official.coordinate("op-official", identity,
                             authorize_operation="op-official", authorize_revision=NEW)
                     assert report["result"] == "accepted", report
-                    operation = transaction.Transaction(op, fresh_adapter(), project_state=root, maintenance=True)
+                    operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)
                     print("HML_MAINTENANCE_UPDATE_OK", flush=True)
