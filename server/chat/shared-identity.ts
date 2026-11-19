@@ -65,7 +65,7 @@ export class SharedConversationIdentity {
     const {phone,blocked,owner,contact,targets,token}=this.inspect(conversationId)
     return {
       phone,blocked,token,
-      owner:owner?{id:owner.id,text:owner.text,confirmed:!!contact?.conversationId}:null,
+      owner:owner&&!this.customers.canReplaceProvisionalOwner(owner.id)?{id:owner.id,text:owner.text,confirmed:!!contact?.conversationId}:null,
       targets:targets.map(({id,name,refs})=>({id,name,reconciled:!!(owner&&contact?.conversationId&&refs.person.some(person=>person.id===owner.id)&&refs.contact.some(ref=>ref.id===contact.id)),people:refs.person.flatMap((person,index)=>
         person.text?[{id:person.id,text:person.text,index}]:[])})),
     }

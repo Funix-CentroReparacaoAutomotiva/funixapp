@@ -69,7 +69,24 @@ export class CustomerRepository {
       this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(cid)
     }
   }
+  private resolveManualContactReferences(refs:CustomerReferences) {
+    const ownerIds=[...new Set(refs.person.flatMap(person=>person.id?[person.id]:[]))]
+    if(ownerIds.length!==1)return refs
+    const ownerId=ownerIds[0]!
+    const contact=refs.contact.map(ref=>{
+      const phone=ref.id?null:normalizePhone(ref.text)
+      if(!phone)return ref
+      const matches=this.phoneMatches(phone)
+      if(matches.length>1||matches[0]&&matches[0].entityId!==ownerId)
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Selecione o Contato e o titular cadastrados para este número.')
+      const saved=matches[0]??this.saveRecord({kind:'contact',text:ref.text,entityId:ownerId})
+      return {id:saved.id,text:saved.text}
+    })
+    return {...refs,contact}
+  }
+
   saveReferences(at:string,refs:CustomerReferences,previous=this.references(at).contact) {
+    refs=this.resolveManualContactReferences(refs)
     this.invalidateContactContexts(at,previous,refs.contact)
     this.db.prepare('DELETE FROM atendimento_references WHERE atendimento_id=?').run(at)
     for(const kind of kinds)refs[kind].forEach((r,i)=>{
@@ -82,6 +99,7 @@ export class CustomerRepository {
         this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
       }
     })
+    this.updateSearch(at)
   }
   private hasConversationReference(conversationId:string,at:string) {
     const identities=new ConversationIdentities(this.db)

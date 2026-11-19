@@ -405,3 +405,21 @@ test('explicit autonomous cutover creates a shared registration on first authent
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
+
+test('Atendimento references resolve equivalent phone through the explicitly selected owner without a Chat',()=>{
+ const f=fixture()
+ try{
+  const owner=f.customers.save({kind:'entity',text:'Pessoa sintética'})
+  const references={person:[{id:owner.id,text:owner.text}],contact:[{id:null,text:'(31) 99999-0987'}],vehicle:[],payer:[]}
+  const first=f.at.create({references})
+  const next=f.at.create({references:{...references,contact:[{id:null,text:'5531999990987'}]}})
+  const contact=f.customers.contacts(owner.id)[0]!
+  assert.equal(f.at.get(first.id,true).references!.contact[0]!.id,contact.id)
+  assert.equal(f.at.get(next.id,true).references!.contact[0]!.id,contact.id)
+  assert.equal(contact.conversationId,null)
+  const other=f.customers.save({kind:'entity',text:'Outra pessoa'})
+  assert.throws(()=>f.at.create({references:{...references,person:[{id:other.id,text:other.text}]}}),/titular/)
+  assert.equal(f.at.list().total,2)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations').get()!.n,0)
+ }finally{f.db.close()}
+})
