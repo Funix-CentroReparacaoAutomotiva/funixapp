@@ -55,15 +55,17 @@ export class ConversationStore {
   readonly db: DatabaseSync
   readonly identities: ConversationIdentities & ConversationAssociationReader & Partial<Pick<LocalConversationAssociations, 'inbound'>>
   private readonly now: () => string
+  private readonly autonomousSince?: string
   constructor(
     db: DatabaseSync,
     identities: ConversationIdentities & ConversationAssociationReader & Partial<Pick<LocalConversationAssociations, 'inbound'>>,
     now = () => new Date().toISOString(),
-    private readonly autonomousSince?: string,
+    autonomousSince?: string,
   ) {
     this.db = db
     this.identities = identities
     this.now = now
+    this.autonomousSince = autonomousSince
   }
   private transaction<T>(run: () => T): T {
     this.db.exec('BEGIN IMMEDIATE')
