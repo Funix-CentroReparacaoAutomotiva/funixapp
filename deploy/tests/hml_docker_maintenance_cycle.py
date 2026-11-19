@@ -339,15 +339,33 @@ server {
                                                capture_output=True)
                         if check.returncode == 0:
                             run("docker", "image", "rm", image["image_id"])
-                    operation = updater.execute_operation("update", config, root/"operation",
-                                                          authorized=True)
+                    official = load("hml-official-update")
+                    official.updater = updater
+                    op = root / "op-official"
+                    op.mkdir(mode=0o700)
+                    def prepare_local(operation, config_path, requested):
+                        assert requested == identity
+                        updater.prepare_candidate(config, adapter, load("hml-update-safety"), load_images=False)
+                        config_path.write_text(json.dumps(config))
+                        config_path.chmod(0o600)
+                    # Only host path/bootstrap binding is replaced for the disposable
+                    # runner. Package validation, lock, preflight and update are real.
+                    with patch.object(updater, "STATE", root), \
+                         patch.object(updater, "host_scope"), \
+                         patch.object(updater, "check_config"), \
+                         patch.object(updater, "prepare_operation", side_effect=prepare_local):
+                        report = official.coordinate("op-official", identity,
+                            authorize_operation="op-official", authorize_revision=NEW)
+                    assert report["result"] == "accepted", report
+                    operation = transaction.Transaction(op, fresh_adapter(), project_state=root, maintenance=True)
+                    print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)
                     print("HML_MAINTENANCE_UPDATE_OK", flush=True)
                     assert json.loads(operation.journal.read_text())["phase"] == "accepted"
                     adapter.assert_installed(candidate)
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("candidate migration",)
-                    operation = updater.execute_operation("rollback", config, root/"operation",
+                    operation = updater.execute_operation("rollback", config, op,
                                                           authorized=True, discard_post_update_data=True)
                     print("HML_MAINTENANCE_ROLLBACK_OK", flush=True)
                     adapter.assert_installed(previous)

@@ -8,6 +8,37 @@ aceite. API GitHub simulada; Docker/SQLite/Nginx/TLS sintéticos reais.
 
 ## Escopo e ordem
 
+Entrypoint de coordenação (#273), para revisão: executar localmente como
+administrador, a partir do diretório deploy completo da revisão confiável:
+
+```bash
+python3 hml-official-update.py --operation op-IDENTIFICADOR \
+  --revision SHA40 --artifact-id ID --run-id RUN --attempt TENTATIVA --pr NUMERO \
+  --authorize-operation op-IDENTIFICADOR --authorize-revision SHA40
+```
+
+O canal autorizado deve disponibilizar candidate.zip no diretório privado da
+operação antes do comando. Não há parâmetro de host, comando, projeto ou caminho
+livre. A autorização repete operação e SHA exatos. O coordenador usa host_scope,
+prepare_operation, installed_preflight e execute_operation; o update repete
+seus controles sob o lock oficial antes de qualquer mutação. Preparação e
+preflight usam o mesmo lock; a liberação entre preparação e execução não
+dispensa a nova checagem oficial de operação pendente. Operação existente não
+é reutilizada nem apagada. Em falha, não há rollback paralelo: apenas o que o
+atualizador oficial já realiza.
+
+O JSON final contém identidade da operação/artefato, revisões, etapas,
+accepted/rejected/rejected_restored/pending_recovery e próxima ação.
+Código de saída zero somente para accepted. Falhas antes do journal exigem
+revisão; pendência exige recover oficial autorizado no mesmo diretório.
+Rollback de aceite continua sendo comando separado com confirmação de perda
+dos dados posteriores. O entrypoint nunca o executa automaticamente.
+
+Interface remota futura: um executor local previamente aprovado poderia
+receber apenas esses identificadores/autorização e devolver JSON/código de
+saída. Transporte, identidade remota e concessão de escrita não são
+implementados aqui, nem podem usar a credencial de diagnóstico de leitura.
+
 Issues #271/#272: a consulta de procedência usa urllib da biblioteca padrão,
 HTTPS verificado para api.github.com, sem gh obrigatório e sem seguir redirects.
 Para repositório privado, disponibilizar FUNIX_HML_GITHUB_TOKEN apenas no
