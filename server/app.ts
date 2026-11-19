@@ -17,6 +17,7 @@ import type { AtendimentoRepository } from './atendimentos.ts'
 import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
+import {ProductionRepository} from './production.ts'
 import { WorkOrderRepository } from './work-orders.ts'
 import {BudgetCancellationRepository} from './budget-cancellations.ts'
 import {cancelledPdf} from './cancelled-pdf.ts'
@@ -108,6 +109,7 @@ export function createRequestHandler(options: AppOptions) {
   const pricing = new PricingConfigurationRepository(options.atendimentos.db)
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
+  const production = new ProductionRepository(options.atendimentos.db,options.now)
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
   // V21 revisions and new explicit issues freeze the first successfully rendered PDF.
   const osCache=new WorkOrderPdfCache(options.atendimentos.db)
@@ -723,6 +725,25 @@ export function createRequestHandler(options: AppOptions) {
         try{return send(200,await voice(req,voiceRoute[1]!,url,requestId,()=>(sessions.get(cookie)??0)>now(),cookie))}
         finally{res.off('close',disconnect)}
       }
+      const experienceRoute=/^\/api\/atendimentos\/([^/]{1,100})\/experiencia$/.exec(url.pathname)
+      const scheduleRoute=/^\/api\/atendimentos\/([^/]{1,100})\/agendamento$/.exec(url.pathname)
+      const productionBudgetRoute=/^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/(autorizacao-tecnica|rejeicao-tecnica|rejeicao-comercial)$/.exec(url.pathname)
+      if(experienceRoute || scheduleRoute || productionBudgetRoute){
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        if(experienceRoute){
+          if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+          return send(200,production.get(experienceRoute[1]!))
+        }
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const body=await readJson(req,scheduleRoute?16384:2048)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
+        if(scheduleRoute)return send(200,production.schedule(scheduleRoute[1]!,body))
+        const [,at,versionId,action]=productionBudgetRoute!
+        if(action==='autorizacao-tecnica')return send(200,production.authorize(at!,versionId!,body))
+        return send(200,production.reject(at!,versionId!,action==='rejeicao-comercial'?'commercial':'technical',body))
+      }
       if (url.pathname === '/api/workspace' || url.pathname.startsWith('/api/experiencias')) {
         return fail(req.method === 'GET' ? 410 : 405, 'FEATURE_UNAVAILABLE', 'Esta função operacional não pertence ao MVP Comercial. Nenhum acesso ao Coda foi realizado.')
       }
@@ -778,9 +799,10 @@ export function createRequestHandler(options: AppOptions) {
         if (url.search) return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
         if (req.headers.origin!==origin) return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(!revisions)return fail(409,'DIRECT_OS_DISABLED','A criação da OS ocorre pela autorização técnica na Experiência do Atendimento.')
         const body=await readJson(req,1024)
         if ((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a confirmação.')
-        return send(201,revisions?workOrders.reissue(at,versionId,body):workOrders.create(at,versionId,body))
+        return send(201,workOrders.reissue(at,versionId,body))
       }
       const budgetRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos(?:\/([^/]{1,100}))?(\/pdf)?$/.exec(url.pathname)
       if (budgetRoute) {

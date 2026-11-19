@@ -1,3 +1,4 @@
+import {legacyOrder,removeV24FixtureSchema} from './fixtures/production.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -17,7 +18,8 @@ test('V18 work order survives the additive V19 customer/chat migration byte-for-
   const preview=budgets.preview(f.at.id,input)
   assert.equal(preview.canEmit,true)
   const issued=await budgets.emit(f.at.id,{...input,previewToken:preview.token,idempotencyKey:randomUUID()})
-  const order=new WorkOrderRepository(db).create(f.at.id,issued.id,{authorized:true})
+  removeV24FixtureSchema(db)
+  const order=legacyOrder(db,issued)
   const storedBefore=db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id)
   const snapshotBefore=db.prepare('SELECT snapshot,pdf FROM budget_versions WHERE id=?').get(issued.id)
   assert.ok(storedBefore)
@@ -26,8 +28,8 @@ test('V18 work order survives the additive V19 customer/chat migration byte-for-
   assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,18)
   assert.deepEqual(db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id),storedBefore)
   migrate(db)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,23)
-  assert.deepEqual(db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id),storedBefore)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,24)
+  assert.deepEqual(db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id),{...storedBefore,experience_id:null,__proto__:null})
   assert.deepEqual(db.prepare('SELECT snapshot,pdf FROM budget_versions WHERE id=?').get(issued.id),snapshotBefore)
   assert.equal(new WorkOrderRepository(db).get(f.at.id,issued.id).number,order.number)
   assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')

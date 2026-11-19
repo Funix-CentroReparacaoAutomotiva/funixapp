@@ -1,3 +1,6 @@
+import {identifyForProduction,issueProductionOrder,legacyOrder,removeV24FixtureSchema,scheduleInput} from './fixtures/production.ts'
+import {ProductionRepository} from '../production.ts'
+import {migrate} from '../migrations.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -31,21 +34,22 @@ async function emitted(db:ReturnType<typeof openDatabase>){
  return{fixture,budgets,version}
 }
 
-test('V18 creates a frozen, operational-only OS, with no commercial fields or excluded services',async()=>{
+test('Technical authorization creates a frozen, operational-only OS, with no commercial fields or excluded services',async()=>{
  const db=openDatabase(':memory:')
  try{
   const{fixture,budgets,version}=await emitted(db)
   const orders=new WorkOrderRepository(db)
   assert.throws(()=>orders.get(fixture.at.id,version.id),error(404,'OS_NOT_FOUND'))
-  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
-  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true,operator:'invented'}),error(400,'INVALID_COMMERCIAL_DATA'))
+  const production=new ProductionRepository(db)
+  assert.throws(()=>production.authorize(fixture.at.id,version.id,{confirmed:false}),error(422,'OS_AUTHORIZATION_REQUIRED'))
+  assert.throws(()=>production.authorize(fixture.at.id,version.id,{confirmed:true,operator:'invented'}),error(400,'INVALID_COMMERCIAL_DATA'))
   const original=structuredClone(version),pdf=budgets.pdf(fixture.at.id,version.id)
-  const os=orders.create(fixture.at.id,version.id,{authorized:true})
+  const os=issueProductionOrder(db,fixture.at.id,version.id)
   assert.equal(os.number,'OS-000001')
   assert.equal(os.budgetVersionId,version.id)
   assert.equal(os.authorization.operatorId,null)
   assert.equal(os.authorization.source,'authenticated-session-confirmation')
-  assert.deepEqual(os.scope,operationalScope(version))
+  assert.deepEqual(os.scope,{...operationalScope(version),vehicle:{description:'Veículo sintético',plate:'QA-000'},deliveryDate:null})
   assert.deepEqual(os.scope.lines.map(l=>l.id),version.snapshot.calculation.lines.filter(l=>l.included).map(l=>l.id))
   const only=JSON.stringify(os)
   for(const privateKey of ['finalUnit','manualPrice','discount','subtotal','installments','factors','energy','conditions','residual','unit','total'])
@@ -53,7 +57,7 @@ test('V18 creates a frozen, operational-only OS, with no commercial fields or ex
   assert(!only.includes('Condições de homologação sintética'))
   assert.deepEqual(budgets.get(fixture.at.id,version.id),original)
   assert.deepEqual(budgets.pdf(fixture.at.id,version.id),pdf)
-  assert.equal(orders.create(fixture.at.id,version.id,{authorized:true}).id,os.id)
+  assert.equal(issueProductionOrder(db,fixture.at.id,version.id).id,os.id)
   assert.equal(db.prepare('SELECT COUNT(*) AS total FROM work_orders').get()!.total,1)
   const paragraphs=operationalParagraphs(os).join('\n')
   assert.match(paragraphs,/Etapa técnica: Etapa sintética/)
@@ -68,7 +72,7 @@ test('OS V1 PDF cache preserves historical template PDFs',async()=>{
  const db=openDatabase(':memory:')
  try{
   const {fixture,version}=await emitted(db)
-  const order=new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true})
+  const order=issueProductionOrder(db,fixture.at.id,version.id)
   const cache=new WorkOrderPdfCache(db)
   const legacy=Buffer.from('%PDF-1.7\nV63 original synthetic\n%%EOF')
   const current=Buffer.from('%PDF-1.7\nV1 official synthetic\n%%EOF')
@@ -95,8 +99,8 @@ test('OS persists after restart, later changes to Atendimento and scenario canno
  const folder=mkdtempSync(join(tmpdir(),'funix-os-')),path=join(folder,'synthetic.sqlite')
  let db=openDatabase(path)
  try{
-  const{fixture,version}=await emitted(db),orders=new WorkOrderRepository(db)
-  const os=orders.create(fixture.at.id,version.id,{authorized:true})
+  const{fixture,version}=await emitted(db)
+  const os=issueProductionOrder(db,fixture.at.id,version.id)
   const before=workOrderPdf(os)
   // Editing current Atendimento cannot alter the already frozen source or OS.
   db.prepare("UPDATE atendimentos SET name='Cliente alterado' WHERE id=?").run(fixture.at.id)
@@ -107,7 +111,7 @@ test('OS persists after restart, later changes to Atendimento and scenario canno
   assert.deepEqual(again,os)
   assert.deepEqual(workOrderPdf(again),before)
   assert.equal(new BudgetRepository(db).get(fixture.at.id,version.id).snapshot.atendimento.name,version.snapshot.atendimento.name)
-  assert.equal(new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}).id,os.id)
+  assert.equal(issueProductionOrder(db,fixture.at.id,version.id).id,os.id)
  }finally{db.close();rmSync(folder,{recursive:true,force:true})}
 })
 
@@ -118,12 +122,11 @@ test('Different emitted versions can produce distinct OSs while each version has
   const nextRequest={scenarioId:fixture.scenario.id,negotiation:{mode:'none'} as const}
   const preview=budgets.preview(fixture.at.id,nextRequest)
   const second=await budgets.emit(fixture.at.id,{...nextRequest,previewToken:preview.token,idempotencyKey:randomUUID()})
-  const orders=new WorkOrderRepository(db)
-  const first=orders.create(fixture.at.id,version.id,{authorized:true})
-  const other=orders.create(fixture.at.id,second.id,{authorized:true})
+  const first=issueProductionOrder(db,fixture.at.id,version.id)
+  const other=issueProductionOrder(db,fixture.at.id,second.id)
   assert.notEqual(first.id,other.id)
   assert.equal(other.number,'OS-000002')
-  assert.equal(orders.create(fixture.at.id,version.id,{authorized:true}).id,first.id)
+  assert.equal(issueProductionOrder(db,fixture.at.id,version.id).id,first.id)
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_orders').get()!.count,2)
   assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,first.number)
  }finally{db.close()}
@@ -158,13 +161,25 @@ test('HTTP OS endpoints require login and Origin and return the persisted operat
   const absent=await request(url,'GET',undefined,cookie)
   assert.equal(absent.status,404)
   assert.equal((await absent.json()).error.code,'OS_NOT_FOUND')
-  assert.equal((await request(url,'POST',{authorized:false},cookie)).status,422)
-  const created=await request(url,'POST',{authorized:true},cookie)
-  assert.equal(created.status,201)
+  const technical=url.slice(0,-3).concat('/autorizacao-tecnica')
+  const schedule='/api/atendimentos/'+fixture.at.id+'/agendamento'
+  assert.equal((await request(url,'POST',{authorized:true},cookie)).status,409)
+  assert.equal((await request(technical,'POST',{confirmed:true})).status,401)
+  assert.equal((await request(technical,'POST',{confirmed:true},cookie,'https://invalid.example')).status,403)
+  assert.equal((await request(technical,'POST',{confirmed:false},cookie)).status,422)
+  assert.equal((await request(technical,'POST',{confirmed:true},cookie)).status,409)
+  identifyForProduction(db,fixture.at.id)
+  const scheduleBody=scheduleInput(db,fixture.at.id,[version.id])
+  assert.equal((await request(schedule,'POST',scheduleBody)).status,401)
+  assert.equal((await request(schedule,'POST',scheduleBody,cookie,'https://invalid.example')).status,403)
+  assert.equal((await request(schedule,'POST',scheduleBody,cookie)).status,200)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,0)
+  const created=await request(technical,'POST',{confirmed:true},cookie)
+  assert.equal(created.status,200)
   const order=await created.json()
   assert.equal(order.number,'OS-000001')
   assert.equal((await (await request(url,'GET',undefined,cookie)).json()).id,order.id)
-  assert.equal((await (await request(url,'POST',{authorized:true},cookie)).json()).id,order.id)
+  assert.equal((await (await request(technical,'POST',{confirmed:true},cookie)).json()).id,order.id)
   const pdf=await request(url+'/pdf','GET',undefined,cookie)
   assert.equal(pdf.status,200)
   assert.equal(pdf.headers.get('content-type'),'application/pdf')
@@ -212,7 +227,7 @@ test('Cancelamento preserva os originais, impede OS nova e permanece após reini
   assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;cancelledAt?:string|null}[]).find(v=>v.id===version.id)?.cancelledAt,event.cancelledAt)
   assert.equal(budgets.get(fixture.at.id,version.id).cancellation?.reason,'Cliente desistiu')
   assert.deepEqual(budgets.pdf(fixture.at.id,version.id),original)
-  assert.throws(()=>new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+  assert.throws(()=>issueProductionOrder(db,fixture.at.id,version.id),error(409,'BUDGET_CANCELLED'))
   assert.throws(()=>db.prepare('DELETE FROM budget_cancellations').run(),/immutable/i)
   assert.throws(()=>db.prepare("UPDATE budget_cancellations SET reason='mudança'").run(),/immutable/i)
   db.close();db=openDatabase(path)
@@ -224,14 +239,14 @@ test('Cancelar orçamento com OS preserva a consulta da OS e o escopo congelado'
  const db=openDatabase(':memory:')
  try{
   const {fixture,budgets,version}=await emitted(db)
-  const orders=new WorkOrderRepository(db),before=orders.create(fixture.at.id,version.id,{authorized:true})
+  const orders=new WorkOrderRepository(db),before=issueProductionOrder(db,fixture.at.id,version.id)
   const cancellation=new BudgetCancellationRepository(db).cancel(fixture.at.id,version.id,{reason:'Escopo cancelado pelo cliente'})
   const after=orders.get(fixture.at.id,version.id)
   assert.deepEqual(after.scope,before.scope)
   assert.equal(after.number,before.number)
   assert.equal(after.cancellation?.cancelledAt,cancellation.cancelledAt)
   assert.equal((budgets.list(fixture.at.id) as unknown as {id:string;workOrderNumber?:string}[]).find(v=>v.id===version.id)?.workOrderNumber,before.number)
-  assert.throws(()=>orders.create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+  assert.throws(()=>issueProductionOrder(db,fixture.at.id,version.id),error(409,'BUDGET_CANCELLED'))
  }finally{db.close()}
 })
 
@@ -245,7 +260,7 @@ test('Cancelar sem OS e sem motivo não cria documento retrospectivamente',async
   assert.equal(listed?.cancelledAt,event.cancelledAt)
   assert.equal(listed?.workOrderNumber,undefined)
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,0)
-  assert.throws(()=>new WorkOrderRepository(db).create(fixture.at.id,version.id,{authorized:true}),error(409,'BUDGET_CANCELLED'))
+  assert.throws(()=>issueProductionOrder(db,fixture.at.id,version.id),error(409,'BUDGET_CANCELLED'))
  }finally{db.close()}
 })
 
@@ -291,9 +306,11 @@ test('Separate SQLite connections cannot create two OS records for the same issu
  const firstDb=openDatabase(path),secondDb=openDatabase(path)
  try{
   const{fixture,version}=await emitted(firstDb)
-  const a=new WorkOrderRepository(firstDb),b=new WorkOrderRepository(secondDb)
-  const results=await Promise.all([Promise.resolve().then(()=>a.create(fixture.at.id,version.id,{authorized:true})),
-    Promise.resolve().then(()=>b.create(fixture.at.id,version.id,{authorized:true}))])
+  identifyForProduction(firstDb,fixture.at.id)
+  const a=new ProductionRepository(firstDb),b=new ProductionRepository(secondDb)
+  a.schedule(fixture.at.id,scheduleInput(firstDb,fixture.at.id,[version.id]))
+  const results=await Promise.all([Promise.resolve().then(()=>a.authorize(fixture.at.id,version.id,{confirmed:true})),
+    Promise.resolve().then(()=>b.authorize(fixture.at.id,version.id,{confirmed:true}))])
   assert.equal(results[0]!.id,results[1]!.id)
   assert.equal(firstDb.prepare('SELECT COUNT(*) AS n FROM work_orders').get()!.n,1)
  }finally{firstDb.close();secondDb.close();rmSync(directory,{recursive:true,force:true})}
@@ -303,24 +320,26 @@ test('Manual delivery choice is independent from the estimated duration and atom
  const db=openDatabase(':memory:')
  try{
   const {fixture,budgets,version}=await emitted(db)
-  const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const at=fixture.at.id,repo=new AtendimentoRepository(db)
+  identifyForProduction(db,at)
+  const production=new ProductionRepository(db)
   const before=repo.get(at),sourcePdf=budgets.pdf(at,version.id),source=budgets.get(at,version.id)
-  const choose={authorized:true,expectedAtendimentoRevision:before.revision}
-  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without',deliveryDate:'2026-11-27'}),error(409,'DELIVERY_CHOICE_CONFLICT'))
-  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-02-30'}),error(422,'INVALID_DELIVERY_DATE'))
-  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with'}),error(422,'INVALID_DELIVERY_DATE'))
-  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'with',deliveryDate:'2026-11-27',expectedAtendimentoRevision:before.revision-1}),error(409,'VERSION_CONFLICT'))
+  const choose=scheduleInput(db,at,[version.id])
+  assert.throws(()=>production.schedule(at,{...choose,deliveryDate:'2026-02-30'}),error(422,'INVALID_DELIVERY_DATE'))
+  assert.throws(()=>production.schedule(at,{...choose,deliveryDate:'2026-11-19'}),error(422,'INVALID_SCHEDULE'))
+  assert.throws(()=>production.schedule(at,{...choose,deliveryDate:'2026-11-27',expectedAtendimentoRevision:before.revision-1}),error(409,'SCHEDULE_CONFLICT'))
   assert.equal(db.prepare('SELECT COUNT(*) n FROM work_orders').get()!.n,0)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
   assert.deepEqual(repo.get(at),before)
-  const input={...choose,deliveryChoice:'with',deliveryDate:'2026-11-27'}
-  const first=orders.create(at,version.id,input)
+  const input={...choose,deliveryDate:'2026-11-27'}
+  const scheduled=production.schedule(at,input)
+  const first=production.authorize(at,version.id,{confirmed:true})
   assert.equal(first.scope.deliveryDate,'2026-11-27')
   assert.equal(first.scope.deadlineDays,operationalScope(version).deadlineDays)
   assert.equal(repo.get(at).deliveryDate,'2026-11-27')
   assert.equal(repo.get(at).revision,before.revision+1)
-  assert.deepEqual(orders.create(at,version.id,input),first)
-  assert.throws(()=>orders.create(at,version.id,{...choose,deliveryChoice:'without'}),error(409,'OS_ALREADY_ISSUED'))
+  assert.equal(production.schedule(at,input).experience?.id,scheduled.experience?.id)
+  assert.throws(()=>production.schedule(at,{...input,deliveryDate:null}),error(409,'SCHEDULE_CONFLICT'))
   assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
   assert.deepEqual(budgets.get(at,version.id),source)
   assert.deepEqual(budgets.pdf(at,version.id),sourcePdf)
@@ -332,7 +351,7 @@ test('Optional empty delivery, explicit reissue, historical PDFs and cancellatio
  try{
   const {fixture,budgets,version}=await emitted(db)
   const at=fixture.at.id,repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
-  const first=orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:repo.get(at).revision})
+  const first=issueProductionOrder(db,at,version.id)
   assert.equal(first.scope.deliveryDate,null)
   assert.equal(repo.get(at).deliveryDate??null,null)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,0)
@@ -386,13 +405,14 @@ test('Date registered before OS issuance is reused; invalid date or concurrent c
  const db=openDatabase(':memory:')
  try{
   const {fixture,version}=await emitted(db),at=fixture.at.id
-  const repo=new AtendimentoRepository(db),orders=new WorkOrderRepository(db)
+  const repo=new AtendimentoRepository(db),production=new ProductionRepository(db)
+  identifyForProduction(db,at)
   const before=repo.get(at)
   assert.throws(()=>repo.update(at,{revision:before.revision,deliveryDate:'2026-02-29'}),error(422,'INVALID_DELIVERY_DATE'))
+  const stale=scheduleInput(db,at,[version.id])
   const saved=repo.update(at,{revision:before.revision,deliveryDate:'2028-02-29'})
-  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
-  assert.throws(()=>orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:'2028-03-01',expectedAtendimentoRevision:saved.revision}),error(409,'DELIVERY_CHOICE_CONFLICT'))
-  const order=orders.create(at,version.id,{authorized:true,deliveryChoice:'with',deliveryDate:saved.deliveryDate,expectedAtendimentoRevision:saved.revision})
+  assert.throws(()=>production.schedule(at,stale),error(409,'SCHEDULE_CONFLICT'))
+  const order=issueProductionOrder(db,at,version.id)
   assert.equal(order.scope.deliveryDate,'2028-02-29')
   assert.equal(repo.get(at).revision,saved.revision)
   assert.equal(db.prepare('SELECT COUNT(*) n FROM atendimento_delivery_date_history').get()!.n,1)
@@ -436,8 +456,9 @@ test('optical restoration: exact frozen identities, missing stages and immutable
   assert.deepEqual(version,frozen)
   assert.equal(correctOpticalWorkOrderScope(scope,version.snapshot),null)
   const old={...scope,deliveryDate:'2026-11-30',lines:scope.lines.map(l=>l.id===optical[0]!.id?{...l,stages:[]}:l)}
-  const id=randomUUID()
-  db.prepare('INSERT INTO work_orders(id,atendimento_id,budget_version_id,created_at,authorized_at,authorization_source,authorized_by,budget_number,budget_label,scope_json) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,at,version.id,now,now,'authenticated-session-confirmation',null,version.documentNumber??'',version.label,JSON.stringify(old))
+  removeV24FixtureSchema(db)
+  legacyOrder(db,version,old)
+  migrate(db)
   const orders=new WorkOrderRepository(db),first=orders.get(at,version.id)
   assert.match(renderOrderV1(first).content,/Serviço sem etapas cadastradas: Restauração óptica/)
   const request={authorized:true,correction:'optical-stages-v1',expectedRevision:1}

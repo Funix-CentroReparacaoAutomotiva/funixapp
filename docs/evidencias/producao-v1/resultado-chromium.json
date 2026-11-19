@@ -1,0 +1,195 @@
+[
+  {
+    "synthetic": true,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "results": [
+      {
+        "name": "desktop: agendamento cadastra uma Experiência e consente duas versões sem emitir OS",
+        "pass": true
+      },
+      {
+        "name": "desktop: reagendamento atualiza a mesma Experiência",
+        "pass": true
+      },
+      {
+        "name": "desktop: rejeição técnica exige motivo e não gera OS",
+        "pass": true
+      },
+      {
+        "name": "desktop: autorização técnica emite uma OS vinculada e permite consultá-la",
+        "pass": true
+      },
+      {
+        "name": "desktop: escopo imutável coincide com snapshot emitido, exclui serviços desmarcados e dados financeiros",
+        "pass": true
+      },
+      {
+        "name": "desktop: botão Ver OS abre PDF operacional na guia de visualização/impressão",
+        "pass": true
+      },
+      {
+        "name": "desktop: lista oferece a visualização da OS após autorização técnica",
+        "pass": true
+      },
+      {
+        "name": "desktop: reabrir Atendimento e mudar cliente não altera OS nem PDF comercial histórico",
+        "pass": true
+      },
+      {
+        "name": "desktop: layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo",
+        "pass": true
+      },
+      {
+        "name": "desktop: alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes",
+        "pass": true
+      },
+      {
+        "name": "desktop: limpar previsão permite R03 sem data; histórico R01/R02 preservado, uma única OS e orçamento intacto",
+        "pass": true
+      },
+      {
+        "name": "desktop: cancelamento sem motivo solicitado, documentos vermelhos e linha cinza persistem após reload",
+        "pass": true
+      },
+      {
+        "name": "desktop: A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed",
+        "pass": true
+      }
+    ],
+    "external": [],
+    "pageErrors": []
+  },
+  {
+    "synthetic": true,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "results": [
+      {
+        "name": "mobile390: agendamento cadastra uma Experiência e consente duas versões sem emitir OS",
+        "pass": true
+      },
+      {
+        "name": "mobile390: reagendamento atualiza a mesma Experiência",
+        "pass": true
+      },
+      {
+        "name": "mobile390: rejeição técnica exige motivo e não gera OS",
+        "pass": true
+      },
+      {
+        "name": "mobile390: reenvio após resposta perdida retorna a OS do primeiro commit",
+        "pass": true
+      },
+      {
+        "name": "mobile390: autorização técnica emite uma OS vinculada e permite consultá-la",
+        "pass": true
+      },
+      {
+        "name": "mobile390: escopo imutável coincide com snapshot emitido, exclui serviços desmarcados e dados financeiros",
+        "pass": true
+      },
+      {
+        "name": "mobile390: botão Ver OS abre PDF operacional na guia de visualização/impressão",
+        "pass": true
+      },
+      {
+        "name": "mobile390: lista oferece a visualização da OS após autorização técnica",
+        "pass": true
+      },
+      {
+        "name": "mobile390: reabrir Atendimento e mudar cliente não altera OS nem PDF comercial histórico",
+        "pass": true
+      },
+      {
+        "name": "mobile390: layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo",
+        "pass": true
+      },
+      {
+        "name": "mobile390: alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes",
+        "pass": true
+      },
+      {
+        "name": "mobile390: limpar previsão permite R03 sem data; histórico R01/R02 preservado, uma única OS e orçamento intacto",
+        "pass": true
+      },
+      {
+        "name": "mobile390: cancelamento sem motivo solicitado, documentos vermelhos e linha cinza persistem após reload",
+        "pass": true
+      },
+      {
+        "name": "mobile390: A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed",
+        "pass": true
+      }
+    ],
+    "external": [],
+    "pageErrors": []
+  },
+  {
+    "synthetic": true,
+    "viewport": {
+      "width": 320,
+      "height": 844
+    },
+    "results": [
+      {
+        "name": "mobile320: agendamento cadastra uma Experiência e consente duas versões sem emitir OS",
+        "pass": true
+      },
+      {
+        "name": "mobile320: reagendamento atualiza a mesma Experiência",
+        "pass": true
+      },
+      {
+        "name": "mobile320: rejeição técnica exige motivo e não gera OS",
+        "pass": true
+      },
+      {
+        "name": "mobile320: autorização técnica emite uma OS vinculada e permite consultá-la",
+        "pass": true
+      },
+      {
+        "name": "mobile320: escopo imutável coincide com snapshot emitido, exclui serviços desmarcados e dados financeiros",
+        "pass": true
+      },
+      {
+        "name": "mobile320: botão Ver OS abre PDF operacional na guia de visualização/impressão",
+        "pass": true
+      },
+      {
+        "name": "mobile320: lista oferece a visualização da OS após autorização técnica",
+        "pass": true
+      },
+      {
+        "name": "mobile320: reabrir Atendimento e mudar cliente não altera OS nem PDF comercial histórico",
+        "pass": true
+      },
+      {
+        "name": "mobile320: layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo",
+        "pass": true
+      },
+      {
+        "name": "mobile320: alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes",
+        "pass": true
+      },
+      {
+        "name": "mobile320: limpar previsão permite R03 sem data; histórico R01/R02 preservado, uma única OS e orçamento intacto",
+        "pass": true
+      },
+      {
+        "name": "mobile320: cancelamento sem motivo solicitado, documentos vermelhos e linha cinza persistem após reload",
+        "pass": true
+      },
+      {
+        "name": "mobile320: A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed",
+        "pass": true
+      }
+    ],
+    "external": [],
+    "pageErrors": []
+  }
+]

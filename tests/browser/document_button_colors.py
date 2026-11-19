@@ -9,7 +9,6 @@ from m1_atendimentos import Harness, ROOT, ORIGIN
 
 COLORS = {
     "issued": ("rgb(20, 109, 56)", [20, 109, 56]),
-    "pending": ("rgb(23, 79, 169)", [23, 79, 169]),
     "cancelled": ("rgb(160, 35, 61)", [160, 35, 61]),
     "unavailable": ("rgb(102, 117, 138)", [102, 117, 138]),
 }
@@ -29,14 +28,14 @@ import {randomUUID} from 'node:crypto'
 import {openDatabase} from './server/database.ts'
 import {commercialFixture} from './server/tests/fixtures/commercial.ts'
 import {BudgetRepository} from './server/tests/fixtures/budget-renderer.ts'
-import {WorkOrderRepository} from './server/work-orders.ts'
+import {issueProductionOrder} from './server/tests/fixtures/production.ts'
 import {BudgetCancellationRepository} from './server/budget-cancellations.ts'
 const db=openDatabase(process.argv[1]), f=commercialFixture(db), b=new BudgetRepository(db), versions=[]
 for(let n=0;n<4;n++){
  const input={scenarioId:f.scenario.id,negotiation:{mode:'none'}}, p=b.preview(f.at.id,input)
  versions.push(await b.emit(f.at.id,{...input,previewToken:p.token,idempotencyKey:randomUUID()}))
 }
-for(const i of [1,2])new WorkOrderRepository(db).create(f.at.id,versions[i].id,{authorized:true})
+for(const i of [1,2])issueProductionOrder(db,f.at.id,versions[i].id)
 new BudgetCancellationRepository(db).cancel(f.at.id,versions[2].id,{})
 writeFileSync(process.argv[2],JSON.stringify({at:f.at.id,versions:versions.map(v=>({id:v.id,number:v.documentNumber}))}))
 db.close()
@@ -69,7 +68,9 @@ db.close()
         last = row(ids["versions"][3])
         dialog_types = []
         page.on("dialog", lambda d: dialog_types.append(d.type))
-        await last.locator(".budget-action-cancel").click()
+        async with page.expect_response(lambda response: response.request.method == "POST" and response.url.endswith("/cancelamento")) as event:
+            await last.locator(".budget-action-cancel").click()
+        assert (await event.value).status == 200
         await expect(last.locator(".budget-action-os")).to_be_disabled()
         assert dialog_types == ["confirm"], dialog_types
         assert originals() == frozen, "Cancellation must preserve frozen snapshot and original PDF"
@@ -91,8 +92,8 @@ db.close()
                 badge = actual["marker"]
                 assert badge and "badge-" + marker in badge["className"], actual
                 assert badge["backgroundColor"] == "rgb(255, 255, 255)", actual
-                assert badge["color"] == ("rgb(33, 136, 61)" if marker == "create" else "rgb(33, 102, 199)"), actual
-                assert ('M12 4v16M4 12h16' in badge["html"]) if marker == "create" else ('<circle' in badge["html"])
+                assert badge["color"] == "rgb(33, 102, 199)", actual
+                assert "<circle" in badge["html"], actual
             else:
                 assert actual["marker"] is None
             # Screenshot pixels, not just classes or CSS: the expected fill must occupy
@@ -108,12 +109,12 @@ db.close()
             }""", {"png": png, "rgb": rgb})
             assert ratio > 0.60, (state, ratio)
             return {"state": state, **actual, "fillPixelRatio": ratio}
-        expected = [("issued", "pending"), ("issued", "issued"),
+        expected = [("issued", "unavailable"), ("issued", "issued"),
                     ("cancelled", "cancelled"), ("cancelled", "unavailable")]
         async def validate(v, states, scope):
             values = [await button(scope.locator('.budget-action-or'), states[0], "view"),
                       await button(scope.locator('.budget-action-os'), states[1],
-                                   None if states[1] == "unavailable" else "create" if states[1] == "pending" else "view")]
+                                   None if states[1] == "unavailable" else "view")]
             cancelled = states[0] == "cancelled"
             assert await scope.locator('.budget-action-cancel').is_disabled() == cancelled
             assert await scope.locator('a.budget-action-or').count() == 1

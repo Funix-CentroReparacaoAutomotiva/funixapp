@@ -3,7 +3,7 @@ import './budget-experience.css'
 
 type Props={
  kind:'or'|'os'|'cancel'
- state?:'create'|'view'|'unavailable'
+ state?:'view'|'unavailable'
  cancelled?:boolean
  href?:string
  onClick?:()=>void
@@ -21,12 +21,11 @@ export function DocumentButton({kind,state,cancelled=false,href,onClick,disabled
    </>}
   </svg>}
   {kind!=='cancel'&&<span className="budget-action-text">{kind.toUpperCase()}</span>}
-  {kind!=='cancel'&&state!=='unavailable'&&<span className={`budget-action-badge ${state==='create'?'badge-create':'badge-view'}`} aria-hidden="true">
-    {state==='create'?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round"><path d="M12 4v16M4 12h16"/></svg>:
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>}
+  {kind!=='cancel'&&state==='view'&&<span className="budget-action-badge badge-view" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>
    </span>}
  </>
- const visualState=kind==='cancel'?'':cancelled?' budget-action-cancelled':state==='view'?' budget-action-issued':state==='create'?' budget-action-pending':' budget-action-unavailable'
+ const visualState=kind==='cancel'?'':cancelled?' budget-action-cancelled':state==='view'?' budget-action-issued':' budget-action-unavailable'
  const className='budget-action budget-action-'+kind+visualState
  if(href)return <a className={className} href={href} target="_blank" rel="noopener noreferrer" aria-label={title} title={title}>{content}</a>
  const click:MouseEventHandler<HTMLButtonElement>=()=>onClick?.()

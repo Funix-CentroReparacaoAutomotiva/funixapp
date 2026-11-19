@@ -19,7 +19,7 @@ export interface GmailAnalysisProviders{
  * The bound adapter must resolve it exactly within its own source and authorized scope.
  */
 export function isAnalysisContextReference(value:unknown):value is string{
- return typeof value==='string'&&(/^i-[A-Za-z0-9_-]{1,100}$/.test(value)||(value.length<=100&&/^ctx:[a-z][a-z0-9-]{0,23}:[A-Za-z0-9_-]{1,90}$/.test(value)))
+ return typeof value==='string'&&value===value.trim()&&(/^i-[A-Za-z0-9_-]{1,100}$/.test(value)||(value.length<=100&&/^ctx:[a-z][a-z0-9-]{0,23}:[A-Za-z0-9_-]{1,90}$/.test(value)))
 }
 export const analysisHash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export const analysisError=(code:string,status=422):never=>{throw new ServiceError(status,code,'Não foi possível concluir a análise. Confira a pendência e tente novamente.')}
