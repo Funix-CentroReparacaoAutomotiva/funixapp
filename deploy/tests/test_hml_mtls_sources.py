@@ -4,6 +4,8 @@ import importlib.util
 import json
 from pathlib import Path
 import time
+import tempfile
+import contextlib
 import unittest
 from unittest.mock import patch, Mock
 
@@ -97,3 +99,28 @@ class MtlsSourcesTest(unittest.TestCase):
             with self.assertRaises(ctl.Blocked):
                 ctl.dispatch(json.dumps(ctl.request_of(self.ticket())).encode())
             run.assert_not_called()
+
+    def test_expired_and_consumed_approvals_cannot_dispatch_again(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "requests").mkdir(mode=0o700)
+            ticket = self.ticket()
+            with patch.object(ctl,"ROOT",root), \
+                 patch.object(ctl,"private_file",side_effect=lambda path: Path(path)), \
+                 patch.object(ctl,"locked",side_effect=contextlib.nullcontext), \
+                 patch.object(ctl,"require_idle"), \
+                 patch.object(ctl.subprocess,"run",return_value=Mock(returncode=0,stdout="inactive")) as run:
+                expired = dict(ticket, issued_at=int(time.time())-1300, expires_at=int(time.time())-100)
+                (root / "armed.json").write_text(json.dumps(expired))
+                with self.assertRaises(ctl.Blocked):
+                    ctl.dispatch(json.dumps(ctl.request_of(expired)).encode())
+                run.assert_not_called()
+                (root / "armed.json").write_text(json.dumps(ticket))
+                result = ctl.dispatch(json.dumps(ctl.request_of(ticket)).encode())
+                self.assertEqual(result["status"], "queued")
+                self.assertFalse((root / "armed.json").exists())
+                self.assertTrue((root / "requests" / ticket["ticket_id"] / "ticket.json").exists())
+                previous_calls = run.call_count
+                with self.assertRaises(ctl.Blocked):
+                    ctl.dispatch(json.dumps(ctl.request_of(ticket)).encode())
+                self.assertEqual(run.call_count, previous_calls)
