@@ -215,9 +215,14 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const confirmedPhone=normalizePhone(initial.phone)
     const incompatible=!!known&&(!!known.conversationId&&!handles.includes(known.conversationId)||
       !!known.text&&!!confirmedPhone&&normalizePhone(known.text)!==confirmedPhone)
-    const blocked=plan.blocked||channels.length>1||matches.length>1||
+    const contactConflict=channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       (this.unifiedCustomers&&incompatible)
+    const blocked=plan.blocked||contactConflict
+    // Keep the received message, but require explicit review before associating
+    // or sending against a contradictory Contact in autonomous mode.
+    if(this.unifiedCustomers&&contactConflict)
+      this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
     const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
     let at:string|null=null
     if(!blocked&&!historical){

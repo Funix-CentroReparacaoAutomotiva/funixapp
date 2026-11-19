@@ -318,7 +318,9 @@ test('standalone LID without a name keeps phone empty and a shared provisional i
  const db=openDatabase(':memory:')
  try{
   const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
-  runtime.store.ingest(JSON.stringify(event('unknown-lid',LID,null,'')))
+  const bare=event('unknown-lid',LID,null,'')
+  delete (bare as {displayName?:string}).displayName
+  runtime.store.ingest(JSON.stringify(bare))
   const at=new AtendimentoRepository(db),a=at.get(at.list().items[0]!.id,true)
   assert.equal(a.phone,'');assert.equal(a.name,'Sem nome')
   assert.ok(a.references!.person[0]!.id);assert.ok(a.references!.contact[0]!.id)
@@ -336,6 +338,8 @@ test('standalone late PN cannot silently adopt another Entity Contact',()=>{
   runtime.store.ingest(JSON.stringify(event('pn-collision',PN,LID)))
   assert.equal(customers.record(contactId).text,'')
   assert.notEqual(customers.record(contactId).entityId,existing.id)
+  assert.equal(runtime.authority!.identityState(PN),'context_conflict')
+  assert.equal(runtime.authority!.contextToken(PN),null)
   assert.equal(customers.contacts(existing.id)[0]!.text,'+5531999990101')
   assert.equal(at.list().total,1)
   assert.equal(db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,2)
