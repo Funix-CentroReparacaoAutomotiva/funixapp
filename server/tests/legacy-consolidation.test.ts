@@ -10,6 +10,8 @@ import {AtendimentoRepository} from '../atendimentos.ts'
 import {CustomerRepository} from '../customers.ts'
 import {createCodaEventSchema,CodaEventSyncRepository} from '../chat/coda-sync.ts'
 import {LocalConversationAssociations} from '../chat/local-associations.ts'
+import {loadConversationRuntime} from '../chat/conversation-runtime.ts'
+import {V20AssociationRepository} from '../chat/v20-associations.ts'
 import {consolidateLegacyCustomers,normalizeLegacyPhone} from '../chat/legacy-consolidation.ts'
 import {issueProductionOrder,removeV24FixtureSchema} from './fixtures/production.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
@@ -177,6 +179,16 @@ test('V24 offline backup preserves issued documents and operational records and 
   const quote=await budgets.emit(f.at.id,{...input,previewToken:budgets.preview(f.at.id,input).token,idempotencyKey:randomUUID()})
   issueProductionOrder(db,f.at.id,quote.id)
   const legacy=new AtendimentoRepository(db).create({name:'Pessoa sintética legada',phone:'(31) 99999-0777'})
+  const runtime=loadConversationRuntime({FUNIX_CHAT_LOCAL_ENABLED:'true',FUNIX_CHAT_LOCAL_READ_ENABLED:'true'},db)!
+  const remoteJid='5531999990776@s.whatsapp.net'
+  const channel=runtime.authority!.rememberProviderConversation(remoteJid)
+  const chatOwner=new AtendimentoRepository(db).create({name:'Contato sintético de Chat',phone:'+5531999990776'})
+  new V20AssociationRepository(db).link({conversationId:channel,atendimentoId:chatOwner.id,expectedRevision:0,requestId:randomUUID(),reason:'Vínculo sintético a preservar'})
+  runtime.store.ingest(JSON.stringify({schemaVersion:2,instance:'funix_comercial',eventId:'backup-synthetic',type:'message.upsert',occurredAt:'2026-01-01T00:00:00.000Z',message:{
+   remoteJid,remoteJidAlt:null,messageId:'backup-synthetic',timestamp:1767225600,fromMe:false,kind:'text',text:'Histórico sintético',media:null,statuses:[],
+  }}))
+  assert.equal(runtime.store.page(remoteJid,1).items.length,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM v20_association_receipts').get()!.n,1)
   const phone='+5531999990888'
   for(const text of [phone,'(31) 99999-0888'])
    db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(randomUUID(),JSON.stringify({text}))
