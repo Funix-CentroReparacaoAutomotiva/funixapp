@@ -138,7 +138,8 @@ export async function normalizeEvolutionEvent(
       type: edited ? 'message.edit' : 'message.upsert',
       message: {
         remoteJid: message.remoteJid,
-        remoteJidAlt: message.remoteJidAlt,
+        // Evolution may repeat the same PN or LID in both fields. This is not alias evidence.
+        remoteJidAlt: message.remoteJidAlt === message.remoteJid ? null : message.remoteJidAlt,
         messageId: message.messageId,
         timestamp: message.timestamp,
         fromMe: message.fromMe,
