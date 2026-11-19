@@ -44,10 +44,10 @@ de revisões diferentes nem sobrescrever código de uma operação em andamento.
    de uma revisão confiável/registrada. Transportar candidate.zip sem
    descompactar, via SSH com host verificado. Não copiar chave root,
    credenciais da produção ou token GitHub para o chat. A consulta de
-   proveniência usa `gh api` com sessão autenticada **somente leitura** do
+   proveniência usa a API HTTPS oficial com acesso **somente leitura** do
    repositório (Actions, Pull requests); disponibilidade/credencial ainda
-   não verificadas na VPS. Não instalar gh nem autenticar como root sem
-   revisão/autorização separada; credencial de curta duração quando aplicável.
+   não verificadas na VPS. gh não é necessário. Para metadados privados,
+   fornecer token de curta duração conforme o contrato acima.
 4. Preparar diretórios privados root 0700 /var/lib/funix-hml/updater e
    subdiretório novo op-IDENTIFICADOR. Artefato root 0600
    op-IDENTIFICADOR/candidate.zip. O comando prepare verifica metadados
