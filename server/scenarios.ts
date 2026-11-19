@@ -11,8 +11,8 @@ export function inputObject(input: unknown, keys: string[]): Record<string, unkn
   if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !keys.includes(k))) invalid('Campos inválidos ou não permitidos.')
   return input as Record<string, unknown>
 }
-export function transaction<T>(db: DatabaseSync, action: () => T): T {
-  db.exec('BEGIN IMMEDIATE')
+export function transaction<T>(db: DatabaseSync, action: () => T, mode: 'read' | 'write' = 'write'): T {
+  db.exec(mode === 'read' ? 'BEGIN' : 'BEGIN IMMEDIATE')
   try { const result = action(); db.exec('COMMIT'); return result }
   catch (error) { db.exec('ROLLBACK'); throw error }
 }
@@ -30,9 +30,16 @@ export function touchComposition(db: DatabaseSync, at: string) {
   db.prepare('UPDATE scenarios SET revision=revision+1 WHERE atendimento_id=?').run(at)
 }
 
+export type NativeTransactionRunner=<T>(action:()=>T)=>T
+
 export class ScenarioRepository {
   readonly db: DatabaseSync
-  constructor(db: DatabaseSync) { this.db = db }
+  readonly runTransaction:NativeTransactionRunner
+  constructor(db: DatabaseSync,runTransaction?:NativeTransactionRunner) { this.db = db;this.runTransaction=runTransaction??(action=>transaction(db,action)) }
+  revisions(at: string): [id: string, revision: number][] {
+    return this.db.prepare('SELECT id,revision FROM scenarios WHERE atendimento_id=? ORDER BY position').all(at)
+      .map(row => [String(row.id), Number(row.revision)])
+  }
   list(at: string): Scenario[] {
     new AtendimentoRepository(this.db).get(at)
     const confirmations=new Map<string,Record<string,string>>()
@@ -53,7 +60,7 @@ export class ScenarioRepository {
     const data = inputObject(input, ['name','duplicateFrom','sourceRevision'])
     if (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 100) invalid('Informe um nome de cenário (até 100 caracteres).')
     const name = data.name.trim()
-    return transaction(this.db, () => {
+    return this.runTransaction( () => {
       const source = data.duplicateFrom === undefined ? null : selectedScenario(this.db, at, data.duplicateFrom, data.sourceRevision)
       if (source && !Number.isSafeInteger(data.sourceRevision)) invalid('Informe a revisão do cenário de origem.')
       const id = randomUUID()
@@ -74,7 +81,7 @@ export class ScenarioRepository {
   remove(at: string, id: string, input: unknown) {
     const data = inputObject(input, ['revision'])
     if (!Number.isSafeInteger(data.revision)) invalid('Informe a revisão do cenário.')
-    return transaction(this.db, () => {
+    return this.runTransaction( () => {
       new AtendimentoRepository(this.db).get(at)
       selectedScenario(this.db, at, id, data.revision)
       if (this.list(at).length <= 1) throw new ServiceError(409, 'LAST_SCENARIO', 'O último cenário do Atendimento não pode ser excluído.')
@@ -86,7 +93,7 @@ export class ScenarioRepository {
   update(at: string, id: string, input: unknown) {
     const data = inputObject(input, ['revision','name','pieceFlags','serviceFlags','componentFlags','deadline','negotiationDraft'])
     if (!Number.isSafeInteger(data.revision)) invalid('Informe a revisão do cenário.')
-    return transaction(this.db, () => {
+    return this.runTransaction( () => {
       selectedScenario(this.db, at, id, data.revision)
       if (data.name !== undefined) {
         if (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 100) invalid('Nome de cenário inválido.')
@@ -122,7 +129,7 @@ export class ScenarioRepository {
   confirmService(at:string,scenarioId:string,lineId:string,input:unknown){
     const data=inputObject(input,['revision','pieceRevision','scope','confirmed'])
     if(!Number.isSafeInteger(data.revision)||!Number.isSafeInteger(data.pieceRevision)||typeof data.scope!=='string'||typeof data.confirmed!=='boolean')invalid('Confirmação exige revisões, escopo e escolha explícita.')
-    return transaction(this.db,()=>{
+    return this.runTransaction(()=>{
       selectedScenario(this.db,at,scenarioId,data.revision)
       const line=this.db.prepare(`SELECT l.service_id,l.dimension_id,l.quantity,p.revision,pf.enabled AS parent_enabled,sf.enabled AS line_enabled FROM diagnosis_services l JOIN diagnosis_items p ON p.id=l.diagnosis_item_id JOIN scenario_piece_flags pf ON pf.piece_id=p.id AND pf.scenario_id=? JOIN scenario_service_flags sf ON sf.service_id=l.id AND sf.scenario_id=pf.scenario_id WHERE p.atendimento_id=? AND l.id=?`).get(scenarioId,at,lineId)
       if(!line)throw new ServiceError(404,'NOT_FOUND','Linha não pertence ao Atendimento/cenário.')

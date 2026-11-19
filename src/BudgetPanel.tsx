@@ -7,6 +7,7 @@ import {deliveryDateLabel,validDeliveryDate} from '../shared/delivery-date'
 import {api} from './api'
 import type {RequestFailure} from './api'
 import {money} from './money'
+import {CiliaPreviewPanel} from './CiliaPreviewPanel'
 import{budgetHistory}from'../shared/budget-history'
 import './budget-experience.css'
 import './os-delivery-dialog.css'
@@ -23,7 +24,7 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
  }finally{setTimeout(()=>URL.revokeObjectURL(url),5000)}
 }
 
-export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onOpenProduction}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenProduction:()=>void;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
+export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onOpenProduction,onImportCreated}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenProduction:()=>void;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void;onImportCreated:()=>Promise<void>}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[order,setOrder]=useState<WorkOrder|null>(null),[checkingOrder,setCheckingOrder]=useState(false),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
  const [orderHistory,setOrderHistory]=useState<WorkOrder[]>([]),[deliveryPrompt,setDeliveryPrompt]=useState<{id:string;atRevision:number;revision:number}|null>(null),[deliveryDraft,setDeliveryDraft]=useState('')
  const dialogRef=useRef<HTMLDialogElement>(null)
@@ -135,6 +136,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
     {orderHistory.length>1&&<details><summary>Histórico de emissões da OS</summary>{orderHistory.map((item,index)=><p key={item.revision??1}><a href={orderUrl(selected.id,item.revision??1)} target="_blank" rel="noopener noreferrer">R{String(item.revision??1).padStart(2,'0')} · {deliveryDateLabel(item.scope.deliveryDate)}</a> · {item.cancellation?'Cancelada':index===0?selectedMeta?.workOrderNeedsReissue?'Desatualizada':'Vigente':'Substituída'}</p>)}</details>}
   </>}
  </div>:versionId?<p className="at-form-hint">{error?'Versão indisponível. Use Voltar para retornar.':'Carregando documento…'}</p>:<>
+ <CiliaPreviewPanel key={at} at={at} disabled={busy} onAuthRequired={onAuthRequired} onBusy={onBusy} onCreated={onImportCreated}/>
  {budgetHistory(versions).map(group=><section key={group.id} className="budget-history-group" aria-label={group.name}>
  <h2>{group.name}</h2>
  {group.versions.map(v=><div className={`budget-history-row${v.cancelledAt?' is-cancelled':''}`} key={v.id}>

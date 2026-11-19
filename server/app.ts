@@ -60,7 +60,19 @@ import type{QuoteService}from'./component-quote-service.ts'
 import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
+import type {HistoricalBudgetRepository} from './historical-budget-repository.ts'
+import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historical-coda-provider.ts'
+
+import { createExternalBudgetEndpoint, type ExternalBudgetApi } from './external-budget-api.ts'
+
+import {consultCiliaUpload,compareCiliaUpload} from './cilia-operator-api.ts'
+import {CiliaApplication} from './cilia-application.ts'
+
 export interface AppOptions {
+  ciliaPreviewEnabled?: boolean
+  ciliaWriteEnabled?: boolean
+  externalBudget?: ExternalBudgetApi
+  historicalBudget?:{repo:HistoricalBudgetRepository;provider:HistoricalCaptureProvider;allowConfirmation?:boolean} // explicit isolated harness only
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -85,8 +97,11 @@ export interface AppOptions {
 }
 
 export function createRequestHandler(options: AppOptions) {
+  const externalBudget = options.externalBudget && createExternalBudgetEndpoint(options.atendimentos.db, options.externalBudget)
   const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
   const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
+  const ciliaApplication=new CiliaApplication(options.atendimentos.db)
+  const ciliaWriteEnabled=()=>options.ciliaPreviewEnabled===true&&options.ciliaWriteEnabled===true&&ciliaApplication.available()
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -161,6 +176,18 @@ export function createRequestHandler(options: AppOptions) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+      const externalBudgetRoute = /^\/api\/integrations\/external-budgets\/(consulta|previa|confirmar)$/.exec(url.pathname)
+      if (externalBudgetRoute) {
+        if (!externalBudget) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'INVALID_QUERY', 'Parâmetros não permitidos.')
+        const result = await externalBudget(externalBudgetRoute[1]!, req.headers.authorization, () => {
+          if (req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
+            throw new ServiceError(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
+          return readJson(req, 512 * 1024)
+        })
+        return send(result.status, result.value)
+      }
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
         if (!decisionIntake) return fail(404,'NOT_FOUND','Rota não encontrada.')
@@ -240,6 +267,28 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia(?:\/(comparar|preparar|confirmar|recibos))?$/.exec(url.pathname)
+      if(ciliaRoute){
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        if(req.method==='GET'&&!ciliaRoute[2])return send(200,{enabled:options.ciliaPreviewEnabled===true,writeEnabled:ciliaWriteEnabled(),historyEnabled:options.ciliaPreviewEnabled===true&&ciliaApplication.available()})
+        if(ciliaRoute[2]==='recibos'){
+          if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+          if(options.ciliaPreviewEnabled!==true||!ciliaApplication.available())return fail(503,'CILIA_PREVIEW_DISABLED','Histórico Cilia ainda não habilitado.')
+          return send(200,ciliaApplication.list(ciliaRoute[1]!))
+        }
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(options.ciliaPreviewEnabled!==true)return fail(503,'CILIA_PREVIEW_DISABLED','Prévia Cilia ainda não habilitada.')
+        if((ciliaRoute[2]==='preparar'||ciliaRoute[2]==='confirmar')&&!ciliaWriteEnabled())return fail(503,'CILIA_WRITE_DISABLED','Gravação Cilia ainda não habilitada.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(req.headers['content-type']?.split(';',1)[0]?.trim().toLowerCase()!=='application/json')return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const raw=await readJson(req,1024*1024)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+        const at=options.atendimentos.get(ciliaRoute[1]!)
+        if(ciliaRoute[2]==='comparar')return send(200,compareCiliaUpload(raw,commercial.catalogs().items,at,pricing.get(),pricing.settings(at.id)))
+        if(ciliaRoute[2]==='preparar')return send(200,ciliaApplication.preview(at.id,raw))
+        if(ciliaRoute[2]==='confirmar')return send(200,ciliaApplication.confirm(at.id,raw,'funix_operator'))
+        return send(200,consultCiliaUpload(raw,commercial.catalogs().items,at))
+      }
       if(url.pathname==='/api/atualizacoes/analises-gmail'){
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         const ids=url.searchParams.has('ids')?(url.searchParams.get('ids')?url.searchParams.get('ids')!.split(','):[]):undefined
@@ -754,6 +803,34 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Operational OS: frozen emitted version and immutable SQLite record.
       // PDF uses the configured jsreport OS template or the existing local fallback.
+      // Historical import is opt-in injection only. No production startup or env activation.
+      const historicalRoute=/^\/api\/atendimentos\/([^/]{1,100})\/orcamentos-historicos(?:\/([^/]{1,100}))?$/.exec(url.pathname)
+      if(historicalRoute){
+        const historical=options.historicalBudget
+        if(!historical)return fail(503,'HISTORICAL_IMPORT_DISABLED','Importação histórica ainda não habilitada.')
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        const at=historicalRoute[1]!,action=historicalRoute[2]
+        if(req.method==='GET')return send(200,action?historical.repo.get(at,action):historical.repo.list(at))
+        if(req.method!=='POST'||!['consulta','previa','confirmar'].includes(action??''))return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(action==='confirmar'&&historical.allowConfirmation!==true)return fail(503,'HISTORICAL_CONFIRMATION_DISABLED','Confirmação indisponível nesta fase de desenvolvimento.')
+        const body=await readJson(req,512*1024)
+        if(!body||typeof body!=='object'||Array.isArray(body))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const data=body as Record<string,unknown>
+        const keys=action==='consulta'?['number']:action==='previa'?['number','review']:['number','review','previewToken','confirmed']
+        if(Object.keys(data).length!==keys.length||keys.some(k=>!Object.hasOwn(data,k)))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const number=historicalBudgetNumber(data.number)
+        if(action==='confirmar'&&(data.confirmed!==true||typeof data.previewToken!=='string'||!/^[a-f0-9]{64}$/.test(data.previewToken)))return fail(422,'HISTORICAL_CONFIRMATION_REQUIRED','Confirmação explícita e prévia válida obrigatórias.')
+        options.atendimentos.get(at)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+        const captures=await historical.provider(number)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a consulta.')
+        if(action==='consulta')return send(200,historical.repo.consult(at,captures))
+        if(action==='previa')return send(200,historical.repo.preview(at,captures,data.review))
+        const result=historical.repo.confirm({atendimentoId:at,captures,review:data.review,previewToken:String(data.previewToken),confirmed:true},'funix_operator')
+        return send(result.state==='created'?201:200,result)
+      }
       const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
       if(cancellationRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')

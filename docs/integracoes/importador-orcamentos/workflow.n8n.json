@@ -1,0 +1,312 @@
+{
+  "name": "FunixApp · Importador de orçamentos Coda",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "funix-orcamentos/consulta",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "384c415f-bca3-44f8-bd7e-05f54a39615e",
+      "name": "Consultar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "805ad8ac-daa7-4e6c-8dbd-bbb28fca7804"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://funix-api.example.invalid/api/integrations/external-budgets/consulta",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 95000
+        }
+      },
+      "id": "79fe2930-14a0-4be1-9efd-b677ead6ac50",
+      "name": "Consultar no FunixApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "8960735e-7175-4f50-b424-d9da65eea761",
+      "name": "Consultar · resposta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "funix-orcamentos/previa",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9ff958c5-874d-41de-9c4d-fa8bc7c5dcbe",
+      "name": "Preparar prévia",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        240
+      ],
+      "webhookId": "37dc7b32-fe67-4863-8395-1631a8a75dbf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://funix-api.example.invalid/api/integrations/external-budgets/previa",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 95000
+        }
+      },
+      "id": "6bd48ccc-cb4f-44c8-8909-6de500f47797",
+      "name": "Preparar prévia no FunixApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ae3fec72-3989-4333-b742-9f0f29c38f46",
+      "name": "Preparar prévia · resposta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "funix-orcamentos/confirmar",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "efe7ab11-8665-4dd3-a80c-13cd1baaee96",
+      "name": "Confirmar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        480
+      ],
+      "webhookId": "f84ecdfd-2f7a-4fe3-ad27-c16c40e9b91b"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://funix-api.example.invalid/api/integrations/external-budgets/confirmar",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 95000
+        }
+      },
+      "id": "f759b2a6-ec09-4867-87ef-970f1ae6efd5",
+      "name": "Confirmar no FunixApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a6510817-e795-43d0-a9f7-d81d5fcc933e",
+      "name": "Confirmar · resposta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Consultar": {
+      "main": [
+        [
+          {
+            "node": "Consultar no FunixApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar no FunixApp": {
+      "main": [
+        [
+          {
+            "node": "Consultar · resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar prévia": {
+      "main": [
+        [
+          {
+            "node": "Preparar prévia no FunixApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar prévia no FunixApp": {
+      "main": [
+        [
+          {
+            "node": "Preparar prévia · resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar": {
+      "main": [
+        [
+          {
+            "node": "Confirmar no FunixApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar no FunixApp": {
+      "main": [
+        [
+          {
+            "node": "Confirmar · resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  }
+}
