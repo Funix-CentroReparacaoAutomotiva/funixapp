@@ -105,3 +105,22 @@ test('provider-only V20 reads the selected Atendimento history without granting 
   assert.equal(f.sends(),0)
  }finally{f.db.close()}
 })
+
+test('identity review alone clears a recovered identity hold after revalidating the exact owner',()=>{
+ const f=entityContactsFixture()
+ try{
+  const owner=f.customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:phone}]})
+  const at=f.at.create({name:'Ficha sintética'})
+  const cid=link(f,pn,at.id)
+  f.db.prepare("INSERT INTO chat_local_context_holds VALUES(?,'autonomous_contact_conflict')").run(cid)
+  const linkId=f.links.listActive(cid).items[0]!.linkId
+  assert.throws(()=>f.links.selectAtendimento(cid,linkId),/identidade/)
+  const identity=new SharedConversationIdentity(f.db,()=>true)
+  const preview=identity.preview(cid)
+  const input={requestId:randomUUID(),token:preview.token,entityId:owner.id,atendimentoId:at.id}
+  const confirmed=identity.confirm(cid,input)
+  assert.deepEqual(identity.confirm(cid,input),confirmed)
+  assert.equal(f.db.prepare('SELECT reason FROM chat_local_context_holds WHERE conversation_id=?').get(cid),undefined)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})

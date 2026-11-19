@@ -58,7 +58,7 @@ export class SharedConversationIdentity {
     })
     const owner=contact?.entityId?this.customers.record(contact.entityId):null
     const token=digest([conversationId,members,phone,handles,matches,targets,owner])
-    return {jid,phone,blocked,contact,owner,targets,token}
+    return {jid,phone,blocked,contact,owner,targets,token,handles}
   }
 
   preview(conversationId:string) {
@@ -106,6 +106,10 @@ export class SharedConversationIdentity {
       const channel=this.identities.rememberProviderConversation(view.jid)
       const {person,contact}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel)
       if(target)this.customers.reconcileParticipant(target.id,target.refs,person,contact,legacyIndex===undefined?undefined:Number(legacyIndex))
+      if(view.handles.length){
+        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE reason='autonomous_contact_conflict'
+          AND conversation_id IN (${view.handles.map(()=>'?').join(',')})`).run(...view.handles)
+      }
       const result={entityId:person.id,contactId:contact.id,atendimentoId:target?.id??null}
       this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
       return result
