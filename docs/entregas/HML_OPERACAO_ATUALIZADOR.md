@@ -8,6 +8,33 @@ aceite. API GitHub simulada; Docker/SQLite/Nginx/TLS sintéticos reais.
 
 ## Escopo e ordem
 
+Issues #271/#272: a consulta de procedência usa urllib da biblioteca padrão,
+HTTPS verificado para api.github.com, sem gh obrigatório e sem seguir redirects.
+Para repositório privado, disponibilizar FUNIX_HML_GITHUB_TOKEN apenas no
+ambiente do processo autorizado, com token de curta duração e leitura mínima
+de Actions/Pull requests/metadata no repositório FUNIX. Não colocar token na
+linha de comando, config, logs ou pacote. Sem token, acesso público só funciona
+se os metadados estiverem públicos; 401/403/404 ou resposta inválida bloqueiam.
+A sessão do gh não é reutilizada implicitamente. Download do artefato continua
+sendo uma etapa separada do transporte autorizado.
+
+O validador HTTPS repete a suíte completa até três vezes, espera um segundo
+entre tentativas e impõe orçamento de aceite de 60s, com timeout de socket de
+até 5s ajustado ao tempo remanescente antes de headers e leituras. Nunca aceita
+resultado após o prazo, inclusive no EOF final. Isso não é uma garantia rígida
+de retorno em 60s: resolução DNS e chamadas internas da biblioteca (incluindo
+recepção fragmentada de headers) podem exceder o orçamento antes de retornar
+ao controle Python. A próxima checagem reprova o resultado vencido.
+EOF com Content-Length remanescente é leitura incompleta e segue o retry
+limitado; HEAD e respostas sem corpo mantêm a semântica HTTP, e chunked
+continua suportado. Status/challenge incompatíveis são rejeitados antes de
+ler corpo, sem retry mesmo se o corpo também estiver truncado.
+Somente erros de transporte e 502/503/504 de endpoints esperados como 200 são
+transitórios. Certificado/TLS, autenticação, revisão, prontidão, limites de corpo
+e bloqueio de escrita falham imediatamente. Diagnóstico em stderr contém
+somente tentativa/categoria/retry, nunca URL arbitrária, corpo ou credenciais.
+A causa da instabilidade histórica permanece não demonstrada.
+
 Distribuição do código: gerar o pacote **da revisão aprovada** com
 `git archive --format=tar REVISAO_APROVADA deploy/` e transportar o arquivo
 íntegro pelo canal já autorizado. Instalar o diretório `deploy` completo em um
@@ -26,10 +53,10 @@ de revisões diferentes nem sobrescrever código de uma operação em andamento.
    de uma revisão confiável/registrada. Transportar candidate.zip sem
    descompactar, via SSH com host verificado. Não copiar chave root,
    credenciais da produção ou token GitHub para o chat. A consulta de
-   proveniência usa `gh api` com sessão autenticada **somente leitura** do
+   proveniência usa a API HTTPS oficial com acesso **somente leitura** do
    repositório (Actions, Pull requests); disponibilidade/credencial ainda
-   não verificadas na VPS. Não instalar gh nem autenticar como root sem
-   revisão/autorização separada; credencial de curta duração quando aplicável.
+   não verificadas na VPS. gh não é necessário. Para metadados privados,
+   fornecer token de curta duração conforme o contrato acima.
 4. Preparar diretórios privados root 0700 /var/lib/funix-hml/updater e
    subdiretório novo op-IDENTIFICADOR. Artefato root 0600
    op-IDENTIFICADOR/candidate.zip. O comando prepare verifica metadados
