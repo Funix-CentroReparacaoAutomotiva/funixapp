@@ -115,7 +115,17 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
   conversationsForAtendimento(at:string) {
     const rows=this.db.prepare('SELECT DISTINCT c.id,c.remote_jid FROM v20_associations l JOIN chat_provider_conversations c ON c.id=l.conversation_id WHERE l.atendimento_id=? AND l.unlinked_at IS NULL').all(at)
-    return rows.filter(r=>!!this.members(String(r.remote_jid))).map(r=>({conversationId:String(r.id),phone:this.members(String(r.remote_jid))?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null}))
+    return rows.flatMap(row=>{
+      const jid=String(row.remote_jid),members=this.members(jid)
+      if(!members||this.contextHeld(jid))return []
+      return [{conversationId:String(row.id),phone:members.find(member=>member.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,
+        linkedHistory:this.resolveIdentityActive(jid)!==at}]
+    })
+  }
+  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+    const jid=this.providerJid(conversationId)
+    if(!jid||!this.members(jid)||this.contextHeld(jid))return null
+    return this.links(jid).some(link=>link.atendimento_id===atendimentoId)?jid:null
   }
   resolveIdentityJid(at: string): string | null {
     const rows = this.db.prepare('SELECT DISTINCT c.remote_jid FROM v20_associations l JOIN chat_provider_conversations c ON c.id=l.conversation_id WHERE l.atendimento_id=? AND l.unlinked_at IS NULL').all(at)

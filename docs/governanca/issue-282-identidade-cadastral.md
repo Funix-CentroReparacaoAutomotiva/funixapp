@@ -4,7 +4,7 @@ Base de desenvolvimento 7228e12, a mesma da auditoria registrada na issue. Esta 
 
 - Cadastro e consulta de canal compartilham a normalização de números brasileiros completos e de internacionais explícitos. Valores incompletos continuam visíveis e não geram chave, consulta ou envio. A evidência de provedor continua sujeita às regras do canal.
 - A abertura explícita da conversa verifica colisões por número e por handles relacionados. Quando o número já pertence a um titular, exige que esse titular esteja referenciado no Atendimento antes de reutilizar o Contato. O primeiro evento recebido pode reutilizar um Contato cadastrado sem criar outro titular. Colisões identificadas retêm a mensagem e bloqueiam o contexto.
-- A seleção de histórico no Atendimento usa a conversa na URL. Uma conversa elegível é selecionada automaticamente. O botão de contexto comercial permanece uma ação explícita.
+- A seleção de histórico no Atendimento usa a conversa na URL. Uma conversa elegível é selecionada automaticamente. Ao trocar de Contato, o backend lê somente o histórico local de um vínculo existente e bloqueia identidades conflitantes. A seleção do contexto de envio permanece explícita.
 - A consolidação offline aceita V23 e V24, mantém o preview transacional e informa a contagem anônima de grupos com telefones duplicados.
 
 ## Ensaio e reversão

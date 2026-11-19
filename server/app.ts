@@ -647,14 +647,23 @@ export function createRequestHandler(options: AppOptions) {
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
       if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
-        if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
+        if ([...url.searchParams.keys()].some(key => !['page','cursor','scope'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1 || url.searchParams.getAll('scope').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const scope=url.searchParams.get('scope')
+        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
         const cursor=url.searchParams.get('cursor')??undefined
         if(cursor&&(!options.conversationRuntime?.read||! /^[A-Za-z0-9_-]{1,900}$/.test(cursor)))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
         const page = url.searchParams.get('page') ?? '1'
         if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         try {
+          if(scope==='linked'){
+            const runtime=options.conversationRuntime
+            const conversationId=syncedEvolutionRoute[2]!
+            const jid=runtime?.authority?.linkedHistoryJid(syncedEvolutionRoute[1]!,conversationId)
+            if(!runtime?.read||!jid)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
+            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor)})
+          }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
