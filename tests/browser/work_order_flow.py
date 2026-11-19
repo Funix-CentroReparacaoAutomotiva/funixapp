@@ -34,6 +34,7 @@ import {createHash} from 'node:crypto'
 import {openDatabase} from './server/database.ts'
 import {commercialFixture} from './server/tests/fixtures/commercial.ts'
 import {BudgetRepository} from './server/tests/fixtures/budget-renderer.ts'
+import {identifyForProduction} from './server/tests/fixtures/production.ts'
 const db=openDatabase(process.argv[1])
 const f=commercialFixture(db)
 const original=f.atendimentos.update(f.at.id,{revision:f.at.revision,vehicle:'Veículo sintético',plate:'QAO1S01'})
@@ -53,10 +54,12 @@ const request={scenarioId:f.scenario.id,negotiation:{mode:'none'}}
 const preview=b.preview(f.at.id,request)
 if(!preview.canEmit)throw new Error('Synthetic budget not emittable: '+JSON.stringify(preview.snapshot.calculation.errors))
 const emitted=await b.emit(f.at.id,{...request,previewToken:preview.token,idempotencyKey:'synthetic-os-browser-v1'})
+const rejected=await b.emit(f.at.id,{...request,previewToken:b.preview(f.at.id,request).token,idempotencyKey:'synthetic-os-browser-rejection'})
+identifyForProduction(db,f.at.id)
 const excluded=emitted.snapshot.calculation.lines.filter(l=>!l.included)
 if(!excluded.length)throw new Error('The fixture must contain excluded work')
 writeFileSync(process.argv[2],JSON.stringify({
- at:f.at.id,version:emitted.id,budgetNumber:emitted.documentNumber,
+ at:f.at.id,version:emitted.id,budgetNumber:emitted.documentNumber,rejectedNumber:rejected.documentNumber,
  originalCustomer:original.name,originalVehicle:original.vehicle,
  sourceSnapshot:emitted.snapshot,excludedIds:excluded.map(l=>l.id),
  includedIds:emitted.snapshot.calculation.lines.filter(l=>l.included).map(l=>l.id),
@@ -80,7 +83,8 @@ db.close()
         await h.ready(ORIGIN, vite)
         ctx = await browser.new_context(
             viewport=viewport, is_mobile=label != "desktop",
-            has_touch=label != "desktop", accept_downloads=True
+            has_touch=label != "desktop", accept_downloads=True,
+            locale="pt-BR", timezone_id="America/Sao_Paulo"
         )
         await h.watch(ctx)
         page = await ctx.new_page()
@@ -108,89 +112,90 @@ db.close()
         await page.goto(ORIGIN + browse)
         await h.login(page)
         history = page.get_by_role("region", name="Orçamentos emitidos")
-        await expect(history.locator(".budget-history-row")).to_have_count(1)
-        await expect(history.get_by_role("button", name="Criar OS")).to_be_visible()
-        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-issued"))
-        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-pending"))
-        await expect(history.get_by_role("link", name="Visualizar orçamento " + ids["budgetNumber"])).to_be_visible()
-        await shot("01-lista-antes")
-        mark("lista de orçamento emitido mostra Criar OS antes da autorização")
-
-        # New UI: confirming OS on the list never navigates to the version detail.
+        order_row = history.locator(".budget-history-row").filter(
+            has=page.get_by_role("link", name="Visualizar orçamento " + ids["budgetNumber"])
+        )
+        await expect(history.locator(".budget-history-row")).to_have_count(2)
+        await expect(order_row.get_by_role("button", name="OS ainda não emitida")).to_be_disabled()
+        await expect(order_row.locator(".budget-action-or")).to_have_class(re.compile("budget-action-issued"))
         original_url = page.url
         assert count_orders() == 0
-        mark("lista apresenta criação de OS com botão acessível e orçamento consultável")
-
-        # The optional date dialog has two mutually exclusive explicit actions.
-        before_posts = sum(x["method"] == "POST" and x["path"] == base + "/os" for x in h.api_requests)
-        await history.get_by_role("button", name="Criar OS").click()
-        dialog = page.get_by_role("dialog", name="Emitir Ordem de Serviço")
-        await expect(dialog).to_be_visible()
-        field = dialog.get_by_label("Data prevista de entrega (opcional)")
-        without = dialog.get_by_role("button", name="Emitir sem data")
-        with_date = dialog.get_by_role("button", name="Emitir com data")
-        await expect(without).to_be_enabled()
-        await expect(with_date).to_be_disabled()
-        await field.fill("2026-12-02")
-        await expect(without).to_be_disabled()
-        await expect(with_date).to_be_enabled()
-        await field.fill("")
-        await expect(without).to_be_enabled()
-        await expect(with_date).to_be_disabled()
-        await shot("01a-escolha-data")
-        await dialog.get_by_role("button", name="Cancelar", exact=True).click()
-        await expect(dialog).to_have_count(0)
+        await history.get_by_role("button", name="Agendamento e experiência").click()
+        production = page.get_by_role("region", name="Experiência do Atendimento")
+        await production.get_by_role("button", name="Agendar Atendimento").click()
+        schedule = production.get_by_role("form", name="Agendamento")
+        for field in ["Cliente", "Veículo", "Pagador"]:
+            await schedule.get_by_label(field, exact=True).select_option(index=1)
+        await schedule.get_by_label("Entrada agendada", exact=False).fill("2026-11-20T10:30")
+        if label != "mobile390":
+            await schedule.get_by_label("Entrega combinada", exact=False).fill("2026-12-02")
+        await expect(schedule.get_by_role("button", name="Confirmar agendamento")).to_be_disabled()
+        for number in [ids["budgetNumber"], ids["rejectedNumber"]]:
+            await schedule.get_by_role("checkbox", name=re.compile(number)).check()
+        assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert await schedule.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
+        await shot("01-agendamento")
+        await schedule.get_by_role("button", name="Confirmar agendamento").click()
+        await expect(production.get_by_text("Agendamento confirmado.")).to_be_visible()
+        overview_path = "/api/atendimentos/" + ids["at"] + "/experiencia"
+        experience_id = (await get(overview_path))["experience"]["id"]
         assert count_orders() == 0
-        assert sum(x["method"] == "POST" and x["path"] == base + "/os" for x in h.api_requests) == before_posts
-        assert page.url == original_url
+        mark("agendamento cadastra uma Experiência e consente duas versões sem emitir OS")
+
+        await production.get_by_role("button", name="Reagendar ou incluir orçamentos").click()
+        await schedule.get_by_label("Entrada agendada", exact=False).fill("2026-11-21T11:30")
+        await schedule.get_by_role("button", name="Confirmar agendamento").click()
+        await expect(production.get_by_text("21/11/2026 às 11:30")).to_be_visible()
+        assert (await get(overview_path))["experience"]["id"] == experience_id
+        assert count_orders() == 0
+        mark("reagendamento atualiza a mesma Experiência")
+
+        def budget_card(number):
+            return production.locator(".production-budget").filter(
+                has=page.get_by_role("button", name=number, exact=True)
+            )
+
+        rejected = budget_card(ids["rejectedNumber"])
+        await rejected.get_by_role("button", name="Rejeitar tecnicamente").click()
+        await rejected.get_by_label("Motivo da rejeição técnica").fill("Escopo sintético inviável")
+        await rejected.get_by_role("button", name="Confirmar rejeição").click()
+        await expect(rejected.get_by_text("Rejeitado", exact=True)).to_be_visible()
+        assert count_orders() == 0
+        mark("rejeição técnica exige motivo e não gera OS")
+
+        authorized = budget_card(ids["budgetNumber"])
+        authorize = authorized.get_by_role("button", name="Autorizar e gerar OS")
         h.accept_dialogs = True
-        mark("dois botões não permitem descartar uma data válida por engano; cancelar não cria OS")
-
-        async def issue_initial():
-            await history.get_by_role("button", name="Criar OS").click()
-            await expect(dialog).to_be_visible()
-            if label == "mobile390":
-                await without.click()
-            else:
-                await field.fill("2026-12-02")
-                await expect(without).to_be_disabled()
-                await with_date.click()
-
-        # Exercise ordinary success at two sizes and response lost AFTER SQLite commit at 390px.
         if label == "mobile390":
             seen = []
             async def lost_response(route):
-                if route.request.method == "POST":
-                    seen.append(route.request.post_data_json)
-                    result = await route.fetch()
-                    assert result.status == 201, (result.status, await result.text())
-                    await route.abort("failed")
-                else:
-                    await route.continue_()
-            await page.route("**/orcamentos/*/os", lost_response)
-            await issue_initial()
-            await expect(dialog.get_by_role("alert")).to_contain_text("Não foi possível comunicar")
-            await page.unroute("**/orcamentos/*/os", lost_response)
-            assert len(seen) == 1 and seen[0]["authorized"] is True
-            assert seen[0]["deliveryChoice"] == "without" and "deliveryDate" not in seen[0]
-            assert isinstance(seen[0]["expectedAtendimentoRevision"], int)
+                seen.append(route.request.post_data_json)
+                result = await route.fetch()
+                assert result.status == 200, (result.status, await result.text())
+                await route.abort("failed")
+            await page.route("**/orcamentos/*/autorizacao-tecnica", lost_response)
+            await authorize.click()
+            await expect(production.get_by_role("alert")).to_contain_text("Não foi possível comunicar")
+            await page.unroute("**/orcamentos/*/autorizacao-tecnica", lost_response)
+            assert seen == [{"confirmed": True}]
             assert count_orders() == 1
-            await page.reload()
-            await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
-            mark("resposta perdida após commit recupera OS original sem duplicar")
+            await authorize.click()
+            mark("reenvio após resposta perdida retorna a OS do primeiro commit")
         else:
-            async with page.expect_response(
-                lambda r: r.request.method == "POST" and r.url.endswith(base + "/os")
-            ) as created:
-                await issue_initial()
-            assert (await created.value).status == 201
-            await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
-            assert count_orders() == 1
-            mark("confirmação cria exatamente uma OS persistida")
-
-        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-issued"))
+            await authorize.click()
+        await expect(authorized.get_by_role("button", name="Consultar OS-000001")).to_be_visible()
+        await expect(authorized.get_by_text("Autorizado", exact=True)).to_be_visible()
+        assert count_orders() == 1
+        assert await production.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
+        await shot("01b-experiencia")
+        await authorized.get_by_role("button", name="Consultar OS-000001").click()
+        await expect(history.get_by_role("link", name="Visualizar OS", exact=True)).to_be_visible()
+        await page.goto(original_url)
+        await expect(order_row.locator(".budget-action-os")).to_have_class(re.compile("budget-action-issued"))
+        mark("autorização técnica emite uma OS vinculada e permite consultá-la")
         order = await get(base + "/os")
         assert order["number"] == "OS-000001"
+        assert order["experienceId"] == experience_id
         expected_date = None if label == "mobile390" else "2026-12-02"
         assert order["scope"]["deliveryDate"] == expected_date
         assert (await get("/api/atendimentos/" + ids["at"])).get("deliveryDate") == expected_date
@@ -229,14 +234,14 @@ db.close()
         await popup.close()
         mark("botão Ver OS abre PDF operacional na guia de visualização/impressão")
 
-        # The whole workflow stays in the same list view; badge changes + to eye.
+        # The commercial history links the approved OS without restoring direct creation.
         await expect(page).to_have_url(original_url)
-        await expect(history.locator(".budget-history-row")).to_have_count(1)
+        await expect(history.locator(".budget-history-row")).to_have_count(2)
         await expect(history.get_by_role("link", name="Visualizar OS-000001")).to_be_visible()
         await expect(history.get_by_role("button", name="Criar OS")).to_have_count(0)
         await shot("03-lista-depois")
         assert count_orders() == 1
-        mark("lista permanece estável e OS passa de criar para visualizar")
+        mark("lista oferece a visualização da OS após autorização técnica")
 
         # Change live Atendimento via the real API; neither order nor historical PDF changes.
         record = await get("/api/atendimentos/" + ids["at"])
@@ -260,7 +265,7 @@ db.close()
         assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
             viewport, await page.evaluate("({scroll:document.documentElement.scrollWidth,width:innerWidth})")
         )
-        row = history.locator(".budget-history-row").first
+        row = order_row
         controls = [
             row.locator(".budget-history-open"),
             row.locator(".budget-action-or"),
@@ -377,17 +382,17 @@ db.close()
 
         # Cancel after all immutable-document checks; do not depend on external jsreport.
         async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith(base + "/cancelamento")) as cancelled_response:
-            await history.get_by_role("button", name="Cancelar orçamento e OS").click()
+            await order_row.get_by_role("button", name="Cancelar orçamento e OS").click()
         assert (await cancelled_response.value).status == 200
-        await expect(history.locator(".budget-history-row")).to_have_class(re.compile("is-cancelled"))
-        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
-        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(order_row).to_have_class(re.compile("is-cancelled"))
+        await expect(order_row.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(order_row.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
         assert (await get(base + "/os"))["cancellation"]["reason"] == "Cancelamento sem motivo informado"
         assert all(item.get("cancellation") for item in await get(base + "/os/revisoes"))
         await page.reload()
-        await expect(history.locator(".budget-history-row")).to_have_class(re.compile("is-cancelled"))
-        await expect(history.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
-        await expect(history.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(order_row).to_have_class(re.compile("is-cancelled"))
+        await expect(order_row.locator(".budget-action-or")).to_have_class(re.compile("budget-action-cancelled"))
+        await expect(order_row.locator(".budget-action-os")).to_have_class(re.compile("budget-action-cancelled"))
         mark("cancelamento sem motivo solicitado, documentos vermelhos e linha cinza persistem após reload")
 
     except Exception as exc:

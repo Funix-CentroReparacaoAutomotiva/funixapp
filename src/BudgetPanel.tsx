@@ -24,9 +24,9 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
  }finally{setTimeout(()=>URL.revokeObjectURL(url),5000)}
 }
 
-export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onImportCreated}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void;onImportCreated:()=>Promise<void>}){
+export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onOpenProduction,onImportCreated}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenProduction:()=>void;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void;onImportCreated:()=>Promise<void>}){
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[order,setOrder]=useState<WorkOrder|null>(null),[checkingOrder,setCheckingOrder]=useState(false),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
- const [orderHistory,setOrderHistory]=useState<WorkOrder[]>([]),[deliveryPrompt,setDeliveryPrompt]=useState<{id:string;atRevision:number;revision?:number}|null>(null),[deliveryDraft,setDeliveryDraft]=useState('')
+ const [orderHistory,setOrderHistory]=useState<WorkOrder[]>([]),[deliveryPrompt,setDeliveryPrompt]=useState<{id:string;atRevision:number;revision:number}|null>(null),[deliveryDraft,setDeliveryDraft]=useState('')
  const dialogRef=useRef<HTMLDialogElement>(null)
  useEffect(()=>{if(deliveryPrompt&&dialogRef.current&&!dialogRef.current.open)dialogRef.current.showModal()},[deliveryPrompt])
  const load=useCallback(async()=>{const entries=await api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`);setVersions(entries);return entries},[at])
@@ -56,21 +56,21 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
  const osPath=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os`
  const orderUrl=(id:string,revision=1)=>osPath(id)+(revision>1?'/revisoes/'+revision:'/')+(revision>1?'/pdf':'pdf')
  async function operation(action:()=>Promise<void>){if(busy)return;setBusy(true);onBusy(true);setError('');try{await action()}catch(e){setError((e as Error).message);if((e as RequestFailure).status===401)onAuthRequired()}finally{setBusy(false);onBusy(false)}}
- async function issue(id:string,atRevision:number,date:string|null,revision?:number){
+ async function issue(id:string,atRevision:number,date:string|null,revision:number){
   const payload=date===null?{authorized:true,deliveryChoice:'without',expectedAtendimentoRevision:atRevision}:{authorized:true,deliveryChoice:'with',deliveryDate:date,expectedAtendimentoRevision:atRevision}
-  const os=await api<WorkOrder>(osPath(id)+(revision?'/revisoes':''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,...(revision?{expectedRevision:revision}:{})})})
+  const os=await api<WorkOrder>(osPath(id)+'/revisoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,expectedRevision:revision})})
   if(versionId===id){setOrder(os);setOrderHistory(await api<WorkOrder[]>(osPath(id)+'/revisoes'))}
   setDeliveryPrompt(null)
   await load()
  }
- async function createOrder(id:string,revision?:number){
+ async function reissueOrder(id:string,revision:number){
   if(busy||checkingOrder||deliveryPrompt)return
   const entry=versions.find(v=>v.id===id)
   if(entry?.cancelledAt||selected?.id===id&&selected.cancellation)return
   await operation(async()=>{
    const record=await api<Atendimento>(`/api/atendimentos/${encodeURIComponent(at)}`)
    if(record.deliveryDate){
-    if(!window.confirm((revision?'Emitir nova revisão da OS':'Criar ordem de serviço para este orçamento emitido')+' com entrega prevista em '+deliveryDateLabel(record.deliveryDate)+'? Confirme que o serviço foi autorizado para execução.'))return
+    if(!window.confirm('Emitir nova revisão da OS com entrega prevista em '+deliveryDateLabel(record.deliveryDate)+'? Confirme que o serviço foi autorizado para execução.'))return
     await issue(id,record.revision,record.deliveryDate,revision)
    }else{
     setDeliveryDraft('');setDeliveryPrompt({id,atRevision:record.revision,revision})
@@ -108,8 +108,9 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
  const formatDate=(date:string)=>new Date(date).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
  const selectedMeta=versions.find(v=>v.id===versionId)
  return <section aria-label="Orçamentos emitidos">{error&&!deliveryPrompt&&<p role="alert" className="form-error">{error}</p>}
+ <button type="button" className="fh-filter" disabled={busy} onClick={onOpenProduction}>Agendamento e experiência</button>
  {deliveryPrompt&&<dialog ref={dialogRef} className="os-delivery-dialog" aria-labelledby="os-delivery-title" onCancel={event=>{event.preventDefault();if(!busy)setDeliveryPrompt(null)}}>
-  <h2 id="os-delivery-title">{deliveryPrompt.revision?'Emitir nova revisão da OS':'Emitir Ordem de Serviço'}</h2>
+  <h2 id="os-delivery-title">Emitir nova revisão da OS</h2>
   <p>Confirme a autorização de execução. Informe a data prevista de entrega, caso já esteja definida.</p>
   <div className="at-field"><label htmlFor="os-delivery-date">Data prevista de entrega (opcional)</label>
    <input id="os-delivery-date" type="date" value={deliveryDraft} onChange={event=>{setDeliveryDraft(event.target.value);setError('')}} disabled={busy} autoFocus/>
@@ -126,11 +127,11 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
   {selected.cancellation&&<p role="status" className="budget-cancelled-status">Cancelado em {formatDate(selected.cancellation.cancelledAt)}</p>}
   <div className="budget-detail-actions">
    <DocumentButton kind="or" href={budgetUrl(selected.id)} state="view" cancelled={!!selected.cancellation} title="Visualizar orçamento"/>
-   {checkingOrder?<span role="status">Consultando OS…</span>:order?<DocumentButton kind="os" href={orderUrl(selected.id,order.revision??1)} state="view" cancelled={!!selected.cancellation} title={selectedMeta?.workOrderNeedsReissue?'Visualizar emissão anterior (desatualizada)':'Visualizar OS'}/>:<DocumentButton kind="os" onClick={selected.cancellation?undefined:()=>createOrder(selected.id)} state={selected.cancellation?'unavailable':'create'} disabled={busy||!!selected.cancellation} title={selected.cancellation?'OS não emitida; orçamento cancelado':'Criar OS'}/>}
+   {checkingOrder?<span role="status">Consultando OS…</span>:order?<DocumentButton kind="os" href={orderUrl(selected.id,order.revision??1)} state="view" cancelled={!!selected.cancellation} title={selectedMeta?.workOrderNeedsReissue?'Visualizar emissão anterior (desatualizada)':'Visualizar OS'}/>:<DocumentButton kind="os" state="unavailable" disabled title="OS ainda não emitida"/>}
    <DocumentButton kind="cancel" onClick={()=>cancelBudget(selected.id)} disabled={busy||!!selected.cancellation} title={selected.cancellation?'Orçamento já cancelado':'Cancelar orçamento e OS'}/>
   </div>
   {order&&<><p className="at-form-hint">{order.number} · R{String(order.revision??1).padStart(2,'0')} · {order.scope.lines.length} itens · Entrega: {deliveryDateLabel(order.scope.deliveryDate)} · {order.cancellation?'OS cancelada':selectedMeta?.workOrderNeedsReissue?'Reemissão necessária':'OS autorizada'}</p>
-   {selectedMeta?.workOrderNeedsReissue&&!order.cancellation&&<><p role="status">A previsão do Atendimento mudou para {deliveryDateLabel(selectedMeta.deliveryDate)}. A OS anterior foi preservada.</p><button className="primary-btn" disabled={busy} onClick={()=>void createOrder(selected.id,order.revision??1)}>Emitir nova revisão</button></>}
+   {selectedMeta?.workOrderNeedsReissue&&!order.cancellation&&<><p role="status">A previsão do Atendimento mudou para {deliveryDateLabel(selectedMeta.deliveryDate)}. A OS anterior foi preservada.</p><button className="primary-btn" disabled={busy} onClick={()=>void reissueOrder(selected.id,order.revision??1)}>Emitir nova revisão</button></>}
    {!order.cancellation&&!selected.cancellation&&correctOpticalWorkOrderScope(order.scope,selected.snapshot)&&<button type="button" className="primary-btn" disabled={busy} onClick={()=>void correctOpticalStages(selected.id,order)}>Corrigir etapas da restauração óptica</button>}
     {orderHistory.length>1&&<details><summary>Histórico de emissões da OS</summary>{orderHistory.map((item,index)=><p key={item.revision??1}><a href={orderUrl(selected.id,item.revision??1)} target="_blank" rel="noopener noreferrer">R{String(item.revision??1).padStart(2,'0')} · {deliveryDateLabel(item.scope.deliveryDate)}</a> · {item.cancellation?'Cancelada':index===0?selectedMeta?.workOrderNeedsReissue?'Desatualizada':'Vigente':'Substituída'}</p>)}</details>}
   </>}
@@ -150,7 +151,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
   </button>
   <div className="budget-history-actions">
    <DocumentButton kind="or" href={budgetUrl(v.id)} state="view" cancelled={!!v.cancelledAt} title={`Visualizar orçamento ${v.documentNumber??v.label}`}/>
-   <DocumentButton kind="os" href={v.workOrderNumber&&!v.workOrderNeedsReissue?orderUrl(v.id,v.workOrderRevision??1):undefined} onClick={v.workOrderNeedsReissue?()=>onOpenVersion(v.id):v.workOrderNumber||v.cancelledAt?undefined:()=>createOrder(v.id)} state={v.workOrderNumber?'view':v.cancelledAt?'unavailable':'create'} cancelled={!!v.cancelledAt&&!!v.workOrderNumber} disabled={busy||!!v.cancelledAt&&!v.workOrderNumber} title={v.workOrderNeedsReissue?'Consultar OS desatualizada':v.workOrderNumber?'Visualizar '+v.workOrderNumber:v.cancelledAt?'OS não emitida; orçamento cancelado':'Criar OS'}/>
+   <DocumentButton kind="os" href={v.workOrderNumber&&!v.workOrderNeedsReissue?orderUrl(v.id,v.workOrderRevision??1):undefined} onClick={v.workOrderNeedsReissue?()=>onOpenVersion(v.id):undefined} state={v.workOrderNumber?'view':'unavailable'} cancelled={!!v.cancelledAt&&!!v.workOrderNumber} disabled={busy||!v.workOrderNumber} title={v.workOrderNeedsReissue?'Consultar OS desatualizada':v.workOrderNumber?'Visualizar '+v.workOrderNumber:'OS ainda não emitida'}/>
    <DocumentButton kind="cancel" onClick={()=>cancelBudget(v.id)} disabled={busy||!!v.cancelledAt} title={v.cancelledAt?'Orçamento cancelado':'Cancelar orçamento e OS'}/>
   </div>
  </div>)}

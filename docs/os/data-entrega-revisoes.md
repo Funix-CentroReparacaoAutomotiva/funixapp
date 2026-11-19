@@ -1,5 +1,7 @@
 # Previsão de entrega e revisões documentais da OS
 
+A Produção V1 substitui a criação direta descrita no fluxo V21 abaixo. O agendamento define a previsão inicial, e a autorização técnica emite a OS. As opções de data deste documento continuam disponíveis para revisão de uma OS existente. [Contrato da Produção V1](../PRODUCAO_V1.md)
+
 Decisão funcional: a previsão é uma data de calendário informada manualmente, opcional e independente do prazo técnico do orçamento.
 
 - Nas configurações do Atendimento, editar ou limpar a data; alterações registram anterior, nova, horário e origem/motivo. A sessão atual não identifica o operador individual.

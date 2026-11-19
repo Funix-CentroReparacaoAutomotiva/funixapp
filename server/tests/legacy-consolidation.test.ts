@@ -6,10 +6,11 @@ import {CustomerRepository} from '../customers.ts'
 import {createCodaEventSchema,CodaEventSyncRepository} from '../chat/coda-sync.ts'
 import {LocalConversationAssociations} from '../chat/local-associations.ts'
 import {consolidateLegacyCustomers,normalizeLegacyPhone} from '../chat/legacy-consolidation.ts'
+import {removeV24FixtureSchema} from './fixtures/production.ts'
 
 const pn='5531999990101@s.whatsapp.net'
 function fixture(){
-  const db=openDatabase(':memory:');createCodaEventSchema(db)
+  const db=openDatabase(':memory:');removeV24FixtureSchema(db);createCodaEventSchema(db)
   const coda=new CodaEventSyncRepository(db),at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
   const record=(id:string,name:string)=>coda.sync({version:1,source:'coda',eventId:'synthetic:'+id,codaRowId:'i-'+id,instance:'funix_comercial',remoteJid:pn,phoneE164:null,displayName:name,occurredAt:1794144000+Number(id.slice(-1))}).atendimentoId
   return {db,at,customers,record}
@@ -79,6 +80,7 @@ test('multiple historical links retain the last confirmed context, without overw
 
 test('legacy manual fichas share an Entity and Contact by the exact number, without inventing a conversation',()=>{
  const db=openDatabase(':memory:')
+ removeV24FixtureSchema(db)
  try{
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
   const first=at.create({name:'Pessoa manual',phone:'+5531999990777'})
@@ -105,6 +107,7 @@ test('legacy phone normalization preserves digits and rejects ambiguity',()=>{
 })
 test('complete national and country-prefixed legacy numbers reconcile in place, without duplicate text references',()=>{
  const db=openDatabase(':memory:')
+ removeV24FixtureSchema(db)
  try{
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
   const first=at.create({name:'Pessoa manual',phone:'(31) 99999-0777'})
@@ -143,6 +146,7 @@ test('a legacy national number must match the linked Chat exactly; no ninth digi
 })
 test('an existing legacy-format Contact blocks accidental creation of a duplicate',()=>{
  const db=openDatabase(':memory:')
+ removeV24FixtureSchema(db)
  try{
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db)
   customers.save({kind:'entity',text:'Pessoa manual',contacts:[{text:'(31) 99999-0777'}]})

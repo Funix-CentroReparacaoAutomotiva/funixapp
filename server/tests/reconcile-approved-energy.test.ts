@@ -1,3 +1,4 @@
+import {issueProductionOrder} from './fixtures/production.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {openDatabase,backupDatabase} from '../database.ts'
@@ -167,7 +168,7 @@ test('QA integrated: restore energies and install approved pieces on an isolated
   const f=commercialFixture(original),oldBudgets=new BudgetRepository(original)
   const beforePreview=oldBudgets.preview(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'}})
   const issued=await oldBudgets.emit(f.at.id,{scenarioId:f.scenario.id,negotiation:{mode:'none'},previewToken:beforePreview.token,idempotencyKey:'qa-integrated-historical'})
-  const pdf=oldBudgets.pdf(f.at.id,issued.id),oldOS=new WorkOrderRepository(original).create(f.at.id,issued.id,{authorized:true})
+  const pdf=oldBudgets.pdf(f.at.id,issued.id),oldOS=issueProductionOrder(original,f.at.id,issued.id)
   const {src}=setup(original)
   // Synthetic wash price and stage. Identities and energy are approved;
   // no real commercial amounts are used in this fixture.
@@ -214,13 +215,13 @@ test('QA integrated: restore energies and install approved pieces on an isolated
   assert.deepEqual(preview.snapshot.calculation.lines.filter(l=>l.included).map(l=>l.energy).sort(),['1','7','8','9'])
   const version=await budgets.emit(at.id,{...input,previewToken:preview.token,idempotencyKey:'qa-integrated-new'})
   assert.match(budgets.pdf(at.id,version.id).toString('latin1'),/^%PDF/)
-  const os=orders.create(at.id,version.id,{authorized:true})
+  const os=issueProductionOrder(db,at.id,version.id)
   assert.equal(os.scope.lines.length,4)
   assert.deepEqual(orders.get(f.at.id,issued.id),oldOS)
   assert.deepEqual(budgets.pdf(f.at.id,issued.id),pdf)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
-  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,23)
+  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,24)
   assert.deepEqual(configRow(original),originalConfig)
   assert.deepEqual(snapshot(original),originalOther)
  }finally{db?.close();original.close();rmSync(folder,{recursive:true,force:true})}
