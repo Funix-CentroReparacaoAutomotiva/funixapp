@@ -31,10 +31,12 @@ done
 diagnose() {
   local result=$?
   if (( result != 0 )); then
+    printf 'Failed phase: %s\n' "$phase"
     journalctl --no-pager -n 70 -u "$transport" -u "$worker" || true
   fi
   systemctl stop "$transport" "$worker" || true
 }
+phase=setup
 trap diagnose EXIT
 umask 077
 touch "$host_marker"
@@ -55,7 +57,8 @@ install -m 0755 "$structure/funix-hml-ops-request" /usr/local/sbin/funix-hml-ops
 install -m 0755 "$structure/funix-hml-prepare-wrapper" /usr/local/sbin/funix-hml-prepare
 install -m 0440 "$structure/funix-hml-ops" /etc/sudoers.d/funix-hml-ops
 install -m 0440 "$structure/funix-hml-prepare-sudoers" /etc/sudoers.d/funix-hml-prep
-visudo -c
+visudo -cf /etc/sudoers.d/funix-hml-ops
+visudo -cf /etc/sudoers.d/funix-hml-prep
 install -m 0644 "$structure/$transport" "$structure/$worker" /etc/systemd/system/
 systemctl daemon-reload
 
@@ -72,6 +75,7 @@ journal.write_text(json.dumps(dict(schema=1, project="funix-hml", phase="accepte
 (state / "active.json").write_text(json.dumps({"journal": str(journal)}))
 PY
 
+phase=preparation-sudoers
 expect_denied() {
   if "$@" > /dev/null 2>&1; then
     echo "Unexpected sudo permission"
@@ -97,6 +101,7 @@ wait_transport() {
   done
   return 1
 }
+phase=transport-and-restart
 systemctl start "$transport"
 first_pid=$(wait_transport)
 test ! -e "$state/current.json"
@@ -106,6 +111,7 @@ test "$(systemctl show "$transport" -p NRestarts --value)" -ge 1
 
 # Hold the real controller lock so the actual worker stays before any state
 # changes. Verify PID 1 starts it as root and leaves it stopped after a kill.
+phase=worker-interruption
 exec 9<>"$state/control.lock"
 flock -x 9
 systemctl start --no-block "$worker"
