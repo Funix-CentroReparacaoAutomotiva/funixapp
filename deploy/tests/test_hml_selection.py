@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+import zipfile
 
 SPEC=importlib.util.spec_from_file_location('selection',Path(__file__).resolve().parents[1]/'hml-selection.py')
 m=importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(m)
@@ -12,7 +12,8 @@ m=importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(m)
 
 class SelectionTest(unittest.TestCase):
     def fixture(self,archive,index):
-        archive.write_bytes(b'synthetic-zip')
+        with zipfile.ZipFile(archive, 'w') as bundle:
+            bundle.writestr('manifest.json', json.dumps({'synthetic_candidate': index}))
         value=dict(pr=index,run_id=index+100,attempt=1,artifact_id=index+200,
                    revision=str(index)*40,sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),size=archive.stat().st_size)
         p=m.module('hml-artifact-provenance')
@@ -49,7 +50,7 @@ class SelectionTest(unittest.TestCase):
                     m.verify_package(value,archive,query=query)
 
     def test_no_url_path_shell_or_duplicate_fields(self):
-        for body in (b'{"pr":1,"pr":2}',b'[]',b'\xff',b'x'*4097):
+        for body in (b'{"pr":1,"pr":2}',b'[]',b'\xff',b'x'*4097,b'['*1500+b']'*1500):
             with self.assertRaises(ValueError): m.parse(body)
         with tempfile.TemporaryDirectory() as directory:
             value,*_=self.fixture(Path(directory)/'artifact.zip',1)
@@ -71,12 +72,33 @@ class SelectionTest(unittest.TestCase):
             with self.assertRaises(ValueError): m.verify_package(value,archive,query=query)
             value,artifact,_,_,query=self.fixture(archive,1)
             link=Path(directory)/'link.zip'; link.symlink_to(archive)
-            with self.assertRaises(ValueError): m.verify_package(value,link,query=query)
-            count=0
-            def changing(path):
-                nonlocal count
-                if 'artifacts/' in path:
-                    count+=1
-                    if count>1: return dict(artifact,size_in_bytes=1)
+            with self.assertRaisesRegex(ValueError, '^selection provenance rejected$'):
+                m.verify_package(value,link,query=query)
+            with self.assertRaisesRegex(ValueError, '^selection provenance rejected$'):
+                m.verify_package(value,archive.parent/'missing.zip',query=query)
+            for changed in (dict(artifact, id=999), dict(artifact, size_in_bytes=float(value['size']))):
+                # A mismatched response between two valid snapshots must fail closed.
+                responses = iter((artifact, changed, artifact))
+
+                def changing(path):
+                    return next(responses) if path.startswith('actions/artifacts/') else query(path)
+
+                with self.subTest(changed=changed), self.assertRaisesRegex(
+                        ValueError, '^selection provenance rejected$'):
+                    m.verify_package(value,archive,query=changing)
+
+    def test_partial_metadata_failure_is_sanitized_and_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory)/'artifact.zip'
+            value, _, _, _, query = self.fixture(archive, 1)
+            original = archive.read_bytes()
+
+            def unavailable(path):
+                if path.startswith('pulls/'):
+                    raise OSError('SENSITIVE_MARKER')
                 return query(path)
-            with self.assertRaises(ValueError): m.verify_package(value,archive,query=changing)
+
+            with self.assertRaisesRegex(ValueError, '^selection provenance rejected$'):
+                m.verify_package(value, archive, query=unavailable)
+            self.assertEqual(archive.read_bytes(), original)
+            self.assertEqual(list(archive.parent.iterdir()), [archive])

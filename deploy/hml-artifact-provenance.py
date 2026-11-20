@@ -19,6 +19,15 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
+def unique_fields(pairs):
+    fields = {}
+    for key, value in pairs:
+        if key in fields:
+            raise ValueError("duplicate GitHub metadata field")
+        fields[key] = value
+    return fields
+
+
 def api(path):
     """Official HTTPS API; optional fine-grained read-only token, never gh."""
     if not isinstance(path, str) or path.startswith("/") or ".." in path or ":" in path:
@@ -35,7 +44,7 @@ def api(path):
             body = response.read(2 * 1024**2 + 1)
             if response.status != 200 or len(body) > 2 * 1024**2:
                 raise ValueError()
-            data = json.loads(body)
+            data = json.loads(body, object_pairs_hook=unique_fields)
             if not isinstance(data, dict):
                 raise ValueError()
             return data
@@ -53,14 +62,16 @@ def verify(archive, *, artifact_id, run_id, attempt, revision, pr, query=api):
         "head_branch": "main", "path": WORKFLOW,
         "status": "completed", "conclusion": "success",
     }
-    if any(run.get(key) != value for key, value in expected.items()):
+    if any(type(run.get(key)) is not type(value) or run[key] != value
+           for key, value in expected.items()):
         raise ValueError("untrusted workflow run")
     if run.get("repository", {}).get("full_name") != REPO:
         raise ValueError("wrong workflow repository")
     artifact = query(f"actions/artifacts/{artifact_id}")
+    artifact_run_id = artifact.get("workflow_run", {}).get("id")
     if (artifact.get("expired") is not False
             or artifact.get("name") != f"funix-hml-{revision}-{attempt}"
-            or artifact.get("workflow_run", {}).get("id") != run_id):
+            or type(artifact_run_id) is not int or artifact_run_id != run_id):
         raise ValueError("artifact identity mismatch")
     with Path(archive).open("rb") as stream:
         digest = "sha256:" + hashlib.file_digest(stream, "sha256").hexdigest()

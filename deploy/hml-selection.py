@@ -41,7 +41,7 @@ def parse(body):
         return result
     try:
         return selection(json.loads(body,object_pairs_hook=unique))
-    except (ValueError,UnicodeError):
+    except (ValueError, RecursionError):
         raise ValueError('invalid selection') from None
 
 
@@ -65,22 +65,32 @@ def verify_package(value, archive, *, query=None):
     Manifest/extraction/preparation remain prepare_operation's responsibility.
     """
     value=selection(value)
-    safety=module('hml-update-safety'); archive=safety.regular(Path(archive))
+    safety=module('hml-update-safety')
     provenance=module('hml-artifact-provenance')
     query=provenance.api if query is None else query
+    artifact_path = f"actions/artifacts/{value['artifact_id']}"
     try:
-        artifact=query(f"actions/artifacts/{value['artifact_id']}")
+        archive = safety.regular(Path(archive))
+        artifact = query(artifact_path)
         if (type(artifact.get('id')) is not int or artifact['id']!=value['artifact_id']
                 or type(artifact.get('size_in_bytes')) is not int or artifact['size_in_bytes']!=value['size']
                 or artifact.get('digest')!='sha256:'+value['sha256']
                 or archive.stat().st_size!=value['size']):
             raise ValueError('artifact selection mismatch')
+        # Use the same metadata for selection and official provenance.
+        snapshot = json.dumps(artifact, sort_keys=True)
+
+        def verified_query(path):
+            if path == artifact_path:
+                return artifact
+            return query(path)
+
         result=provenance.verify(archive,artifact_id=value['artifact_id'],run_id=value['run_id'],
-            attempt=value['attempt'],revision=value['revision'],pr=value['pr'],query=query)
+            attempt=value['attempt'],revision=value['revision'],pr=value['pr'],query=verified_query)
         if result['digest']!='sha256:'+value['sha256']:
             raise ValueError('artifact digest mismatch')
         # Re-read to reject changed/ambiguous metadata, not just an initial snapshot.
-        if query(f"actions/artifacts/{value['artifact_id']}")!=artifact:
+        if json.dumps(query(artifact_path), sort_keys=True) != snapshot:
             raise ValueError('artifact metadata changed')
     except Exception:
         raise ValueError('selection provenance rejected') from None

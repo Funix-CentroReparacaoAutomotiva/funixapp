@@ -33,7 +33,11 @@ revision SHA40, sha256 hex64 e size inteiro positivo limitado a 20 GiB. Não
 aceita URL/caminho/shell/env/projeto. verify_package recebe um caminho canônico
 controlado pelo host, rejeita links e confere ID/size/digest via API fixa; delega
 run/tentativa/workflow/repo/PR/revisão/expiração e digest dos bytes ao verificador
-oficial. Metadados mudando entre consultas são ambíguos e bloqueiam. Retorno
+oficial. A seleção e o verificador oficial usam a mesma resposta do artefato. Uma nova
+consulta antes de devolver o resultado bloqueia mudanças nos metadados,
+inclusive mudanças de tipo. A API REST rejeita chaves JSON repetidas inclusive
+em objetos aninhados. Erros de arquivo ou API retornam uma mensagem genérica,
+sem caminho local ou detalhes do serviço. Retorno
 limitado inclui update_authorized=false: comprovação de procedência não autoriza
 deploy. O manifesto e a extração permanecem exclusivamente em prepare_operation.
 
