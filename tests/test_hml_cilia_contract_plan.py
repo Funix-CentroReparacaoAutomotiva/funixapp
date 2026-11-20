@@ -40,7 +40,7 @@ class PureContractPlanTests(unittest.TestCase):
         tx = plan.plan(original, plan.OFF, plan.digest(original), REV)
         self.assertEqual(tx["from"], plan.PREVIEW_ONLY)
         self.assertEqual(tx["to"], plan.OFF)
-        self.assertTrue(plan.verify_applied(tx, tx["normalized_compose"]))
+        self.assertTrue(plan.verify_applied(tx, original, plan.desired_compose(original, tx["to"])))
 
     def test_write_on_is_never_allowed(self):
         original = baseline()
@@ -88,11 +88,11 @@ class PureContractPlanTests(unittest.TestCase):
     def test_pin_remains_sensitive_to_write_flag_even_when_preview_allowed(self):
         source = baseline()
         tx = plan.plan(source, plan.PREVIEW_ONLY, plan.digest(source), REV)
-        changed = copy.deepcopy(tx["normalized_compose"])
+        changed = plan.desired_compose(source, tx["to"])
         changed["services"]["api"]["environment"][plan.WRITE] = "true"
         self.assertNotEqual(plan.digest(changed), tx["new_contract_sha256"])
         with self.assertRaises(ValueError):
-            plan.verify_applied(tx, changed)
+            plan.verify_applied(tx, source, changed)
 
 
 if __name__ == "__main__":
