@@ -102,10 +102,10 @@ limpeza falha o job. O runner hospedado é descartado inclusive em cancelamento.
 
 ## Limite operacional
 
-Este ensaio não libera instalação/migração operacional. Continua pendente, em
-ambiente descartável com instalação real dos usuários, sudoers e unidades, a
-verificação de negação de comandos extras, permissões efetivas, início/reinício
-e interrupção pelo systemd e restrições do sandbox. Também não valida Windows
+Este ensaio não libera instalação/migração operacional. A fronteira instalada
+de sudo/wrappers/unidades é exercitada pelo job Linux separado descrito acima,
+com backend sintético; não representa transação SQLite através dessas unidades.
+O sandbox não recebe análise exaustiva. Também não valida Windows
 em execução, CA real, n8n, firewall ou configuração da VPS. O CI analisa a sintaxe
 PowerShell separadamente. Nenhum desses limites deve ser apresentado como
 validação concluída; implantação exige revisão e autorização separadas.

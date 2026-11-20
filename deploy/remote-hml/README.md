@@ -40,10 +40,11 @@ Caminhos de credenciais, geração de certificados e hashes são código/contrat
 Não exportar transport.json nem diretórios privados para o Git. Os utilitários
 exportSource/purgeSource são apenas referência de origem, nunca execução CI.
 
-Limitações: testes sintéticos novos verificam tickets, parsing, fronteira mTLS,
-ausência de aprovação, pins e delegação oficial. Ainda faltam ensaio de
-instalação e mTLS de ponta a ponta com worker/systemd, expiração/reutilização e
-revogação/rotação completas. Esta PR não declara o piloto pronto para deploy.
+Limitações e matriz de evidências estão em REHEARSAL.md. O ensaio Docker cobre
+aprovações/expiração/reutilização e transação; o job Linux cobre separadamente
+sudo/wrappers/unidades reais com backend sintético, incluindo suspensão e
+revogação da regra dedicada. Não equivale a uma transação SQLite por systemd
+instalado nem valida rotação completa. Esta PR não declara o piloto pronto para deploy.
 
 Incremento de revisão: migrate.py e MIGRATION.md propõem migração administrativa
 de código com inventário old/new aprovado, locks existentes, backup/staging

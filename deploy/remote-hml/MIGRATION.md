@@ -33,8 +33,10 @@ com o hash instalado, sem limpeza recursiva.
 
 Aceite administrativo obrigatório: serviço ativo, GET/status por mTLS válido,
 negativos CA/fingerprint/origem e ausência de aprovação; nenhum POST/update
-durante migração. systemd e PowerShell reais ainda precisam ser ensaiados fora
-da VPS antes de autorizar este procedimento em produção administrativa.
+durante migração. O job Linux descartável exercita as unidades reais com backend
+sintético (REHEARSAL.md); não é ensaio de migração do piloto. PowerShell em
+execução e rotação completa ainda precisam de ensaio fora da VPS antes de
+autorizar este procedimento em produção administrativa.
 
 Para candidatos futuros: administrador seleciona PR/SHA/run/tentativa/artefato
 conforme fluxo oficial, revisa checksum/size e predecessor, atualiza approval.json
