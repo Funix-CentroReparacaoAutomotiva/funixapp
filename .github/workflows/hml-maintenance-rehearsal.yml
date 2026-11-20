@@ -34,6 +34,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Parse recovered and current PowerShell without execution
         shell: pwsh
         run: |
@@ -54,6 +55,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Python deployment regression tests
         if: matrix.remote-case == 'accepted'
         run: python3 -m unittest discover -s deploy/tests -v
