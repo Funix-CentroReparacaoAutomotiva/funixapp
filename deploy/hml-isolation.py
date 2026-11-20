@@ -35,6 +35,9 @@ FIXED = {"FUNIX_APP_ORIGIN": "https://hml.funix.com.br",
          "FUNIX_API_HOST": "0.0.0.0", "FUNIX_API_PORT": "8787"}
 EXTERNAL = re.compile(r"(?:TOKEN|PASSWORD|SECRET|API_KEY|ENDPOINT|PROXY|URL|WEBHOOK|CREDENTIAL|PRIVATE_KEY)", re.I)
 FLAG = re.compile(r"^FUNIX_[A-Z0-9_]+_(?:ENABLED|ENABLE|ACTIVE|V2)$")
+CILIA_PREVIEW = "FUNIX_CILIA_PREVIEW_ENABLED"
+CILIA_WRITE = "FUNIX_CILIA_WRITE_ENABLED"
+
 
 
 def require(ok, reason):
@@ -73,16 +76,31 @@ def environment(role, raw, revision):
         password = env.get("FUNIX_OPERATOR_PASSWORD")
         require(isinstance(password, str) and 12 <= len(password) <= 256, "operator credential missing/invalid")
         require(all(str(env.get(flag)).lower() == "false" for flag in FLAGS), "required integration flag not disabled")
+        # The Cilia preview is local-only. Its write gate is never permitted here.
+        require(str(env.get(CILIA_WRITE, "false")).lower() in ("false", "0"),
+                "Cilia write flag must remain disabled")
+        require(env.get(CILIA_PREVIEW, "false") in ("true", "false", "0"),
+                "invalid Cilia preview flag")
     for key, value in env.items():
         if value in ("", None):
             continue
         if role == "api" and key in set(FIXED) | {"FUNIX_REVISION", "FUNIX_OPERATOR_PASSWORD"}:
             continue
         if FLAG.fullmatch(key):
-            require(role == "api" and str(value).lower() in ("false", "0"), "integration flag enabled")
+            require(role == "api" and (str(value).lower() in ("false", "0")
+                    or (key == CILIA_PREVIEW and str(value) == "true")),
+                    "integration flag enabled")
         else:
             require(not key.startswith("FUNIX_") and not EXTERNAL.search(key), "unexpected external configuration")
     return env
+
+
+def cilia_runtime_parity(runtime_env, declared_env):
+    """Cilia flags must match in presence and value, not just when declared."""
+    for flag in (CILIA_PREVIEW, CILIA_WRITE):
+        require((flag in runtime_env) == (flag in declared_env)
+                and (flag not in runtime_env or runtime_env[flag] == declared_env[flag]),
+                "Cilia runtime flag differs from Compose")
 
 
 def hardening(role, service):
@@ -186,6 +204,10 @@ def runtime(records, config, database, gateway_mounts, release, private):
         declared = env_dict(config["services"][role].get("environment") or {})
         require(all(env.get(key) == str(value) for key, value in declared.items() if value is not None),
                 "live environment differs from Compose")
+        # Unlike generic environment keys, the two Cilia gates must match in
+        # BOTH directions. An undeclared runtime-only preview would otherwise
+        # pass isolation.environment() and silently enable a capability.
+        cilia_runtime_parity(env, declared)
     require(set(actual) == ROLES, "incomplete live project")
     require(private.get("Name") == PRIVATE and private.get("Driver") == "bridge"
             and private.get("Internal") is True and set(private.get("Containers") or {}) == set(actual.values()),
