@@ -90,7 +90,8 @@ export class SharedConversationIdentity {
       const receipt=this.db.prepare('SELECT digest,result_json FROM v20_association_receipts WHERE conversation_id=? AND request_id=?').get(conversationId,requestId)
       if(receipt){
         if(receipt.digest!==key)return review('Esta confirmação já foi usada com outros dados.')
-        return JSON.parse(String(receipt.result_json)) as {entityId:string;contactId:string;atendimentoId:string|null}
+        const {entityId,contactId,atendimentoId}=JSON.parse(String(receipt.result_json)) as {entityId:string;contactId:string;atendimentoId:string|null}
+        return {entityId,contactId,atendimentoId}
       }
       const view=this.inspect(conversationId)
       if(view.token!==token)return review('A conversa ou a ficha mudou. Atualize os dados antes de confirmar.')
@@ -104,7 +105,8 @@ export class SharedConversationIdentity {
       const legacy=target?.refs.person[Number(legacyIndex)]
       if(legacyIndex!==undefined&&(!legacy||legacy.id||legacy.text!==label))return review('O nome escolhido deve corresponder à pessoa informada na ficha.')
       const channel=this.identities.rememberProviderConversation(view.jid)
-      const {person,contact}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel)
+      const {person,contact,receipted}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel,
+        {conversationId,requestId,digest:key,atendimentoId:target?.id??null})
       this.customers.confirmChannelOwnerLabel(person.id)
       if(target)this.customers.reconcileParticipant(target.id,target.refs,person,contact,legacyIndex===undefined?undefined:Number(legacyIndex))
       if(view.handles.length){
@@ -115,7 +117,7 @@ export class SharedConversationIdentity {
           WHERE id IN (${placeholders})`).run(...view.handles)
       }
       const result={entityId:person.id,contactId:contact.id,atendimentoId:target?.id??null}
-      this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
+      if(!receipted)this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
       return result
     })
   }

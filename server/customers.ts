@@ -1,3 +1,4 @@
+import {withConfirmedOwnerChange} from './customer-identity-schema.ts'
 import {normalizeCustomerPhone as normalizePhone} from './phone.ts'
 import {AtendimentoRepository} from './atendimentos.ts'
 import type {Atendimento} from '../shared/contracts.ts'
@@ -218,9 +219,20 @@ export class CustomerRepository {
   }
 
   /** Caller holds the identity confirmation transaction and has checked aliases and ownership. */
-  confirmChannelContact(person:CustomerRecord|null,name:string,existing:CustomerRecord|null,phone:string,conversationId:string|null) {
+  confirmChannelContact(person:CustomerRecord|null,name:string,existing:CustomerRecord|null,phone:string,conversationId:string|null,confirmation?:{conversationId:string;requestId:string;digest:string;atendimentoId:string|null}) {
     const entity=person??this.saveRecord({kind:'entity',text:name})
-    return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId)}
+    const previousOwnerId=existing?.entityId
+    if(previousOwnerId&&previousOwnerId!==entity.id){
+      if(!confirmation||!this.canReplaceProvisionalOwner(previousOwnerId))
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Transferência de titularidade exige confirmação explícita.')
+      const audit={entityId:entity.id,contactId:existing.id,atendimentoId:confirmation.atendimentoId,previousEntityId:previousOwnerId}
+      this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)')
+        .run(confirmation.conversationId,confirmation.requestId,confirmation.digest,JSON.stringify(audit))
+      const contact=withConfirmedOwnerChange(this.db,{contactId:existing.id,previousOwnerId,ownerId:entity.id},
+        ()=>this.bindConfirmedPhone(existing,phone,entity.id,conversationId))
+      return {person:entity,contact,receipted:true}
+    }
+    return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId),receipted:false}
   }
 
   /** A new authenticated LID-only channel can register one shared provisional owner

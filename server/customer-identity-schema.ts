@@ -1,7 +1,23 @@
 import type {DatabaseSync} from 'node:sqlite'
 import {normalizeCustomerPhone} from './phone.ts'
 
+type OwnerChange = {contactId:string;previousOwnerId:string;ownerId:string}
+// A SQL receipt is audit evidence, not authorization. The trigger checks this
+// connection-local approval only during the confirmed write.
+const approvedOwnerChanges = new WeakMap<DatabaseSync,OwnerChange>()
+
+export function withConfirmedOwnerChange<T>(db:DatabaseSync,change:OwnerChange,write:()=>T):T {
+  if(!db.isTransaction||approvedOwnerChanges.has(db))throw Error('Invalid owner confirmation transaction')
+  approvedOwnerChanges.set(db,change)
+  try{return write()}
+  finally{approvedOwnerChanges.delete(db)}
+}
+
 export function registerCustomerPhoneFunction(db:DatabaseSync) {
+  db.function('funix_confirmed_owner_change',(contactId,previousOwnerId,ownerId)=>{
+    const approved=approvedOwnerChanges.get(db)
+    return approved&&approved.contactId===contactId&&approved.previousOwnerId===previousOwnerId&&approved.ownerId===ownerId?1:0
+  })
   db.function('funix_customer_phone',{deterministic:true},value=>typeof value==='string'?normalizeCustomerPhone(value):null)
 }
 
@@ -70,6 +86,14 @@ export function createCustomerIdentitySchema(db:DatabaseSync) {
       OR NOT EXISTS (SELECT 1 FROM customer_records e WHERE e.id=NEW.entity_id AND e.kind='entity')
     )
     BEGIN SELECT RAISE(ABORT,'Active commercial association requires its canonical contact'); END;
+    CREATE TRIGGER customer_contact_owner_transfer BEFORE UPDATE OF entity_id ON customer_records
+    WHEN OLD.kind='contact' AND OLD.entity_id IS NOT NULL AND NEW.entity_id IS NOT OLD.entity_id
+    AND CASE WHEN NEW.entity_id IS NULL THEN 1
+      WHEN NOT EXISTS (SELECT 1 FROM customer_records e WHERE e.id=OLD.entity_id
+        AND e.kind='entity' AND json_extract(e.data,'$.channelProvisional')=1) THEN 1
+      WHEN EXISTS (SELECT 1 FROM atendimento_references WHERE record_id=OLD.entity_id) THEN 1
+      ELSE funix_confirmed_owner_change(OLD.id,OLD.entity_id,NEW.entity_id)<>1 END
+    BEGIN SELECT RAISE(ABORT,'Contact owner transfer requires explicit confirmation'); END;
     CREATE TRIGGER customer_active_channel_delete BEFORE DELETE ON customer_records
     WHEN EXISTS (
       SELECT 1 FROM customer_channel_contacts c JOIN v20_associations a USING(conversation_id)

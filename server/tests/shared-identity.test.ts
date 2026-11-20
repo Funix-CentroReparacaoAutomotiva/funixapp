@@ -33,7 +33,18 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
   assert.equal(view.targets.length,2)
   const input={token:view.token,requestId:randomUUID(),atendimentoId:at.id,entityId:existing.id,legacyIndex:1}
   assert.throws(()=>service.confirm(cid,{...input,atendimentoId:null}),/Confirme/)
+  const provisional=f.customers.phoneMatches(phone)[0]!
+  const receipt=()=>f.db.prepare('SELECT result_json FROM v20_association_receipts WHERE conversation_id=? AND request_id=?')
+    .get(cid,input.requestId)
+  f.db.exec(`CREATE TEMP TRIGGER test_reject_owner_update BEFORE UPDATE OF entity_id ON customer_records
+    BEGIN SELECT RAISE(ABORT,'synthetic rollback'); END`)
+  assert.throws(()=>service.confirm(cid,input),/synthetic rollback/)
+  assert.equal(receipt(),undefined)
+  assert.equal(f.customers.record(provisional.id).entityId,provisional.entityId)
+  f.db.exec('DROP TRIGGER test_reject_owner_update')
   const result=service.confirm(cid,input)
+  assert.equal(result.contactId,provisional.id)
+  assert.deepEqual(JSON.parse(String(receipt()?.result_json)),{...result,previousEntityId:provisional.entityId})
   assert.deepEqual(service.confirm(cid,input),result)
   assert.throws(()=>service.confirm(cid,{...input,atendimentoId:second.id}),/outros dados/)
   assert.throws(()=>service.confirm(cid,{...input,requestId:randomUUID()}),/mudou/)
