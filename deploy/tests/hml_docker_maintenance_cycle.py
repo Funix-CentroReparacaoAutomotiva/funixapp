@@ -341,7 +341,7 @@ server {
                             run("docker", "image", "rm", image["image_id"])
                     official = load("hml-official-update")
                     official.updater = updater
-                    op = state / "op-official"
+                    op = state / "op-123-1-prep-456"
                     op.mkdir(mode=0o700)
                     def prepare_local(operation, config_path, requested):
                         assert requested == identity
@@ -354,9 +354,9 @@ server {
                          patch.object(updater, "host_scope"), \
                          patch.object(updater, "check_config"), \
                          patch.object(updater, "prepare_operation", side_effect=prepare_local):
-                        report = official.coordinate("op-official", identity,
-                            authorize_operation="op-official", authorize_revision=NEW)
-                    assert report["result"] == "accepted", report
+                        prepare_local(op,op/'config.json',identity)
+                        from hml_remote_chain import run_chain
+                        run_chain(updater,config,previous,op,root,identity,fake_api)
                     operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)
