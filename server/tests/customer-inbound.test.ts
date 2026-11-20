@@ -157,23 +157,39 @@ test('local A→B→A context epochs revoke old send commands, without changing 
 
 test('manual contact prepares an explicit conversation without sending; phone correction cannot adopt existing history',()=>{
  const f=fixture();try{
-  const manual=f.at.create({name:'Manual',phone:'+5531999990888'}),prepared=f.runtime.authority!.prepareConversation(manual.id,0,manual.revision)
+  const manual=f.at.create({name:'Manual',phone:'(31) 99999-0888'}),prepared=f.runtime.authority!.prepareConversation(manual.id,0,manual.revision)
   assert.ok(prepared.conversationId);assert.equal(f.at.list().total,1);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,0)
   const manualJid='5531999990888@s.whatsapp.net';f.ingest(event('manual-inbound',manualJid,null,'Nome canal'));assert.equal(f.at.list().total,1);assert.equal(f.at.get(manual.id).name,'Manual')
   const other=f.at.create({phone:'+5531999990888',name:'Pessoa diferente'})
   assert.throws(()=>f.runtime.authority!.prepareConversation(other.id,0,other.revision),/Já existe histórico/)
   assert.equal(f.runtime.authority!.resolveIdentityActive(manualJid),manual.id)
-  const partial=f.at.create({phone:'31999990000'});assert.throws(()=>f.runtime.authority!.prepareConversation(partial.id,0,partial.revision),/DDI/)
+  const partial=f.at.create({phone:'99999-0000'});assert.throws(()=>f.runtime.authority!.prepareConversation(partial.id,0,partial.revision),/DDI/)
  }finally{f.db.close()}
 })
 
-test('previously separate PN/LID handles retain both processes; exact alias evidence permits explicit context selection without a third ficha',()=>{
+test('preparing a conversation reuses the equivalent PN only for the selected owner',()=>{
+ const f=fixture()
+ try{
+  const customers=new CustomerRepository(f.db)
+  const owner=customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:'(31) 99999-0888'}]})
+  const [contact]=customers.contacts(owner.id)
+  const other=f.at.create({name:'Outro nome',phone:'+5531999990888'})
+  assert.throws(()=>f.runtime.authority!.prepareConversation(other.id,0,other.revision),/titular/)
+  const at=f.at.create({references:{person:[{id:owner.id,text:owner.text}],contact:[{id:null,text:'5531999990888'}],vehicle:[],payer:[]}})
+  const prepared=f.runtime.authority!.prepareConversation(at.id,0,at.revision)
+  assert.equal(f.at.get(at.id,true).references!.contact[0]!.id,contact!.id)
+  assert.equal(customers.record(contact!.id).conversationId,prepared.conversationId)
+  assert.equal(f.db.prepare("SELECT COUNT(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
+ }finally{f.db.close()}
+})
+
+test('previously separate PN/LID handles retain both processes and identity hold survives context selection',()=>{
  const f=fixture();try{
   f.ingest(event('pn-independent',PN,null,'Pedro'));f.ingest(event('lid-independent',LID,null,'Maria'))
   f.ingest(event('alias-evidence',LID,PN,'Canal'))
   const cid=f.runtime.authority!.rememberProviderConversation(PN),scope=f.runtime.authority!.associationScope(cid),links=f.links.listActive(cid,scope)
   assert.equal(f.at.list().total,2);assert.equal(links.items.length,2);assert.equal(f.runtime.authority!.resolveIdentityActive(PN),null)
-  for(const link of links.items){f.links.selectAtendimento(cid,link.linkId,scope);assert.equal(f.runtime.authority!.resolveIdentityActive(LID),link.atendimentoId);assert.equal(f.runtime.store.page(PN,1).items.length,3)}
+  for(const link of links.items){assert.throws(()=>f.links.selectAtendimento(cid,link.linkId,scope),/identidade/);assert.equal(f.runtime.authority!.resolveIdentityActive(LID),null);assert.equal(f.runtime.store.page(PN,1).items.length,3)}
   f.links.unlink({conversationId:cid,linkId:links.items[0]!.linkId,expectedRevision:links.revision,requestId:randomUUID(),reason:'synthetic explicit unlink'},scope)
   assert.equal(f.links.listActive(cid,scope).items.length,1);assert.equal(f.runtime.store.page(LID,1).items.length,3)
  }finally{f.db.close()}
@@ -327,6 +343,28 @@ test('standalone LID without a name keeps phone empty and a shared provisional i
   assert.equal(new CustomerRepository(db).record(a.references!.contact[0]!.id!).entityId,a.references!.person[0]!.id)
  }finally{db.close()}
 })
+test('same-owner LID then existing PN reconciles references and replays without moving messages',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  runtime.store.ingest(JSON.stringify(event('lid-before-known-phone',LID)))
+  const first=at.get(at.list().items[0]!.id,true),owner=customers.record(first.references!.person[0]!.id!)
+  const provisional=first.references!.contact[0]!.id!
+  const known=customers.save({kind:'contact',text:'(31) 99999-0101',entityId:owner.id})
+  const signed=JSON.stringify(event('same-owner-pn',PN,LID))
+  const receipt=runtime.store.ingest(signed)
+  assert.deepEqual(runtime.store.ingest(signed),receipt)
+  assert.equal(at.list().total,1)
+  assert.equal(at.get(first.id,true).references!.contact[0]!.id,known.id)
+  assert.equal(customers.record(provisional).id,known.id)
+  assert.throws(()=>customers.save({text:'+5531999990711',revision:1},provisional),/arquivado/)
+  assert.ok(customers.search('contact','').every(contact=>contact.id!==provisional))
+  assert.deepEqual(customers.contacts(owner.id).map(contact=>contact.id),[known.id])
+  assert.equal(runtime.store.page(LID,1).items.length,2)
+ }finally{db.close()}
+})
+
 test('standalone late PN cannot silently adopt another Entity Contact',()=>{
  const db=openDatabase(':memory:')
  try{
@@ -368,4 +406,22 @@ test('explicit autonomous cutover creates a shared registration on first authent
   assert.equal(db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,2)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
+})
+
+test('Atendimento references resolve equivalent phone through the explicitly selected owner without a Chat',()=>{
+ const f=fixture()
+ try{
+  const owner=f.customers.save({kind:'entity',text:'Pessoa sintética'})
+  const references={person:[{id:owner.id,text:owner.text}],contact:[{id:null,text:'(31) 99999-0987'}],vehicle:[],payer:[]}
+  const first=f.at.create({references})
+  const next=f.at.create({references:{...references,contact:[{id:null,text:'5531999990987'}]}})
+  const contact=f.customers.contacts(owner.id)[0]!
+  assert.equal(f.at.get(first.id,true).references!.contact[0]!.id,contact.id)
+  assert.equal(f.at.get(next.id,true).references!.contact[0]!.id,contact.id)
+  assert.equal(contact.conversationId,null)
+  const other=f.customers.save({kind:'entity',text:'Outra pessoa'})
+  assert.throws(()=>f.at.create({references:{...references,person:[{id:other.id,text:other.text}]}}),/titular/)
+  assert.equal(f.at.list().total,2)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations').get()!.n,0)
+ }finally{f.db.close()}
 })

@@ -3,7 +3,7 @@ import { ConversationIdentities, createConversationIdentitySchema } from './conv
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { initializeFinancialSettings } from '../financial-initialization.ts'
-import { normalizePhone } from '../atendimentos.ts'
+import { normalizePhone } from '../phone.ts'
 import { ServiceError } from '../errors.ts'
 
 const rowId = /^i-[A-Za-z0-9_-]{1,100}$/

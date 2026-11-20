@@ -86,7 +86,7 @@ export interface AppOptions {
 
 export function createRequestHandler(options: AppOptions) {
   const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
-  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
+  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(r.id)}:r}
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -369,10 +369,13 @@ export function createRequestHandler(options: AppOptions) {
         return send(200,options.conversationRuntime.authority.prepareConversation(prepareConversationRoute[1]!,input.contactIndex,input.revision))
       }
       const localConversationsRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/conversations$/.exec(url.pathname)
-      if(localConversationsRoute&&options.conversationRuntime?.authority){
+      if(localConversationsRoute&&(options.conversationRuntime?.authority||options.codaSync&&options.evolutionChat)){
         if(req.method!=='GET'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
         options.atendimentos.get(localConversationsRoute[1]!)
-        return send(200,{items:options.conversationRuntime.authority.conversationsForAtendimento(localConversationsRoute[1]!)})
+        const items=options.conversationRuntime?.authority?.conversationsForAtendimento(localConversationsRoute[1]!)??[]
+        if(items.length||options.conversationRuntime?.authority)return send(200,{items})
+        const existing=options.evolutionChat?.conversationForAtendimento(localConversationsRoute[1]!)
+        return send(200,{items:existing?[{...existing,phone:null}]:[]})
       }
       const photoRoute=/^\/api\/chat\/conversations\/([a-f0-9-]{36})\/profile-photo$/.exec(url.pathname)
       if(photoRoute&&options.evolutionChat){
@@ -445,7 +448,8 @@ export function createRequestHandler(options: AppOptions) {
       const customerRoute=/^\/api\/customer-records(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
       if(customerRoute){
         const customers=new CustomerRepository(options.atendimentos.db),id=customerRoute[1]
-        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
+        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'').map(record=>
+          record.kind==='contact'&&record.entityId?{...record,ownerName:customers.record(record.entityId).text}:record)})
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
         if(req.method==='POST'&&!id || req.method==='PATCH'&&id){
@@ -617,14 +621,19 @@ export function createRequestHandler(options: AppOptions) {
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
         if(!options.evolutionChat||!(options.codaSync || options.conversationRuntime?.authority)||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
           return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
-        if([...url.searchParams.keys()].some(key=>key!=='page')||url.searchParams.getAll('page').length>1)
+        if([...url.searchParams.keys()].some(key=>!['page','scope'].includes(key))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('scope').length>1)
           return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const scope=url.searchParams.get('scope')
+        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+        const [at,conversation]=[mediaReadRoute[1]!,mediaReadRoute[2]!]
+        const runtime=options.conversationRuntime
+        const allowsLinkedRead=scope==='linked'?(jid:string)=>!!runtime?.read&&runtime.authority?.linkedHistoryJid(at,conversation)===jid:undefined
         const page=url.searchParams.get('page')??'1'
         if(!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)
           return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
         try{
           const result=await options.evolutionChat.mediaForAtendimento(
-            mediaReadRoute[1]!,mediaReadRoute[2]!,mediaReadRoute[3]!,Number(page))
+            at,conversation,mediaReadRoute[3]!,Number(page),allowsLinkedRead)
           if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
           if(!result)return fail(404,'CHAT_MEDIA_NOT_FOUND','Mídia indisponível neste Atendimento.')
           if(result.state==='too_large')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo excede o limite suportado.')
@@ -644,14 +653,23 @@ export function createRequestHandler(options: AppOptions) {
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
       if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
-        if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
+        if ([...url.searchParams.keys()].some(key => !['page','cursor','scope'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1 || url.searchParams.getAll('scope').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        const scope=url.searchParams.get('scope')
+        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
         const cursor=url.searchParams.get('cursor')??undefined
         if(cursor&&(!options.conversationRuntime?.read||! /^[A-Za-z0-9_-]{1,900}$/.test(cursor)))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
         const page = url.searchParams.get('page') ?? '1'
         if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         try {
+          if(scope==='linked'){
+            const runtime=options.conversationRuntime
+            const conversationId=syncedEvolutionRoute[2]!
+            const jid=runtime?.authority?.linkedHistoryJid(syncedEvolutionRoute[1]!,conversationId)
+            if(!runtime?.read||!jid)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
+            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor),mediaReadAvailable:options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
+          }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
@@ -945,7 +963,7 @@ export function createRequestHandler(options: AppOptions) {
           options.v20Associations.resolveRemoteJid(cid,'funix_comercial')){
           const identity=new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation)
           const chatIdentity=identity.forAtendimento(cid,atendimento.id)
-          if(chatIdentity)atendimento.chatIdentity=chatIdentity
+          if(chatIdentity)atendimento.chatIdentity={...chatIdentity,conversationId:cid}
         }
         return atendimento
       }
@@ -954,8 +972,8 @@ export function createRequestHandler(options: AppOptions) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
-        if (collection) return send(201, options.atendimentos.create(body))
-        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true)))
+        if (collection) return send(201, options.atendimentos.create(body,false,true))
+        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true,true)))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')

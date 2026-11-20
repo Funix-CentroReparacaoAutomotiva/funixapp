@@ -54,6 +54,7 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
     setLastSaved(false);setFailure('')
     // Marca edição imediatamente para proteger navegação no mesmo evento de input.
     onDirty(true)
+    if(!conflict)setFailure('')
     setFields(previous=>{const next=updater(previous);fieldsRef.current=next;return next})
   }
   function update<K extends keyof AtendimentoInput>(name: K, value: AtendimentoInput[K]) {
@@ -75,17 +76,23 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
         body:JSON.stringify({...snapshot,revision:revisionRef.current})
       })
       revisionRef.current=saved.revision
-      setBaseline(snapshot)
-      const pending=JSON.stringify(fieldsRef.current)!==JSON.stringify(snapshot)
+      const canonical=saved.references?{...snapshot,references:saved.references,name:saved.name,phone:saved.phone}:snapshot
+      const current=fieldsRef.current
+      const referencesUnchanged=JSON.stringify(current.references)===JSON.stringify(snapshot.references)
+      const next=referencesUnchanged?{...current,references:canonical.references,name:canonical.name,phone:canonical.phone}:current
+      const pending=JSON.stringify(next)!==JSON.stringify(canonical)
+      setBaseline(canonical)
+      fieldsRef.current=next
+      setFields(next)
       onDirty(pending)
       setLastSaved(!pending)
       onAutoSaved?.(saved,JSON.stringify(snapshot.references?.contact)!==JSON.stringify(baseline.references?.contact))
     } catch(cause) {
       const error=cause as RequestFailure
-      setFailure(error.status===409
+      setFailure(error.code==='VERSION_CONFLICT'
         ? 'Conflito: este Atendimento foi atualizado em outra aba. Suas alterações permanecem aqui. Copie os dados antes de reabrir.'
         : 'Não foi possível salvar automaticamente. Suas alterações permanecem no formulário. '+error.message)
-      setConflict(error.status===409)
+      setConflict(error.code==='VERSION_CONFLICT')
       if(error.status===401)onAuthRequired()
     } finally {inFlight.current=false;setBusy(false);onBusy(false)}
   }

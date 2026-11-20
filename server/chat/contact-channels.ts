@@ -3,7 +3,7 @@ import {validateMedia,type MediaGateway,type MediaInput} from './evolution-media
 import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from '../phone.ts'
 import {ServiceError} from '../errors.ts'
 import {transaction} from '../scenarios.ts'
 import {LocalConversationAssociations} from './local-associations.ts'
@@ -91,7 +91,7 @@ export class ContactChannels {
         if(owner||(oldJid&&!members!.includes(oldJid)))state='conflict'
         else {
           conversationId=this.identities.rememberProviderConversation(jid)
-          this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(conversationId,id)
+          this.customers.resolveChannelContact(conversationId,id)
           // Preserve a pre-existing exact alias handle/UUID; no historical rewrites.
           conversationId=this.contact(id).conversationId??conversationId
         }

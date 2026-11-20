@@ -1,5 +1,5 @@
 import type {DatabaseSync} from 'node:sqlite'
-import {normalizePhone} from './atendimentos.ts'
+import {normalizePhone} from './phone.ts'
 import {createSendOperationSchema} from './chat/send-operations.ts'
 
 /** V22: derived lookup only; no merge, association, message or historical document rewrite. */
