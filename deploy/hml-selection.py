@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 
 KEYS = {'pr','run_id','attempt','artifact_id','revision','sha256','size'}
-MAX_SIZE = 20 * 1024**3
+MAX_SIZE = 1024**3
 
 
 def module(name):
@@ -21,7 +21,7 @@ def selection(value):
     if not isinstance(value,dict) or set(value)!=KEYS:
         raise ValueError('invalid selection fields')
     for key in ('pr','run_id','attempt','artifact_id'):
-        if type(value[key]) is not int or not 0 < value[key] <= 2**63-1:
+        if type(value[key]) is not int or not 0 < value[key] < 10**15:
             raise ValueError('invalid selection identity')
     if (not isinstance(value['revision'],str) or not re.fullmatch('[a-f0-9]{40}',value['revision'])
             or not isinstance(value['sha256'],str) or not re.fullmatch('[a-f0-9]{64}',value['sha256'])

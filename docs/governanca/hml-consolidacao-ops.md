@@ -24,12 +24,14 @@ seleção de build e procedência REST; testes e hml-maintenance-rehearsal.yml j
 exercitam a transação oficial. Não há transport.py, rootctl.py, preparador SSH,
 emissor administrativo ou instalador do piloto nesta árvore. Fontes recuperados
 em outra PR draft (#284) não comprovam identidade dos módulos instalados e não
-são importados implicitamente para este contrato. Integração mTLS/worker pendente
-da importação e revisão autorizada desses fontes.
+são importados implicitamente para este contrato. A branch de integração em
+desenvolvimento incorpora os controladores em
+`deploy/remote-hml/` sobre a PR #284. A correspondência com a instalação
+continua sujeita a inventário administrativo autorizado.
 
 hml-selection.py é biblioteca sem CLI, serviço, download, extração ou escrita.
 parse aceita JSON de até 4096 bytes com somente pr/run_id/attempt/artifact_id,
-revision SHA40, sha256 hex64 e size inteiro positivo limitado a 20 GiB. Não
+revision SHA40, sha256 hex64 e size inteiro positivo limitado a 1 GiB. Não
 aceita URL/caminho/shell/env/projeto. verify_package recebe um caminho canônico
 controlado pelo host, rejeita links e confere ID/size/digest via API fixa; delega
 run/tentativa/workflow/repo/PR/revisão/expiração e digest dos bytes ao verificador
@@ -41,15 +43,20 @@ sem caminho local ou detalhes do serviço. Retorno
 limitado inclui update_authorized=false: comprovação de procedência não autoriza
 deploy. O manifesto e a extração permanecem exclusivamente em prepare_operation.
 
-require_available é um contrato puro sobre fatos obtidos pelo futuro adaptador
-sob o lock oficial: operação existente, recuperação pendente ou contenção bloqueiam.
-Não é implementação de lock/registro root-owned e não deve receber esses fatos
-do cliente. O adaptador futuro deve validar host_scope, obter locks existentes
-na ordem aprovada, conferir predecessor/journal/arquivos na seção crítica, criar
-registro root-owned imutável por operação e chamar prepare_operation. Deve
-reconciliar timeout sem retry de POST; nunca apagar registro/lock para repetir.
-Os testes de replay/concorrência aqui validam essa interface pura, não uma
-garantia de concorrência de controlador ainda ausente.
+require_available continua sendo um contrato puro para outros adaptadores.
+O preparador integrado traduz o arquivo administrativo privado para a seleção
+tipada, mantém as consultas REST e o download restrito e verifica o pacote
+pela biblioteca antes do preparador oficial. Sob o lock oficial, registra
+`prepared.json` com criação exclusiva, vinculando seleção, configuração,
+revisão instalada e operação/hash do journal anterior. A repetição idêntica
+valida o mesmo registro. Mudança no predecessor ou nos arquivos exige
+inspeção administrativa, sem substituição automática do registro.
+
+O controlador administrativo exige o registro, inclui seu hash no preview
+vinculado ao hash da aprovação e o reconfere no worker sob o lock oficial
+antes da primeira mutação. A autorização de atualização permanece um ticket
+administrativo independente. O transporte usa o despacho e a consulta de
+estado existentes. Um timeout exige reconciliação pelo status e journal.
 
 Interface futura n8n: workflow manual OFF, mTLS validado com origem/fingerprint,
 identidade estruturada e nenhuma opção de comando. Consulta de ticket real,

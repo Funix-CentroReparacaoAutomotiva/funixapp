@@ -24,7 +24,7 @@ def worker_rehearsal():
         previous={'revision':'a'*40}; candidate={'revision':'c'*40}
         cfg={'identity':{'revision':'c'*40},'candidate':candidate}
         preview=dict(action='update',scope='funix-hml',operation=op.name,revision='c'*40,
-                     sha256='b'*64,config_sha256='b'*64,active_journal_sha256='b'*64)
+                     sha256='b'*64,config_sha256='b'*64,prepared_sha256='b'*64,active_journal_sha256='b'*64)
         now=int(time.time())
         ticket=dict(schema=ctl.SCHEMA,ticket_id='d'*32,issued_at=now,expires_at=now+1200,
                     preview=preview,preview_sha256=ctl.hash_obj(preview))

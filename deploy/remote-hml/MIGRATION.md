@@ -38,6 +38,17 @@ sintético (REHEARSAL.md); não é ensaio de migração do piloto. PowerShell em
 execução e rotação completa ainda precisam de ensaio fora da VPS antes de
 autorizar este procedimento em produção administrativa.
 
+O inventário da integração inclui `hml-selection.py`, o novo blob do verificador
+de procedência e o novo SHA-256 de `control.py` fixado em `rootctl.py`. Os fontes
+recuperados e seu manifesto continuam sendo a referência histórica. Confirme os
+pins e os hashes do inventário antes de qualquer migração futura.
+
+Antes de emitir uma nova aprovação, execute a preparação com o controlador
+integrado. Ele aceita até 1 GiB e grava `prepared.json` sob o lock do atualizador.
+Operações previamente preparadas e ainda sem journal podem ser revalidadas
+pelo preparador para gerar esse registro. Se o registro já existe e diverge,
+preserve-o para inspeção administrativa. Nenhum ticket anterior é convertido.
+
 Para candidatos futuros: administrador seleciona PR/SHA/run/tentativa/artefato
 conforme fluxo oficial, revisa checksum/size e predecessor, atualiza approval.json
 do preparador por canal independente, executa preparação restrita e preflight.
