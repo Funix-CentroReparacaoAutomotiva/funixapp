@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import tempfile
 
 
 def load_plan():
@@ -54,8 +55,8 @@ class Transaction:
         self.journal = self.operation / "cilia-transaction.json"
 
     def _atomic(self, path, data):
-        temporary = path.with_name(path.name + ".new")
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        fd, temporary_name = tempfile.mkstemp(prefix="cilia-journal-", dir=path.parent)
+        temporary = Path(temporary_name)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as stream:
                 json.dump(data, stream, sort_keys=True)
