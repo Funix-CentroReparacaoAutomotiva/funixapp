@@ -1,3 +1,4 @@
+import {removeV25FixtureSchema} from './fixtures/production.ts'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -78,7 +79,10 @@ test('duplicate numbers and ownership transfer reject atomically; exact existing
   assert.throws(()=>f.customers.save({kind:'entity',text:'Pessoa B alterada',revision:b.revision,contacts:[{id:contact.id,text:phone1,revision:contact.revision}]},b.id),code('CONTACT_OWNER_CONFLICT'))
   assert.throws(()=>f.customers.save({text:phone1,revision:contact.revision,entityId:b.id},contact.id),code('CONTACT_OWNER_CONFLICT'))
   assert.equal(f.customers.record(b.id).text,'Pessoa B');assert.equal(f.customers.record(existing.id).entityId,a.id)
-  assert.throws(()=>f.customers.save({kind:'contact',text:'+55 (31) 99999-0101'}),code('CONTACT_PHONE_CONFLICT'))
+  for(const text of ['+55 (31) 99999-0101','(31) 99999-0101','5531999990101']){
+   assert.throws(()=>f.customers.save({kind:'contact',text}),code('CONTACT_PHONE_CONFLICT'))
+   assert.deepEqual(f.customers.search('contact',text).map(record=>record.id),[existing.id])
+  }
  }finally{f.db.close()}
 })
 
@@ -167,6 +171,7 @@ test('authenticated entity HTTP save persists before provider checks, gates writ
 
 test('duplicate legacy phone records remain intact and block new verification; late provider response cannot bind an edited contact',async()=>{
  const f=entityContactsFixture();try{
+  removeV25FixtureSchema(f.db)
   const a=f.customers.save({kind:'contact',text:phone1}),id=randomUUID()
   f.db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(id,JSON.stringify({text:phone1}))
   assert.equal((await f.channels.verify(a.id)).state,'conflict');assert.equal(f.checks.length,0)
@@ -260,7 +265,7 @@ test('explicit context resolves two active demands and two numbers can share one
   assert.deepEqual(f.sent,[jid(phone1),jid(phone2)])
   assert.equal(f.at.list().total,2)
   assert.equal(f.at.get(a.id,true).references!.contact.length,2)
-  assert.equal(f.at.get(b.id,true).references!.contact.some(contact=>contact.id||contact.text),false)
+  assert.equal(f.at.get(b.id,true).references!.contact[0]!.id,first!.id)
   assert.equal(f.links.listActive(cid).items.length,2)
   assert.equal(f.links.listActive(otherId).items[0]!.atendimentoId,a.id)
   assert.equal(f.db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,0)

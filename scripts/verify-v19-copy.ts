@@ -34,7 +34,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
   try{
    before.exec('BEGIN');after.exec('BEGIN')
    const beforeVersion=healthy(before),afterVersion=healthy(after)
-   requireCheck([18,19,20,21,22,23,24].includes(beforeVersion)&&[19,20,21,22,23,24].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20_V21_V22_V23_V24')
+   requireCheck([18,19,20,21,22,23,24,25].includes(beforeVersion)&&[19,20,21,22,23,24,25].includes(afterVersion)&&afterVersion>=beforeVersion,'V19_COPY_EXPECTED_V18_V19_V20_V21_V22_V23_V24')
    const growing=new Set(['schema_migrations','chat_provider_conversations','v20_conversations','v20_associations'])
    const tables=before.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
    const results=[]
@@ -44,7 +44,7 @@ export function verifyV19Copy(beforePath:string,afterPath:string){
     const oldColumns=before.prepare(`PRAGMA table_info(${quote(table)})`).all().map(c=>String(c.name)),newColumns=after.prepare(`PRAGMA table_info(${quote(table)})`).all().map(c=>String(c.name))
     requireCheck(oldColumns.every(c=>newColumns.includes(c)),'V19_COPY_MISSING_COLUMN:'+table)
     // V19 increments this revision only when promoting a previously explicit historical link.
-    const columns=oldColumns.filter(c=>!(beforeVersion===18&&table==='v20_conversations'&&c==='revision'))
+    const columns=oldColumns.filter(c=>!(beforeVersion===18&&table==='v20_conversations'&&c==='revision')&&!(beforeVersion<25&&afterVersion>=25&&table==='customer_records'&&c==='phone_normalized'))
     const oldRows=fingerprints(before,table,columns),newRows=fingerprints(after,table,columns)
     for(const [hash,count]of oldRows)requireCheck((newRows.get(hash)??0)>=count,'V19_COPY_DATA_CHANGED:'+table)
     const oldCount=[...oldRows.values()].reduce((a,b)=>a+b,0),newCount=[...newRows.values()].reduce((a,b)=>a+b,0)

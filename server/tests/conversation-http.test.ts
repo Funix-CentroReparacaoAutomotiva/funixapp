@@ -20,7 +20,7 @@ const PN = '000000000001@s.whatsapp.net',
   origin = 'http://localhost:5173',
   secret = Buffer.alloc(32, 8),
   password = 'synthetic-operator-password'
-async function fixture(autonomous=false) {
+async function fixture(autonomous=false,withMedia=false) {
   const db = openDatabase(':memory:')
   createCodaEventSchema(db)
   const repo = new CodaEventSyncRepository(db),
@@ -40,6 +40,7 @@ async function fixture(autonomous=false) {
   const bridge = createEvolutionChatBridge(
     {
       findChatsPage: async () => ({ items: [], sourceCount: 0 }),
+      ...(withMedia?{findMediaEnvelope:async (jid:string,id:string)=>({envelope:{key:{remoteJid:jid,id}},kind:'image' as const,bytes:4})}:{}),
       findMessages: async () => {
         reads++
         throw Error('provider intentionally offline')
@@ -52,7 +53,10 @@ async function fixture(autonomous=false) {
       sends++
       return { messageId: 'receipt-1' }
     },
-    undefined,
+    withMedia?{
+      send:async()=>{sends++;return {messageId:'synthetic-media-send'}},
+      get:async()=>({kind:'image',mimeType:'image/png',base64:'aW1n'}),
+    }:undefined,
     local,
   )
   const handler = createRequestHandler({
@@ -410,7 +414,7 @@ test('autonomous signed raw Evolution inbound creates shared registration, expos
   const id=f.local.authority!.rememberProviderConversation(raw.data.key.remoteJid)
   assert.equal(f.local.authority!.resolveIdentityActive(raw.data.key.remoteJid),at.id)
   const shown=await (await f.request('/api/atendimentos/'+at.id+'?conversa='+id,'GET',undefined,f.browser)).json()
-  assert.deepEqual(shown.chatIdentity,{name:at.name,phone:at.phone})
+  assert.deepEqual(shown.chatIdentity,{name:at.name,phone:at.phone,conversationId:id})
   const history=await (await f.request('/api/atendimentos/'+at.id+'/evolution-conversations/'+id+'/messages','GET',undefined,f.browser)).json()
   assert.equal(history.items[0]?.text,raw.data.message.conversation)
   assert.equal(f.reads,0);assert.equal(f.sends,0)
@@ -451,4 +455,41 @@ test('signed live-format upsert with redundant identical PN or LID is accepted; 
     assert.equal((await f.sendEvent(conflict)).status, 422)
     assert.equal(repo.list().total, 2)
   } finally { f.db.close() }
+})
+
+
+test('linked history and media require the exact Atendimento link and grant no send capability',async()=>{
+ const f=await fixture(true,true)
+ const previous=process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+ process.env.FUNIX_EVOLUTION_MEDIA_ENABLED='true'
+ try{
+  const jid='5531999990789@s.whatsapp.net',messageId='synthetic-linked-media'
+  f.local.store.ingest(JSON.stringify({schemaVersion:2,instance:'funix_comercial',eventId:messageId,type:'message.upsert',occurredAt:'2026-01-01T00:00:00.000Z',message:{
+   remoteJid:jid,remoteJidAlt:null,messageId,timestamp:1767225600,fromMe:false,kind:'image',text:null,media:null,statuses:[],
+  }}))
+  const repo=new AtendimentoRepository(f.db),original=repo.list().items[0]!
+  const selected=repo.create({name:'Outro Atendimento vinculado'})
+  const outsider=repo.create({name:'Atendimento sem vínculo'})
+  const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid)
+  const links=new V20AssociationRepository(f.db)
+  links.link({conversationId:cid,atendimentoId:selected.id,expectedRevision:1,requestId:randomUUID(),reason:'Vínculo sintético'})
+  links.selectAtendimento(cid,links.listActive(cid).items.find(link=>link.atendimentoId===original.id)!.linkId)
+  const path=(id:string)=>'/api/atendimentos/'+id+'/evolution-conversations/'+cid+'/messages'
+  const linked=await f.request(path(selected.id)+'?scope=linked','GET',undefined,f.browser)
+  assert.equal(linked.status,200)
+  const payload=await linked.json()
+  assert.equal(payload.mediaReadAvailable,true)
+  assert.equal(payload.sendTextAvailable,undefined)
+  assert.equal(payload.mediaSendAvailable,undefined)
+  assert.equal(payload.contextToken,undefined)
+  assert.equal((await f.request(path(selected.id)+'/'+messageId+'/media?scope=linked','GET',undefined,f.browser)).status,200)
+  assert.equal((await f.request(path(outsider.id)+'/'+messageId+'/media?scope=linked','GET',undefined,f.browser)).status,404)
+  assert.equal((await f.request(path(outsider.id)+'?scope=linked','GET',undefined,f.browser)).status,404)
+  assert.equal(authority.resolveIdentityActive(jid),original.id)
+  assert.equal(f.sends,0)
+ }finally{
+  if(previous===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+  else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=previous
+  f.db.close()
+ }
 })

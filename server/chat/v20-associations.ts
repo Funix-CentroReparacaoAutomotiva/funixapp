@@ -1,3 +1,4 @@
+import {CustomerRepository} from '../customers.ts'
 import {ConversationIdentities} from './conversation-identities.ts'
 import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { createHash, randomUUID } from 'node:crypto'
@@ -204,6 +205,17 @@ export class V20AssociationRepository {
       if (this.db.prepare(
         `SELECT 1 FROM v20_associations WHERE conversation_id IN (${placeholders}) AND atendimento_id=? AND unlinked_at IS NULL`,
       ).get(...ids, atendimentoId)) return conflict()
+      if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='customer_channel_contacts'").get()){
+        this.db.prepare(`INSERT OR IGNORE INTO chat_provider_conversations(id,instance,remote_jid)
+          SELECT id,instance,remote_jid FROM v20_conversations WHERE id=?`).run(conversationId)
+        const provider=this.db.prepare(`SELECT p.id FROM chat_provider_conversations p JOIN v20_conversations v
+          ON v.instance=p.instance AND v.remote_jid=p.remote_jid WHERE v.id=?`).get(conversationId)
+        if(!provider)return missing()
+        const customers=new CustomerRepository(this.db)
+        const contact=customers.resolveChannelContact(String(provider.id))
+        const owner=contact.entityId&&!customers.channelOwnerIsProvisional(contact.entityId)?customers.record(contact.entityId):null
+        customers.reconcileParticipant(atendimentoId,customers.references(atendimentoId),owner,contact)
+      }
       const linkId = randomUUID()
       this.db.prepare(
         'INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)',
@@ -262,8 +274,12 @@ export class V20AssociationRepository {
         `SELECT atendimento_id,conversation_id FROM v20_associations WHERE id=? AND conversation_id IN (${placeholders}) AND unlinked_at IS NULL`,
       ).get(linkId,...scope)
       if (!link) return missing()
+      if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_local_context_holds'").get()){
+        const identityHold=this.db.prepare(`SELECT 1 FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict') LIMIT 1`).get(...scope)
+        if(identityHold)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Revise a identidade do Contato antes de selecionar o contexto.')
+        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason IN ('legacy_cutover_context_review','confirmed_local_context_conflict')`).run(...scope)
+      }
       bump()
-      if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_local_context_holds'").get())this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare(
         'INSERT INTO v20_active_context(conversation_id,link_id) VALUES(?,?) ON CONFLICT(conversation_id) DO UPDATE SET link_id=excluded.link_id',

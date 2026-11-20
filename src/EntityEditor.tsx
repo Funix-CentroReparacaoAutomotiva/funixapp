@@ -5,7 +5,7 @@ import type {CustomerRecord,EntityRecord,EntityContact,EntityContactInput} from 
 import {EvolutionAtendimentoChat} from './chat/ChatPanel'
 import './customer-lines.css'
 const unavailable=()=>{}
-const labels={available:'WhatsApp disponível',unavailable:'Sem WhatsApp',pending:'Verificação pendente',conflict:'Associação precisa de revisão',incomplete:'Informe o número completo com + e DDI'}
+const labels={available:'WhatsApp disponível',unavailable:'Sem WhatsApp',pending:'Verificação pendente',conflict:'Associação precisa de revisão',incomplete:'Informe o número completo com DDD ou com + e DDI'}
 export function EntityContacts({contacts,onRefresh}:{contacts:EntityContact[];onRefresh?:()=>void}) {
  const [chat,setChat]=useState<{contact:EntityContact;conversationId:string;linksEnabled?:boolean;readOnly?:boolean}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false)
  const [drafts]=useState(()=>new Map<string,string>())

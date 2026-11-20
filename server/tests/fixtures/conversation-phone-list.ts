@@ -1,3 +1,4 @@
+import {removeV25FixtureSchema} from './production.ts'
 import {randomUUID} from 'node:crypto'
 import {openDatabase} from '../../database.ts'
 import {AtendimentoRepository} from '../../atendimentos.ts'
@@ -9,6 +10,7 @@ import {loadConversationRuntime} from '../../chat/conversation-runtime.ts'
 /** Entirely invented. Real normalizer, persistence and bridge; only provider transport is fake. */
 export function conversationPhoneFixture(localRead=false){
  const db=openDatabase(':memory:'),at=new AtendimentoRepository(db),links=new V20AssociationRepository(db)
+ removeV25FixtureSchema(db)
  const runtime=localRead?loadConversationRuntime({FUNIX_CHAT_LOCAL_ENABLED:'true',FUNIX_CHAT_LOCAL_READ_ENABLED:'true'},db):undefined
  let rows:Record<string,unknown>[]=[],offline=false,sends=0,historyCalls=0
  const provider=new EvolutionReadPoc({instance:'funix_comercial',instanceId:'synthetic-phone-instance',transport:async request=>{
@@ -24,7 +26,7 @@ export function conversationPhoneFixture(localRead=false){
  }
  function addAt(phone:string,linkedContact=true){
   const record=at.create({name:'Ficha sintética',...(linkedContact?{}:{phone})})
-  if(linkedContact){const id=randomUUID();db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(id,JSON.stringify({text:phone}));db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,?,?)").run(record.id,id,JSON.stringify({id,text:phone}))}
+  if(linkedContact){const id=randomUUID();db.prepare("INSERT INTO customer_records(id,kind,data,phone_normalized) VALUES(?,'contact',?,?)").run(id,JSON.stringify({text:phone}),phone);db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,?,?)").run(record.id,id,JSON.stringify({id,text:phone}))}
   return record
  }
  function link(jid:string,atendimentoId:string){const cid=links.rememberConversation('funix_comercial',jid).conversationId,list=links.listActive(cid);return {cid,result:links.link({conversationId:cid,atendimentoId,expectedRevision:list.revision,requestId:randomUUID(),reason:'Explicit synthetic link'})}}

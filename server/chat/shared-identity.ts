@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone as normalizePhone} from '../phone.ts'
 import {ServiceError} from '../errors.ts'
 import {inputObject,transaction} from '../scenarios.ts'
 import {ConversationIdentities} from './conversation-identities.ts'
@@ -58,14 +58,14 @@ export class SharedConversationIdentity {
     })
     const owner=contact?.entityId?this.customers.record(contact.entityId):null
     const token=digest([conversationId,members,phone,handles,matches,targets,owner])
-    return {jid,phone,blocked,contact,owner,targets,token}
+    return {jid,phone,blocked,contact,owner,targets,token,handles}
   }
 
   preview(conversationId:string) {
     const {phone,blocked,owner,contact,targets,token}=this.inspect(conversationId)
     return {
       phone,blocked,token,
-      owner:owner?{id:owner.id,text:owner.text,confirmed:!!contact?.conversationId}:null,
+      owner:owner&&!this.customers.canReplaceProvisionalOwner(owner.id)?{id:owner.id,text:owner.text,confirmed:!!contact?.conversationId}:null,
       targets:targets.map(({id,name,refs})=>({id,name,reconciled:!!(owner&&contact?.conversationId&&refs.person.some(person=>person.id===owner.id)&&refs.contact.some(ref=>ref.id===contact.id)),people:refs.person.flatMap((person,index)=>
         person.text?[{id:person.id,text:person.text,index}]:[])})),
     }
@@ -73,10 +73,8 @@ export class SharedConversationIdentity {
 
   forAtendimento(conversationId:string,atendimentoId:string) {
     const {blocked,contact,owner,targets}=this.inspect(conversationId)
-    if(blocked||!contact?.conversationId||!owner||!normalizePhone(contact.text))return null
-    const refs=targets.find(target=>target.id===atendimentoId)?.refs
-    if(!refs?.person.some(person=>person.id===owner.id)||!refs.contact.some(ref=>ref.id===contact.id))return null
-    return {name:owner.text,phone:contact.text}
+    if(blocked||!contact?.conversationId||!owner||!targets.some(target=>target.id===atendimentoId))return null
+    return {name:owner.text,phone:normalizePhone(contact.text)??''}
   }
 
   confirm(conversationId:string,body:unknown) {
@@ -92,24 +90,34 @@ export class SharedConversationIdentity {
       const receipt=this.db.prepare('SELECT digest,result_json FROM v20_association_receipts WHERE conversation_id=? AND request_id=?').get(conversationId,requestId)
       if(receipt){
         if(receipt.digest!==key)return review('Esta confirmação já foi usada com outros dados.')
-        return JSON.parse(String(receipt.result_json)) as {entityId:string;contactId:string;atendimentoId:string|null}
+        const {entityId,contactId,atendimentoId}=JSON.parse(String(receipt.result_json)) as {entityId:string;contactId:string;atendimentoId:string|null}
+        return {entityId,contactId,atendimentoId}
       }
       const view=this.inspect(conversationId)
       if(view.token!==token)return review('A conversa ou a ficha mudou. Atualize os dados antes de confirmar.')
       if(!view.phone||view.blocked)return review('Número ou titularidade precisa de revisão.')
       const target=view.targets.find(row=>row.id===atendimentoId)
       if(view.targets.length?!target:atendimentoId!==null)return invalid()
-      if(view.owner&&view.owner.id!==entityId)return review('Este telefone já pertence a outra pessoa. Titularidade preservada.')
+      if(view.owner&&view.owner.id!==entityId&&!this.customers.canReplaceProvisionalOwner(view.owner.id))return review('Este telefone já pertence a outra pessoa. Titularidade preservada.')
       const entity=entityId?this.customers.record(entityId):null
       if(entity&&entity.kind!=='entity')return invalid()
       const label=entity?.text??String(name).trim()
       const legacy=target?.refs.person[Number(legacyIndex)]
       if(legacyIndex!==undefined&&(!legacy||legacy.id||legacy.text!==label))return review('O nome escolhido deve corresponder à pessoa informada na ficha.')
       const channel=this.identities.rememberProviderConversation(view.jid)
-      const {person,contact}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel)
+      const {person,contact,receipted}=this.customers.confirmChannelContact(entity,label,view.contact,view.phone,channel,
+        {conversationId,requestId,digest:key,atendimentoId:target?.id??null})
+      this.customers.confirmChannelOwnerLabel(person.id)
       if(target)this.customers.reconcileParticipant(target.id,target.refs,person,contact,legacyIndex===undefined?undefined:Number(legacyIndex))
+      if(view.handles.length){
+        const placeholders=view.handles.map(()=>'?').join(',')
+        const cleared=this.db.prepare(`DELETE FROM chat_local_context_holds WHERE reason='autonomous_contact_conflict'
+          AND conversation_id IN (${placeholders})`).run(...view.handles)
+        if(cleared.changes)this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1
+          WHERE id IN (${placeholders})`).run(...view.handles)
+      }
       const result={entityId:person.id,contactId:contact.id,atendimentoId:target?.id??null}
-      this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
+      if(!receipted)this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
       return result
     })
   }

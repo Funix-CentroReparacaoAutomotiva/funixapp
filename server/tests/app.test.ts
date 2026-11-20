@@ -117,12 +117,14 @@ test('creates, searches, edits and reopens local Atendimento without any Coda or
   globalThis.fetch = async () => { networkCalls += 1; throw new Error('No network permitted in local commercial') }
   try {
     const cookie = await authenticate(app)
-    const created = await app.write('/api/atendimentos', 'POST', { phone: '+55 (11) 99999-1000' }, cookie)
+    const created = await app.write('/api/atendimentos', 'POST', { phone: '+55 (11) 99999-1000',name:'Contato de teste' }, cookie)
     assert.equal(created.status, 201)
     const record = await created.json()
     assert.match(record.id, /^[\da-f-]{36}$/)
     assert.equal(record.phoneNormalized, '+5511999991000')
-    assert.equal(record.name, '')
+    assert.equal(record.name, 'Contato de teste')
+    assert.ok(record.references.person[0].id)
+    assert.ok(record.references.contact[0].id)
     const update = await app.write(`/api/atendimentos/${record.id}`, 'PATCH', { revision: record.revision, name: 'Contato de teste', plate: 'TESTE01', notes: 'Primeira revisão' }, cookie)
     assert.equal(update.status, 200)
     const updated = await update.json()
@@ -438,5 +440,32 @@ test('real PDF preview endpoint is authenticated, same-origin, inline/no-store a
   assert.match(Buffer.from(await response.arrayBuffer()).toString('latin1'),/^%PDF/)
   assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM budget_emission_attempts').get()!.n,0)
   assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM budget_versions').get()!.n,0)
+ }finally{app.close()}
+})
+
+test('manual Atendimento resolves a phone transactionally and requires explicit reuse of an existing owner',async()=>{
+ const app=start()
+ try{
+  const cookie=await authenticate(app)
+  const first=await app.write('/api/atendimentos','POST',{name:'Titular sintético',phone:'(31) 99999-0182'},cookie)
+  assert.equal(first.status,201)
+  const saved=await first.json()
+  const contact=saved.references.contact[0]
+  assert.ok(contact.id)
+  assert.equal((await app.write('/api/atendimentos','POST',{name:'Nome diferente',phone:'5531999990182'},cookie)).status,409)
+  const next=await app.write('/api/atendimentos','POST',{references:{person:[],contact:[contact],vehicle:[],payer:[]}},cookie)
+  assert.equal(next.status,201)
+  const reused=await next.json()
+  assert.equal(reused.references.contact[0].id,contact.id)
+  assert.equal(reused.references.person[0].id,saved.references.person[0].id)
+  assert.equal(app.repository.list().total,2)
+  const newPhone=await app.write('/api/atendimentos/'+saved.id,'PATCH',{revision:saved.revision,phone:'(31) 99999-0183'},cookie)
+  assert.equal(newPhone.status,200)
+  const updated=await newPhone.json()
+  assert.equal(updated.references.person[0].id,saved.references.person[0].id)
+  assert.notEqual(updated.references.contact[0].id,contact.id)
+  const removed=await app.write('/api/atendimentos/'+saved.id,'PATCH',{revision:updated.revision,references:{...updated.references,contact:[]}},cookie)
+  assert.equal(removed.status,200)
+  assert.equal((await removed.json()).phone,'')
  }finally{app.close()}
 })

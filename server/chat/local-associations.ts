@@ -4,7 +4,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { ConversationIdentities, type ConversationAssociationReader } from './conversation-identities.ts'
 import {ServiceError} from '../errors.ts'
 import {CustomerRepository} from '../customers.ts'
-import {normalizePhone} from '../atendimentos.ts'
+import {normalizeCustomerPhone,normalizePhone} from '../phone.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { conversationNames, type NamePart, type CommercialConversation } from '../../shared/customer.ts'
 import type { ConversationEvent } from './conversation-event.ts'
@@ -73,21 +73,30 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const repository=new AtendimentoRepository(this.db),record=repository.get(at,true)
       if(record.revision!==revision)throw new ServiceError(409,'VERSION_CONFLICT','Salve e atualize o Atendimento antes de abrir a conversa.')
       if(!Number.isSafeInteger(index)||index<0||index>=100)throw new ServiceError(400,'INVALID_REFERENCE','Contato inválido.')
-      const ref=record.references?.contact[index],phone=ref?normalizePhone(ref.text):null
-      const knownContact=ref?.id?new CustomerRepository(this.db).record(ref.id):null
+      const ref=record.references?.contact[index],phone=ref?normalizeCustomerPhone(ref.text):null
+      const customers=new CustomerRepository(this.db)
+      const knownContact=ref?.id?customers.record(ref.id):null
       const existingJid=knownContact?.conversationId?this.providerJid(knownContact.conversationId):null
-      if(!ref||(!phone&&!existingJid))throw new ServiceError(400,'PHONE_COUNTRY_REQUIRED','Informe o telefone completo com + e DDI antes de abrir a conversa.')
+      if(!ref||(!phone&&!existingJid))throw new ServiceError(400,'PHONE_COUNTRY_REQUIRED','Informe o telefone completo com DDD ou com + e DDI antes de abrir a conversa.')
       const jid=existingJid??phone!.slice(1)+'@s.whatsapp.net',members=this.members(jid)
       if(!members)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Identidade do canal precisa de revisão.')
       const links=this.links(jid),linked=links.find(l=>l.atendimento_id===at)
       const messages=this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(instance,...members)
       if(!linked&&(links.length||messages))throw new ServiceError(409,'CHAT_EXPLICIT_LINK_REQUIRED','Já existe histórico para este canal. Associe explicitamente pela lista de Conversas; editar o telefone não transfere histórico.')
+      const matches=phone?customers.phoneMatches(phone):[]
+      const matched=matches[0]??null
+      if(matches.length>1||knownContact&&matched&&matched.id!==knownContact.id)
+        throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Número com cadastro conflitante. Revise a associação antes de abrir a conversa.')
+      if(!knownContact&&matched?.entityId&&!record.references?.person.some(person=>person.id===matched.entityId))
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Selecione o titular e o Contato cadastrados antes de abrir a conversa.')
+      const selected=knownContact??matched
       const id=this.rememberProviderConversation(jid),linkId=linked?String(linked.id):randomUUID()
+      const contact=customers.resolveChannelContact(id,selected?.id)
       if(!linked){this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(linkId,id,at,this.now(),'operator','explicit_saved_contact');this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)}
-      const known=this.db.prepare('SELECT id FROM customer_records WHERE conversation_id=?').get(id),contactId=known?String(known.id):ref.id??randomUUID()
-      if(!known){if(ref.id)this.db.prepare('UPDATE customer_records SET conversation_id=?,revision=revision+1 WHERE id=? AND conversation_id IS NULL').run(id,ref.id);else this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,?)").run(contactId,JSON.stringify({text:phone,channelState:'informed'}),id)}
-      const refs=record.references!;refs.contact[index]={id:contactId,text:phone??ref.text};new CustomerRepository(this.db).saveReferences(at,refs)
-      const scope=this.handles(jid),placeholders=scope.map(()=>'?').join(',')
+      const scope=this.handles(jid),refs=record.references!
+      refs.contact[index]={id:contact.id,text:contact.text}
+      customers.saveReferences(at,refs)
+      const placeholders=scope.map(()=>'?').join(',')
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
       this.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(linked?linked.conversation_id!:id,linkId)
       this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${placeholders})`).run(...scope)
@@ -97,7 +106,34 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
   conversationsForAtendimento(at:string) {
     const rows=this.db.prepare('SELECT DISTINCT c.id,c.remote_jid FROM v20_associations l JOIN chat_provider_conversations c ON c.id=l.conversation_id WHERE l.atendimento_id=? AND l.unlinked_at IS NULL').all(at)
-    return rows.filter(r=>!!this.members(String(r.remote_jid))).map(r=>({conversationId:String(r.id),phone:this.members(String(r.remote_jid))?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null}))
+    const items=new Map<string,{conversationId:string;aliases:string[];phone:string|null;linkedHistory:boolean;blocked:boolean}>()
+    for(const row of rows){
+      const jid=String(row.remote_jid),members=this.members(jid)
+      const blocked=!members||this.contextHeld(jid)
+      const id=members?this.rememberProviderConversation(jid):String(row.id)
+      const aliases=members?this.handles(jid):[id]
+      items.set(id,{conversationId:id,aliases,
+        phone:blocked?null:members?.find(member=>member.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,
+        linkedHistory:!blocked&&this.resolveIdentityActive(jid)!==at,blocked})
+    }
+    return [...items.values()]
+  }
+  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+    const jid=this.providerJid(conversationId)
+    if(!jid||!this.members(jid)||this.contextHeld(jid))return null
+    return this.links(jid).some(link=>link.atendimento_id===atendimentoId)?jid:null
+  }
+  canonicalChannelSendAllowed(jid:string) {
+    const members=this.members(jid)
+    const pn=members?.find(member=>member.endsWith('@s.whatsapp.net'))
+    const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
+    if(!phone||this.contextHeld(jid))return false
+    const scope=this.handles(jid)
+    const contacts=this.db.prepare(`SELECT c.id,c.phone_normalized FROM customer_records c
+      JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
+      WHERE c.kind='contact' AND c.conversation_id IN (${scope.map(()=>'?').join(',')})`).all(...scope)
+    return contacts.length===1&&contacts[0]!.phone_normalized===phone&&
+      new CustomerRepository(this.db).phoneMatches(phone).every(contact=>contact.id===contacts[0]!.id)
   }
   resolveIdentityJid(at: string): string | null {
     const rows = this.db.prepare('SELECT DISTINCT c.remote_jid FROM v20_associations l JOIN chat_provider_conversations c ON c.id=l.conversation_id WHERE l.atendimento_id=? AND l.unlinked_at IS NULL').all(at)
@@ -139,14 +175,19 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
 
   /** Caller owns the transaction. Add references without rewriting an existing ficha. */
-  ensureInteraction(jid:string, at:string|null, contactId:string|null, phone:string, name:string, reason:string) {
+  ensureInteraction(jid:string, at:string|null, contactId:string, phone:string, name:string, reason:string) {
     const id=this.rememberProviderConversation(jid)
+    const customers=new CustomerRepository(this.db)
+    const assigned=customers.record(contactId)
+    if(!assigned.conversationId||!this.handles(jid).includes(assigned.conversationId))
+      throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O Contato informado não pertence ao canal.')
+    customers.resolveChannelContact(id,contactId,name)
     const previous=this.links(jid)
     const created=!at
     // Only the explicitly assigned Entity participates; provider names and phone text are not identity evidence.
-    const owner=contactId?this.db.prepare(`SELECT e.id,e.data FROM customer_records c
+    const owner=this.db.prepare(`SELECT e.id,e.data FROM customer_records c
       JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
-      WHERE c.id=? AND c.kind='contact'`).get(contactId):undefined
+      WHERE c.id=? AND c.kind='contact'`).get(contactId)
     const ownerName=owner?String(JSON.parse(String(owner.data)).text??''):null
     at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified'},true).id
     let referencesChanged=false
@@ -163,16 +204,16 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         this.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(id,linkId)
       }
     }
-    if(contactId&&!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='contact' AND record_id=?").get(at,contactId)){
+    if(!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='contact' AND record_id=?").get(at,contactId)){
       const old=this.db.prepare('SELECT phone FROM atendimentos WHERE id=?').get(at)!
       const position=Number(this.db.prepare("SELECT COALESCE(MAX(position),-1)+1 AS n FROM atendimento_references WHERE atendimento_id=? AND kind='contact'").get(at)!.n)
       const add=this.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'contact',?,?,?)")
-      const keepPrevious=position===0&&!created&&old.phone&&old.phone!==phone
+      const keepPrevious=position===0&&!created&&old.phone&&String(old.phone)!==phone&&(!phone||normalizeCustomerPhone(String(old.phone))!==phone)
       if(keepPrevious)add.run(at,0,null,JSON.stringify({id:null,text:String(old.phone)}))
       add.run(at,keepPrevious?1:position,contactId,JSON.stringify({id:contactId,text:phone}))
       referencesChanged=true
     }
-    if(owner&&!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='person' AND record_id=?").get(at,owner.id!)){
+    if(owner&&(this.unifiedCustomers||!customers.channelOwnerIsProvisional(String(owner.id))||reason==='confirmed_contact_send')&&!this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='person' AND record_id=?").get(at,owner.id!)){
       const people=this.db.prepare("SELECT position,record_id,data FROM atendimento_references WHERE atendimento_id=? AND kind='person' ORDER BY position").all(at)
       const ref=JSON.stringify({id:String(owner.id),text:ownerName??''})
       const add=this.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'person',?,?,?)")
@@ -201,27 +242,33 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const plan=this.interaction(jid), id=this.rememberProviderConversation(jid)
     const timestamp=new Date(e.message.timestamp!*1000).toISOString()
     if(e.message.fromMe!==false){
-      if(plan.at)this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
+      if(plan.at&&this.canonicalChannelSendAllowed(jid))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
       return
     }
     const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
     const prior=this.db.prepare(`SELECT 1 FROM conversation_initialization WHERE conversation_id IN (${scope})`).get(...handles)
     const phone=members.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]
     const initial={phone:phone?'+'+phone:'',name:e.displayName??'',source:'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
-    const channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
+    let channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
+    if(!plan.blocked&&initial.phone&&e.message.remoteJidAlt&&channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id){
+      const alias=customers.record(String(channels[0]!.id))
+      const origin=alias.conversationId?this.providerJid(alias.conversationId):null
+      if(origin?.endsWith('@lid')&&customers.reconcileChannelAlias(alias,matches[0]!,initial.phone,handles))
+        channels=[{id:matches[0]!.id}]
+    }
     const known=channels.length===1?customers.record(String(channels[0]!.id)):matches.length===1?matches[0]!:null
     const confirmedPhone=normalizePhone(initial.phone)
     const incompatible=!!known&&(!!known.conversationId&&!handles.includes(known.conversationId)||
-      !!known.text&&!!confirmedPhone&&normalizePhone(known.text)!==confirmedPhone)
-    const contactConflict=channels.length>1||matches.length>1||
+      !!known.text&&!!confirmedPhone&&normalizeCustomerPhone(known.text)!==confirmedPhone)
+    const contactConflict=!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
-      (this.unifiedCustomers&&incompatible)
+      incompatible
     const blocked=plan.blocked||contactConflict
     // Keep the received message, but require explicit review before associating
     // or sending against a contradictory Contact in autonomous mode.
-    if(this.unifiedCustomers&&contactConflict)
+    if(contactConflict)
       this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
     const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
     let at:string|null=null
@@ -239,11 +286,8 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         // authenticated PN evidence arrives. Never use the LID digits as a number.
         contactId=customers.createUnnumberedChannelContact(initial.name,id).contact.id
       // Compatibility path for previously separate registrations; no inferred owner.
-      }else if(!contactId&&!matches.length){
-        contactId=randomUUID()
-        this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,?,?)")
-          .run(contactId,JSON.stringify({text:initial.phone,channelState:'response_received'}),id,initial.phone||null)
-      }else if(contactId){
+      }else {
+        contactId=customers.resolveChannelContact(id,known?.id,initial.name).id
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
       }
       at=this.ensureInteraction(jid,plan.at,contactId,initial.phone,initial.name,'authenticated_inbound')
@@ -285,7 +329,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       const contact=named(canonical)?canonical:contacts.find(c=>scope.ids.includes(String(c.conversation_id))&&named(c))??canonical,data=contact?JSON.parse(String(contact.data)):null
       const entity=scope.members&&contact?.entity_id?new CustomerRepository(this.db).record(String(contact.entity_id)):null
       const last=messages.find(m=>m.handle===scope.id)
-      result.set(scope.jid,{phoneNumber:scope.members?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,...(contact?{contactId:String(contact.id)}:{}),names:entity?[{name:entity.text,entityId:entity.id}]:conversationNames(data?.nickname??null,null,scope.members?people:[]),atendimentoCount:scope.members?new Set(related.map(l=>l.atendimento_id)).size:0,preview:last?(last.text?String(last.text):'Mídia ou mensagem indisponível'):null,profilePhoto:null,unreadCount:Number(unread.find(u=>u.handle===scope.id)?.n??0),lastMessageAt:last?String(last.occurred_at):null})
+      result.set(scope.jid,{phoneNumber:scope.members?.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]??null,...(contact?{contactId:String(contact.id)}:{}),names:entity&&this.unifiedCustomers?[{name:entity.text,entityId:entity.id}]:conversationNames(data?.nickname??null,null,scope.members?people:[]),atendimentoCount:scope.members?new Set(related.map(l=>l.atendimento_id)).size:0,preview:last?(last.text?String(last.text):'Mídia ou mensagem indisponível'):null,profilePhoto:null,unreadCount:Number(unread.find(u=>u.handle===scope.id)?.n??0),lastMessageAt:last?String(last.occurred_at):null})
     }
     return result
   }
