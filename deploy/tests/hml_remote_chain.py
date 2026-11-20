@@ -113,10 +113,12 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
             assert request('POST',invalid)[0]==409
             assert not (op/'operation.json').exists()
             assert request('POST',dict(invalid,command='id'))[0]==409
-            for context in (ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT),):
+            no_client=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            no_client.load_verify_locations(cafile=str(cert))
+            for context in (ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT),no_client):
                 try: request('GET',context=context)
                 except (OSError,ssl.SSLError,http.client.HTTPException): pass
-                else: raise AssertionError('untrusted CA accepted')
+                else: raise AssertionError('untrusted CA or missing client certificate accepted')
             for attr,bad in (('fp','0'*64),('source','192.0.2.1')):
                 saved=getattr(server,attr); setattr(server,attr,bad)
                 try:
@@ -142,6 +144,9 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
             while not (ops/'current.json').exists() and time.monotonic()<deadline: time.sleep(.05)
             status=request('GET')[1]; assert status['last_request']['status']=='queued_or_interrupted'
             assert request('POST',armed['request'])[0]==409
+            try: ctl.view()
+            except ctl.Blocked: pass
+            else: raise AssertionError('queued operation allowed new authorization')
             worker('accepted')
             final=request('GET')[1]
             assert final['last_request']['status']=='accepted',final

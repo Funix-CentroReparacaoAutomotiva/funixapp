@@ -1,6 +1,8 @@
 # #274 — fontes recuperados e integração proposta
 
 Somente revisão/CI. Não executar instaladores ou emitir aprovação nesta etapa.
+O [ensaio descartável integrado](REHEARSAL.md) descreve as fronteiras reais,
+as substituições de sudo/systemd e as pendências de validação operacional.
 O README e manifesto recuperados estão em recovered/. Preservamos os módulos
 originais ali; rootctl.py, transport.py e control.py no diretório principal são
 as variantes propostas. O worker permanece dentro de rootctl.py. Nenhum teste
