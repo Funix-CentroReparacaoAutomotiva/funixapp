@@ -44,6 +44,19 @@ class HmlCiliaPreviewGuardTests(unittest.TestCase):
         env["FUNIX_CILIA_WRITE_ENABLED"] = "false"
         self.assertEqual(isolation.environment("api", env, REVISION), env)
 
+    def test_cilia_compose_and_runtime_presence_must_match(self):
+        for flag in (isolation.CILIA_PREVIEW, isolation.CILIA_WRITE):
+            with self.subTest(flag=flag):
+                # The original release has neither flag in either layer.
+                isolation.cilia_runtime_parity({}, {})
+                with self.assertRaisesRegex(ValueError, "runtime flag differs"):
+                    isolation.cilia_runtime_parity({flag: "true"}, {})
+                with self.assertRaisesRegex(ValueError, "runtime flag differs"):
+                    isolation.cilia_runtime_parity({}, {flag: "true"})
+                with self.assertRaisesRegex(ValueError, "runtime flag differs"):
+                    isolation.cilia_runtime_parity({flag: "false"}, {flag: "true"})
+                isolation.cilia_runtime_parity({flag: "false"}, {flag: "false"})
+
     def test_explicit_write_true_rejected_with_preview_on_or_off(self):
         for preview in ("true", "false"):
             with self.subTest(preview=preview):
