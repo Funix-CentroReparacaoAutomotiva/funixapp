@@ -15,9 +15,7 @@ O piloto preparou e instalou o candidato #257: preparação n8n #40621, despacho
 - Workflow n8n manual, OFF por padrão, parâmetros estruturados e escopo funix-hml; mesma autenticação mTLS, sem desativar verificação TLS, sem retry de POST. Consultar ticket real e solicitar somente operação explicitamente autorizada, com correspondência exata da seleção solicitada. Despacho não é aceite: consultar journal e diagnóstico até conclusão, não repetir após timeout.
 - Preservar as invariantes do atualizador oficial: backup antes da atualização, isolamento, saúde/HTTPS/autenticação, gate, rollback automático quando aplicável, evidência e recuperação de interrupção. Não rodar código arbitrário do candidato como root. Consolidar revisão do adaptador REST e retry HTTPS em código/testes (#271/#272), não em patches manuais permanentes.
 
-## Incremento B — aprovação móvel independente (alternativa preferencial a validar)
-
-### Entrega DEV do Incremento A — limite verificável da branch #285
+## Entrega DEV do Incremento A — limite verificável da branch #285
 
 Inventário na base 9a0e0a94: deploy contém hml-update.py (prepare_operation,
 installed_preflight, checked_update_package, execute_operation), transação,
@@ -56,6 +54,8 @@ journal até accepted/restored/pending; queued não significa aceite. Nenhum
 workflow n8n, credencial ou autorização foi criado/modificado nesta entrega.
 Implantação futura exige fontes revisados, migração administrativa reversível,
 CI, decisão PO e autorização separadas. Incremento B não foi iniciado.
+
+## Incremento B — aprovação móvel independente (alternativa preferencial a validar)
 
 Usar GitHub Environment dedicado de **aprovação HML**, não runner com acesso VPS. Workflow em main confiável, apenas solicitação/revisão, sem deploy, segredos VPS ou acesso de rede privado. Conferir disponibilidade e interface móvel no GitHub antes de adotar. A direção revisa a solicitação exata e aprova ou rejeita. Referências: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/review-deployments e https://docs.github.com/en/rest/actions/workflow-runs#get-the-review-history-for-a-workflow-run.
 
