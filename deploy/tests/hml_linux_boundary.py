@@ -150,7 +150,7 @@ def main():
             assert run('systemctl','show',UNITS[0],'-p',field,'--value').stdout.decode().strip()==value
         assert run('systemctl','show',UNITS[1],'-p','Restart','--value').stdout.strip()==b'no'
         client=ssl.create_default_context(cafile=str(TLS/'ca.crt')); client.load_cert_chain(TLS/'server.crt',TLS/'server.key')
-        def http(method):
+        def query_https(method):
             conn=http.client.HTTPSConnection('localhost',port,context=client,timeout=5)
             try:
                 conn.request(method,'/v1/status' if method=='GET' else '/v1/update',
@@ -158,8 +158,8 @@ def main():
                 response=conn.getresponse(); return response.status,json.loads(response.read())
             finally: conn.close()
         wait_for(lambda: listening(port))
-        assert http('GET')[0]==200
-        assert http('POST')[0]==202
+        assert query_https('GET')[0]==200
+        assert query_https('POST')[0]==202
         wait_for(lambda: (STATE/'done').exists())
         wait_for(lambda: run('systemctl','is-active',UNITS[1],check=False).returncode!=0)
         assert (STATE/'starts').read_text().splitlines()==['start']
