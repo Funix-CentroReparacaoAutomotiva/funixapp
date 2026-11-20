@@ -147,10 +147,13 @@ async def device_case(browser, width, height):
         await ctx.route("**/api/atendimentos?*", mock)
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Alfa", exact=True).click()
-        await page.get_by_text("Gerenciar vínculos", exact=True).click()
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
         await expect(panel).to_be_visible()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
+        await expect(page.get_by_role("dialog").get_by_role("button", name="Novo Atendimento")).to_be_visible()
+        await page.get_by_role("button", name="Fechar detalhes").click()
+        await page.locator(".conversation-row").filter(has_text="Contato Sintético Alfa").get_by_role("button", name="Detalhes: 0 Atendimentos").click()
+        await expect(panel).to_be_visible()
         await page.screenshot(path=str(ARTIFACTS / f"{width}-vazio.png"))
         h.mark(f"{width}px: opted-in UI, empty links, no duplicate chat history")
 
@@ -170,7 +173,7 @@ async def device_case(browser, width, height):
         await panel.get_by_role("textbox", name="Motivo para vincular ou desvincular").fill("Segundo Atendimento")
         state["fail_next_link"] = True
         await panel.get_by_role("button", name="Vincular", exact=True).click()
-        await expect(panel.get_by_role("alert")).to_contain_text("Vínculo alterado")
+        await expect(panel.get_by_role("alert")).to_be_visible()
         assert state["revision"] == 1 and len(state["links"]) == 1
         await panel.get_by_role("button", name="Vincular", exact=True).click()
         await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(2)
@@ -198,7 +201,6 @@ async def device_case(browser, width, height):
 
         await page.get_by_role("button", name="Fechar detalhes").click()
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Beta", exact=True).click()
-        await page.get_by_text("Gerenciar vínculos", exact=True).click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
         h.mark(f"{width}px: conversation switch isolates manual association panels")
 

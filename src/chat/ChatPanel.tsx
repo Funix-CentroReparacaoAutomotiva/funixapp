@@ -202,7 +202,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
     lastCheckedAt.current = Date.now()
     if (!silent) { autoPaused.current = false; setAutoError(false); setBusy(true); setFailure('') }
     try {
-      const raw = await api<unknown>(`${apiBase}/messages?page=${page}${linkedHistory?'&scope=linked':''}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
+      const raw = await api<unknown>(`${apiBase}/messages?page=${page}${linkedHistory?'&scope=linked':readOnly?'&scope=technical':''}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
       setCanSendText(!readOnly&&!linkedHistory&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
@@ -210,7 +210,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setCanMedia(!readOnly&&!linkedHistory&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
       setLocalHistory(result.source==='local'&&!contactId&&!readOnly&&!linkedHistory)
-      if(result.nextCursor&&!readOnly)cursors.current.set(page+1,result.nextCursor)
+      if(result.nextCursor)cursors.current.set(page+1,result.nextCursor)
       const refreshed:ReadUiMessage[]=[]
       if(!readOnly&&!linkedHistory&&result.source==='local'&&page===1){
         const recent=new Set(result.items.map(item=>item.messageId))
@@ -254,13 +254,13 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setCanMedia(false)
       setCanReadMedia(false)
       contextToken.current=null
-      if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
+      if (error.status === 404 || error.code === 'CHAT_IDENTITY_CONFLICT' || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
         itemsRef.current = []
         setItems([])
-        setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
+        setFailure(error.message + (error.requestId ? ` Referência: ${error.requestId}.` : ''))
       } else if (silent) { autoPaused.current = true; setAutoError(true); return }
       else {
-        const detail = error.code?.startsWith('CHAT_PROVIDER_') ? error.message : 'Não foi possível carregar o histórico Evolution. Tente novamente.'
+        const detail = error.code ? error.message : 'Não foi possível carregar o histórico Evolution. Tente novamente.'
         setFailure(detail + (error.requestId ? ` Referência: ${error.requestId}` : ''))
       }
       autoPaused.current = true
@@ -393,13 +393,14 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
           setNewMessages(0)
         }}>Ver {newMessages} {newMessages === 1 ? 'nova mensagem' : 'novas mensagens'}</button>}
         {syncFailure && <p role="status">{syncFailure}</p>}
+        {linkedHistory&&<p role="status">Histórico para leitura. O envio depende do contexto confirmado.</p>}
         {localHistory && <small className="chat-auto-state">Histórico salvo no FunixApp · histórico anterior pode estar incompleto</small>}
         {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           
-          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canReadMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canReadMedia} linkedHistory={linkedHistory}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canReadMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId||readOnly?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canReadMedia} linkedHistory={linkedHistory}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}

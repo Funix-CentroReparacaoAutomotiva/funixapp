@@ -23,17 +23,19 @@ function phoneLine(row:ConversationRow){
  if(row.atendimentoPhone)return {text:'Ficha: +'+row.atendimentoPhone,hint:'Número cadastrado no Atendimento; não confirma que seja o número desta conversa WhatsApp'}
  return {text:'Telefone pendente',hint:'Número do WhatsApp ainda não confirmado'}
 }
-type Links={items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
-export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string)=>void}) {
+type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
+export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento,onCreateAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onCreateAtendimento?:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
+ const [management,setManagement]=useState(false),[opening,setOpening]=useState(false)
+ const openingRequest=useRef<AbortController|null>(null)
  const [source,setSource]=useState<'evolution'|'local'>('evolution')
  const extraPagesLoaded=useRef(false),lastRefresh=useRef(Date.now())
  const [verified,setVerified]=useState<{conversationId:string;contact:EntityContact}|null>(null),[drafts]=useState(()=>new Map<string,string>())
  const [confirmedName,setConfirmedName]=useState(''),[sending,setSending]=useState(false)
  const contact=verified?.conversationId===selected?.conversationId?verified?.contact??null:null
  const dialog=useRef<HTMLDialogElement>(null),request=useRef<AbortController|null>(null)
- const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else setError((e as Error).message||'Não foi possível carregar as conversas.')},[onUnauthorized])
+ const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else {const failure=e as RequestFailure;setError([failure.message||'Não foi possível carregar as conversas.',failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' '))}},[onUnauthorized])
  const load=useCallback(async(skip:number,signal:AbortSignal)=>{
   setBusy(true);setError('')
   try{const result=parseConversationList(await api('/api/chat/conversations?skip='+skip,{signal}));if(signal.aborted)return;setRows(p=>skip?[...p,...result.items.filter(r=>!p.some(x=>x.conversationId===r.conversationId))]:result.items);setNext(result.nextSkip);setSource(result.source);extraPagesLoaded.current=skip>0;setAvailable(true);setLinksEnabled(result.linksEnabled===true)}
@@ -41,7 +43,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  },[fail])
  useEffect(()=>{const c=new AbortController();request.current=c;void load(0,c.signal);return()=>c.abort()},[load,version])
  useEffect(()=>{if(selected&&!dialog.current?.open)dialog.current?.showModal()},[selected])
- useEffect(()=>()=>request.current?.abort(),[])
+ useEffect(()=>()=>{request.current?.abort();openingRequest.current?.abort()},[])
  // Bounded refresh of the first page only. Never poll in hidden tabs, dialogs, or
  // after loading more offset pages (refresh would discard/shift that pagination).
  // This is provider polling, not a replacement for authenticated event ingestion.
@@ -57,26 +59,42 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  },[busy,selected])
  useEffect(()=>{
   const id=selected?.commercial?.contactId
-  if(!id||!selected)return
+  if(!management||!id||!selected)return
   const controller=new AbortController(),conversationId=selected.conversationId
   void api<EntityContact>('/api/customer-records/'+id,{signal:controller.signal}).then(item=>{
    if(!controller.signal.aborted&&item.whatsapp?.state==='available')setVerified({conversationId,contact:item})
   }).catch(error=>{if(!controller.signal.aborted)fail(error)})
   return ()=>controller.abort()
- },[selected,fail])
- function details(row:ConversationRow){
-  setSelected(row);setLinks(null);setVerified(null);setError('');setConfirmedName('')
+ },[management,selected,fail])
+ function details(row:ConversationRow,manage=false,resolved:Links|null=null){
+  setSelected(row);setManagement(manage);setLinks(resolved);setVerified(null);setError('');setConfirmedName('')
  }
  async function open(row:ConversationRow){
-  if(linksEnabled||row.commercial?.contactId){details(row);return}
-  if((row.commercial?.atendimentoCount??0)!==1&&!row.atendimentoId){details(row);return}
-  try{const value=await api<{atendimentoId:string|null}>('/api/chat/conversations/'+row.conversationId+'/active-atendimento');if(value.atendimentoId)onOpenAtendimento?.(value.atendimentoId,'chat',row.conversationId);else details(row)}catch(e){fail(e)}
- }
- async function choose(row:ConversationRow,linkId:string,id:string){
+  if(openingRequest.current)return
+  const controller=new AbortController()
+  openingRequest.current=controller
+  setOpening(true);setError('')
   try{
-   await api('/api/chat/conversations/'+row.conversationId+'/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId})})
-   setSelected(null);onOpenAtendimento?.(id,'chat',row.conversationId)
-  }catch(e){fail(e)}
+   const base='/api/chat/conversations/'+row.conversationId
+   if(linksEnabled){
+    const value=await api<Links>(base+'/atendimentos',{signal:controller.signal})
+    if(controller.signal.aborted)return
+    const unique=[...new Map(value.items.map(link=>[link.atendimentoId,link])).values()]
+    if(unique.length===1&&!value.readIdentityBlocked&&onOpenAtendimento){
+     const id=unique[0]!.atendimentoId
+     onOpenAtendimento(id,'chat',row.conversationId,value.sendAtendimentoId!==id)
+    }else details(row,false,{...value,items:unique})
+   }else if((row.commercial?.atendimentoCount??0)===1||row.atendimentoId){
+    const value=await api<{atendimentoId:string|null}>(base+'/active-atendimento',{signal:controller.signal})
+    if(controller.signal.aborted)return
+    if(value.atendimentoId)onOpenAtendimento?.(value.atendimentoId,'chat',row.conversationId)
+    else details(row)
+   }else details(row)
+  }catch(e){if(!controller.signal.aborted)fail(e)}
+  finally{openingRequest.current=null;if(!controller.signal.aborted)setOpening(false)}
+ }
+ function choose(row:ConversationRow,id:string){
+  setSelected(null);onOpenAtendimento?.(id,'chat',row.conversationId,true)
  }
  function close(){
   if(sending)return
@@ -92,10 +110,10 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   <div className="ev-list" aria-label="Lista de Conversas">{matches.map(row=>{
    const {parts,label,providerHint}=visibleIdentity(row),count=row.commercial?.atendimentoCount??(row.atendimentoId?1:0),initials=label==='Sem nome'?'':label.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('pt-BR')
    return <article className="conversation-row" key={row.conversationId}>
-    <button className="conversation-hit" aria-label={'Abrir conversa: '+label} onClick={()=>void open(row)}/>
+    <button className="conversation-hit" aria-label={'Abrir conversa: '+label} disabled={opening} onClick={()=>void open(row)}/>
     <ConversationAvatar initials={initials} photo={row.commercial?.profilePhoto??null}/>
     <div className="conversation-info"><strong className="conversation-names" title={label}>{parts.map((p,i)=><span key={i}>{i?' / ':''}{p.name}{p.entityId&&<span className="entity-seal" role="img" aria-label={'Cadastro associado a '+p.name+'; não confirma identidade'} title="Cadastro associado; não confirma identidade"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="7" r="3"/><path d="M3 19c0-4 2-6 6-6 3 0 5 1 6 4m0 0 2 2 5-5"/></svg></span>}</span>)}{providerHint&&<span className="conversation-channel-hint" title="Nome informado pelo canal WhatsApp; identidade não confirmada"> · canal</span>}</strong><span className="conversation-phone" title={phoneLine(row).hint} aria-label={phoneLine(row).hint+': '+phoneLine(row).text}>{phoneLine(row).text}</span><span className="conversation-preview">{row.commercial?.preview??(source==='local'?'Sem mensagens salvas no FunixApp':'Prévia indisponível neste modo')}</span></div>
-    <div className="conversation-right"><button className={'conversation-count '+(count===0?'warning':'')} aria-label={'Detalhes: '+count+' Atendimentos'} onClick={()=>details(row)}>{count===0?'⚠':count>1?count+' atend.':<span aria-hidden="true"> </span>}</button><time dateTime={row.updatedAt??undefined}>{row.updatedAt?messageTime(row.updatedAt):'—'}</time>{!!row.unreadCount&&<span className="conversation-unread" aria-label={row.unreadCount+' mensagens não lidas'}>{row.unreadCount}</span>}</div>
+    <div className="conversation-right"><button className={'conversation-count '+(count===0?'warning':'')} aria-label={'Detalhes: '+count+' Atendimentos'} disabled={opening} onClick={()=>details(row,true)}>{count===0?'⚠':count>1?count+' atend.':<span aria-hidden="true">⋯</span>}</button><time dateTime={row.updatedAt??undefined}>{row.updatedAt?messageTime(row.updatedAt):'—'}</time>{!!row.unreadCount&&<span className="conversation-unread" aria-label={row.unreadCount+' mensagens não lidas'}>{row.unreadCount}</span>}</div>
    </article>
   })}</div>
   {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
@@ -105,10 +123,11 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
      setConfirmedName(identified);setVersion(value=>value+1)
    }}/>}
    {(selected.commercial?.names.length??0)>1&&<ul>{selected.commercial?.names.map((person,index)=><li key={index}>{person.name}</li>)}</ul>}
-   <div className="ev-choice-items">{links?.items.map(link=><button key={link.linkId} disabled={sending} onClick={()=>void choose(selected,link.linkId,link.atendimentoId)}><strong>{links.items.length===1?'Abrir Atendimento':link.name||'Abrir Atendimento'}</strong><span>{[link.name,link.vehicle,link.plate].filter(Boolean).join(' · ')}</span></button>)}</div>
-   {linksEnabled&&<details><summary>Gerenciar vínculos</summary><ConversationLinksPanel conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
-   <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={contact?.whatsapp.conversationId??selected.conversationId}
-     contactId={contact?.id} contactLinksEnabled={linksEnabled} readOnly={!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending}>{null}</EvolutionAtendimentoChat>
+   <div className="ev-choice-items">{links?.items.map(link=><button key={link.linkId} disabled={sending||links.readIdentityBlocked} onClick={()=>choose(selected,link.atendimentoId)}><strong>{links.items.length===1?'Abrir Atendimento':link.name||'Abrir Atendimento'}</strong><span>{[link.name,link.vehicle,link.plate].filter(Boolean).join(' · ')}</span></button>)}</div>
+   {links?.items.length===0&&<div><p>Vincule um Atendimento existente ou crie uma ficha e volte para vinculá-la a esta conversa.</p>{onCreateAtendimento&&<button type="button" onClick={()=>{setSelected(null);onCreateAtendimento()}}>Novo Atendimento</button>}</div>}
+   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
+   <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={(management?contact?.whatsapp.conversationId:null)??selected.conversationId}
+     contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending}>{null}</EvolutionAtendimentoChat>
   </dialog>}
  </section>
 }

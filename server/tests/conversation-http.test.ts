@@ -20,7 +20,7 @@ const PN = '000000000001@s.whatsapp.net',
   origin = 'http://localhost:5173',
   secret = Buffer.alloc(32, 8),
   password = 'synthetic-operator-password'
-async function fixture(autonomous=false,withMedia=false) {
+async function fixture(autonomous=false,withMedia=false,cutover?:string) {
   const db = openDatabase(':memory:')
   createCodaEventSchema(db)
   const repo = new CodaEventSyncRepository(db),
@@ -29,7 +29,7 @@ async function fixture(autonomous=false,withMedia=false) {
         FUNIX_CHAT_LOCAL_ENABLED: 'true',
         FUNIX_CHAT_LOCAL_READ_ENABLED: 'true',
         FUNIX_EVOLUTION_READ_ENABLED: 'true',
-        ...(autonomous?{FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'}:{}),
+        ...(autonomous?{FUNIX_CHAT_AUTONOMOUS_ENABLED:'true',FUNIX_CHAT_AUTONOMOUS_SINCE:cutover}:{}),
       },
       db,
       repo,
@@ -490,6 +490,97 @@ test('linked history and media require the exact Atendimento link and grant no s
  }finally{
   if(previous===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
   else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=previous
+  f.db.close()
+ }
+})
+
+
+test('signed first outgoing message reuses manual owner and opens one Atendimento after cutover',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const customers=new CustomerRepository(f.db),repo=new AtendimentoRepository(f.db)
+  const owner=customers.save({kind:'entity',text:'Titular manual',contacts:[{text:'(31) 99999-0555'},{text:'5531999990556'}]})
+  const contacts=customers.contacts(owner.id)
+  const raw=(number:string,id:string,fromMe=true)=>({...observedEvolutionUpsert,sender:'5531999990888@s.whatsapp.net',
+    data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+      key:{remoteJid:number+'@s.whatsapp.net',remoteJidAlt:null,id,fromMe}}})
+  const first=raw('5531999990555','synthetic-outgoing')
+  assert.equal((await f.sendEvent(first,true)).status,401)
+  const accepted=await Promise.all([f.sendEvent(first),f.sendEvent(first)])
+  assert.ok(accepted.every(response=>response.status===202))
+  assert.deepEqual(await accepted[0]!.json(),await accepted[1]!.json())
+  assert.equal((await f.sendEvent(raw('5531999990555','synthetic-reply',false))).status,202)
+  assert.equal((await f.sendEvent(raw('5531999990555','synthetic-outgoing-next'))).status,202)
+  assert.equal(repo.list().total,1)
+  const atendimento=repo.get(repo.list().items[0]!.id,true)
+  assert.equal(atendimento.references!.person[0]!.id,owner.id)
+  assert.equal(atendimento.references!.contact[0]!.id,contacts.find(contact=>contact.text.startsWith('('))!.id)
+  assert.equal(customers.contacts(owner.id).length,2)
+  assert.equal((await f.sendEvent(raw('5531999990556','synthetic-other-known-number'))).status,202)
+  assert.equal(repo.list().total,2)
+  assert.equal((await f.sendEvent(raw('5531999990557','synthetic-new-number'))).status,202)
+  assert.equal(repo.list().total,3)
+  const old=raw('5531999990558','synthetic-old')
+  old.data.messageTimestamp=1767225599
+  assert.equal((await f.sendEvent(old)).status,202)
+  assert.equal(repo.list().total,3)
+  const self=raw('5531999990888','synthetic-self')
+  assert.equal((await f.sendEvent(self)).status,202)
+  assert.equal(repo.list().total,3)
+  const group=raw('5531999990555','synthetic-group')
+  group.data.key.remoteJid='123456@g.us'
+  assert.equal((await f.sendEvent(group)).status,422)
+  assert.equal(f.sends,0)
+  assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('snapshot-only outgoing history is readable without a link and an explicit link reconciles the manual Contact',async()=>{
+ const f=await fixture(true,true)
+ const mediaFlag=process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+ process.env.FUNIX_EVOLUTION_MEDIA_ENABLED='true'
+ try{
+  const customers=new CustomerRepository(f.db),at=new AtendimentoRepository(f.db)
+  const owner=customers.save({kind:'entity',text:'Titular manual',contacts:[{text:'+5531999990777'}]})
+  const contact=customers.contacts(owner.id)[0]!
+  const jid='5531999990777@s.whatsapp.net',cid=f.local.authority!.rememberProviderConversation(jid)
+  f.local.store.observePage(jid,[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'snapshot-outgoing',timestamp:1767225600,fromMe:true,origin:'unknown',kind:'text',text:'Histórico sintético',media:null,statuses:[]}],1)
+  f.local.store.observePage(jid,[{recordId:'synthetic-image',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'snapshot-image',timestamp:1767225599,fromMe:true,origin:'unknown',kind:'image',text:null,
+    media:{reference:'synthetic',mimeType:'image/png',bytes:4,available:false},statuses:[]}],1)
+  const path='/api/chat/conversations/'+cid+'/messages?scope=technical'
+  assert.equal((await f.request(path)).status,401)
+  const history=await f.request(path,'GET',undefined,f.browser)
+  assert.equal(history.status,200)
+  const payload=await history.json()
+  assert.ok(payload.items.some((item:{messageId:string})=>item.messageId==='snapshot-outgoing'))
+  assert.equal(payload.sendTextAvailable,undefined)
+  assert.equal(payload.mediaReadAvailable,true)
+  const mediaPath='/api/chat/conversations/'+cid+'/messages/snapshot-image/media?page=1'
+  assert.equal((await f.request(mediaPath,'GET',undefined,f.browser)).status,200)
+  assert.equal(at.list().total,0)
+  const saved=at.create({name:'Ficha sintética'})
+  const link=await f.request('/api/chat/conversations/'+cid+'/atendimentos','POST',
+    {expectedRevision:0,requestId:randomUUID(),atendimentoId:saved.id,reason:'Confirmação sintética'},f.browser)
+  assert.equal(link.status,201)
+  assert.equal(at.list().total,1)
+  assert.ok(at.get(saved.id,true).references!.contact.some(item=>item.id===contact.id))
+  assert.equal(customers.record(contact.id).entityId,owner.id)
+  assert.ok((await (await f.request(path,'GET',undefined,f.browser)).json()).items.some((item:{messageId:string})=>item.messageId==='snapshot-outgoing'))
+  f.db.prepare("INSERT INTO chat_local_context_holds VALUES(?,'autonomous_contact_conflict')").run(cid)
+  const conflict=await f.request(path,'GET',undefined,f.browser)
+  assert.equal(conflict.status,409)
+  assert.equal((await conflict.json()).error.code,'CHAT_IDENTITY_CONFLICT')
+  assert.equal((await f.request(mediaPath,'GET',undefined,f.browser)).status,409)
+  const unavailableId=f.local.authority!.rememberProviderConversation('5531999990778@s.whatsapp.net')
+  const unavailable=await f.request('/api/chat/conversations/'+unavailableId+'/messages?scope=technical','GET',undefined,f.browser)
+  assert.equal(unavailable.status,503)
+  assert.equal((await unavailable.json()).error.code,'CHAT_PROVIDER_UNAVAILABLE')
+  assert.equal(f.sends,0)
+ }finally{
+  if(mediaFlag===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
+  else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=mediaFlag
   f.db.close()
  }
 })

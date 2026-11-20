@@ -9,8 +9,10 @@ function description(row: Candidate | Linked): string {
   return [row.name || 'Atendimento sem nome', row.vehicle, row.plate].filter(Boolean).join(' · ')
 }
 function errorText(error: unknown): string {
-  if ((error as RequestFailure).status === 409) return 'Vínculo alterado durante a operação. Atualize e tente novamente.'
-  return 'Não foi possível concluir. Confira os dados e tente novamente.'
+  const failure=error as RequestFailure
+  const message=failure.code==='V20_ASSOCIATION_CONFLICT'?'Vínculo alterado durante a operação. Atualize e tente novamente.':failure.message
+  return [message||'Não foi possível concluir. Confira os dados e tente novamente.',
+    failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' ')
 }
 /** Explicit operator choice only; no phone/PN/LID-based automatic association. */
 export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange, onLinksChange }: {

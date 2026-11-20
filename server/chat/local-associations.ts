@@ -118,9 +118,31 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     }
     return [...items.values()]
   }
-  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+  technicalHistoryJid(conversationId:string) {
     const jid=this.providerJid(conversationId)
-    if(!jid||!this.members(jid)||this.contextHeld(jid))return null
+    if(!jid)return null
+    const conflict=()=>new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Identidade do canal em revisão. Consulte os vínculos antes de abrir o histórico.')
+    const members=this.members(jid)
+    if(!members)throw conflict()
+    const ids=this.handles(jid),scope=ids.map(()=>'?').join(',')
+    if(this.db.prepare(`SELECT 1 FROM chat_local_context_holds
+      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict') LIMIT 1`).get(...ids))
+      throw conflict()
+    const contacts=this.db.prepare(`SELECT id,phone_normalized FROM customer_records
+      WHERE kind='contact' AND conversation_id IN (${scope})`).all(...ids)
+    const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
+    const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
+    const registered=phone?new CustomerRepository(this.db).phoneMatches(phone):[]
+    const contact=contacts[0]
+    if(contacts.length>1||registered.length>1||contact&&(
+      contact.phone_normalized&&contact.phone_normalized!==phone||
+      registered.some(record=>record.id!==contact.id)
+    ))throw conflict()
+    return jid
+  }
+  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+    const jid=this.technicalHistoryJid(conversationId)
+    if(!jid)return null
     return this.links(jid).some(link=>link.atendimento_id===atendimentoId)?jid:null
   }
   canonicalChannelSendAllowed(jid:string) {
@@ -236,19 +258,19 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
 
   /** Caller owns BEGIN IMMEDIATE covering event, message, snapshot and associations. */
-  inbound(e: ConversationEvent, newMessage:boolean) {
+  inbound(e: ConversationEvent, newMessage:boolean,allowOutgoingStart=false) {
     const jid=e.message.remoteJid, members=this.members(jid)
-    if(e.type!=='message.upsert'||!newMessage||!members||this.contextHeld(jid))return
+    if(e.type!=='message.upsert'||e.selfChat||!newMessage||!members||this.contextHeld(jid))return
     const plan=this.interaction(jid), id=this.rememberProviderConversation(jid)
     const timestamp=new Date(e.message.timestamp!*1000).toISOString()
-    if(e.message.fromMe!==false){
+    if(e.message.fromMe!==false&&(!allowOutgoingStart||plan.at)){
       if(plan.at&&this.canonicalChannelSendAllowed(jid))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
       return
     }
     const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
     const prior=this.db.prepare(`SELECT 1 FROM conversation_initialization WHERE conversation_id IN (${scope})`).get(...handles)
     const phone=members.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]
-    const initial={phone:phone?'+'+phone:'',name:e.displayName??'',source:'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
+    const initial={phone:phone?'+'+phone:'',name:e.message.fromMe?'':e.displayName??'',source:e.message.fromMe?'whatsapp_outbound':'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
     let channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
@@ -290,7 +312,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         contactId=customers.resolveChannelContact(id,known?.id,initial.name).id
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
       }
-      at=this.ensureInteraction(jid,plan.at,contactId,initial.phone,initial.name,'authenticated_inbound')
+      at=this.ensureInteraction(jid,plan.at,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
       this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
     }
     if(!prior)this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
