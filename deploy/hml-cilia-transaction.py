@@ -102,8 +102,9 @@ class Transaction:
         require(path.is_file() and not path.is_symlink(), "updater active pointer missing")
         data = json.loads(path.read_text())
         linked = Path(data.get("journal", ""))
-        require(linked.is_absolute() and linked.parent == self.state
-                and linked.name.startswith("op-") and linked.name != self.operation.name,
+        require(linked.is_absolute() and linked.parent.parent == self.state
+                and linked.parent.name.startswith("op-") and linked.name == "operation.json"
+                and linked.parent != self.operation,
                 "unexpected updater journal")
         op = json.loads(linked.read_text())
         require(op.get("phase") in ("accepted", "restored"),
@@ -167,6 +168,14 @@ class Transaction:
                 self.adapter.open_access(plan)
                 self._phase(record, "accepted")
                 return "accepted"
+            if phase == "reverted_pending_open":
+                prior = {"revision": plan["revision"],
+                         "new_contract_sha256": plan["old_contract_sha256"],
+                         "to": plan["from"]}
+                self.adapter.validate(prior)
+                self.adapter.open_access(prior)
+                self._phase(record, "reverted")
+                return "reverted"
             # A prepared-only journal may predate maintenance; adapter.restore
             # must be idempotent and refuse to overwrite unknown changes.
             self.adapter.enter_maintenance()
