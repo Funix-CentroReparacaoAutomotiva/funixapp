@@ -128,7 +128,7 @@ class TransactionTests(unittest.TestCase):
             self.apply()
         self.assertFalse(self.fake.opened)
         self.assertEqual(self.fake.switches, 1)
-        with self.assertRaisesRegex(ValueError, "operation already exists"):
+        with self.assertRaisesRegex(ValueError, "requires recovery"):
             self.apply()
         self.fake.failure = None
         self.assertEqual(self.tx.recover(authorized=True), "reverted")
@@ -165,6 +165,28 @@ class TransactionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "contract digest differs"):
             self.tx.apply(planner.PREVIEW_ONLY, "0" * 64, REV, authorized=True)
         self.assertFalse(self.fake.maintenance)
+
+    def test_previous_pending_cilia_operation_blocks_a_second_operation(self):
+        self.fake.failure = "after_switch"
+        with self.assertRaisesRegex(RuntimeError, "injected crash"):
+            self.apply()
+        second_dir = self.state / "op-cilia-another"
+        second_dir.mkdir(mode=0o700)
+        second_tx = coordinator.Transaction(self.state, second_dir, FakeAdapter())
+        with self.assertRaisesRegex(ValueError, "requires recovery"):
+            second_tx.apply(planner.PREVIEW_ONLY, planner.digest(base()), REV, authorized=True)
+        self.assertFalse(second_tx.adapter.maintenance)
+
+    def test_recovery_rejects_noncurrent_pointer(self):
+        self.fake.failure = "after_switch"
+        with self.assertRaisesRegex(RuntimeError, "injected crash"):
+            self.apply()
+        another_dir = self.state / "op-cilia-other"
+        another_dir.mkdir(mode=0o700)
+        # Recovery must never use a different operation than the active pointer.
+        alternate = coordinator.Transaction(self.state, another_dir, FakeAdapter())
+        with self.assertRaisesRegex(ValueError, "recovery is not current"):
+            alternate.recover(authorized=True)
 
     def test_recovery_requires_explicit_authorization(self):
         with self.assertRaisesRegex(ValueError, "explicit recovery authorization required"):
