@@ -35,11 +35,16 @@ jobs:
   synthetic:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        remote-case: [accepted, auto-restored, interrupted]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - name: Python deployment regression tests
+        if: matrix.remote-case == 'accepted'
         run: python3 -m unittest discover -s deploy/tests -v
       - name: Pull synthetic test images
         run: |
@@ -48,4 +53,4 @@ jobs:
       - name: Real Docker maintenance cycle on disposable runner
         run: |
           test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted python3 deploy/tests/hml_docker_maintenance_cycle.py
+          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted HML_REMOTE_CASE=${{ matrix.remote-case }} python3 deploy/tests/hml_docker_maintenance_cycle.py

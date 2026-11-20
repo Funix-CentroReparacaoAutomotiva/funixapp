@@ -368,7 +368,16 @@ server {
                          patch.object(updater, "prepare_operation", side_effect=prepare_local):
                         prepare_local(op,op/'config.json',identity)
                         from hml_remote_chain import run_chain
-                        run_chain(updater,config,previous,op,root,identity,fake_api)
+                        remote_case=os.environ.get('HML_REMOTE_CASE','accepted')
+                        run_chain(updater,config,previous,op,root,identity,fake_api,remote_case)
+                    if remote_case!='accepted':
+                        fresh_adapter().assert_installed(previous)
+                        assert json.loads((op/'operation.json').read_text())['phase']=='restored'
+                        with closing(sqlite3.connect(database)) as db:
+                            assert db.execute('SELECT value FROM atendimentos').fetchone()==('original',)
+                        assert all(file.read_bytes()==content for file,content in before.items())
+                        print('HML_REMOTE_FAILURE_DATA_PRESERVED_OK',flush=True)
+                        return
                     operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)

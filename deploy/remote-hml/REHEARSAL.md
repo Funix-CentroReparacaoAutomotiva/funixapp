@@ -6,6 +6,8 @@ O job `synthetic` de `hml-maintenance-rehearsal.yml` executa
 vazio e ausência da instalação HML. Não executar em host compartilhado ou VPS.
 Os certificados, aprovações, credencial fictícia, bancos e caminhos são gerados
 no diretório temporário do ensaio; nenhum material emitido é versionado.
+O job usa três runners independentes (`accepted`, `auto-restored`, `interrupted`),
+um por cenário. A suíte unitária roda uma vez, no cenário `accepted`.
 
 ## Fronteiras exercitadas
 
@@ -37,6 +39,21 @@ com prazo máximo. O processo filho herda as ligações sintéticas do teste.
 - A resposta de um POST é descartada propositalmente. O estado é reconciliado
   por GET; outro POST com a mesma aprovação é rejeitado.
 - O worker aceita uma atualização real e o GET final expõe o journal aceito.
+- Operação, SHA da revisão ou digest diferentes da aprovação são recusados
+  antes da criação de journal. Endpoints de aprovação, recovery e rollback
+  não são expostos pelo transporte.
+- No cenário `auto-restored`, o adapter real instala e valida a candidata,
+  incluindo migração SQLite, e só então o teste injeta `ValueError` na fronteira
+  de validação. A transação oficial restaura o backup, configuração e imagens;
+  o worker publica `auto_restored`, com backup, HTTPS e sentinela verificados.
+- No cenário `interrupted`, o processo filho termina com `os._exit(77)` após
+  a mesma instalação/validação. Isso ignora `finally` e deixa o journal em
+  `installing`, sem resultado do worker. GET informa `running_or_interrupted`;
+  novas aprovações e replay são bloqueados. A recuperação administrativa oficial
+  restaura o estado anterior e os dados. O pedido remoto permanece incerto e
+  bloqueado: o ensaio não apaga seus registros nem inventa um rearme automático.
+  Esse cenário comprova a morte do processo, não o comportamento de uma unidade
+  systemd instalada ou uma queda de energia do host.
 - O restante do mesmo ensaio faz rollback autorizado, migração sintética
   incompatível, interrupção antes do aceite e recuperação após o aceite com
   preservação de escrita posterior. Essas falhas/recuperações são acionadas
@@ -46,6 +63,8 @@ com prazo máximo. O processo filho herda as ligações sintéticas do teste.
 O marcador `HML_REMOTE_TLS_DISPATCH_WORKER_TRANSACTION_OK` só é emitido após
 o aceite observado por GET. Os marcadores seguintes registram separadamente
 rollback e recuperações; o job precisa concluir inteiro para aprovação.
+Os runners de falha exigem também `HML_REMOTE_FAILURE_DATA_PRESERVED_OK`, após
+conferir revisão anterior, journal restaurado, SQLite original e arquivos externos.
 O encerramento remove a sentinela e os recursos específicos do ensaio; falha de
 limpeza falha o job. O runner hospedado é descartado inclusive em cancelamento.
 
@@ -58,3 +77,9 @@ e interrupção pelo systemd e restrições do sandbox. Também não valida Wind
 em execução, CA real, n8n, firewall ou configuração da VPS. O CI analisa a sintaxe
 PowerShell separadamente. Nenhum desses limites deve ser apresentado como
 validação concluída; implantação exige revisão e autorização separadas.
+
+Em particular, após morte abrupta do worker, recuperar a transação não conclui
+o pedido remoto. O status conserva a incerteza e impede novas operações até
+reconciliação administrativa revisada. Não excluir `current.json`, journals,
+aprovações ou locks para prosseguir. Esta revisão não adiciona interface de
+reconciliação nem amplia permissões remotas.

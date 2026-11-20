@@ -23,9 +23,11 @@ def load(name):
     module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
 
 
-def run_chain(updater,config,previous,op,root,identity,fake_api):
+def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accepted'):
     if os.geteuid()!=0 or os.environ.get('RUNNER_ENVIRONMENT')!='github-hosted':
         raise RuntimeError('disposable hosted root runner required')
+    if scenario not in ('accepted','auto-restored','interrupted'):
+        raise ValueError('unknown remote rehearsal scenario')
     ctl,p,transport=load('rootctl'),load('control'),load('transport')
     state=Path(config['state']); ops=root/'ops'; ops.mkdir(mode=0o700)
     (ops/'requests').mkdir(mode=0o700); (ops/'control.lock').touch(mode=0o600)
@@ -79,19 +81,31 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
     server=transport.Server(dict(gateway='127.0.0.1',port=0,source='127.0.0.1',
         client_fingerprint=hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert.read_text())).hexdigest()),server_context)
     thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
-    def request(method,body=None,context=client,drop=False):
+    def request(method,body=None,context=client,drop=False,path=None):
         connection=http.client.HTTPSConnection('localhost',server.server_port,context=context,timeout=10)
         try:
-            connection.request(method,'/v1/update' if method=='POST' else '/v1/status',
+            connection.request(method,path or ('/v1/update' if method=='POST' else '/v1/status'),
                                body=json.dumps(body) if body is not None else None,headers={'Content-Type':'application/json'})
             if drop:
                 connection.close(); return None
             response=connection.getresponse(); return response.status,json.loads(response.read())
         finally: connection.close()
-    def worker(expected):
+    def worker(expected,inject=False):
         pid=os.fork()
         if pid==0:
             try:
+                if inject:
+                    make=updater.make_adapter
+                    def faulty_adapter(cfg):
+                        adapter=make(cfg); validate=adapter.validate
+                        def fail_after_install(release):
+                            validate(release)
+                            if release['revision']==identity['revision']:
+                                if scenario=='interrupted': os._exit(77)
+                                raise ValueError('synthetic candidate validation failure')
+                        adapter.validate=fail_after_install
+                        return adapter
+                    updater.make_adapter=faulty_adapter
                 result=ctl.worker(); os._exit(0 if result['status']=='accepted' else 1)
             except BaseException: os._exit(2)
         deadline=time.monotonic()+180
@@ -102,7 +116,8 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
                 os.kill(pid,9); os.waitpid(pid,0); raise AssertionError('worker deadline')
             time.sleep(.1)
         result=request('GET')[1]['last_request']
-        assert os.waitstatus_to_exitcode(status)==(0 if expected=='accepted' else 1),result
+        code=77 if expected=='running_or_interrupted' else 0 if expected=='accepted' else 1
+        assert os.waitstatus_to_exitcode(status)==code,result
         assert result['status']==expected,result
     with patch.object(ctl,'ROOT',ops),patch.object(ctl,'prep_module',return_value=p), \
          patch.object(p,'STATE',state),patch.object(p,'PRIVATE',private), \
@@ -113,6 +128,8 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
             assert request('POST',invalid)[0]==409
             assert not (op/'operation.json').exists()
             assert request('POST',dict(invalid,command='id'))[0]==409
+            for method,path in (('GET','/v1/approve'),('POST','/v1/recover'),('POST','/v1/rollback')):
+                assert request(method,invalid,path=path)[0]==404
             no_client=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             no_client.load_verify_locations(cafile=str(cert))
             for context in (ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT),no_client):
@@ -138,6 +155,9 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
                 assert not (op/'operation.json').exists()
                 path.write_bytes(saved)
             preview=ctl.view(); armed=ctl.approve(preview['preview_sha256'])
+            for field,value in (('operation','op-other'),('revision','0'*40),('sha256','0'*64)):
+                assert request('POST',dict(armed['request'],**{field:value}))[0]==409
+                assert not (op/'operation.json').exists()
             # A lost POST response must be reconciled by GET, never retried.
             request('POST',armed['request'],drop=True)
             deadline=time.monotonic()+10
@@ -147,11 +167,37 @@ def run_chain(updater,config,previous,op,root,identity,fake_api):
             try: ctl.view()
             except ctl.Blocked: pass
             else: raise AssertionError('queued operation allowed new authorization')
-            worker('accepted')
+            expected={'accepted':'accepted','auto-restored':'auto_restored',
+                      'interrupted':'running_or_interrupted'}[scenario]
+            worker(expected,inject=scenario!='accepted')
             final=request('GET')[1]
-            assert final['last_request']['status']=='accepted',final
-            assert final['journal']['phase']=='accepted' and final['journal']['candidate_revision']==identity['revision']
-            print('HML_REMOTE_TLS_DISPATCH_WORKER_TRANSACTION_OK',flush=True)
+            assert final['last_request']['status']==expected,final
+            assert final['journal']['candidate_revision']==identity['revision']
+            if scenario=='accepted':
+                assert final['journal']['phase']=='accepted'
+                assert all(final['last_request'][key] is True for key in
+                           ('backup_verified','https_verified','external_preserved'))
+                print('HML_REMOTE_TLS_DISPATCH_WORKER_TRANSACTION_OK',flush=True)
+            elif scenario=='auto-restored':
+                assert final['journal']['phase']=='restored'
+                assert final['last_request']['installed_revision']==previous['revision']
+                assert all(final['last_request'][key] is True for key in
+                           ('backup_verified','https_verified','external_preserved'))
+                print('HML_REMOTE_AUTO_RESTORED_OK',flush=True)
+            else:
+                assert final['journal']['phase']=='installing'
+                assert request('POST',armed['request'])[0]==409
+                try: ctl.view()
+                except ctl.Blocked: pass
+                else: raise AssertionError('interrupted worker allowed new approval')
+                # Only the official administrative recovery may mutate this state.
+                # Do not rearm/delete the consumed request or invent remote recovery.
+                updater.execute_operation('recover',config,op,authorized=True)
+                recovered=request('GET')[1]
+                assert recovered['journal']['phase']=='restored'
+                assert recovered['last_request']['status']=='running_or_interrupted'
+                assert request('POST',armed['request'])[0]==409
+                print('HML_REMOTE_INTERRUPTED_ADMIN_RECOVERY_OK',flush=True)
         finally:
             server.shutdown(); server.server_close(); thread.join()
             real_run(['docker','rm','--force',sentinel],check=True,capture_output=True)
