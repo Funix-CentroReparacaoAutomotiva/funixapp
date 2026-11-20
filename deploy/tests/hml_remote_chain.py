@@ -78,6 +78,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
         return real_run(args,**kwargs)
     sentinel=subprocess.check_output(['docker','run','--detach','--network','none','--read-only',
         'python:3.12-alpine','python','-c','import time; time.sleep(600)'],text=True).strip()
+    sentinel_before=external()
     server=transport.Server(dict(gateway='127.0.0.1',port=0,source='127.0.0.1',
         client_fingerprint=hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert.read_text())).hexdigest()),server_context)
     thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
@@ -102,7 +103,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
                             validate(release)
                             if release['revision']==identity['revision']:
                                 if scenario=='interrupted': os._exit(77)
-                                raise ValueError('synthetic candidate validation failure')
+                                raise ValueError('SENSITIVE_REMOTE_CANARY synthetic failure')
                         adapter.validate=fail_after_install
                         return adapter
                     updater.make_adapter=faulty_adapter
@@ -171,6 +172,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
                       'interrupted':'running_or_interrupted'}[scenario]
             worker(expected,inject=scenario!='accepted')
             final=request('GET')[1]
+            assert 'SENSITIVE_REMOTE_CANARY' not in json.dumps(final)
             assert final['last_request']['status']==expected,final
             assert final['journal']['candidate_revision']==identity['revision']
             if scenario=='accepted':
@@ -198,6 +200,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
                 assert recovered['last_request']['status']=='running_or_interrupted'
                 assert request('POST',armed['request'])[0]==409
                 print('HML_REMOTE_INTERRUPTED_ADMIN_RECOVERY_OK',flush=True)
+            assert external()==sentinel_before,'external container changed'
         finally:
             server.shutdown(); server.server_close(); thread.join()
             real_run(['docker','rm','--force',sentinel],check=True,capture_output=True)
