@@ -112,6 +112,43 @@ class Transaction:
                 "updater recovery pending")
         # A Cilia transition NEVER overwrites this pointer or historical journals.
 
+    def _cilia_pointer_path(self):
+        return self.state / "cilia-active.json"
+
+    def _check_cilia_pointer(self, *, recovery=False):
+        """Prevent overlapping or orphaned flag operations across invocations."""
+        pointer = self._cilia_pointer_path()
+        if not pointer.exists() and not pointer.is_symlink():
+            require(not recovery, "Cilia recovery pointer missing")
+            return
+        require(pointer.is_file() and not pointer.is_symlink(),
+                "unsafe Cilia active pointer")
+        info = pointer.lstat()
+        require(info.st_uid == os.geteuid() and info.st_nlink == 1
+                and not (stat.S_IMODE(info.st_mode) & 0o077),
+                "Cilia active pointer permissions invalid")
+        payload = json.loads(pointer.read_text())
+        require(isinstance(payload, dict) and set(payload) == {"journal"},
+                "invalid Cilia active pointer")
+        linked = Path(payload["journal"])
+        require(linked.is_absolute() and linked.parent.parent == self.state
+                and linked.parent.name.startswith("op-cilia-")
+                and linked.name == "cilia-transaction.json"
+                and linked.is_file() and not linked.is_symlink(),
+                "Cilia active pointer outside private journal")
+        require(linked.lstat().st_uid == os.geteuid()
+                and linked.lstat().st_nlink == 1
+                and not (stat.S_IMODE(linked.lstat().st_mode) & 0o077),
+                "Cilia journal permissions invalid")
+        if recovery:
+            require(linked == self.journal, "Cilia recovery is not current")
+            return
+        previous = json.loads(linked.read_text())
+        require(previous.get("schema") == "funix-hml-cilia-tx/1"
+                and previous.get("scope") == "funix-hml"
+                and previous.get("phase") in ("accepted", "reverted"),
+                "previous Cilia operation requires recovery")
+
     def _phase(self, record, phase):
         record["phase"] = phase
         self._atomic(self.journal, record)
@@ -120,6 +157,7 @@ class Transaction:
         require(authorized is True, "explicit authorization required")
         with self._lock():
             self._active()
+            self._check_cilia_pointer()
             require(not self.journal.exists() and not self.journal.is_symlink(),
                     "operation already exists; recovery or new operation required")
             before = self.adapter.observe()
@@ -135,6 +173,7 @@ class Transaction:
             record = {"schema": "funix-hml-cilia-tx/1", "scope": "funix-hml",
                       "phase": "prepared", "plan": plan, "backup_ref": backup_ref}
             self._phase(record, "prepared")
+            self._atomic(self._cilia_pointer_path(), {"journal": str(self.journal)})
             # No exception handling around maintenance and reopening: after any
             # crash, caller must inspect journal and explicitly recover; never
             # automatically expose an unvalidated state.
@@ -155,6 +194,7 @@ class Transaction:
         require(authorized is True, "explicit recovery authorization required")
         with self._lock():
             self._active()
+            self._check_cilia_pointer(recovery=True)
             record = self._read()
             phase = record["phase"]
             if phase == "reverted":
