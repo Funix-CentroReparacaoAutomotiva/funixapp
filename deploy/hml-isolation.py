@@ -79,7 +79,7 @@ def environment(role, raw, revision):
         # The Cilia preview is local-only. Its write gate is never permitted here.
         require(str(env.get(CILIA_WRITE, "false")).lower() in ("false", "0"),
                 "Cilia write flag must remain disabled")
-        require(str(env.get(CILIA_PREVIEW, "false")).lower() in ("true", "false", "0"),
+        require(env.get(CILIA_PREVIEW, "false") in ("true", "false", "0"),
                 "invalid Cilia preview flag")
     for key, value in env.items():
         if value in ("", None):
