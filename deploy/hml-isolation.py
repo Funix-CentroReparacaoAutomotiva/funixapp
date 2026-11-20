@@ -95,6 +95,14 @@ def environment(role, raw, revision):
     return env
 
 
+def cilia_runtime_parity(runtime_env, declared_env):
+    """Cilia flags must match in presence and value, not just when declared."""
+    for flag in (CILIA_PREVIEW, CILIA_WRITE):
+        require((flag in runtime_env) == (flag in declared_env)
+                and (flag not in runtime_env or runtime_env[flag] == declared_env[flag]),
+                "Cilia runtime flag differs from Compose")
+
+
 def hardening(role, service):
     require(service.get("read_only") is True and "ALL" in (service.get("cap_drop") or []),
             "missing rootfs or capability protection")
@@ -199,10 +207,7 @@ def runtime(records, config, database, gateway_mounts, release, private):
         # Unlike generic environment keys, the two Cilia gates must match in
         # BOTH directions. An undeclared runtime-only preview would otherwise
         # pass isolation.environment() and silently enable a capability.
-        for flag in (CILIA_PREVIEW, CILIA_WRITE):
-            require((flag in env) == (flag in declared)
-                    and (flag not in env or env[flag] == declared[flag]),
-                    "Cilia runtime flag differs from Compose")
+        cilia_runtime_parity(env, declared)
     require(set(actual) == ROLES, "incomplete live project")
     require(private.get("Name") == PRIVATE and private.get("Driver") == "bridge"
             and private.get("Internal") is True and set(private.get("Containers") or {}) == set(actual.values()),
