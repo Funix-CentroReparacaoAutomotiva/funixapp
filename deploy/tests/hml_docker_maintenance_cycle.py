@@ -22,6 +22,7 @@ import ssl
 import subprocess
 import tempfile
 import threading
+import time
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -324,6 +325,17 @@ server {
                         patch.object(provenance,"verify",side_effect=verify_local), \
                         patch.object(updater,"load",side_effect=load_for_rehearsal):
                     # A preflight must work before any candidate is loaded.
+                    # Compose start does not wait for the initial Docker healthcheck.
+                    deadline = time.monotonic() + 30
+                    while True:
+                        records = adapter.containers()
+                        if len(records) == 3 and all(
+                                row['State'].get('Health', {}).get('Status') == 'healthy'
+                                for row in records):
+                            break
+                        if time.monotonic() >= deadline:
+                            raise AssertionError('synthetic installation health deadline')
+                        time.sleep(.2)
                     assert updater.installed_preflight(updater.make_adapter(config)) == previous
                     wrong = dict(config, candidate=dict(candidate, revision=OLD))
                     try:
@@ -341,7 +353,7 @@ server {
                             run("docker", "image", "rm", image["image_id"])
                     official = load("hml-official-update")
                     official.updater = updater
-                    op = state / "op-official"
+                    op = state / "op-123-1-prep-456"
                     op.mkdir(mode=0o700)
                     def prepare_local(operation, config_path, requested):
                         assert requested == identity
@@ -354,9 +366,18 @@ server {
                          patch.object(updater, "host_scope"), \
                          patch.object(updater, "check_config"), \
                          patch.object(updater, "prepare_operation", side_effect=prepare_local):
-                        report = official.coordinate("op-official", identity,
-                            authorize_operation="op-official", authorize_revision=NEW)
-                    assert report["result"] == "accepted", report
+                        prepare_local(op,op/'config.json',identity)
+                        from hml_remote_chain import run_chain
+                        remote_case=os.environ.get('HML_REMOTE_CASE','accepted')
+                        run_chain(updater,config,previous,op,root,identity,fake_api,remote_case)
+                    if remote_case!='accepted':
+                        fresh_adapter().assert_installed(previous)
+                        assert json.loads((op/'operation.json').read_text())['phase']=='restored'
+                        with closing(sqlite3.connect(database)) as db:
+                            assert db.execute('SELECT value FROM atendimentos').fetchone()==('original',)
+                        assert all(file.read_bytes()==content for file,content in before.items())
+                        print('HML_REMOTE_FAILURE_DATA_PRESERVED_OK',flush=True)
+                        return
                     operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)

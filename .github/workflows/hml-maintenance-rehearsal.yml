@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'deploy/hml-*.py'
+      - 'deploy/remote-hml/**'
       - 'deploy/tests/*hml*.py'
       - '.github/workflows/hml-maintenance-rehearsal.yml'
 
@@ -15,14 +16,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  linux-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Exact sudoers wrappers and systemd units on disposable host
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted python3 deploy/tests/hml_linux_boundary.py
+  powershell-parser:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Parse recovered and current PowerShell without execution
+        shell: pwsh
+        run: |
+          Get-ChildItem deploy/remote-hml -Recurse -Filter *.ps1 | ForEach-Object {
+            $parseErrors = $null
+            $parseTokens = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count -gt 0) { throw "PowerShell parser rejected source" }
+          }
   synthetic:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        remote-case: [accepted, auto-restored, interrupted]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - name: Python deployment regression tests
+        if: matrix.remote-case == 'accepted'
         run: python3 -m unittest discover -s deploy/tests -v
       - name: Pull synthetic test images
         run: |
@@ -31,4 +64,4 @@ jobs:
       - name: Real Docker maintenance cycle on disposable runner
         run: |
           test "$RUNNER_ENVIRONMENT" = github-hosted
-          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted python3 deploy/tests/hml_docker_maintenance_cycle.py
+          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted HML_REMOTE_CASE=${{ matrix.remote-case }} python3 deploy/tests/hml_docker_maintenance_cycle.py

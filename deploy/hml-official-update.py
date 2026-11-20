@@ -84,6 +84,23 @@ def replay_diagnostics(captured):
         pass
 
 
+def execute_prepared(operation, config, identity, *, authorize_operation, authorize_revision,
+                     official_updater=None):
+    """Internal bridge for an independently approved, already prepared operation.
+
+    No CLI option exposes this path. Caller must consume its approval and bind
+    the predecessor in checked_update_package, which executes under official lock.
+    """
+    u = updater if official_updater is None else official_updater
+    if (authorize_operation != operation.name or authorize_revision != identity.get("revision")
+            or config.get("identity") != identity
+            or config.get("candidate", {}).get("revision") != authorize_revision):
+        raise ValueError("prepared authorization mismatch")
+    u.host_scope(operation, operation / "config.json")
+    u.check_config(config, operation)
+    return u.execute_operation("update", config, operation, authorized=True)
+
+
 def coordinate(operation_id, identity, *, authorize_operation, authorize_revision):
     if (not re.fullmatch(r"op-[A-Za-z0-9_-]{1,80}", operation_id)
             or authorize_operation != operation_id

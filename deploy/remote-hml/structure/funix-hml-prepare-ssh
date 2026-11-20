@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+[ "${SSH_ORIGINAL_COMMAND-}" = "funix-hml-prepare" ] || exit 64
+exec /usr/bin/sudo -n -- /usr/local/sbin/funix-hml-prepare

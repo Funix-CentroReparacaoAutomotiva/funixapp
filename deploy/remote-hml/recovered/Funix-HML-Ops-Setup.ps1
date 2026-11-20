@@ -1,0 +1,274 @@
+param([string]$SshUser = 'root', [string]$KeyPath = (Join-Path $HOME '.ssh/funix_hostinger'))
+$ErrorActionPreference = 'Stop'
+$report = Join-Path $PSScriptRoot 'funix_hml_ops_instalacao.txt'
+$clientDir = Join-Path $HOME '.ssh/funix-hml-ops-tls'
+$OutputEncoding = [Text.Encoding]::ASCII
+if (-not (Test-Path -LiteralPath $KeyPath)) { throw 'Chave SSH administrativa local nao encontrada.' }
+if (Test-Path -LiteralPath $clientDir) { throw 'Pasta local de certificados ja existe. Nao sobrescrever.' }
+$sshArgs = @('-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=15','-i',$KeyPath,"$SshUser@2.25.144.201")
+$remote = @'
+"""Administrative, first-install only. Does not authorize, dispatch or deploy."""
+import base64
+import hashlib
+import importlib.util
+import ipaddress
+import json
+import os
+from pathlib import Path
+import pwd
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+BASE=Path('/usr/local/lib/funix-hml-ops'); STATE=Path('/var/lib/funix-hml-ops'); TLS=Path('/etc/funix-hml-ops')
+USER='funix-hml-ops'; PORT=18443
+SERVICE='funix-hml-ops-transport.service'; WORKER='funix-hml-ops-worker.service'
+STATUS=Path('/usr/local/sbin/funix-hml-ops-status'); REQUEST=Path('/usr/local/sbin/funix-hml-ops-request')
+SUDO=Path('/etc/sudoers.d/funix-hml-ops'); UNIT=Path('/etc/systemd/system')
+ROOTCTL_B64='IiIiSE1MLW9ubHkgYXBwcm92YWwsIGRpc3BhdGNoLCBhbmQgb2ZmaWNpYWwgdXBkYXRlciBicmlkZ2UuIE5vIHJlbW90ZSBzaGVsbC4iIiIKaW1wb3J0IGNvbnRleHRsaWIKaW1wb3J0IGZjbnRsCmltcG9ydCBoYXNobGliCmltcG9ydCBpbXBvcnRsaWIudXRpbAppbXBvcnQgaW8KaW1wb3J0IGpzb24KaW1wb3J0IG9zCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKaW1wb3J0IHNlY3JldHMKaW1wb3J0IHN0YXQKaW1wb3J0IHN1YnByb2Nlc3MKaW1wb3J0IHN5cwppbXBvcnQgdGltZQoKUk9PVD1QYXRoKCcvdmFyL2xpYi9mdW5peC1obWwtb3BzJykKUFJFUD1QYXRoKCcvdXNyL2xvY2FsL2xpYi9mdW5peC1obWwtcHJlcGFyZS9jb250cm9sLnB5JykKUFJFUF9TSEE9JzkzOThlYTNiZmJiNjE0MDhlMGRlZDE2ODhlM2RiZTk3YjgwZjVkMWFhNWMxMzNkMzk1MWYxNzE4ZTI3M2VkMTInCldPUktFUj0nZnVuaXgtaG1sLW9wcy13b3JrZXIuc2VydmljZScKU0NIRU1BPSdmdW5peC1obWwtb3BzLzEnClBIQVNFUz17J3ByZXBhcmVkJywncXVpZXNjaW5nJywnaW5zdGFsbGluZycsJ3Jlc3RvcmluZycsJ2FjY2VwdGVkX3BlbmRpbmdfb3BlbicsJ3Jlc3RvcmVkX3BlbmRpbmdfb3BlbicsJ2FjY2VwdGVkJywncmVzdG9yZWQnLCdyb2xsYmFja19yZXF1ZXN0ZWQnfQpjbGFzcyBCbG9ja2VkKEV4Y2VwdGlvbik6IHBhc3MKCmRlZiByZXF1aXJlKG9rLCBjb2RlKToKICAgIGlmIG5vdCBvazogcmFpc2UgQmxvY2tlZChjb2RlKQoKZGVmIGhleHN0cih2LG4pOiByZXR1cm4gaXNpbnN0YW5jZSh2LHN0cikgYW5kIHJlLmZ1bGxtYXRjaCgnW2EtZjAtOV17JytzdHIobikrJ30nLHYpIGlzIG5vdCBOb25lCgpkZWYgb3BfbmFtZSh2KTogcmV0dXJuIGlzaW5zdGFuY2UodixzdHIpIGFuZCByZS5mdWxsbWF0Y2gocidvcC1bQS1aYS16MC05Xy1dezEsODB9Jyx2KSBpcyBub3QgTm9uZQoKZGVmIGV4aXN0cyhwKTogcmV0dXJuIHAuZXhpc3RzKCkgb3IgcC5pc19zeW1saW5rKCkKCmRlZiBwcml2YXRlX2RpcihwKToKICAgIHA9UGF0aChwKTsgcz1wLmxzdGF0KCkKICAgIHJlcXVpcmUocC5yZXNvbHZlKHN0cmljdD1UcnVlKT09cCBhbmQgc3RhdC5TX0lTRElSKHMuc3RfbW9kZSkgYW5kIHMuc3RfdWlkPT0wIGFuZCBzdGF0LlNfSU1PREUocy5zdF9tb2RlKT09MG83MDAsJ3ByaXZhdGVfZGlyZWN0b3J5JykKICAgIHJldHVybiBwCgpkZWYgcHJpdmF0ZV9maWxlKHApOgogICAgcD1QYXRoKHApOyBzPXAubHN0YXQoKQogICAgcmVxdWlyZShwLnJlc29sdmUoc3RyaWN0PVRydWUpPT1wIGFuZCBzdGF0LlNfSVNSRUcocy5zdF9tb2RlKSBhbmQgcy5zdF91aWQ9PTAgYW5kIHMuc3Rfbmxpbms9PTEgYW5kIG5vdCBzLnN0X21vZGUmMG8wNzcsJ3ByaXZhdGVfZmlsZScpCiAgICByZXR1cm4gcAoKZGVmIHJlYWQocCk6CiAgICBwPXByaXZhdGVfZmlsZShwKTsgcmVxdWlyZShwLnN0YXQoKS5zdF9zaXplPD0xMzEwNzIsJ2pzb25fc2l6ZScpOyByZXR1cm4ganNvbi5sb2FkcyhwLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKSkKCmRlZiBkaWdlc3QocCk6CiAgICB3aXRoIHByaXZhdGVfZmlsZShwKS5vcGVuKCdyYicpIGFzIGY6IHJldHVybiBoYXNobGliLmZpbGVfZGlnZXN0KGYsJ3NoYTI1NicpLmhleGRpZ2VzdCgpCgpkZWYgY2Fub25pY2FsKHYpOiByZXR1cm4ganNvbi5kdW1wcyh2LHNvcnRfa2V5cz1UcnVlLHNlcGFyYXRvcnM9KCcsJywnOicpLGVuc3VyZV9hc2NpaT1UcnVlKS5lbmNvZGUoJ2FzY2lpJykKCmRlZiBoYXNoX29iaih2KTogcmV0dXJuIGhhc2hsaWIuc2hhMjU2KGNhbm9uaWNhbCh2KSkuaGV4ZGlnZXN0KCkKCmRlZiBmc3luY19kaXIocCk6CiAgICBmZD1vcy5vcGVuKHAsb3MuT19SRE9OTFl8b3MuT19ESVJFQ1RPUll8b3MuT19OT0ZPTExPVykKICAgIHRyeTogb3MuZnN5bmMoZmQpCiAgICBmaW5hbGx5OiBvcy5jbG9zZShmZCkKCmRlZiB3cml0ZShwLHYpOgogICAgZmQ9b3Mub3BlbihwLG9zLk9fV1JPTkxZfG9zLk9fQ1JFQVR8b3MuT19FWENMfG9zLk9fTk9GT0xMT1csMG82MDApCiAgICB3aXRoIG9zLmZkb3BlbihmZCwnd2InKSBhcyBmOiBmLndyaXRlKGNhbm9uaWNhbCh2KStiJ1xuJyk7IGYuZmx1c2goKTsgb3MuZnN5bmMoZi5maWxlbm8oKSkKICAgIGZzeW5jX2RpcihwLnBhcmVudCkKCmRlZiByZXBsYWNlKHAsdik6CiAgICBpZiBleGlzdHMocCk6IHByaXZhdGVfZmlsZShwKQogICAgdG1wPXAud2l0aF9uYW1lKCcuJytwLm5hbWUrJy0nK3NlY3JldHMudG9rZW5faGV4KDgpKTsgd3JpdGUodG1wLHYpCiAgICB0cnk6IG9zLnJlcGxhY2UodG1wLHApOyBmc3luY19kaXIocC5wYXJlbnQpCiAgICBmaW5hbGx5OiB0bXAudW5saW5rKG1pc3Npbmdfb2s9VHJ1ZSkKCkBjb250ZXh0bGliLmNvbnRleHRtYW5hZ2VyCmRlZiBsb2NrZWQoKToKICAgIHByaXZhdGVfZGlyKFJPT1QpOyBwcml2YXRlX2RpcihST09ULydyZXF1ZXN0cycpCiAgICBmZD1vcy5vcGVuKHByaXZhdGVfZmlsZShST09ULydjb250cm9sLmxvY2snKSxvcy5PX1JEV1J8b3MuT19OT0ZPTExPVykKICAgIHdpdGggb3MuZmRvcGVuKGZkLCdyKycpIGFzIGY6CiAgICAgICAgZmNudGwuZmxvY2soZixmY250bC5MT0NLX0VYKQogICAgICAgIHlpZWxkCgpkZWYgcHJlcF9tb2R1bGUoKToKICAgIHJlcXVpcmUoZGlnZXN0KFBSRVApPT1QUkVQX1NIQSwncHJlcGFyZV9jb250cm9sbGVyX2NoYW5nZWQnKQogICAgc3lzLmRvbnRfd3JpdGVfYnl0ZWNvZGU9VHJ1ZQogICAgc3BlYz1pbXBvcnRsaWIudXRpbC5zcGVjX2Zyb21fZmlsZV9sb2NhdGlvbignZnVuaXhfaG1sX3ByZXBhcmVfdmVyaWZpZWQnLFBSRVApCiAgICBwPWltcG9ydGxpYi51dGlsLm1vZHVsZV9mcm9tX3NwZWMoc3BlYyk7IHNwZWMubG9hZGVyLmV4ZWNfbW9kdWxlKHApCiAgICByZXR1cm4gcAoKZGVmIGFjdGl2ZV9yZWNvcmQocCk6CiAgICBwdHI9cC5yZWFkX2pzb24ocC5TVEFURS8nYWN0aXZlLmpzb24nKQogICAgcmVxdWlyZShzZXQocHRyKT09eydqb3VybmFsJ30gYW5kIGlzaW5zdGFuY2UocHRyWydqb3VybmFsJ10sc3RyKSwnYWN0aXZlX3BvaW50ZXInKQogICAgaj1QYXRoKHB0clsnam91cm5hbCddKTsgcmVxdWlyZShqLm5hbWU9PSdvcGVyYXRpb24uanNvbicgYW5kIGoucGFyZW50LnBhcmVudD09cC5TVEFURSBhbmQgb3BfbmFtZShqLnBhcmVudC5uYW1lKSwnYWN0aXZlX3BhdGgnKQogICAgcC5wcml2YXRlX2RpcihqLnBhcmVudCk7IHJlYz1wLnJlYWRfanNvbihqKQogICAgcmVxdWlyZShyZWMuZ2V0KCdwcm9qZWN0Jyk9PSdmdW5peC1obWwnIGFuZCByZWMuZ2V0KCdzY2hlbWEnKT09MSBhbmQgcmVjLmdldCgncGhhc2UnKSBpbiBQSEFTRVMgYW5kIHJlYy5nZXQoJ21haW50ZW5hbmNlJykgaXMgVHJ1ZSwnam91cm5hbF9zY29wZScpCiAgICBmb3IgayBpbiAoJ2NhbmRpZGF0ZScsJ3ByZXZpb3VzJyk6CiAgICAgICAgcmVxdWlyZShpc2luc3RhbmNlKHJlYy5nZXQoayksZGljdCkgYW5kIGhleHN0cihyZWNba10uZ2V0KCdyZXZpc2lvbicpLDQwKSwnam91cm5hbF9yZXZpc2lvbicpCiAgICByZXR1cm4gaixyZWMKCmRlZiBjb250ZXh0KGNoZWNrX2FyY2hpdmU9VHJ1ZSk6CiAgICBwPXByZXBfbW9kdWxlKCk7IGE9cC5yZWFkX2pzb24ocC5QUklWQVRFLydhcHByb3ZhbC5qc29uJyk7IGk9cC5jaGVja19hcHByb3ZhbChhKQogICAgdG9rZW49cC5wcml2YXRlX2ZpbGUocC5QUklWQVRFLydnaXRodWIudG9rZW4nKS5yZWFkX3RleHQoZW5jb2Rpbmc9J2FzY2lpJykuc3RyaXAoKQogICAgcmVxdWlyZShyZS5mdWxsbWF0Y2gocidnaXRodWJfcGF0X1tBLVphLXowLTlfXXsyMCwyNDB9Jyx0b2tlbikgaXMgbm90IE5vbmUsJ3Rva2VuX2Zvcm1hdCcpCiAgICBvcD1wLlNUQVRFL2Yib3Ate2lbJ3J1bl9pZCddfS17aVsnYXR0ZW1wdCddfS1wcmVwLXtpWydhcnRpZmFjdF9pZCddfSIKICAgIHAucHJpdmF0ZV9kaXIob3ApOyByZXF1aXJlKG5vdCBleGlzdHMob3AvJ29wZXJhdGlvbi5qc29uJyksJ29wZXJhdGlvbl9hbHJlYWR5X3VzZWQnKQogICAgdT1wLmxvYWRfdXBkYXRlcih0b2tlbik7IHUuaG9zdF9zY29wZShvcCxvcC8nY29uZmlnLmpzb24nKQogICAgY2ZnPXAucmVhZF9qc29uKG9wLydjb25maWcuanNvbicpOyB1LmNoZWNrX2NvbmZpZyhjZmcsb3ApCiAgICByZXF1aXJlKGNmZy5nZXQoJ2lkZW50aXR5Jyk9PWkgYW5kIGNmZy5nZXQoJ2NhbmRpZGF0ZScse30pLmdldCgncmV2aXNpb24nKT09aVsncmV2aXNpb24nXSwncHJlcGFyZWRfaWRlbnRpdHknKQogICAgYXJjaGl2ZT1wLnByaXZhdGVfZmlsZShvcC8nY2FuZGlkYXRlLnppcCcpCiAgICByZXF1aXJlKGFyY2hpdmUuc3RhdCgpLnN0X3NpemU9PWFbJ3NpemUnXSwnYXJjaGl2ZV9zaXplJykKICAgIGlmIGNoZWNrX2FyY2hpdmU6IHJlcXVpcmUocC5zaGEoYXJjaGl2ZSk9PWFbJ2RpZ2VzdCddLCdhcmNoaXZlX2RpZ2VzdCcpCiAgICBqLHJlYz1hY3RpdmVfcmVjb3JkKHApOyBwaGFzZT1yZWNbJ3BoYXNlJ10KICAgIHJlcXVpcmUocGhhc2UgaW4gKCdhY2NlcHRlZCcsJ3Jlc3RvcmVkJyksJ3Byb2plY3RfcmVjb3ZlcnlfcGVuZGluZycpCiAgICBwcmV2aW91cz1yZWNbJ2NhbmRpZGF0ZScgaWYgcGhhc2U9PSdhY2NlcHRlZCcgZWxzZSAncHJldmlvdXMnXQogICAgcmVxdWlyZShwcmV2aW91c1sncmV2aXNpb24nXT09YVsnaW5zdGFsbGVkX3JldmlzaW9uJ10gYW5kIHByZXZpb3VzWydyZXZpc2lvbiddIT1pWydyZXZpc2lvbiddLCdpbnN0YWxsZWRfcmV2aXNpb25fY2hhbmdlZCcpCiAgICBwcmV2aWV3PXsnYWN0aW9uJzondXBkYXRlJywnc2NvcGUnOidmdW5peC1obWwnLCdpZGVudGl0eSc6aSwnb3BlcmF0aW9uJzpvcC5uYW1lLCdyZXZpc2lvbic6aVsncmV2aXNpb24nXSwKICAgICAgICAgICAgICdpbnN0YWxsZWRfcmV2aXNpb24nOnByZXZpb3VzWydyZXZpc2lvbiddLCdzaGEyNTYnOmFbJ2RpZ2VzdCddLCdzaXplJzphWydzaXplJ10sCiAgICAgICAgICAgICAnY29uZmlnX3NoYTI1Nic6cC5zaGEob3AvJ2NvbmZpZy5qc29uJyksJ2FjdGl2ZV9vcGVyYXRpb24nOmoucGFyZW50Lm5hbWUsJ2FjdGl2ZV9qb3VybmFsX3NoYTI1Nic6cC5zaGEoail9CiAgICByZXR1cm4gcCx1LGEsdG9rZW4sb3AsY2ZnLGoscmVjLHByZXZpb3VzLHByZXZpZXcKCmRlZiB0aWNrZXRfdmFsaWQodCk6CiAgICByZXF1aXJlKGlzaW5zdGFuY2UodCxkaWN0KSBhbmQgc2V0KHQpPT17J3NjaGVtYScsJ3RpY2tldF9pZCcsJ2lzc3VlZF9hdCcsJ2V4cGlyZXNfYXQnLCdwcmV2aWV3JywncHJldmlld19zaGEyNTYnfSwndGlja2V0X3NoYXBlJykKICAgIHJlcXVpcmUodFsnc2NoZW1hJ109PVNDSEVNQSBhbmQgaGV4c3RyKHRbJ3RpY2tldF9pZCddLDMyKSBhbmQgdHlwZSh0Wydpc3N1ZWRfYXQnXSkgaXMgaW50IGFuZCB0eXBlKHRbJ2V4cGlyZXNfYXQnXSkgaXMgaW50IGFuZCB0WydleHBpcmVzX2F0J10tdFsnaXNzdWVkX2F0J109PTEyMDAsJ3RpY2tldF9pZGVudGl0eScpCiAgICB2PXRbJ3ByZXZpZXcnXTsgcmVxdWlyZShpc2luc3RhbmNlKHYsZGljdCkgYW5kIGhhc2hfb2JqKHYpPT10WydwcmV2aWV3X3NoYTI1NiddIGFuZCB2LmdldCgnYWN0aW9uJyk9PSd1cGRhdGUnIGFuZCB2LmdldCgnc2NvcGUnKT09J2Z1bml4LWhtbCcgYW5kIG9wX25hbWUodi5nZXQoJ29wZXJhdGlvbicpKSBhbmQgaGV4c3RyKHYuZ2V0KCdyZXZpc2lvbicpLDQwKSBhbmQgaGV4c3RyKHYuZ2V0KCdzaGEyNTYnKSw2NCksJ3RpY2tldF9wcmV2aWV3JykKICAgIHJldHVybiB0CgpkZWYgcmVxdWVzdF9vZih0KToKICAgIHQ9dGlja2V0X3ZhbGlkKHQpOyB2PXRbJ3ByZXZpZXcnXQogICAgcmV0dXJuIHsnYWN0aW9uJzondXBkYXRlJywnb3BlcmF0aW9uJzp2WydvcGVyYXRpb24nXSwncmV2aXNpb24nOnZbJ3JldmlzaW9uJ10sJ3NoYTI1Nic6dlsnc2hhMjU2J10sJ3RpY2tldF9pZCc6dFsndGlja2V0X2lkJ119CgpkZWYgcmVxdWVzdF9kaXIodGlkKToKICAgIHJlcXVpcmUoaGV4c3RyKHRpZCwzMiksJ3JlcXVlc3RfaWQnKTsgcmV0dXJuIFJPT1QvJ3JlcXVlc3RzJy90aWQKCmRlZiBjdXJyZW50X3JlcXVlc3QoKToKICAgIHB0cj1ST09ULydjdXJyZW50Lmpzb24nCiAgICBpZiBub3QgZXhpc3RzKHB0cik6IHJldHVybiBOb25lCiAgICBkPXJlYWQocHRyKTsgcmVxdWlyZShzZXQoZCk9PXsndGlja2V0X2lkJ30sJ3JlcXVlc3RfcG9pbnRlcicpOyByZD1wcml2YXRlX2RpcihyZXF1ZXN0X2RpcihkWyd0aWNrZXRfaWQnXSkpCiAgICB0PXRpY2tldF92YWxpZChyZWFkKHJkLyd0aWNrZXQuanNvbicpKTsgcmVxdWlyZSh0Wyd0aWNrZXRfaWQnXT09ZFsndGlja2V0X2lkJ10sJ3JlcXVlc3RfdGlja2V0JykKICAgIHJldHVybiByZCx0CgpkZWYgcmVxdWlyZV9pZGxlKCk6CiAgICBjdXI9Y3VycmVudF9yZXF1ZXN0KCkKICAgIHJlcXVpcmUoY3VyIGlzIE5vbmUgb3IgZXhpc3RzKGN1clswXS8ncmVzdWx0Lmpzb24nKSwncmVxdWVzdF9wZW5kaW5nJykKICAgIGlmIGN1cjoKICAgICAgICByZXM9cmVhZChjdXJbMF0vJ3Jlc3VsdC5qc29uJyk7IHJlcXVpcmUocmVzLmdldCgndGlja2V0X2lkJyk9PWN1clsxXVsndGlja2V0X2lkJ10gYW5kIHJlcy5nZXQoJ3N0YXR1cycpIGluICgnYWNjZXB0ZWQnLCdhdXRvX3Jlc3RvcmVkJywnYmxvY2tlZF9iZWZvcmVfam91cm5hbCcpLCdwcmV2aW91c19yZXF1ZXN0X3JlcXVpcmVzX3JldmlldycpCgpkZWYgYXJtZWRfdGlja2V0KCk6CiAgICBmPVJPT1QvJ2FybWVkLmpzb24nCiAgICBpZiBub3QgZXhpc3RzKGYpOiByZXR1cm4gTm9uZQogICAgdD10aWNrZXRfdmFsaWQocmVhZChmKSkKICAgIGlmIGV4aXN0cyhyZXF1ZXN0X2Rpcih0Wyd0aWNrZXRfaWQnXSkpIG9yIHRbJ2V4cGlyZXNfYXQnXTw9aW50KHRpbWUudGltZSgpKTogcmV0dXJuIE5vbmUKICAgIHJldHVybiB0CgpkZWYgYmFzZShzdGF0dXMpOiByZXR1cm4geydzY2hlbWEnOlNDSEVNQSwnc2NvcGUnOidmdW5peC1obWwnLCdzdGF0dXMnOnN0YXR1c30KCmRlZiB2aWV3KCk6CiAgICB3aXRoIGxvY2tlZCgpOgogICAgICAgIHJlcXVpcmVfaWRsZSgpOyByZXF1aXJlKGFybWVkX3RpY2tldCgpIGlzIE5vbmUsJ2FwcHJvdmFsX2FscmVhZHlfYXJtZWQnKQogICAgICAgIHY9Y29udGV4dCgpWy0xXQogICAgICAgIHJldHVybiB7KipiYXNlKCdhcHByb3ZhbF9wcmV2aWV3JyksJ3ByZXZpZXcnOnYsJ3ByZXZpZXdfc2hhMjU2JzpoYXNoX29iaih2KX0KCmRlZiBhcHByb3ZlKGV4cGVjdGVkKToKICAgIHJlcXVpcmUoaGV4c3RyKGV4cGVjdGVkLDY0KSwnYXBwcm92YWxfZGlnZXN0JykKICAgIHdpdGggbG9ja2VkKCk6CiAgICAgICAgcmVxdWlyZV9pZGxlKCk7IHJlcXVpcmUoYXJtZWRfdGlja2V0KCkgaXMgTm9uZSwnYXBwcm92YWxfYWxyZWFkeV9hcm1lZCcpCiAgICAgICAgdj1jb250ZXh0KClbLTFdOyByZXF1aXJlKGhhc2hfb2JqKHYpPT1leHBlY3RlZCwnYXBwcm92YWxfcHJldmlld19jaGFuZ2VkJykKICAgICAgICBub3c9aW50KHRpbWUudGltZSgpKTsgdD17J3NjaGVtYSc6U0NIRU1BLCd0aWNrZXRfaWQnOnNlY3JldHMudG9rZW5faGV4KDE2KSwnaXNzdWVkX2F0Jzpub3csJ2V4cGlyZXNfYXQnOm5vdysxMjAwLCdwcmV2aWV3Jzp2LCdwcmV2aWV3X3NoYTI1Nic6ZXhwZWN0ZWR9CiAgICAgICAgcmVwbGFjZShST09ULydhcm1lZC5qc29uJyx0KQogICAgICAgIHJldHVybiB7KipiYXNlKCdhcm1lZCcpLCdyZXF1ZXN0JzpyZXF1ZXN0X29mKHQpLCdleHBpcmVzX2F0Jzp0WydleHBpcmVzX2F0J10sJ2luc3RhbGxlZF9yZXZpc2lvbic6dlsnaW5zdGFsbGVkX3JldmlzaW9uJ119CgpkZWYgY2FuY2VsKHRpZCk6CiAgICByZXF1aXJlKGhleHN0cih0aWQsMzIpLCd0aWNrZXRfaWQnKQogICAgd2l0aCBsb2NrZWQoKToKICAgICAgICB0PWFybWVkX3RpY2tldCgpOyByZXF1aXJlKHQgaXMgbm90IE5vbmUgYW5kIHRbJ3RpY2tldF9pZCddPT10aWQsJ3RpY2tldF9ub3RfYXJtZWQnKQogICAgICAgIChST09ULydhcm1lZC5qc29uJykudW5saW5rKCk7IGZzeW5jX2RpcihST09UKQogICAgICAgIHJldHVybiB7KipiYXNlKCdjYW5jZWxsZWQnKSwndGlja2V0X2lkJzp0aWR9CgpkZWYgcGFyc2VfcmVxdWVzdChkYXRhKToKICAgIHJlcXVpcmUoMDxsZW4oZGF0YSk8PTQwOTYsJ3JlcXVlc3Rfc2l6ZScpCiAgICBkZWYgcGFpcnMoaXRlbXMpOgogICAgICAgIGQ9e30KICAgICAgICBmb3Igayx2IGluIGl0ZW1zOgogICAgICAgICAgICByZXF1aXJlKGsgbm90IGluIGQsJ2R1cGxpY2F0ZV9maWVsZCcpOyBkW2tdPXYKICAgICAgICByZXR1cm4gZAogICAgdHJ5OiB2PWpzb24ubG9hZHMoZGF0YSxvYmplY3RfcGFpcnNfaG9vaz1wYWlycykKICAgIGV4Y2VwdCAoVW5pY29kZUVycm9yLFZhbHVlRXJyb3IpOiByYWlzZSBCbG9ja2VkKCdyZXF1ZXN0X2pzb24nKSBmcm9tIE5vbmUKICAgIHJlcXVpcmUoaXNpbnN0YW5jZSh2LGRpY3QpIGFuZCBzZXQodik9PXsnYWN0aW9uJywnb3BlcmF0aW9uJywncmV2aXNpb24nLCdzaGEyNTYnLCd0aWNrZXRfaWQnfSwncmVxdWVzdF9zaGFwZScpCiAgICByZXF1aXJlKHZbJ2FjdGlvbiddPT0ndXBkYXRlJyBhbmQgb3BfbmFtZSh2WydvcGVyYXRpb24nXSkgYW5kIGhleHN0cih2WydyZXZpc2lvbiddLDQwKSBhbmQgaGV4c3RyKHZbJ3NoYTI1NiddLDY0KSBhbmQgaGV4c3RyKHZbJ3RpY2tldF9pZCddLDMyKSwncmVxdWVzdF9pZGVudGl0eScpCiAgICByZXR1cm4gdgoKZGVmIGRpc3BhdGNoKGRhdGEpOgogICAgdj1wYXJzZV9yZXF1ZXN0KGRhdGEpCiAgICB3aXRoIGxvY2tlZCgpOgogICAgICAgIHJlcXVpcmVfaWRsZSgpOyB0PWFybWVkX3RpY2tldCgpOyByZXF1aXJlKHQgaXMgbm90IE5vbmUsJ2FwcHJvdmFsX3JlcXVpcmVkJykKICAgICAgICByZXF1aXJlKHY9PXJlcXVlc3Rfb2YodCksJ2FwcHJvdmFsX21pc21hdGNoJykKICAgICAgICB1bml0PXN1YnByb2Nlc3MucnVuKFsnL3Vzci9iaW4vc3lzdGVtY3RsJywnc2hvdycsJy0tcHJvcGVydHk9QWN0aXZlU3RhdGUnLCctLXZhbHVlJyxXT1JLRVJdLHN0ZGluPXN1YnByb2Nlc3MuREVWTlVMTCxjYXB0dXJlX291dHB1dD1UcnVlLHRleHQ9VHJ1ZSx0aW1lb3V0PTE1KQogICAgICAgIHJlcXVpcmUodW5pdC5yZXR1cm5jb2RlPT0wIGFuZCB1bml0LnN0ZG91dC5zdHJpcCgpIGluICgnaW5hY3RpdmUnLCdmYWlsZWQnKSwnd29ya2VyX2J1c3knKQogICAgICAgICMgQ29uc3VtZSBleGFjdGx5IG9uY2UuIEEgY3Jhc2ggYmVmb3JlIHN5c3RlbWN0bCBzdGFydCBpcyB2aXNpYmxlOyBuZXZlciByZXRyeSBhdXRvbWF0aWNhbGx5LgogICAgICAgIHJkPXJlcXVlc3RfZGlyKHRbJ3RpY2tldF9pZCddKTsgcmQubWtkaXIobW9kZT0wbzcwMCk7IGZzeW5jX2RpcihyZC5wYXJlbnQpCiAgICAgICAgd3JpdGUocmQvJ3RpY2tldC5qc29uJyx0KTsgcmVwbGFjZShST09ULydjdXJyZW50Lmpzb24nLHsndGlja2V0X2lkJzp0Wyd0aWNrZXRfaWQnXX0pCiAgICAgICAgKFJPT1QvJ2FybWVkLmpzb24nKS51bmxpbmsoKTsgZnN5bmNfZGlyKFJPT1QpCiAgICAgICAgcj1zdWJwcm9jZXNzLnJ1bihbJy91c3IvYmluL3N5c3RlbWN0bCcsJ3N0YXJ0JywnLS1uby1ibG9jaycsV09SS0VSXSxzdGRpbj1zdWJwcm9jZXNzLkRFVk5VTEwsc3Rkb3V0PXN1YnByb2Nlc3MuREVWTlVMTCxzdGRlcnI9c3VicHJvY2Vzcy5ERVZOVUxMLHRpbWVvdXQ9MTUpCiAgICAgICAgcmVxdWlyZShyLnJldHVybmNvZGU9PTAsJ3dvcmtlcl9zdGFydF91bmNlcnRhaW4nKQogICAgICAgIHJldHVybiB7KipiYXNlKCdxdWV1ZWQnKSwncmVxdWVzdCc6diwnZGVwbG95X2NvbXBsZXRlZCc6RmFsc2V9CgpkZWYgc3RhdHVzKCk6CiAgICB3aXRoIGxvY2tlZCgpOgogICAgICAgIHA9cHJlcF9tb2R1bGUoKTsgaixyZWM9YWN0aXZlX3JlY29yZChwKTsgcGhhc2U9cmVjWydwaGFzZSddCiAgICAgICAgdD1hcm1lZF90aWNrZXQoKTsgY3VyPWN1cnJlbnRfcmVxdWVzdCgpOyBsYXN0PU5vbmUKICAgICAgICBpZiBjdXI6CiAgICAgICAgICAgIHJkLGN0PWN1cgogICAgICAgICAgICBpZiBleGlzdHMocmQvJ3Jlc3VsdC5qc29uJyk6CiAgICAgICAgICAgICAgICBsYXN0PXJlYWQocmQvJ3Jlc3VsdC5qc29uJyk7IHJlcXVpcmUobGFzdC5nZXQoJ3RpY2tldF9pZCcpPT1jdFsndGlja2V0X2lkJ10sJ3Jlc3VsdF9pZGVudGl0eScpCiAgICAgICAgICAgIGVsc2U6IGxhc3Q9eyd0aWNrZXRfaWQnOmN0Wyd0aWNrZXRfaWQnXSwnb3BlcmF0aW9uJzpjdFsncHJldmlldyddWydvcGVyYXRpb24nXSwncmV2aXNpb24nOmN0WydwcmV2aWV3J11bJ3JldmlzaW9uJ10sJ3N0YXR1cyc6J3J1bm5pbmdfb3JfaW50ZXJydXB0ZWQnIGlmIGV4aXN0cyhyZC8nc3RhcnRlZC5qc29uJykgZWxzZSAncXVldWVkX29yX2ludGVycnVwdGVkJ30KICAgICAgICByZXR1cm4geyoqYmFzZSgnb2snKSwnYXJtZWQnOk5vbmUgaWYgdCBpcyBOb25lIGVsc2UgeydyZXF1ZXN0JzpyZXF1ZXN0X29mKHQpLCdleHBpcmVzX2F0Jzp0WydleHBpcmVzX2F0J10sJ2luc3RhbGxlZF9yZXZpc2lvbic6dFsncHJldmlldyddWydpbnN0YWxsZWRfcmV2aXNpb24nXX0sJ2xhc3RfcmVxdWVzdCc6bGFzdCwnam91cm5hbCc6eydvcGVyYXRpb24nOmoucGFyZW50Lm5hbWUsJ3BoYXNlJzpwaGFzZSwnY2FuZGlkYXRlX3JldmlzaW9uJzpyZWNbJ2NhbmRpZGF0ZSddWydyZXZpc2lvbiddLCdwcmV2aW91c19yZXZpc2lvbic6cmVjWydwcmV2aW91cyddWydyZXZpc2lvbiddfX0KCmRlZiByZWFzb24oZSk6CiAgICB4PXN0cihlKSBpZiB0eXBlKGUpIGlzIEJsb2NrZWQgZWxzZSB0eXBlKGUpLl9fbmFtZV9fCiAgICByZXR1cm4geCBpZiByZS5mdWxsbWF0Y2gocidbQS1aYS16MC05X117MSw4MH0nLHgpIGVsc2UgJ2ludGVybmFsX2Vycm9yJwoKZGVmIHdvcmtlcigpOgogICAgd2l0aCBsb2NrZWQoKToKICAgICAgICBjdXI9Y3VycmVudF9yZXF1ZXN0KCk7IHJlcXVpcmUoY3VyIGlzIG5vdCBOb25lLCdub19yZXF1ZXN0Jyk7IHJkLHQ9Y3VyCiAgICAgICAgcmVxdWlyZShub3QgZXhpc3RzKHJkLydzdGFydGVkLmpzb24nKSBhbmQgbm90IGV4aXN0cyhyZC8ncmVzdWx0Lmpzb24nKSwncmVxdWVzdF9hbHJlYWR5X3N0YXJ0ZWQnKQogICAgICAgIHdyaXRlKHJkLydzdGFydGVkLmpzb24nLHsnc3RhcnRlZF9hdCc6aW50KHRpbWUudGltZSgpKX0pCiAgICB2PXRbJ3ByZXZpZXcnXTsgb3A9Tm9uZTsgcD1Ob25lOyB1PU5vbmU7IGNmZz1Ob25lOyBiZWZvcmU9Tm9uZTsgaW52b2NhdGlvbj1GYWxzZQogICAgcmVzdWx0PXsqKmJhc2UoJ2Jsb2NrZWRfYmVmb3JlX2pvdXJuYWwnKSwndGlja2V0X2lkJzp0Wyd0aWNrZXRfaWQnXSwnb3BlcmF0aW9uJzp2WydvcGVyYXRpb24nXSwncmV2aXNpb24nOnZbJ3JldmlzaW9uJ10sJ2pvdXJuYWxfcGhhc2UnOk5vbmUsJ2luc3RhbGxlZF9yZXZpc2lvbic6Tm9uZSwnYmFja3VwX3ZlcmlmaWVkJzpGYWxzZSwnaHR0cHNfdmVyaWZpZWQnOkZhbHNlLCdleHRlcm5hbF9wcmVzZXJ2ZWQnOkZhbHNlLCdyZWFzb24nOk5vbmV9CiAgICB0cnk6CiAgICAgICAgcmVxdWlyZSh0Wydpc3N1ZWRfYXQnXTw9aW50KHRpbWUudGltZSgpKTx0WydleHBpcmVzX2F0J10sJ2FwcHJvdmFsX2V4cGlyZWQnKQogICAgICAgIHAsdSxhLHRva2VuLG9wLGNmZyxvbGRfaixvbGRfcmVjLHByZXZpb3VzLGN1cnJlbnQ9Y29udGV4dCgpCiAgICAgICAgcmVxdWlyZShjdXJyZW50PT12IGFuZCBoYXNoX29iaihjdXJyZW50KT09dFsncHJldmlld19zaGEyNTYnXSwnYXBwcm92ZWRfc3RhdGVfY2hhbmdlZCcpCiAgICAgICAgYmVmb3JlPXAuZXh0ZXJuYWxfc25hcHNob3QoKTsgcC5tZXRhZGF0YShhLHRva2VuKQogICAgICAgICMgUmVjaGVjayB0aGUgZXhhY3QgYXBwcm92ZWQgcHJlZGVjZXNzb3IgdW5kZXIgdGhlIG9mZmljaWFsIHVwZGF0ZXIncyBvd24gbG9jaywKICAgICAgICAjIGJlZm9yZSBjYW5kaWRhdGUgaW1hZ2VzIGFyZSBsb2FkZWQuIERvIG5vdCBob2xkIHRoaXMgbG9jayBvdXRzaWRlIHRoZSB1cGRhdGVyLgogICAgICAgIG9yaWdpbmFsPXUuY2hlY2tlZF91cGRhdGVfcGFja2FnZQogICAgICAgIGRlZiBjaGVja2VkKGNvbmZpZyxhZGFwdGVyKToKICAgICAgICAgICAgcmVxdWlyZShpbnQodGltZS50aW1lKCkpPHRbJ2V4cGlyZXNfYXQnXSwnYXBwcm92YWxfZXhwaXJlZCcpCiAgICAgICAgICAgIGoscmVjPWFjdGl2ZV9yZWNvcmQocCk7IHJlcXVpcmUoaj09b2xkX2ogYW5kIHAuc2hhKGopPT12WydhY3RpdmVfam91cm5hbF9zaGEyNTYnXSBhbmQgcmVjPT1vbGRfcmVjLCdhY3RpdmVfam91cm5hbF9jaGFuZ2VkJykKICAgICAgICAgICAgcmVxdWlyZShub3QgZXhpc3RzKG9wLydvcGVyYXRpb24uanNvbicpIGFuZCBwLnNoYShvcC8nY29uZmlnLmpzb24nKT09dlsnY29uZmlnX3NoYTI1NiddIGFuZCBwLnNoYShvcC8nY2FuZGlkYXRlLnppcCcpPT12WydzaGEyNTYnXSwnYXBwcm92ZWRfZmlsZXNfY2hhbmdlZCcpCiAgICAgICAgICAgIHJlcXVpcmUodS5pbnN0YWxsZWRfcHJlZmxpZ2h0KGFkYXB0ZXIpPT1wcmV2aW91cywnaW5zdGFsbGVkX3JlbGVhc2VfY2hhbmdlZCcpCiAgICAgICAgICAgIHJlcXVpcmUocC5leHRlcm5hbF9zbmFwc2hvdCgpPT1iZWZvcmUsJ2V4dGVybmFsX3Njb3BlX2NoYW5nZWQnKQogICAgICAgICAgICBvcmlnaW5hbChjb25maWcsYWRhcHRlcikKICAgICAgICB1LmNoZWNrZWRfdXBkYXRlX3BhY2thZ2U9Y2hlY2tlZAogICAgICAgIGludm9jYXRpb249VHJ1ZQogICAgICAgICMgUHJlc2VydmUgdGhlIG9mZmljaWFsIHRyYW5zYWN0aW9uLCBtYWludGVuYW5jZSBnYXRlIGFuZCBhdXRvbWF0aWMgcmVzdG9yYXRpb24uCiAgICAgICAgd2l0aCBjb250ZXh0bGliLnJlZGlyZWN0X3N0ZG91dChpby5TdHJpbmdJTygpKSxjb250ZXh0bGliLnJlZGlyZWN0X3N0ZGVycihpby5TdHJpbmdJTygpKToKICAgICAgICAgICAgdS5leGVjdXRlX29wZXJhdGlvbigndXBkYXRlJyxjZmcsb3AsYXV0aG9yaXplZD1UcnVlKQogICAgICAgIHJlYz1wLnJlYWRfanNvbihvcC8nb3BlcmF0aW9uLmpzb24nKTsgcmVzdWx0Wydqb3VybmFsX3BoYXNlJ109cmVjLmdldCgncGhhc2UnKQogICAgICAgIHJlcXVpcmUocmVjLmdldCgncGhhc2UnKT09J2FjY2VwdGVkJyBhbmQgcmVjLmdldCgnY2FuZGlkYXRlJyx7fSkuZ2V0KCdyZXZpc2lvbicpPT12WydyZXZpc2lvbiddLCdub3RfYWNjZXB0ZWQnKQogICAgICAgIHJlcXVpcmUoYWN0aXZlX3JlY29yZChwKVswXT09b3AvJ29wZXJhdGlvbi5qc29uJywnYWN0aXZlX29wZXJhdGlvbl9jaGFuZ2VkJykKICAgICAgICByZXF1aXJlKGhleHN0cihyZWMuZ2V0KCdiYWNrdXBfc2hhMjU2JyksNjQpIGFuZCBwLnNoYShvcC8nYmFja3VwLnNxbGl0ZScpPT1yZWNbJ2JhY2t1cF9zaGEyNTYnXSwnYmFja3VwX2RpZ2VzdCcpCiAgICAgICAgcmVzdWx0WydiYWNrdXBfdmVyaWZpZWQnXT1UcnVlCiAgICAgICAgZmluYWw9dS5pbnN0YWxsZWRfcHJlZmxpZ2h0KHUubWFrZV9hZGFwdGVyKGNmZykpOyByZXF1aXJlKGZpbmFsPT1yZWNbJ2NhbmRpZGF0ZSddLCdmaW5hbF9yZWxlYXNlJykKICAgICAgICByZXN1bHRbJ2h0dHBzX3ZlcmlmaWVkJ109VHJ1ZTsgcmVzdWx0WydpbnN0YWxsZWRfcmV2aXNpb24nXT1maW5hbFsncmV2aXNpb24nXQogICAgICAgIHJlc3VsdFsnZXh0ZXJuYWxfcHJlc2VydmVkJ109cC5leHRlcm5hbF9zbmFwc2hvdCgpPT1iZWZvcmU7IHJlcXVpcmUocmVzdWx0WydleHRlcm5hbF9wcmVzZXJ2ZWQnXSwnZXh0ZXJuYWxfc2NvcGVfY2hhbmdlZCcpCiAgICAgICAgcmVzdWx0WydzdGF0dXMnXT0nYWNjZXB0ZWQnCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgcmVzdWx0WydyZWFzb24nXT1yZWFzb24oZSkKICAgICAgICBpZiBpbnZvY2F0aW9uIGFuZCBwIGlzIG5vdCBOb25lIGFuZCBvcCBpcyBub3QgTm9uZToKICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgaWYgZXhpc3RzKG9wLydvcGVyYXRpb24uanNvbicpOgogICAgICAgICAgICAgICAgICAgIHJlYz1wLnJlYWRfanNvbihvcC8nb3BlcmF0aW9uLmpzb24nKTsgcGhhc2U9cmVjLmdldCgncGhhc2UnKTsgcmVzdWx0Wydqb3VybmFsX3BoYXNlJ109cGhhc2UgaWYgcGhhc2UgaW4gUEhBU0VTIGVsc2UgTm9uZQogICAgICAgICAgICAgICAgICAgIHJlc3VsdFsnc3RhdHVzJ109J2FjY2VwdGVkX3JlcXVpcmVzX3JldmlldycgaWYgcGhhc2U9PSdhY2NlcHRlZCcgZWxzZSAncmVxdWlyZXNfcmVjb3ZlcnknCiAgICAgICAgICAgICAgICAgICAgaWYgcGhhc2U9PSdyZXN0b3JlZCcgYW5kIGFjdGl2ZV9yZWNvcmQocClbMF09PW9wLydvcGVyYXRpb24uanNvbic6CiAgICAgICAgICAgICAgICAgICAgICAgIGZpbmFsPXUuaW5zdGFsbGVkX3ByZWZsaWdodCh1Lm1ha2VfYWRhcHRlcihjZmcpKTsgcmVzdWx0WydpbnN0YWxsZWRfcmV2aXNpb24nXT1maW5hbFsncmV2aXNpb24nXTsgcmVzdWx0WydodHRwc192ZXJpZmllZCddPWZpbmFsPT1yZWNbJ3ByZXZpb3VzJ10KICAgICAgICAgICAgICAgICAgICAgICAgaWYgJ2JhY2t1cF9zaGEyNTYnIGluIHJlYzogcmVzdWx0WydiYWNrdXBfdmVyaWZpZWQnXT1wLnNoYShvcC8nYmFja3VwLnNxbGl0ZScpPT1yZWNbJ2JhY2t1cF9zaGEyNTYnXQogICAgICAgICAgICAgICAgICAgICAgICByZXN1bHRbJ2V4dGVybmFsX3ByZXNlcnZlZCddPXAuZXh0ZXJuYWxfc25hcHNob3QoKT09YmVmb3JlCiAgICAgICAgICAgICAgICAgICAgICAgIGlmIHJlc3VsdFsnaHR0cHNfdmVyaWZpZWQnXSBhbmQgcmVzdWx0WydleHRlcm5hbF9wcmVzZXJ2ZWQnXSBhbmQgKCdiYWNrdXBfc2hhMjU2JyBub3QgaW4gcmVjIG9yIHJlc3VsdFsnYmFja3VwX3ZlcmlmaWVkJ10pOiByZXN1bHRbJ3N0YXR1cyddPSdhdXRvX3Jlc3RvcmVkJwogICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICBqLHJlYz1hY3RpdmVfcmVjb3JkKHApCiAgICAgICAgICAgICAgICAgICAgaWYgaiE9b2xkX2ogb3IgcmVjIT1vbGRfcmVjOiByZXN1bHRbJ3N0YXR1cyddPSdyZXF1aXJlc19yZXZpZXcnCiAgICAgICAgICAgIGV4Y2VwdCBFeGNlcHRpb246IHJlc3VsdFsnc3RhdHVzJ109J3JlcXVpcmVzX3JldmlldycKICAgIGZpbmFsbHk6CiAgICAgICAgcmVzdWx0WydmaW5pc2hlZF9hdCddPWludCh0aW1lLnRpbWUoKSkKICAgICAgICB3aXRoIGxvY2tlZCgpOiB3cml0ZShyZC8ncmVzdWx0Lmpzb24nLHJlc3VsdCkKICAgIHJldHVybiByZXN1bHQKCmRlZiBtYWluKCk6CiAgICBvcy51bWFzaygwbzA3Nyk7IHJlcXVpcmUob3MuZ2V0ZXVpZCgpPT0wLCdyb290X29ubHknKQogICAgYXJncz1zeXMuYXJndlsxOl0KICAgIGlmIGFyZ3M9PVsnc3RhdHVzJ106IHJldHVybiBzdGF0dXMoKQogICAgaWYgYXJncz09WydwcmV2aWV3J106IHJldHVybiB2aWV3KCkKICAgIGlmIGxlbihhcmdzKT09MiBhbmQgYXJnc1swXT09J2FwcHJvdmUnOiByZXR1cm4gYXBwcm92ZShhcmdzWzFdKQogICAgaWYgbGVuKGFyZ3MpPT0yIGFuZCBhcmdzWzBdPT0nY2FuY2VsJzogcmV0dXJuIGNhbmNlbChhcmdzWzFdKQogICAgaWYgYXJncz09WydkaXNwYXRjaCddOiByZXR1cm4gZGlzcGF0Y2goc3lzLnN0ZGluLmJ1ZmZlci5yZWFkKDQwOTcpKQogICAgaWYgYXJncz09Wyd3b3JrZXInXTogcmV0dXJuIHdvcmtlcigpCiAgICByYWlzZSBCbG9ja2VkKCdjb21tYW5kX25vdF9hbGxvd2VkJykKCmlmIF9fbmFtZV9fPT0nX19tYWluX18nOgogICAgdHJ5OiByPW1haW4oKTsgcHJpbnQoanNvbi5kdW1wcyhyLHNvcnRfa2V5cz1UcnVlKSxmbHVzaD1UcnVlKTsgc3lzLmV4aXQoMCBpZiByWydzdGF0dXMnXSBub3QgaW4gKCdyZXF1aXJlc19yZXZpZXcnLCdyZXF1aXJlc19yZWNvdmVyeScsJ2FjY2VwdGVkX3JlcXVpcmVzX3JldmlldycsJ2Jsb2NrZWRfYmVmb3JlX2pvdXJuYWwnLCdhdXRvX3Jlc3RvcmVkJykgZWxzZSAxKQogICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOiBwcmludChqc29uLmR1bXBzKHsqKmJhc2UoJ2Jsb2NrZWQnKSwncmVhc29uJzpyZWFzb24oZSl9LHNvcnRfa2V5cz1UcnVlKSxmbHVzaD1UcnVlKTsgc3lzLmV4aXQoMSkK'
+TRANSPORT_B64='IiIiVW5wcml2aWxlZ2VkIGJyaWRnZS1vbmx5IG1UTFMgdHJhbnNwb3J0OyB0d28gZml4ZWQgcm9vdCBlbnRyeXBvaW50cy4iIiIKaW1wb3J0IGhhc2hsaWIKZnJvbSBodHRwLnNlcnZlciBpbXBvcnQgQmFzZUhUVFBSZXF1ZXN0SGFuZGxlcixIVFRQU2VydmVyCmltcG9ydCBqc29uCmltcG9ydCBvcwpmcm9tIHBhdGhsaWIgaW1wb3J0IFBhdGgKaW1wb3J0IHNvY2tldAppbXBvcnQgc3NsCmltcG9ydCBzdWJwcm9jZXNzCgpUTFM9UGF0aCgnL2V0Yy9mdW5peC1obWwtb3BzJykKU0NIRU1BPSdmdW5peC1obWwtb3BzLzEnClNUQVRVUz0nL3Vzci9sb2NhbC9zYmluL2Z1bml4LWhtbC1vcHMtc3RhdHVzJwpESVNQQVRDSD0nL3Vzci9sb2NhbC9zYmluL2Z1bml4LWhtbC1vcHMtcmVxdWVzdCcKCmRlZiBibG9ja2VkKGNvZGUpOnJldHVybiB7J3NjaGVtYSc6U0NIRU1BLCdzY29wZSc6J2Z1bml4LWhtbCcsJ3N0YXR1cyc6J2Jsb2NrZWQnLCdyZWFzb24nOmNvZGV9CgpjbGFzcyBTZXJ2ZXIoSFRUUFNlcnZlcik6CiAgICBhbGxvd19yZXVzZV9hZGRyZXNzPVRydWUKICAgIGRlZiBfX2luaXRfXyhzZWxmLGNvbmZpZyxjdHgpOgogICAgICAgIHNlbGYuc291cmNlPWNvbmZpZ1snc291cmNlJ107IHNlbGYuZnA9Y29uZmlnWydjbGllbnRfZmluZ2VycHJpbnQnXTsgc2VsZi5jdHg9Y3R4CiAgICAgICAgc3VwZXIoKS5fX2luaXRfXygoY29uZmlnWydnYXRld2F5J10sY29uZmlnWydwb3J0J10pLEhhbmRsZXIpCiAgICBkZWYgZ2V0X3JlcXVlc3Qoc2VsZik6CiAgICAgICAgc29jayxhZGRyPXN1cGVyKCkuZ2V0X3JlcXVlc3QoKTsgc29jay5zZXR0aW1lb3V0KDgpCiAgICAgICAgdHJ5OgogICAgICAgICAgICBpZiBhZGRyWzBdIT1zZWxmLnNvdXJjZTogcmFpc2UgUGVybWlzc2lvbkVycm9yKCd3cm9uZ19vcmlnaW4nKQogICAgICAgICAgICBzcz1zZWxmLmN0eC53cmFwX3NvY2tldChzb2NrLHNlcnZlcl9zaWRlPVRydWUsZG9faGFuZHNoYWtlX29uX2Nvbm5lY3Q9RmFsc2UpCiAgICAgICAgICAgIHRyeToKICAgICAgICAgICAgICAgIHNzLmRvX2hhbmRzaGFrZSgpOyBjZXJ0PXNzLmdldHBlZXJjZXJ0KGJpbmFyeV9mb3JtPVRydWUpCiAgICAgICAgICAgICAgICBpZiBub3QgY2VydCBvciBoYXNobGliLnNoYTI1NihjZXJ0KS5oZXhkaWdlc3QoKSE9c2VsZi5mcDogcmFpc2UgUGVybWlzc2lvbkVycm9yKCd3cm9uZ19jZXJ0aWZpY2F0ZScpCiAgICAgICAgICAgICAgICByZXR1cm4gc3MsYWRkcgogICAgICAgICAgICBleGNlcHQgRXhjZXB0aW9uOiBzcy5jbG9zZSgpOyByYWlzZQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246IHNvY2suY2xvc2UoKTsgcmFpc2UgT1NFcnJvcignY29ubmVjdGlvbl9kZW5pZWQnKSBmcm9tIE5vbmUKICAgIGRlZiBoYW5kbGVfZXJyb3Ioc2VsZiwqXyk6IHBhc3MKCmNsYXNzIEhhbmRsZXIoQmFzZUhUVFBSZXF1ZXN0SGFuZGxlcik6CiAgICBwcm90b2NvbF92ZXJzaW9uPSdIVFRQLzEuMCcKICAgIHNlcnZlcl92ZXJzaW9uPSdGVU5JWC1ITUwtT3BzJwogICAgc3lzX3ZlcnNpb249JycKICAgIGRlZiBsb2dfbWVzc2FnZShzZWxmLCpfKTogcGFzcwogICAgZGVmIHNlbmRfZXJyb3Ioc2VsZixjb2RlLG1lc3NhZ2U9Tm9uZSxleHBsYWluPU5vbmUpOiBzZWxmLnJlcGx5KGNvZGUsYmxvY2tlZCgnaHR0cF9yZXF1ZXN0X2RlbmllZCcpKQogICAgZGVmIHJlcGx5KHNlbGYsY29kZSxwYXlsb2FkKToKICAgICAgICBkYXRhPWpzb24uZHVtcHMocGF5bG9hZCxzZXBhcmF0b3JzPSgnLCcsJzonKSkuZW5jb2RlKCd1dGYtOCcpCiAgICAgICAgc2VsZi5zZW5kX3Jlc3BvbnNlKGNvZGUpOyBzZWxmLnNlbmRfaGVhZGVyKCdDb250ZW50LVR5cGUnLCdhcHBsaWNhdGlvbi9qc29uJyk7IHNlbGYuc2VuZF9oZWFkZXIoJ0NvbnRlbnQtTGVuZ3RoJyxzdHIobGVuKGRhdGEpKSk7IHNlbGYuc2VuZF9oZWFkZXIoJ0NhY2hlLUNvbnRyb2wnLCduby1zdG9yZScpOyBzZWxmLnNlbmRfaGVhZGVyKCdDb25uZWN0aW9uJywnY2xvc2UnKTsgc2VsZi5lbmRfaGVhZGVycygpOyBzZWxmLndmaWxlLndyaXRlKGRhdGEpOyBzZWxmLmNsb3NlX2Nvbm5lY3Rpb249VHJ1ZQogICAgZGVmIGNhbGwoc2VsZixjb21tYW5kLGJvZHk9YicnKToKICAgICAgICB0cnk6CiAgICAgICAgICAgIHI9c3VicHJvY2Vzcy5ydW4oWycvdXNyL2Jpbi9zdWRvJywnLW4nLCctLScsY29tbWFuZF0saW5wdXQ9Ym9keSxjYXB0dXJlX291dHB1dD1UcnVlLHRpbWVvdXQ9MjUpCiAgICAgICAgICAgIGlmIHIuc3RkZXJyIG9yIGxlbihyLnN0ZG91dCk+MzI3Njg6IHJhaXNlIFZhbHVlRXJyb3IoJ2ludmFsaWRfb3V0cHV0JykKICAgICAgICAgICAgb3V0cHV0PWpzb24ubG9hZHMoci5zdGRvdXQpCiAgICAgICAgICAgIGlmIG5vdCBpc2luc3RhbmNlKG91dHB1dCxkaWN0KSBvciBvdXRwdXQuZ2V0KCdzY2hlbWEnKSE9U0NIRU1BIG9yIG91dHB1dC5nZXQoJ3Njb3BlJykhPSdmdW5peC1obWwnIG9yIG91dHB1dC5nZXQoJ3N0YXR1cycpIG5vdCBpbiAoJ29rJywncXVldWVkJywnYmxvY2tlZCcpOiByYWlzZSBWYWx1ZUVycm9yKCdpbnZhbGlkX291dHB1dCcpCiAgICAgICAgICAgIGNvZGU9MjAwIGlmIHIucmV0dXJuY29kZT09MCBhbmQgb3V0cHV0WydzdGF0dXMnXT09J29rJyBlbHNlIDIwMiBpZiByLnJldHVybmNvZGU9PTAgYW5kIG91dHB1dFsnc3RhdHVzJ109PSdxdWV1ZWQnIGVsc2UgNDA5IGlmIHIucmV0dXJuY29kZT09MSBhbmQgb3V0cHV0WydzdGF0dXMnXT09J2Jsb2NrZWQnIGVsc2UgNTAyCiAgICAgICAgICAgIHNlbGYucmVwbHkoY29kZSxvdXRwdXQgaWYgY29kZSE9NTAyIGVsc2UgYmxvY2tlZCgnY29udHJvbGxlcl9jb250cmFjdCcpKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246IHNlbGYucmVwbHkoNTAzLGJsb2NrZWQoJ2NvbnRyb2xsZXJfdW5hdmFpbGFibGUnKSkKICAgIGRlZiBkb19HRVQoc2VsZik6CiAgICAgICAgaWYgc2VsZi5wYXRoIT0nL3YxL3N0YXR1cycgb3Igc2VsZi5oZWFkZXJzLmdldCgnVHJhbnNmZXItRW5jb2RpbmcnKSBvciBzZWxmLmhlYWRlcnMuZ2V0KCdDb250ZW50LUxlbmd0aCcsJzAnKSE9JzAnOiByZXR1cm4gc2VsZi5yZXBseSg0MDQsYmxvY2tlZCgncm91dGVfZGVuaWVkJykpCiAgICAgICAgc2VsZi5jYWxsKFNUQVRVUykKICAgIGRlZiBkb19QT1NUKHNlbGYpOgogICAgICAgIGlmIHNlbGYucGF0aCE9Jy92MS91cGRhdGUnOiByZXR1cm4gc2VsZi5yZXBseSg0MDQsYmxvY2tlZCgncm91dGVfZGVuaWVkJykpCiAgICAgICAgbGVuZ3Rocz1zZWxmLmhlYWRlcnMuZ2V0X2FsbCgnQ29udGVudC1MZW5ndGgnLFtdKQogICAgICAgIGlmIHNlbGYuaGVhZGVycy5nZXQoJ1RyYW5zZmVyLUVuY29kaW5nJykgb3IgbGVuKGxlbmd0aHMpIT0xIG9yIG5vdCBsZW5ndGhzWzBdLmlzZGlnaXQoKSBvciBub3QgMDxpbnQobGVuZ3Roc1swXSk8PTQwOTYgb3Igc2VsZi5oZWFkZXJzLmdldF9jb250ZW50X3R5cGUoKSE9J2FwcGxpY2F0aW9uL2pzb24nOiByZXR1cm4gc2VsZi5yZXBseSg0MDAsYmxvY2tlZCgncmVxdWVzdF9ib2R5JykpCiAgICAgICAgZGF0YT1zZWxmLnJmaWxlLnJlYWQoaW50KGxlbmd0aHNbMF0pKQogICAgICAgIGlmIGxlbihkYXRhKSE9aW50KGxlbmd0aHNbMF0pOiByZXR1cm4gc2VsZi5yZXBseSg0MDAsYmxvY2tlZCgncmVxdWVzdF9ib2R5JykpCiAgICAgICAgc2VsZi5jYWxsKERJU1BBVENILGRhdGEpCgpkZWYgbWFpbigpOgogICAgb3MudW1hc2soMG8wNzcpCiAgICBjb25maWc9anNvbi5sb2FkcygoVExTLyd0cmFuc3BvcnQuanNvbicpLnJlYWRfdGV4dCgpKQogICAgY3R4PXNzbC5TU0xDb250ZXh0KHNzbC5QUk9UT0NPTF9UTFNfU0VSVkVSKTsgY3R4Lm1pbmltdW1fdmVyc2lvbj1zc2wuVExTVmVyc2lvbi5UTFN2MV8yOyBjdHgudmVyaWZ5X21vZGU9c3NsLkNFUlRfUkVRVUlSRUQKICAgIGN0eC5sb2FkX2NlcnRfY2hhaW4oVExTLydzZXJ2ZXIuY3J0JyxUTFMvJ3NlcnZlci5rZXknKTsgY3R4LmxvYWRfdmVyaWZ5X2xvY2F0aW9ucyhjYWZpbGU9c3RyKFRMUy8nY2EuY3J0JykpCiAgICB3aXRoIFNlcnZlcihjb25maWcsY3R4KSBhcyBzZXJ2ZXI6IHNlcnZlci5zZXJ2ZV9mb3JldmVyKHBvbGxfaW50ZXJ2YWw9MC41KQoKaWYgX19uYW1lX189PSdfX21haW5fXyc6IG1haW4oKQo='
+step='start'
+class Blocked(Exception): pass
+
+def require(ok,code):
+    if not ok: raise Blocked(code)
+
+def output(key,v): print(key,json.dumps(v,ensure_ascii=True,sort_keys=True),flush=True)
+def exists(p): return p.exists() or p.is_symlink()
+def rooted(p):
+    s=p.lstat(); require(p.resolve(strict=True)==p and s.st_uid==0 and not s.st_mode&0o022,'root_path'); return s
+
+def put(p,b,mode,group=0):
+    fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode)
+    with os.fdopen(fd,'wb') as f: os.fchown(f.fileno(),0,group); os.fchmod(f.fileno(),mode); f.write(b); f.flush(); os.fsync(f.fileno())
+
+def run(*args,timeout=90,input=None):
+    r=subprocess.run(args,input=input,capture_output=True,timeout=timeout)
+    require(r.returncode==0,'command_failed'); return r.stdout.decode('utf-8').strip()
+
+def set_dir(p,mode,group=0): p.mkdir(mode=mode); os.chown(p,0,group); os.chmod(p,mode)
+
+def matches_origin(user):
+    info=pwd.getpwnam(user); auth=Path(info.pw_dir)/'.ssh/authorized_keys'; require(auth.resolve(strict=True)==auth and auth.is_file(),'authorized_keys')
+    rows=[x for x in auth.read_text().splitlines() if x.strip() and not x.lstrip().startswith('#')]
+    require(len(rows)==1,'authorized_keys_count')
+    m=re.findall(r'(?:^|,)from="([0-9./]+)"(?=,|\s)',rows[0]); require(len(m)==1,'source_limit')
+    n=ipaddress.ip_network(m[0],strict=False); require(n.version==4 and n.num_addresses==1 and n.network_address.is_private and not n.network_address.is_loopback,'private_origin')
+    return str(n.network_address)
+
+def network():
+    source=matches_origin('funix-hml-ro'); require(source==matches_origin('funix-hml-prep'),'origin_difference')
+    ids=run('/usr/bin/docker','ps','-q').split(); require(ids,'container_list')
+    rows=json.loads(run('/usr/bin/docker','inspect',*ids)); found=[]
+    for row in rows:
+        for name,detail in row.get('NetworkSettings',{}).get('Networks',{}).items():
+            if detail.get('IPAddress')==source: found.append((row,name,detail))
+    require(len(found)==1,'unique_origin'); row,name,detail=found[0]
+    require(re.search(r'(?:^|/)n8n(?:[:@]|$)',row['Config']['Image']) is not None,'origin_not_n8n')
+    ns=json.loads(run('/usr/bin/docker','network','inspect',name)); require(len(ns)==1,'network_count'); n=ns[0]
+    require(n['Driver']=='bridge' and set(n.get('Containers',{}))=={row['Id']},'exclusive_bridge')
+    src=ipaddress.ip_address(source)
+    subnets=[(ipaddress.ip_network(v['Subnet'],strict=False),ipaddress.ip_address(v['Gateway'])) for v in n['IPAM']['Config'] if 'Subnet' in v and 'Gateway' in v and ':' not in v['Subnet']]
+    matches=[gw for subnet,gw in subnets if src in subnet and gw in subnet]
+    require(len(matches)==1,'bridge_subnet'); gw=matches[0]
+    require(gw.version==4 and gw.is_private and not gw.is_loopback and gw!=src and detail.get('Gateway','') in ('',str(gw)),'bridge_gateway')
+    ipdata=json.loads(run('ip','-j','address','show'))
+    interface=n.get('Options',{}).get('com.docker.network.bridge.name') or 'br-'+n['Id'][:12]
+    require(any(d.get('ifname')==interface and any(v.get('local')==str(gw) for v in d.get('addr_info',[])) for d in ipdata),'gateway_not_local_bridge')
+    return source,str(gw)
+
+def listeners():
+    return [x.split()[3] for x in run('ss','-H','-ltn').splitlines() if len(x.split())>=4 and x.split()[3].endswith(':'+str(PORT))]
+
+def certs(d,gateway):
+    """Issue one server and one client leaf; CA private key stays in temporary directory."""
+    def call(*args): return run('openssl',*args,timeout=90)
+    ca=d/'ca.crt'; cak=d/'ca.key'; srv=d/'server.crt'; srk=d/'server.key'; cli=d/'client.crt'; clk=d/'client.key'
+    call('req','-x509','-newkey','rsa:3072','-nodes','-sha256','-keyout',str(cak),'-out',str(ca),'-days','365','-subj','/CN=FUNIX HML Operations dedicated CA','-addext','basicConstraints=critical,CA:TRUE,pathlen:0','-addext','keyUsage=critical,keyCertSign,cRLSign')
+    for name,key,crt,ext in [('server',srk,srv,'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=IP:'+gateway+'\n'),('client',clk,cli,'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=clientAuth\n')]:
+        csr=d/(name+'.csr'); e=d/(name+'.ext'); e.write_text(ext)
+        call('req','-new','-newkey','rsa:2048','-nodes','-sha256','-keyout',str(key),'-out',str(csr),'-subj','/CN=FUNIX HML Operations '+name)
+        call('x509','-req','-in',str(csr),'-CA',str(ca),'-CAkey',str(cak),'-CAcreateserial','-out',str(crt),'-days','180','-sha256','-extfile',str(e))
+    call('verify','-CAfile',str(ca),'-purpose','sslserver','-verify_ip',gateway,str(srv))
+    call('verify','-CAfile',str(ca),'-purpose','sslclient',str(cli))
+    # ssl loads these pairs as an additional key/certificate consistency check.
+    import ssl
+    c=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER); c.load_cert_chain(srv,srk)
+    c=ssl.create_default_context(cafile=str(ca)); c.load_cert_chain(cli,clk)
+    fp=hashlib.sha256(ssl.PEM_cert_to_DER_cert(cli.read_text())).hexdigest()
+    return fp
+
+def wrap(action):
+    return ('#!/bin/sh\nset -eu\n[ "$#" -eq 0 ] || exit 64\nexec /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root /usr/bin/python3 -I /usr/local/lib/funix-hml-ops/rootctl.py '+action+'\n').encode()
+
+def main():
+    global step
+    os.umask(0o077); require(os.geteuid()==0,'root_only')
+    require(not any(k.startswith(('DOCKER_','COMPOSE_')) for k in os.environ),'docker_environment_override')
+    rootbytes=base64.b64decode(ROOTCTL_B64,validate=True); trbytes=base64.b64decode(TRANSPORT_B64,validate=True)
+    code=compile(rootbytes,'rootctl.py','exec'); compile(trbytes,'transport.py','exec')
+    root={'__name__':'funix_hml_install'}; exec(code,root)
+    step='existing_prepared_candidate'; p,u,a,token,op,cfg,j,rec,previous,preview=root['context']()
+    before=p.external_snapshot(); require(u.installed_preflight(u.make_adapter(cfg))==previous,'installed_release')
+    output('PREPARADO',{'operation':op.name,'revision':preview['revision'],'installed_revision':preview['installed_revision'],'official_code_verified':True})
+    step='exclusive_bridge'; source,gateway=network(); require(not listeners(),'port_in_use')
+    output('REDE',{'exclusive_n8n_bridge':True,'internal_only':True,'port':PORT,'url':'https://'+gateway+':'+str(PORT)})
+    step='exclusive_install_paths'
+    for path in (BASE,STATE,TLS,STATUS,REQUEST,SUDO,UNIT/SERVICE,UNIT/WORKER): require(not exists(path),'target_exists')
+    for path in (BASE.parent,STATE.parent,TLS.parent,STATUS.parent,SUDO.parent,UNIT): require(stat.S_ISDIR(rooted(path).st_mode),'unsafe_parent')
+    try: pwd.getpwnam(USER)
+    except KeyError: pass
+    else: raise Blocked('account_exists')
+    for prog in ('openssl','systemctl','visudo','sudo','useradd','runuser','ss','ip'): require(shutil.which(prog) is not None,'required_program_missing')
+    require(shutil.which('systemctl')=='/usr/bin/systemctl' and Path('/usr/bin/sudo').is_file(),'system_paths')
+    # No live approval is created here. New paths only; preserve all SSH/n8n/HML settings.
+    step='service_identity'; run('useradd','--system','--user-group','--no-create-home','--home-dir','/nonexistent','--shell','/usr/sbin/nologin',USER)
+    usr=pwd.getpwnam(USER); require(run('id','-Gn',USER).split()==[USER] and run('passwd','-S',USER).split()[1] in ('L','LK'),'service_privileges')
+    step='install_files'; set_dir(BASE,0o755); set_dir(STATE,0o700); set_dir(STATE/'requests',0o700); set_dir(STATE/'client-export',0o700); set_dir(TLS,0o750,usr.pw_gid)
+    put(STATE/'control.lock',b'',0o600); put(BASE/'rootctl.py',rootbytes,0o644); put(BASE/'transport.py',trbytes,0o644)
+    with tempfile.TemporaryDirectory(prefix='funix-hml-ops-pki-',dir=STATE) as tmp:
+        d=Path(tmp); fp=certs(d,gateway)
+        for name in ('ca.crt','server.crt','server.key'): put(TLS/name,(d/name).read_bytes(),0o640,usr.pw_gid)
+        for name in ('ca.crt','client.crt','client.key'): put(STATE/'client-export'/name,(d/name).read_bytes(),0o600)
+    put(TLS/'transport.json',json.dumps({'source':source,'gateway':gateway,'port':PORT,'client_fingerprint':fp},sort_keys=True).encode()+b'\n',0o640,usr.pw_gid)
+    put(STATUS,wrap('status'),0o755); put(REQUEST,wrap('dispatch'),0o755)
+    step='sudo_rules'; tmp=STATE/'sudoers.check'
+    put(tmp,(f'{USER} ALL=(root) NOPASSWD: {STATUS} "", {REQUEST} ""\n').encode(),0o440)
+    run('visudo','-cf',str(tmp)); put(SUDO,tmp.read_bytes(),0o440); tmp.unlink(); run('visudo','-c')
+    step='systemd_units';
+    svc='''[Unit]
+Description=FUNIX HML restricted mTLS administrative bridge
+After=docker.service network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=funix-hml-ops
+Group=funix-hml-ops
+ExecStart=/usr/bin/python3 -I /usr/local/lib/funix-hml-ops/transport.py
+Restart=on-failure
+RestartSec=3s
+UMask=0077
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+[Install]
+WantedBy=multi-user.target
+'''
+    worker='''[Unit]
+Description=FUNIX HML explicitly approved official update worker
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root /usr/bin/python3 -I /usr/local/lib/funix-hml-ops/rootctl.py worker
+TimeoutStartSec=infinity
+UMask=0077
+Restart=no
+'''
+    put(UNIT/SERVICE,svc.encode(),0o644); put(UNIT/WORKER,worker.encode(),0o644)
+    step='negative_and_readonly_checks'; result=json.loads(run('runuser','-u',USER,'--','sudo','-n','--',str(STATUS)))
+    require(result.get('status')=='ok' and result.get('armed') is None and result.get('last_request') is None and result.get('journal',{}).get('operation')==j.parent.name,'status_contract')
+    denied=subprocess.run(['runuser','-u',USER,'--','sudo','-n','--','/usr/bin/id'],capture_output=True,timeout=15); require(denied.returncode!=0,'arbitrary_sudo_allowed')
+    req={'action':'update','operation':op.name,'revision':preview['revision'],'sha256':preview['sha256'],'ticket_id':'0'*32}
+    denied=subprocess.run(['runuser','-u',USER,'--','sudo','-n','--',str(REQUEST)],input=json.dumps(req).encode(),capture_output=True,timeout=25)
+    require(denied.returncode==1 and json.loads(denied.stdout).get('reason')=='approval_required','update_without_approval_not_rejected')
+    require(not exists(STATE/'armed.json') and not exists(STATE/'current.json'),'unexpected_request_state')
+    output('CONTROLES',{'arbitrary_sudo_rejected':True,'update_without_approval_rejected':True,'status_readonly':True,'account_no_docker_group':True,'approval_armed':False})
+    step='start_transport'; run('systemctl','daemon-reload'); run('systemctl','enable','--now',SERVICE)
+    for _ in range(20):
+        if listeners()==[gateway+':'+str(PORT)]: break
+        time.sleep(.5)
+    require(listeners()==[gateway+':'+str(PORT)],'listener_scope'); require(run('systemctl','is-active',SERVICE)=='active','transport_inactive')
+    # The worker unit must be inactive; transport root commands cannot create approvals.
+    ws=subprocess.run(['systemctl','is-active',WORKER],capture_output=True,text=True,timeout=15)
+    require(ws.stdout.strip()=='inactive','worker_unexpectedly_active')
+    step='final_scope'; require(p.external_snapshot()==before and p.read_json(j)==rec and root['active_record'](p)[0]==j and not exists(op/'operation.json'),'scope_changed')
+    output('RESULTADO',{'installed':True,'scope':'funix-hml','url':'https://'+gateway+':'+str(PORT),'mtls_required':True,'source_restricted':True,'client_certificate_pinned':True,'server_certificate_ip_san':True,'cert_validity_days':180,'client_credentials_export_pending':True,'approval_armed':False,'worker_active':False,'external_preserved':True,'deploy':False})
+
+if __name__=='__main__':
+    try: main()
+    except Exception as exc:
+        # Stop only this newly installed transport if this invocation reached its start.
+        if step in ('start_transport','final_scope'):
+            try: subprocess.run(['systemctl','disable','--now',SERVICE],capture_output=True,timeout=30)
+            except Exception: pass
+        why=str(exc) if type(exc) is Blocked else type(exc).__name__
+        output('BLOQUEADO',{'step':step,'reason':why if re.fullmatch(r'[A-Za-z0-9_]{1,100}',why) else 'internal_error','deploy':False,'do_not_repeat_if_partial':True}); sys.exit(1)
+'@
+$exportSource = @'
+import base64,json,os,stat
+from pathlib import Path
+p=Path('/var/lib/funix-hml-ops/client-export')
+try:
+    s=p.lstat(); assert os.geteuid()==0 and p.resolve(strict=True)==p and s.st_uid==0 and stat.S_ISDIR(s.st_mode) and stat.S_IMODE(s.st_mode)==0o700
+    r={}
+    for name in ('ca.crt','client.crt','client.key'):
+        f=p/name;s=f.lstat();assert f.resolve(strict=True)==f and s.st_uid==0 and stat.S_ISREG(s.st_mode) and not s.st_mode&0o077 and s.st_nlink==1 and 0<s.st_size<=65536
+        r[name]=base64.b64encode(f.read_bytes()).decode('ascii')
+    print(json.dumps(r),flush=True)
+except Exception: raise SystemExit('client credential export blocked')
+'@
+$purgeSource = @'
+import os,stat
+from pathlib import Path
+p=Path('/var/lib/funix-hml-ops/client-export')
+try:
+    s=p.lstat(); assert os.geteuid()==0 and p.resolve(strict=True)==p and s.st_uid==0 and stat.S_ISDIR(s.st_mode) and stat.S_IMODE(s.st_mode)==0o700
+    fs=[p/x for x in ('ca.crt','client.crt','client.key')];assert set(p.iterdir())==set(fs)
+    for f in fs:
+        s=f.lstat();assert f.resolve(strict=True)==f and s.st_uid==0 and stat.S_ISREG(s.st_mode) and not s.st_mode&0o077 and s.st_nlink==1
+    for f in fs:f.unlink()
+    p.rmdir(); print('CLIENT_EXPORT_PURGED=true',flush=True)
+except Exception: raise SystemExit('client credential purge blocked')
+'@
+Write-Host 'Instalando acesso mTLS restrito. Nenhuma aprovacao de deploy sera criada.'
+$remote | & ssh.exe @sshArgs 'python3 -u -' 2>&1 | Tee-Object -FilePath $report
+$code = $LASTEXITCODE
+"SSH_EXIT=$code" | Tee-Object -FilePath $report -Append
+if ($code -ne 0) { Write-Host 'Instalacao bloqueada. Nao repita se houve instalacao parcial.'; Write-Host "Relatorio: $report"; exit $code }
+# Export the client certificate bundle only over the pinned administrative SSH session.
+# Never print PIPE output, or include it in the report.
+try {
+    New-Item -ItemType Directory -Path $clientDir -ErrorAction Stop | Out-Null
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    & icacls.exe $clientDir '/inheritance:r' '/grant:r' "*${sid}:(OI)(CI)F" '*S-1-5-18:(OI)(CI)F' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Falha em restringir ACL local.' }
+    $acl = Get-Acl -LiteralPath $clientDir
+    $extra = @($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object { $_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -notin @($sid,'S-1-5-18') })
+    if (-not $acl.AreAccessRulesProtected -or $extra.Count -ne 0) { throw 'ACL local nao restrita.' }
+    $raw = @($exportSource | & ssh.exe @sshArgs 'python3 -u -' 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw 'Falha na exportacao por SSH.' }
+    $bundle = ($raw -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    foreach ($name in @('ca.crt','client.crt','client.key')) {
+        $property = $bundle.PSObject.Properties[$name]
+        if ($null -eq $property) { throw 'Certificado ausente.' }
+        $bytes = [Convert]::FromBase64String([string]$property.Value)
+        if ($bytes.Length -lt 100 -or $bytes.Length -gt 65536) { throw 'Certificado com tamanho inesperado.' }
+        $pem = [Text.Encoding]::ASCII.GetString($bytes)
+        if ($name -eq 'client.key') { if ($pem -notmatch '^-----BEGIN (RSA )?PRIVATE KEY-----') { throw 'Chave PEM invalida.' } }
+        else { if ($pem -notmatch '^-----BEGIN CERTIFICATE-----') { throw 'Certificado PEM invalido.' } }
+        $target = Join-Path $clientDir $name
+        if (Test-Path -LiteralPath $target) { throw 'Arquivo local ja existe.' }
+        [IO.File]::WriteAllBytes($target,$bytes)
+        if ((Get-Item -LiteralPath $target).Length -ne $bytes.Length) { throw 'Falha na gravacao.' }
+    }
+    'CREDENTIALS_EXPORT=true ACL_RESTRICTED=true' | Tee-Object -FilePath $report -Append
+} catch {
+    'CREDENTIALS_EXPORT=false DO_NOT_REPEAT_INSTALL=true' | Tee-Object -FilePath $report -Append
+    Write-Host 'Instalacao remota pode estar concluida; exportacao local bloqueada. Envie apenas o relatorio.'
+    Write-Host "Relatorio: $report"
+    exit 2
+} finally {
+    Remove-Variable raw,bundle,property,bytes,pem -ErrorAction SilentlyContinue
+}
+# Remove the temporary server-side copy only after all local files have been written.
+$purgeSource | & ssh.exe @sshArgs 'python3 -u -' 2>&1 | Tee-Object -FilePath $report -Append
+$purgeExit = $LASTEXITCODE
+"PURGE_EXIT=$purgeExit" | Tee-Object -FilePath $report -Append
+Write-Host "Relatorio: $report"
+Write-Host "Certificados locais (nao envie ao chat): $clientDir"
+Write-Host 'Nenhum deploy executado. Envie somente o relatorio, nao os certificados.'
+if ($purgeExit -ne 0) { exit 3 }
