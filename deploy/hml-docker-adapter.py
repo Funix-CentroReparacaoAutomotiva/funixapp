@@ -118,7 +118,11 @@ class DockerAdapter:
                     raise ValueError("mount outside HML policy")
             for key, value in service.get("environment", {}).items():
                 if key.endswith(("_ENABLED", "_ENABLE")) and str(value).lower() not in ("false", "0", ""):
-                    raise ValueError("external integration flag enabled")
+                    # Only the non-persistent Cilia read/compare preview is allowed.
+                    # The isolation validator separately rejects Cilia write and any
+                    # unrelated/unknown FUNIX flag, even if introduced to Compose.
+                    if role != "api" or key != "FUNIX_CILIA_PREVIEW_ENABLED" or value != "true":
+                        raise ValueError("external integration flag enabled")
         records = self.containers()
         previous = {item["Config"]["Labels"]["com.docker.compose.service"]: item["Image"]
                     for item in records}
