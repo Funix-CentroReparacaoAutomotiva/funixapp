@@ -22,6 +22,7 @@ import ssl
 import subprocess
 import tempfile
 import threading
+import time
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -324,6 +325,17 @@ server {
                         patch.object(provenance,"verify",side_effect=verify_local), \
                         patch.object(updater,"load",side_effect=load_for_rehearsal):
                     # A preflight must work before any candidate is loaded.
+                    # Compose start does not wait for the initial Docker healthcheck.
+                    deadline = time.monotonic() + 30
+                    while True:
+                        records = adapter.containers()
+                        if len(records) == 3 and all(
+                                row['State'].get('Health', {}).get('Status') == 'healthy'
+                                for row in records):
+                            break
+                        if time.monotonic() >= deadline:
+                            raise AssertionError('synthetic installation health deadline')
+                        time.sleep(.2)
                     assert updater.installed_preflight(updater.make_adapter(config)) == previous
                     wrong = dict(config, candidate=dict(candidate, revision=OLD))
                     try:
