@@ -196,6 +196,13 @@ def runtime(records, config, database, gateway_mounts, release, private):
         declared = env_dict(config["services"][role].get("environment") or {})
         require(all(env.get(key) == str(value) for key, value in declared.items() if value is not None),
                 "live environment differs from Compose")
+        # Unlike generic environment keys, the two Cilia gates must match in
+        # BOTH directions. An undeclared runtime-only preview would otherwise
+        # pass isolation.environment() and silently enable a capability.
+        for flag in (CILIA_PREVIEW, CILIA_WRITE):
+            require((flag in env) == (flag in declared)
+                    and (flag not in env or env[flag] == declared[flag]),
+                    "Cilia runtime flag differs from Compose")
     require(set(actual) == ROLES, "incomplete live project")
     require(private.get("Name") == PRIVATE and private.get("Driver") == "bridge"
             and private.get("Internal") is True and set(private.get("Containers") or {}) == set(actual.values()),
