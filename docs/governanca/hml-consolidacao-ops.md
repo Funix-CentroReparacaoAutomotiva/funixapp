@@ -17,6 +17,46 @@ O piloto preparou e instalou o candidato #257: preparação n8n #40621, despacho
 
 ## Incremento B — aprovação móvel independente (alternativa preferencial a validar)
 
+### Entrega DEV do Incremento A — limite verificável da branch #285
+
+Inventário na base 9a0e0a94: deploy contém hml-update.py (prepare_operation,
+installed_preflight, checked_update_package, execute_operation), transação,
+safety, manutenção Docker/Nginx, isolamento, writer guard, identidade de imagens,
+seleção de build e procedência REST; testes e hml-maintenance-rehearsal.yml já
+exercitam a transação oficial. Não há transport.py, rootctl.py, preparador SSH,
+emissor administrativo ou instalador do piloto nesta árvore. Fontes recuperados
+em outra PR draft (#284) não comprovam identidade dos módulos instalados e não
+são importados implicitamente para este contrato. Integração mTLS/worker pendente
+da importação e revisão autorizada desses fontes.
+
+hml-selection.py é biblioteca sem CLI, serviço, download, extração ou escrita.
+parse aceita JSON de até 4096 bytes com somente pr/run_id/attempt/artifact_id,
+revision SHA40, sha256 hex64 e size inteiro positivo limitado a 20 GiB. Não
+aceita URL/caminho/shell/env/projeto. verify_package recebe um caminho canônico
+controlado pelo host, rejeita links e confere ID/size/digest via API fixa; delega
+run/tentativa/workflow/repo/PR/revisão/expiração e digest dos bytes ao verificador
+oficial. Metadados mudando entre consultas são ambíguos e bloqueiam. Retorno
+limitado inclui update_authorized=false: comprovação de procedência não autoriza
+deploy. O manifesto e a extração permanecem exclusivamente em prepare_operation.
+
+require_available é um contrato puro sobre fatos obtidos pelo futuro adaptador
+sob o lock oficial: operação existente, recuperação pendente ou contenção bloqueiam.
+Não é implementação de lock/registro root-owned e não deve receber esses fatos
+do cliente. O adaptador futuro deve validar host_scope, obter locks existentes
+na ordem aprovada, conferir predecessor/journal/arquivos na seção crítica, criar
+registro root-owned imutável por operação e chamar prepare_operation. Deve
+reconciliar timeout sem retry de POST; nunca apagar registro/lock para repetir.
+Os testes de replay/concorrência aqui validam essa interface pura, não uma
+garantia de concorrência de controlador ainda ausente.
+
+Interface futura n8n: workflow manual OFF, mTLS validado com origem/fingerprint,
+identidade estruturada e nenhuma opção de comando. Consulta de ticket real,
+seleção idêntica à aprovação independente, POST único sem retry e observação do
+journal até accepted/restored/pending; queued não significa aceite. Nenhum
+workflow n8n, credencial ou autorização foi criado/modificado nesta entrega.
+Implantação futura exige fontes revisados, migração administrativa reversível,
+CI, decisão PO e autorização separadas. Incremento B não foi iniciado.
+
 Usar GitHub Environment dedicado de **aprovação HML**, não runner com acesso VPS. Workflow em main confiável, apenas solicitação/revisão, sem deploy, segredos VPS ou acesso de rede privado. Conferir disponibilidade e interface móvel no GitHub antes de adotar. A direção revisa a solicitação exata e aprova ou rejeita. Referências: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/review-deployments e https://docs.github.com/en/rest/actions/workflow-runs#get-the-review-history-for-a-workflow-run.
 
 A identidade do conector possui administração do repositório: revisão usando a mesma conta não constitui segregação. Pré-requisito: identidade pessoal distinta, controlada pela direção, com MFA, não conectada ao ChatGPT/Codex/n8n; permissão mínima para revisar. Ambiente com required reviewers, prevent self-review, impedir bypass administrativo quando disponível e restrição à main. Fixar no host ID numérico do aprovador e ambiente e identidade/revisão do workflow confiável, não confiar em configuração GitHub alterável pelo solicitante. Se esta segregação não estiver disponível, manter autorização local existente, sem flexibilizar controles.
