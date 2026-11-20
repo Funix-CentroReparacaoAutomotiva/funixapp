@@ -1,3 +1,4 @@
+import type {MessagePage} from '../experimental/evolution-read/client.ts'
 import { observedEvolutionUpsert } from './fixtures/evolution-webhook.ts'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
@@ -35,6 +36,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       repo,
     )!
   local.providerIdentity = { instance: 'funix_comercial', instanceId: INSTANCE }
+  let providerHistory:MessagePage|undefined
   let reads = 0,
     sends = 0
   const bridge = createEvolutionChatBridge(
@@ -43,6 +45,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       ...(withMedia?{findMediaEnvelope:async (jid:string,id:string)=>({envelope:{key:{remoteJid:jid,id}},kind:'image' as const,bytes:4})}:{}),
       findMessages: async () => {
         reads++
+        if(providerHistory)return providerHistory
         throw Error('provider intentionally offline')
       },
     },
@@ -140,6 +143,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
     request,
     browser,
     sendEvent,
+    setProviderHistory(page:MessagePage|undefined){providerHistory=page},
     event,
     get reads() {
       return reads
@@ -530,6 +534,18 @@ test('signed first outgoing message reuses manual owner and opens one Atendiment
   const group=raw('5531999990555','synthetic-group')
   group.data.key.remoteJid='123456@g.us'
   assert.equal((await f.sendEvent(group)).status,422)
+  const lid=raw('5531999990555','synthetic-lid-only')
+  lid.data.key.remoteJid='standalone-289@lid'
+  assert.equal((await f.sendEvent(lid)).status,202)
+  assert.equal(repo.list().total,4)
+  const provisional=repo.list().items.find(item=>!item.phone)
+  assert.ok(provisional)
+  const conflict=raw('5531999990555','synthetic-lid-conflict')
+  conflict.data.key.remoteJid='standalone-289@lid'
+  const withAlias={...conflict,data:{...conflict.data,key:{...conflict.data.key,remoteJidAlt:'5531999990555@s.whatsapp.net'}}}
+  assert.equal((await f.sendEvent(withAlias)).status,202)
+  assert.equal(repo.list().total,4)
+  assert.equal(f.local.authority!.resolveIdentityActive(lid.data.key.remoteJid),null)
   assert.equal(f.sends,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{f.db.close()}
@@ -544,15 +560,16 @@ test('snapshot-only outgoing history is readable without a link and an explicit 
   const owner=customers.save({kind:'entity',text:'Titular manual',contacts:[{text:'+5531999990777'}]})
   const contact=customers.contacts(owner.id)[0]!
   const jid='5531999990777@s.whatsapp.net',cid=f.local.authority!.rememberProviderConversation(jid)
-  f.local.store.observePage(jid,[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
-    messageId:'snapshot-outgoing',timestamp:1767225600,fromMe:true,origin:'unknown',kind:'text',text:'Histórico sintético',media:null,statuses:[]}],1)
-  f.local.store.observePage(jid,[{recordId:'synthetic-image',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+  f.setProviderHistory({items:[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'snapshot-outgoing',timestamp:1767225600,fromMe:true,origin:'unknown',kind:'text',text:'Histórico sintético',media:null,statuses:[]},{recordId:'synthetic-image',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
     messageId:'snapshot-image',timestamp:1767225599,fromMe:true,origin:'unknown',kind:'image',text:null,
-    media:{reference:'synthetic',mimeType:'image/png',bytes:4,available:false},statuses:[]}],1)
+    media:{reference:'synthetic',mimeType:'image/png',bytes:4,available:false},statuses:[]}],currentPage:1,reportedTotal:2,reportedPages:1,nextPage:null,consistency:'offset-not-snapshot'})
   const path='/api/chat/conversations/'+cid+'/messages?scope=technical'
   assert.equal((await f.request(path)).status,401)
   const history=await f.request(path,'GET',undefined,f.browser)
   assert.equal(history.status,200)
+  assert.equal(f.reads,1)
+  f.setProviderHistory(undefined)
   const payload=await history.json()
   assert.ok(payload.items.some((item:{messageId:string})=>item.messageId==='snapshot-outgoing'))
   assert.equal(payload.sendTextAvailable,undefined)
