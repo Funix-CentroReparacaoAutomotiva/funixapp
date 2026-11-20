@@ -16,6 +16,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  linux-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Exact sudoers wrappers and systemd units on disposable host
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo env GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted python3 deploy/tests/hml_linux_boundary.py
   powershell-parser:
     runs-on: windows-latest
     timeout-minutes: 5

@@ -1,5 +1,37 @@
 # Ensaio descartável do canal remoto
 
+## Fronteira Linux instalada
+
+O job adicional `linux-boundary` executa `hml_linux_boundary.py` exclusivamente
+como root em GitHub-hosted Ubuntu com conta, grupo, caminhos e unidades ausentes.
+Instala cópias byte a byte dos dois wrappers, sudoers e unidades versionados;
+valida a regra com visudo. Testa sudo real pela conta sem privilégios, argumentos
+extras, comando arbitrário, env indevido, uid/env limpos, arquivos sem escrita
+pela conta e ausência de grupo/acesso ao socket Docker.
+
+Se PID1 é systemd, testa as duas unidades com daemon real, transporte mTLS real
+em loopback, propriedades efetivas, execução root do worker, início único,
+falha, interrupção, Restart=no, presença de registros no journal sem divulgar
+mensagens brutas, suspensão do transporte e revogação da regra sudo dedicada.
+O backend root é **sintético** e não emite autorizações nem executa o atualizador.
+O ensaio Docker separado continua sendo a evidência de aprovação/transação real;
+estes dois testes não são uma única execução das fronteiras instaladas com SQLite.
+Propriedades systemd são inspecionadas, não prova exaustiva de escape do sandbox.
+
+Se systemd não está disponível, ainda verifica arquivos com systemd-analyze,
+emite `HML_SYSTEMD_RUNTIME_UNAVAILABLE_VM_REQUIRED` e não chama isso de teste
+runtime aprovado. É necessário repetir esse mesmo script e os cenários de
+unidades numa VM Linux GitHub-hosted descartável com systemd PID1. Nunca usar
+VPS ou runner self-hosted como substituto. O script recusa hosts já instalados.
+
+A limpeza para e verifica as unidades antes de remover somente os arquivos e
+a conta criados pelo ensaio; qualquer erro falha o job. Cancelamento abrupto
+descarta o runner. Não habilita unidades no boot nem cria listener público.
+Ver [reconciliação administrativa](RECONCILIATION.md) para os limites após morte
+de um worker e distinção entre aceite do código e aceite operacional.
+
+## Transação integrada existente
+
 O job `synthetic` de `hml-maintenance-rehearsal.yml` executa
 `deploy/tests/hml_docker_maintenance_cycle.py`, que incorpora
 `hml_remote_chain.run_chain`. Exige runner GitHub hospedado, root, daemon Docker

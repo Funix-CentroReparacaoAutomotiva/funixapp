@@ -2,6 +2,8 @@
 
 Proposta para revisão, sem execução na VPS. Não executar os instaladores
 históricos recuperados. Preservar o bundle até concluir qualquer recuperação.
+Pedidos interrompidos exigem o [runbook de reconciliação](RECONCILIATION.md);
+recuperação do banco não conclui automaticamente o pedido remoto.
 
 Entrega futura: diretório deploy completo da revisão aprovada, via canal
 administrativo existente, propriedade root, sem escrita de grupo/outros.
