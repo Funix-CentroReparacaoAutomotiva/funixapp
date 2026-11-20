@@ -31,7 +31,7 @@ class PureContractPlanTests(unittest.TestCase):
         self.assertEqual(tx["new_api_flags"][plan.PREVIEW], "true")
         self.assertEqual(tx["new_api_flags"][plan.WRITE], "false")
         self.assertNotEqual(tx["old_contract_sha256"], tx["new_contract_sha256"])
-        self.assertTrue(plan.verify_applied(tx, tx["normalized_compose"]))
+        self.assertTrue(plan.verify_applied(tx, original, plan.desired_compose(original, tx["to"])))
 
     def test_reverse_preview_to_off(self):
         original = baseline()
@@ -80,10 +80,10 @@ class PureContractPlanTests(unittest.TestCase):
     def test_verify_applied_rejects_unrelated_changes(self):
         source = baseline()
         tx = plan.plan(source, plan.PREVIEW_ONLY, plan.digest(source), REV)
-        changed = copy.deepcopy(tx["normalized_compose"])
+        changed = plan.desired_compose(source, tx["to"])
         changed["services"]["web"]["environment"]["WEBHOOK_URL"] = "https://example.invalid"
         with self.assertRaisesRegex(ValueError, "normalized Compose mismatch"):
-            plan.verify_applied(tx, changed)
+            plan.verify_applied(tx, source, changed)
 
     def test_pin_remains_sensitive_to_write_flag_even_when_preview_allowed(self):
         source = baseline()
