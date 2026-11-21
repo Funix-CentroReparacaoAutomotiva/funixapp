@@ -4,18 +4,19 @@ Only sudo/systemd invocation and host path/bootstrap binding are simulated.
 Worker runs once in a forked process; official Docker transaction remains real.
 This is NOT evidence of sudo policy or systemd isolation on the installed host.
 """
+import fcntl
 import hashlib
 import http.client
 import importlib.util
 import json
 import os
 from pathlib import Path
-import shutil
 import ssl
 import subprocess
 import threading
 import time
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 ROOT=Path(__file__).resolve().parents[1]
 def load(name):
@@ -32,12 +33,19 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
     state=Path(config['state']); ops=root/'ops'; ops.mkdir(mode=0o700)
     (ops/'requests').mkdir(mode=0o700); (ops/'control.lock').touch(mode=0o600)
     private=root/'prepare-private'; private.mkdir(mode=0o700)
+    source=Path(config['artifact_zip'])
     archive=op/'candidate.zip'
-    shutil.copyfile(config['artifact_zip'],archive); archive.chmod(0o600)
     config['artifact_zip']=str(archive)
-    (op/'config.json').write_text(json.dumps(config)); (op/'config.json').chmod(0o600)
-    approval=dict(identity=identity,digest=hashlib.sha256(archive.read_bytes()).hexdigest(),
-                  size=archive.stat().st_size,installed_revision=previous['revision'])
+    with source.open('rb') as stream:
+        digest=hashlib.file_digest(stream,'sha256').hexdigest()
+    approval=dict(identity=identity,digest=digest,
+                  size=source.stat().st_size,installed_revision=previous['revision'])
+    code=root/'pinned-prepare'; code.mkdir(mode=0o700)
+    (code/'official').mkdir(mode=0o700)
+    for name in p.FILES:
+        filename=name+'.py'
+        p.save(code/'official'/filename,(ROOT/filename).read_bytes())
+    (state/'lock').touch(mode=0o600,exist_ok=True)
     (private/'approval.json').write_text(json.dumps(approval)); (private/'approval.json').chmod(0o600)
     (private/'github.token').write_text('github_pat_'+'x'*32); (private/'github.token').chmod(0o600)
     predecessor=state/'op-predecessor'; predecessor.mkdir(mode=0o700)
@@ -45,6 +53,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
     old.write_text(json.dumps(dict(schema=1,project='funix-hml',maintenance=True,phase='accepted',
                                    candidate=previous,previous=previous))); old.chmod(0o600)
     (state/'active.json').write_text(json.dumps({'journal':str(old)})); (state/'active.json').chmod(0o600)
+    p.save(predecessor/'config.json',json.dumps(config).encode())
     cert,key=root/'remote.crt',root/'remote.key'
     real_run=subprocess.run
     real_run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost',
@@ -57,6 +66,17 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
         if path.startswith('actions/artifacts/'):
             result.update(id=identity['artifact_id'],size_in_bytes=approval['size'])
         return result
+    def artifact_response(request,timeout):
+        if request.full_url == f"https://api.github.com/repos/{p.REPO}/actions/artifacts/{identity['artifact_id']}/zip":
+            assert request.get_header('Authorization') is not None
+            raise HTTPError(request.full_url,302,'fixture',
+                            {'Location':'https://fixture.blob.core.windows.net/candidate'},None)
+        assert request.full_url=='https://fixture.blob.core.windows.net/candidate'
+        assert request.get_header('Authorization') is None
+        stream=source.open('rb')
+        stream.status=200
+        return stream
+
     def external():
         row=json.loads(subprocess.check_output(['docker','inspect',sentinel],text=True))[0]
         return {row['Id']:(row['State']['StartedAt'],row['RestartCount'])}
@@ -121,10 +141,24 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
         assert os.waitstatus_to_exitcode(status)==code,result
         assert result['status']==expected,result
     with patch.object(ctl,'ROOT',ops),patch.object(ctl,'prep_module',return_value=p), \
-         patch.object(p,'STATE',state),patch.object(p,'PRIVATE',private), \
+         patch.object(p,'STATE',state),patch.object(p,'PRIVATE',private),patch.object(p,'BASE',code), \
          patch.object(p,'load_updater',return_value=updater),patch.object(p,'query',side_effect=query), \
-         patch.object(p,'external_snapshot',side_effect=external),patch.object(subprocess,'run',side_effect=routed):
+         patch.object(p,'external_snapshot',side_effect=external),patch.object(subprocess,'run',side_effect=routed), \
+         patch.object(p.OPENER,'open',side_effect=artifact_response),patch.object(updater,'DATABASE',Path(config['database'])), \
+         patch.object(p.sys,'argv',['funix-hml-prepare']):
         try:
+            with (state/'lock').open('r+') as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                try: p.prepare()
+                except BlockingIOError: pass
+                else: raise AssertionError('preparation bypassed official lock')
+            assert not op.exists()
+            prepared=p.prepare()
+            assert prepared['status']=='prepared' and prepared['deploy'] is False
+            receipt=op/'prepared.json'
+            before=receipt.stat()
+            assert p.prepare()==prepared
+            assert receipt.stat().st_ino==before.st_ino and receipt.stat().st_mtime_ns==before.st_mtime_ns
             invalid=dict(action='update',operation=op.name,revision=identity['revision'],sha256=approval['digest'],ticket_id='0'*32)
             assert request('POST',invalid)[0]==409
             assert not (op/'operation.json').exists()
@@ -148,7 +182,7 @@ def run_chain(updater,config,previous,op,root,identity,fake_api,scenario='accept
             ticket=ctl.read(ops/'armed.json'); ticket['issued_at']-=1300; ticket['expires_at']-=1300
             ctl.replace(ops/'armed.json',ticket)
             assert request('POST',expired['request'])[0]==409
-            for path in (old,archive,op/'config.json'):
+            for path in (old,archive,op/'config.json',receipt):
                 armed=ctl.approve(ctl.view()['preview_sha256'])
                 assert request('POST',armed['request'])[0]==202
                 saved=path.read_bytes(); path.write_bytes(saved+b' ')

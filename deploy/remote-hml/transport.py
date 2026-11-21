@@ -40,6 +40,9 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*_): pass
     def send_error(self,code,message=None,explain=None): self.reply(code,blocked('http_request_denied'))
     def reply(self,code,payload):
+        probe = os.environ.get('FUNIX_HML_MIGRATION_PROBE')
+        if probe and code == 200 and self.command == 'GET':
+            payload = dict(payload, migration_probe=probe)
         data=json.dumps(payload,separators=(',',':')).encode('utf-8')
         self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(data))); self.send_header('Cache-Control','no-store'); self.send_header('Connection','close'); self.end_headers(); self.wfile.write(data); self.close_connection=True
     def call(self,command,body=b''):
@@ -55,6 +58,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path!='/v1/status' or self.headers.get('Transfer-Encoding') or self.headers.get('Content-Length','0')!='0': return self.reply(404,blocked('route_denied'))
         self.call(STATUS)
     def do_POST(self):
+        if os.environ.get('FUNIX_HML_MIGRATION_PROBE'):
+            return self.reply(404,blocked('route_denied'))
         if self.path!='/v1/update': return self.reply(404,blocked('route_denied'))
         lengths=self.headers.get_all('Content-Length',[])
         if self.headers.get('Transfer-Encoding') or len(lengths)!=1 or not lengths[0].isdigit() or not 0<int(lengths[0])<=4096 or self.headers.get_content_type()!='application/json': return self.reply(400,blocked('request_body'))

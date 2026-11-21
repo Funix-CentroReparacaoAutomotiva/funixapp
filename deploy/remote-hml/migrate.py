@@ -6,6 +6,8 @@ import fcntl
 import hashlib
 import json
 import os
+import re
+import secrets
 from pathlib import Path
 import shutil
 import stat
@@ -17,10 +19,16 @@ STATE = Path('/var/lib/funix-hml-ops')
 UPDATER = Path('/var/lib/funix-hml/updater')
 TRANSPORT = 'funix-hml-ops-transport.service'
 WORKER = 'funix-hml-ops-worker.service'
+TRIAL = 'funix-hml-ops-migration-check.service'
+GATE = Path('/etc/systemd/system') / (TRANSPORT + '.d') / '90-funix-migration.conf'
+TERMINAL = ('accepted', 'restored')
+SELECTION = Path('/usr/local/lib/funix-hml-prepare/official/hml-selection.py')
+RETRY_ACTIONS = {'retry-restored':'apply', 'probe-retry':'probe', 'accept-retry':'accept',
+                 'recover-retry':'recover', 'rollback-retry':'rollback'}
 
 
 def pins():
-    tree = ast.parse((PACKAGE/'control.py').read_text())
+    tree = ast.parse(regular(PACKAGE/'control.py').read_bytes())
     return next(ast.literal_eval(node.value) for node in tree.body
                 if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id=='FILES' for t in node.targets))
 
@@ -29,9 +37,41 @@ def targets():
     result = {Path('/usr/local/lib/funix-hml-ops')/name: PACKAGE/name
               for name in ('rootctl.py','transport.py')}
     result[Path('/usr/local/lib/funix-hml-prepare/control.py')] = PACKAGE/'control.py'
-    for name in pins():
+    official = pins()
+    if not isinstance(official, dict) or len(official) != 12 or not all(
+            isinstance(name,str) and re.fullmatch(r'hml-[a-z-]+',name) for name in official
+    ) or 'hml-selection' not in official:
+        raise ValueError('candidate pins missing or invalid')
+    for name in official:
         result[Path('/usr/local/lib/funix-hml-prepare/official')/(name+'.py')] = PACKAGE.parent/(name+'.py')
     return result
+
+
+def source_integrity(mapping):
+    """Validate candidate bytes and return the exact hashes to stage."""
+    sources = {target: regular(path).read_bytes() for target, path in mapping.items()}
+    if any(b'\r\n' in data for data in sources.values()):
+        raise ValueError('candidate contains CRLF')
+
+    def assignment(data, name):
+        return next(ast.literal_eval(node.value) for node in ast.parse(data).body
+                    if isinstance(node, ast.Assign) and any(
+                        isinstance(target, ast.Name) and target.id == name for target in node.targets))
+
+    control = sources[Path('/usr/local/lib/funix-hml-prepare/control.py')]
+    rootctl = sources[Path('/usr/local/lib/funix-hml-ops/rootctl.py')]
+    if hashlib.sha256(control).hexdigest() != assignment(rootctl, 'PREP_SHA'):
+        raise ValueError('candidate prepare controller pin mismatch')
+    official = assignment(control, 'FILES')
+    if set(sources) != targets().keys():
+        raise ValueError('candidate target scope mismatch')
+    if set(official) != {target.stem for target in sources if target.parent == SELECTION.parent}:
+        raise ValueError('candidate pins missing or invalid')
+    for name, expected in official.items():
+        data = sources[SELECTION.parent/(name+'.py')]
+        if hashlib.sha1(f'blob {len(data)}\0'.encode() + data).hexdigest() != expected:
+            raise ValueError('candidate official module pin mismatch')
+    return {str(target):hashlib.sha256(data).hexdigest() for target,data in sources.items()}
 
 
 def regular(path):
@@ -53,15 +93,31 @@ def digest(path):
         return hashlib.file_digest(stream,'sha256').hexdigest()
 
 
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def durable_bytes(path, data, mode=0o600):
+    fd, name = tempfile.mkstemp(prefix=path.name+'.', suffix='.new', dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            os.fchmod(stream.fileno(), mode)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        sync_directory(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def durable_json(path, record):
-    temporary = path.with_name(path.name+'.new')
-    fd = os.open(temporary,os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,0o600)
-    with os.fdopen(fd,'w') as stream:
-        json.dump(record,stream,sort_keys=True); stream.flush(); os.fsync(stream.fileno())
-    os.replace(temporary,path)
-    fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
-    try: os.fsync(fd)
-    finally: os.close(fd)
+    durable_bytes(path, json.dumps(record, sort_keys=True).encode())
 
 
 def inventory(mapping):
@@ -70,6 +126,40 @@ def inventory(mapping):
 
 def backup_path(directory,target):
     return directory/hashlib.sha256(str(target).encode()).hexdigest()
+
+
+def exists(path):
+    return path.exists() or path.is_symlink()
+
+
+def prior_restoration(mapping, directory, *, require_installed_old=False):
+    """Read the immutable schema-1 transaction from #308, with its 14 destinations."""
+    private_directory(directory)
+    data = regular(directory/'journal.json').read_bytes()
+    record = json.loads(data)
+    paths = {str(target) for target in mapping if target != SELECTION}
+    if (record.get('schema') != 1 or record.get('phase') != 'restored'
+            or record.get('transport_active') is not True or SELECTION not in mapping
+            or any(set(record[key]) != paths for key in ('old','new','modes'))
+            or exists(directory/'hold')):
+        raise ValueError('prior migration not safely restored')
+    for target in mapping:
+        if target == SELECTION:
+            continue
+        key = str(target)
+        saved = backup_path(directory,target)
+        old = record['old'][key]
+        if old is None:
+            if exists(saved):
+                raise ValueError('unexpected prior backup')
+        elif digest(saved) != old:
+            raise ValueError('prior backup differs')
+        if digest(saved.with_name('new-'+saved.name)) != record['new'][key]:
+            raise ValueError('prior staged digest differs')
+    if require_installed_old:
+        baseline = {'old':{**record['old'],str(SELECTION):None}, 'modes':record['modes']}
+        check_files(mapping,baseline,('old',))
+    return hashlib.sha256(data).hexdigest()
 
 
 def command(*arguments):
@@ -93,68 +183,31 @@ def idle():
     if (STATE/'armed.json').exists() or (STATE/'armed.json').is_symlink():
         raise ValueError('cancel administrative approval before migration')
     current=STATE/'current.json'
-    if current.exists():
+    last = None
+    if current.exists() or current.is_symlink():
         ticket=json.loads(regular(current).read_text())['ticket_id']
-        import re
         if not isinstance(ticket,str) or not re.fullmatch('[a-f0-9]{32}',ticket):
             raise ValueError('request pointer')
         result=json.loads(regular(STATE/'requests'/ticket/'result.json').read_text())
-        if result.get('status') not in ('accepted','auto_restored','blocked_before_journal'):
+        if result.get('ticket_id') != ticket or result.get('status') not in ('accepted','auto_restored','blocked_before_journal'):
             raise ValueError('request requires inspection')
+        last = {key: result.get(key) for key in
+                ('status','operation','revision','journal_phase','installed_revision',
+                 'backup_verified','https_verified','external_preserved')}
     if command('systemctl','show','--property=ActiveState','--value',WORKER)!='inactive':
         raise ValueError('worker must be inactive')
     pointer=json.loads(regular(UPDATER/'active.json').read_text())
     journal=Path(pointer['journal'])
-    import re
     if journal.name!='operation.json' or journal.parent.parent!=UPDATER or not re.fullmatch(r'op-[A-Za-z0-9_-]{1,80}',journal.parent.name):
         raise ValueError('journal path')
     record=json.loads(regular(journal).read_text())
-    if record.get('schema')!=1 or record.get('project')!='funix-hml' or record.get('phase') not in ('accepted','restored'):
+    if record.get('schema')!=1 or record.get('project')!='funix-hml' or record.get('maintenance') is not True or record.get('phase') not in ('accepted','restored'):
         raise ValueError('HML recovery pending')
-
-
-def source_integrity(mapping):
-    """Verify exact pinned bytes before any code replacement or journal creation."""
-    from ast import literal_eval
-    rootctl = PACKAGE/'rootctl.py'
-    control = PACKAGE/'control.py'
-    root_tree = ast.parse(regular(rootctl).read_text(encoding='utf-8'))
-    pinned = next(literal_eval(n.value) for n in root_tree.body
-                  if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='PREP_SHA' for t in n.targets))
-    if pinned != digest(control):
-        raise ValueError('candidate prepare controller pin mismatch')
-    official = pins()
-    if not isinstance(official,dict) or len(official)<1:
-        raise ValueError('candidate pins missing')
-    for name, expected in official.items():
-        if not isinstance(name,str) or not isinstance(expected,str) or len(expected)!=40:
-            raise ValueError('candidate pin invalid')
-        path = PACKAGE.parent/(name+'.py')
-        data = regular(path).read_bytes()
-        actual = hashlib.sha1(b'blob '+str(len(data)).encode('ascii')+bytes([0])+data).hexdigest()
-        if actual != expected:
-            raise ValueError('candidate official module pin mismatch')
-    if set(mapping)!=set(targets()) or any(mapping[t]!=targets()[t] for t in mapping):
-        raise ValueError('candidate scope mismatch')
-
-
-def prior_restoration(mapping, *, require_installed_old=True):
-    """A closed migration is immutable. Retry only from a fully restored baseline."""
-    directory=STATE/'migration'
-    private_directory(directory)
-    record=json.loads(regular(directory/'journal.json').read_text(encoding='utf-8'))
-    expected={str(t) for t in mapping}
-    if record.get('schema')!=1 or record.get('phase')!='restored' or set(record.get('old',{}))!=expected or set(record.get('new',{}))!=expected:
-        raise ValueError('prior migration not safely restored')
-    if require_installed_old and inventory(mapping)!=record['old']:
-        raise ValueError('installed code differs from prior restoration')
-    for target in mapping:
-        old=record['old'][str(target)]
-        if old is None: continue
-        saved=backup_path(directory,target)
-        if digest(saved)!=old:
-            raise ValueError('prior backup differs')
-    return record
+    return {'journal':{
+        'operation': journal.parent.name, 'phase': record['phase'],
+        'candidate_revision': record['candidate']['revision'],
+        'previous_revision': record['previous']['revision'],
+    }, 'last_request': last}
 
 
 def replace_code(source,target,mode):
@@ -172,95 +225,388 @@ def replace_code(source,target,mode):
     finally: os.close(fd)
 
 
-def migrate(mapping, directory, approval, *, recover=False, validate=lambda: None):
-    """Caller holds existing official locks. Injectable only for synthetic tests."""
-    journal=directory/'journal.json'
-    if recover:
-        private_directory(directory)
-        record=json.loads(regular(journal).read_text())
+def gate_content(directory):
+    return f'[Unit]\nConditionPathExists=!{directory}/hold\n'.encode()
+
+
+def set_gate(directory):
+    """Commit a boot-persistent condition before stopping or changing code."""
+    hold = directory/'hold'
+    if hold.exists() or hold.is_symlink():
+        if regular(hold).read_bytes() != b'hold\n':
+            raise ValueError('invalid transport hold')
     else:
-        if directory.exists(): raise ValueError('existing migration requires inspection/recovery')
-        old=inventory(mapping)
-        new={str(t):digest(s) for t,s in mapping.items()}
-        if approval!={'old':old,'new':new}: raise ValueError('migration approval mismatch')
-        directory.mkdir(mode=0o700)
-        record={'schema':1,'phase':'prepared','old':old,'new':new,
-                'modes':{str(t):stat.S_IMODE(t.stat().st_mode) if old[str(t)] is not None else 0o600 for t in mapping},
-                'transport_active':command('systemctl','show','--property=ActiveState','--value',TRANSPORT)=='active'}
-        for target in mapping:
-            if old[str(target)] is None: continue
-            saved=backup_path(directory,target)
-            shutil.copyfile(target,saved); os.chmod(saved,0o600)
-            with saved.open('rb') as f: os.fsync(f.fileno())
-            if digest(saved)!=old[str(target)]: raise ValueError('original code changed')
-        for target,source in mapping.items():
-            staged=directory/('new-'+backup_path(directory,target).name)
-            shutil.copyfile(regular(source),staged); os.chmod(staged,0o600)
-            with staged.open('rb') as f: os.fsync(f.fileno())
-            if digest(staged)!=new[str(target)]: raise ValueError('staged code differs')
-        durable_json(journal,record)
-    if record.get('schema')!=1 or set(record['old'])!={str(t) for t in mapping}:
+        durable_bytes(hold, b'hold\n')
+    if not GATE.parent.exists():
+        GATE.parent.mkdir(mode=0o755)
+        sync_directory(GATE.parent.parent)
+    info = GATE.parent.lstat()
+    if GATE.parent.resolve(strict=True) != GATE.parent or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+        raise ValueError('unsafe transport drop-in directory')
+    if GATE.exists() or GATE.is_symlink():
+        if regular(GATE).read_bytes() != gate_content(directory):
+            raise ValueError('conflicting transport drop-in')
+    else:
+        durable_bytes(GATE, gate_content(directory), 0o644)
+    command('systemctl', 'daemon-reload')
+    command('systemctl', 'stop', TRANSPORT)
+    if command('systemctl', 'show', '-p', 'ActiveState', '--value', TRANSPORT) != 'inactive':
+        raise ValueError('transport did not stop')
+
+
+def release_gate(directory, record):
+    if regular(GATE).read_bytes() != gate_content(directory):
+        raise ValueError('transport drop-in changed')
+    hold = directory/'hold'
+    if hold.exists() or hold.is_symlink():
+        if regular(hold).read_bytes() != b'hold\n':
+            raise ValueError('invalid transport hold')
+        hold.unlink()
+        sync_directory(directory)
+    if record['transport_active']:
+        try:
+            if command('systemctl', 'show', '-p', 'ActiveState', '--value', TRANSPORT) != 'active':
+                command('systemctl', 'start', TRANSPORT)
+            if command('systemctl', 'show', '-p', 'ActiveState', '--value', TRANSPORT) != 'active':
+                raise ValueError('transport did not start')
+        except Exception:
+            set_gate(directory)
+            raise
+
+
+def file_mode(target):
+    path = regular(Path(target))
+    if path.stat().st_gid != os.getegid():
+        raise ValueError('unexpected code group')
+    return stat.S_IMODE(path.stat().st_mode)
+
+
+def check_files(mapping, record, sides):
+    for target, value in inventory(mapping).items():
+        if not any(value == record[side][target] for side in sides):
+            raise ValueError('installed code drift')
+        if value is not None and file_mode(target) != record['modes'][target]:
+            raise ValueError('installed mode drift')
+
+
+def snapshot(mapping, directory, approval, *, prior=None, verified_new=None):
+    old = inventory(mapping)
+    new = verified_new if verified_new is not None else {str(t):digest(s) for t,s in mapping.items()}
+    required = {'old':old, 'new':new}
+    if prior is not None:
+        required['prior_journal_sha256'] = prior
+    if approval != required:
+        raise ValueError('migration approval mismatch')
+    record = {'schema':2, 'phase':'staging', 'id':secrets.token_hex(16), 'old':old, 'new':new,
+              'modes':{str(t):file_mode(t) if old[str(t)] is not None else 0o600 for t in mapping},
+              'transport_active':command('systemctl','show','-p','ActiveState','--value',TRANSPORT)=='active'}
+    if prior is not None:
+        record['prior_journal_sha256'] = prior
+    if not record['transport_active']:
+        raise ValueError('transport must be active before migration')
+    directory.mkdir(mode=0o700)
+    sync_directory(directory.parent)
+    persist(directory, record, 'staging')
+    for target,source in mapping.items():
+        saved = backup_path(directory,target)
+        if old[str(target)] is not None:
+            durable_bytes(saved, regular(target).read_bytes())
+        durable_bytes(saved.with_name('new-'+saved.name), regular(source).read_bytes())
+    verify_bundle(mapping,directory,record)
+    check_files(mapping,record,('old',))
+    persist(directory,record,'prepared')
+    return record
+
+
+def verify_bundle(mapping, directory, record):
+    for target in mapping:
+        saved = backup_path(directory,target)
+        previous = record['old'][str(target)]
+        if previous is not None and digest(saved) != previous:
+            raise ValueError('backup digest changed')
+        if digest(saved.with_name('new-'+saved.name)) != record['new'][str(target)]:
+            raise ValueError('staged digest changed')
+
+
+def persist(directory, record, phase):
+    record['phase'] = phase
+    durable_json(directory/'journal.json', record)
+
+
+def current_record(mapping, directory):
+    private_directory(directory)
+    record = json.loads(regular(directory/'journal.json').read_text())
+    paths = {str(target) for target in mapping}
+    if (record.get('schema') != 2 or any(set(record[key]) != paths for key in ('old','new','modes'))
+            or not re.fullmatch('[a-f0-9]{32}', record.get('id',''))):
         raise ValueError('migration journal scope')
-    if record['phase'] in ('accepted','restored'): return record['phase']
-    record['phase']='installing' if not recover else 'restoring'; durable_json(journal,record)
-    command('systemctl','stop',TRANSPORT)
+    return record
+
+
+def stop_trial():
+    listing = command('systemctl','list-units','--all','--plain','--no-legend',TRIAL)
+    if any(line.split()[0] == TRIAL for line in listing.splitlines() if line.split()):
+        command('systemctl','stop',TRIAL)
+
+
+def restore(mapping, directory, record, validate, *, terminal=False):
+    phases = ('accepted', 'rollback') if terminal else ('installing', 'awaiting_probe', 'probing', 'restoring')
+    if record['phase'] not in phases:
+        raise ValueError('restoration phase')
+    stop_trial()
+    set_gate(directory)
+    verify_bundle(mapping,directory,record)
+    sides = ('new',) if record['phase'] == 'accepted' else ('old','new')
+    check_files(mapping,record,sides)
+    persist(directory,record,'rollback' if terminal else 'restoring')
+    for target in mapping:
+        saved = backup_path(directory,target)
+        if record['old'][str(target)] is None:
+            if target.exists() or target.is_symlink():
+                if digest(target) != record['new'][str(target)]:
+                    raise ValueError('new target changed')
+                target.unlink()
+                sync_directory(target.parent)
+        else:
+            replace_code(saved,target,record['modes'][str(target)])
+    check_files(mapping,record,('old',))
+    validate()
+    persist(directory,record,'restored')
+    release_gate(directory,record)
+    return 'restored'
+
+
+def begin(mapping, directory, approval, validate, *, prior=None, verified_new=None):
+    if exists(directory):
+        raise ValueError('existing migration requires inspection')
+    record = snapshot(mapping,directory,approval,prior=prior,verified_new=verified_new)
+    set_gate(directory)
+    persist(directory,record,'installing')
     try:
-        if recover: raise ValueError('explicit recovery')
         for target in mapping:
-            source=directory/('new-'+backup_path(directory,target).name)
-            if digest(source)!=record['new'][str(target)]: raise ValueError('staged source changed')
-            replace_code(source,target,record['modes'][str(target)])
-        if inventory(mapping)!=record['new']: raise ValueError('installed code differs')
+            saved = backup_path(directory,target)
+            replace_code(saved.with_name('new-'+saved.name),target,record['modes'][str(target)])
+        check_files(mapping,record,('new',))
         validate()
+        persist(directory,record,'awaiting_probe')
     except Exception:
-        record['phase']='restoring'; durable_json(journal,record)
-        for target in mapping:
-            if record['old'][str(target)] is None:
-                if target.exists() or target.is_symlink():
-                    if digest(target)!=record['new'][str(target)]: raise ValueError('new target changed')
-                    target.unlink()
-                    fd=os.open(target.parent,os.O_RDONLY|os.O_DIRECTORY)
-                    try: os.fsync(fd)
-                    finally: os.close(fd)
-                continue
-            source=backup_path(directory,target)
-            if digest(source)!=record['old'][str(target)]: raise ValueError('backup changed')
-            replace_code(source,target,record['modes'][str(target)])
-        if inventory(mapping)!=record['old']: raise ValueError('restoration differs')
+        return restore(mapping,directory,record,validate)
+    return 'awaiting_probe'
+
+
+def recover(mapping, directory, expected, validate):
+    private_directory(directory)
+    journal = directory/'journal.json'
+    # No hold or code writes precede the first durable journal.
+    if not journal.exists() and not journal.is_symlink():
+        if any(not re.fullmatch(r'journal\.json\.[A-Za-z0-9_]+\.new', p.name) or
+               regular(p) != p for p in directory.iterdir()):
+            raise ValueError('unexpected pre-journal state')
+        if exists(GATE):
+            raise ValueError('unexpected pre-journal transport drop-in')
+        prefix = 'migration-retry-abandoned-' if directory.name == 'migration-retry' else 'migration-abandoned-'
+        archive = directory.with_name(prefix+secrets.token_hex(16))
+        os.rename(directory,archive)
+        sync_directory(directory.parent)
+        return 'abandoned_staging'
+    record = current_record(mapping,directory)
+    phase = record['phase']
+    if phase in ('staging','prepared'):
+        check_files(mapping,record,('old',))
+        # In prepared, the hold may already be installed but no target changed.
+        if (directory/'hold').exists():
+            set_gate(directory)
         validate()
-        record['phase']='restored'
-    else:
-        record['phase']='accepted'
-    # Keep transport stopped on any interruption until this point.
-    if record['transport_active']: command('systemctl','start',TRANSPORT)
-    durable_json(journal,record)
-    return record['phase']
+        persist(directory,record,'restored')
+        if (directory/'hold').exists():
+            release_gate(directory,record)
+        return 'restored'
+    if phase in TERMINAL:
+        probe = record.get('probe')
+        if (phase == 'accepted' or probe is not None) and (
+                not isinstance(probe, dict) or probe.get('state') != expected):
+            hold = directory/'hold'
+            if not hold.exists():
+                # A crash may have removed the marker before starting the service.
+                set_gate(directory)
+            raise ValueError('operational state changed since acceptance probe')
+        side = 'new' if phase == 'accepted' else 'old'
+        check_files(mapping,record,(side,))
+        validate()
+        if GATE.exists() or GATE.is_symlink():
+            release_gate(directory,record)
+        elif (directory/'hold').exists() or (directory/'hold').is_symlink():
+            raise ValueError('missing transport drop-in')
+        return phase
+    return restore(mapping,directory,record,validate,terminal=phase=='rollback')
+
+
+def open_probe(mapping, directory, expected):
+    record = current_record(mapping,directory)
+    if record['phase'] not in ('awaiting_probe','probing'):
+        raise ValueError('probe phase')
+    set_gate(directory)
+    stop_trial()
+    check_files(mapping,record,('new',))
+    verify_bundle(mapping,directory,record)
+    challenge = secrets.token_hex(32)
+    record['probe'] = {'challenge':challenge, 'state':expected}
+    persist(directory,record,'probing')
+    try:
+        command('systemd-run','--unit='+TRIAL,'--collect','--property=Type=exec',
+                '--property=RuntimeMaxSec=120s','--property=Restart=no',
+                '--property=User=funix-hml-ops','--property=Group=funix-hml-ops',
+                '--property=UMask=0077','--property=PrivateTmp=true',
+                '--property=ProtectSystem=full','--property=ProtectHome=true',
+                '--property=InaccessiblePaths=/usr/local/sbin/funix-hml-ops-request',
+                '--setenv=FUNIX_HML_MIGRATION_PROBE='+challenge,
+                '/usr/bin/python3','-I','/usr/local/lib/funix-hml-ops/transport.py')
+        invocation = command('systemctl','show','-p','InvocationID','--value',TRIAL)
+        if not re.fullmatch('[a-f0-9]{32}',invocation):
+            raise ValueError('probe invocation unavailable')
+        record['probe']['invocation'] = invocation
+        persist(directory,record,'probing')
+    except Exception:
+        stop_trial()
+        raise
+    return 'probing'
+
+
+def accept(mapping, directory, response, expected, validate):
+    record = current_record(mapping,directory)
+    if record['phase'] != 'probing':
+        raise ValueError('accept phase')
+    probe = record['probe']
+    try:
+        last = response.get('last_request')
+        observed = ({key:last.get(key) for key in expected['last_request']}
+                    if isinstance(last,dict) and expected['last_request'] is not None else last)
+        if (probe.get('invocation') is None
+                or command('systemctl','show','-p','InvocationID','--value',TRIAL) != probe['invocation']
+                or command('systemctl','show','-p','ActiveState','--value',TRIAL) != 'active'
+                or response.get('migration_probe') != probe['challenge']
+                or response.get('schema') != 'funix-hml-ops/1' or response.get('scope') != 'funix-hml'
+                or response.get('status') != 'ok' or 'armed' not in response or response['armed'] is not None
+                or 'last_request' not in response or observed != expected['last_request']
+                or response.get('journal') != expected['journal'] or expected != probe['state']):
+            raise ValueError('invalid mTLS probe evidence')
+        check_files(mapping,record,('new',))
+        verify_bundle(mapping,directory,record)
+        validate()
+    finally:
+        stop_trial()
+    persist(directory,record,'accepted')
+    release_gate(directory,record)
+    return 'accepted'
+
+
+def rollback(mapping, directory, approval, expected, validate):
+    record = current_record(mapping,directory)
+    required = {key:record[key] for key in ('id','old','new')}
+    if 'prior_journal_sha256' in record:
+        required['prior_journal_sha256'] = record['prior_journal_sha256']
+    if approval != required:
+        raise ValueError('rollback approval mismatch')
+    if record.get('probe', {}).get('state') != expected:
+        raise ValueError('operational state changed since acceptance')
+    return restore(mapping,directory,record,validate,terminal=True)
+
+
+def migration_inventory(mapping, original, retry):
+    result = {'old':inventory(mapping), 'new':source_integrity(mapping)}
+    for label,directory in (('migration',original),('migration_retry',retry)):
+        if not exists(directory):
+            continue
+        private_directory(directory)
+        journal = directory/'journal.json'
+        if not exists(journal):
+            result[label] = {'phase':'pre_journal'}
+            continue
+        record = json.loads(regular(journal).read_bytes())
+        if record.get('schema') == 2:
+            record = current_record(mapping,directory)
+        result[label] = {key:record[key] for key in
+                         ('schema','id','phase','old','new','prior_journal_sha256') if key in record}
+        if label == 'migration' and record.get('schema') == 1 and record.get('phase') == 'restored':
+            result[label]['journal_sha256'] = prior_restoration(mapping,original)
+    return result
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('inventory','apply','recover','retry-restored','recover-retry'))
+    parser.add_argument('action',choices=('inventory','apply','probe','accept','recover','rollback',*RETRY_ACTIONS))
     parser.add_argument('--authorize',action='store_true')
     args=parser.parse_args()
     if os.geteuid()!=0: raise ValueError('local administrator required')
+    execute(args.action,args.authorize)
+
+
+def execute(requested_action, authorized):
     mapping=targets()
     private_directory(STATE); private_directory(UPDATER)
+    original = STATE/'migration'
+    retry = STATE/'migration-retry'
     with locks():
-        idle()
-        if args.action=='inventory':
-            print(json.dumps({'old':inventory(mapping),'new':{str(t):digest(s) for t,s in mapping.items()}},sort_keys=True)); return
-        if not args.authorize: raise ValueError('administrative authorization required')
-        retry=args.action in ('retry-restored','recover-retry')
-        if retry: prior_restoration(mapping,require_installed_old=args.action!='recover-retry')
-        if args.action in ('apply','retry-restored'):
-            source_integrity(mapping)
-        approval_file=STATE/('migration-approval-retry.json' if retry else 'migration-approval.json')
-        approval=json.loads(regular(approval_file).read_text()) if args.action in ('apply','retry-restored') else None
+        expected = idle()
+        if requested_action=='inventory':
+            print(json.dumps(migration_inventory(mapping,original,retry),sort_keys=True))
+            return
+        if not authorized: raise ValueError('administrative authorization required')
+
+        is_retry = requested_action in RETRY_ACTIONS
+        action = RETRY_ACTIONS.get(requested_action,requested_action)
+        directory = retry if is_retry else original
+        prior = None
+        if is_retry:
+            prior = prior_restoration(mapping,original,require_installed_old=action == 'apply')
+        elif exists(retry):
+            raise ValueError('retry requires explicit retry action')
+
+        if action == 'apply':
+            if exists(directory) or exists(GATE):
+                raise ValueError('existing migration or transport drop-in requires inspection')
+        else:
+            private_directory(directory)
+            if exists(GATE) and regular(GATE).read_bytes() != gate_content(directory):
+                raise ValueError('transport drop-in belongs to another attempt')
+            if action != 'recover' or exists(directory/'journal.json'):
+                record = current_record(mapping,directory)
+                if record.get('prior_journal_sha256') != prior:
+                    raise ValueError('migration history binding changed')
+
+        def authorization(name):
+            path = regular(STATE/name)
+            if stat.S_IMODE(path.stat().st_mode) != 0o600:
+                raise ValueError('private administrative approval required')
+            return json.loads(path.read_text())
+
         def validate():
             command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
-        destination=STATE/('migration-retry' if retry else 'migration')
-        result=migrate(mapping,destination,approval,recover=args.action in ('recover','recover-retry'),validate=validate)
-        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'retry' if retry else 'original'}))
+        if action == 'apply':
+            name = 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
+            new = source_integrity(mapping)
+            result = begin(mapping,directory,authorization(name),validate,prior=prior,verified_new=new)
+        elif action == 'probe':
+            result = open_probe(mapping,directory,expected)
+        elif action == 'accept':
+            if record['phase'] != 'probing':
+                raise ValueError('accept phase')
+            import sys
+            try:
+                response = sys.stdin.buffer.read(32769)
+                if len(response) > 32768:
+                    raise ValueError('probe evidence size')
+                response = json.loads(response)
+            except Exception:
+                stop_trial()
+                raise
+            result = accept(mapping,directory,response,expected,validate)
+        elif action == 'rollback':
+            name = 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
+            result = rollback(mapping,directory,authorization(name),expected,validate)
+        else:
+            result = recover(mapping,directory,expected,validate)
+        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'retry' if is_retry else 'original'}))
 
 
 if __name__=='__main__':

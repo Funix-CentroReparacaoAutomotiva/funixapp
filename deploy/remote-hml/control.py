@@ -31,7 +31,8 @@ FILES = {
     'hml-update-transaction':'2d9c7008775f775f3019feb825e38ee4b9b433f9',
     'hml-docker-adapter':'f6cced157db9fc77ac1ef261e968c34371822d41',
     'hml-docker-maintenance':'ec25ab3c3e59cb1bbfbe2627978fa2a01ba830ff',
-    'hml-artifact-provenance':'fdf995c8500117f398aca6c34c96a31a170e8760',
+    'hml-artifact-provenance':'3f55512da9ad21b119e60a4f0e68c71f359ef833',
+    'hml-selection':'c56c9cf8e2f439412514db7b4579dc8b5b6b2e50',
     'hml-image-identity':'e3edb166a89c3da458beb60e5f8e778b5c0beb6f',
     'hml-writer-guard':'9c6dccb01e83b2cc6ec9b5d03e3e27486d843334',
     'hml-maintenance':'455e2735efb3596340f21e04ca1036d14981808c',
@@ -78,23 +79,66 @@ def new_request(path,token):
 def query(path,token):
     with OPENER.open(new_request(path,token),timeout=30) as r:
         must(r.status==200,'github_status'); data=r.read(4*1024*1024+1)
-    must(len(data)<=4*1024*1024,'github_json_size'); return json.loads(data)
+    must(len(data)<=4*1024*1024,'github_json_size')
+    def unique_fields(pairs):
+        result = {}
+        for key, value in pairs:
+            must(key not in result, 'github_duplicate_field')
+            result[key] = value
+        return result
+    result = json.loads(data, object_pairs_hook=unique_fields)
+    must(isinstance(result, dict), 'github_json_shape')
+    return result
+
+def official_module(name):
+    private_dir(BASE)
+    path = private_file(private_dir(BASE/'official')/(name+'.py'))
+    data = path.read_bytes()
+    blob = hashlib.sha1(('blob '+str(len(data))+'\0').encode()+data).hexdigest()
+    must(blob == FILES[name], 'updater_integrity')
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    exec(compile(data, str(path), 'exec'), module.__dict__)
+    return module
+
+
+def selected(a, selection):
+    must(isinstance(a, dict) and set(a)=={'identity','digest','size','installed_revision'}, 'approval_shape')
+    identity = a['identity']
+    must(isinstance(identity, dict) and set(identity)=={'pr','run_id','attempt','artifact_id','revision'}, 'identity_shape')
+    installed = a['installed_revision']
+    must(isinstance(installed, str) and re.fullmatch(r'[a-f0-9]{40}', installed) is not None, 'installed_revision')
+    try:
+        return selection.selection(dict(identity, sha256=a['digest'], size=a['size']))
+    except ValueError:
+        raise Blocked('candidate_selection') from None
+
 
 def check_approval(a):
-    must(set(a)=={'identity','digest','size','installed_revision'},'approval_shape')
-    i=a['identity']; must(set(i)=={'pr','run_id','attempt','artifact_id','revision'},'identity_shape')
-    for k in ('pr','run_id','attempt','artifact_id'): must(type(i[k]) is int and 0<i[k]<10**15,'identity_number')
-    for key,val in [('revision',i['revision']),('installed_revision',a['installed_revision'])]: must(isinstance(val,str) and re.fullmatch(r'[a-f0-9]{40}',val) is not None,key)
-    must(isinstance(a['digest'],str) and re.fullmatch(r'[a-f0-9]{64}',a['digest']) is not None,'digest')
-    must(type(a['size']) is int and 0<a['size']<=1024**3,'size_limit'); return i
+    selected(a, official_module('hml-selection'))
+    return a['identity']
+
+
+def preparation_record(op, candidate, current, journal):
+    return {'schema':'funix-hml-prepared/1', 'selection':candidate,
+            'installed_revision':current['revision'], 'config_sha256':sha(op/'config.json'),
+            'active_operation':journal.parent.name, 'active_journal_sha256':sha(journal)}
+
 
 def metadata(a,token):
     i=check_approval(a)
     run=query(f"actions/runs/{i['run_id']}/attempts/{i['attempt']}",token)
     expected={'id':i['run_id'],'run_attempt':i['attempt'],'event':'workflow_dispatch','head_branch':'main','path':WORKFLOW,'status':'completed','conclusion':'success'}
-    must(all(run.get(k)==v for k,v in expected.items()) and run.get('repository',{}).get('full_name')==REPO,'workflow_identity')
+    must(all(type(run.get(k)) is type(v) and run[k]==v for k,v in expected.items()) and run.get('repository',{}).get('full_name')==REPO,'workflow_identity')
     art=query(f"actions/artifacts/{i['artifact_id']}",token)
-    must(art.get('id')==i['artifact_id'] and art.get('expired') is False and art.get('name')==f"funix-hml-{i['revision']}-{i['attempt']}" and art.get('workflow_run',{}).get('id')==i['run_id'] and art.get('size_in_bytes')==a['size'] and art.get('digest')=='sha256:'+a['digest'],'artifact_identity')
+    artifact_run_id=art.get('workflow_run',{}).get('id')
+    must(type(art.get('id')) is int and type(artifact_run_id) is int
+         and type(art.get('size_in_bytes')) is int
+         and art['id']==i['artifact_id'] and art.get('expired') is False
+         and art.get('name')==f"funix-hml-{i['revision']}-{i['attempt']}"
+         and artifact_run_id==i['run_id'] and art['size_in_bytes']==a['size']
+         and art.get('digest')=='sha256:'+a['digest'],'artifact_identity')
     pr=query(f"pulls/{i['pr']}",token)
     must(pr.get('head',{}).get('sha')==i['revision'] and pr.get('head',{}).get('repo',{}).get('full_name')==REPO and pr.get('base',{}).get('ref')=='main','pr_identity')
     return art
@@ -166,10 +210,13 @@ def installed_from_journal(rec):
 
 def prepare():
     must(os.geteuid()==0 and len(sys.argv)==1,'local_scope'); private_dir(PRIVATE); private_dir(STATE)
-    a=read_json(PRIVATE/'approval.json'); i=check_approval(a)
+    a=read_json(PRIVATE/'approval.json')
+    selection=official_module('hml-selection')
+    candidate=selected(a, selection)
+    i=a['identity']
     token=private_file(PRIVATE/'github.token').read_text(encoding='ascii').strip()
     must(re.fullmatch(r'github_pat_[A-Za-z0-9_]{20,240}',token) is not None,'token_format')
-    op=STATE/f"op-{i['run_id']}-{i['attempt']}-prep-{i['artifact_id']}"
+    op=STATE/selection.operation_id(candidate)
     fd=os.open(private_file(STATE/'lock'),os.O_RDWR|os.O_NOFOLLOW)
     with os.fdopen(fd,'r+') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -184,7 +231,13 @@ def prepare():
         db=Path(u.DATABASE); must(shutil.disk_usage(STATE).free>a['size']*4+db.stat().st_size*4+512*1024**2,'space')
         if not op.exists(): op.mkdir(mode=0o700)
         private_dir(op); must(not (op/'operation.json').exists() and not (op/'operation.json').is_symlink(),'operation_already_used')
+        receipt = op/'prepared.json'
+        recorded = receipt.exists() or receipt.is_symlink()
+        if recorded:
+            must(read_json(receipt)==preparation_record(op,candidate,current,journal),'prepared_record_changed')
+            private_file(op/'candidate.zip')
         u.host_scope(op,op/'config.json'); download(a,token,op)
+        selection.verify_package(candidate, op/'candidate.zip', query=lambda path:query(path,token))
         # Preparation is idempotent for this approved candidate only. Never start an update here.
         if (op/'config.json').exists():
             candidate_cfg=read_json(op/'config.json'); u.check_config(candidate_cfg,op)
@@ -195,6 +248,9 @@ def prepare():
             candidate_cfg=read_json(op/'config.json'); u.check_config(candidate_cfg,op)
         must(candidate_cfg.get('identity')==i and sha(op/'candidate.zip')==a['digest'],'prepared_artifact')
         must(u.installed_preflight(u.make_adapter(cfg))==current and external_snapshot()==before and read_json(STATE/'active.json')==pointer and read_json(journal)==rec,'final_scope')
+        if not recorded:
+            record = preparation_record(op,candidate,current,journal)
+            save(receipt,json.dumps(record,sort_keys=True).encode('ascii'))
         return {'schema':'funix-hml-prepare/1','status':'prepared','scope':'funix-hml','pr':i['pr'],'run_id':i['run_id'],'attempt':i['attempt'],'artifact_id':i['artifact_id'],'revision':i['revision'],'sha256':a['digest'],'operation':op.name,'installed_revision':current['revision'],'preflight':True,'provenance':True,'docker_load':False,'deploy':False,'backup_executed':False,'external_preserved':True}
 
 def main():
