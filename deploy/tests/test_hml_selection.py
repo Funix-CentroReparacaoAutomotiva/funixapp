@@ -36,6 +36,18 @@ class SelectionTest(unittest.TestCase):
                 self.assertEqual(output['operation'],m.operation_id(value))
             self.assertEqual(len(list(Path(directory).iterdir())),2)
 
+    def test_size_bound_matches_privileged_controller(self):
+        self.assertEqual(m.MAX_SIZE, 1024**3)
+        value = dict(pr=1, run_id=101, attempt=1, artifact_id=201,
+                     revision='a'*40, sha256='b'*64, size=1024**3)
+        self.assertEqual(m.selection(value)['size'], 1024**3)
+        for excess in (1024**3 + 1, 20 * 1024**3):
+            with self.subTest(size=excess), self.assertRaises(ValueError):
+                m.selection(dict(value, size=excess))
+        for invalid in (0, -1, 1.0, True, '1024'):
+            with self.subTest(size=invalid), self.assertRaises(ValueError):
+                m.selection(dict(value, size=invalid))
+
     def test_identity_digest_expiration_and_untrusted_workflow_block(self):
         with tempfile.TemporaryDirectory() as directory:
             archive=Path(directory)/'artifact.zip'
