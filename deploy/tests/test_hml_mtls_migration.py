@@ -89,6 +89,18 @@ class MigrationTest(unittest.TestCase):
         self.assertEqual(self.gate.read_bytes(), migration.gate_content(self.operation))
         self.assertEqual(self.transport,'inactive')
 
+    def test_restored_release_and_pending_block(self):
+        spec = importlib.util.spec_from_file_location('control', ROOT/'remote-hml/control.py')
+        control = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(control)
+        old = {'revision':'a'*40}
+        new = {'revision':'b'*40}
+        record = dict(schema=1, project='funix-hml', previous=old, candidate=new)
+        self.assertEqual(control.installed_from_journal(dict(record,phase='accepted')),new)
+        self.assertEqual(control.installed_from_journal(dict(record,phase='restored')),old)
+        with self.assertRaises(control.Blocked):
+            control.installed_from_journal(dict(record,phase='installing'))
+
     def test_accept_requires_live_bound_get_and_is_explicitly_reversible(self):
         self.assertEqual(self.start(),'awaiting_probe')
         self.assert_held()
@@ -129,6 +141,22 @@ class MigrationTest(unittest.TestCase):
         self.fail_start = False
         self.assertEqual(self.recovery(),'accepted')
         self.assertFalse((self.operation/'hold').exists())
+
+    def test_recovery_reopens_after_interruption_between_release_and_start(self):
+        self.start()
+        proof = self.probe()
+        original = migration.command
+        def interrupt(*args):
+            if args[1] == 'start':
+                raise KeyboardInterrupt
+            return original(*args)
+        with patch.object(migration,'command',side_effect=interrupt), self.assertRaises(KeyboardInterrupt):
+            self.accept(proof)
+        self.assertEqual(self.record()['phase'],'accepted')
+        self.assertFalse((self.operation/'hold').exists())
+        self.assertEqual(self.transport,'inactive')
+        self.assertEqual(self.recovery(),'accepted')
+        self.assertEqual(self.transport,'active')
 
     def test_drift_and_backup_damage_prevent_restoration_writes(self):
         self.start()

@@ -196,7 +196,8 @@ def release_gate(directory, record):
         sync_directory(directory)
     if record['transport_active']:
         try:
-            command('systemctl', 'start', TRANSPORT)
+            if command('systemctl', 'show', '-p', 'ActiveState', '--value', TRANSPORT) != 'active':
+                command('systemctl', 'start', TRANSPORT)
             if command('systemctl', 'show', '-p', 'ActiveState', '--value', TRANSPORT) != 'active':
                 raise ValueError('transport did not start')
         except Exception:
@@ -347,8 +348,10 @@ def recover(mapping, directory, validate):
         side = 'new' if phase == 'accepted' else 'old'
         check_files(mapping,record,(side,))
         validate()
-        if (directory/'hold').exists():
+        if GATE.exists() or GATE.is_symlink():
             release_gate(directory,record)
+        elif (directory/'hold').exists() or (directory/'hold').is_symlink():
+            raise ValueError('missing transport drop-in')
         return phase
     return restore(mapping,directory,record,validate,terminal=phase=='rollback')
 
