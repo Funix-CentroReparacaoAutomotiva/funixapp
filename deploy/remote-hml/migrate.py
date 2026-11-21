@@ -131,7 +131,7 @@ def source_integrity(mapping):
             raise ValueError('candidate pin invalid')
         path = PACKAGE.parent/(name+'.py')
         data = regular(path).read_bytes()
-        actual = hashlib.sha1(b'blob '+str(len(data)).encode('ascii')+b'\\0'+data).hexdigest()
+        actual = hashlib.sha1(b'blob '+str(len(data)).encode('ascii')+bytes([0])+data).hexdigest()
         if actual != expected:
             raise ValueError('candidate official module pin mismatch')
     if set(mapping)!=set(targets()) or any(mapping[t]!=targets()[t] for t in mapping):
