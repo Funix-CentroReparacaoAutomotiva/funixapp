@@ -352,7 +352,8 @@ export class ConversationStore {
           newMessage = e.occurredAt >= this.autonomousSince && !accepted
         }
         this.apply(e, id)
-        this.identities.inbound?.(e,newMessage)
+        this.identities.inbound?.(e,newMessage,!!this.autonomousSince && e.type==='message.upsert' && e.message.timestamp!=null &&
+          new Date(e.message.timestamp*1000).toISOString()>=this.autonomousSince)
         if (identity === 'context_conflict') disposition = 'pending'
       }
       const receiptId = randomUUID()
@@ -377,6 +378,7 @@ export class ConversationStore {
                 instance: e.instance,
                 type: e.type,
                 occurredAt: e.occurredAt,
+                ...(e.selfChat?{selfChat:true}:{}),
                 message: {
                   remoteJid: e.message.remoteJid,
                   remoteJidAlt: e.message.remoteJidAlt,

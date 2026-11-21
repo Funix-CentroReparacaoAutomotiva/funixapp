@@ -15,6 +15,7 @@ const states = new Set([
 ])
 export type ConversationEvent = {
   displayName?: string
+  selfChat?: true
   schemaVersion: 2
   instance: string
   eventId: string
@@ -47,7 +48,7 @@ export function parseConversationEvent(raw: string): ConversationEvent {
   const e = record(
     value,
     ['schemaVersion', 'instance', 'eventId', 'occurredAt', 'type', 'message'],
-    ['displayName'],
+    ['displayName','selfChat'],
   )
   if (
     e.schemaVersion !== 2 ||
@@ -59,6 +60,7 @@ export function parseConversationEvent(raw: string): ConversationEvent {
   )
     return invalid()
   if (e.displayName !== undefined && displayName(e.displayName) !== e.displayName) return invalid()
+  if(e.selfChat!==undefined&&(e.selfChat!==true||e.type!=='message.upsert'))return invalid()
   const content = e.type === 'message.upsert' || e.type === 'message.edit'
   const m = record(
     e.message,

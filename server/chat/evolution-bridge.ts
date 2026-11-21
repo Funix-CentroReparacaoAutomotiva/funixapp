@@ -480,7 +480,7 @@ export function createEvolutionChatBridge(
           }
         : null
     },
-    async messages(conversationId: string, page: number, cursor?: string) {
+    async messages(conversationId: string, page: number, cursor?: string, allowsTechnicalRead?: (jid:string)=>boolean) {
       purge()
       const entry = byId.get(conversationId)
       const jid =
@@ -489,8 +489,9 @@ export function createEvolutionChatBridge(
         entry?.jid
       if (!jid || (contacts&&!contacts.identities.identityJids(jid))) return null
       if (entry) entry.at = now()
-      const active = codaSync ? canonicalFor(jid) : null
-      if (codaSync && !active) return null
+      const active = codaSync && !allowsTechnicalRead ? canonicalFor(jid) : null
+      const authorized=()=>allowsTechnicalRead?allowsTechnicalRead(jid):!codaSync||!!active&&canonicalFor(jid)===active
+      if (!authorized()) return null
       if (local?.read) {
         // Local is the authoritative read source. Refresh page 1 only; provider failure
         // cannot be misreported as an empty result if no local message is available.
@@ -514,7 +515,7 @@ export function createEvolutionChatBridge(
             providerUnavailable = true
           }
         }
-        if (codaSync && canonicalFor(jid) !== active) return null
+        if (!authorized()) return null
         const result = local.store.page(jid, page, cursor)
         codaSync?.markRead?.(jid,result.items.map(m=>m.messageId))
         if (providerUnavailable && result.reportedTotal === 0)
@@ -531,7 +532,7 @@ export function createEvolutionChatBridge(
       local?.store.observePage(jid, result.items, page)
       if(codaSync)codaSync.rememberProviderAliases(result.items,false,'findMessages')
       else contacts?.identities.rememberProviderAliases(result.items,false,'findMessages')
-      if ((contacts&&!contacts.identities.identityJids(jid))||(codaSync&&canonicalFor(jid)!==active)) return null
+      if ((contacts&&!contacts.identities.identityJids(jid))||!authorized()) return null
       return {
         conversationId,
         items: result.items.map(

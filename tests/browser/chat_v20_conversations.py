@@ -116,7 +116,7 @@ async def device_case(browser, width, height):
                 poll_calls.append(parsed.query)
                 if history_error:
                     return await route.fulfill(status=history_error[0], json={"error": {
-                        "code": history_error[1], "message": "Resposta incompatível da Evolution.", "requestId": "synthetic-reference"}})
+                        "code": history_error[1], "message": "Conversa não vinculada a este Atendimento." if history_error[1] == "CHAT_NOT_LINKED" else "Resposta incompatível da Evolution.", "requestId": "synthetic-reference"}})
                 payload = messages_payload(A)
                 payload["items"].extend(added_messages)
                 payload["reportedTotal"] = len(payload["items"])
@@ -253,7 +253,7 @@ async def device_case(browser, width, height):
         # Losing the active canonical context on a silent poll revokes displayed data and send rights.
         history_error = (404, "CHAT_NOT_LINKED")
         await page.clock.fast_forward(20_000)
-        await expect(page.get_by_text("O vínculo entre conversa e Atendimento não foi confirmado.", exact=False)).to_be_visible()
+        await expect(page.get_by_text("Conversa não vinculada a este Atendimento. Referência: synthetic-reference.", exact=False)).to_be_visible()
         await expect(page.get_by_text("Mensagem sintética A", exact=True)).to_have_count(0)
         await expect(page.locator(".chat-composer-row")).to_have_count(0)
         history_error = None
