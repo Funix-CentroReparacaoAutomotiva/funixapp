@@ -378,6 +378,7 @@ export class ConversationStore {
                 instance: e.instance,
                 type: e.type,
                 occurredAt: e.occurredAt,
+                ...(e.selfChat?{selfChat:true}:{}),
                 message: {
                   remoteJid: e.message.remoteJid,
                   remoteJidAlt: e.message.remoteJidAlt,

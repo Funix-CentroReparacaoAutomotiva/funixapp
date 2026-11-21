@@ -465,10 +465,11 @@ export function createRequestHandler(options: AppOptions) {
       // These operations NEVER contact Evolution or change legacy chat/messages.
       if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
+        const triageRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/atendimentos\/triagem$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         const identityRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/identity$/.exec(url.pathname)
-        if (associationRoute || contextRoute || identityRoute) {
-          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1])!
+        if (associationRoute || contextRoute || identityRoute || triageRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1] ?? triageRoute?.[1])!
           const authority=options.conversationRuntime?.authority
           const contacts=options.evolutionChat.contacts
           const scope=identityRoute?undefined:(authority?.associationScope(conversationId) ??
@@ -483,7 +484,8 @@ export function createRequestHandler(options: AppOptions) {
             catch(error){if(!(error instanceof ServiceError)||error.code!=='CHAT_IDENTITY_CONFLICT')throw error;readIdentityBlocked=true}
             const resolution=readIdentityBlocked?undefined:authority?.suggestAtendimentos(conversationId)
             return send(200, {...options.v20Associations.listActive(conversationId,scope),readIdentityBlocked,
-              ...(resolution?{suggestedAtendimentos:resolution.candidates,atendimentoConflict:resolution.conflict}:{}),
+              ...(resolution?{suggestedAtendimentos:resolution.candidates,atendimentoConflict:resolution.conflict,
+                canCreateTriage:!!options.conversationRuntime?.read&&resolution.canCreateTriage}:{}),
               sendAtendimentoId:options.evolutionChat.activeAtendimentoForConversation(conversationId)})
           }
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
@@ -492,6 +494,13 @@ export function createRequestHandler(options: AppOptions) {
           if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
           const input = body as Record<string, unknown>
           if(identity&&req.method==='POST')return send(200,identity.confirm(conversationId,input))
+          if(triageRoute&&req.method==='POST'){
+            if(Object.keys(input).length)return fail(400,'CHAT_INVALID_BODY','Campos inválidos.')
+            if(!authority||!options.conversationRuntime?.read)
+              return fail(409,'CHAT_TRIAGE_UNAVAILABLE','Conversa indisponível para triagem.')
+            const result=authority.createTriageFromHistory(conversationId)
+            return send(result.created?201:200,{atendimentoId:result.atendimentoId})
+          }
           if (associationRoute && req.method === 'POST' && !associationRoute[3]) {
             if (Object.keys(input).some(key => !['atendimentoId','expectedRevision','requestId','reason'].includes(key)))
               return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')

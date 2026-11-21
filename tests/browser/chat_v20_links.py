@@ -19,6 +19,7 @@ AT1 = "aaaa1111-1111-4111-8111-111111111111"
 AT2 = "aaaa2222-2222-4222-8222-222222222222"
 L1 = "bbbb1111-1111-4111-8111-111111111111"
 L2 = "bbbb2222-2222-4222-8222-222222222222"
+L3 = "bbbb3333-3333-4333-8333-333333333333"
 RECORDS = [
     {"id": AT1, "name": "Oficina Exemplo A", "vehicle": "Hatch fictício", "plate": "SYN1A23"},
     {"id": AT2, "name": "Oficina Exemplo B", "vehicle": "Sedã fictício", "plate": "SYN2B34"},
@@ -36,6 +37,7 @@ async def device_case(browser, width, height):
     state = {
         "revision": 0, "links": [], "active": None, "enabled": True,
         "fail_next_link": False, "fail_search": False, "writes": [], "requests": [],
+        "triage": None,
     }
     try:
         h.check_ports()
@@ -83,8 +85,11 @@ async def device_case(browser, width, height):
                 return await route.fulfill(**response(200, {
                     "items": RECORDS, "total": 2, "nextOffset": None, "stages": [],
                 }))
-            if path in [f"/api/chat/conversations/{A}/messages", f"/api/chat/conversations/{B}/messages"]:
+            linked_history = state["triage"] and path == f"/api/atendimentos/{state['triage']}/evolution-conversations/{B}/messages"
+            if linked_history or path in [f"/api/chat/conversations/{A}/messages", f"/api/chat/conversations/{B}/messages"]:
                 assert method == "GET"
+                if linked_history:
+                    assert parse_qs(parsed.query)["scope"] == ["linked"]
                 body = ("Mensagem sintética A preservada" if A in path else "Mensagem sintética B separada")
                 return await route.fulfill(**response(200, {
                     "source": "evolution", "conversationId": A if A in path else B,
@@ -94,7 +99,18 @@ async def device_case(browser, width, height):
                     "consistency": "offset-not-snapshot", "historyComplete": "unknown",
                 }))
             if path == f"/api/chat/conversations/{B}/atendimentos" and method == "GET":
-                return await route.fulfill(**response(200, {"revision": 0, "items": [], "activeAtendimentoId": None}))
+                linked = [{"linkId": L3, "atendimentoId": state["triage"], "linkedAt": "2026-11-08T12:00:00.000Z",
+                           "name": "Triagem sintética Beta", "vehicle": "", "plate": ""}] if state["triage"] else []
+                return await route.fulfill(**response(200, {"revision": len(linked), "items": linked,
+                    "activeAtendimentoId": None, "sendAtendimentoId": None, "canCreateTriage": not linked}))
+            if path == f"/api/chat/conversations/{B}/atendimentos/triagem" and method == "POST":
+                assert request.post_data_json == {} and state["triage"] is None
+                created = await ctx.request.post(ORIGIN + "/api/atendimentos", headers={"Origin": ORIGIN},
+                    data={"name": "Triagem sintética Beta", "phone": "+5531999990002", "purpose": "unclassified"})
+                assert created.status == 201
+                state["triage"] = (await created.json())["id"]
+                state["writes"].append(["triage", {}])
+                return await route.fulfill(**response(201, {"atendimentoId": state["triage"]}))
             if path == f"/api/chat/conversations/{A}/atendimentos" and method == "GET":
                 return await route.fulfill(**response(200, {
                     "revision": state["revision"], "items": list(state["links"]),
@@ -145,12 +161,13 @@ async def device_case(browser, width, height):
 
         await ctx.route("**/api/chat/conversations**", mock)
         await ctx.route("**/api/atendimentos?*", mock)
+        await ctx.route(f"**/api/atendimentos/*/evolution-conversations/{B}/messages?*", mock)
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Alfa", exact=True).click()
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
         await expect(panel).to_be_visible()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
-        await expect(page.get_by_role("dialog").get_by_role("button", name="Novo Atendimento")).to_be_visible()
+        await expect(page.get_by_role("dialog").get_by_role("button", name="Criar Atendimento de triagem")).to_have_count(0)
         await page.get_by_role("button", name="Fechar detalhes").click()
         await page.locator(".conversation-row").filter(has_text="Contato Sintético Alfa").get_by_role("button", name="Detalhes: 0 Atendimentos").click()
         await expect(panel).to_be_visible()
@@ -202,16 +219,25 @@ async def device_case(browser, width, height):
         await page.get_by_role("button", name="Fechar detalhes").click()
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Beta", exact=True).click()
         await expect(panel.get_by_text("Nenhum Atendimento vinculado.")).to_be_visible()
+        await expect(page.get_by_text("Mensagem sintética B separada")).to_be_visible()
+        await page.get_by_role("dialog").get_by_role("button", name="Criar Atendimento de triagem").click()
+        await page.wait_for_url(lambda url: urlparse(url).path == f"/atendimentos/{state['triage']}")
+        assert parse_qs(urlparse(page.url).query) == {"aba": ["chat"], "conversa": [B], "leitura": ["1"]}
+        assert urlparse(page.url).path == f"/atendimentos/{state['triage']}"
+        await expect(page.get_by_text("Mensagem sintética B separada")).to_be_visible()
+        await expect(page.get_by_role("button", name="Enviar", exact=True)).to_have_count(0)
+        await page.get_by_role("button", name="Voltar à visão anterior").click()
+        await expect(page.get_by_role("button", name="Abrir conversa: Contato Sintético Beta", exact=True)).to_be_visible()
+        h.mark(f"{width}px: historical triage opens linked read-only Atendimento and returns to Conversas")
         h.mark(f"{width}px: conversation switch isolates manual association panels")
 
         assert await page.evaluate("w => document.documentElement.scrollWidth <= w + 1", width)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         assert all("@" not in p for _, p in state["requests"])
-        assert all(kind in ["link", "unlink", "context"] for kind, _ in state["writes"])
+        assert all(kind in ["link", "unlink", "context", "triage"] for kind, _ in state["writes"])
         h.mark(f"{width}px: no horizontal overflow, no external network, no JS exceptions")
 
         state["enabled"] = False
-        await page.get_by_role("button", name="Fechar detalhes").click()
         await page.get_by_role("button", name="Atualizar", exact=True).click()
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Alfa", exact=True).click()
         assert await page.get_by_role("region", name="Vínculos com Atendimentos").count() == 0

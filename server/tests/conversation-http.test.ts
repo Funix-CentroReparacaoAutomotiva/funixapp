@@ -627,6 +627,103 @@ test('snapshot-only outgoing history is readable without a link and an explicit 
  }
 })
 
+test('operator can recover snapshot history into one linked triage without selecting send context',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db)
+  const jid='5531999990671@s.whatsapp.net',authority=f.local.authority!
+  const cid=authority.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
+  const triage=()=>f.request(base+'/atendimentos/triagem','POST',{},f.browser)
+  const providerMessage={recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'old-snapshot-triage',timestamp:1767225599,fromMe:true,origin:'unknown' as const,
+    kind:'text' as const,text:'Histórico sintético para triagem',media:null,statuses:[]}
+  f.setProviderHistory({items:[providerMessage],currentPage:1,reportedTotal:1,reportedPages:1,nextPage:null,consistency:'offset-not-snapshot'})
+  const missingHistory=await triage()
+  assert.equal(missingHistory.status,409)
+  assert.equal((await missingHistory.json()).error.code,'CHAT_TRIAGE_HISTORY_REQUIRED')
+  assert.equal((await f.request(base+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
+  assert.equal(at.list().total,0)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_events').get()!.n,0)
+  const model=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+  assert.equal(model.canCreateTriage,true)
+  const responses=await Promise.all([triage(),triage()])
+  assert.deepEqual(responses.map(response=>response.status).sort(),[200,201])
+  const first=await responses[0]!.json()
+  assert.deepEqual(await responses[1]!.json(),first)
+  assert.equal(at.list().total,1)
+  assert.equal(at.get(first.atendimentoId,true).purpose,'unclassified')
+  const matches=customers.phoneMatches('+5531999990671')
+  assert.equal(matches.length,1)
+  assert.ok(customers.channelOwnerIsProvisional(matches[0]!.entityId!))
+  assert.deepEqual(authority.links(jid).map(link=>[link.atendimento_id,link.linked_by]),[[first.atendimentoId,'operator']])
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  const linked=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+  assert.equal(linked.sendAtendimentoId,null)
+  assert.equal(linked.activeAtendimentoId,null)
+  assert.equal((await f.request('/api/atendimentos/'+first.atendimentoId+'/evolution-conversations/'+cid+'/messages?scope=linked',
+    'GET',undefined,f.browser)).status,200)
+  const webhook={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,
+    messageTimestamp:Math.floor(Date.now()/1000),key:{remoteJid:jid,remoteJidAlt:null,id:'triage-first-webhook',fromMe:false}}}
+  assert.equal((await f.sendEvent(webhook)).status,202)
+  assert.equal(at.list().total,1)
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  assert.equal(f.local.store.page(jid,1).items.length,2)
+  const select=await f.request(base+'/context','POST',{linkId:linked.items[0].linkId},f.browser)
+  assert.equal(select.status,200)
+  assert.equal((await select.json()).activeAtendimentoId,first.atendimentoId)
+  assert.equal(authority.resolveIdentityActive(jid),first.atendimentoId)
+  assert.equal(f.sends,0)
+  assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('triage rechecks Atendimento candidates and prior links after the eligibility preview',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db),authority=f.local.authority!
+  const jid='5531999990672@s.whatsapp.net',cid=authority.rememberProviderConversation(jid)
+  const base='/api/chat/conversations/'+cid+'/atendimentos'
+  f.local.store.observePage(jid,[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'stale-triage',timestamp:1767225599,fromMe:true,origin:'unknown',kind:'text',text:'Histórico sintético',media:null,statuses:[]}],1)
+  const list=()=>f.request(base,'GET',undefined,f.browser).then(result=>result.json())
+  assert.equal((await list()).canCreateTriage,true)
+  const existing=at.create({name:'Ficha presencial concorrente',phone:'(31) 99999-0672'})
+  const triage=()=>f.request(base+'/triagem','POST',{},f.browser)
+  const conflict=await triage()
+  assert.equal(conflict.status,409)
+  assert.equal((await conflict.json()).error.code,'CHAT_TRIAGE_REVIEW_REQUIRED')
+  const current=await list()
+  assert.equal(current.canCreateTriage,false)
+  assert.deepEqual(current.suggestedAtendimentos.map((row:{id:string})=>row.id),[existing.id])
+  const link=await f.request(base,'POST',{expectedRevision:current.revision,requestId:randomUUID(),
+    atendimentoId:existing.id,reason:'Vínculo explícito à ficha existente'},f.browser)
+  assert.equal(link.status,201)
+  assert.equal((await triage()).status,409)
+  assert.equal(at.list().total,1)
+  assert.equal(f.sends,0)
+ }finally{f.db.close()}
+})
+
+test('triage requires PN evidence and refuses a positively identified self-chat',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const authority=f.local.authority!
+  const raw={...observedEvolutionUpsert,sender:'5531999990673@s.whatsapp.net',
+    data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601}}
+  for(const [jid,id] of [[raw.sender,'synthetic-known-self'],['synthetic-no-pn@lid','synthetic-no-pn']]){
+   const cid=authority.rememberProviderConversation(jid!)
+   const base='/api/chat/conversations/'+cid
+   const event={...raw,data:{...raw.data,key:{remoteJid:jid,remoteJidAlt:null,id,fromMe:true}}}
+   assert.equal((await f.sendEvent(event)).status,202)
+   assert.equal((await f.request(base+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
+   const links=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+   assert.ok(!links.canCreateTriage)
+   assert.equal((await f.request(base+'/atendimentos/triagem','POST',{},f.browser)).status,409)
+  }
+  assert.equal(f.sends,0)
+ }finally{f.db.close()}
+})
+
 test('first outgoing interaction preserves ambiguity, revocation and closed-case behavior',async()=>{
  for(const situation of ['ambiguous','legacy','conflict','revoked','closed'] as const){
   const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
@@ -687,13 +784,26 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
  try{
   const at=new AtendimentoRepository(f.db)
   // No Entidade or Contato record exists when the presencial ficha was saved.
-  const original=at.create({name:'Pessoa da ficha textual',phone:'(31) 99999-0666'})
+  const commercial=commercialFixture(f.db)
+  const original=at.update(commercial.at.id,{revision:at.get(commercial.at.id).revision,
+    name:'Pessoa da ficha textual',phone:'(31) 99999-0666'})
+  const budgets=new BudgetRepository(f.db)
+  const input={scenarioId:commercial.scenario.id,negotiation:{mode:'none'} as const}
+  const quote=await budgets.emit(original.id,{...input,previewToken:budgets.preview(original.id,input).token,idempotencyKey:randomUUID()})
+  issueProductionOrder(f.db,original.id,quote.id)
+  const commercialSnapshot=()=>['scenarios','budget_versions','budget_document_identity','work_orders','production_experiences']
+    .map(table=>f.db.prepare('SELECT * FROM '+table+' ORDER BY rowid').all())
+  const before=commercialSnapshot()
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM customer_records').get()!.n,0)
   const jid='5531999990666@s.whatsapp.net'
   const raw={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,
     messageTimestamp:Math.floor(Date.now()/1000)+2,
     key:{remoteJid:jid,remoteJidAlt:null,id:'first-text-only-outgoing',fromMe:true}}}
-  assert.equal((await f.sendEvent(raw)).status,202)
+  const first=await f.sendEvent(raw)
+  const replay=await f.sendEvent(raw)
+  assert.equal(first.status,202)
+  assert.equal(replay.status,202)
+  assert.deepEqual(await replay.json(),await first.json())
   assert.equal(at.list().total,1)
   const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid)
   assert.equal(authority.resolveIdentityActive(jid),null)
@@ -705,12 +815,14 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
   assert.equal(model.atendimentoConflict,true)
   assert.equal((await f.request('/api/chat/conversations/'+cid+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
   assert.equal(f.sends,0)
-  const links=new V20AssociationRepository(f.db)
-  const linked=links.link({conversationId:cid,atendimentoId:original.id,expectedRevision:model.revision,
-    requestId:randomUUID(),reason:'Conferência explícita da ficha presencial textual'})
+  const base='/api/chat/conversations/'+cid
+  const link=await f.request(base+'/atendimentos','POST',{atendimentoId:original.id,expectedRevision:model.revision,
+    requestId:randomUUID(),reason:'Conferência explícita da ficha presencial textual'},f.browser)
+  assert.equal(link.status,201)
+  const linked=await link.json()
   assert.equal(at.list().total,1)
   assert.equal(authority.resolveIdentityActive(jid),null)
-  links.selectAtendimento(cid,linked.linkId)
+  assert.equal((await f.request(base+'/context','POST',{linkId:linked.linkId},f.browser)).status,200)
   assert.equal(authority.resolveIdentityActive(jid),original.id)
   assert.equal(at.get(original.id).name,'Pessoa da ficha textual')
   const after=at.get(original.id,true)
@@ -720,7 +832,46 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
     key:{...raw.data.key,id:'second-text-only-outgoing'}}})).status,202)
   assert.equal(at.list().total,1)
   assert.equal(f.local.store.page(jid,1).items.length,2)
+  assert.deepEqual(commercialSnapshot(),before)
   assert.equal(f.sends,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('a textual candidate and a ficha of another owner never resolve silently',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db),authority=f.local.authority!
+  const other=customers.save({kind:'entity',text:'Outro titular sintético'})
+  const original=at.create({name:'Ficha exclusivamente textual',phone:'(31) 99999-0674'})
+  const incompatible=at.create({references:{person:[{id:other.id,text:other.text}],contact:[],vehicle:[],payer:[]}})
+  const owner=customers.save({kind:'entity',text:'Titular do número sintético',contacts:[{text:'(31) 99999-0674'}]})
+  const contact=customers.contacts(owner.id)[0]!
+  // Represent older contradictory evidence that the current manual editor rejects.
+  f.db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,NULL,?)")
+    .run(incompatible.id,JSON.stringify({id:null,text:'+5531999990674'}))
+  const saved=at.get(incompatible.id,true)
+  const jid='5531999990674@s.whatsapp.net'
+  const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'textual-conflict-first-outgoing',fromMe:true}}}
+  assert.equal((await f.sendEvent(event)).status,202)
+  const cid=authority.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
+  assert.equal(at.list().total,2)
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  const model=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+  assert.deepEqual(model.items,[])
+  assert.equal(model.atendimentoConflict,true)
+  assert.deepEqual(model.suggestedAtendimentos.map((row:{id:string})=>row.id),[original.id])
+  const link=await f.request(base+'/atendimentos','POST',{atendimentoId:original.id,expectedRevision:model.revision,
+    requestId:randomUUID(),reason:'Escolha explícita após conferência dos titulares'},f.browser)
+  assert.equal(link.status,201)
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  assert.equal((await f.request(base+'/context','POST',{linkId:(await link.json()).linkId},f.browser)).status,200)
+  assert.equal((await f.sendEvent({...event,data:{...event.data,key:{...event.data.key,id:'textual-conflict-follow-up',fromMe:false}}})).status,202)
+  assert.equal(authority.resolveIdentityActive(jid),original.id)
+  assert.equal(at.list().total,2)
+  assert.deepEqual(at.get(incompatible.id,true),saved)
+  assert.equal(customers.record(contact.id).entityId,owner.id)
+  assert.equal(f.sends,0)
  }finally{f.db.close()}
 })

@@ -121,8 +121,8 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly, linkedHistory }: {
-  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; linkedHistory?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void
+export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly, linkedHistory, onTechnicalHistory }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; linkedHistory?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void; onTechnicalHistory?:(available:boolean)=>void
 }) {
   const apiBase=readOnly?'/api/chat/conversations/'+encodeURIComponent(conversationId):contactId?`/api/customer-records/${encodeURIComponent(contactId)}/chat/${encodeURIComponent(conversationId)}`:`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}`
   const [items, setItems] = useState<ReadUiMessage[]>([])
@@ -205,6 +205,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       const raw = await api<unknown>(`${apiBase}/messages?page=${page}${linkedHistory?'&scope=linked':readOnly?'&scope=technical':''}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
+      if(readOnly&&page===1)onTechnicalHistory?.(result.items.length>0)
       setCanSendText(!readOnly&&!linkedHistory&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
       setCanReadMedia((raw as {mediaReadAvailable?:unknown}).mediaReadAvailable===true)
       setCanMedia(!readOnly&&!linkedHistory&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
@@ -247,6 +248,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setAutoError(false)
     } catch (cause) {
       if (controller.signal.aborted) return
+      if(readOnly&&page===1)onTechnicalHistory?.(false)
       const error = cause as RequestFailure
       if (error.status === 401) { itemsRef.current = []; setItems([]); onUnauthorized(); return }
       // Revoke composer capabilities on every failed authorization/refresh.
@@ -271,7 +273,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
         if (!controller.signal.aborted && !silent) setBusy(false)
       }
     }
-  }, [readOnly, linkedHistory, apiBase, atendimentoId, conversationId, contactId, onUnauthorized, readingPosition])
+  }, [readOnly, linkedHistory, apiBase, atendimentoId, conversationId, contactId, onUnauthorized, readingPosition, onTechnicalHistory])
 
   useEffect(() => {
     let active = true

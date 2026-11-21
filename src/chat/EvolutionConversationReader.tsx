@@ -23,8 +23,8 @@ function phoneLine(row:ConversationRow){
  if(row.atendimentoPhone)return {text:'Ficha: +'+row.atendimentoPhone,hint:'Número cadastrado no Atendimento; não confirma que seja o número desta conversa WhatsApp'}
  return {text:'Telefone pendente',hint:'Número do WhatsApp ainda não confirmado'}
 }
-type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
-export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento,onCreateAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onCreateAtendimento?:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
+type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;canCreateTriage?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
+export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
  const [management,setManagement]=useState(false),[opening,setOpening]=useState(false)
@@ -33,6 +33,8 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  const extraPagesLoaded=useRef(false),lastRefresh=useRef(Date.now())
  const [verified,setVerified]=useState<{conversationId:string;contact:EntityContact}|null>(null),[drafts]=useState(()=>new Map<string,string>())
  const [confirmedName,setConfirmedName]=useState(''),[sending,setSending]=useState(false)
+ const [historyAvailable,setHistoryAvailable]=useState(false),[creatingTriage,setCreatingTriage]=useState(false),[triageError,setTriageError]=useState('')
+ const [linksVersion,setLinksVersion]=useState(0)
  const contact=verified?.conversationId===selected?.conversationId?verified?.contact??null:null
  const dialog=useRef<HTMLDialogElement>(null),request=useRef<AbortController|null>(null)
  const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else {const failure=e as RequestFailure;setError([failure.message||'Não foi possível carregar as conversas.',failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' '))}},[onUnauthorized])
@@ -68,6 +70,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  },[management,selected,fail])
  function details(row:ConversationRow,manage=false,resolved:Links|null=null){
   setSelected(row);setManagement(manage);setLinks(resolved);setVerified(null);setError('');setConfirmedName('')
+  setHistoryAvailable(false);setTriageError('')
  }
  async function open(row:ConversationRow){
   if(openingRequest.current)return
@@ -96,8 +99,25 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  function choose(row:ConversationRow,id:string){
   setSelected(null);onOpenAtendimento?.(id,'chat',row.conversationId,true)
  }
+ async function createTriage(row:ConversationRow){
+  if(creatingTriage)return
+  setCreatingTriage(true);setTriageError('')
+  try{
+   const result=await api<{atendimentoId:string}>('/api/chat/conversations/'+encodeURIComponent(row.conversationId)+'/atendimentos/triagem',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:'{}',
+   })
+   choose(row,result.atendimentoId)
+  }catch(error){
+   const failure=error as RequestFailure
+   if(failure.status===401)onUnauthorized()
+   else {
+    setTriageError([failure.message||'Não foi possível criar a triagem.',failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' '))
+    if(failure.status===409){setLinks(null);setLinksVersion(value=>value+1)}
+   }
+  }finally{setCreatingTriage(false)}
+ }
  function close(){
-  if(sending)return
+  if(sending||creatingTriage)return
   if(contact&&drafts.get(contact.id)?.trim()&&!window.confirm('Fechar a conversa? O rascunho será mantido nesta sessão.'))return
   setSelected(null)
  }
@@ -118,18 +138,20 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   })}</div>
   {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
   {selected&&<dialog className="ev-choice-dialog conversation-workspace" ref={dialog} onClose={()=>setSelected(null)} onCancel={event=>{event.preventDefault();close()}} aria-label="Detalhes da conversa">
-   <header><div><strong>{confirmedName||name(selected)}</strong><div>{phoneLine(selected).text}</div></div><button disabled={sending} aria-label="Fechar detalhes" onClick={close}>×</button></header>
+   <header><div><strong>{confirmedName||name(selected)}</strong><div>{phoneLine(selected).text}</div></div><button disabled={sending||creatingTriage} aria-label="Fechar detalhes" onClick={close}>×</button></header>
    {linksEnabled&&<ConversationIdentity key={selected.conversationId} conversationId={selected.conversationId} onSaved={identified=>{
      setConfirmedName(identified);setVersion(value=>value+1)
    }}/>}
    {(selected.commercial?.names.length??0)>1&&<ul>{selected.commercial?.names.map((person,index)=><li key={index}>{person.name}</li>)}</ul>}
    <div className="ev-choice-items">{links?.items.map(link=><button key={link.linkId} disabled={sending||links.readIdentityBlocked} onClick={()=>choose(selected,link.atendimentoId)}><strong>{links.items.length===1?'Abrir Atendimento':link.name||'Abrir Atendimento'}</strong><span>{[link.name,link.vehicle,link.plate].filter(Boolean).join(' · ')}</span></button>)}</div>
-   {links?.items.length===0&&(links.atendimentoConflict||!!links.suggestedAtendimentos?.length
-      ? <p>Confira os Atendimentos existentes antes de vincular esta conversa.</p>
-      : <div><p>Vincule um Atendimento existente ou crie uma ficha e volte para vinculá-la a esta conversa.</p>{onCreateAtendimento&&<button type="button" onClick={()=>{setSelected(null);onCreateAtendimento()}}>Novo Atendimento</button>}</div>)}
-   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
+   {triageError&&<p role="alert">{triageError}</p>}
+   {links?.items.length===0&&(links.canCreateTriage&&onOpenAtendimento&&(!management||!contact)
+      ? <button type="button" disabled={!historyAvailable||creatingTriage||sending}
+          onClick={()=>void createTriage(selected)}>{creatingTriage?'Criando triagem…':'Criar Atendimento de triagem'}</button>
+      : <p>Confira os Atendimentos existentes antes de vincular esta conversa.</p>)}
+   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel key={linksVersion} conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
    <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={(management?contact?.whatsapp.conversationId:null)??selected.conversationId}
-     contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending}>{null}</EvolutionAtendimentoChat>
+     contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending} onTechnicalHistory={setHistoryAvailable}>{null}</EvolutionAtendimentoChat>
   </dialog>}
  </section>
 }

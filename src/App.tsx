@@ -302,7 +302,7 @@ function App() {
             <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
           </div></div>
-          {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onCreateAtendimento={()=>{setSavedMessage('');setEditor({})}} onOpenAtendimento={(id, selectedTab, conversationId, readOnly) => {
+          {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onOpenAtendimento={(id, selectedTab, conversationId, readOnly) => {
               const query = new URLSearchParams({ aba: selectedTab })
               if (selectedTab === 'chat' && conversationId) query.set('conversa', conversationId)
               if (readOnly) query.set('leitura','1')
