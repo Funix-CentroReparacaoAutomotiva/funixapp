@@ -63,22 +63,22 @@ class MigrationTest(unittest.TestCase):
             installed=root/'installed'
             installed.mkdir()
             source=root/'official.py'
-            source.write_bytes(b'print("safe")\\n')
+            source.write_bytes(b'print("safe")\n')
             data=source.read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(data)).encode()+bytes([0])+data).hexdigest()
             control=package/'control.py'
-            control.write_text('FILES = {"official": "'+blob+'"}\\n')
+            control.write_text('FILES = {"official": "'+blob+'"}\n')
             prepare_hash=hashlib.sha256(control.read_bytes()).hexdigest()
             rootctl=package/'rootctl.py'
-            rootctl.write_text("PREP_SHA = '"+prepare_hash+"'\\n")
+            rootctl.write_text("PREP_SHA = '"+prepare_hash+"'\n")
             mapping={installed/'control.py':control}
             with patch.object(migration,'PACKAGE',package),patch.object(migration,'targets',return_value=mapping):
                 migration.source_integrity(mapping)
-                source.write_bytes(data.replace(b'\\n',b'\\r\\n'))
+                source.write_bytes(data.replace(b'\n',b'\r\n'))
                 with self.assertRaisesRegex(ValueError,'official module pin'):
                     migration.source_integrity(mapping)
                 source.write_bytes(data)
-                control.write_bytes(control.read_bytes().replace(b'\\n',b'\\r\\n'))
+                control.write_bytes(control.read_bytes().replace(b'\n',b'\r\n'))
                 with self.assertRaisesRegex(ValueError,'prepare controller pin'):
                     migration.source_integrity(mapping)
 
@@ -93,7 +93,8 @@ class MigrationTest(unittest.TestCase):
             approval={'old':migration.inventory(mapping),
                       'new':{str(target):migration.digest(source)}}
             with patch.object(migration,'command',return_value='active'):
-                def reject(): raise ValueError('synthetic failed check')
+                def reject():
+                    if target.read_bytes()==b'new': raise ValueError('synthetic failed check')
                 self.assertEqual(migration.migrate(mapping,root/'migration',approval,validate=reject),'restored')
                 old_record=(root/'migration'/'journal.json').read_bytes()
                 with patch.object(migration,'STATE',root):
@@ -115,7 +116,9 @@ class MigrationTest(unittest.TestCase):
             mapping={target:source}
             approval={'old':migration.inventory(mapping),'new':{str(target):migration.digest(source)}}
             with patch.object(migration,'command',return_value='active'):
-                self.assertEqual(migration.migrate(mapping,root/'migration',approval,validate=lambda: (_ for _ in ()).throw(ValueError('reject'))),'restored')
+                def reject():
+                    if target.read_bytes()==b'new': raise ValueError('reject')
+                self.assertEqual(migration.migrate(mapping,root/'migration',approval,validate=reject),'restored')
                 def interrupt(): raise KeyboardInterrupt()
                 with self.assertRaises(KeyboardInterrupt):
                     migration.migrate(mapping,root/'migration-retry',approval,validate=interrupt)
