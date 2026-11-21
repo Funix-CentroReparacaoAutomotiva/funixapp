@@ -23,7 +23,7 @@ function phoneLine(row:ConversationRow){
  if(row.atendimentoPhone)return {text:'Ficha: +'+row.atendimentoPhone,hint:'Número cadastrado no Atendimento; não confirma que seja o número desta conversa WhatsApp'}
  return {text:'Telefone pendente',hint:'Número do WhatsApp ainda não confirmado'}
 }
-type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
+type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
 export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento,onCreateAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onCreateAtendimento?:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
@@ -124,7 +124,9 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
    }}/>}
    {(selected.commercial?.names.length??0)>1&&<ul>{selected.commercial?.names.map((person,index)=><li key={index}>{person.name}</li>)}</ul>}
    <div className="ev-choice-items">{links?.items.map(link=><button key={link.linkId} disabled={sending||links.readIdentityBlocked} onClick={()=>choose(selected,link.atendimentoId)}><strong>{links.items.length===1?'Abrir Atendimento':link.name||'Abrir Atendimento'}</strong><span>{[link.name,link.vehicle,link.plate].filter(Boolean).join(' · ')}</span></button>)}</div>
-   {links?.items.length===0&&<div><p>Vincule um Atendimento existente ou crie uma ficha e volte para vinculá-la a esta conversa.</p>{onCreateAtendimento&&<button type="button" onClick={()=>{setSelected(null);onCreateAtendimento()}}>Novo Atendimento</button>}</div>}
+   {links?.items.length===0&&(links.atendimentoConflict||!!links.suggestedAtendimentos?.length
+      ? <p>Confira os Atendimentos existentes antes de vincular esta conversa.</p>
+      : <div><p>Vincule um Atendimento existente ou crie uma ficha e volte para vinculá-la a esta conversa.</p>{onCreateAtendimento&&<button type="button" onClick={()=>{setSelected(null);onCreateAtendimento()}}>Novo Atendimento</button>}</div>)}
    {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
    <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={(management?contact?.whatsapp.conversationId:null)??selected.conversationId}
      contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending}>{null}</EvolutionAtendimentoChat>
