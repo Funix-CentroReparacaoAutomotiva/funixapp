@@ -39,7 +39,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       repo,
     )!
   local.providerIdentity = { instance: 'funix_comercial', instanceId: INSTANCE }
-  let providerHistory:MessagePage|undefined
+  let providerHistory:MessagePage|(() => Promise<MessagePage>)|undefined
   let reads = 0,
     sends = 0
   const bridge = createEvolutionChatBridge(
@@ -48,7 +48,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       ...(withMedia?{findMediaEnvelope:async (jid:string,id:string)=>({envelope:{key:{remoteJid:jid,id}},kind:'image' as const,bytes:4})}:{}),
       findMessages: async () => {
         reads++
-        if(providerHistory)return providerHistory
+        if(providerHistory)return typeof providerHistory==='function'?providerHistory():providerHistory
         throw Error('provider intentionally offline')
       },
     },
@@ -146,7 +146,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
     request,
     browser,
     sendEvent,
-    setProviderHistory(page:MessagePage|undefined){providerHistory=page},
+    setProviderHistory(page:MessagePage|(() => Promise<MessagePage>)|undefined){providerHistory=page},
     event,
     get reads() {
       return reads
@@ -499,6 +499,65 @@ test('linked history and media require the exact Atendimento link and grant no s
   else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=previous
   f.db.close()
  }
+})
+
+test('existing linked Atendimento can read Evolution history with local reading disabled or an empty local cache', async t => {
+  for (const localRead of [false, true]) await t.test(`local reading ${localRead ? 'enabled' : 'disabled'}`, async () => {
+    const f = await fixture(true)
+    try {
+      f.local.read = localRead
+      const jid = '5531999990789@s.whatsapp.net'
+      const cid = f.local.authority!.rememberProviderConversation(jid)
+      const repo = new AtendimentoRepository(f.db)
+      const linked = repo.create({ name: 'Atendimento vinculado existente' })
+      const unlinked = repo.create({ name: 'Atendimento de outro contato' })
+      const links = new V20AssociationRepository(f.db)
+      const link=links.link({conversationId:cid,atendimentoId:linked.id,expectedRevision:0,requestId:randomUUID(),reason:'Vínculo sintético'})
+      // The previous release allowed an explicit selection from the linked list.
+      // A current reader may open the same ficha with only a historical link.
+      links.selectAtendimento(cid, null)
+      const listed = await f.request(`/api/chat/conversations/${cid}/atendimentos`, 'GET', undefined, f.browser)
+      assert.equal(listed.status, 200)
+      const list = await listed.json()
+      assert.deepEqual(list.items.map((item: { atendimentoId: string }) => item.atendimentoId), [linked.id])
+      assert.equal(list.sendAtendimentoId, null)
+      const messageId = 'existing-provider-history'
+      const providerPage:MessagePage={items:[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+        messageId,timestamp:1767225600,fromMe:false,origin:'unknown',kind:'text',text:'Histórico original',media:null,
+        statuses:[]}],currentPage:1,reportedTotal:1,reportedPages:1,nextPage:null,consistency:'offset-not-snapshot'}
+      f.setProviderHistory(providerPage)
+      const path = (id: string) => `/api/atendimentos/${id}/evolution-conversations/${cid}/messages?scope=linked`
+      assert.equal((await f.request(path(unlinked.id), 'GET', undefined, f.browser)).status, 404)
+      assert.equal(f.reads, 0)
+      const response = await f.request(path(linked.id), 'GET', undefined, f.browser)
+      assert.equal(response.status, 200)
+      const body = await response.json()
+      assert.equal(body.items[0]?.messageId, messageId)
+      assert.equal(body.sendTextAvailable, undefined)
+      assert.equal(body.mediaSendAvailable, undefined)
+      assert.equal(body.contextToken, undefined)
+      assert.equal(f.reads, 1)
+      assert.equal(f.sends, 0)
+      assert.equal(f.local.authority!.resolveIdentityActive(jid), null)
+      if(localRead){
+        f.setProviderHistory(undefined)
+        const cached=await f.request(path(linked.id),'GET',undefined,f.browser)
+        assert.equal((await cached.json()).items[0]?.messageId,messageId)
+        assert.equal(f.reads,1)
+      }else{
+        f.setProviderHistory(async()=>{
+          links.unlink({conversationId:cid,linkId:link.linkId,expectedRevision:link.revision,requestId:randomUUID(),reason:'Vínculo revogado durante a leitura'})
+          return providerPage
+        })
+        const revoked=await f.request(path(linked.id),'GET',undefined,f.browser)
+        assert.equal(revoked.status,404)
+        assert.doesNotMatch(await revoked.text(),/Histórico original/)
+        assert.equal(links.listActive(cid).items.length,0)
+      }
+    } finally {
+      f.db.close()
+    }
+  })
 })
 
 

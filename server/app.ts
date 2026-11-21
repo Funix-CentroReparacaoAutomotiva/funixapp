@@ -683,18 +683,26 @@ export function createRequestHandler(options: AppOptions) {
         try {
           if(scope==='linked'){
             const runtime=options.conversationRuntime
-            const conversationId=syncedEvolutionRoute[2]!
-            const jid=runtime?.authority?.linkedHistoryJid(syncedEvolutionRoute[1]!,conversationId)
-            if(!runtime?.authority&&options.v20Associations&&!options.codaSync){
+            const [atendimentoId,conversationId]=[syncedEvolutionRoute[1]!,syncedEvolutionRoute[2]!]
+            const authority=runtime?.authority
+            if(authority){
+              const linked=(jid:string)=>authority.linkedHistoryJid(atendimentoId,conversationId)===jid
+              // Use the configured history source while authorizing against the exact
+              // historical link before and after any provider request.
+              const history=await options.evolutionChat.messages(conversationId,Number(page),cursor,linked)
+              if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+              if(!history)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
+              return send(200,{...history,mediaReadAvailable:history.source==='local'&&options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
+            }
+            if(options.v20Associations&&!options.codaSync){
               const association=options.v20Associations,bridge=options.evolutionChat
               const scope=bridge.contacts?.identities.associationScope(conversationId)
-              const linked=()=>association.listActive(conversationId,scope).items.some(link=>link.atendimentoId===syncedEvolutionRoute[1])
+              const linked=()=>association.listActive(conversationId,scope).items.some(link=>link.atendimentoId===atendimentoId)
               const history=linked()?await bridge.messages(conversationId,Number(page)):null
               if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
               return history&&linked()?send(200,history):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
             }
-            if(!runtime?.read||!jid)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor),mediaReadAvailable:options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
+            return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
           }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
