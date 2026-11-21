@@ -6,7 +6,7 @@ import {ServiceError} from '../errors.ts'
 import {CustomerRepository} from '../customers.ts'
 import {normalizeCustomerPhone,normalizePhone} from '../phone.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
-import { conversationNames, type NamePart, type CommercialConversation } from '../../shared/customer.ts'
+import { conversationNames, type NamePart, type CommercialConversation, type CustomerRecord } from '../../shared/customer.ts'
 import type { ConversationEvent } from './conversation-event.ts'
 
 const instance = 'funix_comercial'
@@ -126,7 +126,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     if(!members)throw conflict()
     const ids=this.handles(jid),scope=ids.map(()=>'?').join(',')
     if(this.db.prepare(`SELECT 1 FROM chat_local_context_holds
-      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict') LIMIT 1`).get(...ids))
+      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates') LIMIT 1`).get(...ids))
       throw conflict()
     const contacts=this.db.prepare(`SELECT id,phone_normalized FROM customer_records
       WHERE kind='contact' AND conversation_id IN (${scope})`).all(...ids)
@@ -194,6 +194,49 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       .map(link=>String(link.closed_at??link.updated_at)).sort().at(-1)??null
     const version=[state,links.map(link=>[link.id,link.atendimento_id,link.closed_at,link.stage==='rejeitados']),blocked]
     return {blocked,at:blocked?null:candidates[0]??null,closedAt,version}
+  }
+
+  private unlinkedAtendimentos(contact:CustomerRecord|null,phone:string|null) {
+    const customers=new CustomerRepository(this.db)
+    const owner=contact?.entityId&&!customers.channelOwnerIsProvisional(contact.entityId)?contact.entityId:null
+    const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.closed_at,a.stage,a.updated_at,
+      EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact' AND r.record_id=?) AS exact_contact
+      FROM atendimentos a WHERE exact_contact OR (? IS NOT NULL AND (
+        EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact'
+          AND r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?)
+        OR (NOT EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact')
+          AND funix_customer_phone(a.phone)=?)
+      )) ORDER BY a.created_at,a.id`).all(contact?.id??null,phone,phone,phone)
+    const candidates:{id:string;name:string;vehicle:string;plate:string}[]=[]
+    let conflict=false,closedAt:string|null=null
+    for(const row of rows){
+      if(row.closed_at||row.stage==='rejeitados'){
+        const date=String(row.closed_at??row.updated_at)
+        if(!closedAt||date>closedAt)closedAt=date
+        continue
+      }
+      if(!row.exact_contact){
+        const refs=customers.references(String(row.id))
+        if(!owner||refs.person.some(person=>person.id&&person.id!==owner)||
+          refs.contact.some(ref=>ref.id&&ref.id!==contact?.id)){
+          conflict=true
+          continue
+        }
+      }
+      candidates.push({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),plate:String(row.plate)})
+    }
+    return {candidates,conflict,closedAt}
+  }
+
+  /** Suggestions are advisory. Only an operator's explicit V20 link writes a binding. */
+  suggestAtendimentos(conversationId:string) {
+    const jid=this.technicalHistoryJid(conversationId)
+    if(!jid||this.links(jid).length)return undefined
+    const pn=this.members(jid)?.find(member=>member.endsWith('@s.whatsapp.net'))
+    const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
+    if(!phone)return undefined
+    const [contact]=new CustomerRepository(this.db).phoneMatches(phone)
+    return this.unlinkedAtendimentos(contact??null,phone)
   }
 
   /** Caller owns the transaction. Add references without rewriting an existing ficha. */
@@ -287,12 +330,17 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const contactConflict=!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       incompatible
-    const blocked=plan.blocked||contactConflict
     // Keep the received message, but require explicit review before associating
     // or sending against a contradictory Contact in autonomous mode.
     if(contactConflict)
       this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
-    const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
+    const resolution=this.unifiedCustomers&&!plan.at&&!plan.blocked&&!contactConflict&&(known||confirmedPhone)
+      ?this.unlinkedAtendimentos(known,confirmedPhone):undefined
+    const ambiguous=!!resolution&&(resolution.conflict||resolution.candidates.length>1)
+    if(ambiguous)this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'ambiguous_atendimento_candidates')
+    const target=plan.at??resolution?.candidates[0]?.id??null
+    const blocked=plan.blocked||contactConflict||ambiguous
+    const historical=!!(plan.closedAt&&timestamp<=plan.closedAt||!target&&resolution?.closedAt&&timestamp<=resolution.closedAt)
     let at:string|null=null
     if(!blocked&&!historical){
       let contactId=channels.length?String(channels[0]!.id):null
@@ -312,11 +360,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         contactId=customers.resolveChannelContact(id,known?.id,initial.name).id
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
       }
-      at=this.ensureInteraction(jid,plan.at,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
+      at=this.ensureInteraction(jid,target,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
       this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
     }
     if(!prior)this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
-      .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(plan.at?'reused':'created'):historical?'closed':'ambiguous')
+      .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(target?'reused':'created'):historical?'closed':'ambiguous')
   }
   projections(jids:string[]):Map<string,CommercialConversation & {unreadCount:number;lastMessageAt:string|null;phoneNumber:string|null}> {
     const result=new Map<string,CommercialConversation & {unreadCount:number;lastMessageAt:string|null;phoneNumber:string|null}>()

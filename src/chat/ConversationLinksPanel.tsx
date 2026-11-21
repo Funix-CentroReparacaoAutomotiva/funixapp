@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 type Linked = { linkId: string; atendimentoId: string; linkedAt: string; name: string; vehicle: string; plate: string }
-type Links = { revision: number; items: Linked[]; activeAtendimentoId: string | null }
+type Links = { revision: number; items: Linked[]; activeAtendimentoId: string | null; suggestedAtendimentos?:Candidate[]; atendimentoConflict?:boolean }
 type Candidate = { id: string; name: string; vehicle: string; plate: string }
 type List = { items: Candidate[]; total: number }
 function description(row: Candidate | Linked): string {
@@ -122,7 +122,9 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
         <button type="button" onClick={() => void search()} disabled={busy || searching || query.trim().length < 2}>
           {searching ? 'Buscando…' : 'Buscar'}</button>
       </div>
-      {candidates.map(candidate => {
+      {links.atendimentoConflict&&<p role="status">Há fichas com dados de titularidade divergentes. Confira o cadastro antes de vincular.</p>}
+      {!query.trim()&&!!links.suggestedAtendimentos?.length&&<p role="status">Confirme qual Atendimento deve receber este vínculo.</p>}
+      {(query.trim()?candidates:links.suggestedAtendimentos??[]).map(candidate => {
         const existing = links.items.some(link => link.atendimentoId === candidate.id)
         return <div className="ev-linked" key={candidate.id}>
           <span>{description(candidate)}</span>

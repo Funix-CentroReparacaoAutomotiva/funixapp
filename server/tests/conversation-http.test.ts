@@ -1,3 +1,6 @@
+import {commercialFixture} from './fixtures/commercial.ts'
+import {BudgetRepository} from './fixtures/budget-renderer.ts'
+import {issueProductionOrder} from './fixtures/production.ts'
 import type {MessagePage} from '../experimental/evolution-read/client.ts'
 import { observedEvolutionUpsert } from './fixtures/evolution-webhook.ts'
 import assert from 'node:assert/strict'
@@ -508,6 +511,17 @@ test('signed first outgoing message reuses manual owner and opens one Atendiment
   const raw=(number:string,id:string,fromMe=true)=>({...observedEvolutionUpsert,sender:'5531999990888@s.whatsapp.net',
     data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
       key:{remoteJid:number+'@s.whatsapp.net',remoteJidAlt:null,id,fromMe}}})
+  const commercial=commercialFixture(f.db)
+  const original=repo.update(commercial.at.id,{revision:repo.get(commercial.at.id).revision,
+    references:{...customers.references(commercial.at.id),person:[{id:owner.id,text:owner.text}],contact:[{id:null,text:'(31) 99999-0555'}]}},true,true)
+  const budgets=new BudgetRepository(f.db)
+  const input={scenarioId:commercial.scenario.id,negotiation:{mode:'none'} as const}
+  const quote=await budgets.emit(original.id,{...input,previewToken:budgets.preview(original.id,input).token,idempotencyKey:randomUUID()})
+  issueProductionOrder(f.db,original.id,quote.id)
+  const snapshot=()=>['atendimentos','atendimento_references','scenarios','budget_versions','budget_document_identity','work_orders','production_experiences']
+    .map(table=>f.db.prepare('SELECT * FROM '+table+' ORDER BY rowid').all())
+  const before=snapshot()
+  assert.equal(repo.list().total,1)
   const first=raw('5531999990555','synthetic-outgoing')
   assert.equal((await f.sendEvent(first,true)).status,401)
   const accepted=await Promise.all([f.sendEvent(first),f.sendEvent(first)])
@@ -516,7 +530,12 @@ test('signed first outgoing message reuses manual owner and opens one Atendiment
   assert.equal((await f.sendEvent(raw('5531999990555','synthetic-reply',false))).status,202)
   assert.equal((await f.sendEvent(raw('5531999990555','synthetic-outgoing-next'))).status,202)
   assert.equal(repo.list().total,1)
-  const atendimento=repo.get(repo.list().items[0]!.id,true)
+  assert.deepEqual(snapshot(),before)
+  const jid=first.data.key.remoteJid
+  assert.equal(f.local.authority!.resolveIdentityActive(jid),original.id)
+  assert.deepEqual(f.local.authority!.links(jid).map(link=>link.atendimento_id),[original.id])
+  assert.equal(f.local.store.page(jid,1).items.length,3)
+  const atendimento=repo.get(original.id,true)
   assert.equal(atendimento.references!.person[0]!.id,owner.id)
   assert.equal(atendimento.references!.contact[0]!.id,contacts.find(contact=>contact.text.startsWith('('))!.id)
   assert.equal(customers.contacts(owner.id).length,2)
@@ -577,7 +596,13 @@ test('snapshot-only outgoing history is readable without a link and an explicit 
   const mediaPath='/api/chat/conversations/'+cid+'/messages/snapshot-image/media?page=1'
   assert.equal((await f.request(mediaPath,'GET',undefined,f.browser)).status,200)
   assert.equal(at.list().total,0)
-  const saved=at.create({name:'Ficha sintética'})
+  const saved=at.create({references:{person:[{id:owner.id,text:owner.text}],contact:[{id:contact.id,text:contact.text}],vehicle:[],payer:[]}})
+  const suggestions=await f.request('/api/chat/conversations/'+cid+'/atendimentos','GET',undefined,f.browser)
+  assert.equal(suggestions.status,200)
+  const proposed=await suggestions.json()
+  assert.deepEqual(proposed.items,[])
+  assert.deepEqual(proposed.suggestedAtendimentos.map((item:{id:string})=>item.id),[saved.id])
+  assert.equal(f.local.authority!.resolveIdentityActive(jid),null)
   const link=await f.request('/api/chat/conversations/'+cid+'/atendimentos','POST',
     {expectedRevision:0,requestId:randomUUID(),atendimentoId:saved.id,reason:'Confirmação sintética'},f.browser)
   assert.equal(link.status,201)
@@ -599,5 +624,60 @@ test('snapshot-only outgoing history is readable without a link and an explicit 
   if(mediaFlag===undefined)delete process.env.FUNIX_EVOLUTION_MEDIA_ENABLED
   else process.env.FUNIX_EVOLUTION_MEDIA_ENABLED=mediaFlag
   f.db.close()
+ }
+})
+
+test('first outgoing interaction preserves ambiguity, revocation and closed-case behavior',async()=>{
+ for(const situation of ['ambiguous','legacy','conflict','revoked','closed'] as const){
+  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+  try{
+   const at=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db)
+   const jid='5531999990777@s.whatsapp.net'
+   const owner=customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:'(31) 99999-0777'}]})
+   const contact=customers.contacts(owner.id)[0]!
+   const ref={person:[{id:owner.id,text:owner.text}],contact:[{id:contact.id,text:contact.text}],vehicle:[],payer:[]}
+   const legacy=situation==='legacy'||situation==='conflict'
+   const original=legacy?at.create({name:'Ficha legada',phone:'5531999990777'}):at.create({references:ref,closed:situation==='closed'})
+   if(situation==='conflict'){
+    const other=customers.save({kind:'entity',text:'Outro titular'})
+    f.db.prepare("INSERT INTO atendimento_references VALUES(?,'person',0,?,?)")
+      .run(original.id,other.id,JSON.stringify({id:other.id,text:other.text}))
+   }
+   if(situation==='ambiguous')at.create({references:ref})
+   const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid),links=new V20AssociationRepository(f.db)
+   if(situation==='revoked'){
+    links.link({conversationId:cid,atendimentoId:original.id,expectedRevision:0,requestId:randomUUID(),reason:'Vínculo sintético'})
+    links.selectAtendimento(cid,null)
+   }
+   const raw={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,
+     messageTimestamp:Math.floor(Date.now()/1000)+2,key:{remoteJid:jid,remoteJidAlt:null,id:'outgoing-'+situation,fromMe:true}}}
+   assert.equal((await f.sendEvent(raw)).status,202)
+   assert.equal(at.list().total,['ambiguous','closed'].includes(situation)?2:1)
+   assert.equal(f.local.store.page(jid,1).items.length,1)
+   if(situation==='ambiguous'||situation==='conflict'){
+    assert.equal(authority.resolveIdentityActive(jid),null)
+    const result=await f.request('/api/chat/conversations/'+cid+'/atendimentos','GET',undefined,f.browser)
+    const model=await result.json()
+    assert.deepEqual(model.items,[])
+    assert.equal(model.suggestedAtendimentos.length,situation==='ambiguous'?2:0)
+    assert.equal(model.atendimentoConflict,situation==='conflict')
+    if(situation==='ambiguous'){
+     await f.sendEvent({...raw,data:{...raw.data,key:{...raw.data.key,id:'outgoing-before-choice'}}})
+     assert.equal(at.list().total,2)
+     const link=links.link({conversationId:cid,atendimentoId:original.id,expectedRevision:0,requestId:randomUUID(),reason:'Escolha explícita'})
+     assert.equal(authority.resolveIdentityActive(jid),null)
+     links.selectAtendimento(cid,link.linkId)
+     assert.equal(authority.resolveIdentityActive(jid),original.id)
+    }
+   }
+   if(situation==='legacy')assert.equal(authority.resolveIdentityActive(jid),original.id)
+   if(situation==='revoked')assert.equal(authority.resolveIdentityActive(jid),null)
+   if(situation==='closed'){
+    assert.ok(at.get(original.id).closedAt)
+    assert.notEqual(authority.resolveIdentityActive(jid),original.id)
+    assert.ok(authority.resolveIdentityActive(jid))
+   }
+   assert.equal(f.sends,0)
+  }finally{f.db.close()}
  }
 })

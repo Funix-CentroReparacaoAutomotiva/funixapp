@@ -481,7 +481,9 @@ export function createRequestHandler(options: AppOptions) {
             let readIdentityBlocked=false
             if(authority)try{authority.technicalHistoryJid(conversationId)}
             catch(error){if(!(error instanceof ServiceError)||error.code!=='CHAT_IDENTITY_CONFLICT')throw error;readIdentityBlocked=true}
+            const resolution=readIdentityBlocked?undefined:authority?.suggestAtendimentos(conversationId)
             return send(200, {...options.v20Associations.listActive(conversationId,scope),readIdentityBlocked,
+              ...(resolution?{suggestedAtendimentos:resolution.candidates,atendimentoConflict:resolution.conflict}:{}),
               sendAtendimentoId:options.evolutionChat.activeAtendimentoForConversation(conversationId)})
           }
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')

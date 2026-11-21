@@ -275,9 +275,9 @@ export class V20AssociationRepository {
       ).get(linkId,...scope)
       if (!link) return missing()
       if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_local_context_holds'").get()){
-        const identityHold=this.db.prepare(`SELECT 1 FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict') LIMIT 1`).get(...scope)
+        const identityHold=this.db.prepare(`SELECT 1 FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates') LIMIT 1`).get(...scope)
         if(identityHold)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Revise a identidade do Contato antes de selecionar o contexto.')
-        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason IN ('legacy_cutover_context_review','confirmed_local_context_conflict')`).run(...scope)
+        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates')`).run(...scope)
       }
       bump()
       this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${placeholders})`).run(...scope)
