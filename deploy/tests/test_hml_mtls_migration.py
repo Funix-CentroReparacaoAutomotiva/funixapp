@@ -62,7 +62,7 @@ class MigrationTest(unittest.TestCase):
             package.mkdir()
             installed=root/'installed'
             installed.mkdir()
-            source=package/'official.py'
+            source=root/'official.py'
             source.write_bytes(b'print("safe")\\n')
             data=source.read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(data)).encode()+bytes([0])+data).hexdigest()
