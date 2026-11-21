@@ -6,10 +6,11 @@ import {ServiceError} from '../errors.ts'
 import {CustomerRepository} from '../customers.ts'
 import {normalizeCustomerPhone,normalizePhone} from '../phone.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
-import { conversationNames, type NamePart, type CommercialConversation } from '../../shared/customer.ts'
+import { conversationNames, type NamePart, type CommercialConversation, type CustomerRecord } from '../../shared/customer.ts'
 import type { ConversationEvent } from './conversation-event.ts'
 
 const instance = 'funix_comercial'
+const historicalTriageReason = 'explicit_history_triage'
 /** Local commercial authority. Technical aliases remain owned by ConversationIdentities. */
 export class LocalConversationAssociations extends ConversationIdentities implements ConversationAssociationReader {
   private readonly unifiedCustomers:boolean
@@ -118,9 +119,31 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     }
     return [...items.values()]
   }
-  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+  technicalHistoryJid(conversationId:string) {
     const jid=this.providerJid(conversationId)
-    if(!jid||!this.members(jid)||this.contextHeld(jid))return null
+    if(!jid)return null
+    const conflict=()=>new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Identidade do canal em revisão. Consulte os vínculos antes de abrir o histórico.')
+    const members=this.members(jid)
+    if(!members)throw conflict()
+    const ids=this.handles(jid),scope=ids.map(()=>'?').join(',')
+    if(this.db.prepare(`SELECT 1 FROM chat_local_context_holds
+      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates') LIMIT 1`).get(...ids))
+      throw conflict()
+    const contacts=this.db.prepare(`SELECT id,phone_normalized FROM customer_records
+      WHERE kind='contact' AND conversation_id IN (${scope})`).all(...ids)
+    const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
+    const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
+    const registered=phone?new CustomerRepository(this.db).phoneMatches(phone):[]
+    const contact=contacts[0]
+    if(contacts.length>1||registered.length>1||contact&&(
+      contact.phone_normalized&&contact.phone_normalized!==phone||
+      registered.some(record=>record.id!==contact.id)
+    ))throw conflict()
+    return jid
+  }
+  linkedHistoryJid(atendimentoId:string,conversationId:string) {
+    const jid=this.technicalHistoryJid(conversationId)
+    if(!jid)return null
     return this.links(jid).some(link=>link.atendimento_id===atendimentoId)?jid:null
   }
   canonicalChannelSendAllowed(jid:string) {
@@ -174,8 +197,93 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     return {blocked,at:blocked?null:candidates[0]??null,closedAt,version}
   }
 
+  private unlinkedAtendimentos(contact:CustomerRecord|null,phone:string|null) {
+    const customers=new CustomerRepository(this.db)
+    const owner=contact?.entityId&&!customers.channelOwnerIsProvisional(contact.entityId)?contact.entityId:null
+    const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.closed_at,a.stage,a.updated_at,
+      EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact' AND r.record_id=?) AS exact_contact
+      FROM atendimentos a WHERE exact_contact OR (? IS NOT NULL AND (
+        EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact'
+          AND r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?)
+        OR (NOT EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact')
+          AND funix_customer_phone(a.phone)=?)
+      )) ORDER BY a.created_at,a.id`).all(contact?.id??null,phone,phone,phone)
+    const candidates:{id:string;name:string;vehicle:string;plate:string}[]=[]
+    let conflict=false,closedAt:string|null=null
+    for(const row of rows){
+      if(row.closed_at||row.stage==='rejeitados'){
+        const date=String(row.closed_at??row.updated_at)
+        if(!closedAt||date>closedAt)closedAt=date
+        continue
+      }
+      if(!row.exact_contact){
+        const refs=customers.references(String(row.id))
+        // A different referenced owner or Contact is not a safe suggested match.
+        // An entirely textual ficha is only a *candidate* for manual review:
+        // no Contact/Entity is inferred from its name or telephone.
+        if(refs.person.some(person=>person.id&&person.id!==owner)||
+          refs.contact.some(ref=>ref.id&&ref.id!==contact?.id)){
+          conflict=true
+          continue
+        }
+        if(!owner)conflict=true
+      }
+      candidates.push({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),plate:String(row.plate)})
+    }
+    return {candidates,conflict,closedAt}
+  }
+
+  /** Suggestions are advisory. Only an operator's explicit V20 link writes a binding. */
+  suggestAtendimentos(conversationId:string) {
+    const jid=this.technicalHistoryJid(conversationId)
+    if(!jid||this.links(jid).length)return undefined
+    const members=this.members(jid)!
+    const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
+    const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
+    if(!phone)return undefined
+    const [contact]=new CustomerRepository(this.db).phoneMatches(phone)
+    const resolution=this.unlinkedAtendimentos(contact??null,phone)
+    const canCreateTriage=this.unifiedCustomers&&!resolution.conflict&&resolution.candidates.length===0&&
+      !this.interaction(jid).blocked&&!this.db.prepare(`SELECT 1 FROM chat_events
+        WHERE instance=? AND CASE WHEN json_valid(payload) THEN
+          json_extract(payload,'$.selfChat')=1 AND
+          (json_extract(payload,'$.message.remoteJid') IN (${members.map(()=>'?').join(',')}) OR
+            json_extract(payload,'$.message.remoteJidAlt') IN (${members.map(()=>'?').join(',')}))
+        END LIMIT 1`).get(instance,...members,...members)
+    return {...resolution,canCreateTriage}
+  }
+
+  createTriageFromHistory(conversationId:string) {
+    this.db.exec('BEGIN IMMEDIATE')
+    try{
+      const jid=this.technicalHistoryJid(conversationId)
+      if(!jid||!this.unifiedCustomers)throw new ServiceError(409,'CHAT_TRIAGE_UNAVAILABLE','Conversa indisponível para triagem.')
+      const existing=this.links(jid)
+      // A retry after a lost response can reopen the ficha created by this action.
+      if(existing.length===1&&existing[0]!.link_reason===historicalTriageReason){
+        this.db.exec('COMMIT')
+        return {atendimentoId:String(existing[0]!.atendimento_id),created:false}
+      }
+      if(existing.length||!this.suggestAtendimentos(conversationId)?.canCreateTriage)
+        throw new ServiceError(409,'CHAT_TRIAGE_REVIEW_REQUIRED','Confira os vínculos e os Atendimentos existentes antes de criar uma triagem.')
+      const members=this.members(jid)!
+      const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))!
+      const phone='+'+pn.split('@')[0]
+      if(!this.db.prepare(`SELECT 1 FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id
+        WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(instance,...members))
+        throw new ServiceError(409,'CHAT_TRIAGE_HISTORY_REQUIRED','Carregue o histórico da conversa antes de criar uma triagem.')
+      const id=this.rememberProviderConversation(jid)
+      const contact=new CustomerRepository(this.db).resolveChannelContact(id)
+      const atendimentoId=this.ensureInteraction(jid,null,contact.id,phone,phone,historicalTriageReason,'operator')
+      // An explicit link for reading must not imply selection for sending.
+      this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(id)
+      this.db.exec('COMMIT')
+      return {atendimentoId,created:true}
+    }catch(error){this.db.exec('ROLLBACK');throw error}
+  }
+
   /** Caller owns the transaction. Add references without rewriting an existing ficha. */
-  ensureInteraction(jid:string, at:string|null, contactId:string, phone:string, name:string, reason:string) {
+  ensureInteraction(jid:string, at:string|null, contactId:string, phone:string, name:string, reason:string, actor='system') {
     const id=this.rememberProviderConversation(jid)
     const customers=new CustomerRepository(this.db)
     const assigned=customers.record(contactId)
@@ -194,7 +302,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     if(!previous.some(link=>link.atendimento_id===at)){
       const linkId=randomUUID()
       this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)')
-        .run(linkId,id,at,this.now(),'system',reason)
+        .run(linkId,id,at,this.now(),actor,reason)
       this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)
       // A previously selected closed interaction must not retain working context.
       if(created&&previous.some(link=>link.closed_at||link.stage==='rejeitados')){
@@ -236,19 +344,19 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
 
   /** Caller owns BEGIN IMMEDIATE covering event, message, snapshot and associations. */
-  inbound(e: ConversationEvent, newMessage:boolean) {
+  inbound(e: ConversationEvent, newMessage:boolean,allowOutgoingStart=false) {
     const jid=e.message.remoteJid, members=this.members(jid)
-    if(e.type!=='message.upsert'||!newMessage||!members||this.contextHeld(jid))return
+    if(e.type!=='message.upsert'||e.selfChat||!newMessage||!members||this.contextHeld(jid))return
     const plan=this.interaction(jid), id=this.rememberProviderConversation(jid)
     const timestamp=new Date(e.message.timestamp!*1000).toISOString()
-    if(e.message.fromMe!==false){
+    if(e.message.fromMe!==false&&(!allowOutgoingStart||plan.at)){
       if(plan.at&&this.canonicalChannelSendAllowed(jid))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
       return
     }
     const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
     const prior=this.db.prepare(`SELECT 1 FROM conversation_initialization WHERE conversation_id IN (${scope})`).get(...handles)
     const phone=members.find(j=>j.endsWith('@s.whatsapp.net'))?.split('@')[0]
-    const initial={phone:phone?'+'+phone:'',name:e.displayName??'',source:'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
+    const initial={phone:phone?'+'+phone:'',name:e.message.fromMe?'':e.displayName??'',source:e.message.fromMe?'whatsapp_outbound':'whatsapp_inbound',eventId:e.eventId,identity:'channel_evidence_only'}
     let channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
@@ -265,12 +373,17 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const contactConflict=!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       incompatible
-    const blocked=plan.blocked||contactConflict
     // Keep the received message, but require explicit review before associating
     // or sending against a contradictory Contact in autonomous mode.
     if(contactConflict)
       this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
-    const historical=!!(plan.closedAt&&timestamp<=plan.closedAt)
+    const resolution=this.unifiedCustomers&&!plan.at&&!plan.blocked&&!contactConflict&&(known||confirmedPhone)
+      ?this.unlinkedAtendimentos(known,confirmedPhone):undefined
+    const ambiguous=!!resolution&&(resolution.conflict||resolution.candidates.length>1)
+    if(ambiguous)this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'ambiguous_atendimento_candidates')
+    const target=plan.at??resolution?.candidates[0]?.id??null
+    const blocked=plan.blocked||contactConflict||ambiguous
+    const historical=!!(plan.closedAt&&timestamp<=plan.closedAt||!target&&resolution?.closedAt&&timestamp<=resolution.closedAt)
     let at:string|null=null
     if(!blocked&&!historical){
       let contactId=channels.length?String(channels[0]!.id):null
@@ -290,11 +403,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         contactId=customers.resolveChannelContact(id,known?.id,initial.name).id
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
       }
-      at=this.ensureInteraction(jid,plan.at,contactId,initial.phone,initial.name,'authenticated_inbound')
+      at=this.ensureInteraction(jid,target,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
       this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
     }
     if(!prior)this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
-      .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(plan.at?'reused':'created'):historical?'closed':'ambiguous')
+      .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(target?'reused':'created'):historical?'closed':'ambiguous')
   }
   projections(jids:string[]):Map<string,CommercialConversation & {unreadCount:number;lastMessageAt:string|null;phoneNumber:string|null}> {
     const result=new Map<string,CommercialConversation & {unreadCount:number;lastMessageAt:string|null;phoneNumber:string|null}>()

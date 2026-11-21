@@ -302,9 +302,10 @@ function App() {
             <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
           </div></div>
-          {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onOpenAtendimento={(id, selectedTab, conversationId) => {
+          {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onOpenAtendimento={(id, selectedTab, conversationId, readOnly) => {
               const query = new URLSearchParams({ aba: selectedTab })
               if (selectedTab === 'chat' && conversationId) query.set('conversa', conversationId)
+              if (readOnly) query.set('leitura','1')
               if (navigate(`/atendimentos/${encodeURIComponent(id)}?${query}`, false, { returnTo: routeKey })) setCopilotOpen(false)
             }} /> : <>
             {loading && <div className="fh-surface"><Notice title="Carregando Atendimentos…" /></div>}{failure && <div className="fh-surface"><Notice title="Não foi possível carregar" error retry={() => setReload(value => value + 1)}>{failure}</Notice></div>}
