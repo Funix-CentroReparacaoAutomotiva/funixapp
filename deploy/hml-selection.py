@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 
 KEYS = {'pr','run_id','attempt','artifact_id','revision','sha256','size'}
-MAX_SIZE = 20 * 1024**3
+MAX_SIZE = 1024**3  # Match the privileged remote-hml controller's hard 1 GiB limit.
 
 
 def module(name):
