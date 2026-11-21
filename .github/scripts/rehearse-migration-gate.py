@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory() as tmp:
     run("systemctl","start",migration.TRANSPORT)
     assert run("systemctl","show","-p","MainPID","--value",migration.TRANSPORT) == "0"
     assert run("systemctl","show","-p","ConditionResult","--value",migration.TRANSPORT) == "no"
-    assert migration.recover(mapping,directory,lambda: None) == "restored"
+    assert migration.recover(mapping,directory,expected,lambda: None) == "restored"
     assert target.read_text() == "old" and not new_module.exists()
     print("FUNIX_MIGRATION_GATE_REEXEC_OK", flush=True)
 
@@ -93,6 +93,24 @@ with tempfile.TemporaryDirectory() as tmp:
     assert status == 200 and "migration_probe" in proof
     assert request("POST","/v1/update")[0] == 404
     assert migration.accept(mapping,directory,proof,expected,lambda: None) == "accepted"
+    migration.set_gate(directory)
+    journal = Path("/var/lib/funix-hml/updater/op-fixture/operation.json")
+    accepted_journal = journal.read_bytes()
+    changed = json.loads(accepted_journal)
+    changed["candidate"] = {"revision": "b"*40}
+    journal.write_text(json.dumps(changed))
+    try:
+        migration.recover(mapping,directory,migration.idle(),lambda: None)
+    except ValueError as error:
+        assert str(error) == "operational state changed since acceptance probe"
+    else:
+        raise AssertionError("terminal recovery released a changed journal")
+    assert (directory/"hold").is_file()
+    assert run("systemctl","show","-p","MainPID","--value",migration.TRANSPORT) == "0"
+    journal.write_bytes(accepted_journal)
+    assert migration.recover(mapping,directory,migration.idle(),lambda: None) == "accepted"
+    assert not (directory/"hold").exists()
+    print("FUNIX_TERMINAL_RECOVERY_STATE_OK", flush=True)
     record = migration.current_record(mapping,directory)
     approval = {key:record[key] for key in ("id","old","new")}
     assert migration.rollback(mapping,directory,approval,expected,lambda: None) == "restored"

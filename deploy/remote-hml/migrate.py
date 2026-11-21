@@ -320,7 +320,7 @@ def begin(mapping, directory, approval, validate):
     return 'awaiting_probe'
 
 
-def recover(mapping, directory, validate):
+def recover(mapping, directory, expected, validate):
     private_directory(directory)
     journal = directory/'journal.json'
     # No hold or code writes precede the first durable journal.
@@ -345,6 +345,14 @@ def recover(mapping, directory, validate):
             release_gate(directory,record)
         return 'restored'
     if phase in TERMINAL:
+        probe = record.get('probe')
+        if (phase == 'accepted' or probe is not None) and (
+                not isinstance(probe, dict) or probe.get('state') != expected):
+            hold = directory/'hold'
+            if not hold.exists():
+                # A crash may have removed the marker before starting the service.
+                set_gate(directory)
+            raise ValueError('operational state changed since acceptance probe')
         side = 'new' if phase == 'accepted' else 'old'
         check_files(mapping,record,(side,))
         validate()
@@ -471,7 +479,7 @@ def main():
         elif args.action == 'rollback':
             result = rollback(mapping,directory,authorization('migration-rollback-approval.json'),expected,validate)
         else:
-            result = recover(mapping,directory,validate)
+            result = recover(mapping,directory,expected,validate)
         print(json.dumps({'scope':'funix-hml','migration':result}))
 
 

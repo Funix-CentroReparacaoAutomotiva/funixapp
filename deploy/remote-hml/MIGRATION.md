@@ -60,9 +60,13 @@ migração anterior. Qualquer divergência ou contenção interrompe o procedime
   é arquivado sob outro nome sem tocar nos destinos. Temporários residuais
   não bloqueiam a próxima gravação atômica. Se houve troca parcial, o migrador
   mantém o transporte bloqueado, verifica backups e modos, restaura os bytes
-  antigos, valida e grava `restored` antes de reabrir. Na fase terminal só
-  reconcilia o serviço com o código já validado. Em ambiguidade, não reexecutar
-  apply, apagar o journal ou remover o hold. Escalar ao administrador.
+  antigos, valida e grava `restored` antes de reabrir. Para reconciliar uma
+  fase terminal com prova registrada, o journal operacional e o último
+  resultado devem coincidir com o snapshot da prova. A fase `accepted`
+  sempre exige esse snapshot. Divergência mantém ou repõe o hold e
+  bloqueia o start. Uma restauração anterior à prova pode ser reconciliada
+  com o código antigo validado. Em ambiguidade, não reexecutar apply,
+  apagar o journal ou remover o hold. Escalar ao administrador.
 - **Rollback após `accepted`** — Registrar autorização separada
   `{"id":...,"old":...,"new":...}` do journal exibido pelo inventário em
   `/var/lib/funix-hml-ops/migration-rollback-approval.json`, root 0600.

@@ -68,7 +68,7 @@ class MigrationTest(unittest.TestCase):
         return migration.begin(self.mapping,self.operation,self.approval,self.validate)
 
     def recovery(self):
-        return migration.recover(self.mapping,self.operation,self.validate)
+        return migration.recover(self.mapping,self.operation,self.expected,self.validate)
 
     def record(self):
         return migration.current_record(self.mapping,self.operation)
@@ -157,6 +157,61 @@ class MigrationTest(unittest.TestCase):
         self.assertEqual(self.transport,'inactive')
         self.assertEqual(self.recovery(),'accepted')
         self.assertEqual(self.transport,'active')
+
+    def test_accepted_recovery_rejects_journal_and_result_drift_after_start_failure(self):
+        self.start()
+        evidence = self.probe()
+        self.fail_start = True
+        with self.assertRaises(TimeoutError):
+            self.accept(evidence)
+        self.fail_start = False
+        for drift in (dict(self.expected,journal={'phase':'restored'}),
+                      dict(self.expected,last_request={'status':'accepted'})):
+            with self.subTest(drift=drift):
+                with self.assertRaisesRegex(ValueError,'operational state changed'):
+                    migration.recover(self.mapping,self.operation,drift,self.validate)
+                self.assert_held()
+                self.assertEqual(self.record()['phase'],'accepted')
+        self.assertEqual(self.recovery(),'accepted')
+
+    def test_accepted_drift_reinstalls_hold_when_interrupted_after_release(self):
+        self.start()
+        evidence = self.probe()
+        original = migration.command
+        def interrupt(*args):
+            if args[1] == 'start':
+                raise KeyboardInterrupt
+            return original(*args)
+        with patch.object(migration,'command',side_effect=interrupt), self.assertRaises(KeyboardInterrupt):
+            self.accept(evidence)
+        self.assertFalse((self.operation/'hold').exists())
+        self.expected = dict(self.expected,journal={'phase':'restored'})
+        with self.assertRaisesRegex(ValueError,'operational state changed'):
+            self.recovery()
+        self.assert_held()
+
+    def test_restored_recovery_without_probe_allows_state_change(self):
+        self.start()
+        self.expected = dict(self.expected,journal={'phase':'restored'})
+        self.assertEqual(self.recovery(),'restored')
+        self.assertEqual(self.recovery(),'restored')
+
+    def test_restored_after_rollback_rejects_drift_during_reopening(self):
+        self.start()
+        self.assertEqual(self.accept(self.probe()),'accepted')
+        approval = self.rollback_approval()
+        self.fail_start = True
+        with self.assertRaises(TimeoutError):
+            migration.rollback(self.mapping,self.operation,approval,self.expected,self.validate)
+        self.fail_start = False
+        self.assertEqual(self.record()['phase'],'restored')
+        drift = dict(self.expected,last_request={'status':'accepted'})
+        with self.assertRaisesRegex(ValueError,'operational state changed'):
+            migration.recover(self.mapping,self.operation,drift,self.validate)
+        self.assert_held()
+        self.assertEqual(self.target.read_bytes(),b'old code')
+        self.assertFalse(self.additional.exists())
+        self.assertEqual(self.recovery(),'restored')
 
     def test_drift_and_backup_damage_prevent_restoration_writes(self):
         self.start()
