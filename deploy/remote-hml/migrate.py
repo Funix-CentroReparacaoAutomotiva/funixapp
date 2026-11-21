@@ -113,6 +113,50 @@ def idle():
         raise ValueError('HML recovery pending')
 
 
+def source_integrity(mapping):
+    """Verify exact pinned bytes before any code replacement or journal creation."""
+    from ast import literal_eval
+    rootctl = PACKAGE/'rootctl.py'
+    control = PACKAGE/'control.py'
+    root_tree = ast.parse(regular(rootctl).read_text(encoding='utf-8'))
+    pinned = next(literal_eval(n.value) for n in root_tree.body
+                  if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='PREP_SHA' for t in n.targets))
+    if pinned != digest(control):
+        raise ValueError('candidate prepare controller pin mismatch')
+    official = pins()
+    if not isinstance(official,dict) or len(official)<1:
+        raise ValueError('candidate pins missing')
+    for name, expected in official.items():
+        if not isinstance(name,str) or not isinstance(expected,str) or len(expected)!=40:
+            raise ValueError('candidate pin invalid')
+        path = PACKAGE.parent/(name+'.py')
+        data = regular(path).read_bytes()
+        actual = hashlib.sha1(b'blob '+str(len(data)).encode('ascii')+b'\\0'+data).hexdigest()
+        if actual != expected:
+            raise ValueError('candidate official module pin mismatch')
+    if set(mapping)!=set(targets()) or any(mapping[t]!=targets()[t] for t in mapping):
+        raise ValueError('candidate scope mismatch')
+
+
+def prior_restoration(mapping):
+    """A closed migration is immutable. Retry only from a fully restored baseline."""
+    directory=STATE/'migration'
+    private_directory(directory)
+    record=json.loads(regular(directory/'journal.json').read_text(encoding='utf-8'))
+    expected={str(t) for t in mapping}
+    if record.get('schema')!=1 or record.get('phase')!='restored' or set(record.get('old',{}))!=expected or set(record.get('new',{}))!=expected:
+        raise ValueError('prior migration not safely restored')
+    if inventory(mapping)!=record['old']:
+        raise ValueError('installed code differs from prior restoration')
+    for target in mapping:
+        old=record['old'][str(target)]
+        if old is None: continue
+        saved=backup_path(directory,target)
+        if digest(saved)!=old:
+            raise ValueError('prior backup differs')
+    return record
+
+
 def replace_code(source,target,mode):
     fd,name=tempfile.mkstemp(prefix='.'+target.name+'.migration-',dir=target.parent)
     temporary=Path(name)
@@ -195,7 +239,7 @@ def migrate(mapping, directory, approval, *, recover=False, validate=lambda: Non
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('inventory','apply','recover'))
+    parser.add_argument('action',choices=('inventory','apply','recover','retry-restored','recover-retry'))
     parser.add_argument('--authorize',action='store_true')
     args=parser.parse_args()
     if os.geteuid()!=0: raise ValueError('local administrator required')
@@ -206,11 +250,17 @@ def main():
         if args.action=='inventory':
             print(json.dumps({'old':inventory(mapping),'new':{str(t):digest(s) for t,s in mapping.items()}},sort_keys=True)); return
         if not args.authorize: raise ValueError('administrative authorization required')
-        approval=json.loads(regular(STATE/'migration-approval.json').read_text()) if args.action=='apply' else None
+        retry=args.action in ('retry-restored','recover-retry')
+        if retry: prior_restoration(mapping)
+        if args.action in ('apply','retry-restored'):
+            source_integrity(mapping)
+        approval_file=STATE/('migration-approval-retry.json' if retry else 'migration-approval.json')
+        approval=json.loads(regular(approval_file).read_text()) if args.action in ('apply','retry-restored') else None
         def validate():
             command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
-        result=migrate(mapping,STATE/'migration',approval,recover=args.action=='recover',validate=validate)
-        print(json.dumps({'scope':'funix-hml','migration':result}))
+        destination=STATE/('migration-retry' if retry else 'migration')
+        result=migrate(mapping,destination,approval,recover=args.action in ('recover','recover-retry'),validate=validate)
+        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'retry' if retry else 'original'}))
 
 
 if __name__=='__main__':
