@@ -105,6 +105,28 @@ class MigrationTest(unittest.TestCase):
                         migration.prior_restoration(mapping)
                 self.assertEqual(json.loads((root/'migration-retry'/'journal.json').read_text())['phase'],'accepted')
 
+    def test_interrupted_retry_can_be_recovered_without_replaying_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            target=root/'installed.py'
+            target.write_bytes(b'old')
+            source=root/'source.py'
+            source.write_bytes(b'new')
+            mapping={target:source}
+            approval={'old':migration.inventory(mapping),'new':{str(target):migration.digest(source)}}
+            with patch.object(migration,'command',return_value='active'):
+                self.assertEqual(migration.migrate(mapping,root/'migration',approval,validate=lambda: (_ for _ in ()).throw(ValueError('reject'))),'restored')
+                def interrupt(): raise KeyboardInterrupt()
+                with self.assertRaises(KeyboardInterrupt):
+                    migration.migrate(mapping,root/'migration-retry',approval,validate=interrupt)
+                self.assertEqual(target.read_bytes(),b'new')
+                with patch.object(migration,'STATE',root):
+                    with self.assertRaisesRegex(ValueError,'installed code differs'):
+                        migration.prior_restoration(mapping)
+                    migration.prior_restoration(mapping,require_installed_old=False)
+                self.assertEqual(migration.migrate(mapping,root/'migration-retry',None,recover=True),'restored')
+                self.assertEqual(target.read_bytes(),b'old')
+
     def test_retry_rejects_incomplete_legacy_state(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
