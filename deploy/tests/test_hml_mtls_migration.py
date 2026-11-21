@@ -112,11 +112,18 @@ class MigrationTest(unittest.TestCase):
         self.assertFalse(self.trial)
         self.assert_held()
         response = self.probe()
+        with self.assertRaisesRegex(ValueError,'invalid mTLS'):
+            self.accept(dict(response,journal={'phase':'restored'}))
+        self.assert_held()
+        response = self.probe()
         self.trial = False  # Runtime limit elapsed or connection timed out.
         with self.assertRaisesRegex(ValueError,'invalid mTLS'):
             self.accept(response)
         self.assert_held()
-        self.assertEqual(self.accept(self.probe()),'accepted')
+        accepted_proof = self.probe()
+        self.assertEqual(self.accept(accepted_proof),'accepted')
+        with self.assertRaisesRegex(ValueError,'accept phase'):
+            self.accept(accepted_proof)
         self.assertEqual(self.recovery(),'accepted')
         self.assertEqual(self.target.read_bytes(),b'new code')
         with self.assertRaisesRegex(ValueError,'approval mismatch'):
