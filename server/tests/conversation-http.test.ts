@@ -681,3 +681,46 @@ test('first outgoing interaction preserves ambiguity, revocation and closed-case
   }finally{f.db.close()}
  }
 })
+
+test('text-only legacy Atendimento stays unique and is suggested for explicit PN reconciliation',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db)
+  // No Entidade or Contato record exists when the presencial ficha was saved.
+  const original=at.create({name:'Pessoa da ficha textual',phone:'(31) 99999-0666'})
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM customer_records').get()!.n,0)
+  const jid='5531999990666@s.whatsapp.net'
+  const raw={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,
+    messageTimestamp:Math.floor(Date.now()/1000)+2,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'first-text-only-outgoing',fromMe:true}}}
+  assert.equal((await f.sendEvent(raw)).status,202)
+  assert.equal(at.list().total,1)
+  const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid)
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  const answer=await f.request('/api/chat/conversations/'+cid+'/atendimentos','GET',undefined,f.browser)
+  assert.equal(answer.status,200)
+  const model=await answer.json()
+  assert.deepEqual(model.items,[])
+  assert.deepEqual(model.suggestedAtendimentos.map((row:{id:string})=>row.id),[original.id])
+  assert.equal(model.atendimentoConflict,true)
+  assert.equal((await f.request('/api/chat/conversations/'+cid+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
+  assert.equal(f.sends,0)
+  const links=new V20AssociationRepository(f.db)
+  const linked=links.link({conversationId:cid,atendimentoId:original.id,expectedRevision:model.revision,
+    requestId:randomUUID(),reason:'Conferência explícita da ficha presencial textual'})
+  assert.equal(at.list().total,1)
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  links.selectAtendimento(cid,linked.linkId)
+  assert.equal(authority.resolveIdentityActive(jid),original.id)
+  assert.equal(at.get(original.id).name,'Pessoa da ficha textual')
+  const after=at.get(original.id,true)
+  assert.ok(after.references!.contact.some(contact=>!!contact.id))
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM customer_records WHERE kind='contact'").get()!.n,1)
+  assert.equal((await f.sendEvent({...raw,data:{...raw.data,
+    key:{...raw.data.key,id:'second-text-only-outgoing'}}})).status,202)
+  assert.equal(at.list().total,1)
+  assert.equal(f.local.store.page(jid,1).items.length,2)
+  assert.equal(f.sends,0)
+  assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
