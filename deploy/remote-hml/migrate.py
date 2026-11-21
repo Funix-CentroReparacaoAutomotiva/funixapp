@@ -138,7 +138,7 @@ def source_integrity(mapping):
         raise ValueError('candidate scope mismatch')
 
 
-def prior_restoration(mapping):
+def prior_restoration(mapping, *, require_installed_old=True):
     """A closed migration is immutable. Retry only from a fully restored baseline."""
     directory=STATE/'migration'
     private_directory(directory)
@@ -146,7 +146,7 @@ def prior_restoration(mapping):
     expected={str(t) for t in mapping}
     if record.get('schema')!=1 or record.get('phase')!='restored' or set(record.get('old',{}))!=expected or set(record.get('new',{}))!=expected:
         raise ValueError('prior migration not safely restored')
-    if inventory(mapping)!=record['old']:
+    if require_installed_old and inventory(mapping)!=record['old']:
         raise ValueError('installed code differs from prior restoration')
     for target in mapping:
         old=record['old'][str(target)]
@@ -251,7 +251,7 @@ def main():
             print(json.dumps({'old':inventory(mapping),'new':{str(t):digest(s) for t,s in mapping.items()}},sort_keys=True)); return
         if not args.authorize: raise ValueError('administrative authorization required')
         retry=args.action in ('retry-restored','recover-retry')
-        if retry: prior_restoration(mapping)
+        if retry: prior_restoration(mapping,require_installed_old=args.action!='recover-retry')
         if args.action in ('apply','retry-restored'):
             source_integrity(mapping)
         approval_file=STATE/('migration-approval-retry.json' if retry else 'migration-approval.json')
