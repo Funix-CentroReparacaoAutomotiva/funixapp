@@ -19,7 +19,7 @@ def verify(repo, revision, archive):
         raise ValueError('full approved revision required')
     with Path(archive).open('rb') as bundle:
         actual = hashlib.file_digest(bundle, 'sha256').hexdigest()
-        with subprocess.Popen(['git', '-C', repo, 'archive', '--format=tar', revision, 'deploy'],
+        with subprocess.Popen(['git', '-C', repo, '-c', 'core.autocrlf=false', 'archive', '--format=tar', revision, 'deploy'],
                               stdout=subprocess.PIPE) as source:
             expected = hashlib.file_digest(source.stdout, 'sha256').hexdigest()
             if source.wait() or expected != actual:
@@ -31,12 +31,15 @@ def verify(repo, revision, archive):
                 if not member.isfile():
                     raise ValueError('expected regular bundle member')
                 with tar.extractfile(member) as stream:
-                    return stream.read()
+                    data = stream.read()
+                if b'\r\n' in data:
+                    raise ValueError('candidate contains CRLF')
+                return data
 
             ctl = read('remote-hml/control.py')
             pins = assignment(ctl, 'FILES')
             prep_pin = assignment(read('remote-hml/rootctl.py'), 'PREP_SHA')
-            if len(pins) != 12 or hashlib.sha256(ctl).hexdigest() != prep_pin:
+            if len(pins) != 12 or 'hml-selection' not in pins or hashlib.sha256(ctl).hexdigest() != prep_pin:
                 raise ValueError('controller integrity')
             rows = {}
             for name, owner_mode in (('rootctl.py', '0644'), ('transport.py', '0644'), ('control.py', '0600')):

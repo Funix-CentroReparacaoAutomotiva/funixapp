@@ -10,10 +10,11 @@ conclui automaticamente o pedido remoto.
 
 ## Bundle autorizado e verificação fora da VPS
 
-O payload aprovado tem SHA `ee7a9f4a4305b2886c57548b14431a9cd025e5cf`.
-Os auxiliares desta entrega são ferramentas administrativas externas ao
-payload. Revisá-los no HEAD da entrega e mantê-los separados do tar aprovado.
-Mudança no payload exige nova identidade, checksum e decisão do PO.
+Registrar o SHA integral do payload reconciliado, o SHA-256 do tar e a saída
+dos 15 destinos do verificador no pré-voo. A autorização registrada para o
+payload anterior `ee7a9f4a4305b2886c57548b14431a9cd025e5cf` identifica uma
+revisão histórica. Submeter a nova identidade e a matriz à direção para
+autorização independente antes da execução.
 
 Em checkout confiável, com GitHub HTTPS validado e URL oficial, buscar a
 referência da PR e confirmar que o SHA aprovado está na ancestralidade.
@@ -23,22 +24,20 @@ confere bytes e pins e pressupõe objetos Git obtidos dessa fonte confiável.
 ```bash
 set -eu
 umask 077
-approved=ee7a9f4a4305b2886c57548b14431a9cd025e5cf
+: "${approved:?informe o SHA integral aprovado pela direção}"
 git fetch https://github.com/Funix-CentroReparacaoAutomotiva/funixapp.git refs/pull/288/head
 git merge-base --is-ancestor "$approved" FETCH_HEAD
-git archive --format=tar "$approved" deploy > funix-hml-deploy.tar
+git -c core.autocrlf=false archive --format=tar "$approved" deploy > funix-hml-deploy.tar
 python3 -I deploy/remote-hml/verify-migration-bundle.py . "$approved" funix-hml-deploy.tar
 ```
 
-O tar integral de `deploy/` verificado tem SHA-256
-`922a407dfdf6f72e5b7edaa798fc4f861ab30380f05387c7dd7f1628e1e8d5c5`.
 O verificador regenera o tar esperado do Git, recusa divergência byte a byte
-por SHA-256, confere as 12 entradas de `control.FILES` e o `PREP_SHA` e imprime
-a matriz dos 15 destinos. Confrontar a saída com a matriz do
-[pré-voo anterior](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/288#issuecomment-7058359886),
-usando para `transport.py` o SHA-256 novo
-`5a5667774543d7aeb5810d8352382dce572c7577eacae91a66744e006c4c627b`.
-Os dois valores `old: null` são `hml-selection.py` e `hml-official-update.py`.
+por SHA-256 e CRLF, confere as 12 entradas de `control.FILES` e o `PREP_SHA`
+e imprime a matriz dos 15 destinos. Confrontar a saída com o inventário
+privado do host e registrar os valores reais. No estado histórico descrito
+pela #308, 13 dos 14 destinos legados existiam e `hml-official-update.py`
+estava ausente. `hml-selection.py` é o 15º destino e deve estar ausente antes
+do retry. A leitura autorizada do host deve confirmar esse estado.
 Preservar o manifesto recuperado e os backups. As unidades e wrappers do
 arquivo histórico são referência para conferência.
 
@@ -56,11 +55,17 @@ O arquivo aprovado não é uma aprovação administrativa de escrita.
 bundle, comparação dos 15 destinos, modos, checks de estado e GO/NO-GO
 sanitizado. Preservar o JSON integral de inventário em local privado.
 
+- Começar pela sondagem física dos diretórios e journals com as ferramentas
+  já instaladas e o acesso de leitura autorizado. Registrar somente a
+  classificação sanitizada. Transferir ou extrair o bundle para staging é
+  escrita administrativa e requer autorização própria, embora a ação
+  `inventory` a partir de um bundle já conferido seja somente leitura.
+
 - A partir do bundle conferido, executar como administrador
   `python3 -I deploy/remote-hml/migrate.py inventory`. Ele faz leitura lógica
   sob lock administrativo e lock oficial, ambos não bloqueantes. Confrontar
-  todo `old/new` com o inventário e a matriz aprovados, inclusive os dois
-  ausentes. Usar `stat` e `namei -l` nos destinos e seus pais para confirmar
+  todo `old/new` com o inventário e a matriz aprovados, inclusive as ausências.
+  Usar `stat` e `namei -l` nos destinos e seus pais para confirmar
   caminhos canônicos, arquivo regular com link único, proprietário e grupo
   root e modos da matriz. Conferir diretórios privados 0700 e a integridade
   dos controladores e módulos instalados pelo mapa antigo. Validar separadamente
@@ -68,9 +73,16 @@ sanitizado. Preservar o JSON integral de inventário em local privado.
 - Confirmar worker `inactive`, ausência física de aprovação armada,
   resultado terminal ligado ao apontador corrente, journal HML na fase
   esperada e transporte administrativo já ativo. Inventário bem-sucedido
-  valida locks e `idle()` naquele instante. Inspecionar ausência física de
-  diretório ou journal de migração pendente. Conferir a aprovação do preparador
-  apenas em resumo, sem exibir ticket, token ou conteúdo privado.
+  valida locks e `idle()` naquele instante. Classificar separadamente os
+  diretórios `migration/` e `migration-retry/` exibidos como `migration` e
+  `migration_retry`. A migração inicial exige ausência física de ambos. O
+  retry exige original schema 1 em `restored`, sem hold ou drop-in anterior,
+  e ausência física de `migration-retry/`. O inventário compara o staging e
+  os backups históricos com os hashes do journal e informa `journal_sha256`.
+  A abertura do retry também verifica os hashes e os modos dos arquivos
+  instalados contra a restauração e confirma a ausência de `hml-selection.py`.
+  Conferir a aprovação do preparador apenas em resumo, sem exibir ticket,
+  token ou conteúdo privado.
 - Conferir bytes e inodes livres com `df -PB1` e `df -Pi` nos sistemas de
   arquivos do staging, journal e destinos. Reservar espaço para o tar,
   a árvore extraída, a soma dos 13 originais e dos 15 arquivos novos,
@@ -91,16 +103,30 @@ canal administrativo independente e tempo para contingência.
 1. Submeter inventário instantâneo, identidade do pacote, prova de acesso
    de leitura pela origem admitida e plano de retorno à direção. Solicitar
    autorização independente para esse mapa e essa janela. Com a autorização,
-   registrar o mapa exato `{"old":...,"new":...}` em
-   `/var/lib/funix-hml-ops/migration-approval.json` (root 0600). Suspender
-   solicitações administrativas na janela e preservar os registros existentes.
-2. Executar `python3 -I deploy/remote-hml/migrate.py apply --authorize`
-   somente na janela liberada. O migrador revalida `idle()` e o mapa sob os
-   dois locks. As fases são `staging`, `prepared`, `installing` e
+   registrar em arquivo privado root 0600 o mapa exato indicado abaixo.
+   Suspender solicitações administrativas na janela e preservar os registros
+   existentes.
+2. Escolher os comandos da tentativa identificada na tabela abaixo. Executar
+   o comando de abertura com `python3 -I deploy/remote-hml/migrate.py` e
+   `--authorize` somente na janela liberada. O migrador revalida `idle()`, o
+   mapa e os pins dos candidatos antes de criar o journal, sob os dois locks.
+   As fases são `staging`, `prepared`, `installing` e
    `awaiting_probe`. Registra backups e staging e grava hold/drop-in
    persistentes antes de substituir código. Conferir `awaiting_probe` e
    transporte normal parado. Se houver resultado ambíguo, preservar o hold
    e o journal e seguir a contingência.
+
+| Tentativa | Arquivo de aprovação em `/var/lib/funix-hml-ops/` | Abertura | Prova | Aceite | Recuperação | Reversão |
+|---|---|---|---|---|---|---|
+| Inicial | `migration-approval.json` com `old` e `new` | `apply` | `probe` | `accept` | `recover` | `rollback` |
+| Após restauração da #308 | `migration-approval-retry.json` com `old`, `new` e `prior_journal_sha256` | `retry-restored` | `probe-retry` | `accept-retry` | `recover-retry` | `rollback-retry` |
+
+No retry, `old` e `new` abrangem os 15 destinos atuais. `prior_journal_sha256`
+é o hash dos bytes do journal original conferido e aprovado. `migration-retry/`
+recebe journal, staging e backups próprios. Preservar sem alterações o
+journal, os backups, o staging e as aprovações originais. O retry deste
+bundle exige a restauração legada da #308. Uma tentativa schema 2 restaurada
+permanece arquivada em seu diretório para inspeção.
 
 ## Fase 4 — Prova mTLS e transferência da evidência
 
@@ -118,20 +144,21 @@ O n8n não fornece a prova completa nem autoriza a migração.
   GET direto na porta 18443, sem proxy ou redirecionamento, verifica a cadeia
   com a CA existente e exige autenticação do cliente. A chave deve ser
   privada e pertencer à identidade que executa o cliente.
-- Na janela autorizada, em root e a partir do bundle conferido, executar
-  `python3 -I deploy/remote-hml/migrate.py probe --authorize`. A unidade
-  GET-only funciona por até 120 segundos. Confirmar que o transporte normal
+- Na janela autorizada, em root e a partir do bundle conferido, executar o
+  comando de prova da tentativa escolhida, por exemplo `probe-retry --authorize`.
+  A unidade GET-only funciona por até 120 segundos. Confirmar que o transporte normal
   segue parado. O migrador guarda a identidade da invocação e o desafio
   no journal privado. O auxiliar devolve o corpo completo sem reescrever
   `migration_probe`.
 - Preparar e validar previamente o canal SSH independente e já aprovado com
   host key conhecida e acesso root de escrita autorizado para a janela.
   Desabilitar tracing e gravação de entrada no cliente e no canal de
-  administração. Capturar o GET em memória **antes** de abrir `accept`:
+  administração. Capturar o GET em memória **antes** de abrir o comando de aceite:
   ambos precisam do lock administrativo. Evitar arquivos, clipboard, argv
   externo, ambiente exportado e logs para o corpo. Exemplo para Bash na
   origem aprovada com acesso a ambos os canais, substituindo somente caminhos
-  e identidades previamente conferidos:
+  e identidades previamente conferidos. O exemplo usa o comando para o retry
+  da #308. Para a tentativa inicial, usar `accept`.
 
 ```bash
 (
@@ -140,7 +167,7 @@ O n8n não fornece a prova completa nem autoriza a migração.
   proof=$(python3 -I collect-migration-proof.py probe "$gateway" "$ca" "$client_cert" "$client_key") || exit 1
   # printf é builtin. Corpo segue exclusivamente para stdin do canal.
   builtin printf '%s' "$proof" | ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes "$admin_ssh" \
-    '/usr/bin/python3 -I /root/funix-hml-approved/deploy/remote-hml/migrate.py accept --authorize'
+    '/usr/bin/python3 -I /root/funix-hml-approved/deploy/remote-hml/migrate.py accept-retry --authorize'
 )
 ```
 
@@ -175,7 +202,8 @@ solicitações e acionar o procedimento de reversão com autorização separada.
 a recuperação ou reversão em autorização separada. O PO confere fase,
 inventário final, resultado mTLS e saúde antes de retomar solicitações.
 
-- **Recovery** — `python3 -I deploy/remote-hml/migrate.py recover --authorize`.
+- **Recovery.** Usar `recover --authorize` para a tentativa inicial deste
+  bundle ou `recover-retry --authorize` para o retry vinculado ao histórico.
   Preservar todos os arquivos. Antes do primeiro journal, o staging incompleto
   é arquivado sob outro nome sem tocar nos destinos. Temporários residuais
   não bloqueiam a próxima gravação atômica. Se houve troca parcial, o migrador
@@ -186,16 +214,22 @@ inventário final, resultado mTLS e saúde antes de retomar solicitações.
   sempre exige esse snapshot. Divergência mantém ou repõe o hold e
   bloqueia o start. Uma restauração anterior à prova pode ser reconciliada
   com o código antigo validado. Em ambiguidade, não reexecutar apply,
-  apagar o journal ou remover o hold. Escalar ao administrador.
-- **Rollback após `accepted`** — Registrar autorização separada
+  apagar o journal ou remover o hold. Um journal legado schema 1 pendente
+  na transação original ou no retry exige inspeção e, quando autorizada,
+  recuperação com o bundle legado verificado e seu comando correspondente.
+  O migrador reconciliado recusa operar sobre esse journal pendente. Após
+  a recuperação legada, voltar ao pré-voo com inventário atualizado.
+- **Rollback após `accepted`.** Registrar autorização separada
   `{"id":...,"old":...,"new":...}` do journal exibido pelo inventário em
   `/var/lib/funix-hml-ops/migration-rollback-approval.json`, root 0600.
-  Executar `python3 -I deploy/remote-hml/migrate.py rollback --authorize`.
+  Para o retry, incluir `prior_journal_sha256` e usar
+  `migration-rollback-approval-retry.json` no mesmo diretório. Executar o
+  comando de reversão indicado na tabela com `--authorize`.
   A reversão confere que o estado operacional continua igual ao do aceite.
   Recusa drift de código, modos e backups. A fase `rollback` permite retomar
   uma reversão já autorizada com recovery. Os módulos antes ausentes só são
   removidos se ainda têm os bytes aprovados. Confirmar SHA-256 e modos antigos,
-  as duas ausências e o GET mTLS após a restauração.
+  as ausências registradas e o GET mTLS após a restauração.
 - **Preservação** — Não mexer em SQLite, Docker, credenciais, certificados,
   contas, sudoers, configurações n8n ou journals operacionais. A migração
   mantém os locks e registra somente sua própria transação. A única alteração

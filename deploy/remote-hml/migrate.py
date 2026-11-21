@@ -22,10 +22,13 @@ WORKER = 'funix-hml-ops-worker.service'
 TRIAL = 'funix-hml-ops-migration-check.service'
 GATE = Path('/etc/systemd/system') / (TRANSPORT + '.d') / '90-funix-migration.conf'
 TERMINAL = ('accepted', 'restored')
+SELECTION = Path('/usr/local/lib/funix-hml-prepare/official/hml-selection.py')
+RETRY_ACTIONS = {'retry-restored':'apply', 'probe-retry':'probe', 'accept-retry':'accept',
+                 'recover-retry':'recover', 'rollback-retry':'rollback'}
 
 
 def pins():
-    tree = ast.parse((PACKAGE/'control.py').read_text())
+    tree = ast.parse(regular(PACKAGE/'control.py').read_bytes())
     return next(ast.literal_eval(node.value) for node in tree.body
                 if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id=='FILES' for t in node.targets))
 
@@ -34,9 +37,41 @@ def targets():
     result = {Path('/usr/local/lib/funix-hml-ops')/name: PACKAGE/name
               for name in ('rootctl.py','transport.py')}
     result[Path('/usr/local/lib/funix-hml-prepare/control.py')] = PACKAGE/'control.py'
-    for name in pins():
+    official = pins()
+    if not isinstance(official, dict) or len(official) != 12 or not all(
+            isinstance(name,str) and re.fullmatch(r'hml-[a-z-]+',name) for name in official
+    ) or 'hml-selection' not in official:
+        raise ValueError('candidate pins missing or invalid')
+    for name in official:
         result[Path('/usr/local/lib/funix-hml-prepare/official')/(name+'.py')] = PACKAGE.parent/(name+'.py')
     return result
+
+
+def source_integrity(mapping):
+    """Validate candidate bytes and return the exact hashes to stage."""
+    sources = {target: regular(path).read_bytes() for target, path in mapping.items()}
+    if any(b'\r\n' in data for data in sources.values()):
+        raise ValueError('candidate contains CRLF')
+
+    def assignment(data, name):
+        return next(ast.literal_eval(node.value) for node in ast.parse(data).body
+                    if isinstance(node, ast.Assign) and any(
+                        isinstance(target, ast.Name) and target.id == name for target in node.targets))
+
+    control = sources[Path('/usr/local/lib/funix-hml-prepare/control.py')]
+    rootctl = sources[Path('/usr/local/lib/funix-hml-ops/rootctl.py')]
+    if hashlib.sha256(control).hexdigest() != assignment(rootctl, 'PREP_SHA'):
+        raise ValueError('candidate prepare controller pin mismatch')
+    official = assignment(control, 'FILES')
+    if set(sources) != targets().keys():
+        raise ValueError('candidate target scope mismatch')
+    if set(official) != {target.stem for target in sources if target.parent == SELECTION.parent}:
+        raise ValueError('candidate pins missing or invalid')
+    for name, expected in official.items():
+        data = sources[SELECTION.parent/(name+'.py')]
+        if hashlib.sha1(f'blob {len(data)}\0'.encode() + data).hexdigest() != expected:
+            raise ValueError('candidate official module pin mismatch')
+    return {str(target):hashlib.sha256(data).hexdigest() for target,data in sources.items()}
 
 
 def regular(path):
@@ -91,6 +126,40 @@ def inventory(mapping):
 
 def backup_path(directory,target):
     return directory/hashlib.sha256(str(target).encode()).hexdigest()
+
+
+def exists(path):
+    return path.exists() or path.is_symlink()
+
+
+def prior_restoration(mapping, directory, *, require_installed_old=False):
+    """Read the immutable schema-1 transaction from #308, with its 14 destinations."""
+    private_directory(directory)
+    data = regular(directory/'journal.json').read_bytes()
+    record = json.loads(data)
+    paths = {str(target) for target in mapping if target != SELECTION}
+    if (record.get('schema') != 1 or record.get('phase') != 'restored'
+            or record.get('transport_active') is not True or SELECTION not in mapping
+            or any(set(record[key]) != paths for key in ('old','new','modes'))
+            or exists(directory/'hold')):
+        raise ValueError('prior migration not safely restored')
+    for target in mapping:
+        if target == SELECTION:
+            continue
+        key = str(target)
+        saved = backup_path(directory,target)
+        old = record['old'][key]
+        if old is None:
+            if exists(saved):
+                raise ValueError('unexpected prior backup')
+        elif digest(saved) != old:
+            raise ValueError('prior backup differs')
+        if digest(saved.with_name('new-'+saved.name)) != record['new'][key]:
+            raise ValueError('prior staged digest differs')
+    if require_installed_old:
+        baseline = {'old':{**record['old'],str(SELECTION):None}, 'modes':record['modes']}
+        check_files(mapping,baseline,('old',))
+    return hashlib.sha256(data).hexdigest()
 
 
 def command(*arguments):
@@ -220,14 +289,19 @@ def check_files(mapping, record, sides):
             raise ValueError('installed mode drift')
 
 
-def snapshot(mapping, directory, approval):
+def snapshot(mapping, directory, approval, *, prior=None, verified_new=None):
     old = inventory(mapping)
-    new = {str(t):digest(s) for t,s in mapping.items()}
-    if approval != {'old':old, 'new':new}:
+    new = verified_new if verified_new is not None else {str(t):digest(s) for t,s in mapping.items()}
+    required = {'old':old, 'new':new}
+    if prior is not None:
+        required['prior_journal_sha256'] = prior
+    if approval != required:
         raise ValueError('migration approval mismatch')
     record = {'schema':2, 'phase':'staging', 'id':secrets.token_hex(16), 'old':old, 'new':new,
               'modes':{str(t):file_mode(t) if old[str(t)] is not None else 0o600 for t in mapping},
               'transport_active':command('systemctl','show','-p','ActiveState','--value',TRANSPORT)=='active'}
+    if prior is not None:
+        record['prior_journal_sha256'] = prior
     if not record['transport_active']:
         raise ValueError('transport must be active before migration')
     directory.mkdir(mode=0o700)
@@ -302,10 +376,10 @@ def restore(mapping, directory, record, validate, *, terminal=False):
     return 'restored'
 
 
-def begin(mapping, directory, approval, validate):
-    if directory.exists() or directory.is_symlink():
+def begin(mapping, directory, approval, validate, *, prior=None, verified_new=None):
+    if exists(directory):
         raise ValueError('existing migration requires inspection')
-    record = snapshot(mapping,directory,approval)
+    record = snapshot(mapping,directory,approval,prior=prior,verified_new=verified_new)
     set_gate(directory)
     persist(directory,record,'installing')
     try:
@@ -325,10 +399,13 @@ def recover(mapping, directory, expected, validate):
     journal = directory/'journal.json'
     # No hold or code writes precede the first durable journal.
     if not journal.exists() and not journal.is_symlink():
-        if any(not re.fullmatch(r'journal\.json(?:\.[A-Za-z0-9_]+)?\.new', p.name) or
+        if any(not re.fullmatch(r'journal\.json\.[A-Za-z0-9_]+\.new', p.name) or
                regular(p) != p for p in directory.iterdir()):
             raise ValueError('unexpected pre-journal state')
-        archive = directory.with_name('migration-abandoned-'+secrets.token_hex(16))
+        if exists(GATE):
+            raise ValueError('unexpected pre-journal transport drop-in')
+        prefix = 'migration-retry-abandoned-' if directory.name == 'migration-retry' else 'migration-abandoned-'
+        archive = directory.with_name(prefix+secrets.token_hex(16))
         os.rename(directory,archive)
         sync_directory(directory.parent)
         return 'abandoned_staging'
@@ -425,33 +502,77 @@ def accept(mapping, directory, response, expected, validate):
 
 def rollback(mapping, directory, approval, expected, validate):
     record = current_record(mapping,directory)
-    if approval != {'id':record['id'], 'old':record['old'], 'new':record['new']}:
+    required = {key:record[key] for key in ('id','old','new')}
+    if 'prior_journal_sha256' in record:
+        required['prior_journal_sha256'] = record['prior_journal_sha256']
+    if approval != required:
         raise ValueError('rollback approval mismatch')
     if record.get('probe', {}).get('state') != expected:
         raise ValueError('operational state changed since acceptance')
     return restore(mapping,directory,record,validate,terminal=True)
 
 
+def migration_inventory(mapping, original, retry):
+    result = {'old':inventory(mapping), 'new':source_integrity(mapping)}
+    for label,directory in (('migration',original),('migration_retry',retry)):
+        if not exists(directory):
+            continue
+        private_directory(directory)
+        journal = directory/'journal.json'
+        if not exists(journal):
+            result[label] = {'phase':'pre_journal'}
+            continue
+        record = json.loads(regular(journal).read_bytes())
+        if record.get('schema') == 2:
+            record = current_record(mapping,directory)
+        result[label] = {key:record[key] for key in
+                         ('schema','id','phase','old','new','prior_journal_sha256') if key in record}
+        if label == 'migration' and record.get('schema') == 1 and record.get('phase') == 'restored':
+            result[label]['journal_sha256'] = prior_restoration(mapping,original)
+    return result
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('inventory','apply','probe','accept','recover','rollback'))
+    parser.add_argument('action',choices=('inventory','apply','probe','accept','recover','rollback',*RETRY_ACTIONS))
     parser.add_argument('--authorize',action='store_true')
     args=parser.parse_args()
     if os.geteuid()!=0: raise ValueError('local administrator required')
+    execute(args.action,args.authorize)
+
+
+def execute(requested_action, authorized):
     mapping=targets()
     private_directory(STATE); private_directory(UPDATER)
-    directory = STATE/'migration'
+    original = STATE/'migration'
+    retry = STATE/'migration-retry'
     with locks():
         expected = idle()
-        if args.action=='inventory':
-            result = {'old':inventory(mapping),'new':{str(t):digest(s) for t,s in mapping.items()}}
-            if (directory/'journal.json').is_file():
-                record = current_record(mapping,directory)
-                result['migration'] = {'id':record['id'], 'phase':record['phase'],
-                                       'old':record['old'], 'new':record['new']}
-            print(json.dumps(result,sort_keys=True))
+        if requested_action=='inventory':
+            print(json.dumps(migration_inventory(mapping,original,retry),sort_keys=True))
             return
-        if not args.authorize: raise ValueError('administrative authorization required')
+        if not authorized: raise ValueError('administrative authorization required')
+
+        is_retry = requested_action in RETRY_ACTIONS
+        action = RETRY_ACTIONS.get(requested_action,requested_action)
+        directory = retry if is_retry else original
+        prior = None
+        if is_retry:
+            prior = prior_restoration(mapping,original,require_installed_old=action == 'apply')
+        elif exists(retry):
+            raise ValueError('retry requires explicit retry action')
+
+        if action == 'apply':
+            if exists(directory) or exists(GATE):
+                raise ValueError('existing migration or transport drop-in requires inspection')
+        else:
+            private_directory(directory)
+            if exists(GATE) and regular(GATE).read_bytes() != gate_content(directory):
+                raise ValueError('transport drop-in belongs to another attempt')
+            if action != 'recover' or exists(directory/'journal.json'):
+                record = current_record(mapping,directory)
+                if record.get('prior_journal_sha256') != prior:
+                    raise ValueError('migration history binding changed')
 
         def authorization(name):
             path = regular(STATE/name)
@@ -461,11 +582,15 @@ def main():
 
         def validate():
             command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
-        if args.action == 'apply':
-            result = begin(mapping,directory,authorization('migration-approval.json'),validate)
-        elif args.action == 'probe':
+        if action == 'apply':
+            name = 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
+            new = source_integrity(mapping)
+            result = begin(mapping,directory,authorization(name),validate,prior=prior,verified_new=new)
+        elif action == 'probe':
             result = open_probe(mapping,directory,expected)
-        elif args.action == 'accept':
+        elif action == 'accept':
+            if record['phase'] != 'probing':
+                raise ValueError('accept phase')
             import sys
             try:
                 response = sys.stdin.buffer.read(32769)
@@ -476,11 +601,12 @@ def main():
                 stop_trial()
                 raise
             result = accept(mapping,directory,response,expected,validate)
-        elif args.action == 'rollback':
-            result = rollback(mapping,directory,authorization('migration-rollback-approval.json'),expected,validate)
+        elif action == 'rollback':
+            name = 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
+            result = rollback(mapping,directory,authorization(name),expected,validate)
         else:
             result = recover(mapping,directory,expected,validate)
-        print(json.dumps({'scope':'funix-hml','migration':result}))
+        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'retry' if is_retry else 'original'}))
 
 
 if __name__=='__main__':

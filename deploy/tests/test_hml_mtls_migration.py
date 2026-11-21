@@ -1,7 +1,10 @@
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import tempfile
 import unittest
@@ -325,6 +328,185 @@ class MigrationTest(unittest.TestCase):
         self.assertEqual(migration.begin(self.mapping,self.operation,self.approval,validate),'restored')
         self.assertEqual(self.target.read_bytes(),b'old code')
         self.assertFalse(self.additional.exists())
+
+    def assert_inventory(self, data):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            migration.execute('inventory',False)
+        self.assertEqual(json.loads(output.getvalue()),data)
+
+    def execute(self, action, proof=None):
+        stdin = io.TextIOWrapper(io.BytesIO(json.dumps(proof).encode()))
+        with patch('sys.stdin',stdin), contextlib.redirect_stdout(io.StringIO()) as output:
+            migration.execute(action,True)
+        return json.loads(output.getvalue())
+
+    def prepare_cli(self):
+        state = self.operation.parent
+        self.updater = state/'updater'
+        self.updater.mkdir(mode=0o700)
+        self.retry = state/'migration-retry'
+        self.retry_approval = state/'migration-approval-retry.json'
+        self.retry_rollback_approval = state/'migration-rollback-approval-retry.json'
+        patch.multiple(migration,STATE=state,UPDATER=self.updater,SELECTION=self.additional).start()
+        patch.object(migration,'locks',side_effect=contextlib.nullcontext).start()
+        patch.object(migration,'idle',return_value=self.expected).start()
+        patch.object(migration,'targets',return_value=self.mapping).start()
+        patch.object(migration,'source_integrity',return_value=self.approval['new']).start()
+
+    def legacy_restored(self, phase='restored'):
+        legacy_absent = self.operation.parent/'originally-absent.py'
+        self.mapping[legacy_absent] = self.source
+        absent = str(legacy_absent)
+        self.approval['old'][absent] = None
+        self.approval['new'][absent] = migration.digest(self.source)
+        self.operation.mkdir(mode=0o700)
+        legacy_source = self.operation.parent/'historical-crlf.py'
+        legacy_source.write_bytes(b'old candidate\r\n')
+        record = {'schema':1, 'phase':phase, 'transport_active':True,
+                  'old':{str(self.target):migration.digest(self.target), absent:None},
+                  'new':{str(self.target):migration.digest(legacy_source), absent:migration.digest(self.source)},
+                  'modes':{str(self.target):0o644, absent:0o600}}
+        saved = migration.backup_path(self.operation,self.target)
+        migration.durable_bytes(saved,self.target.read_bytes())
+        for target, source in ((self.target,legacy_source),(legacy_absent,self.source)):
+            saved = migration.backup_path(self.operation,target)
+            migration.durable_bytes(saved.with_name('new-'+saved.name),source.read_bytes())
+        journal = self.operation/'journal.json'
+        migration.durable_json(journal,record)
+        approval = dict(self.approval,prior_journal_sha256=migration.digest(journal))
+        migration.durable_json(self.retry_approval,approval)
+        return record, approval
+
+    def historical_bytes(self):
+        return {p.name:p.read_bytes() for p in self.operation.iterdir()}
+
+    def test_cli_initial_applies_only_without_either_transaction(self):
+        self.prepare_cli()
+        self.assert_inventory(self.approval)
+        migration.durable_json(migration.STATE/'migration-approval.json',self.approval)
+        self.assertEqual(self.execute('apply'),{'scope':'funix-hml','migration':'awaiting_probe','attempt':'original'})
+        self.assertEqual(self.execute('recover')['migration'],'restored')
+        self.assertFalse(self.retry.exists())
+
+    def test_cli_retry_has_its_own_gate_proof_approval_and_rollback(self):
+        self.prepare_cli()
+        original, approval = self.legacy_restored()
+        history = self.historical_bytes()
+        self.assert_inventory(dict(self.approval,migration={key:original[key] for key in
+                                    ('schema','phase','old','new')} | {'journal_sha256':approval['prior_journal_sha256']}))
+        with self.assertRaisesRegex(ValueError,'existing migration'):
+            self.execute('apply')
+        migration.durable_json(self.retry_approval,self.approval)
+        with self.assertRaisesRegex(ValueError,'approval mismatch'):
+            self.execute('retry-restored')
+        self.assertFalse(self.retry.exists())
+        migration.durable_json(self.retry_approval,approval)
+        self.assertEqual(self.execute('retry-restored')['migration'],'awaiting_probe')
+        self.assertEqual(self.gate.read_bytes(),migration.gate_content(self.retry))
+        self.assertEqual(self.execute('probe-retry')['migration'],'probing')
+        challenge = migration.current_record(self.mapping,self.retry)['probe']['challenge']
+        with self.assertRaisesRegex(ValueError,'explicit retry'):
+            self.execute('accept')
+        self.assertTrue(self.trial)
+        proof = dict(self.expected,migration_probe=challenge,armed=None,
+                     scope='funix-hml',schema='funix-hml-ops/1',status='ok')
+        self.assertEqual(self.execute('accept-retry',proof)['migration'],'accepted')
+        with self.assertRaisesRegex(ValueError,'accept phase'):
+            self.execute('accept-retry',proof)
+        record = migration.current_record(self.mapping,self.retry)
+        rollback = {key:record[key] for key in ('id','old','new')}
+        migration.durable_json(self.retry_rollback_approval,rollback)
+        with self.assertRaisesRegex(ValueError,'approval mismatch'):
+            self.execute('rollback-retry')
+        migration.durable_json(self.retry_rollback_approval,dict(rollback,prior_journal_sha256=approval['prior_journal_sha256']))
+        self.assertEqual(self.execute('rollback-retry')['migration'],'restored')
+        self.assertEqual(migration.inventory(self.mapping),self.approval['old'])
+        self.assertEqual(self.historical_bytes(),history)
+
+    def test_retry_blocks_nonrestored_legacy_and_drift_before_writes(self):
+        self.prepare_cli()
+        original, _ = self.legacy_restored('accepted')
+        journal = self.operation/'journal.json'
+        for phase in ('accepted','installing','restoring'):
+            with self.subTest(phase=phase):
+                migration.durable_json(journal,dict(original,phase=phase))
+                with self.assertRaisesRegex(ValueError,'not safely restored'):
+                    self.execute('retry-restored')
+        migration.durable_json(journal,dict(original,phase='restored'))
+        self.additional.write_bytes(b'unexpected selection')
+        with self.assertRaisesRegex(ValueError,'installed code drift'):
+            self.execute('retry-restored')
+        self.additional.unlink()
+        self.target.chmod(0o600)
+        with self.assertRaisesRegex(ValueError,'installed mode drift'):
+            self.execute('retry-restored')
+        self.target.chmod(0o644)
+        migration.backup_path(self.operation,self.target).write_bytes(b'corrupt prior backup')
+        with self.assertRaisesRegex(ValueError,'prior backup differs'):
+            self.execute('retry-restored')
+        self.assertFalse(self.retry.exists())
+        self.assertFalse(self.gate.exists())
+
+    def test_retry_recovery_checks_history_and_handles_a_partial_replacement(self):
+        self.prepare_cli()
+        self.legacy_restored()
+        history = self.historical_bytes()
+        replace = migration.replace_code
+
+        def interrupt(*args):
+            replace(*args)
+            raise KeyboardInterrupt
+
+        with patch.object(migration,'replace_code',side_effect=interrupt), self.assertRaises(KeyboardInterrupt):
+            self.execute('retry-restored')
+        self.assertEqual(self.target.read_bytes(),b'new code')
+        self.assertFalse(self.additional.exists())
+        with self.assertRaisesRegex(ValueError,'explicit retry'):
+            self.execute('recover')
+        journal = self.operation/'journal.json'
+        journal.write_bytes(history['journal.json']+b'\n')
+        with self.assertRaisesRegex(ValueError,'history binding changed'):
+            self.execute('recover-retry')
+        self.assertTrue((self.retry/'hold').exists())
+        journal.write_bytes(history['journal.json'])
+        self.retry_approval.unlink()
+        self.assertEqual(self.execute('recover-retry')['migration'],'restored')
+        self.assertEqual(migration.inventory(self.mapping),self.approval['old'])
+        self.assertEqual(self.historical_bytes(),history)
+
+    def test_recover_retry_preserves_original_and_archives_prejournal_staging(self):
+        self.prepare_cli()
+        self.legacy_restored()
+        history = self.historical_bytes()
+        self.retry.mkdir(mode=0o700)
+        (self.retry/'journal.json.tmp.new').write_text('interrupted')
+        self.assertEqual(self.execute('recover-retry')['migration'],'abandoned_staging')
+        archive, = self.retry.parent.glob('migration-retry-abandoned-*')
+        self.assertEqual((archive/'journal.json.tmp.new').read_text(),'interrupted')
+        self.assertEqual(self.historical_bytes(),history)
+        self.assertFalse(self.gate.exists())
+
+    def test_candidate_pins_reject_crlf_and_divergent_lf_sources(self):
+        package = self.operation.parent/'deploy'/'remote-hml'
+        package.mkdir(parents=True)
+        pins = migration.pins()
+        for name in ('rootctl.py','control.py','transport.py'):
+            shutil.copyfile(ROOT/'remote-hml'/name,package/name)
+        for name in pins:
+            shutil.copyfile(ROOT/(name+'.py'),package.parent/(name+'.py'))
+        with patch.object(migration,'PACKAGE',package):
+            mapping = migration.targets()
+            self.assertEqual(len(migration.source_integrity(mapping)),15)
+            for path,pattern in ((package.parent/'hml-selection.py','official module pin'),
+                                 (package/'control.py','prepare controller pin')):
+                data = path.read_bytes()
+                path.write_bytes(data+b'\n')
+                with self.assertRaisesRegex(ValueError,pattern):
+                    migration.source_integrity(mapping)
+                path.write_bytes(data.replace(b'\n',b'\r\n'))
+                with self.assertRaisesRegex(ValueError,'CRLF'):
+                    migration.source_integrity(mapping)
+                path.write_bytes(data)
 
 
 if __name__ == '__main__':
