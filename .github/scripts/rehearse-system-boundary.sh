@@ -137,3 +137,8 @@ test ! -e "$state/current.json"
 test -z "$(ls -A "$state/requests")"
 test "$(systemctl show "$transport" -p MainPID --value)" = "$restarted_pid"
 printf '%s\n' FUNIX_SUDOERS_SYSTEMD_BOUNDARY_OK
+
+# Only the disposable runner owns these synthetic paths and services.
+phase=migration-gate
+systemctl reset-failed "$worker"
+/usr/bin/python3 .github/scripts/rehearse-migration-gate.py

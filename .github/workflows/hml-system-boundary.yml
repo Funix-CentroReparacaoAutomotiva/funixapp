@@ -6,6 +6,9 @@ on:
       - '.github/workflows/hml-system-boundary.yml'
       - '.github/scripts/rehearse-system-boundary.sh'
       - '.github/scripts/probe-system-boundary.py'
+      - '.github/scripts/rehearse-migration-gate.py'
+      - 'deploy/remote-hml/migrate.py'
+      - 'deploy/remote-hml/transport.py'
 
 permissions:
   contents: read
@@ -13,7 +16,7 @@ permissions:
 jobs:
   system-boundary:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

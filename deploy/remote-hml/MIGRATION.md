@@ -1,66 +1,84 @@
-# Migração administrativa do piloto (#274)
+# Migração administrativa de código HML (#274)
 
-Proposta para revisão, sem execução na VPS. Não executar os instaladores
-históricos recuperados. Preservar o bundle até concluir qualquer recuperação.
-Pedidos interrompidos exigem o [runbook de reconciliação](RECONCILIATION.md);
-recuperação do banco não conclui automaticamente o pedido remoto.
+Roteiro para revisão e autorização independente. Usar o bundle integral do SHA
+aprovado, root-owned, por canal administrativo. Preservar esse bundle, o
+histórico e o journal até fechar a auditoria. Não executar os instaladores
+históricos. O escopo é a troca dos 15 destinos fixos de código. Apenas o
+transporte administrativo fica indisponível durante a troca. Pedidos interrompidos
+seguem o [runbook de reconciliação](RECONCILIATION.md); recuperar o banco não
+conclui automaticamente o pedido remoto.
 
-Entrega futura: diretório deploy completo da revisão aprovada, via canal
-administrativo existente, propriedade root, sem escrita de grupo/outros.
-Manter todas as credenciais e estado atuais nos seus diretórios privados.
+## Somente leitura
 
-1. Cancelar aprovação armada pelo comando administrativo existente; concluir
-   revisão de qualquer worker/journal pendente. Não apagar tickets/journals.
-2. Administrador local executa `python3 -I deploy/remote-hml/migrate.py inventory`.
-   Saída contém somente paths fixos de código e hashes old/new, nunca segredos.
-3. Revisar inventário contra os fontes instalados e revisão entregue. Registrar
-   exatamente esse objeto JSON, por procedimento administrativo independente,
-   em /var/lib/funix-hml-ops/migration-approval.json, root 0600. Não versionar.
-4. Com autorização separada, executar `python3 -I deploy/remote-hml/migrate.py apply --authorize`.
-   O processo usa os locks existentes, recusa worker/aprovação/journal pendentes,
-   faz backup/staging privados e duráveis, para somente o transporte dedicado,
-   substitui código e verifica hashes e importação/pins antes de reabrir.
-5. Em falha normal, restaura o código anterior. Em interrupção, manter transporte
-   parado e executar o mesmo bundle com `recover --authorize`, após inspeção.
-   Não remover migration/journal.json para repetir. Uma migração já existente
-   requer decisão administrativa, não reinstalação indiscriminada.
+`python3 -I deploy/remote-hml/migrate.py inventory`
 
-Não altera systemd, sudoers, contas, CA, certificados, tokens, credenciais,
-aprovações, requests, SQLite, release ou journals do atualizador. O journal
-próprio só registra a troca de código. Novo módulo ausente no piloto é incluído
-com backup de ausência; recuperação só remove esse arquivo se ainda coincide
-com o hash instalado, sem limpeza recursiva.
+Executar como administrador, a partir do bundle. A leitura toma o lock
+administrativo e depois o lock oficial, sem esperar. Confirmar ausência física
+de autorização armada, worker inativo, resultado terminal vinculado ao apontador
+corrente e journal HML aceito/restaurado. Confirmar saúde funcional e GET mTLS
+antes da janela. Comparar SHA-256 e modos root:root com a matriz aprovada,
+incluindo as ausências de `hml-selection.py` e `hml-official-update.py`. Conferir
+pais canônicos, 0700 nos diretórios privados, espaço e ausência de estado de
+migração anterior. Qualquer divergência ou contenção interrompe o procedimento.
 
-Aceite administrativo obrigatório: serviço ativo, GET/status por mTLS válido,
-negativos CA/fingerprint/origem e ausência de aprovação; nenhum POST/update
-durante migração. O job Linux descartável exercita as unidades reais com backend
-sintético (REHEARSAL.md); não é ensaio de migração do piloto. PowerShell em
-execução e rotação completa ainda precisam de ensaio fora da VPS antes de
-autorizar este procedimento em produção administrativa.
+## Escrita, após autorização da direção
 
-O inventário da integração inclui `hml-selection.py`, o novo blob do verificador
-de procedência e o novo SHA-256 de `control.py` fixado em `rootctl.py`. Os fontes
-recuperados e seu manifesto continuam sendo a referência histórica. Confirme os
-pins e os hashes do inventário antes de qualquer migração futura.
+1. Registrar o mapa exato `{"old":...,"new":...}` em
+   `/var/lib/funix-hml-ops/migration-approval.json` (root 0600). Suspender
+   solicitações administrativas na janela. Preservar aprovação do preparador,
+   ponteiros e históricos.
+2. **Troca** — `python3 -I deploy/remote-hml/migrate.py apply --authorize`.
+   O journal passa por `staging`, `prepared`, `installing` e `awaiting_probe`.
+   Os backups e o staging são conferidos antes da troca. O hold durável e um
+   drop-in persistente no serviço normal são gravados antes de substituir código.
+   A condição impede ativação pelo boot, start ou restart enquanto o hold existe.
+   Preservar o drop-in dedicado. Fora da janela o arquivo de hold fica ausente.
+3. **Prova** — `python3 -I deploy/remote-hml/migrate.py probe --authorize`.
+   Abre uma unidade transitória de até 120 segundos, sem restart, com a mesma
+   identidade, origem, TLS e credenciais existentes e acesso apenas ao GET.
+   O transporte normal permanece bloqueado. Por canal administrativo aprovado,
+   o operador executa um GET autenticado ao endpoint mTLS existente e transfere
+   o JSON diretamente, como entrada padrão, para
+   `python3 -I deploy/remote-hml/migrate.py accept --authorize`.
+   Não copiar tickets, resposta ou credenciais para Git ou logs. Este passo
+   confia no administrador root para entregar o resultado real do GET. O
+   mecanismo confere desafio de uso único, invocação ativa, snapshot do journal,
+   último resultado e ausência de autorização armada. Não automatizar aprovação
+   pelo n8n. Se o GET falhar ou expirar, o hold continua e o ensaio encerra por
+   limite de tempo. Após inspeção, usar nova prova ou recuperação autorizada.
+4. **Aceite** — Depois de validar prova, código e backups, o migrador para a
+   unidade transitória, persiste `accepted` e só então libera o transporte
+   normal. Confirme novamente GET mTLS, mesmo resultado e revisão, saúde
+   funcional e worker inativo. Se o start falhar, o migrador repõe o hold.
+   Se a conferência pós-aceite falhar, interromper operações administrativas
+   e recorrer à reversão abaixo com nova autorização.
 
-Antes de emitir uma nova aprovação, execute a preparação com o controlador
-integrado. Ele aceita até 1 GiB e grava `prepared.json` sob o lock do atualizador.
-Operações previamente preparadas e ainda sem journal podem ser revalidadas
-pelo preparador para gerar esse registro. Se o registro já existe e diverge,
-preserve-o para inspeção administrativa. Nenhum ticket anterior é convertido.
+## Interrupção e reversão de código
 
-Para candidatos futuros: administrador seleciona PR/SHA/run/tentativa/artefato
-conforme fluxo oficial, revisa checksum/size e predecessor, atualiza approval.json
-do preparador por canal independente, executa preparação restrita e preflight.
-Após accepted ou auto_restored, usar respectivamente candidate ou previous do
-journal como instalado; nunca aceitar fase pendente. Só então emitir preview e
-nova aprovação administrativa de uso único. Executor mTLS recebe ticket, não
-poder de emitir aprovação. O workflow piloto fixado à PR257 não é reutilizável
-sem revisão administrativa; esta PR não altera n8n nem seus parâmetros.
+- **Recovery** — `python3 -I deploy/remote-hml/migrate.py recover --authorize`.
+  Preservar todos os arquivos. Antes do primeiro journal, o staging incompleto
+  é arquivado sob outro nome sem tocar nos destinos. Temporários residuais
+  não bloqueiam a próxima gravação atômica. Se houve troca parcial, o migrador
+  mantém o transporte bloqueado, verifica backups e modos, restaura os bytes
+  antigos, valida e grava `restored` antes de reabrir. Na fase terminal só
+  reconcilia o serviço com o código já validado. Em ambiguidade, não reexecutar
+  apply, apagar o journal ou remover o hold. Escalar ao administrador.
+- **Rollback após `accepted`** — Registrar autorização separada
+  `{"id":...,"old":...,"new":...}` do journal exibido pelo inventário em
+  `/var/lib/funix-hml-ops/migration-rollback-approval.json`, root 0600.
+  Executar `python3 -I deploy/remote-hml/migrate.py rollback --authorize`.
+  A reversão confere que o estado operacional continua igual ao do aceite.
+  Recusa drift de código, modos e backups. A fase `rollback` permite retomar
+  uma reversão já autorizada com recovery. Os módulos antes ausentes só são
+  removidos se ainda têm os bytes aprovados. Confirmar SHA-256 e modos antigos,
+  as duas ausências e o GET mTLS após a restauração.
+- **Preservação** — Não mexer em SQLite, Docker, credenciais, certificados,
+  contas, sudoers, configurações n8n ou journals operacionais. A migração
+  mantém os locks e registra somente sua própria transação. A única alteração
+  persistente de systemd é a condição dedicada do transporte. Uma falha de
+  validação ou divergência exige inspeção administrativa com o canal bloqueado.
 
-Revogação: cancelar aprovação armada e parar apenas o transporte dedicado por
-administrador. Rotação de CA/certificados/fingerprint exige procedimento
-separado e testes negativos/positivos, sem copiar material privado para Git.
-O relatório PowerShell guarda somente código SSH; ticket não é persistido.
-Guardar esse relatório local com ACL administrativa e retenção mínima para
-auditoria, removendo-o após o aceite conforme política local.
+Antes de qualquer futura autorização de atualização, preparar formalmente o
+novo candidato para gerar `prepared.json`; aprovações anteriores não são
+convertidas. A conferência do host e qualquer execução operacional exigem
+autorização separada.
