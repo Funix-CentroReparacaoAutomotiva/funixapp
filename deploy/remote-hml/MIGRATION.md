@@ -1,5 +1,35 @@
 # Migração administrativa do piloto (#274)
 
+## Retomada segura depois de uma tentativa restaurada
+
+Quando o primeiro journal registra `restored`, **não** apagar ou reutilizar
+`/var/lib/funix-hml-ops/migration/`, nem reutilizar a aprovação anterior.
+Uma nova tentativa, autorizada de forma independente, usa
+`migration-approval-retry.json` (root 0600) e journal próprio em
+`migration-retry/`. A ação é `retry-restored --authorize`, e sua recuperação
+é exclusivamente `recover-retry --authorize`. Antes de novo apply, o código
+confere que a tentativa anterior encerrou `restored`, que seus 14 alvos
+continuam exatamente no estado anterior e que os backups permanecem íntegros.
+A recuperação de uma tentativa interrompida admite módulos parcialmente
+substituídos, sem reexecutar atualização.
+
+**Causa encontrada no piloto:** exportar arquivos Python com CRLF no
+Windows altera os bytes verificados pelo controlador, mesmo quando o Python
+compila. Não utilizar `git archive` com conversão automática de linhas.
+O pacote deve vir da revisão fixa e preservá-la byte a byte, por exemplo,
+`git -c core.autocrlf=false archive --format=tar ...`.
+O administrador deve comparar SHA-256 de `control.py` com o `PREP_SHA`
+de `rootctl.py`, e Git blob SHA-1 de todos os módulos oficiais com
+`FILES`, **antes** de criar uma nova aprovação de migração.
+O próprio migrador recusa pins incorretos antes de criar o novo journal.
+
+`retry-restored` ainda exige aprovação administrativa nova, hashes exatos
+`old/new` e ambiente ocioso. O canal mTLS/n8n não recebe o poder de emitir
+essas aprovações. O resultado `accepted` do journal próprio e os testes
+externos pós-instalação continuam obrigatórios. Falha, interrupção ou estado
+inconsistente: não repetir; inspecionar o journal específico.
+
+
 Proposta para revisão, sem execução na VPS. Não executar os instaladores
 históricos recuperados. Preservar o bundle até concluir qualquer recuperação.
 Pedidos interrompidos exigem o [runbook de reconciliação](RECONCILIATION.md);
