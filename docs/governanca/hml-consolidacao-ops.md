@@ -29,7 +29,7 @@ da importação e revisão autorizada desses fontes.
 
 hml-selection.py é biblioteca sem CLI, serviço, download, extração ou escrita.
 parse aceita JSON de até 4096 bytes com somente pr/run_id/attempt/artifact_id,
-revision SHA40, sha256 hex64 e size inteiro positivo limitado a 20 GiB. Não
+revision SHA40, sha256 hex64 e size inteiro positivo limitado a 1 GiB (mesmo limite do controlador privilegiado versionado na `main`). Não
 aceita URL/caminho/shell/env/projeto. verify_package recebe um caminho canônico
 controlado pelo host, rejeita links e confere ID/size/digest via API fixa; delega
 run/tentativa/workflow/repo/PR/revisão/expiração e digest dos bytes ao verificador
@@ -80,3 +80,13 @@ A identidade do conector possui administração do repositório: revisão usando
 ## Ordem de trabalho
 
 A primeiro; B em seguida ou em paralelo sem ativação. Adotar B apenas após validação da identidade independente. Manter piloto atual como referência e fallback. Recuperação/rollback remoto explícito em incremento posterior, com consentimento específico sobre dados pós-deploy; preservar auto-restauração desde já. Não criar cadastro novo de pendências: atualizar #273 e #274.
+
+## Reconciliação com a PR #284 incorporada à main — 21/11/2026
+
+A PR #284 foi incorporada à `main` em 20/11/2026. O inventário anterior desta página descrevia apenas a árvore-base original da PR #285; **não representa mais a ausência desses módulos na main**. Agora existem `deploy/remote-hml/control.py`, `rootctl.py`, `migrate.py`, estrutura sudoers/systemd, instalador e ensaios. Isso não demonstra equivalência com a instalação da VPS, nem significa que a biblioteca `hml-selection.py` já esteja ligada ao controlador.
+
+Compatibilidade revista: `remote-hml/control.py::check_approval` limita `size` a 1 GiB; `hml-selection.py` foi alinhado a esse limite. O controlador exige `identity` aninhada, `digest`, `size` e `installed_revision`; a seleção pura usa o formato plano `pr/run_id/attempt/artifact_id/revision/sha256/size`. Não transformar a seleção em autorização: o lado privilegiado deve produzir e validar a tradução tipada, derivar o predecessor instalado, verificar a origem GitHub novamente e preservar o registro privado e a imutabilidade. Não deixar o solicitante enviar `installed_revision` como autoridade.
+
+A integração ainda exige procedimento de pinning: `rootctl.py::PREP_SHA`, `control.py::FILES` e pins dos módulos oficiais devem refletir **bytes efetivamente instalados** e auditados, com migração administrativa reversível. A função `require_available` continua sendo apenas um contrato puro, não substitui os locks `fcntl` e os journals oficiais. Proibir introdução de segundo lock ou fluxo de escrita paralelo. A aprovação atual por operador permanece independente e obrigatória; nenhum workflow móvel foi ativado.
+
+Este ajuste é limitado à seleção, testes e documentação na PR #285. Não altera os controladores versionados em `main`, não migra fontes da VPS nem prova integração operacional. Próximo aceite: adaptar o preparador/controlador em branch coordenada a partir de `main`, ensaiar integração com mTLS/worker/transação oficial, reconciliação após timeout, pins, sudoers/systemd e migração somente em runner descartável; depois comparar inventário somente leitura da instalação, sob autorização administrativa específica.
