@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -53,6 +54,70 @@ class MigrationTest(unittest.TestCase):
                     self.assertEqual(untouched.read_bytes(),b'synthetic-private-state')
                     self.assertTrue(all(args.args[0:2] in (('systemctl','show'),('systemctl','stop'),('systemctl','start'))
                                         for args in commands.call_args_list))
+
+    def test_candidate_pins_detect_crlf_before_any_migration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            package=root/'remote-hml'
+            package.mkdir()
+            installed=root/'installed'
+            installed.mkdir()
+            source=package/'official.py'
+            source.write_bytes(b'print("safe")\\n')
+            data=source.read_bytes()
+            blob=hashlib.sha1(b'blob '+str(len(data)).encode()+bytes([0])+data).hexdigest()
+            control=package/'control.py'
+            control.write_text('FILES = {"official": "'+blob+'"}\\n')
+            prepare_hash=hashlib.sha256(control.read_bytes()).hexdigest()
+            rootctl=package/'rootctl.py'
+            rootctl.write_text("PREP_SHA = '"+prepare_hash+"'\\n")
+            mapping={installed/'control.py':control}
+            with patch.object(migration,'PACKAGE',package),patch.object(migration,'targets',return_value=mapping):
+                migration.source_integrity(mapping)
+                source.write_bytes(data.replace(b'\\n',b'\\r\\n'))
+                with self.assertRaisesRegex(ValueError,'official module pin'):
+                    migration.source_integrity(mapping)
+                source.write_bytes(data)
+                control.write_bytes(control.read_bytes().replace(b'\\n',b'\\r\\n'))
+                with self.assertRaisesRegex(ValueError,'prepare controller pin'):
+                    migration.source_integrity(mapping)
+
+    def test_retry_preserves_terminal_journal_and_requires_exact_restoration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            source=root/'source.py'
+            source.write_bytes(b'new')
+            target=root/'installed.py'
+            target.write_bytes(b'old')
+            mapping={target:source}
+            approval={'old':migration.inventory(mapping),
+                      'new':{str(target):migration.digest(source)}}
+            with patch.object(migration,'command',return_value='active'):
+                def reject(): raise ValueError('synthetic failed check')
+                self.assertEqual(migration.migrate(mapping,root/'migration',approval,validate=reject),'restored')
+                old_record=(root/'migration'/'journal.json').read_bytes()
+                with patch.object(migration,'STATE',root):
+                    migration.prior_restoration(mapping)
+                    self.assertEqual(migration.migrate(mapping,root/'migration-retry',approval),'accepted')
+                    self.assertEqual((root/'migration'/'journal.json').read_bytes(),old_record)
+                    self.assertEqual(target.read_bytes(),b'new')
+                    with self.assertRaises(ValueError):
+                        migration.prior_restoration(mapping)
+                self.assertEqual(json.loads((root/'migration-retry'/'journal.json').read_text())['phase'],'accepted')
+
+    def test_retry_rejects_incomplete_legacy_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            target=root/'installed.py'
+            target.write_bytes(b'old')
+            source=root/'source.py'
+            source.write_bytes(b'new')
+            mapping={target:source}
+            approval={'old':migration.inventory(mapping),'new':{str(target):migration.digest(source)}}
+            with patch.object(migration,'command',return_value='active'):
+                migration.migrate(mapping,root/'migration',approval)
+            with patch.object(migration,'STATE',root),self.assertRaisesRegex(ValueError,'prior migration not safely restored'):
+                migration.prior_restoration(mapping)
 
     def test_inventory_mismatch_has_no_service_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
