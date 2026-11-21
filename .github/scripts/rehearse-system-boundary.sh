@@ -32,7 +32,7 @@ diagnose() {
   local result=$?
   if (( result != 0 )); then
     printf 'Failed phase: %s\n' "$phase"
-    journalctl --no-pager -n 70 -u "$transport" -u "$worker" || true
+    journalctl --no-pager -n 70 -u "$transport" -u "$worker" -u funix-hml-ops-migration-check.service || true
   fi
   systemctl stop "$transport" "$worker" || true
 }

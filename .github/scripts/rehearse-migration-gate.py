@@ -50,6 +50,7 @@ with tempfile.TemporaryDirectory() as tmp:
     directory.rename(root / "migration-first-evidence")
     tls.mkdir(mode=0o750)
     run("chgrp","funix-hml-ops",str(tls))
+    tls.chmod(0o750)
     cert = workspace / "client.crt"
     key = workspace / "client.key"
     subprocess.run(["openssl","req","-x509","-newkey","rsa:2048","-nodes","-days","1",
