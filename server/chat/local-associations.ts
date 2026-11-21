@@ -217,11 +217,15 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       if(!row.exact_contact){
         const refs=customers.references(String(row.id))
-        if(!owner||refs.person.some(person=>person.id&&person.id!==owner)||
+        // A different referenced owner or Contact is not a safe suggested match.
+        // An entirely textual ficha is only a *candidate* for manual review:
+        // no Contact/Entity is inferred from its name or telephone.
+        if(refs.person.some(person=>person.id&&person.id!==owner)||
           refs.contact.some(ref=>ref.id&&ref.id!==contact?.id)){
           conflict=true
           continue
         }
+        if(!owner)conflict=true
       }
       candidates.push({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),plate:String(row.plate)})
     }
