@@ -43,6 +43,8 @@ export function gmailAnalysisReader(config:{accountId:string,token:string,fetchI
   return {accountId:config.accountId,messageId,subject:String(raw.payload.headers.find((h:Record<string,unknown>)=>String(h.name).toLowerCase()==='subject')?.value??''),body:plain.join('\n'),attachments}
  }
 }
+/** Coda's identifier rules are enforced at its own boundary, not in the analysis core. */
+const isCodaContextReference=(value:unknown):value is string=>typeof value==='string'&&value===value.trim()&&/^i-[A-Za-z0-9_-]{1,100}$/.test(value)
 /** Uses the existing Coda rich-cell conversion; audited column IDs must be supplied. */
 export function analysisCodaReader(config:{token:string,docId:string,tableId:string,columns:Record<Exclude<keyof GmailContextRecord,'rowId'>,string>,fetchImpl?:typeof fetch}):GmailAnalysisProviders['lookup']{
  return async(query:ContextQuery,signal)=>{
@@ -51,13 +53,13 @@ export function analysisCodaReader(config:{token:string,docId:string,tableId:str
   if(!key&&!query.selectedRowId)return []
   const url=new URL('https://coda.io/apis/v1/docs/'+config.docId+'/tables/'+config.tableId+'/rows'+(query.selectedRowId?'/'+encodeURIComponent(query.selectedRowId):''))
   if(!query.selectedRowId){url.searchParams.set('query',config.columns[key!]+':'+JSON.stringify(query[key!]));url.searchParams.set('limit','20');url.searchParams.set('valueFormat','rich')}
-  else if(!/^i-[A-Za-z0-9_-]{1,100}$/.test(query.selectedRowId))throw Error('GMAIL_ANALYSIS_CONTEXT_INVALID')
+  else if(!isCodaContextReference(query.selectedRowId))throw Error('GMAIL_ANALYSIS_CONTEXT_INVALID')
   const raw=await boundedJson(await(config.fetchImpl??fetch)(url,{method:'GET',headers:{Authorization:'Bearer '+config.token},redirect:'error',signal}))
   if(raw.nextPageToken)throw Error('GMAIL_ANALYSIS_CODA_TOO_MANY_CANDIDATES')
   const rows=query.selectedRowId?[raw]:raw.items
   if(!Array.isArray(rows))throw Error('GMAIL_ANALYSIS_CONTEXT_INVALID')
   return rows.map((r:Record<string,any>)=>{
-   if(!r.values)throw Error('GMAIL_ANALYSIS_CONTEXT_INVALID')
+   if(!r?.values||!isCodaContextReference(r.id)||(query.selectedRowId&&r.id!==query.selectedRowId))throw Error('GMAIL_ANALYSIS_CONTEXT_INVALID')
    const result:Record<string,unknown>={rowId:r.id}
    for(const [field,column] of Object.entries(config.columns))result[field]=cellText(r.values[column])||null
    return result as GmailContextRecord

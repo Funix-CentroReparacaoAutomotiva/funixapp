@@ -5,10 +5,21 @@ import type {GmailAttachment,GmailExtraction,GmailContextRecord,GmailContext,Gma
 import type {UpdatePackageProposal} from '../shared/update-packages.ts'
 export type AnalysisMessage={accountId:string,messageId:string,subject:string,body:string,attachments:GmailAttachment[]}
 export type ContextQuery={processId?:string,experienceId?:string,plate?:string,budgetId?:string,selectedRowId?:string}
+/** Small independently replaceable ports. No provider credentials or URLs enter these contracts. */
+export type AnalysisMessageReader=(messageId:string,signal:AbortSignal)=>Promise<AnalysisMessage>
+export type AnalysisInterpreter=(message:AnalysisMessage,signal:AbortSignal)=>Promise<unknown>
+export type AnalysisContextReader=(query:ContextQuery,signal:AbortSignal)=>Promise<GmailContextRecord[]>
 export interface GmailAnalysisProviders{
- readMessage(messageId:string,signal:AbortSignal):Promise<AnalysisMessage>
- interpret(message:AnalysisMessage,signal:AbortSignal):Promise<unknown>
- lookup(query:ContextQuery,signal:AbortSignal):Promise<GmailContextRecord[]>
+ readMessage:AnalysisMessageReader
+ interpret:AnalysisInterpreter
+ lookup:AnalysisContextReader
+}
+/** Legacy Coda references remain readable; new adapters return a bounded opaque, namespaced key.
+ * The key identifies a candidate, not a verified Experience or permission to access/modify it.
+ * The bound adapter must resolve it exactly within its own source and authorized scope.
+ */
+export function isAnalysisContextReference(value:unknown):value is string{
+ return typeof value==='string'&&value===value.trim()&&(/^i-[A-Za-z0-9_-]{1,100}$/.test(value)||(value.length<=100&&/^ctx:[a-z][a-z0-9-]{0,23}:[A-Za-z0-9_-]{1,90}$/.test(value)))
 }
 export const analysisHash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export const analysisError=(code:string,status=422):never=>{throw new ServiceError(status,code,'Não foi possível concluir a análise. Confira a pendência e tente novamente.')}
@@ -48,7 +59,7 @@ export function validateContext(candidates:GmailContextRecord[],extraction:Gmail
  const keys=['rowId','processId','experienceId','plate','vehicle','partner','budgetId','budgetVersion']
  if(!Array.isArray(candidates)||candidates.length>20||new Set(candidates.map(r=>r?.rowId)).size!==candidates.length)analysisError('GMAIL_ANALYSIS_CONTEXT_INVALID')
  for(const r of candidates){
-  if(!object(r)||Object.keys(r).sort().join(',')!==keys.sort().join(',')||!/^i-[A-Za-z0-9_-]{1,100}$/.test(r.rowId)||keys.filter(k=>k!=='rowId').some(k=>r[k as keyof GmailContextRecord]!==null&&!text(r[k as keyof GmailContextRecord],300)))analysisError('GMAIL_ANALYSIS_CONTEXT_INVALID')
+  if(!object(r)||Object.keys(r).sort().join(',')!==keys.sort().join(',')||!isAnalysisContextReference(r.rowId)||keys.filter(k=>k!=='rowId').some(k=>r[k as keyof GmailContextRecord]!==null&&!text(r[k as keyof GmailContextRecord],300)))analysisError('GMAIL_ANALYSIS_CONTEXT_INVALID')
  }
  const query=contextQuery(extraction,answers)
  const selected=answers.contextSelection?candidates.find(r=>r.rowId===answers.contextSelection)??null:candidates.length===1?candidates[0]!:null
