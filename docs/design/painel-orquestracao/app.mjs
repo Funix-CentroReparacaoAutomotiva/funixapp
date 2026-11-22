@@ -1,119 +1,92 @@
-/** FUNIX ERP — painel executivo somente leitura. Sem inferência de progresso operacional. */
-export const REPO = 'Funix-CentroReparacaoAutomotiva/funixapp';
-export const FRONTS = Object.freeze([
-  {id:291,name:'Plataforma',description:'Segurança, ambientes, qualidade e governança.',glyph:'P',epics:[299,301,302,303]},
-  {id:292,name:'Operação',description:'Atendimento, planejamento e execução na oficina.',glyph:'O',epics:[305,310]},
-  {id:293,name:'Comercial',description:'Cadastro, catálogo, orçamento e histórico comercial.',glyph:'C',epics:[297,300,304]},
-  {id:294,name:'WhatsApp',description:'Conversas vinculadas aos Atendimentos e segurança de identidade.',glyph:'W',epics:[298,307,311]},
-  {id:295,name:'Documentos',description:'OS, PDFs, revisões e comunicação com o cliente.',glyph:'D',epics:[312,313]},
-  {id:296,name:'Integrações e IA',description:'Copilotos e integrações controladas com sistemas externos.',glyph:'I',epics:[306,309]}
-]);
-export const EXPECTED_IDS = Object.freeze(FRONTS.flatMap(f=>[f.id,...f.epics]));
-export function cleanIssues(items){return (Array.isArray(items)?items:[]).filter(x=>x&&Number.isInteger(x.number)&&!x.pull_request&&EXPECTED_IDS.includes(x.number))}
-export function isBlocked(issue){return Boolean(issue?.labels?.some(l=>/^(blocked|bloqueado|impedido)$/i.test(typeof l==='string'?l:l?.name||'')))}
-export function statusOf(issue){
-  if(!issue)return {key:'unknown',label:'Estado não verificado'};
-  if(issue.state==='closed')return {key:'closed',label:'Encerrada no GitHub'};
-  if(issue.state!=='open')return {key:'unknown',label:'Estado não verificado'};
-  if(isBlocked(issue))return {key:'blocked',label:'Bloqueio sinalizado'};
-  return {key:'open',label:'Em acompanhamento'};
-}
-export function mapData(items){
-  const byId=new Map(cleanIssues(items).map(x=>[x.number,x]));
-  return FRONTS.map(front=>{
-    const issue=byId.get(front.id);
-    const epics=front.epics.map(id=>({id,issue:byId.get(id)}));
-    const updated=[issue,...epics.map(x=>x.issue)].filter(Boolean).map(x=>x.updated_at).filter(Boolean).sort().reverse()[0]||null;
-    return {...front,issue,epics,updated,status:statusOf(issue),validEpics:epics.filter(x=>x.issue).length,explicitBlocks:[issue,...epics.map(x=>x.issue)].filter(isBlocked).length};
-  });
-}
-export function summaryOf(model){
-  const all=model.flatMap(f=>[f.issue,...f.epics.map(e=>e.issue)]).filter(Boolean);
-  return {tracked:all.length,blocked:all.filter(isBlocked).length,latest:all.map(x=>x.updated_at).filter(Boolean).sort().reverse()[0]||null};
-}
-export function recentRecords(model,limit=5){
-  return model.flatMap(f=>[f.issue,...f.epics.map(e=>e.issue)].filter(Boolean))
-    .filter(x=>x?.updated_at&&Number.isFinite(Date.parse(x.updated_at)))
-    .sort((a,b)=>Date.parse(b.updated_at)-Date.parse(a.updated_at))
-    .slice(0,limit);
-}
-export function parseIssueSearch(payload){
-  if(!payload||!Array.isArray(payload.items)||payload.incomplete_results===true||!Number.isInteger(payload.total_count))throw new Error('Busca incompleta ou formato inválido');
-  if(payload.items.length<payload.total_count)throw new Error('A busca excedeu a página disponível');
-  const found=cleanIssues(payload.items);
-  if(EXPECTED_IDS.some(id=>!found.some(x=>x.number===id)))throw new Error('Uma ou mais iniciativas/linhas não foram retornadas');
-  return found;
-}
-export function formattedDate(date){
-  if(!date||!Number.isFinite(Date.parse(date)))return 'data não informada';
-  return new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Sao_Paulo'}).format(new Date(date));
-}
-export function safeGitHubUrl(url){
-  try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='github.com'&&!u.username&&!u.password&&!u.port?u.href:null}catch{return null}
-}
-const API=`https://api.github.com/search/issues?q=${encodeURIComponent(`repo:${REPO} is:issue in:title "INITIATIVE" OR "EPIC"`)}&per_page=100`;
-const issueURL=id=>`https://github.com/${REPO}/issues/${id}`;
-const el=id=>document.getElementById(id);
-const text=(element,value)=>{element.textContent=String(value)};
-const make=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n};
-const link=(url,label)=>{const a=make('a','',label);a.href=safeGitHubUrl(url)||'#';a.target='_blank';a.rel='noopener noreferrer';return a};
-let currentFront=294,requestActive=false;
-function renderFronts(model){
-  const wrap=el('front-grid');wrap.replaceChildren();
-  for(const item of model){
-    const btn=make('button','front-card');btn.type='button';btn.dataset.front=String(item.id);btn.setAttribute('aria-pressed',String(item.id===currentFront));btn.setAttribute('aria-controls','details');
-    const head=make('div','node-heading');head.append(make('div','node-icon',item.glyph));
-    const name=make('div');name.append(make('div','node-name',item.name),make('div','node-number',`Iniciativa #${item.id}`));head.append(name);
-    btn.append(head,make('span','node-arrow','↗'));
-    const state=make('div','node-status',item.status.label);state.dataset.status=item.status.key;btn.append(state);
-    btn.append(make('div','node-meta',item.issue?`${item.validEpics} linhas rastreadas · registro atualizado em ${formattedDate(item.updated)}`:'Dados não verificados'));
-    btn.addEventListener('click',()=>{currentFront=item.id;renderFronts(model);renderDetails(item)});
-    wrap.append(btn);
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl} from './model.mjs';
+const $=id=>document.getElementById(id);
+const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0};
+const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
+const set=(id,v)=>{$(id).textContent=String(v)};
+const dt=(date)=>!date?'Não informada':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date(date));
+function notice(message){$('notice').hidden=!message;if(message)$('notice').textContent=message}
+function topAncestor(id){let node=state.model?.byId.get(id);while(node?.parentId && state.model.byId.has(node.parentId))node=state.model.byId.get(node.parentId);return node?.id||id}
+function currentNode(){return state.model?.byId.get(state.selected)}
+function statusChip(node){const b=element('span','status',STATUS_LABEL[node.status]);b.dataset.status=node.status;return b}
+function renderMap(){const m=state.model;const fronts=childrenOf(m,m.root.id),grid=$('node-grid');grid.replaceChildren();$('map').classList.toggle('roles-visible',state.roles);
+  set('graph-count',`${fronts.length} ${fronts.length===1?'frente':'frentes'} registradas`);$('empty-map').hidden=fronts.length!==0;grid.style.setProperty('--front-count',fronts.length);
+  for(const node of fronts){const b=element('button','node');b.type='button';b.dataset.id=node.id;b.setAttribute('aria-pressed',String(topAncestor(state.selected)===node.id));
+    const top=element('div','node-top'),ico=element('span','node-icon',node.title.charAt(0).toUpperCase()),name=element('strong','node-name',node.title);top.append(ico,name);
+    const desc=element('div','node-desc',node.description||'Sem descrição registrada');
+    const foot=element('div','node-footer'),count=element('span','node-count',`${childrenOf(m,node.id).length} subdivisões`);foot.append(statusChip(node),count);
+    const roles=element('div','node-roles');for(const r of node.roles)roles.append(element('span','role-chip',r));
+    b.append(top,desc,foot,roles);b.addEventListener('click',()=>selectNode(node.id,true));grid.append(b);
   }
+  requestAnimationFrame(drawWires);
 }
-function renderDetails(item){
-  text(el('details-title'),item.name);text(el('details-description'),item.description);
-  const view=el('details-link');view.hidden=!item.issue;if(item.issue)view.href=issueURL(item.id);
-  const box=el('details-info');box.replaceChildren();
-  const tags=make('div','detail-tags');
-  tags.append(make('span','detail-tag',item.status.label),make('span','detail-tag',`${item.validEpics} linhas com registro`),make('span','detail-tag',`Última edição: ${formattedDate(item.updated)}`));
-  box.append(tags,make('h3','','Linhas de trabalho registradas no GitHub'));
-  const list=make('div','epic-list');
-  for(const {id,issue} of item.epics){
-    const line=make('div','epic');line.append(link(issueURL(id),issue?.title?.replace(/^EPIC:\s*/,'')||`Issue #${id} · informação indisponível`),make('span','epic-status',issue?statusOf(issue).label:'Não verificada'));list.append(line);
+function svgLine(svg,coords,selected=false,related=false){const ns='http://www.w3.org/2000/svg',p=document.createElementNS(ns,'path');p.setAttribute('d',coords);if(selected)p.classList.add('selected');if(related)p.classList.add('related');svg.append(p)}
+function drawWires(){const m=state.model;if(!m)return;const area=$('graph-body'),svg=$('wires'),grid=$('node-grid'),hub=$('hub');svg.replaceChildren();const children=[...grid.children];if(!children.length)return;const base=area.getBoundingClientRect(),h=hub.getBoundingClientRect();if(!base.width)return;const sx=h.left+h.width/2-base.left,sy=h.bottom-base.top;
+  svg.setAttribute('viewBox',`0 0 ${base.width} ${base.height}`);
+  for(const b of children){const q=b.getBoundingClientRect(),x=q.left+q.width/2-base.left,y=q.top-base.top,active=b.dataset.id===topAncestor(state.selected);if(window.innerWidth<=480){const spine=Math.max(4,q.left-base.left-9);svgLine(svg,`M ${sx} ${sy} V ${Math.max(sy+9,Math.min(y-3,sy+15))} H ${spine} V ${y+28} H ${q.left-base.left}`,active)}else{const d=Math.max(20,(y-sy)*.45);svgLine(svg,`M ${sx} ${sy} C ${sx} ${sy+d}, ${x} ${y-d}, ${x} ${y}`,active)}}
+  const bounds=new Map(children.map(b=>[b.dataset.id,b.getBoundingClientRect()]));
+  for(const rel of m.relations){const a=bounds.get(rel.from),b=bounds.get(rel.to);if(!a||!b)continue;const x1=a.right-base.left,y1=a.top+a.height/2-base.top,x2=b.left-base.left,y2=b.top+b.height/2-base.top;svgLine(svg,`M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`,false,true)}
+}
+function drawSubwires(){const root=$('subroot'),grid=$('subgrid'),svg=$('subwires'),area=$('submap');svg.replaceChildren();if($('subtree').hidden||!grid.children.length)return;const r=area.getBoundingClientRect(),a=root.getBoundingClientRect();if(!r.width)return;svg.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);const sx=a.left+a.width/2-r.left,sy=a.bottom-r.top;for(const b of grid.children){const q=b.getBoundingClientRect(),x=q.left+q.width/2-r.left,y=q.top-r.top,d=Math.max(10,(y-sy)*.44);svgLine(svg,`M ${sx} ${sy} C ${sx} ${sy+d}, ${x} ${y-d}, ${x} ${y}`,b.dataset.id===state.selected)} }
+function renderDetails(){const m=state.model,node=currentNode();$('detail').hidden=!node;if(!node)return;
+  set('detail-type',node.type||'TRABALHO');set('detail-title',node.title);set('detail-desc',node.description||'Sem descrição registrada');
+  const ch=$('detail-status');ch.replaceWith(statusChip(node));const repl=$('detail').querySelector('.detail-top .status');repl.id='detail-status';
+  set('detail-reason',node.statusReason||'Situação operacional ainda não detalhada pelo CTO.');
+  set('detail-next',node.nextResult||'Próximo resultado não informado pelo CTO.');
+  set('detail-blocker',node.blocker||(node.status==='bloqueado'?'Motivo do bloqueio não informado.':'Nenhum bloqueio confirmado neste registro.'));
+  set('detail-updated',node.updatedAt?`Atualização do CTO: ${dt(node.updatedAt)}`:'Atualização operacional não informada');
+  const roles=$('detail-roles');roles.replaceChildren();if(node.roles.length){for(const name of node.roles)roles.append(element('span','role-chip',name))}else roles.append(element('span','node-desc','Nenhum papel confirmado no registro'));
+  const breadcrumbs=$('breadcrumbs');breadcrumbs.replaceChildren();const parents=branchOf(m,node.id);for(let i=0;i<parents.length;i++){if(i)breadcrumbs.append(element('span','crumb-sep','›'));const p=parents[i],btn=element('button','crumb',p.title);btn.type='button';btn.disabled=p.id===node.id;btn.addEventListener('click',()=>selectNode(p.id));breadcrumbs.append(btn)}
+  const rels=state.model.relations.filter(r=>r.from===node.id||r.to===node.id),relBox=$('detail-relations');relBox.replaceChildren();$('relation-section').hidden=rels.length===0;
+  for(const rel of rels){const target=state.model.byId.get(rel.from===node.id?rel.to:rel.from),b=element('button','relation-link',`${target.title}${rel.label?' · '+rel.label:''}`);b.type='button';b.addEventListener('click',()=>selectNode(target.id,true));relBox.append(b)}
+  const ev=node.evidence.find(e=>e.kind==='issue'||e.kind==='pr');const link=$('detail-link');link.hidden=!ev;if(ev){link.href=repoUrl(m.repository,ev.kind,ev.number)}else link.removeAttribute('href');
+  renderSubtree();renderHistory();requestAnimationFrame(()=>{drawWires();drawSubwires()});
+}
+function renderSubtree(){const m=state.model,node=currentNode(),kids=childrenOf(m,node.id),box=$('subtree');box.hidden=kids.length===0;if(!kids.length)return;
+  set('subtree-count',`${kids.length} ${kids.length===1?'nó':'nós'}`);set('subtree-title',`Subdivisões de ${node.title}`);set('subroot',node.title);
+  const grid=$('subgrid');grid.replaceChildren();grid.style.setProperty('--columns',String(Math.min(kids.length,3)));
+  for(const k of kids){const b=element('button','sub-node');b.type='button';b.dataset.id=k.id;b.setAttribute('aria-pressed',String(k.id===state.selected));b.append(element('small','',k.type.toUpperCase()||'NÓ'),element('strong','',k.title),statusChip(k));if(childrenOf(m,k.id).length)b.append(element('small','',`${childrenOf(m,k.id).length} subdivisões`));b.addEventListener('click',()=>selectNode(k.id,true));grid.append(b)}
+  requestAnimationFrame(drawSubwires);
+}
+function renderHistory(){const m=state.model,node=currentNode();if(!node)return;const all=recordsOf(m,node.id),filtered=all.filter(r=>state.filter==='all'||r.kind===state.filter),shown=state.expanded?filtered:filtered.slice(0,4);
+  set('history-count',`${all.length} ${all.length===1?'registro':'registros'}`);
+  for(const b of $('history-filters').querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.filter===state.filter));
+  const list=$('history-list');list.replaceChildren();if(!filtered.length)list.append(element('div','history-empty','Nenhum registro vinculado a esta seleção. Isso não significa ausência de trabalho no GitHub.'));
+  for(const r of shown){const a=element('a','history-item');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';const tag=element('span','kind',KIND_LABEL[r.kind]);tag.dataset.kind=r.kind;const copy=element('span','history-copy'),title=element('strong','',r.title);copy.append(title);
+    const key=`${r.kind}:${r.number}`,live=state.live.get(key);const details=live?.data?stateOfRecord(r,live.data):live?.error?'Estado não verificado — API indisponível':'A consultar estado atual';copy.append(element('small','',`#${r.number} · ${details}${r.context?' · '+r.context:''}`));a.append(tag,copy,element('span','history-arrow','↗'));list.append(a)}
+  $('history-more').hidden=filtered.length<=4;$('history-more').textContent=state.expanded?'Mostrar menos':`Ver todos os ${filtered.length} registros`;
+  set('history-source','Registros associados pelo CTO, com links públicos para o GitHub. Estado da PR/issue consultado quando a API permite; isso não comprova implantação.');
+  enrich(shown);
+}
+async function readGithub(record){const api=record.kind==='pr'?'pulls':'issues',url=`https://api.github.com/repos/${state.model.repository}/${api}/${record.number}`;
+  const res=await fetch(url,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  const v=await res.json();if(v.number!==record.number||typeof v.state!=='string')throw new Error('Resposta inesperada');return {state:v.state,merged:Boolean(v.merged),draft:Boolean(v.draft),updated_at:v.updated_at};}
+async function enrich(records){const model=state.model;if(!model)return;const now=Date.now(),version=state.loadVersion;const todo=records.filter(r=>{const v=state.live.get(`${r.kind}:${r.number}`);return !v||now-v.at>300000});
+  // consultas pontuais em grupos pequenos, sem credenciais ou varredura de toda a conta
+  for(const r of todo.slice(0,6)){const key=`${r.kind}:${r.number}`;state.live.set(key,{pending:true,at:now});try{const live=await readGithub(r);state.live.set(key,{data:live,at:Date.now()})}catch(e){state.live.set(key,{error:true,at:Date.now()})}
+    if(state.loadVersion!==version||state.model!==model)return;
   }
-  box.append(list);
-  box.append(make('p','muted','As datas indicam alterações nos registros, não avanço comprovado de código. O GitHub não informa, por si só, se uma entrega está homologada ou publicada.'));
+  // Atualiza sem reiniciar o enriquecimento das mesmas linhas.
+  if(state.loadVersion===version&&state.model===model)renderHistoryNoFetch();
 }
-function renderActivity(model){
-  const list=el('activity-list');list.replaceChildren();const recent=recentRecords(model);
-  if(recent.length===0){list.append(make('li','muted','Movimentações não verificadas.'));return}
-  for(const record of recent){
-    const li=make('li');li.append(make('span','activity-indicator'));
-    const c=make('div','activity-content');c.append(link(issueURL(record.number),record.title||`Registro #${record.number}`),make('span','activity-sub',`${statusOf(record).label} · alteração do registro, não entrega confirmada`));
-    li.append(c,make('span','activity-date',formattedDate(record.updated_at)));list.append(li);
-  }
+function renderHistoryNoFetch(){const previous=state.loadVersion;const m=state.model,node=currentNode();if(!node)return;const all=recordsOf(m,node.id),filtered=all.filter(r=>state.filter==='all'||r.kind===state.filter),shown=state.expanded?filtered:filtered.slice(0,4);const list=$('history-list');if(list.children.length!==shown.length)return;
+  for(let i=0;i<shown.length;i++){const r=shown[i],v=state.live.get(`${r.kind}:${r.number}`),msg=v?.data?stateOfRecord(r,v.data):v?.error?'Estado não verificado — API indisponível':'A consultar estado atual';list.children[i].querySelector('small').textContent=`#${r.number} · ${msg}${r.context?' · '+r.context:''}`}
 }
-function render(model){
-  renderFronts(model);renderDetails(model.find(x=>x.id===currentFront)||model[0]);renderActivity(model);
-  const summary=summaryOf(model);
-  text(el('metric-blocked'),summary.tracked===0?'—':String(summary.blocked));
-  text(el('metric-tracked'),summary.tracked===0?'—':String(summary.tracked));
+function selectNode(id,scroll=false){if(!state.model?.byId.has(id))return;state.selected=id;state.filter='all';state.expanded=false;for(const b of $('node-grid').children)b.setAttribute('aria-pressed',String(b.dataset.id===topAncestor(id)));renderDetails();if(scroll&&window.innerWidth<=1100)$('detail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}
+async function load(){if(state.loading)return;state.loading=true;$('refresh').disabled=true;set('source-status','Consultando estrutura…');notice('');
+  try{let raw;const embedded=$('embedded-snapshot');const isLocal=!/^https?:$/.test(location.protocol);let fallbackUsed=false;
+    if(isLocal&&embedded){fallbackUsed=true;raw=JSON.parse(embedded.textContent)}
+    else {const res=await fetch('./snapshot.json',{cache:'no-store'});if(!res.ok)throw new Error(`Snapshot HTTP ${res.status}`);raw=await res.json()}
+    const model=validateSnapshot(raw);const old=state.selected;state.model=model;state.loadVersion++;state.live.clear();state.selected=model.byId.has(old)?old:childrenOf(model,model.root.id)[0]?.id||null;
+    const mm=metrics(model);set('kpi-fronts',mm.fronts);set('kpi-subfronts',mm.nodes-mm.fronts);set('kpi-blocked',mm.blocked);set('hero-title',model.title+' · desenvolvimento');set('hero-summary',model.subtitle||'Estrutura definida pelo CTO.');set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');set('snapshot-revision',`Snapshot: ${model.snapshotId}`);
+    set('source-status',`Estrutura: ${dt(model.publishedAt)} (BRT)${isLocal?(fallbackUsed?' · cópia embutida':' · GitHub público'):''}`);
+    renderMap();renderDetails();if(!mm.fronts){$('detail').hidden=true}
+  }catch(e){state.model=null;state.selected=null;set('source-status','Fonte indisponível');notice('Não foi possível carregar ou validar o arquivo de estrutura do CTO. Nenhum andamento foi inferido. '+e.message);$('node-grid').replaceChildren();$('detail').hidden=true;set('kpi-fronts','—');set('kpi-subfronts','—');set('kpi-blocked','—');}
+  finally{state.loading=false;$('refresh').disabled=false;}
 }
-async function readIssues(){
-  const response=await fetch(API,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});
-  if(!response.ok)throw new Error(`GitHub HTTP ${response.status}`);
-  return parseIssueSearch(await response.json());
-}
-async function refresh(){
-  if(requestActive)return;requestActive=true;el('refresh').disabled=true;text(el('data-status'),'Atualizando fonte…');
-  const notice=el('notice');notice.hidden=true;
-  try{
-    render(mapData(await readIssues()));
-    text(el('data-status'),`Consulta: ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date())} (BRT)`);
-  }catch(e){
-    render(mapData([]));text(el('data-status'),'Dados não verificados');
-    text(notice,'Não foi possível confirmar os registros atuais pelo GitHub. As frentes abaixo são apenas o mapa de referência; tente atualizar novamente.');notice.hidden=false;
-  }finally{requestActive=false;el('refresh').disabled=false}
-}
-if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',()=>{render(mapData([]));el('refresh').addEventListener('click',refresh);refresh()});
+$('refresh').addEventListener('click',load);
+$('roles-toggle').addEventListener('click',()=>{state.roles=!state.roles;$('roles-toggle').setAttribute('aria-pressed',String(state.roles));$('map').classList.toggle('roles-visible',state.roles);requestAnimationFrame(drawWires)});
+$('history-filters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;state.filter=b.dataset.filter;state.expanded=false;renderHistory()});
+$('history-more').addEventListener('click',()=>{state.expanded=!state.expanded;renderHistory()});
+window.addEventListener('resize',()=>requestAnimationFrame(()=>{drawWires();drawSubwires()}));
+if('ResizeObserver' in window){const ro=new ResizeObserver(()=>requestAnimationFrame(()=>{drawWires();drawSubwires()}));ro.observe($('graph-body'));ro.observe($('submap'))}
+load();

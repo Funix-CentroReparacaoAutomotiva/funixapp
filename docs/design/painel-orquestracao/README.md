@@ -1,41 +1,53 @@
-# FUNIX ERP — Painel de Orquestração (primeiro incremento)
+# FUNIX ERP — Painel de Orquestração | MVP funcional
 
-**Estado: MVP em desenvolvimento; não implantado, homologado ou aprovado para produção.** Protótipo funcional **somente de leitura** para acompanhar as seis iniciativas existentes no GitHub, sem oferecer chat, criação de tarefas, aprovação, envio, credenciais ou execução de agentes.
+**Estado:** código funcional em desenvolvimento. **Não implica publicação, homologação operacional ou autorização de deploy.**
 
-## Execução local
+## Finalidade
 
-No diretório que contém `index.html`, `styles.css` e `app.mjs`:
+Página online, estática e somente de leitura para o proprietário enxergar a estrutura de desenvolvimento definida pelo CTO e os registros públicos associados a cada trabalho. Sem cadastro de tarefas, chat com CTO, execução ou aprovação de agentes pelo painel.
 
-```sh
-python3 -m http.server 8080 --bind 127.0.0.1
-```
+## Como abrir
 
-Abrir `http://127.0.0.1:8080`. O navegador consulta uma busca pública da API GitHub (`search/issues`) por títulos de iniciativas e épicos, sem autenticação nem acesso a dados privados. Atualizações de registros não comprovam entrega. 
+- Para uma demonstração sem instalar nada, abra o `FUNIX_Painel_Orquestracao_Funcional.html` entregue junto com o pacote. Ele inclui um **snapshot embutido**: navegação, mapa e histórico funcionam sem servidor; quando o navegador permite, consulta os **estados atuais** das PRs/issues via API pública do GitHub. A estrutura do HTML avulso só muda ao receber uma nova cópia.
+- Para a **versão conectada e atualizável**, hospede `index.html`, `styles.css`, `app.mjs`, `model.mjs` e `snapshot.json` juntos, em um serviço HTTPS estático com acesso adequado. O navegador busca `snapshot.json` a cada carregamento ou clique em Atualizar, independentemente do código de interface. O GitHub é consultado apenas para os estados dos registros técnicos exibidos.
+- Em desenvolvimento local, entre nesta pasta e execute `python3 -m http.server 8765 --bind 127.0.0.1`; acesse `http://127.0.0.1:8765/`. Não abrir `index.html` diretamente em `file://`; use o standalone para esse caso.
 
-Testes de modelo: `node --test tests/painel.test.mjs` (10 casos). O CI do repositório também deve executá-los por `npm run test:painel`. Validação visual em 320, 390 e 1440 px continua pendente: a política do navegador automatizado na sessão bloqueia navegação inclusive para `localhost`.
+## O que o CTO controla
 
-## Dados e honestidade de estados
+A fonte é `snapshot.json`, em contrato v1 (`schemaVersion: 1`). O CTO pode substituir livremente os 6 grupos e 16 épicos iniciais, inclusive por um mapa vazio, com novos níveis, papéis e dependências. **Nenhuma frente, ID, número de níveis, quantidade de agentes ou tipo de projeto é fixada na interface.**
 
-- Fonte: repositório público `Funix-CentroReparacaoAutomotiva/funixapp`, 22 issues de iniciativas/épicos #291–#313 (com IDs fixos e verificados; #308 não faz parte desse conjunto).
-- Seis iniciativas e IDs de épicos são um mapa conhecido. O navegador lê estados e datas reais, sem escrever no GitHub.
-- Não expõe total de PRs ao proprietário. Mostra apenas os registros de iniciativas/épicos, sinalizações explícitas de bloqueio e últimas edições no GitHub.
-- **"Em acompanhamento" significa apenas issue aberta**, nunca "trabalho ativo". "Encerrada no GitHub" não equivale a integrada, homologada, publicada ou aceita. Última edição não é progresso.
-- Não apresenta percentual concluído, custo, pontos, agentes individuais ou bloqueios inferidos.
-- Sem dados ou com rate limit/falha da API, deixa claro que os estados não foram verificados; **não exibe valores sintéticos como reais**.
-- A consulta direcionada evita perder as iniciativas conforme novas PRs/itens sejam criados. Se uma issue esperada faltar, a busca estiver incompleta, tiver paginação pendente ou falhar, o painel indica que os dados não foram verificados. A API pública possui limites de uso; futuramente uma fonte de síntese controlada poderá substituir esta dependência, se houver benefício demonstrado.
+- `root`: nó central, título e descrição.
+- `nodes`: `id` estável, `parentId` opcional, tipo, título, descrição, estado operacional, razão, próximo resultado, bloqueio, papéis, data e referências de evidência.
+- `relations`: vínculos explícitos entre trabalhos, fora da hierarquia pai-filho (mostrados em detalhes; conexões entre frentes de topo aparecem tracejadas).
+- `records`: vínculo explícito de cada issue, bug, PR ou outro registro a um nó. Subdivisões herdam a consulta do histórico de seus descendentes. PRs não são atribuídas automaticamente por palavras no título ou pelo autor.
+- `snapshotId`, `publishedAt`: identidade e data da revisão documental. **Não são timestamps de execução técnica nem de implantação.**
+
+### Estados permitidos
+
+`nao_verificado`, `planejado`, `acompanhamento`, `em_execucao`, `em_revisao`, `homologacao`, `bloqueado`, `concluido`.
+
+Apenas o CTO, com evidências rastreáveis e autoridade aplicável, preenche estados materiais. `concluido` é registro do CTO e não significa automaticamente publicado ou aceito operacionalmente. O snapshot inicial usa **Em acompanhamento** para as iniciativas públicas e **Não verificado** para os épicos sem comprovação de etapa. Há uma exceção comprovável: o épico de governança inclui este MVP em desenvolvimento, com PR #318.
+
+### Atualização segura
+
+1. O CTO consulta a situação efetiva das entregas e o histórico do repositório.
+2. Atualiza apenas os campos necessários de `snapshot.json` em branch/PR autorizada, sem dados internos, pessoais ou segredos.
+3. Testa `node --test tests/painel.test.mjs` e revisa o diff; publica o snapshot por mecanismo de aprovação apropriado.
+4. A página servida pela web passa a ler o novo arquivo no próximo acesso/atualização. **O site não modifica o JSON, não cria PRs e não aciona agentes.**
 
 ## Segurança e limitações
 
-- **Não publicar dados confidenciais no repositório ou no painel.** Toda informação exibida vem de itens já públicos na origem. Para status internos ou dados privados, será necessário planejar autenticação/hosting apropriado.
-- Sem token no browser, sem conexões à VPS, n8n, Evolution, Coda ou ERP operacional. Nenhum merge ou deploy deve ser feito automaticamente a partir deste protótipo.
-- A interface não mostra agentes por identidade porque GitHub author/assignee não comprova qual IA executou uma tarefa.
-- O próximo incremento só se justifica se houver um registro confiável, mantido pelo CTO, de **entrega, próximo passo, bloqueio, responsável e homologação por frente**. Esse registro pode alimentar o painel; não deve obrigar o proprietário a preencher campos manuais.
+- O repositório `Funix-CentroReparacaoAutomotiva/funixapp` é público. Por isso este snapshot contém apenas títulos e registros públicos, não inclui clientes, colaboradores identificáveis, infraestrutura privada, credenciais nem relatórios internos.
+- A versão estática realiza consultas **não autenticadas** a `api.github.com` apenas para itens visíveis; há cache local de cinco minutos para reduzir rate limit. Se a API estiver indisponível, o rótulo fica **Estado não verificado**, sem inventar status.
+- O painel não descobre automaticamente uma iniciativa nova apenas pela existência de uma issue. O CTO organiza `snapshot.json` e suas referências; este é o ponto de controle escolhido para evitar organização automática errada.
+- Não há serviço de sincronização agendado, banco de tarefas, feed de agentes em tempo real ou atualização automática de `snapshot.json` implementados.
+- A hospedagem online, o acesso protegido e a política de atualização pública devem ser definidos e autorizados separadamente. Nunca usar o GitHub público como armazenamento de informação confidencial.
 
-## Aceite do primeiro incremento
+## Verificação
 
-- Abre em desktop e celular e permite identificar as seis frentes rapidamente.
-- Seleção de uma frente revela linhas de trabalho e estados rastreáveis com links. As atualizações recentes não são tratadas como entregas realizadas.
-- O resumo deixa de enfatizar PRs e não informa falsamente que uma frente está ativa somente porque sua issue está aberta.
-- API falha/rate limit: mensagem explícita, sem progresso fictício.
-- Código estático e testes sem dependências pagas.
-- Repositório público / página online exigem revisão de confidencialidade antes de publicação.
+- `node --test tests/painel.test.mjs` — valida contrato, segurança de referências, profundidade arbitrária e estados.
+- `python3 build_standalone.py` — gera o HTML único usando **a mesma fonte** da versão web.
+- `python3 tests/browser_smoke.py` — testes Chromium de interação em 1440, 390 e 320 px, com API GitHub simulada, estrutura personalizada e mapa vazio. Exige Python `playwright` e Chromium; não realiza login nem mutação externa.
+- A integração de CI usa o script `npm run test:painel` já existente no projeto. Nenhum teste alegado como homologação de infraestrutura.
+
+**Decisão de produto:** direção em 22/11/2026, contrato do painel de estrutura dinâmica, issue #301. **PR técnica:** #318.

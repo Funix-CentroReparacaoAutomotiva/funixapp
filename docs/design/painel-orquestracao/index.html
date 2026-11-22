@@ -1,57 +1,29 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src https://api.github.com; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>FUNIX · Acompanhamento do ERP</title>
-  <meta name="description" content="Visão resumida e somente de leitura do desenvolvimento do FUNIX ERP.">
-  <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./app.mjs"></script>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="color-scheme" content="light">
+ <meta name="referrer" content="no-referrer">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+ <title>FUNIX | Orquestração do ERP</title>
+ <meta name="description" content="Acompanhamento visual do desenvolvimento do FUNIX ERP, com estrutura dinâmica definida pelo CTO e evidências verificáveis no GitHub.">
+ <link rel="stylesheet" href="./styles.css">
+ <script type="module" src="./app.mjs"></script>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="site-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">F<span>.</span></span><div><span class="brand-name">FUNIX</span><span class="brand-line">ACOMPANHAMENTO DO ERP</span></div></div>
-      <div class="header-meta"><span class="read-only"><span class="read-dot"></span>Somente leitura</span><a class="source-link" href="https://github.com/Funix-CentroReparacaoAutomotiva/funixapp" target="_blank" rel="noopener noreferrer">Fonte: GitHub <span aria-hidden="true">↗</span></a></div>
-    </header>
-
-    <main>
-      <div class="intro"><div><p class="eyebrow">VISÃO DO PROGRAMA</p><h1>Como está caminhando o ERP?</h1><p class="lead">Uma visão das frentes de trabalho. Sem precisar acompanhar PRs, agentes ou tarefas técnicas.</p></div><div class="freshness"><span id="data-status" role="status" aria-live="polite">Conectando ao GitHub…</span><button id="refresh" class="refresh" type="button"><span aria-hidden="true">↻</span> Atualizar</button></div></div>
-
-      <div id="notice" class="notice" role="alert" hidden></div>
-
-      <section class="summary" aria-label="Resumo do programa">
-        <div class="metric"><span class="metric-label">Frentes do ERP</span><strong id="metric-fronts">6</strong><span class="metric-hint">Mapa de responsabilidades</span></div>
-        <div class="metric"><span class="metric-label">Bloqueios sinalizados</span><strong id="metric-blocked">—</strong><span class="metric-hint">Apenas marcações explícitas</span></div>
-        <div class="metric"><span class="metric-label">Registros acompanhados</span><strong id="metric-tracked">—</strong><span class="metric-hint">Iniciativas e linhas associadas</span></div>
-      </section>
-
-      <section class="visual-section" aria-labelledby="map-title">
-        <div class="section-heading"><div><p class="eyebrow">MAPA DE TRABALHO</p><h2 id="map-title">Frentes coordenadas pelo CTO</h2></div><span class="section-hint">Toque em uma frente para ver os detalhes</span></div>
-        <div class="flow-area">
-          <div class="hub-wrap"><div class="hub"><div class="hub-avatar" aria-hidden="true">CTO</div><div><strong>CTO Virtual</strong><span>Coordenação técnica</span></div><div class="hub-chip">FUNIX ERP</div></div></div>
-          <div class="stem" aria-hidden="true"></div>
-          <div class="front-grid" id="front-grid" aria-label="Frentes de desenvolvimento"></div>
-        </div>
-      </section>
-
-      <section class="details" id="details" aria-labelledby="details-title">
-        <div class="details-top"><div><p class="eyebrow">FRENTE SELECIONADA</p><h2 id="details-title">Selecione uma frente</h2><p id="details-description" class="details-description">Veja o objetivo, as linhas de trabalho e a última movimentação registrada.</p></div><a id="details-link" class="details-link" target="_blank" rel="noopener noreferrer" hidden>Ver origem ↗</a></div>
-        <div id="details-info" class="details-info"><p class="muted">As informações serão carregadas a partir das issues do GitHub.</p></div>
-      </section>
-
-      <section class="activity" aria-labelledby="activity-title">
-        <div class="section-heading"><div><p class="eyebrow">SINAIS RECENTES</p><h2 id="activity-title">Registros atualizados recentemente</h2></div><span class="section-hint">Atualização de registros, não conclusão de trabalhos</span></div>
-        <ul id="activity-list" class="activity-list"><li class="muted">Consultando as atualizações…</li></ul>
-      </section>
-
-      <div class="truth-note"><span aria-hidden="true">ⓘ</span><p>O painel mostra registros verificáveis do GitHub. <strong>Issue encerrada não comprova homologação, publicação ou aceite operacional. Zero bloqueios sinalizados não significa ausência de problemas.</strong> Atribuições de agentes e percentuais de conclusão não são inferidos sem evidências.</p></div>
-    </main>
-
-    <footer><span>FUNIX ERP · Painel conceitual de acompanhamento</span><span>Sem ações de escrita ou aprovação</span></footer>
-  </div>
-</body>
-</html>
+ <header class="topbar"><div class="wrap topbar-inner"><div class="brand"><span class="brand-mark" aria-hidden="true">F<span>.</span></span><span class="brand-copy"><strong>FUNIX</strong><small>ORQUESTRAÇÃO DO ERP</small></span></div><div class="top-actions"><span class="read-only"><i></i> Somente leitura</span><a href="https://github.com/Funix-CentroReparacaoAutomotiva/funixapp" target="_blank" rel="noopener noreferrer" class="source">GitHub <span aria-hidden="true">↗</span></a></div></div></header>
+ <main class="wrap">
+  <div class="intro"><div><span class="eyebrow">VISÃO EXECUTIVA</span><h1>Como está caminhando o ERP?</h1><p>Uma visão do que o CTO organizou, do que avançou e do que precisa de atenção. Sem administrar agentes ou PRs.</p></div><div class="updated"><span id="source-status" role="status" aria-live="polite">Carregando estrutura…</span><button class="refresh" id="refresh" type="button">↻ Atualizar</button></div></div>
+  <div id="notice" class="notice" role="alert" hidden></div>
+  <section class="hero" aria-labelledby="hero-title"><div><div class="hero-eyebrow"><i></i> PANORAMA DO CTO</div><h2 id="hero-title">Estrutura dinâmica do desenvolvimento</h2><p id="hero-summary">O CTO define o mapa de trabalho. Esta página só apresenta a organização e suas evidências.</p></div><div class="kpis"><div class="kpi"><strong id="kpi-fronts">—</strong><span>Frentes</span></div><div class="kpi"><strong id="kpi-subfronts">—</strong><span>Subdivisões</span></div><div class="kpi"><strong id="kpi-blocked">—</strong><span>Bloqueios registrados</span></div></div></section>
+  <div class="section-head"><div><span class="eyebrow">MAPA DE TRABALHO</span><h2>Frentes coordenadas pelo CTO</h2><p>Toque em uma caixa para navegar pela estrutura. Os nomes e vínculos não são fixos.</p></div><button type="button" class="toggle" id="roles-toggle" aria-pressed="false">Exibir papéis</button></div>
+  <div class="work-grid"><section id="map" class="graph" aria-label="Mapa dinâmico de trabalho"><div class="graph-header"><strong>ORGANIZAÇÃO TÉCNICA</strong><span id="graph-count">—</span></div><div class="graph-body" id="graph-body"><svg id="wires" class="wires" aria-hidden="true"></svg><div class="hub" id="hub"><span class="hub-avatar">CTO</span><span><strong id="hub-title">CTO Virtual</strong><small id="hub-subtitle">Coordenação técnica</small></span></div><div class="node-grid" id="node-grid"></div><div class="empty-map" id="empty-map" hidden>Nenhuma frente definida pelo CTO. O painel está pronto para receber a estrutura.</div></div></section>
+   <aside class="detail" id="detail" aria-labelledby="detail-title" hidden><div class="detail-top"><span class="eyebrow" id="detail-type">FRENTE SELECIONADA</span><span id="detail-status" class="status">Não verificado</span></div><h2 id="detail-title">Selecione uma frente</h2><p class="detail-desc" id="detail-desc"></p><div class="breadcrumbs" id="breadcrumbs" aria-label="Navegação hierárquica"></div><div class="detail-section"><span class="detail-label">SITUAÇÃO REGISTRADA</span><p id="detail-reason"></p></div><div class="detail-section"><span class="detail-label">PRÓXIMO RESULTADO</span><p id="detail-next"></p></div><div class="detail-section"><span class="detail-label">PENDÊNCIAS / BLOQUEIOS</span><p id="detail-blocker"></p></div><div class="detail-section"><span class="detail-label">PAPÉIS ENVOLVIDOS</span><div id="detail-roles" class="role-tags"></div></div><div class="detail-section" id="relation-section" hidden><span class="detail-label">VÍNCULOS ENTRE TRABALHOS</span><div id="detail-relations" class="relation-list"></div></div><div class="detail-footer"><span id="detail-updated">Atualização não informada</span><a id="detail-link" hidden target="_blank" rel="noopener noreferrer">Ver origem no GitHub ↗</a></div>
+    <section class="subtree" id="subtree" aria-labelledby="subtree-title"><div class="subtree-heading"><div><span class="eyebrow">SUBDIVISÕES</span><h3 id="subtree-title">Trabalhos vinculados</h3></div><span id="subtree-count" class="mini-count"></span></div><div class="submap" id="submap"><svg id="subwires" class="wires" aria-hidden="true"></svg><div class="subroot" id="subroot">Frente</div><div class="subgrid" id="subgrid"></div></div><p class="subtree-note">O CTO pode criar novos níveis e reorganizar os vínculos sem modificar esta página.</p></section>
+    <section class="history" aria-labelledby="history-title"><div class="history-heading"><div><span class="eyebrow">RASTREABILIDADE</span><h3 id="history-title">Histórico da frente</h3></div><span class="mini-count" id="history-count">0</span></div><div class="history-controls" id="history-filters" role="group" aria-label="Filtrar histórico"><button type="button" class="filter active" data-filter="all" aria-pressed="true">Todos</button><button type="button" class="filter" data-filter="pr" aria-pressed="false">PRs</button><button type="button" class="filter" data-filter="issue" aria-pressed="false">Issues</button><button type="button" class="filter" data-filter="bug" aria-pressed="false">Bugs</button><button type="button" class="filter" data-filter="other" aria-pressed="false">Outros</button></div><p id="history-source" class="history-hint">Registros associados explicitamente pelo CTO. Estados do GitHub serão consultados quando possível.</p><div id="history-list" class="history-list"></div><button id="history-more" type="button" class="load-more" hidden>Mostrar mais</button></section>
+   </aside></div>
+  <div class="footnote"><span aria-hidden="true">ⓘ</span><p><strong>Registro não é conclusão.</strong> Uma issue encerrada ou PR integrada não comprova homologação, publicação ou aceite. Estados não verificados continuam identificados como tal. O painel não executa ações nem concede permissões.</p></div>
+ </main>
+ <footer class="wrap footer"><span>FUNIX ERP · Painel de acompanhamento</span><span id="snapshot-revision">Estrutura definida pelo CTO</span></footer>
+</body></html>

@@ -1,43 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FRONTS,EXPECTED_IDS,cleanIssues,isBlocked,mapData,statusOf,safeGitHubUrl,formattedDate,parseIssueSearch,summaryOf,recentRecords} from '../app.mjs';
-const mk=(id,overrides={})=>({number:id,title:`Registro ${id}`,state:'open',updated_at:'2026-11-21T18:00:00Z',labels:[],...overrides});
-const complete=()=>EXPECTED_IDS.map(id=>mk(id));
-test('mapa contém seis iniciativas, 22 registros distintos e nenhum épico duplicado',()=>{
-  assert.equal(FRONTS.length,6);assert.equal(EXPECTED_IDS.length,22);assert.equal(new Set(EXPECTED_IDS).size,EXPECTED_IDS.length);
-});
-test('não confunde PR com issue e mantém desconhecido quando falta evidência',()=>{
-  const data=[mk(291),mk(292,{state:'closed'}),mk(299,{updated_at:'2026-11-22T18:00:00Z'}),mk(999,{pull_request:{url:'https://api.github.com/pr/999'}})];
-  const m=mapData(data);assert.equal(cleanIssues(data).length,3);assert.equal(m.find(x=>x.id===291).status.label,'Em acompanhamento');assert.equal(m.find(x=>x.id===291).validEpics,1);assert.equal(m.find(x=>x.id===291).updated,'2026-11-22T18:00:00Z');assert.equal(m.find(x=>x.id===292).status.label,'Encerrada no GitHub');assert.equal(m.find(x=>x.id===293).status.label,'Estado não verificado');
-});
-test('somente label explícita determina bloqueio',()=>{
-  assert.equal(isBlocked({labels:[{name:'blocked'}]}),true);assert.equal(isBlocked({labels:[{name:'enhancement'}]}),false);assert.equal(statusOf({state:'open',labels:['bloqueado']}).key,'blocked');assert.equal(statusOf({state:'pending'}).key,'unknown');
-});
-test('não cria autorização, aceite, porcentagem ou progresso por estado',()=>{
-  const value=JSON.stringify(mapData([mk(291,{state:'closed'})]));
-  for(const forbidden of ['homologado','percentual','concluído','publicado'])assert.ok(!value.includes(forbidden));
-});
-test('links externos aceitos apenas na origem pública GitHub segura',()=>{
-  assert.equal(safeGitHubUrl('https://github.com/a/b'),'https://github.com/a/b');assert.equal(safeGitHubUrl('https://github.com.evil.test/a'),null);assert.equal(safeGitHubUrl('javascript:alert(1)'),null);assert.equal(safeGitHubUrl('https://user:pass@github.com/a'),null);
-});
-test('data inválida é explicitada',()=>assert.equal(formattedDate('invalid'),'data não informada'));
-test('busca estável: aceita somente 22 registros esperados mesmo fora da última página de issues',()=>{
-  const payload={total_count:22,incomplete_results:false,items:[...complete(),mk(999)]};
-  const issues=parseIssueSearch({...payload,total_count:23});
-  assert.equal(issues.length,22);assert.equal(new Set(issues.map(x=>x.number)).size,22);
-});
-test('rejeita resposta de busca truncada, incompleta ou sem iniciativa, sem exibir dado parcial como válido',()=>{
-  const all=complete();
-  assert.throws(()=>parseIssueSearch({total_count:120,incomplete_results:false,items:all}),/excedeu/);
-  assert.throws(()=>parseIssueSearch({total_count:22,incomplete_results:true,items:all}),/incompleta/);
-  assert.throws(()=>parseIssueSearch({total_count:21,incomplete_results:false,items:all.slice(1)}),/não foram retornadas/);
-});
-test('resumo só computa bloqueios explícitos; zero não é ausência comprovada de bloqueios',()=>{
-  const model=mapData([mk(291),mk(299,{labels:[{name:'blocked'}]}),mk(300,{state:'closed'})]);
-  assert.deepEqual({tracked:summaryOf(model).tracked,blocked:summaryOf(model).blocked},{tracked:3,blocked:1});
-  assert.equal(summaryOf(mapData([])).tracked,0);
-});
-test('histórico de alterações ordena datas e não fabrica eventos de conclusão',()=>{
-  const model=mapData([mk(291,{updated_at:'2026-11-19T12:00:00Z'}),mk(292,{updated_at:'2026-11-22T12:00:00Z'}),mk(299,{updated_at:'bad'})]);
-  assert.deepEqual(recentRecords(model).map(x=>x.number),[292,291]);
-});
+import {readFileSync} from 'node:fs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord} from '../model.mjs';
+const base=JSON.parse(readFileSync(new URL('../snapshot.json',import.meta.url),'utf8'));
+const clone=()=>structuredClone(base);
+test('22 nós do snapshot são válidos e mantêm hierarquia rastreável',()=>{const m=validateSnapshot(base);assert.equal(m.nodes.length,22);assert.equal(childrenOf(m,m.root.id).length,6);assert.equal(metrics(m).fronts,6);assert.equal(metrics(m).nodes,22);assert.equal(recordsOf(m,'fr-294').some(x=>x.number===289),true)});
+test('estrutura dinâmica com zero frentes não é erro',()=>{const r=clone();r.nodes=[];r.records=[];r.relations=[];const m=validateSnapshot(r);assert.deepEqual(metrics(m),{fronts:0,nodes:0,blocked:0,unknown:0});assert.deepEqual(childrenOf(m,m.root.id),[])});
+test('estrutura com profundidade arbitrária sem IDs fixos',()=>{const r=clone();r.nodes=[{id:'produto-x',parentId:null,title:'Produto X',status:'planejado'},{id:'equipa-a',parentId:'produto-x',title:'Equipe A',status:'em_execucao'},{id:'entrega-1',parentId:'equipa-a',title:'Entrega 1',status:'nao_verificado'}];r.records=[{nodeId:'entrega-1',kind:'bug',number:289,title:'Bug',url:'https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/289'}];r.relations=[];const m=validateSnapshot(r);assert.equal(metrics(m).fronts,1);assert.equal(branchOf(m,'entrega-1').length,3);assert.equal(recordsOf(m,'produto-x').length,1)});
+test('referência ao pai inexistente e ciclos falham fechados',()=>{const a=clone();a.nodes[0].parentId='inexistente';assert.throws(()=>validateSnapshot(a),/pai inexistente/);const b=clone();b.nodes[0].parentId='ep-300';assert.throws(()=>validateSnapshot(b),/Ciclo/)});
+test('IDs de nós repetidos e refs duplicadas são rejeitados',()=>{const a=clone();a.nodes.push(structuredClone(a.nodes[0]));assert.throws(()=>validateSnapshot(a),/duplicados/);const b=clone();b.records.push(structuredClone(b.records[0]));assert.throws(()=>validateSnapshot(b),/duplicado/)});
+test('links GitHub devem corresponder ao número e repositório autorizado',()=>{const a=clone();a.records[0].url='https://github.com/evil/repo/issues/44';assert.throws(()=>validateSnapshot(a),/URL/);assert.equal(safeRepoUrl('https://github.com.evil.test/x','Funix-CentroReparacaoAutomotiva/funixapp'),null);assert.equal(repoUrl(base.repository,'pr',318),'https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/318')});
+test('estado de PR integrada não equivale a publicada',()=>{assert.equal(stateOfRecord({kind:'pr'},{merged:true,state:'closed'}),'Integrada ao GitHub');assert.equal(stateOfRecord({kind:'pr'},{merged:false,state:'closed'}),'PR encerrada sem merge');assert.equal(stateOfRecord({kind:'issue'},{state:'closed'}),'Encerrada no GitHub')});
+test('status desconhecido, snapshots inválidos e registros apontando nós inexistentes falham',()=>{const a=clone();a.nodes[0].status='99%';assert.throws(()=>validateSnapshot(a),/desconhecido/);const b=clone();b.schemaVersion=2;assert.throws(()=>validateSnapshot(b),/não suportada/);const c=clone();c.records[0].nodeId='falso';assert.throws(()=>validateSnapshot(c),/Vínculo/)});
