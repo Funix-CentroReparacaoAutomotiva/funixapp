@@ -197,7 +197,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     return {blocked,at:blocked?null:candidates[0]??null,closedAt,version}
   }
 
-  private unlinkedAtendimentos(contact:CustomerRecord|null,phone:string|null) {
+  private unlinkedAtendimentos(contact:CustomerRecord|null,phone:string|null,authenticatedInteraction=false) {
     const customers=new CustomerRepository(this.db)
     const owner=contact?.entityId&&!customers.channelOwnerIsProvisional(contact.entityId)?contact.entityId:null
     const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.closed_at,a.stage,a.updated_at,
@@ -209,6 +209,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
           AND funix_customer_phone(a.phone)=?)
       )) ORDER BY a.created_at,a.id`).all(contact?.id??null,phone,phone,phone)
     const candidates:{id:string;name:string;vehicle:string;plate:string}[]=[]
+    let textualName:string|null=null
     let conflict=false,closedAt:string|null=null
     for(const row of rows){
       if(row.closed_at||row.stage==='rejeitados'){
@@ -218,19 +219,24 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       if(!row.exact_contact){
         const refs=customers.references(String(row.id))
-        // A different referenced owner or Contact is not a safe suggested match.
-        // An entirely textual ficha is only a *candidate* for manual review:
-        // no Contact/Entity is inferred from its name or telephone.
+        // A different referenced owner or Contact is not a safe match.
         if(refs.person.some(person=>person.id&&person.id!==owner)||
           refs.contact.some(ref=>ref.id&&ref.id!==contact?.id)){
           conflict=true
           continue
         }
-        if(!owner)conflict=true
+        if(!owner){
+          const person=refs.person[0],number=refs.contact[0]
+          if(authenticatedInteraction&&!contact&&phone&&refs.person.length===1&&!person?.id&&person?.text.trim()&&
+            refs.contact.length===1&&!number?.id&&number&&normalizeCustomerPhone(number.text)===phone){
+            // Promote the ficha's own participant. Never look up another Entity by name.
+            textualName=person.text.trim()
+          }else conflict=true
+        }
       }
       candidates.push({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),plate:String(row.plate)})
     }
-    return {candidates,conflict,closedAt}
+    return {candidates,conflict,closedAt,textualName}
   }
 
   /** Suggestions are advisory. Only an operator's explicit V20 link writes a binding. */
@@ -378,7 +384,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     if(contactConflict)
       this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'autonomous_contact_conflict')
     const resolution=this.unifiedCustomers&&!plan.at&&!plan.blocked&&!contactConflict&&(known||confirmedPhone)
-      ?this.unlinkedAtendimentos(known,confirmedPhone):undefined
+      ?this.unlinkedAtendimentos(known,confirmedPhone,true):undefined
     const ambiguous=!!resolution&&(resolution.conflict||resolution.candidates.length>1)
     if(ambiguous)this.db.prepare('INSERT OR IGNORE INTO chat_local_context_holds VALUES(?,?)').run(id,'ambiguous_atendimento_candidates')
     const target=plan.at??resolution?.candidates[0]?.id??null
@@ -390,9 +396,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       // In the autonomous target model, the first real interaction produces one shared
       // Entity + Contact for a confirmed PN. The channel label is provisional, not ID proof.
       const owner=known?.entityId?customers.record(known.entityId):null
-      if(this.unifiedCustomers&&confirmedPhone&&(owner||!plan.at&&!prior)){
-        const saved=customers.confirmChannelContact(owner,owner?.text||initial.name.trim()||confirmedPhone,known,confirmedPhone,id)
+      const textualName=target?resolution?.textualName:null
+      if(this.unifiedCustomers&&confirmedPhone&&(owner||textualName||!plan.at&&!prior)){
+        const saved=customers.confirmChannelContact(owner,owner?.text||textualName||initial.name.trim()||confirmedPhone,known,confirmedPhone,id)
         contactId=saved.contact.id
+        if(target&&textualName) customers.reconcileParticipant(target,customers.references(target),saved.person,saved.contact,0,0)
         this.db.prepare("UPDATE customer_records SET data=json_set(data,'$.channelState','response_received'),revision=revision+1 WHERE id=? AND COALESCE(json_extract(data,'$.channelState'),'')!='response_received'").run(contactId)
       }else if(this.unifiedCustomers&&!initial.phone&&!plan.at&&!prior&&!known){
         // LID-only first interaction: the same Entity and Contact survive until

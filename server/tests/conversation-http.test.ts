@@ -838,7 +838,7 @@ test('first outgoing interaction preserves ambiguity, revocation and closed-case
  }
 })
 
-test('text-only legacy Atendimento stays unique and is suggested for explicit PN reconciliation',async()=>{
+test('first authenticated outgoing message reconciles a unique textual Atendimento by exact phone',async()=>{
  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
  try{
   const at=new AtendimentoRepository(f.db)
@@ -865,27 +865,20 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
   assert.deepEqual(await replay.json(),await first.json())
   assert.equal(at.list().total,1)
   const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid)
-  assert.equal(authority.resolveIdentityActive(jid),null)
+  assert.equal(authority.resolveIdentityActive(jid),original.id)
   const answer=await f.request('/api/chat/conversations/'+cid+'/atendimentos','GET',undefined,f.browser)
   assert.equal(answer.status,200)
   const model=await answer.json()
-  assert.deepEqual(model.items,[])
-  assert.deepEqual(model.suggestedAtendimentos.map((row:{id:string})=>row.id),[original.id])
-  assert.equal(model.atendimentoConflict,true)
-  assert.equal((await f.request('/api/chat/conversations/'+cid+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
-  assert.equal(f.sends,0)
-  const base='/api/chat/conversations/'+cid
-  const link=await f.request(base+'/atendimentos','POST',{atendimentoId:original.id,expectedRevision:model.revision,
-    requestId:randomUUID(),reason:'Conferência explícita da ficha presencial textual'},f.browser)
-  assert.equal(link.status,201)
-  const linked=await link.json()
-  assert.equal(at.list().total,1)
-  assert.equal(authority.resolveIdentityActive(jid),null)
-  assert.equal((await f.request(base+'/context','POST',{linkId:linked.linkId},f.browser)).status,200)
-  assert.equal(authority.resolveIdentityActive(jid),original.id)
+  assert.deepEqual(model.items.map((row:{atendimentoId:string})=>row.atendimentoId),[original.id])
+  assert.equal((await f.request(`/api/atendimentos/${original.id}/evolution-conversations/${cid}/messages?scope=linked`,'GET',undefined,f.browser)).status,200)
   assert.equal(at.get(original.id).name,'Pessoa da ficha textual')
   const after=at.get(original.id,true)
-  assert.ok(after.references!.contact.some(contact=>!!contact.id))
+  const [participant]=after.references!.person
+  const [contact]=after.references!.contact
+  assert.equal(after.references!.person.length,1)
+  assert.equal(after.references!.contact.length,1)
+  assert.ok(participant?.id&&contact?.id)
+  assert.equal(new CustomerRepository(f.db).record(contact.id).entityId,participant.id)
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM customer_records WHERE kind='contact'").get()!.n,1)
   assert.equal((await f.sendEvent({...raw,data:{...raw.data,
     key:{...raw.data.key,id:'second-text-only-outgoing'}}})).status,202)
@@ -894,6 +887,23 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
   assert.deepEqual(commercialSnapshot(),before)
   assert.equal(f.sends,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('short Brazilian WhatsApp identifier does not attach to a textual ficha by adding a digit',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db)
+  const original=at.create({name:'Ficha com número completo',phone:'(31) 99999-0680'})
+  const jid='553199990680@s.whatsapp.net'
+  const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'outgoing-short-identifier',fromMe:true}}}
+  assert.equal((await f.sendEvent(event)).status,202)
+  assert.equal(at.list().total,1)
+  assert.equal(at.get(original.id).revision,original.revision)
+  assert.equal(f.local.authority!.links(jid).length,0)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,1)
+  assert.equal(f.sends,0)
  }finally{f.db.close()}
 })
 
