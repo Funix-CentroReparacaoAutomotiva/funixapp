@@ -268,15 +268,16 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     return {...resolution,canCreateTriage}
   }
 
-  createTriageFromHistory(conversationId:string) {
-    this.db.exec('BEGIN IMMEDIATE')
+  createTriageFromHistory(conversationId:string,inTransaction=false) {
+    if(!inTransaction)this.db.exec('BEGIN IMMEDIATE')
+    else if(!this.db.isTransaction)throw Error('A recuperação exige transação ativa.')
     try{
       const jid=this.technicalHistoryJid(conversationId)
       if(!jid||!this.unifiedCustomers)throw new ServiceError(409,'CHAT_TRIAGE_UNAVAILABLE','Conversa indisponível para triagem.')
       const existing=this.links(jid)
       // A retry after a lost response can reopen the ficha created by this action.
       if(existing.length===1&&existing[0]!.link_reason===historicalTriageReason){
-        this.db.exec('COMMIT')
+        if(!inTransaction)this.db.exec('COMMIT')
         return {atendimentoId:String(existing[0]!.atendimento_id),created:false}
       }
       const short=new ShortNumberReview(this.db,()=>false).triageCandidate(conversationId)
@@ -299,9 +300,9 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       // An explicit link for reading must not imply selection for sending.
       this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(id)
-      this.db.exec('COMMIT')
+      if(!inTransaction)this.db.exec('COMMIT')
       return {atendimentoId,created:true}
-    }catch(error){this.db.exec('ROLLBACK');throw error}
+    }catch(error){if(!inTransaction)this.db.exec('ROLLBACK');throw error}
   }
 
   /** Caller owns the transaction. Add references without rewriting an existing ficha. */

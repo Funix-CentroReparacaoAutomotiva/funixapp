@@ -1,6 +1,6 @@
 import {commercialFixture} from './fixtures/commercial.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
-import {issueProductionOrder} from './fixtures/production.ts'
+import {issueProductionOrder,removeV25FixtureSchema} from './fixtures/production.ts'
 import type {MessagePage} from '../experimental/evolution-read/client.ts'
 import { observedEvolutionUpsert } from './fixtures/evolution-webhook.ts'
 import assert from 'node:assert/strict'
@@ -10,6 +10,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
 import { openDatabase } from '../database.ts'
+import { migrate } from '../migrations.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { CustomerRepository } from '../customers.ts'
 import { V20AssociationRepository } from '../chat/v20-associations.ts'
@@ -1049,6 +1050,63 @@ test('historical short number can start triage only after an explicit action and
   assert.equal(authority.resolveIdentityActive(jid),null)
   assert.equal(f.sends,0)
  }finally{f.db.close()}
+})
+
+test('existing V24 links recover short-number history only after review of the same ficha and customer',async t=>{
+ for(const bound of [false,true])await t.test(bound?'same Contact already has the handle':'previous link without a bound Contact',async()=>{
+  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+  try{
+   const customers=new CustomerRepository(f.db),atendimentos=new AtendimentoRepository(f.db),authority=f.local.authority!
+   const owner=customers.save({kind:'entity',text:'Titular sintético já vinculado',contacts:[{text:'(31) 99888-0717'}]})
+   const contact=customers.contacts(owner.id)[0]!,references={person:[{id:owner.id,text:owner.text}],
+    contact:[{id:contact.id,text:contact.text}],vehicle:[],payer:[]}
+   const original=atendimentos.create({references}),other=atendimentos.create({references})
+   const jid='553198880717@s.whatsapp.net',cid=authority.rememberProviderConversation(jid)
+   const links=new V20AssociationRepository(f.db)
+   removeV25FixtureSchema(f.db)
+   if(bound)f.db.prepare('UPDATE customer_records SET conversation_id=? WHERE id=?').run(cid,contact.id)
+   const legacy=links.link({conversationId:cid,atendimentoId:original.id,expectedRevision:0,requestId:randomUUID(),reason:'Vínculo histórico V24'})
+   links.selectAtendimento(cid,legacy.linkId)
+   const originalLink=f.db.prepare('SELECT * FROM v20_associations WHERE id=?').get(legacy.linkId)
+   migrate(f.db)
+   const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'existing-short-link-history',fromMe:false}}}
+   assert.equal((await f.sendEvent(event)).status,202)
+   const base=`/api/chat/conversations/${cid}`,review=(id:string)=>`${base}/atendimentos/${id}/numeracao`
+   const history=`/api/atendimentos/${original.id}/evolution-conversations/${cid}/messages?scope=linked`
+   assert.equal((await f.request(history,'GET',undefined,f.browser)).status,409)
+   const list=await (await f.request(`${base}/atendimentos`,'GET',undefined,f.browser)).json()
+   assert.equal(list.numberReviewAvailable,true)
+   assert.equal(list.readIdentityBlocked,true)
+   assert.equal(list.items[0]?.linkId,legacy.linkId)
+   assert.equal((await f.request(review(other.id),'GET',undefined,f.browser)).status,409)
+   const preview=await f.request(review(original.id),'GET',undefined,f.browser)
+   assert.equal(preview.status,200)
+   const {token,contactId}=await preview.json()
+   assert.equal(contactId,contact.id)
+   const input={token,requestId:randomUUID(),reason:'Revisão do vínculo histórico já existente'}
+   const response=await f.request(review(original.id),'POST',input,f.browser)
+   assert.equal(response.status,200)
+   const repaired=await response.json()
+   assert.equal(repaired.linkId,legacy.linkId)
+   assert.deepEqual(await (await f.request(review(original.id),'POST',input,f.browser)).json(),repaired)
+   assert.deepEqual(f.db.prepare('SELECT * FROM v20_associations WHERE id=?').get(legacy.linkId),originalLink)
+   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations').get()!.n,1)
+   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_active_context').get()!.n,0)
+   assert.equal((await f.request(`${base}/context`,'POST',{linkId:legacy.linkId},f.browser)).status,409)
+   const saved=customers.record(contact.id)
+   assert.equal(saved.entityId,owner.id)
+   assert.equal(saved.text,contact.text)
+   assert.equal(saved.conversationId,cid)
+   const restored=await f.request(history,'GET',undefined,f.browser)
+   assert.equal(restored.status,200)
+   const content=await restored.json()
+   assert.equal(content.items[0]?.messageId,'existing-short-link-history')
+   assert.equal(content.sendTextAvailable,undefined)
+   assert.equal(f.sends,0)
+   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+  }finally{f.db.close()}
+ })
 })
 
 test('a textual candidate and a ficha of another owner never resolve silently',async()=>{

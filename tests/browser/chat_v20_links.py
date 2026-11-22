@@ -38,7 +38,7 @@ async def device_case(browser, width, height):
     state = {
         "revision": 0, "links": [], "active": None, "enabled": True,
         "fail_next_link": False, "fail_search": False, "writes": [], "requests": [],
-        "triage": None, "review_atendimento": None, "number_linked": False,
+        "triage": None, "review_atendimento": None, "number_linked": False, "linked_review": False,
     }
     try:
         h.check_ports()
@@ -121,17 +121,20 @@ async def device_case(browser, width, height):
                 return await route.fulfill(**response(200, {
                     "revision": int(state["number_linked"]), "activeAtendimentoId": None, "sendAtendimentoId": None,
                     "items": [{"linkId": L3, "atendimentoId": state["review_atendimento"], "name": "Ficha para revisão", "vehicle": "", "plate": ""}] if state["number_linked"] else [],
-                    "numberReviewAvailable": not state["number_linked"], "historyOnly": state["number_linked"],
+                    "numberReviewAvailable": not state["number_linked"] or state["linked_review"],
+                    "historyOnly": state["number_linked"] and not state["linked_review"],
+                    "readIdentityBlocked": state["linked_review"],
                 }))
             if path == f"/api/chat/conversations/{C}/atendimentos/{state['review_atendimento']}/numeracao":
                 if method == "GET":
                     return await route.fulfill(**response(200, {"token": "synthetic-preview-token", "entityName": "Ficha para revisão",
                         "registeredPhone": "+5531999990003", "observedPhone": "+553199990003"}))
-                assert method == "POST" and not state["number_linked"]
+                assert method == "POST" and (not state["number_linked"] or state["linked_review"])
                 data = request.post_data_json
                 assert data["token"] == "synthetic-preview-token" and len(data["requestId"]) == 36
                 assert data["reason"] == "Revisão sintética de identidade"
                 state["number_linked"] = True
+                state["linked_review"] = False
                 state["writes"].append(["number_review", data])
                 return await route.fulfill(**response(201, {"linkId": L3, "revision": 1}))
             if path == f"/api/atendimentos/{state['review_atendimento']}/evolution-conversations/{C}/messages":
@@ -285,6 +288,20 @@ async def device_case(browser, width, height):
         await page.get_by_role("button", name="Voltar à visão anterior").click()
         await expect(page.get_by_role("button", name="Abrir conversa: Contato Sintético Gama", exact=True)).to_be_visible()
         h.mark(f"{width}px: explicit number review opens the existing Atendimento in read-only mode")
+
+        state["linked_review"] = True
+        await page.get_by_role("button", name="Abrir conversa: Contato Sintético Gama", exact=True).click()
+        await expect(panel.get_by_text("Ficha para revisão", exact=True)).to_be_visible()
+        await expect(panel.get_by_role("button", name="Usar contexto")).to_have_count(0)
+        await panel.get_by_role("button", name="Revisar numeração", exact=True).click()
+        await panel.get_by_role("textbox", name="Motivo para vincular ou desvincular").fill("Revisão sintética de identidade")
+        await review.get_by_role("checkbox").check()
+        await review.get_by_role("button", name="Confirmar e recuperar histórico").click()
+        await page.wait_for_url(lambda url: urlparse(url).path == f"/atendimentos/{state['review_atendimento']}")
+        await expect(page.get_by_text("Histórico revisado", exact=True)).to_be_visible()
+        await page.get_by_role("button", name="Voltar à visão anterior").click()
+        await expect(page.get_by_role("button", name="Abrir conversa: Contato Sintético Gama", exact=True)).to_be_visible()
+        h.mark(f"{width}px: blocked history can be reviewed without removing the existing link")
 
         assert await page.evaluate("w => document.documentElement.scrollWidth <= w + 1", width)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)

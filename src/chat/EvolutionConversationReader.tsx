@@ -149,7 +149,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
       ? <button type="button" disabled={!historyAvailable||creatingTriage||sending}
           onClick={()=>void createTriage(selected)}>{creatingTriage?'Criando triagem…':'Criar Atendimento de triagem'}</button>
       : <p>Confira os Atendimentos existentes antes de vincular esta conversa.</p>)}
-   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel key={selected.conversationId+':'+linksVersion} conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}
+   {linksEnabled&&<details open={management||links?.items.length===0||links?.numberReviewAvailable&&links.readIdentityBlocked}><summary>Gerenciar vínculos</summary><ConversationLinksPanel key={selected.conversationId+':'+linksVersion} conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}
      onOpenLinkedAtendimento={onOpenAtendimento?id=>choose(selected,id):undefined}/></details>}
    <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={(management?contact?.whatsapp.conversationId:null)??selected.conversationId}
      contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending} onTechnicalHistory={setHistoryAvailable}>{null}</EvolutionAtendimentoChat>

@@ -33,3 +33,21 @@ Uma interação nova de número abreviado sem Contato, ficha ou outro Chat plaus
 A extensão SQLite preserva o número da versão V25 e adiciona registros de revisão e travas de envio. A transação guarda a escolha, o motivo e os identificadores internos sem substituir documentos comerciais ou mensagens. Em reversão de imagens, preserve o banco atual. As versões anteriores abrem a mesma V25 e podem deixar indisponível a leitura das conversas tratadas pela extensão. Os registros e as travas permanecem no banco.
 
 Para a conferência instalada, usar o fluxo oficial de deploy com backup SQLite íntegro e uma sessão autenticada. Conferir uma ficha existente com orçamento, uma primeira mensagem sem ficha, a consulta pelos dois lados e a ausência de envio ao confirmar o vínculo. Registrar somente resultados agregados e códigos de erro. O inventário de cópia distingue vínculos de leitura confirmados de números pendentes de verificação.
+
+## Recuperação do passivo autenticado
+
+Uma conversa com recebimento autenticado já gravado pode continuar sem ficha quando foi retida por revisão de numeração. O comando abaixo consulta somente o SQLite e imprime `digest` e contagens. Ele usa o corte UTC configurado em `FUNIX_CHAT_AUTONOMOUS_SINCE`.
+
+```sh
+node server/recover-short-chats.ts /data/funix.sqlite --preview
+```
+
+`eligible` conta triagens que podem ser recuperadas. A seleção exige evento autenticado do tipo upsert e a mensagem correspondente após o corte. Exclui conversas próprias, histórico sem evento, cadastro plausível, conflitos, vínculos já criados ou revogados e escolhas de contexto anteriores. `existingOrRevoked`, `needsIdentityReview` e `noAuthenticatedMessage` ficam fora da escrita. O relatório omite telefones, mensagens e identificadores privados.
+
+Com autorização da direção para o plano exato, use o digest retornado e um destino novo para um backup privado no armazenamento aprovado. A execução verifica a integridade do backup e revalida o plano sob transação. Se o plano mudar ou houver falha em um caso, a transação é revertida por inteiro. O backup permanece disponível.
+
+```sh
+node server/recover-short-chats.ts /data/funix.sqlite --apply "$DIGEST" "$NOVO_BACKUP_PRIVADO"
+```
+
+Para uma conversa já vinculada com o número abreviado, abra **Gerenciar vínculos → Revisar numeração**. O app só oferece a recuperação para a mesma ficha e o mesmo Contato e Entidade ali referenciados. A revisão preserva o ID do vínculo, registra o motivo e revoga qualquer contexto anterior de envio. Conflitos de titularidade, aliases contraditórios e múltiplos vínculos seguem pendentes de avaliação. O histórico recuperado permanece em modo de leitura.
