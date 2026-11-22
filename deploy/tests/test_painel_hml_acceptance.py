@@ -3,7 +3,7 @@ import json
 import unittest
 from pathlib import Path
 
-spec = importlib.util.spec_from_file_location('pan_check', Path(__file__).with_name('painel-hml-acceptance.py'))
+spec = importlib.util.spec_from_file_location('pan_check', Path(__file__).resolve().parents[1] / 'painel-hml-acceptance.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
