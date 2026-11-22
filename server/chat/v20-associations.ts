@@ -274,6 +274,11 @@ export class V20AssociationRepository {
         `SELECT atendimento_id,conversation_id FROM v20_associations WHERE id=? AND conversation_id IN (${placeholders}) AND unlinked_at IS NULL`,
       ).get(linkId,...scope)
       if (!link) return missing()
+      if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='chat_confirmed_short_numbers'").get()&&
+        this.db.prepare(`SELECT 1 FROM customer_channel_contacts c JOIN customer_records r ON r.id=c.contact_id
+          LEFT JOIN chat_confirmed_short_numbers s ON s.contact_id=c.contact_id
+          WHERE c.conversation_id=? AND (s.contact_id IS NOT NULL OR json_extract(r.data,'$.shortNumberReviewPending')=1)`).get(link.conversation_id!))
+        throw new ServiceError(409,'CHAT_NUMBER_HISTORY_ONLY','A revisão de numeração permite consultar o histórico. O envio continua bloqueado.')
       if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_local_context_holds'").get()){
         const identityHold=this.db.prepare(`SELECT 1 FROM chat_local_context_holds WHERE conversation_id IN (${placeholders}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates') LIMIT 1`).get(...scope)
         if(identityHold)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','Revise a identidade do Contato antes de selecionar o contexto.')

@@ -3,14 +3,16 @@ import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { ConversationIdentities, type ConversationAssociationReader } from './conversation-identities.ts'
 import {ServiceError} from '../errors.ts'
-import {CustomerRepository} from '../customers.ts'
+import {CustomerRepository,pendingShortNumber} from '../customers.ts'
 import {normalizeCustomerPhone,normalizePhone} from '../phone.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
 import { conversationNames, type NamePart, type CommercialConversation, type CustomerRecord } from '../../shared/customer.ts'
 import type { ConversationEvent } from './conversation-event.ts'
+import {hasTextualObservedNumber,reviewedNumber,reviewNumberPair,ShortNumberReview,textualNumberTargets} from './short-number-review.ts'
 
 const instance = 'funix_comercial'
 const historicalTriageReason = 'explicit_history_triage'
+const shortNumberTriageReason = 'authenticated_short_number_triage'
 /** Local commercial authority. Technical aliases remain owned by ConversationIdentities. */
 export class LocalConversationAssociations extends ConversationIdentities implements ConversationAssociationReader {
   private readonly unifiedCustomers:boolean
@@ -126,17 +128,21 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const members=this.members(jid)
     if(!members)throw conflict()
     const ids=this.handles(jid),scope=ids.map(()=>'?').join(',')
-    if(this.db.prepare(`SELECT 1 FROM chat_local_context_holds
-      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates') LIMIT 1`).get(...ids))
-      throw conflict()
-    const contacts=this.db.prepare(`SELECT id,phone_normalized FROM customer_records
+    const holds=this.db.prepare(`SELECT reason FROM chat_local_context_holds
+      WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates')`).all(...ids)
+    if(holds.length&&(holds.some(hold=>hold.reason!=='autonomous_contact_conflict')||
+      !new ShortNumberReview(this.db,()=>false).triageCandidate(conversationId)))throw conflict()
+    const contacts=this.db.prepare(`SELECT id,phone_normalized,conversation_id FROM customer_records
       WHERE kind='contact' AND conversation_id IN (${scope})`).all(...ids)
     const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
     const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
     const registered=phone?new CustomerRepository(this.db).phoneMatches(phone):[]
     const contact=contacts[0]
+    const review=typeof contact?.conversation_id==='string'?reviewedNumber(this.db,contact.conversation_id):null
+    const reviewed=review?.active===1&&review.contact_id===contact?.id&&review.observed_phone==='+'+pn?.split('@')[0]&&
+      review.registered_phone===contact?.phone_normalized
     if(contacts.length>1||registered.length>1||contact&&(
-      contact.phone_normalized&&contact.phone_normalized!==phone||
+      contact.phone_normalized&&contact.phone_normalized!==phone&&!reviewed||
       registered.some(record=>record.id!==contact.id)
     ))throw conflict()
     return jid
@@ -248,6 +254,9 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
     if(!phone)return undefined
     const [contact]=new CustomerRepository(this.db).phoneMatches(phone)
+    const pair=pn?reviewNumberPair(pn):null
+    if(!contact&&pair&&new CustomerRepository(this.db).phoneMatches(pair.registeredPhone).length)
+      return {candidates:[],conflict:false,canCreateTriage:false}
     const resolution=this.unlinkedAtendimentos(contact??null,phone)
     const canCreateTriage=this.unifiedCustomers&&!resolution.conflict&&resolution.candidates.length===0&&
       !this.interaction(jid).blocked&&!this.db.prepare(`SELECT 1 FROM chat_events
@@ -270,7 +279,8 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         this.db.exec('COMMIT')
         return {atendimentoId:String(existing[0]!.atendimento_id),created:false}
       }
-      if(existing.length||!this.suggestAtendimentos(conversationId)?.canCreateTriage)
+      const short=new ShortNumberReview(this.db,()=>false).triageCandidate(conversationId)
+      if(existing.length||!short&&!this.suggestAtendimentos(conversationId)?.canCreateTriage)
         throw new ServiceError(409,'CHAT_TRIAGE_REVIEW_REQUIRED','Confira os vínculos e os Atendimentos existentes antes de criar uma triagem.')
       const members=this.members(jid)!
       const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))!
@@ -279,8 +289,14 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         WHERE c.instance=? AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(instance,...members))
         throw new ServiceError(409,'CHAT_TRIAGE_HISTORY_REQUIRED','Carregue o histórico da conversa antes de criar uma triagem.')
       const id=this.rememberProviderConversation(jid)
-      const contact=new CustomerRepository(this.db).resolveChannelContact(id)
-      const atendimentoId=this.ensureInteraction(jid,null,contact.id,phone,phone,historicalTriageReason,'operator')
+      const customers=new CustomerRepository(this.db)
+      const contact=short?customers.createUnnumberedChannelContact('',id,true).contact:customers.resolveChannelContact(id)
+      const atendimentoId=this.ensureInteraction(jid,null,contact.id,short?'':phone,short?'':phone,historicalTriageReason,'operator')
+      if(short){
+        const handles=this.handles(jid)
+        this.db.prepare(`DELETE FROM chat_local_context_holds WHERE conversation_id IN (${handles.map(()=>'?').join(',')})
+          AND reason='autonomous_contact_conflict'`).run(...handles)
+      }
       // An explicit link for reading must not imply selection for sending.
       this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(id)
       this.db.exec('COMMIT')
@@ -311,7 +327,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         .run(linkId,id,at,this.now(),actor,reason)
       this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(id)
       // A previously selected closed interaction must not retain working context.
-      if(created&&previous.some(link=>link.closed_at||link.stage==='rejeitados')){
+      if(created&&reason!==shortNumberTriageReason&&previous.some(link=>link.closed_at||link.stage==='rejeitados')){
         const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
         this.db.prepare(`DELETE FROM v20_active_context WHERE conversation_id IN (${scope})`).run(...handles)
         this.db.prepare(`UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id IN (${scope})`).run(...handles)
@@ -373,10 +389,40 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         channels=[{id:matches[0]!.id}]
     }
     const known=channels.length===1?customers.record(String(channels[0]!.id)):matches.length===1?matches[0]!:null
+    if(known?.conversationId&&reviewedNumber(this.db,known.conversationId))return
     const confirmedPhone=normalizePhone(initial.phone)
     const incompatible=!!known&&(!!known.conversationId&&!handles.includes(known.conversationId)||
       !!known.text&&!!confirmedPhone&&normalizeCustomerPhone(known.text)!==confirmedPhone)
-    const contactConflict=!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
+    const pair=phone?reviewNumberPair(phone+'@s.whatsapp.net'):null
+    const possibleReview=pair&&(customers.phoneMatches(pair.registeredPhone).length>0||
+      textualNumberTargets(this.db,pair.registeredPhone).length>0||hasTextualObservedNumber(this.db,pair.observedPhone)||
+      !!this.db.prepare('SELECT 1 FROM chat_provider_conversations WHERE instance=? AND remote_jid=?')
+        .get(instance,pair.registeredPhone.slice(1)+'@s.whatsapp.net'))
+    const pending=known?.conversationId?pendingShortNumber(this.db,known.conversationId):null
+    if(this.unifiedCustomers&&pair&&pending&&known){
+      const previous=this.links(jid),open=previous.filter(link=>!link.closed_at&&link.stage!=='rejeitados')
+      const latest=previous.reduce((last,link)=>String(link.closed_at??link.updated_at)>last?String(link.closed_at??link.updated_at):last,'')
+      const at=open.length===1?String(open[0]!.atendimento_id):
+        open.length===0&&previous.length>0&&!possibleReview&&timestamp>latest
+          ?this.ensureInteraction(jid,null,known.id,'',initial.name,shortNumberTriageReason):null
+      if(at)this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
+      return
+    }
+    // A received channel can have one triage even without a valid civil phone.
+    // A possible matching cadastro is enough to defer creation, never to link.
+    if(this.unifiedCustomers&&pair&&!plan.at&&!plan.blocked&&channels.length===0&&matches.length===0&&!prior&&!possibleReview){
+      const schema=this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_confirmed_short_numbers'").get()
+      if(schema){
+        const {contact}=customers.createUnnumberedChannelContact(initial.name,id,true)
+        const at=this.ensureInteraction(jid,null,contact.id,'',initial.name,shortNumberTriageReason)
+        this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(id)
+        this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
+          .run(id,at,e.eventId,this.now(),JSON.stringify(initial),'created')
+        this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
+        return
+      }
+    }
+    const contactConflict=possibleReview||!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       incompatible
     // Keep the received message, but require explicit review before associating
