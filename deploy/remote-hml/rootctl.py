@@ -16,7 +16,7 @@ import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
 PREP=Path('/usr/local/lib/funix-hml-prepare/control.py')
-PREP_SHA='6c363584fd769fa727f699f654574842097a133068789f11daed3e442f7acd9d'
+PREP_SHA='f44e60e193d0cf2028c96fb0570026bf2345c750e20270f81405a2a01fa10bec'
 WORKER='funix-hml-ops-worker.service'
 SCHEMA='funix-hml-ops/1'
 PHASES={'prepared','quiescing','installing','restoring','accepted_pending_open','restored_pending_open','accepted','restored','rollback_requested'}
