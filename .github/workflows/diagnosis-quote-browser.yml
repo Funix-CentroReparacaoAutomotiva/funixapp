@@ -22,9 +22,12 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm install --no-save --no-audit --no-fund playwright@1.56.1
       - run: node scripts/diagnosis-quote-browser.mjs
+      - run: node scripts/financial-homologation-browser.mjs
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: diagnosis-quote-chromium
-          path: artifacts/diagnosis-quote/
+          path: |
+            artifacts/diagnosis-quote/
+            artifacts/financial-homologation/
           if-no-files-found: ignore
