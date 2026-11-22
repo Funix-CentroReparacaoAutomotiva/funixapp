@@ -139,7 +139,10 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
       {links.items.map(item => <div className="ev-linked" key={item.linkId}>
         <span>{description(item)}</span>
         <div className="ev-link-actions">
-          {!links.historyOnly&&<button type="button" disabled={busy}
+          {links.numberReviewAvailable&&<button type="button" disabled={busy||!!review}
+            onClick={()=>void reviewNumber({id:item.atendimentoId,name:item.name,vehicle:item.vehicle,plate:item.plate})}>
+            Revisar numeração</button>}
+          {!links.historyOnly&&!links.numberReviewAvailable&&<button type="button" disabled={busy}
             aria-pressed={links.activeAtendimentoId === item.atendimentoId}
             onClick={() => void change('context', links.activeAtendimentoId === item.atendimentoId ? null : item.linkId)}>
             {links.activeAtendimentoId === item.atendimentoId ? 'Contexto ativo ✓' : 'Usar contexto'}</button>}
@@ -169,14 +172,15 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
           Conferi que os dois números pertencem ao mesmo contato.
         </label>
         <p>O histórico ficará disponível na ficha para leitura.</p>
-        <button type="button" disabled={busy||!confirmed||!reason.trim()} onClick={()=>void confirmNumber()}>Confirmar e vincular histórico</button>
+        <button type="button" disabled={busy||!confirmed||!reason.trim()} onClick={()=>void confirmNumber()}>
+          {links.items.some(item=>item.atendimentoId===review.candidate.id)?'Confirmar e recuperar histórico':'Confirmar e vincular histórico'}</button>
         <button type="button" disabled={busy} onClick={()=>setReview(null)}>Cancelar revisão</button>
       </fieldset>}
       {(query.trim()?candidates:links.suggestedAtendimentos??[]).map(candidate => {
         const existing = links.items.some(link => link.atendimentoId === candidate.id)
         return <div className="ev-linked" key={candidate.id}>
           <span>{description(candidate)}</span>
-          {links.numberReviewAvailable&&!existing
+          {links.numberReviewAvailable&&!links.items.length
             ? <button type="button" disabled={busy||!!review} onClick={()=>void reviewNumber(candidate)}>Revisar numeração</button>
             : <button type="button" disabled={busy || existing || !reason.trim()}
                 onClick={() => void change('link', candidate.id)}>{existing ? 'Já vinculado' : 'Vincular'}</button>}
