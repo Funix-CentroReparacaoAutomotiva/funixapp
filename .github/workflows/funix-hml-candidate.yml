@@ -85,8 +85,13 @@ jobs:
         run: |
           set -euo pipefail
           docker build --target api --label "org.opencontainers.image.revision=$REVISION" -t funix-api:ci .
-          docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
+          # Normal Web is kept intact and checked for the absence of the panel.
+          docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:base .
+          docker run --rm --network none --entrypoint sh funix-web:base -ec 'test ! -e /usr/share/nginx/html/painel/index.html'
+          # The candidate-only Web image includes /painel under the existing HML gateway.
+          docker build --target web-hml-painel --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
           GITHUB_SHA="$REVISION" bash deploy/test-containers.sh
+          bash deploy/test-painel-hml.sh
       - name: Export HML-only candidate artifact, no registry or VPS access
         run: |
           set -euo pipefail

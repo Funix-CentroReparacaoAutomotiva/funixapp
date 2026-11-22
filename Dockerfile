@@ -26,6 +26,16 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
 ENTRYPOINT ["nginx"]
 CMD ["-g", "daemon off;"]
 
+# Only the homologation Web image contains the read-only orchestration dashboard.
+# The standard 'web' target above is unchanged and remains dashboard-free.
+FROM web AS web-hml-painel
+COPY --chmod=0644 deploy/painel-hml-nginx.conf /etc/nginx/nginx.conf
+COPY --chmod=0644 docs/design/painel-orquestracao/index.html /usr/share/nginx/html/painel/index.html
+COPY --chmod=0644 docs/design/painel-orquestracao/styles.css /usr/share/nginx/html/painel/styles.css
+COPY --chmod=0644 docs/design/painel-orquestracao/app.mjs /usr/share/nginx/html/painel/app.mjs
+COPY --chmod=0644 docs/design/painel-orquestracao/model.mjs /usr/share/nginx/html/painel/model.mjs
+COPY --chmod=0644 docs/design/painel-orquestracao/snapshot.json /usr/share/nginx/html/painel/snapshot.json
+
 FROM node:24.19.0-bookworm-slim AS api
 ENV NODE_ENV=production FUNIX_API_HOST=0.0.0.0 FUNIX_API_PORT=8787
 WORKDIR /app
