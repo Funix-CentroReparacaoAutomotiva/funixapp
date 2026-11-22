@@ -50,7 +50,23 @@ class DockerAdapter:
         return json.loads(self.run(self.release_args() + ["config", "--format", "json"]))
 
     def release_args(self):
-        return self.base + (["-f", str(self.override)] if self.override.exists() else [])
+        args = self.base + (["-f", str(self.override)] if self.override.exists() else [])
+        # This optional overlay is strictly API-scoped. Include it in all
+        # render, update and maintenance paths so the pinned contract digest
+        # continues to cover the effective Cilia flags.
+        cilia = self.state / "cilia-flags.json"
+        if cilia.exists() or cilia.is_symlink():
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "hml_cilia_contract_store", Path(__file__).with_name("hml-cilia-contract-store.py"))
+            store = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(store)
+            raw = store.existing_file(cilia)
+            if raw is None:
+                raise ValueError("Cilia override missing")
+            store.validate_override(raw)
+            args += ["-f", str(cilia)]
+        return args
 
     def containers(self):
         ids = self.run(self.base + ["ps", "--all", "--quiet"]).split()
