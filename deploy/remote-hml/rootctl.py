@@ -16,7 +16,7 @@ import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
 PREP=Path('/usr/local/lib/funix-hml-prepare/control.py')
-PREP_SHA='6c363584fd769fa727f699f654574842097a133068789f11daed3e442f7acd9d'
+PREP_SHA='ac36d9d4a8dcd4bfb6a4e831c323098610c9bb5198c7243527ff54480f000423'
 WORKER='funix-hml-ops-worker.service'
 SCHEMA='funix-hml-ops/1'
 PHASES={'prepared','quiescing','installing','restoring','accepted_pending_open','restored_pending_open','accepted','restored','rollback_requested'}
@@ -93,10 +93,11 @@ def active_record(p):
     return j,rec
 
 def context(check_archive=True):
-    p=prep_module(); a=p.read_json(p.PRIVATE/'approval.json'); i=p.check_approval(a)
+    p=prep_module(); a=p.read_json(p.PRIVATE/'approval.json')
+    selection=p.official_module('hml-selection'); candidate=p.selected(a,selection); i=a['identity']
     token=p.private_file(p.PRIVATE/'github.token').read_text(encoding='ascii').strip()
     require(re.fullmatch(r'github_pat_[A-Za-z0-9_]{20,240}',token) is not None,'token_format')
-    op=p.STATE/f"op-{i['run_id']}-{i['attempt']}-prep-{i['artifact_id']}"
+    op=p.STATE/selection.operation_id(candidate)
     p.private_dir(op); require(not exists(op/'operation.json'),'operation_already_used')
     u=p.load_updater(token); u.host_scope(op,op/'config.json')
     cfg=p.read_json(op/'config.json'); u.check_config(cfg,op)
@@ -108,9 +109,10 @@ def context(check_archive=True):
     require(phase in ('accepted','restored'),'project_recovery_pending')
     previous=rec['candidate' if phase=='accepted' else 'previous']
     require(previous['revision']==a['installed_revision'] and previous['revision']!=i['revision'],'installed_revision_changed')
+    require(p.read_json(op/'prepared.json')==p.preparation_record(op,candidate,previous,j),'prepared_record_changed')
     preview={'action':'update','scope':'funix-hml','identity':i,'operation':op.name,'revision':i['revision'],
              'installed_revision':previous['revision'],'sha256':a['digest'],'size':a['size'],
-             'config_sha256':p.sha(op/'config.json'),'active_operation':j.parent.name,'active_journal_sha256':p.sha(j)}
+             'config_sha256':p.sha(op/'config.json'),'prepared_sha256':p.sha(op/'prepared.json'),'active_operation':j.parent.name,'active_journal_sha256':p.sha(j)}
     return p,u,a,token,op,cfg,j,rec,previous,preview
 
 def ticket_valid(t):
@@ -232,6 +234,7 @@ def worker():
             require(int(time.time())<t['expires_at'],'approval_expired')
             j,rec=active_record(p); require(j==old_j and p.sha(j)==v['active_journal_sha256'] and rec==old_rec,'active_journal_changed')
             require(not exists(op/'operation.json') and p.sha(op/'config.json')==v['config_sha256'] and p.sha(op/'candidate.zip')==v['sha256'],'approved_files_changed')
+            require(p.sha(op/'prepared.json')==v['prepared_sha256'],'prepared_record_changed')
             require(u.installed_preflight(adapter)==previous,'installed_release_changed')
             require(p.external_snapshot()==before,'external_scope_changed')
             original(config,adapter)

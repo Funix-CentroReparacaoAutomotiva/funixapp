@@ -354,7 +354,6 @@ server {
                     official = load("hml-official-update")
                     official.updater = updater
                     op = state / "op-123-1-prep-456"
-                    op.mkdir(mode=0o700)
                     def prepare_local(operation, config_path, requested):
                         assert requested == identity
                         updater.prepare_candidate(config, adapter, load("hml-update-safety"), load_images=False)
@@ -366,7 +365,6 @@ server {
                          patch.object(updater, "host_scope"), \
                          patch.object(updater, "check_config"), \
                          patch.object(updater, "prepare_operation", side_effect=prepare_local):
-                        prepare_local(op,op/'config.json',identity)
                         from hml_remote_chain import run_chain
                         remote_case=os.environ.get('HML_REMOTE_CASE','accepted')
                         run_chain(updater,config,previous,op,root,identity,fake_api,remote_case)

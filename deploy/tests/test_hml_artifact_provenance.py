@@ -27,7 +27,7 @@ class ProvenanceTest(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer synthetic")
 
     def test_unauthorized_invalid_and_oversized_responses_block(self):
-        for body in (b"not json", b"[]", b"x" * (2 * 1024**2 + 1)):
+        for body in (b"not json", b"[]", b'{"workflow_run":{"id":99,"id":12}}', b"x" * (2 * 1024**2 + 1)):
             response = MagicMock()
             response.__enter__.return_value = response
             response.status = 200
@@ -55,7 +55,9 @@ class ProvenanceTest(unittest.TestCase):
             args = dict(artifact_id=4, run_id=12, attempt=1, revision=revision, pr=262, query=query)
             module.verify(archive, **args)
             for record, key, bad in ((artifact, "expired", True), (artifact, "name", "other"),
-                                     (run, "run_attempt", 2), (run, "conclusion", "failure"),
+                                     (run, "run_attempt", 2), (run, "run_attempt", True),
+                                     (artifact["workflow_run"], "id", 12.0),
+                                     (run, "conclusion", "failure"),
                                      (pr["head"], "sha", "b" * 40)):
                 original = record[key]
                 record[key] = bad
