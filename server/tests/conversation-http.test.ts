@@ -963,6 +963,27 @@ test('explicit short number review preserves the existing Contact, records the r
  }finally{f.db.close()}
 })
 
+test('a company channel with its linked owner and unnumbered Contact can read history while its conflict hold remains',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const authority=f.local.authority!,customers=new CustomerRepository(f.db),at=new AtendimentoRepository(f.db)
+  const jid='553189076449@s.whatsapp.net',cid=authority.rememberProviderConversation(jid)
+  const {person,contact}=customers.createUnnumberedChannelContact('FUNIX',cid)
+  const ficha=at.create({name:'FUNIX'})
+  f.db.prepare("INSERT INTO atendimento_references VALUES(?,'person',0,?,?)").run(ficha.id,person.id,JSON.stringify({id:person.id,text:person.text}))
+  f.db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,?,?)").run(ficha.id,contact.id,JSON.stringify({id:contact.id,text:contact.text}))
+  removeV25FixtureSchema(f.db)
+  f.db.prepare(`INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason)
+    VALUES(?,?,?,?,?,?)`).run(randomUUID(),cid,ficha.id,'2026-01-01T00:00:00.000Z','operator','Legacy company channel')
+  migrate(f.db)
+  f.db.prepare("INSERT INTO chat_local_context_holds VALUES(?,'autonomous_contact_conflict')").run(cid)
+  assert.equal(authority.technicalHistoryJid(cid),jid)
+  assert.equal(authority.linkedHistoryJid(ficha.id,cid),jid)
+  assert.equal(authority.canonicalChannelSendAllowed(jid),false)
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM chat_local_context_holds WHERE conversation_id=?').get(cid)!.n,1)
+ }finally{f.db.close()}
+})
+
 test('new interaction with only a short mobile number creates one read-only triage without guessing a civil phone',async t=>{
  for(const alternate of [null,'short-number-synthetic@lid'])await t.test(alternate?'with provider LID':'with PN only',async()=>{
   const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')

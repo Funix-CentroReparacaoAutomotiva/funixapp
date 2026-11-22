@@ -130,8 +130,15 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const ids=this.handles(jid),scope=ids.map(()=>'?').join(',')
     const holds=this.db.prepare(`SELECT reason FROM chat_local_context_holds
       WHERE conversation_id IN (${scope}) AND reason NOT IN ('legacy_cutover_context_review','confirmed_local_context_conflict','ambiguous_atendimento_candidates')`).all(...ids)
+    const linkedContact=this.db.prepare(`SELECT 1 FROM customer_records c
+      JOIN atendimento_references r ON r.record_id=c.id AND r.kind='contact'
+      JOIN v20_associations a ON a.atendimento_id=r.atendimento_id AND a.unlinked_at IS NULL
+      WHERE c.kind='contact' AND c.phone_normalized IS NULL AND c.entity_id IS NOT NULL
+        AND c.conversation_id IN (${scope}) AND a.conversation_id IN (${scope})
+        AND EXISTS(SELECT 1 FROM atendimento_references p WHERE p.atendimento_id=a.atendimento_id
+          AND p.kind='person' AND p.record_id=c.entity_id) LIMIT 1`).get(...ids,...ids)
     if(holds.length&&(holds.some(hold=>hold.reason!=='autonomous_contact_conflict')||
-      !new ShortNumberReview(this.db,()=>false).triageCandidate(conversationId)))throw conflict()
+      !linkedContact&&!new ShortNumberReview(this.db,()=>false).triageCandidate(conversationId)))throw conflict()
     const contacts=this.db.prepare(`SELECT id,phone_normalized,conversation_id FROM customer_records
       WHERE kind='contact' AND conversation_id IN (${scope})`).all(...ids)
     const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
