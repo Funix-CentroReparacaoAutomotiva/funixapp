@@ -26,16 +26,20 @@ STATE = Path('/var/lib/funix-hml/updater')
 REPO = 'Funix-CentroReparacaoAutomotiva/funixapp'
 WORKFLOW = '.github/workflows/funix-hml-candidate.yml'
 FILES = {
-    'hml-update':'1b5644664197aed80876a5985784049fae16cd13',
+    'hml-update':'71633731eaafaae99df24897a9805e05b970df25',
     'hml-update-safety':'ee35bfce1c8c323d5f69cccbb7b493a24cf9ac18',
-    'hml-update-transaction':'2d9c7008775f775f3019feb825e38ee4b9b433f9',
-    'hml-docker-adapter':'f6cced157db9fc77ac1ef261e968c34371822d41',
+    'hml-update-transaction':'7715ba6b0d3dd6c81e2173f8ee4ef5f999558497',
+    'hml-docker-adapter':'82a6d55c0961ac9051281e7a23a393bd4994b371',
     'hml-docker-maintenance':'ec25ab3c3e59cb1bbfbe2627978fa2a01ba830ff',
     'hml-artifact-provenance':'fdf995c8500117f398aca6c34c96a31a170e8760',
     'hml-image-identity':'e3edb166a89c3da458beb60e5f8e778b5c0beb6f',
     'hml-writer-guard':'9c6dccb01e83b2cc6ec9b5d03e3e27486d843334',
     'hml-maintenance':'455e2735efb3596340f21e04ca1036d14981808c',
-    'hml-isolation':'d99c222f678e818a08c485f6e85bd20ea93c48d4',
+    'hml-isolation':'ba7e485ff9943f01cc8470218417c1196473c9e8',
+    'hml-cilia-plan':'87a2337393ba114e37a55ec5e87a3271ab44cec7',
+    'hml-cilia-transaction':'ac76375985ac45d8605f6e3f8d2da0a62bfac86c',
+    'hml-cilia-contract-store':'eec1fe4930781bf7916a6d52ef6f5fecacdfac07',
+    'hml-cilia-docker-adapter':'9bf8cfcaeffdaca9e8fb8414a01278565d558729',
     'hml-official-update':'447f3d190094057122729f046ef074884ffb5a4b',
 }
 class Blocked(Exception): pass
