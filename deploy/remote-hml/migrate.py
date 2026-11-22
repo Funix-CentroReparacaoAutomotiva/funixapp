@@ -26,6 +26,8 @@ SELECTION = Path('/usr/local/lib/funix-hml-prepare/official/hml-selection.py')
 RETRY_ACTIONS = {'retry-restored':'apply', 'probe-retry':'probe', 'accept-retry':'accept',
                  'recover-retry':'recover', 'rollback-retry':'rollback'}
 
+UPGRADE_ACTIONS = {name+'-upgrade':name for name in ('apply','probe','accept','recover','rollback')}
+
 
 def pins():
     tree = ast.parse(regular(PACKAGE/'control.py').read_bytes())
@@ -404,7 +406,7 @@ def recover(mapping, directory, expected, validate):
             raise ValueError('unexpected pre-journal state')
         if exists(GATE):
             raise ValueError('unexpected pre-journal transport drop-in')
-        prefix = 'migration-retry-abandoned-' if directory.name == 'migration-retry' else 'migration-abandoned-'
+        prefix = directory.name + '-abandoned-'
         archive = directory.with_name(prefix+secrets.token_hex(16))
         os.rename(directory,archive)
         sync_directory(directory.parent)
@@ -532,9 +534,20 @@ def migration_inventory(mapping, original, retry):
     return result
 
 
+def accepted_baseline(mapping, original, retry):
+    """Bind this upgrade to the accepted retry and the original restoration."""
+    baseline = current_record(mapping, retry)
+    if baseline['phase'] != 'accepted' or exists(retry/'hold'):
+        raise ValueError('previous migration is not accepted')
+    if baseline.get('prior_journal_sha256') != prior_restoration(mapping, original):
+        raise ValueError('previous migration history changed')
+    verify_bundle(mapping, retry, baseline)
+    return digest(retry/'journal.json'), baseline
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('inventory','apply','probe','accept','recover','rollback',*RETRY_ACTIONS))
+    parser.add_argument('action',choices=('inventory','inventory-upgrade','apply','probe','accept','recover','rollback',*RETRY_ACTIONS,*UPGRADE_ACTIONS))
     parser.add_argument('--authorize',action='store_true')
     args=parser.parse_args()
     if os.geteuid()!=0: raise ValueError('local administrator required')
@@ -546,18 +559,38 @@ def execute(requested_action, authorized):
     private_directory(STATE); private_directory(UPDATER)
     original = STATE/'migration'
     retry = STATE/'migration-retry'
+    upgrade = STATE/'migration-controller-permits'
     with locks():
         expected = idle()
+        if requested_action == 'inventory-upgrade':
+            prior, baseline = accepted_baseline(mapping, original, retry)
+            if exists(upgrade):
+                state = current_record(mapping, upgrade)
+                if state.get('prior_journal_sha256') != prior:
+                    raise ValueError('upgrade history binding changed')
+                print(json.dumps({'phase':state['phase'],'id':state['id']}))
+            else:
+                check_files(mapping, baseline, ('new',))
+                print(json.dumps({'old':inventory(mapping), 'new':source_integrity(mapping),
+                                  'prior_journal_sha256':prior}, sort_keys=True))
+            return
         if requested_action=='inventory':
             print(json.dumps(migration_inventory(mapping,original,retry),sort_keys=True))
             return
         if not authorized: raise ValueError('administrative authorization required')
 
         is_retry = requested_action in RETRY_ACTIONS
-        action = RETRY_ACTIONS.get(requested_action,requested_action)
-        directory = retry if is_retry else original
+        is_upgrade = requested_action in UPGRADE_ACTIONS
+        action = UPGRADE_ACTIONS.get(requested_action, RETRY_ACTIONS.get(requested_action, requested_action))
+        directory = upgrade if is_upgrade else retry if is_retry else original
         prior = None
-        if is_retry:
+        if is_upgrade:
+            prior, baseline = accepted_baseline(mapping, original, retry)
+            if action == 'apply':
+                check_files(mapping, baseline, ('new',))
+        elif exists(upgrade):
+            raise ValueError('controller upgrade requires explicit upgrade action')
+        elif is_retry:
             prior = prior_restoration(mapping,original,require_installed_old=action == 'apply')
         elif exists(retry):
             raise ValueError('retry requires explicit retry action')
@@ -583,7 +616,7 @@ def execute(requested_action, authorized):
         def validate():
             command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
         if action == 'apply':
-            name = 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
+            name = directory.name + '-approval.json' if is_upgrade else 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
             new = source_integrity(mapping)
             result = begin(mapping,directory,authorization(name),validate,prior=prior,verified_new=new)
         elif action == 'probe':
@@ -602,11 +635,11 @@ def execute(requested_action, authorized):
                 raise
             result = accept(mapping,directory,response,expected,validate)
         elif action == 'rollback':
-            name = 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
+            name = directory.name + '-rollback-approval.json' if is_upgrade else 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
             result = rollback(mapping,directory,authorization(name),expected,validate)
         else:
             result = recover(mapping,directory,expected,validate)
-        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'retry' if is_retry else 'original'}))
+        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'upgrade' if is_upgrade else 'retry' if is_retry else 'original'}))
 
 
 if __name__=='__main__':

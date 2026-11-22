@@ -1,0 +1,35 @@
+name: FUNIX - Autorizar candidato HML
+
+on:
+  workflow_dispatch:
+    inputs:
+      request:
+        description: JSON com candidate e installed_revision
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  authorize:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Funix-CentroReparacaoAutomotiva/funixapp'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: hml-authorization
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Emitir autorização com validade de vinte minutos
+        env:
+          HML_PERMIT_REQUEST: ${{ inputs.request }}
+          HML_PERMIT_SIGNING_KEY: ${{ secrets.HML_PERMIT_SIGNING_KEY }}
+        run: python3 -I -B deploy/hml-sign-permits.py "$RUNNER_TEMP/funix-hml-permits"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: funix-hml-permits-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/funix-hml-permits/
+          if-no-files-found: error
+          retention-days: 1

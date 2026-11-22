@@ -1,4 +1,5 @@
 """HML-only approval, dispatch, and official updater bridge. No remote shell."""
+import base64
 import contextlib
 import fcntl
 import hashlib
@@ -12,6 +13,7 @@ import secrets
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
@@ -150,7 +152,7 @@ def armed_ticket():
 
 def base(status): return {'schema':SCHEMA,'scope':'funix-hml','status':status}
 
-def register_candidate(body):
+def register_candidate(body, *, predecessor=None, expiry=None):
     """Record only a candidate selection. Approval and dispatch stay separate."""
     with locked():
         require_idle()
@@ -172,6 +174,8 @@ def register_candidate(body):
             fcntl.flock(updater_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             journal, record = active_record(prep)
             installed = prep.installed_from_journal(record)['revision']
+            if predecessor is not None:
+                require(installed == predecessor, 'installed_revision_changed')
             require(installed != candidate['revision'], 'candidate_already_installed')
             require(not exists(operation / 'operation.json'), 'operation_already_used')
             if exists(operation):
@@ -183,6 +187,8 @@ def register_candidate(body):
                 'installed_revision': installed,
             }
             prep.metadata(approval, token)
+            if expiry is not None:
+                require(int(time.time()) < expiry, 'permit_expired')
             require(active_record(prep) == (journal, record), 'active_journal_changed')
             replace(approval_path, approval)
     return {**base('candidate_registered'), 'operation': operation.name,
@@ -203,6 +209,86 @@ def approve(expected):
         now=int(time.time()); t={'schema':SCHEMA,'ticket_id':secrets.token_hex(16),'issued_at':now,'expires_at':now+1200,'preview':v,'preview_sha256':expected}
         replace(ROOT/'armed.json',t)
         return {**base('armed'),'request':request_of(t),'expires_at':t['expires_at'],'installed_revision':v['installed_revision']}
+
+def verify_permit(body):
+    require(0 < len(body) <= 4096, 'permit_size')
+
+    def unique(pairs):
+        out = {}
+        for key, value in pairs:
+            require(key not in out, 'duplicate_field')
+            out[key] = value
+        return out
+
+    try:
+        envelope = json.loads(body, object_pairs_hook=unique)
+        require(isinstance(envelope, dict) and set(envelope) == {'permit', 'signature'}, 'permit_envelope')
+        permit = envelope['permit']
+        signature = base64.b64decode(envelope['signature'], validate=True)
+    except (TypeError, ValueError, RecursionError):
+        raise Blocked('permit_json') from None
+    fields = {'schema', 'scope', 'action', 'candidate', 'installed_revision', 'issued_at', 'expires_at'}
+    require(isinstance(permit, dict) and set(permit) == fields, 'permit_shape')
+    require(permit['schema'] == 'funix-hml-permit/1' and permit['scope'] == 'funix-hml', 'permit_scope')
+    require(permit['action'] in ('register', 'arm') and hexstr(permit['installed_revision'], 40), 'permit_action')
+    now = int(time.time())
+    start, end = permit['issued_at'], permit['expires_at']
+    require(type(start) is int and type(end) is int and start <= now < end <= start + 1200, 'permit_expired')
+    require(len(signature) == 64, 'permit_signature')
+    private_dir(ROOT)
+    public_key = private_file(ROOT / 'permit-public.pem')
+    require(public_key.stat().st_size <= 8192, 'permit_key_size')
+    prep = prep_module()
+    try:
+        candidate = prep.official_module('hml-selection').selection(permit['candidate'])
+    except ValueError:
+        raise Blocked('candidate_selection') from None
+
+    # Ed25519 requires a seekable input in OpenSSL's one-shot verification.
+    with tempfile.TemporaryDirectory(prefix='permit-', dir=ROOT) as name:
+        folder = Path(name)
+        message = folder / 'message'
+        signed = folder / 'signature'
+        message.write_bytes(canonical(permit))
+        signed.write_bytes(signature)
+        result = subprocess.run(
+            ['/usr/bin/openssl', 'pkeyutl', '-verify', '-pubin', '-inkey', str(public_key),
+             '-rawin', '-in', str(message), '-sigfile', str(signed)],
+            stdin=subprocess.DEVNULL, capture_output=True, timeout=5,
+        )
+    require(result.returncode == 0, 'permit_signature')
+    return permit, candidate
+
+
+def authorize_permit(body):
+    permit, candidate = verify_permit(body)
+    predecessor = permit['installed_revision']
+    if permit['action'] == 'register':
+        result = register_candidate(canonical(candidate), predecessor=predecessor, expiry=permit['expires_at'])
+        return {**result, 'status': 'ok', 'candidate_registered': True}
+
+    with locked():
+        require_idle()
+        require(armed_ticket() is None, 'approval_already_armed')
+        preview = context()[-1]
+        identity = {**preview['identity'], 'sha256': preview['sha256'], 'size': preview['size']}
+        require(identity == candidate and preview['installed_revision'] == predecessor, 'permit_candidate_changed')
+        now = int(time.time())
+        require(now < permit['expires_at'], 'permit_expired')
+        receipts = private_dir(ROOT / 'permits')
+        receipt = receipts / (hash_obj(permit) + '.json')
+        require(not exists(receipt), 'permit_used')
+        ticket = {
+            'schema': SCHEMA, 'ticket_id': secrets.token_hex(16),
+            'issued_at': now, 'expires_at': now + 1200,
+            'preview': preview, 'preview_sha256': hash_obj(preview),
+        }
+        # Record consumption first. An interruption requires a fresh signed permit.
+        write(receipt, {'ticket_id': ticket['ticket_id'], 'expires_at': permit['expires_at']})
+        replace(ROOT / 'armed.json', ticket)
+        return {**base('ok'), 'approval_armed': True, 'installed_revision': predecessor,
+                'operation': preview['operation'], 'revision': preview['revision']}
+
 
 def cancel(tid):
     require(hexstr(tid,32),'ticket_id')
@@ -322,7 +408,11 @@ def main():
     if args==['preview']: return view()
     if len(args)==2 and args[0]=='approve': return approve(args[1])
     if len(args)==2 and args[0]=='cancel': return cancel(args[1])
-    if args==['dispatch']: return dispatch(sys.stdin.buffer.read(4097))
+    if args==['dispatch']:
+        body = sys.stdin.buffer.read(4097)
+        if body.startswith(b'FUNIX-HML-PERMIT\n'):
+            return authorize_permit(body.removeprefix(b'FUNIX-HML-PERMIT\n'))
+        return dispatch(body)
     if args==['worker']: return worker()
     raise Blocked('command_not_allowed')
 
