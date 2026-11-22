@@ -167,6 +167,7 @@ class Transaction:
     def recover(self, *, authorized=False):
         safety.require(authorized is True, "explicit recovery authorization required")
         with self.locked():
+            require_cilia_settled(self.project_state)
             if hasattr(self.adapter, "operation_directory"):
                 self.adapter.operation_directory = self.root
             record = json.loads(safety.regular(self.journal).read_text())
