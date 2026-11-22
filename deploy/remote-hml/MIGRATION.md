@@ -240,3 +240,58 @@ Antes de qualquer futura autorização de atualização, preparar formalmente o
 novo candidato para gerar `prepared.json`; aprovações anteriores não são
 convertidas. A conferência do host e qualquer execução operacional exigem
 autorização separada.
+
+## Registro de um novo candidato
+
+A versão em revisão do controlador oferece `rootctl.py register-candidate`
+para o canal administrativo. O comando recebe um objeto JSON pela entrada
+padrão com `pr`, `run_id`, `attempt`, `artifact_id`, `revision`, `sha256`
+e `size`. O servidor determina a revisão instalada a partir do journal.
+A resposta `candidate_registered` confirma a gravação da seleção. A
+preparação, a aprovação de uso único e o despacho continuam etapas distintas.
+
+Para substituir o PowerShell na rotina, o próximo incremento precisa de um
+canal remoto de autorização independente do executor n8n. Esse canal deve
+registrar o candidato, obter o recibo de preparação e aprovar a prévia exata.
+O n8n então despacha o ticket pelo mTLS existente e acompanha o estado até
+`accepted` ou `auto_restored`. O aceite da liberação exige uma revisão
+diferente da instalada, com backup, HTTPS e serviços externos conferidos.
+
+O piloto desta VPS já consumiu a tentativa de migração e sua repetição.
+A instalação de outro controlador precisa de uma migração que parta do
+inventário aceito. Os journals de migração existentes fazem parte da trilha.
+
+## Autorizar pela interface do GitHub
+
+A atualização acrescenta a rota mTLS `POST /v1/authorize`. O n8n apresenta
+documentos assinados para registrar o candidato e, depois da preparação
+pelo SSH restrito, emitir o ticket. O GitHub Actions assina a identidade
+completa do artefato e a revisão instalada. Cada autorização para emitir
+ticket vale por vinte minutos e só pode ser usada uma vez. O despacho
+continua em `POST /v1/update` com o ticket devolvido por `GET /v1/status`.
+
+Antes de liberar o workflow de assinatura, configurar no GitHub o ambiente
+`homologation` para a branch `main`, com aprovadores designados,
+prevenção de autoaprovação e proibição de contornar a proteção. Armazenar
+a chave Ed25519 privada somente como segredo desse ambiente, com o nome
+`HML_PERMIT_SIGNING_KEY`. Na VPS, instalar apenas a chave pública em
+`/var/lib/funix-hml-ops/permit-public.pem` com modo 0600 e criar
+`/var/lib/funix-hml-ops/permits` com modo 0700, ambos root:root. A credencial
+mTLS permanece no n8n. Os documentos assinados viajam como artefatos do
+workflow. Seu uso exige mTLS e a origem já autorizada pela VPS.
+
+A migração começa com `inventory-upgrade`. Conferir a saída com os
+hashes da revisão aprovada e registrar o JSON retornado no arquivo privado
+`migration-controller-permits-approval.json`, no diretório de operações.
+Usar `apply-upgrade`, `probe-upgrade` e `accept-upgrade` com
+`--authorize` e a prova mTLS do transporte de ensaio. A recuperação usa
+`recover-upgrade` com a mesma revisão. O novo journal vincula o histórico
+da migração anterior aceita. Aprovações anteriores não são válidas para
+esta atualização.
+
+Para a primeira execução, selecionar um artefato novo e aprovado, solicitar
+o workflow de assinatura, enviar `register.json` ao controlador, executar
+o preparador, enviar `arm.json` e acionar a atualização existente no n8n.
+Conferir o resultado do worker pelo mesmo identificador de operação.
+Um bloqueio expirado ou interrompido deve ser inspecionado antes de pedir
+novos documentos.

@@ -60,11 +60,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if os.environ.get('FUNIX_HML_MIGRATION_PROBE'):
             return self.reply(404,blocked('route_denied'))
-        if self.path!='/v1/update': return self.reply(404,blocked('route_denied'))
+        if self.path not in ('/v1/update','/v1/authorize'): return self.reply(404,blocked('route_denied'))
         lengths=self.headers.get_all('Content-Length',[])
         if self.headers.get('Transfer-Encoding') or len(lengths)!=1 or not lengths[0].isdigit() or not 0<int(lengths[0])<=4096 or self.headers.get_content_type()!='application/json': return self.reply(400,blocked('request_body'))
         data=self.rfile.read(int(lengths[0]))
-        if len(data)!=int(lengths[0]): return self.reply(400,blocked('request_body'))
+        if len(data)!=int(lengths[0]) or (self.path == '/v1/authorize' and len(data)>4000): return self.reply(400,blocked('request_body'))
+        if self.path == '/v1/authorize':
+            data = b'FUNIX-HML-PERMIT\n' + data
+        elif data.startswith(b'FUNIX-HML-PERMIT\n'):
+            return self.reply(400,blocked('request_body'))
         self.call(DISPATCH,data)
 
 def main():
