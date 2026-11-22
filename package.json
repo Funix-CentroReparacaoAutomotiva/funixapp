@@ -14,7 +14,7 @@
     "test:server": "node --test --test-isolation=none --test-reporter=spec server/tests/*.test.ts",
     "check": "npm run build && npm run check:server && npm run test:server && npm run lint && npm run test:voice-cost && npm run test:painel",
     "test:voice-cost": "node --test scripts/tests/voice-cost-report.test.mjs",
-    "test:painel": "node --test docs/design/painel-orquestracao/tests/painel.test.mjs"
+    "test:painel": "node --test docs/design/painel-orquestracao/tests/painel.test.mjs && node docs/design/painel-orquestracao/validate_snapshot.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

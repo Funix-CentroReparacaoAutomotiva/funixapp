@@ -1,0 +1,50 @@
+name: FUNIX Painel — validação e pacote de prévia
+
+on:
+  pull_request:
+    paths:
+      - 'docs/design/painel-orquestracao/**'
+      - 'package.json'
+      - '.github/workflows/painel-mvp-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - name: Validar contrato e dados versionados
+        run: |
+          node --test docs/design/painel-orquestracao/tests/painel.test.mjs
+          node docs/design/painel-orquestracao/validate_snapshot.mjs
+      - name: Gerar HTML autônomo
+        working-directory: docs/design/painel-orquestracao
+        run: python3 build_standalone.py
+      - name: Checar pacote e preparar artefato
+        run: |
+          python3 - <<'PY2'
+          from pathlib import Path
+          import json, zipfile
+          root=Path('docs/design/painel-orquestracao')
+          data=json.loads((root/'snapshot.json').read_text())
+          html=(root/'FUNIX_Painel_Orquestracao_Funcional.html').read_text()
+          assert data['schemaVersion']==1
+          assert 'id="embedded-snapshot"' in html
+          files=['index.html','styles.css','app.mjs','model.mjs','snapshot.json','README.md','FUNIX_Painel_Orquestracao_Funcional.html']
+          with zipfile.ZipFile('/tmp/FUNIX-Painel-Preview.zip','w',zipfile.ZIP_DEFLATED) as archive:
+              for name in files: archive.write(root/name,name)
+          print('Pacote de prévia gerado. Sem hospedagem ou deploy.')
+          PY2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: funix-painel-preview-${{ github.sha }}
+          path: /tmp/FUNIX-Painel-Preview.zip
+          if-no-files-found: error
+          retention-days: 7

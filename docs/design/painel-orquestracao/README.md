@@ -51,3 +51,23 @@ Apenas o CTO, com evidências rastreáveis e autoridade aplicável, preenche est
 - A integração de CI usa o script `npm run test:painel` já existente no projeto. Nenhum teste alegado como homologação de infraestrutura.
 
 **Decisão de produto:** direção em 22/11/2026, contrato do painel de estrutura dinâmica, issue #301. **PR técnica:** #318.
+
+## Gate técnico e pacote para revisão (ciclo 2)
+
+O CTO mantém o mapa em `snapshot.json`; não existe catálogo fixo de frentes. Antes de registrar uma revisão, executar:
+
+```sh
+node --test tests/painel.test.mjs
+node validate_snapshot.mjs
+python3 build_standalone.py
+```
+
+O novo verificador obriga **data, justificativa e ao menos uma referência de evidência** quando um nó for classificado como em execução, em revisão, em homologação, bloqueado ou concluído. Bloqueios exigem descrição. Isso protege o resumo contra afirmações sem fundamento, sem inferir estados automaticamente a partir da quantidade de PRs. A alteração de conteúdo continua sob responsabilidade do CTO, via branch/PR versionada, sem formulários para o proprietário.
+
+A automação `painel-mvp-preview.yml` valida o snapshot e gera um **artefato ZIP de prévia em CI**, disponível no GitHub Actions, sem ativar hospedagem e sem permissões de escrita. O comando `npm run test:painel` também invoca a verificação estrutural. Os testes de Chromium trabalham com dados simulados, contemplando navegação em 1440/390/320 px e estruturas arbitrárias/vazias.
+
+### Preparação para acesso online — ainda não executada
+
+A página pode ser servida como site estático HTTPS, **desde que** o acesso esteja protegido por autenticação no gateway/hosting, com políticas de cache adequadas e uma origem confiável do `snapshot.json`. Não usar GitHub Pages público como substituto automático de acesso privado, nem copiar tokens GitHub para JavaScript no navegador. Antes de publicar, definir a hospedagem, quem terá acesso, mecanismo de atualização e rollback, conferir o CI do SHA exato e obter aprovação de deploy. A infraestrutura, credenciais e o domínio de produção não são alterados por esta PR.
+
+**Limite de automação atual:** o histórico consulta estados públicos do GitHub automaticamente, mas a reorganização de frentes e o resumo de progresso dependem de atualização versionada do CTO. Não afirmar sincronização autônoma de agentes ou publicação contínua sem implementação específica.
