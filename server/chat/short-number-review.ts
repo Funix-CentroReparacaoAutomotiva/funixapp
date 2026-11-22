@@ -109,6 +109,10 @@ export class ShortNumberReview {
     const channel=this.channel(conversationId)
     if(!channel||channel.link||this.customers.phoneMatches(channel.registeredPhone).length||
       textualNumberTargets(this.db,channel.registeredPhone).length)return null
+    const observed=textualForms(channel.observedPhone)
+    if(this.db.prepare(`SELECT 1 FROM atendimentos WHERE ${compactPhone('phone')} IN (?,?,?)
+      UNION ALL SELECT 1 FROM atendimento_references WHERE kind='contact' AND record_id IS NULL
+      AND ${compactPhone("json_extract(data,'$.text')")} IN (?,?,?) LIMIT 1`).get(...observed,...observed))return null
     const registeredJid=channel.registeredPhone.slice(1)+'@s.whatsapp.net'
     if(this.db.prepare('SELECT 1 FROM chat_provider_conversations WHERE instance=? AND remote_jid=?').get(instance,registeredJid))return null
     return channel
