@@ -109,6 +109,10 @@ export class ShortNumberReview {
     const channel=this.channel(conversationId)
     if(!channel||channel.link||this.customers.phoneMatches(channel.registeredPhone).length||
       textualNumberTargets(this.db,channel.registeredPhone).length)return null
+    const observed=textualForms(channel.observedPhone)
+    if(this.db.prepare(`SELECT 1 FROM atendimentos WHERE ${compactPhone('phone')} IN (?,?,?)
+      UNION ALL SELECT 1 FROM atendimento_references WHERE kind='contact' AND record_id IS NULL
+      AND ${compactPhone("json_extract(data,'$.text')")} IN (?,?,?) LIMIT 1`).get(...observed,...observed))return null
     const registeredJid=channel.registeredPhone.slice(1)+'@s.whatsapp.net'
     if(this.db.prepare('SELECT 1 FROM chat_provider_conversations WHERE instance=? AND remote_jid=?').get(instance,registeredJid))return null
     return channel
@@ -155,12 +159,33 @@ export class ShortNumberReview {
     return {token,contactId:contact?.id??null,entityName,registeredPhone:channel.registeredPhone,observedPhone:channel.observedPhone}
   }
 
-  confirm(conversationId:string,atendimentoId:string,body:unknown) {
+  recoveryCandidate(conversationId:string) {
+    const channel=this.channel(conversationId)
+    if(!channel)return null
+    const registered=textualNumberTargets(this.db,channel.registeredPhone)
+    const linked=this.db.prepare(`SELECT DISTINCT r.atendimento_id FROM atendimento_references r
+      JOIN customer_records c ON c.id=r.record_id
+      WHERE r.kind='contact' AND c.kind='contact' AND c.phone_normalized=?
+      AND json_extract(c.data,'$.canonicalContactId') IS NULL`).all(channel.registeredPhone)
+    const candidates=channel.link?[String(channel.link.atendimento_id)]:
+      [...new Set([...registered,...linked.map(row=>String(row.atendimento_id))])]
+    const [atendimentoId]=candidates
+    if(candidates.length!==1||!atendimentoId)return null
+    try{
+      const {token}=this.inspect(conversationId,atendimentoId,channel)
+      return {atendimentoId,token,alreadyLinked:!!channel.link}
+    }catch(error){
+      if(error instanceof ServiceError&&(error.status===409||error.status===404))return null
+      throw error
+    }
+  }
+
+  confirm(conversationId:string,atendimentoId:string,body:unknown,inTransaction=false) {
     const {token,requestId,reason}=inputObject(body,['token','requestId','reason'])
     if(typeof token!=='string'||!/^[0-9a-f]{64}$/.test(token)||typeof requestId!=='string'||!uuid.test(requestId)||
       typeof reason!=='string'||!reason.trim()||reason.length>500)return invalid()
     const key=hash(['short_number_review',atendimentoId,token,reason.trim()])
-    return transaction(this.db,()=>{
+    const apply=()=>{
       const receipt=this.db.prepare('SELECT digest,result_json FROM v20_association_receipts WHERE conversation_id=? AND request_id=?').get(conversationId,requestId)
       if(receipt){
         if(receipt.digest!==key)return conflict()
@@ -193,6 +218,9 @@ export class ShortNumberReview {
       const result={linkId,revision:current.revision+1}
       this.db.prepare('INSERT INTO v20_association_receipts VALUES(?,?,?,?)').run(conversationId,requestId,key,JSON.stringify(result))
       return result
-    })
+    }
+    if(!inTransaction)return transaction(this.db,apply)
+    if(!this.db.isTransaction)throw Error('A confirmação em lote exige transação ativa.')
+    return apply()
   }
 }

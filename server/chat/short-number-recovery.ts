@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto'
+import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
 import {ConversationIdentities} from './conversation-identities.ts'
 import {LocalConversationAssociations} from './local-associations.ts'
@@ -6,8 +6,9 @@ import {ShortNumberReview,reviewNumberPair} from './short-number-review.ts'
 import {transaction} from '../scenarios.ts'
 
 const instance = 'funix_comercial'
+const recoveryReason = 'Revisão de numeração em lote autorizada pela FUNIX para leitura do histórico.'
 
-/** Scan the existing hold and message ledgers. Provider snapshots are insufficient. */
+/** Recover only authenticated short-number conversations. */
 export function planShortNumberRecovery(db:DatabaseSync, since:string) {
   if(!db.isTransaction)throw Error('A leitura do plano requer uma transação.')
   if(!Number.isFinite(Date.parse(since))||new Date(since).toISOString()!==since)
@@ -15,11 +16,23 @@ export function planShortNumberRecovery(db:DatabaseSync, since:string) {
   const view=db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='chat_confirmed_short_numbers'").get()
   if(!view)throw Error('O banco não possui a extensão de revisão de numeração.')
   const identities=new ConversationIdentities(db),review=new ShortNumberReview(db,()=>false)
-  const rows=db.prepare(`SELECT p.id,p.remote_jid FROM chat_local_context_holds h
-    JOIN chat_provider_conversations p ON p.id=h.conversation_id
-    WHERE p.instance=? AND h.reason='autonomous_contact_conflict' ORDER BY p.id`).all(instance)
-  const counts={eligible:0,existingOrRevoked:0,needsIdentityReview:0,noAuthenticatedMessage:0}
-  const seen=new Set<string>(),eligible:{id:string;sequence:number}[]=[]
+  const shortPn='55[0-9][0-9][6-9]???????@s.whatsapp.net'
+  const rows=db.prepare(`SELECT p.id,p.remote_jid FROM chat_provider_conversations p
+    WHERE p.instance=? AND (
+      EXISTS(SELECT 1 FROM chat_local_context_holds h
+        WHERE h.conversation_id=p.id AND h.reason='autonomous_contact_conflict')
+      OR ((p.remote_jid GLOB ? OR EXISTS(SELECT 1 FROM chat_provider_alias_evidence a
+            WHERE a.instance=p.instance AND a.lid=p.remote_jid AND a.pn GLOB ?))
+        AND EXISTS(SELECT 1 FROM chat_conversations c JOIN chat_messages m ON m.conversation_id=c.id
+          WHERE c.instance=p.instance AND (c.remote_jid=p.remote_jid OR EXISTS(
+            SELECT 1 FROM chat_provider_alias_evidence a
+            WHERE a.instance=p.instance AND ((a.pn=p.remote_jid AND a.lid=c.remote_jid)
+              OR (a.lid=p.remote_jid AND a.pn=c.remote_jid))))))
+    ) ORDER BY EXISTS(SELECT 1 FROM v20_conversations v WHERE v.id=p.id) DESC,p.id`).all(instance,shortPn,shortPn)
+  const counts={eligible:0,createTriage:0,reuseAtendimento:0,restoreHistory:0,
+    existingOrRevoked:0,needsIdentityReview:0,noAuthenticatedMessage:0}
+  type Candidate=NonNullable<ReturnType<ShortNumberReview['recoveryCandidate']>>
+  const seen=new Set<string>(),eligible:{id:string;sequence:number;candidate:Candidate|null}[]=[]
   for(const row of rows){
     const id=String(row.id),jid=String(row.remote_jid),members=identities.identityJids(jid)
     if(!members){counts.needsIdentityReview++;continue}
@@ -34,9 +47,21 @@ export function planShortNumberRecovery(db:DatabaseSync, since:string) {
     const prior=db.prepare(`SELECT 1 FROM v20_conversations v LEFT JOIN v20_associations a ON a.conversation_id=v.id
       WHERE v.instance=? AND v.remote_jid IN (${marks}) AND (a.id IS NOT NULL OR v.context_revision>0)
       UNION ALL SELECT 1 FROM chat_links l JOIN chat_conversations c ON c.id=l.conversation_id
-      WHERE c.instance=? AND c.remote_jid IN (${marks}) LIMIT 1`).get(instance,...members,instance,...members)
-    if(prior){counts.existingOrRevoked++;continue}
-    if(!review.triageCandidate(id)){counts.needsIdentityReview++;continue}
+      WHERE c.instance=? AND c.remote_jid IN (${marks})
+      UNION ALL SELECT 1 FROM conversation_initialization i JOIN chat_provider_conversations p ON p.id=i.conversation_id
+      WHERE p.instance=? AND p.remote_jid IN (${marks}) AND (i.atendimento_id IS NOT NULL OR i.decision='closed') LIMIT 1`)
+      .get(instance,...members,instance,...members,instance,...members)
+    const active=db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations v ON v.id=a.conversation_id
+      WHERE v.instance=? AND v.remote_jid IN (${marks}) AND a.unlinked_at IS NULL LIMIT 1`).get(instance,...members)
+    const reviewed=db.prepare(`SELECT 1 FROM chat_confirmed_short_numbers s JOIN chat_provider_conversations p ON p.id=s.conversation_id
+      WHERE p.instance=? AND p.remote_jid IN (${marks}) LIMIT 1`).get(instance,...members)
+    if(reviewed||prior&&!active){counts.existingOrRevoked++;continue}
+    const otherHold=db.prepare(`SELECT 1 FROM chat_local_context_holds h JOIN chat_provider_conversations p ON p.id=h.conversation_id
+      WHERE p.instance=? AND p.remote_jid IN (${marks}) AND h.reason<>'autonomous_contact_conflict' LIMIT 1`)
+      .get(instance,...members)
+    const candidate=review.recoveryCandidate(id)
+    if(active&&!candidate){counts.existingOrRevoked++;continue}
+    if(!candidate&&(otherHold||!review.triageCandidate(id))){counts.needsIdentityReview++;continue}
     const evidence=db.prepare(`SELECT MAX(e.sequence) AS sequence FROM chat_events e
       JOIN chat_messages m ON m.message_id=json_extract(CASE WHEN json_valid(e.payload) THEN e.payload END,'$.message.messageId')
       JOIN chat_conversations c ON c.id=m.conversation_id AND c.instance=e.instance
@@ -46,7 +71,10 @@ export function planShortNumberRecovery(db:DatabaseSync, since:string) {
           (json_extract(e.payload,'$.message.remoteJid') IN (${marks}) OR json_extract(e.payload,'$.message.remoteJidAlt') IN (${marks})) END`)
       .get(instance,...members,since,since,...members,...members)
     if(typeof evidence?.sequence!=='number'){counts.noAuthenticatedMessage++;continue}
-    eligible.push({id,sequence:evidence.sequence})
+    eligible.push({id,sequence:evidence.sequence,candidate})
+    if(!candidate)counts.createTriage++
+    else if(candidate.alreadyLinked)counts.restoreHistory++
+    else counts.reuseAtendimento++
   }
   counts.eligible=eligible.length
   const digest=createHash('sha256').update(JSON.stringify({since,eligible,counts})).digest('hex')
@@ -58,8 +86,14 @@ export function applyShortNumberRecovery(db:DatabaseSync,since:string,expectedDi
     const plan=planShortNumberRecovery(db,since)
     if(plan.digest!==expectedDigest)throw Error('O plano mudou. Confira uma nova prévia antes de aplicar.')
     const authority=new LocalConversationAssociations(db,undefined,true)
+    const review=new ShortNumberReview(db,()=>false)
     for(const item of plan.eligible){
-      if(!authority.createTriageFromHistory(item.id,true).created)throw Error('A triagem mudou durante a recuperação.')
+      if(item.candidate){
+        const {atendimentoId,token}=item.candidate
+        review.confirm(item.id,atendimentoId,{token,requestId:randomUUID(),reason:recoveryReason},true)
+      }else if(!authority.createTriageFromHistory(item.id,true).created){
+        throw Error('A triagem mudou durante a recuperação.')
+      }
     }
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('A recuperação encontrou vínculos inconsistentes.')
     return {digest:plan.digest,counts:plan.counts,applied:plan.eligible.length}
