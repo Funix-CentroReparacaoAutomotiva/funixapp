@@ -399,6 +399,17 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       textualNumberTargets(this.db,pair.registeredPhone).length>0||hasTextualObservedNumber(this.db,pair.observedPhone)||
       !!this.db.prepare('SELECT 1 FROM chat_provider_conversations WHERE instance=? AND remote_jid=?')
         .get(instance,pair.registeredPhone.slice(1)+'@s.whatsapp.net'))
+    if(this.unifiedCustomers&&pair&&possibleReview&&!plan.at&&!plan.blocked){
+      const candidate=new ShortNumberReview(this.db,()=>true).recoveryCandidate(id)
+      if(candidate){
+        const reason='Vínculo automático por correspondência única do número do canal com Contato cadastrado.'
+        new ShortNumberReview(this.db,()=>true).confirm(id,candidate.atendimentoId,
+          {token:candidate.token,requestId:randomUUID(),reason},true)
+        this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)')
+          .run(candidate.atendimentoId,id,e.message.messageId,timestamp)
+        return
+      }
+    }
     const pending=known?.conversationId?pendingShortNumber(this.db,known.conversationId):null
     if(this.unifiedCustomers&&pair&&pending&&known){
       const previous=this.links(jid),open=previous.filter(link=>!link.closed_at&&link.stage!=='rejeitados')

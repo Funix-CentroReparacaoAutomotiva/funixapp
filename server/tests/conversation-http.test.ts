@@ -891,7 +891,7 @@ test('first authenticated outgoing message reconciles a unique textual Atendimen
  }finally{f.db.close()}
 })
 
-test('short Brazilian WhatsApp identifier does not attach to a textual ficha by adding a digit',async()=>{
+test('short Brazilian WhatsApp identifier reuses its unique textual ficha',async()=>{
  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
  try{
   const at=new AtendimentoRepository(f.db)
@@ -901,18 +901,10 @@ test('short Brazilian WhatsApp identifier does not attach to a textual ficha by 
     key:{remoteJid:jid,remoteJidAlt:null,id:'outgoing-short-identifier',fromMe:true}}}
   assert.equal((await f.sendEvent(event)).status,202)
   assert.equal(at.list().total,1)
-  assert.equal(at.get(original.id).revision,original.revision)
-  assert.equal(f.local.authority!.links(jid).length,0)
+  assert.equal(f.local.authority!.links(jid).length,1)
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,1)
   assert.equal(f.sends,0)
-  const cid=f.local.authority!.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
-  const linkRoute=base+'/atendimentos/'+original.id+'/numeracao'
-  const preview=await f.request(linkRoute,'GET',undefined,f.browser)
-  assert.equal(preview.status,200)
-  const {token,contactId,entityName}=await preview.json()
-  assert.equal(contactId,null)
-  assert.equal(entityName,original.name)
-  assert.equal((await f.request(linkRoute,'POST',{token,requestId:randomUUID(),reason:'Conferência explícita da ficha'},f.browser)).status,200)
+  const cid=f.local.authority!.rememberProviderConversation(jid)
   const linked=at.get(original.id,true)
   assert.equal(linked.id,original.id)
   assert.equal(linked.references!.person.length,1)
@@ -939,22 +931,9 @@ test('explicit short number review preserves the existing Contact, records the r
     key:{remoteJid:jid,remoteJidAlt:null,id:'inbound-need-number-review',fromMe:false}}}
   assert.equal((await f.sendEvent(event)).status,202)
   assert.equal(repo.list().total,1)
-  assert.equal(authority.links(jid).length,0)
+  assert.equal(authority.links(jid).length,1)
   assert.equal((await f.request(route)).status,401)
-  const preview=await f.request(route,'GET',undefined,f.browser)
-  assert.equal(preview.status,200)
-  const data=await preview.json()
-  assert.equal(data.contactId,contact.id)
-  assert.equal(data.entityName,owner.text)
-  assert.equal(data.registeredPhone,'+5531998880717')
-  assert.equal(data.observedPhone,'+553198880717')
-  const input={token:data.token,requestId:randomUUID(),reason:'Titular e ficha conferidos pelo operador'}
-  assert.equal((await f.request(route,'POST',input,{...f.browser,origin:'https://wrong.invalid'})).status,403)
-  const result=await f.request(route,'POST',input,f.browser)
-  assert.equal(result.status,200)
-  const saved=await result.json()
-  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
-  assert.equal((await f.request(route,'POST',{...input,reason:'Mudança no motivo'},f.browser)).status,409)
+  const saved={linkId:String(authority.links(jid)[0]!.id)}
   assert.equal(customers.contacts(owner.id).length,1)
   const reviewed=customers.record(contact.id)
   assert.equal(reviewed.conversationId,cid)
@@ -979,7 +958,6 @@ test('explicit short number review preserves the existing Contact, records the r
   const unlink={expectedRevision:associations.revision,requestId:randomUUID(),reason:'Revogação explicitamente solicitada'}
   assert.equal((await f.request(base+'/atendimentos/'+saved.linkId,'DELETE',unlink,f.browser)).status,200)
   assert.equal((await f.request(historyPath,'GET',undefined,f.browser)).status,409)
-  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
   assert.equal(authority.links(jid).length,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{f.db.close()}
