@@ -19,3 +19,14 @@
 !server/data/**
 !deploy/
 !deploy/nginx.conf
+
+# Arquivos publicos do painel apenas na variante Web de HML.
+!deploy/painel-hml-nginx.conf
+!docs/
+!docs/design/
+!docs/design/painel-orquestracao/
+!docs/design/painel-orquestracao/index.html
+!docs/design/painel-orquestracao/styles.css
+!docs/design/painel-orquestracao/app.mjs
+!docs/design/painel-orquestracao/model.mjs
+!docs/design/painel-orquestracao/snapshot.json

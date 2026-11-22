@@ -1,0 +1,58 @@
+name: FUNIX Painel — imagem Web HML isolada
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'docs/design/painel-orquestracao/**'
+      - 'deploy/test-painel-hml.sh'
+      - 'deploy/painel-hml-acceptance.py'
+      - 'deploy/tests/test_painel_hml_acceptance.py'
+      - '.github/workflows/funix-hml-candidate.yml'
+      - '.github/workflows/painel-hml-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hml-panel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verificar testes de autenticação e estrutura do painel
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s deploy/tests -p 'test_painel_hml_acceptance.py' -v
+          python3 -m py_compile deploy/painel-hml-acceptance.py
+          bash -n deploy/test-painel-hml.sh
+      - name: Construir somente a imagem Web normal
+        run: |
+          set -euo pipefail
+          docker build --target web --build-arg APP_REVISION=development -t funix-web:base .
+          # A imagem de produção NÃO deve distribuir o painel.
+          docker run --rm --network none --entrypoint sh funix-web:base -ec \
+            'test ! -e /usr/share/nginx/html/painel/index.html'
+      - name: Construir somente a variante HML com painel
+        run: |
+          set -euo pipefail
+          docker build --target web-hml-painel --build-arg APP_REVISION=development -t funix-web:ci .
+          bash deploy/test-painel-hml.sh
+
+  gateway-preflight:
+    # Somente GET HTTPS sem credenciais. O resultado da HML real é um gate
+    # independente do build Docker e jamais dispara publicação.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Conferir Basic Auth real de todos os recursos em /painel/
+        run: |
+          set -euo pipefail
+          python3 deploy/painel-hml-acceptance.py --mode preflight
