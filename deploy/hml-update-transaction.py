@@ -16,6 +16,29 @@ safety = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(safety)
 
 
+def require_cilia_settled(state):
+    """Fail closed if a Cilia config transaction is incomplete or untrusted.
+
+    Called while the standard HML lock is held. The previous updater journals
+    are never modified to accommodate a feature-flag transition.
+    """
+    pointer = Path(state) / "cilia-active.json"
+    if not pointer.exists() and not pointer.is_symlink():
+        return
+    data = json.loads(safety.regular(pointer).read_text())
+    safety.require(isinstance(data, dict) and set(data) == {"journal"}
+                   and isinstance(data["journal"], str), "invalid Cilia active pointer")
+    path = Path(data["journal"])
+    safety.require(path.is_absolute() and path.parent.parent == Path(state)
+                   and path.parent.name.startswith("op-cilia-")
+                   and path.name == "cilia-transaction.json", "unsafe Cilia journal path")
+    record = json.loads(safety.regular(path).read_text())
+    safety.require(record.get("schema") == "funix-hml-cilia-tx/1"
+                   and record.get("scope") == "funix-hml"
+                   and record.get("phase") in ("accepted", "reverted"),
+                   "Cilia transition requires recovery")
+
+
 class Transaction:
     def __init__(self, directory, adapter, *, project_state=None, maintenance=False):
         self.root = Path(directory)
@@ -95,6 +118,7 @@ class Transaction:
     def update(self, candidate, *, authorized=False, prepare=None):
         safety.require(authorized is True, "explicit update authorization required")
         with self.locked():
+            require_cilia_settled(self.project_state)
             active = self.project_state / "active.json"
             if active.exists():
                 pending = json.loads(safety.regular(active).read_text())
@@ -143,6 +167,7 @@ class Transaction:
     def recover(self, *, authorized=False):
         safety.require(authorized is True, "explicit recovery authorization required")
         with self.locked():
+            require_cilia_settled(self.project_state)
             if hasattr(self.adapter, "operation_directory"):
                 self.adapter.operation_directory = self.root
             record = json.loads(safety.regular(self.journal).read_text())
@@ -167,6 +192,7 @@ class Transaction:
         safety.require(authorized is True and discard_post_update_data is True,
                        "rollback requires explicit acknowledgement of post-update data loss")
         with self.locked():
+            require_cilia_settled(self.project_state)
             record = json.loads(safety.regular(self.journal).read_text())
             safety.require(record.get("schema") == 1 and record.get("project") == "funix-hml"
                            and record.get("phase") == "accepted", "not an accepted update")
