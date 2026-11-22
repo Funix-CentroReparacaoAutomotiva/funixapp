@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Issue 67 — estudo local sintético</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#eef2f7;font:14px system-ui;color:#182a47}h1{font-size:20px}p{max-width:75ch;line-height:1.5}.frames{display:grid;gap:20px;overflow-x:auto;padding-bottom:16px}.frame{background:white;border:1px solid #ccd5e0;border-radius:12px;padding:12px;width:var(--width);max-width:none}.row{display:grid;grid-template-columns:44px 48px minmax(0,1fr) 44px;gap:6px;align-items:center}.row input{width:100%;min-width:0;border:1px solid #aab8c9;border-radius:6px;padding:8px;height:44px;font:inherit}.toggle,.quote,.offers button{min-height:44px;border:1px solid #aab8c9;border-radius:7px;background:#fff;color:#16345b;font:inherit}.toggle{background:#d5e5ff}.offers{display:flex;gap:6px;margin-top:6px}.offers button{padding:6px 8px;white-space:nowrap;font-size:12px}.offers button:disabled{color:#53627a;background:#f1f3f6}h2{font-size:12px;margin:0 0 12px}.component{font-size:14px;margin:12px 0 6px}.notice{font-size:12px;color:#52627b}.glyph{width:18px;height:18px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.wide-content{max-width:520px}.synthetic{border:1px dashed #71829a;padding:10px;margin-top:14px}
+</style>
+<svg style="display:none" aria-hidden="true"><symbol id="receipt" viewBox="0 0 24 24"><path d="M4 3l2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2v18l-2-2-2 2-2-2-2 2-2-2-2 2-2-2-2 2zM8 9h8M8 13h6M8 17h4"/></symbol><symbol id="wallet" viewBox="0 0 24 24"><path d="M20 7H4V4h14v3M4 7v13h16V7M16 11h5v5h-5z"/></symbol><symbol id="scale" viewBox="0 0 24 24"><path d="M12 3v18M5 21h14M4 7h16M4 7l-3 7h6zM20 7l-3 7h6z"/></symbol><symbol id="shield" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-8 10-8 10S4 17 4 12V6z"/></symbol></svg>
+<h1>Estudo local — cotação sob demanda</h1>
+<p>Dados fictícios para discussão. Nenhuma API, consulta, gravação, revisão no servidor ou aplicação de orçamento é executada. Ícones vetoriais ilustrativos; a implementação futura deverá usar o <code>receipt-text</code> aprovado.</p>
+<p>Quadros de 320, 390 e 1440 px. Em tela estreita, deslize horizontalmente para inspecionar os quadros maiores. Os rótulos das categorias ficam em acessibilidade/tooltip.</p>
+<div class="frames" id="frames"></div>
+<template id="frame">
+<section class="frame"><h2></h2><div class="wide-content">
+<p class="component">Guia dianteira esquerda — exemplo sintético</p>
+<div class="row"><button class="toggle" role="switch" aria-checked="true" aria-label="Incluir componente" title="Incluir componente">✓</button><input aria-label="Quantidade" value="1" inputmode="decimal"><input aria-label="Preço unitário base sintético" value="0,00" inputmode="decimal"><button class="quote" aria-label="Cotar componente" title="Cotar componente (estudo estático)"><svg class="glyph" aria-hidden="true"><use href="#receipt"/></svg></button></div>
+<div class="offers"><button aria-label="Econômica, R$ 39,90, demonstração sintética" title="Econômica — demonstração sintética"><svg class="glyph" aria-hidden="true"><use href="#wallet"/></svg> R$ 39,90</button><button disabled aria-label="Equilibrada, não encontrado nesta consulta" title="Equilibrada — não encontrado nesta consulta"><svg class="glyph" aria-hidden="true"><use href="#scale"/></svg> —</button><button disabled aria-label="Original nova, não encontrado nesta consulta" title="Original nova — não encontrado nesta consulta"><svg class="glyph" aria-hidden="true"><use href="#shield"/></svg> —</button></div>
+<p class="notice">Valor fictício. A seleção está desativada neste estudo estático.</p>
+<a href="#fonte-sintetica" aria-label="Abrir fonte sintética da referência econômica">↗ Fonte</a>
+<div class="synthetic"><p class="component">Estado sem referências verificadas</p><div class="offers"><button disabled aria-label="Econômica, não encontrado nesta consulta" title="Econômica — não encontrado nesta consulta"><svg class="glyph" aria-hidden="true"><use href="#wallet"/></svg> —</button><button disabled aria-label="Equilibrada, não encontrado nesta consulta" title="Equilibrada — não encontrado nesta consulta"><svg class="glyph" aria-hidden="true"><use href="#scale"/></svg> —</button><button disabled aria-label="Original nova, não encontrado nesta consulta" title="Original nova — não encontrado nesta consulta"><svg class="glyph" aria-hidden="true"><use href="#shield"/></svg> —</button></div><p class="notice">Não encontrado nesta consulta. Pesquisa externa manual seria oferecida na integração futura.</p></div>
+<p class="notice">Na integração futura: escolher preço → revisar prévia no servidor → confirmar Aplicar alterações. Edição manual posterior prevalece.</p>
+</div></section>
+</template>
+<p id="fonte-sintetica">Fonte sintética local: R$ 39,90 é somente um valor de desenho, sem anúncio correspondente. Este link não representa oferta real.</p>
+<script>
+for(const width of [320,390,1440]){const section=document.querySelector('#frame').content.cloneNode(true);section.querySelector('.frame').style.setProperty('--width',width+'px');section.querySelector('h2').textContent=width+' px — estudo estático';section.querySelectorAll('button').forEach(b=>b.disabled=true);document.querySelector('#frames').append(section)}
+</script>
+</html>
