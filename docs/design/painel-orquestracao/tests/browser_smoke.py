@@ -1,4 +1,4 @@
-"""Smoke test responsivo de uma estrutura qualquer; nenhum nome/quantidade de frente é imposto."""
+"""Smoke read-only de grupos dinâmicos, rotas e responsividade; GitHub simulado."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 import json,re
@@ -6,10 +6,9 @@ import json,re
 ROOT=Path(__file__).resolve().parents[1]
 HTML=(ROOT/'FUNIX_Painel_Orquestracao_Funcional.html').read_text()
 BASE=json.loads((ROOT/'snapshot.json').read_text())
-fronts=[n for n in BASE['nodes'] if n.get('parentId') in (None,BASE['root']['id'])]
 
 def html_with_snapshot(snapshot):
-  literal=json.dumps(snapshot,ensure_ascii=False).replace('<','\\u003c')
+  literal=json.dumps(snapshot,ensure_ascii=False).replace('<','\u003c')
   return re.sub(r'(<script type="application/json" id="embedded-snapshot">).*?(</script>)',lambda m:m.group(1)+literal+m.group(2),HTML,flags=re.S)
 
 def configure(page):
@@ -23,34 +22,44 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e: errors.append(str(e)))
     configure(page)
     page.set_content(HTML,wait_until='load',timeout=15000)
-    page.wait_for_function('(n)=>document.getElementById("kpi-fronts").textContent===String(n)',arg=len(fronts),timeout=15000)
-    assert page.locator('.node').count()==len(fronts)
-    assert page.locator('#kpi-subfronts').inner_text()==str(len(BASE['nodes'])-len(fronts))
-    if fronts:
-      first=fronts[0]
-      page.locator(f'.node[data-id="{first["id"]}"]').click()
-      direct=sum(n.get('parentId')==first['id'] for n in BASE['nodes'])
-      assert page.locator('#subgrid .sub-node').count()==direct
-      page.locator('#roles-toggle').click()
-      assert page.locator('#roles-toggle').get_attribute('aria-pressed')=='true'
-      if direct:
-        page.locator('#subgrid .sub-node').first.click()
-        assert page.locator('.crumb').count()>=2
-        page.locator('.crumb').first.click()
-        assert page.locator('#detail-title').inner_text()==first['title']
-      for value in ['pr','issue','bug','all']:
-        page.locator(f'button[data-filter="{value}"]').click()
-        assert page.locator(f'button[data-filter="{value}"]').get_attribute('aria-pressed')=='true'
-    page.wait_for_timeout(130)
+    page.wait_for_function('document.getElementById("kpi-groups").textContent==="1"',timeout=15000)
+    assert page.locator('.project-group').count()==1
+    assert page.locator('#kpi-cards').inner_text()==str(len(BASE['nodes'])-1)
+    assert page.locator('.project-children .node').count()==6
+    assert page.locator('#subgrid .sub-node').count()==6
+    assert 'FunixApp' in page.locator('.project-title-block').inner_text()
+    page.locator('.project-toggle').click()
+    assert page.locator('.project-children').is_hidden()
+    assert page.locator('.project-toggle').get_attribute('aria-expanded')=='false'
+    page.locator('.project-toggle').click()
+    assert page.locator('.project-children').is_visible()
+    page.locator('.project-children .node').first.click()
+    assert page.locator('#detail-title').inner_text()=='Comercial'
+    assert page.locator('#subgrid .sub-node').count()==3
+    assert page.locator('.crumb').count()>=2
+    page.locator('.crumb').first.click()
+    assert page.locator('#detail-title').inner_text()=='FunixApp'
+    page.locator('#roles-toggle').click()
+    assert page.locator('#roles-toggle').get_attribute('aria-pressed')=='true'
+    for value in ['pr','issue','bug','all']:
+      page.locator(f'button[data-filter="{value}"]').click()
+      assert page.locator(f'button[data-filter="{value}"]').get_attribute('aria-pressed')=='true'
+    page.wait_for_timeout(100)
     extent=page.evaluate('({vw:innerWidth,sw:document.documentElement.scrollWidth,wires:document.querySelectorAll("#wires path").length})')
     assert extent['sw']<=extent['vw']+1,extent
-    assert extent['wires']>=len(fronts),extent
+    assert extent['wires']>=1,extent
     assert not errors,errors
+    page.screenshot(path=str(ROOT/f'agrupado_{name}.png'),full_page=True)
     print(name,'PASS',extent,flush=True)
     page.close()
-  # O CTO pode substituir tudo por três níveis personalizados, sem alterar a interface.
+  # Dois grupos, trabalho avulso e terceiro nível definidos pelo CTO.
   custom=json.loads((ROOT/'snapshot.json').read_text())
-  custom['nodes']=[{'id':'projeto-x','parentId':None,'title':'Projeto especial','status':'planejado'},{'id':'parte-y','parentId':'projeto-x','title':'Grupo de trabalho','status':'em_execucao','statusReason':'Teste sintético','updatedAt':'2026-11-22T00:00:00Z','evidence':[{'kind':'bug','number':289}]},{'id':'atividade-z','parentId':'parte-y','title':'Entrega Z','status':'nao_verificado'}]
+  custom['nodes']=[
+    {'id':'projeto-x','parentId':None,'presentation':'group','type':'Programa','title':'Projeto especial','status':'planejado'},
+    {'id':'projeto-y','parentId':None,'presentation':'group','title':'Projeto B','status':'planejado'},
+    {'id':'parte-y','parentId':'projeto-x','title':'Grupo de trabalho','status':'em_execucao','statusReason':'Teste sintético','updatedAt':'2026-11-22T00:00:00Z','evidence':[{'kind':'bug','number':289}]},
+    {'id':'atividade-z','parentId':'parte-y','title':'Entrega Z','status':'nao_verificado'},
+    {'id':'avulso','parentId':None,'title':'Atividade independente','status':'planejado'}]
   custom['records']=[{'nodeId':'atividade-z','kind':'bug','number':289,'title':'Problema Z','url':f'https://github.com/{custom["repository"]}/issues/289'}]
   custom['relations']=[]
   page=browser.new_page(viewport={'width':390,'height':844})
@@ -58,26 +67,31 @@ with sync_playwright() as p:
   errs=[]
   page.on('pageerror',lambda e:errs.append(str(e)))
   page.set_content(html_with_snapshot(custom))
-  page.wait_for_function('document.getElementById("kpi-fronts").textContent==="1"')
-  assert page.locator('.node').count()==1
-  page.locator('.node').click()
-  page.locator('.sub-node').click()
-  assert page.locator('#subgrid .sub-node').count()==1
+  page.wait_for_function('document.getElementById("kpi-groups").textContent==="2"')
+  assert page.locator('.project-group').count()==2
+  assert page.locator('#node-grid > .node').count()==1
+  page.locator('.project-children .node').first.click()
   page.locator('.sub-node').click()
   page.locator('button[data-filter="bug"]').click()
   assert page.locator('#history-list .history-item').count()==1
   assert '/issues/289' in page.locator('#history-list .history-item').first.get_attribute('href')
   assert not errs,errs
+  assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
   print('CUSTOM_DYNAMIC PASS')
   page.close()
-  # O mapa vazio permanece um estado válido do produto.
-  custom['nodes']=[]
-  custom['records']=[]
+  # Legado sem grupos ainda mostra cards avulsos.
+  custom['nodes']=[{'id':'solto','title':'Frente livre','status':'planejado'}];custom['records']=[]
+  page=browser.new_page(viewport={'width':390,'height':844})
+  page.set_content(html_with_snapshot(custom));page.wait_for_function('document.getElementById("kpi-cards").textContent==="1"')
+  assert page.locator('.project-group').count()==0
+  assert page.locator('#node-grid > .node').count()==1
+  page.close()
+  # Mapa vazio não produz projeto/cargos fictícios.
+  custom['nodes']=[];custom['records']=[]
   page=browser.new_page(viewport={'width':320,'height':720})
-  page.set_content(html_with_snapshot(custom))
-  page.wait_for_function('document.getElementById("kpi-fronts").textContent==="0"')
+  page.set_content(html_with_snapshot(custom));page.wait_for_function('document.getElementById("kpi-groups").textContent==="0"')
   assert page.locator('#empty-map').is_visible()
   assert page.locator('#detail').is_hidden()
-  print('EMPTY_STATE PASS')
-  page.close()
+  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+  print('EMPTY PASS')
   browser.close()

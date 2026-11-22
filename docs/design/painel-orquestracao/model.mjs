@@ -25,6 +25,8 @@ export function validateSnapshot(raw){
     if(!isObject(node))throw new Error(`Nó ${i} inválido`);
     const id=asText(node.id,'node.id',90);if(ids.has(id))throw new Error('IDs duplicados');ids.add(id);
     const parentId=node.parentId==null?null:asText(node.parentId,'node.parentId',90);
+    const presentation=node.presentation==null?'card':asText(node.presentation,'node.presentation',30);
+    if(!['card','group'].includes(presentation))throw new Error(`Apresentação desconhecida: ${presentation}`);
     const status=asText(node.status,'node.status',30);if(!VALID_STATUS.has(status))throw new Error(`Estado desconhecido: ${status}`);
     if(!validDate(node.updatedAt))throw new Error('Data do nó inválida');
     const roles=Array.isArray(node.roles)?node.roles.map(x=>asText(x,'role',70)):[];
@@ -34,7 +36,7 @@ export function validateSnapshot(raw){
       return {kind:ref.kind,number:ref.number};
     }):[];
     if(evidence.length>30)throw new Error('Excesso de evidências por nó');
-    return {id,parentId,type:optionalText(node.type,'node.type',50),title:asText(node.title,'node.title'),description:optionalText(node.description,'node.description',1200),status,statusReason:optionalText(node.statusReason,'node.statusReason',700),nextResult:optionalText(node.nextResult,'nextResult',500),blocker:optionalText(node.blocker,'node.blocker',500),updatedAt:node.updatedAt||null,roles,evidence};
+    return {id,parentId,presentation,type:optionalText(node.type,'node.type',50),title:asText(node.title,'node.title'),description:optionalText(node.description,'node.description',1200),status,statusReason:optionalText(node.statusReason,'node.statusReason',700),nextResult:optionalText(node.nextResult,'nextResult',500),blocker:optionalText(node.blocker,'node.blocker',500),updatedAt:node.updatedAt||null,roles,evidence};
   });
   const byId=new Map(nodes.map(n=>[n.id,n]));
   for(const node of nodes){if(node.parentId!==null && node.parentId!==root.id && !byId.has(node.parentId)) throw new Error('Referência ao pai inexistente');
@@ -60,5 +62,5 @@ export function childrenOf(model,id){return model.nodes.filter(n=>(n.parentId??m
 export function subtreeIds(model,id){const out=[];const walk=(curr)=>{out.push(curr);for(const x of childrenOf(model,curr))walk(x.id)};walk(id);return out}
 export function recordsOf(model,id){const ids=new Set(subtreeIds(model,id));return model.records.filter(r=>ids.has(r.nodeId))}
 export function branchOf(model,id){const b=[];let cur=model.byId.get(id);while(cur){b.unshift(cur);cur=model.byId.get(cur.parentId)}return b}
-export function metrics(model){const top=childrenOf(model,model.root.id);return {fronts:top.length,nodes:model.nodes.length,blocked:model.nodes.filter(x=>x.status==='bloqueado').length,unknown:model.nodes.filter(x=>x.status==='nao_verificado').length};}
+export function metrics(model){const top=childrenOf(model,model.root.id);const groups=model.nodes.filter(x=>x.presentation==='group').length;return {fronts:top.length,groups,cards:model.nodes.length-groups,nodes:model.nodes.length,blocked:model.nodes.filter(x=>x.status==='bloqueado').length,unknown:model.nodes.filter(x=>x.status==='nao_verificado').length};}
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
