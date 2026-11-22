@@ -14,7 +14,7 @@ Página online, estática e somente de leitura para o proprietário enxergar a e
 
 ## O que o CTO controla
 
-A fonte é `snapshot.json`, em contrato v1 (`schemaVersion: 1`). O CTO pode substituir livremente os 6 grupos e 16 épicos iniciais, inclusive por um mapa vazio, com novos níveis, papéis e dependências. **Nenhuma frente, ID, número de níveis, quantidade de agentes ou tipo de projeto é fixada na interface.**
+A fonte é `snapshot.json`, em contrato v1 (`schemaVersion: 1`). O CTO pode substituir livremente o agrupamento de exemplo FunixApp, suas seis frentes e 16 épicos iniciais, inclusive por um mapa vazio, com novos níveis, papéis e dependências. **Nenhuma frente, ID, número de níveis, quantidade de agentes ou tipo de projeto é fixada na interface.**
 
 - `root`: nó central, título e descrição.
 - `nodes`: `id` estável, `parentId` opcional, tipo, título, descrição, estado operacional, razão, próximo resultado, bloqueio, papéis, data e referências de evidência.
@@ -71,3 +71,13 @@ A automação `painel-mvp-preview.yml` valida o snapshot e gera um **artefato ZI
 A página pode ser servida como site estático HTTPS, **desde que** o acesso esteja protegido por autenticação no gateway/hosting, com políticas de cache adequadas e uma origem confiável do `snapshot.json`. Não usar GitHub Pages público como substituto automático de acesso privado, nem copiar tokens GitHub para JavaScript no navegador. Antes de publicar, definir a hospedagem, quem terá acesso, mecanismo de atualização e rollback, conferir o CI do SHA exato e obter aprovação de deploy. A infraestrutura, credenciais e o domínio de produção não são alterados por esta PR.
 
 **Limite de automação atual:** o histórico consulta estados públicos do GitHub automaticamente, mas a reorganização de frentes e o resumo de progresso dependem de atualização versionada do CTO. Não afirmar sincronização autônoma de agentes ou publicação contínua sem implementação específica.
+
+## Agrupamentos de projetos (ciclo 3, 22/11/2026)
+
+O CTO pode criar um nó com `presentation: "group"` (e `type` livre, por exemplo "Projeto") e colocar outros trabalhos dentro dele atribuindo `parentId` ao ID do grupo. O painel desenha automaticamente um contorno visual com o nome do agrupamento, cards dos filhos diretos e botão **Recolher/Expandir**. Selecionar o grupo mostra seu histórico agregado de todos os níveis descendentes, respeitando os vínculos explícitos. Grupos podem ficar vazios e coexistir com cards avulsos ou outros grupos.
+
+`presentation` aceita `group` ou `card` (padrão para snapshots antigos); os rótulos e a quantidade de projetos **não são fixos**. O layout principal projeta grupos de primeiro nível; níveis mais profundos continuam disponíveis por navegação progressiva e breadcrumbs. Dependências cruzadas permanecem em `relations` e nos detalhes, sem linhas artificiais no mapa dos agrupamentos.
+
+O snapshot inicial associa as seis frentes públicas do ERP ao projeto real **FunixApp**; isso apenas demonstra a agrupação e pode ser reorganizado pelo CTO. Não equivale à aprovação de prioridades, cronogramas ou homologação. Nenhuma rotina de agentes atualiza o snapshot automaticamente nesta fase.
+
+Antes de publicar em HML, reconciliar e testar o build da PR de hospedagem #320 contra a versão atualizada da interface. Sem merge/deploy ou alteração de gateway pela simples inclusão desta funcionalidade.

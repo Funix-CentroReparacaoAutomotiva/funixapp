@@ -17,4 +17,4 @@ if(map.repository!=='Funix-CentroReparacaoAutomotiva/funixapp') {
   throw new Error('O painel público está restrito ao repositório FUNIX autorizado');
 }
 const counts=metrics(map);
-console.log(`SNAPSHOT_OK: ${counts.fronts} frentes, ${counts.nodes} nós, ${map.records.length} registros, ${counts.blocked} bloqueados`);
+console.log(`SNAPSHOT_OK: ${counts.groups} grupos, ${counts.cards} cards de trabalho, ${map.records.length} registros, ${counts.blocked} bloqueados`);

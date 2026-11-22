@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-mvp-2026-11-22-inicial",
+  "snapshotId": "funix-mvp-2026-11-22-grupos-v1",
   "publishedAt": "2026-11-22T01:09:36-03:00",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
   "title": "FUNIX ERP",
-  "subtitle": "Estrutura inicial de acompanhamento registrada pelo CTO; reorganizável sem mudanças de interface.",
+  "subtitle": "Projeto FunixApp e suas frentes de desenvolvimento. Agrupamentos, títulos e vínculos são definidos pelo CTO.",
   "root": {
     "id": "cto",
     "title": "CTO Virtual",
@@ -12,8 +12,22 @@
   },
   "nodes": [
     {
-      "id": "fr-293",
+      "id": "proj-funixapp",
       "parentId": null,
+      "type": "Projeto",
+      "presentation": "group",
+      "title": "FunixApp",
+      "description": "Desenvolvimento do ERP da FUNIX, organizado pelo CTO.",
+      "status": "acompanhamento",
+      "statusReason": "Agrupamento de acompanhamento; não representa aceite operacional.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": []
+    },
+    {
+      "id": "fr-293",
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "Comercial",
       "description": "Cadastro, catálogo, orçamentos e negociação.",
@@ -85,7 +99,7 @@
     },
     {
       "id": "fr-294",
-      "parentId": null,
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "WhatsApp",
       "description": "Conversas, identidade e vínculos com Atendimentos.",
@@ -157,7 +171,7 @@
     },
     {
       "id": "fr-292",
-      "parentId": null,
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "Operação",
       "description": "Atendimentos, planejamento e execução dos serviços.",
@@ -211,7 +225,7 @@
     },
     {
       "id": "fr-295",
-      "parentId": null,
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "Documentos",
       "description": "Ordens de Serviço, PDFs e documentos.",
@@ -265,7 +279,7 @@
     },
     {
       "id": "fr-296",
-      "parentId": null,
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "Integrações e IA",
       "description": "Automação, copilotos e integrações externas.",
@@ -319,7 +333,7 @@
     },
     {
       "id": "fr-291",
-      "parentId": null,
+      "parentId": "proj-funixapp",
       "type": "frente",
       "title": "Plataforma",
       "description": "Segurança, infraestrutura e governança.",
