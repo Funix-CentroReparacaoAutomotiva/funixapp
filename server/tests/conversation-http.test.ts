@@ -39,7 +39,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       repo,
     )!
   local.providerIdentity = { instance: 'funix_comercial', instanceId: INSTANCE }
-  let providerHistory:MessagePage|undefined
+  let providerHistory:MessagePage|(() => Promise<MessagePage>)|undefined
   let reads = 0,
     sends = 0
   const bridge = createEvolutionChatBridge(
@@ -48,7 +48,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
       ...(withMedia?{findMediaEnvelope:async (jid:string,id:string)=>({envelope:{key:{remoteJid:jid,id}},kind:'image' as const,bytes:4})}:{}),
       findMessages: async () => {
         reads++
-        if(providerHistory)return providerHistory
+        if(providerHistory)return typeof providerHistory==='function'?providerHistory():providerHistory
         throw Error('provider intentionally offline')
       },
     },
@@ -146,7 +146,7 @@ async function fixture(autonomous=false,withMedia=false,cutover?:string) {
     request,
     browser,
     sendEvent,
-    setProviderHistory(page:MessagePage|undefined){providerHistory=page},
+    setProviderHistory(page:MessagePage|(() => Promise<MessagePage>)|undefined){providerHistory=page},
     event,
     get reads() {
       return reads
@@ -501,6 +501,65 @@ test('linked history and media require the exact Atendimento link and grant no s
  }
 })
 
+test('existing linked Atendimento can read Evolution history with local reading disabled or an empty local cache', async t => {
+  for (const localRead of [false, true]) await t.test(`local reading ${localRead ? 'enabled' : 'disabled'}`, async () => {
+    const f = await fixture(true)
+    try {
+      f.local.read = localRead
+      const jid = '5531999990789@s.whatsapp.net'
+      const cid = f.local.authority!.rememberProviderConversation(jid)
+      const repo = new AtendimentoRepository(f.db)
+      const linked = repo.create({ name: 'Atendimento vinculado existente' })
+      const unlinked = repo.create({ name: 'Atendimento de outro contato' })
+      const links = new V20AssociationRepository(f.db)
+      const link=links.link({conversationId:cid,atendimentoId:linked.id,expectedRevision:0,requestId:randomUUID(),reason:'Vínculo sintético'})
+      // The previous release allowed an explicit selection from the linked list.
+      // A current reader may open the same ficha with only a historical link.
+      links.selectAtendimento(cid, null)
+      const listed = await f.request(`/api/chat/conversations/${cid}/atendimentos`, 'GET', undefined, f.browser)
+      assert.equal(listed.status, 200)
+      const list = await listed.json()
+      assert.deepEqual(list.items.map((item: { atendimentoId: string }) => item.atendimentoId), [linked.id])
+      assert.equal(list.sendAtendimentoId, null)
+      const messageId = 'existing-provider-history'
+      const providerPage:MessagePage={items:[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+        messageId,timestamp:1767225600,fromMe:false,origin:'unknown',kind:'text',text:'Histórico original',media:null,
+        statuses:[]}],currentPage:1,reportedTotal:1,reportedPages:1,nextPage:null,consistency:'offset-not-snapshot'}
+      f.setProviderHistory(providerPage)
+      const path = (id: string) => `/api/atendimentos/${id}/evolution-conversations/${cid}/messages?scope=linked`
+      assert.equal((await f.request(path(unlinked.id), 'GET', undefined, f.browser)).status, 404)
+      assert.equal(f.reads, 0)
+      const response = await f.request(path(linked.id), 'GET', undefined, f.browser)
+      assert.equal(response.status, 200)
+      const body = await response.json()
+      assert.equal(body.items[0]?.messageId, messageId)
+      assert.equal(body.sendTextAvailable, undefined)
+      assert.equal(body.mediaSendAvailable, undefined)
+      assert.equal(body.contextToken, undefined)
+      assert.equal(f.reads, 1)
+      assert.equal(f.sends, 0)
+      assert.equal(f.local.authority!.resolveIdentityActive(jid), null)
+      if(localRead){
+        f.setProviderHistory(undefined)
+        const cached=await f.request(path(linked.id),'GET',undefined,f.browser)
+        assert.equal((await cached.json()).items[0]?.messageId,messageId)
+        assert.equal(f.reads,1)
+      }else{
+        f.setProviderHistory(async()=>{
+          links.unlink({conversationId:cid,linkId:link.linkId,expectedRevision:link.revision,requestId:randomUUID(),reason:'Vínculo revogado durante a leitura'})
+          return providerPage
+        })
+        const revoked=await f.request(path(linked.id),'GET',undefined,f.browser)
+        assert.equal(revoked.status,404)
+        assert.doesNotMatch(await revoked.text(),/Histórico original/)
+        assert.equal(links.listActive(cid).items.length,0)
+      }
+    } finally {
+      f.db.close()
+    }
+  })
+})
+
 
 test('signed first outgoing message reuses manual owner and opens one Atendimento after cutover',async()=>{
  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
@@ -779,7 +838,7 @@ test('first outgoing interaction preserves ambiguity, revocation and closed-case
  }
 })
 
-test('text-only legacy Atendimento stays unique and is suggested for explicit PN reconciliation',async()=>{
+test('first authenticated outgoing message reconciles a unique textual Atendimento by exact phone',async()=>{
  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
  try{
   const at=new AtendimentoRepository(f.db)
@@ -806,27 +865,20 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
   assert.deepEqual(await replay.json(),await first.json())
   assert.equal(at.list().total,1)
   const authority=f.local.authority!,cid=authority.rememberProviderConversation(jid)
-  assert.equal(authority.resolveIdentityActive(jid),null)
+  assert.equal(authority.resolveIdentityActive(jid),original.id)
   const answer=await f.request('/api/chat/conversations/'+cid+'/atendimentos','GET',undefined,f.browser)
   assert.equal(answer.status,200)
   const model=await answer.json()
-  assert.deepEqual(model.items,[])
-  assert.deepEqual(model.suggestedAtendimentos.map((row:{id:string})=>row.id),[original.id])
-  assert.equal(model.atendimentoConflict,true)
-  assert.equal((await f.request('/api/chat/conversations/'+cid+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
-  assert.equal(f.sends,0)
-  const base='/api/chat/conversations/'+cid
-  const link=await f.request(base+'/atendimentos','POST',{atendimentoId:original.id,expectedRevision:model.revision,
-    requestId:randomUUID(),reason:'Conferência explícita da ficha presencial textual'},f.browser)
-  assert.equal(link.status,201)
-  const linked=await link.json()
-  assert.equal(at.list().total,1)
-  assert.equal(authority.resolveIdentityActive(jid),null)
-  assert.equal((await f.request(base+'/context','POST',{linkId:linked.linkId},f.browser)).status,200)
-  assert.equal(authority.resolveIdentityActive(jid),original.id)
+  assert.deepEqual(model.items.map((row:{atendimentoId:string})=>row.atendimentoId),[original.id])
+  assert.equal((await f.request(`/api/atendimentos/${original.id}/evolution-conversations/${cid}/messages?scope=linked`,'GET',undefined,f.browser)).status,200)
   assert.equal(at.get(original.id).name,'Pessoa da ficha textual')
   const after=at.get(original.id,true)
-  assert.ok(after.references!.contact.some(contact=>!!contact.id))
+  const [participant]=after.references!.person
+  const [contact]=after.references!.contact
+  assert.equal(after.references!.person.length,1)
+  assert.equal(after.references!.contact.length,1)
+  assert.ok(participant?.id&&contact?.id)
+  assert.equal(new CustomerRepository(f.db).record(contact.id).entityId,participant.id)
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM customer_records WHERE kind='contact'").get()!.n,1)
   assert.equal((await f.sendEvent({...raw,data:{...raw.data,
     key:{...raw.data.key,id:'second-text-only-outgoing'}}})).status,202)
@@ -835,6 +887,167 @@ test('text-only legacy Atendimento stays unique and is suggested for explicit PN
   assert.deepEqual(commercialSnapshot(),before)
   assert.equal(f.sends,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('short Brazilian WhatsApp identifier does not attach to a textual ficha by adding a digit',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db)
+  const original=at.create({name:'Ficha com número completo',phone:'(31) 99999-0680'})
+  const jid='553199990680@s.whatsapp.net'
+  const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'outgoing-short-identifier',fromMe:true}}}
+  assert.equal((await f.sendEvent(event)).status,202)
+  assert.equal(at.list().total,1)
+  assert.equal(at.get(original.id).revision,original.revision)
+  assert.equal(f.local.authority!.links(jid).length,0)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,1)
+  assert.equal(f.sends,0)
+  const cid=f.local.authority!.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
+  const linkRoute=base+'/atendimentos/'+original.id+'/numeracao'
+  const preview=await f.request(linkRoute,'GET',undefined,f.browser)
+  assert.equal(preview.status,200)
+  const {token,contactId,entityName}=await preview.json()
+  assert.equal(contactId,null)
+  assert.equal(entityName,original.name)
+  assert.equal((await f.request(linkRoute,'POST',{token,requestId:randomUUID(),reason:'Conferência explícita da ficha'},f.browser)).status,200)
+  const linked=at.get(original.id,true)
+  assert.equal(linked.id,original.id)
+  assert.equal(linked.references!.person.length,1)
+  assert.equal(linked.references!.contact.length,1)
+  const saved=new CustomerRepository(f.db).record(linked.references!.contact[0]!.id!)
+  assert.equal(saved.text,'+5531999990680')
+  assert.equal(saved.entityId,linked.references!.person[0]!.id)
+  assert.equal(saved.conversationId,cid)
+  assert.equal(at.list().total,1)
+ }finally{f.db.close()}
+})
+
+test('explicit short number review preserves the existing Contact, records the reason and only authorizes historical reading', async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const repo=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db),authority=f.local.authority!
+  const owner=customers.save({kind:'entity',text:'Titular sintético confirmado',contacts:[{text:'(31) 99888-0717'}]})
+  const contact=customers.contacts(owner.id)[0]!,at=repo.create({references:{person:[{id:owner.id,text:owner.text}],
+    contact:[{id:contact.id,text:contact.text}],vehicle:[],payer:[]}})
+  const jid='553198880717@s.whatsapp.net',cid=authority.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
+  const route=base+'/atendimentos/'+at.id+'/numeracao'
+  assert.equal((await f.request(route,'GET',undefined,f.browser)).status,409)
+  const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+    key:{remoteJid:jid,remoteJidAlt:null,id:'inbound-need-number-review',fromMe:false}}}
+  assert.equal((await f.sendEvent(event)).status,202)
+  assert.equal(repo.list().total,1)
+  assert.equal(authority.links(jid).length,0)
+  assert.equal((await f.request(route)).status,401)
+  const preview=await f.request(route,'GET',undefined,f.browser)
+  assert.equal(preview.status,200)
+  const data=await preview.json()
+  assert.equal(data.contactId,contact.id)
+  assert.equal(data.entityName,owner.text)
+  assert.equal(data.registeredPhone,'+5531998880717')
+  assert.equal(data.observedPhone,'+553198880717')
+  const input={token:data.token,requestId:randomUUID(),reason:'Titular e ficha conferidos pelo operador'}
+  assert.equal((await f.request(route,'POST',input,{...f.browser,origin:'https://wrong.invalid'})).status,403)
+  const result=await f.request(route,'POST',input,f.browser)
+  assert.equal(result.status,200)
+  const saved=await result.json()
+  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
+  assert.equal((await f.request(route,'POST',{...input,reason:'Mudança no motivo'},f.browser)).status,409)
+  assert.equal(customers.contacts(owner.id).length,1)
+  const reviewed=customers.record(contact.id)
+  assert.equal(reviewed.conversationId,cid)
+  assert.equal(reviewed.entityId,owner.id)
+  assert.equal(reviewed.text,contact.text)
+  const associations=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+  assert.equal(associations.historyOnly,true)
+  assert.equal(associations.sendAtendimentoId,null)
+  assert.equal(associations.items[0]?.atendimentoId,at.id)
+  const context=await f.request(base+'/context','POST',{linkId:saved.linkId},f.browser)
+  assert.equal(context.status,409)
+  assert.equal((await context.json()).error.code,'CHAT_NUMBER_HISTORY_ONLY')
+  assert.throws(()=>f.db.prepare('INSERT INTO v20_active_context VALUES(?,?)').run(cid,saved.linkId),/cannot authorize sending/)
+  assert.equal(authority.canonicalChannelSendAllowed(jid),false)
+  const historyPath=`/api/atendimentos/${at.id}/evolution-conversations/${cid}/messages?scope=linked`
+  const history=await f.request(historyPath,'GET',undefined,f.browser)
+  assert.equal(history.status,200)
+  const messages=await history.json()
+  assert.equal(messages.items[0]?.messageId,'inbound-need-number-review')
+  assert.equal(messages.sendTextAvailable,undefined)
+  assert.equal(f.sends,0)
+  const unlink={expectedRevision:associations.revision,requestId:randomUUID(),reason:'Revogação explicitamente solicitada'}
+  assert.equal((await f.request(base+'/atendimentos/'+saved.linkId,'DELETE',unlink,f.browser)).status,200)
+  assert.equal((await f.request(historyPath,'GET',undefined,f.browser)).status,409)
+  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
+  assert.equal(authority.links(jid).length,0)
+  assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('new interaction with only a short mobile number creates one read-only triage without guessing a civil phone',async t=>{
+ for(const alternate of [null,'short-number-synthetic@lid'])await t.test(alternate?'with provider LID':'with PN only',async()=>{
+  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+  try{
+   const repo=new AtendimentoRepository(f.db),customers=new CustomerRepository(f.db),authority=f.local.authority!
+   const jid='553198880718@s.whatsapp.net'
+   const event={...observedEvolutionUpsert,data:{...observedEvolutionUpsert.data,instanceId:INSTANCE,messageTimestamp:1767225601,
+     key:{remoteJid:jid,remoteJidAlt:alternate,id:'inbound-short-number-new-triage',fromMe:false}}}
+   const first=await f.sendEvent(event)
+   assert.equal(first.status,202)
+   assert.deepEqual(await (await f.sendEvent(event)).json(),await first.json())
+   const [item]=repo.list().items
+   assert.equal(repo.list().total,1)
+   assert.equal(item?.purpose,'unclassified')
+   const ficha=repo.get(item!.id,true),[person]=ficha.references!.person,[reference]=ficha.references!.contact
+   assert.ok(person?.id&&reference?.id)
+   const contact=customers.record(reference.id),cid=authority.rememberProviderConversation(jid)
+   assert.equal(contact.text,'')
+   assert.equal(contact.entityId,person.id)
+   assert.equal(contact.conversationId,cid)
+   assert.equal(authority.canonicalChannelSendAllowed(jid),false)
+   const base='/api/chat/conversations/'+cid
+   const links=await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()
+   assert.equal(links.historyOnly,true)
+   assert.equal(links.sendAtendimentoId,null)
+   assert.equal(links.items[0]?.atendimentoId,ficha.id)
+   assert.equal((await f.request(base+'/context','POST',{linkId:links.items[0]?.linkId},f.browser)).status,409)
+   const history=await f.request(`/api/atendimentos/${ficha.id}/evolution-conversations/${cid}/messages?scope=linked`,'GET',undefined,f.browser)
+   assert.equal(history.status,200)
+   assert.equal((await history.json()).items[0]?.messageId,'inbound-short-number-new-triage')
+   const closed=repo.update(ficha.id,{revision:ficha.revision,closed:true})
+   const next={...event,data:{...event.data,messageTimestamp:Math.floor(Date.parse(closed.closedAt!)/1000)+2,
+     key:{...event.data.key,id:'inbound-short-number-after-close'}}}
+   assert.equal((await f.sendEvent(next)).status,202)
+   assert.equal((await f.sendEvent(next)).status,202)
+   assert.equal(repo.list().total,2)
+   assert.equal(customers.contacts(person.id).length,1)
+   assert.equal(authority.resolveIdentityActive(jid),null)
+   assert.equal(f.sends,0)
+  }finally{f.db.close()}
+ })
+})
+
+test('historical short number can start triage only after an explicit action and observed messages',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const at=new AtendimentoRepository(f.db),authority=f.local.authority!
+  const jid='553198880719@s.whatsapp.net',cid=authority.rememberProviderConversation(jid)
+  const base='/api/chat/conversations/'+cid
+  const triage=()=>f.request(base+'/atendimentos/triagem','POST',{},f.browser)
+  assert.equal((await triage()).status,409)
+  f.setProviderHistory({items:[{recordId:'synthetic',instanceId:INSTANCE,remoteJid:jid,remoteJidAlt:null,
+    messageId:'old-short-triage',timestamp:1767225599,fromMe:false,origin:'unknown',kind:'text',text:'Histórico sintético',media:null,statuses:[]}],
+    currentPage:1,reportedTotal:1,reportedPages:1,nextPage:null,consistency:'offset-not-snapshot'})
+  assert.equal((await f.request(base+'/messages?scope=technical','GET',undefined,f.browser)).status,200)
+  assert.equal(at.list().total,0)
+  assert.equal((await (await f.request(base+'/atendimentos','GET',undefined,f.browser)).json()).canCreateTriage,true)
+  const choices=await Promise.all([triage(),triage()])
+  assert.deepEqual(choices.map(response=>response.status).sort(),[200,201])
+  assert.deepEqual(await choices[0]!.json(),await choices[1]!.json())
+  assert.equal(at.list().total,1)
+  assert.equal(at.list().items[0]?.phone,'')
+  assert.equal(authority.resolveIdentityActive(jid),null)
+  assert.equal(f.sends,0)
  }finally{f.db.close()}
 })
 

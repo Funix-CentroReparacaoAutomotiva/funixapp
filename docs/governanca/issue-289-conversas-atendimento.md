@@ -19,3 +19,17 @@ A primeira interação autenticada procura a referência ao Contato canônico an
 O ensaio de regressão emite orçamento e OS antes do primeiro webhook de saída e compara a ficha, as referências, os cenários, o orçamento, o PDF, a OS e a Experiência após a saída, o replay e a resposta. Para histórico que só chegou por snapshot, a consulta dos candidatos apenas sugere o vínculo.
 
 Uma ficha legada cadastrada apenas com nome e telefone pode aparecer como candidata quando o PN completo coincide. Confirme o vínculo com o ID da ficha original. A falta de titularidade confirmada impede o vínculo automático. A confirmação de contexto de envio é uma operação separada e continua sujeita às validações de identidade e autorização.
+
+## Numeração móvel abreviada no WhatsApp
+
+Uma mensagem autenticada com telefone completo reutiliza a ficha textual única e compatível. O registro criado para o contato usa a própria pessoa já informada na ficha. A prévia e a leitura de histórico continuam sem iniciar Atendimento automaticamente.
+
+Se o WhatsApp apresentar um número abreviado e houver uma ficha plausível, em **Conversas → Gerenciar vínculos**, localize a ficha e escolha **Revisar numeração**. Confira os dois números, informe o motivo e confirme. O aplicativo registra a revisão e abre o histórico na mesma ficha. O telefone do cadastro permanece íntegro. A consulta `whatsappNumbers` da Evolution pode devolver variantes criadas pelo cache e a presença de um dígito adicional serve apenas para localizar candidatos.
+
+Uma interação nova de número abreviado sem Contato, ficha ou outro Chat plausível cria triagem provisória e mantém visível o número recebido pelo canal. Para um histórico sem evento novo, o botão de triagem exige histórico disponível e ação explícita. A triagem provisória guarda o telefone civil em branco. O vínculo revisado e o provisório são de leitura e o sistema bloqueia a seleção de contexto de envio. Divergência de titularidade ou identidade continua em revisão, com as mensagens preservadas.
+
+### Validação e reversão
+
+A extensão SQLite preserva o número da versão V25 e adiciona registros de revisão e travas de envio. A transação guarda a escolha, o motivo e os identificadores internos sem substituir documentos comerciais ou mensagens. Em reversão de imagens, preserve o banco atual. As versões anteriores abrem a mesma V25 e podem deixar indisponível a leitura das conversas tratadas pela extensão. Os registros e as travas permanecem no banco.
+
+Para a conferência instalada, usar o fluxo oficial de deploy com backup SQLite íntegro e uma sessão autenticada. Conferir uma ficha existente com orçamento, uma primeira mensagem sem ficha, a consulta pelos dois lados e a ausência de envio ao confirmar o vínculo. Registrar somente resultados agregados e códigos de erro. O inventário de cópia distingue vínculos de leitura confirmados de números pendentes de verificação.

@@ -23,7 +23,7 @@ function phoneLine(row:ConversationRow){
  if(row.atendimentoPhone)return {text:'Ficha: +'+row.atendimentoPhone,hint:'Número cadastrado no Atendimento; não confirma que seja o número desta conversa WhatsApp'}
  return {text:'Telefone pendente',hint:'Número do WhatsApp ainda não confirmado'}
 }
-type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;canCreateTriage?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
+type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;canCreateTriage?:boolean;numberReviewAvailable?:boolean;historyOnly?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
 export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
@@ -139,7 +139,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
   {selected&&<dialog className="ev-choice-dialog conversation-workspace" ref={dialog} onClose={()=>setSelected(null)} onCancel={event=>{event.preventDefault();close()}} aria-label="Detalhes da conversa">
    <header><div><strong>{confirmedName||name(selected)}</strong><div>{phoneLine(selected).text}</div></div><button disabled={sending||creatingTriage} aria-label="Fechar detalhes" onClick={close}>×</button></header>
-   {linksEnabled&&<ConversationIdentity key={selected.conversationId} conversationId={selected.conversationId} onSaved={identified=>{
+   {linksEnabled&&!links?.numberReviewAvailable&&!links?.historyOnly&&<ConversationIdentity key={selected.conversationId} conversationId={selected.conversationId} onSaved={identified=>{
      setConfirmedName(identified);setVersion(value=>value+1)
    }}/>}
    {(selected.commercial?.names.length??0)>1&&<ul>{selected.commercial?.names.map((person,index)=><li key={index}>{person.name}</li>)}</ul>}
@@ -149,7 +149,8 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
       ? <button type="button" disabled={!historyAvailable||creatingTriage||sending}
           onClick={()=>void createTriage(selected)}>{creatingTriage?'Criando triagem…':'Criar Atendimento de triagem'}</button>
       : <p>Confira os Atendimentos existentes antes de vincular esta conversa.</p>)}
-   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel key={linksVersion} conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}/></details>}
+   {linksEnabled&&<details open={management||links?.items.length===0}><summary>Gerenciar vínculos</summary><ConversationLinksPanel key={selected.conversationId+':'+linksVersion} conversationId={selected.conversationId} onUnauthorized={onUnauthorized} onLinksChange={setLinks}
+     onOpenLinkedAtendimento={onOpenAtendimento?id=>choose(selected,id):undefined}/></details>}
    <EvolutionAtendimentoChat key={selected.conversationId} atendimentoId="" conversationId={(management?contact?.whatsapp.conversationId:null)??selected.conversationId}
      contactId={management?contact?.id:undefined} contactLinksEnabled={linksEnabled} readOnly={!management||!contact} onUnauthorized={onUnauthorized} drafts={drafts} onSendBusy={setSending} onTechnicalHistory={setHistoryAvailable}>{null}</EvolutionAtendimentoChat>
   </dialog>}

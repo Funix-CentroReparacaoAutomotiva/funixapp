@@ -110,3 +110,68 @@ export function createCustomerIdentitySchema(db:DatabaseSync) {
     WHEN json_extract(OLD.data,'$.canonicalContactId') IS NOT NULL
     BEGIN SELECT RAISE(ABORT,'Archived contact is immutable'); END`)
 }
+
+/** Optional extension of V25. Older application images can still open the database. */
+export function createShortNumberReviewSchema(db:DatabaseSync) {
+  if(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='chat_confirmed_short_numbers'").get())return
+  const previous=db.prepare("SELECT sql FROM sqlite_schema WHERE name='customer_channel_contacts' AND type='view'").get()?.sql
+  const exact=String(previous??'').replace(/^CREATE VIEW customer_channel_contacts AS\s+/i,'')
+  if(!exact.startsWith('SELECT '))throw Error('Canonical Contact view unavailable')
+  db.exec(`
+    CREATE TABLE chat_confirmed_short_numbers (
+      conversation_id TEXT PRIMARY KEY REFERENCES chat_provider_conversations(id),
+      contact_id TEXT NOT NULL UNIQUE REFERENCES customer_records(id),
+      entity_id TEXT NOT NULL REFERENCES customer_records(id),
+      atendimento_id TEXT NOT NULL REFERENCES atendimentos(id),
+      observed_phone TEXT NOT NULL,
+      registered_phone TEXT NOT NULL,
+      request_id TEXT NOT NULL,
+      confirmed_at TEXT NOT NULL,
+      reason TEXT NOT NULL
+    );
+    DROP VIEW customer_channel_contacts;
+    CREATE VIEW customer_channel_contacts AS ${exact}
+    UNION SELECT v.id AS conversation_id, c.id AS contact_id
+      FROM chat_confirmed_short_numbers s
+      JOIN chat_provider_conversations p ON p.id=s.conversation_id
+      JOIN v20_conversations v ON v.instance=p.instance AND (v.remote_jid=p.remote_jid OR EXISTS (
+        SELECT 1 FROM chat_provider_alias_evidence a WHERE a.instance=p.instance
+        AND a.pn=substr(s.observed_phone,2)||'@s.whatsapp.net' AND p.remote_jid IN (a.pn,a.lid) AND v.remote_jid IN (a.pn,a.lid)
+        AND NOT EXISTS (SELECT 1 FROM chat_provider_alias_evidence x WHERE x.instance=a.instance
+          AND ((x.pn=a.pn AND x.lid<>a.lid) OR (x.lid=a.lid AND x.pn<>a.pn)))
+      ))
+      JOIN customer_records c ON c.id=s.contact_id AND c.kind='contact' AND c.entity_id=s.entity_id
+        AND c.phone_normalized=s.registered_phone AND c.conversation_id=p.id
+        AND json_extract(c.data,'$.canonicalContactId') IS NULL
+      JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
+      WHERE NOT EXISTS (SELECT 1 FROM chat_provider_alias_evidence a JOIN chat_provider_alias_evidence x ON x.instance=a.instance
+        AND ((x.pn=a.pn AND x.lid<>a.lid) OR (x.lid=a.lid AND x.pn<>a.pn))
+        WHERE a.instance=p.instance AND p.remote_jid IN (a.pn,a.lid))
+    UNION SELECT v.id AS conversation_id, c.id AS contact_id
+      FROM customer_records c JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
+      JOIN chat_provider_conversations p ON p.id=c.conversation_id
+      JOIN v20_conversations v ON v.instance=p.instance AND v.remote_jid=p.remote_jid
+      WHERE c.kind='contact' AND c.phone_normalized IS NULL AND json_extract(c.data,'$.text')=''
+        AND json_extract(c.data,'$.shortNumberReviewPending')=1
+        AND json_extract(c.data,'$.canonicalContactId') IS NULL
+        AND COALESCE((SELECT a.pn FROM chat_provider_alias_evidence a WHERE a.instance=p.instance AND a.lid=p.remote_jid),p.remote_jid)
+          GLOB '55[0-9][0-9][6-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]@s.whatsapp.net'
+        AND NOT EXISTS (SELECT 1 FROM chat_provider_alias_evidence a JOIN chat_provider_alias_evidence x ON x.instance=a.instance
+          AND ((x.pn=a.pn AND x.lid<>a.lid) OR (x.lid=a.lid AND x.pn<>a.pn))
+          WHERE a.instance=p.instance AND p.remote_jid IN (a.pn,a.lid));
+    CREATE TRIGGER chat_short_number_context_insert BEFORE INSERT ON v20_active_context
+    WHEN EXISTS(SELECT 1 FROM v20_associations a JOIN customer_channel_contacts c USING(conversation_id)
+      JOIN customer_records r ON r.id=c.contact_id LEFT JOIN chat_confirmed_short_numbers s ON s.contact_id=c.contact_id
+      WHERE a.id=NEW.link_id AND (s.contact_id IS NOT NULL OR json_extract(r.data,'$.shortNumberReviewPending')=1))
+    BEGIN SELECT RAISE(ABORT,'Reviewed historical number cannot authorize sending'); END;
+    CREATE TRIGGER chat_short_number_context_update BEFORE UPDATE ON v20_active_context
+    WHEN EXISTS(SELECT 1 FROM v20_associations a JOIN customer_channel_contacts c USING(conversation_id)
+      JOIN customer_records r ON r.id=c.contact_id LEFT JOIN chat_confirmed_short_numbers s ON s.contact_id=c.contact_id
+      WHERE a.id=NEW.link_id AND (s.contact_id IS NOT NULL OR json_extract(r.data,'$.shortNumberReviewPending')=1))
+    BEGIN SELECT RAISE(ABORT,'Reviewed historical number cannot authorize sending'); END;
+    CREATE TRIGGER chat_short_number_receipt_update BEFORE UPDATE ON chat_confirmed_short_numbers
+    BEGIN SELECT RAISE(ABORT,'Reviewed historical number receipt is immutable'); END;
+    CREATE TRIGGER chat_short_number_receipt_delete BEFORE DELETE ON chat_confirmed_short_numbers
+    BEGIN SELECT RAISE(ABORT,'Reviewed historical number receipt is immutable'); END;
+  `)
+}

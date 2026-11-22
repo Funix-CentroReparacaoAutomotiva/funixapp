@@ -18,11 +18,17 @@ try{
   const nullKeysWithPhone=contacts.filter(row=>row.phone_normalized===null&&normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??''))).map(row=>row.id)
   const differingKeys=contacts.filter(row=>row.phone_normalized!==null&&row.phone_normalized!==normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??''))).map(row=>row.id)
   const missingOwners=contacts.filter(row=>!row.entity_id).map(row=>row.id)
-  const links=db.prepare(`SELECT l.id,v.remote_jid,v.instance FROM v20_associations l
+  const links=db.prepare(`SELECT l.id,l.conversation_id,v.remote_jid,v.instance FROM v20_associations l
     JOIN v20_conversations v ON v.id=l.conversation_id WHERE l.unlinked_at IS NULL ORDER BY l.id`).all()
   const handles=db.prepare('SELECT id,instance,remote_jid FROM chat_provider_conversations').all()
   const aliases=db.prepare('SELECT instance,pn,lid FROM chat_provider_alias_evidence').all()
-  const missingChannelContacts=[],channelConflicts=[]
+  const hasReviewSchema=!!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_confirmed_short_numbers'").get()
+  const readOnlyContact=hasReviewSchema?db.prepare(`SELECT c.contact_id, s.contact_id IS NOT NULL AS confirmed,
+    json_extract(r.data,'$.shortNumberReviewPending')=1 AS pending
+    FROM customer_channel_contacts c JOIN customer_records r ON r.id=c.contact_id
+    LEFT JOIN chat_confirmed_short_numbers s ON s.contact_id=c.contact_id WHERE c.conversation_id=?`):null
+  const missingChannelContacts=[],channelConflicts=[],shortNumbersPending=[]
+  let reviewedHistoryLinks=0
   for(const link of links){
     const edges=aliases.filter(edge=>edge.instance===link.instance&&(edge.pn===link.remote_jid||edge.lid===link.remote_jid))
     const jids=new Set([link.remote_jid,...edges.flatMap(edge=>[edge.pn,edge.lid])])
@@ -34,6 +40,11 @@ try{
     const text=exact?String(JSON.parse(String(exact.data)).text??''):''
     const identityConflict=edges.some(edge=>aliases.some(other=>other.instance===edge.instance&&
       (other.pn===edge.pn&&other.lid!==edge.lid||other.lid===edge.lid&&other.pn!==edge.pn)))
+    const readOnly=exact&&readOnlyContact?.get(link.conversation_id!)
+    if(!identityConflict&&exact&&readOnly&&readOnly.contact_id===exact.id&&exact.entity_id&&!inventory.invalidOwners.includes(String(exact.id))){
+      if(readOnly.confirmed===1){reviewedHistoryLinks++;continue}
+      if(readOnly.pending===1){shortNumbersPending.push(link.id);continue}
+    }
     if(!found.length)missingChannelContacts.push(link.id)
     else if(identityConflict||!exact?.entity_id||inventory.invalidOwners.includes(String(exact.id))||
       (pn?!phone||normalizeCustomerPhone(text)!==phone:text!==''))
@@ -44,7 +55,7 @@ try{
     SELECT id AS atendimento_id,json_object('text',phone) AS data FROM atendimentos a
     WHERE NOT EXISTS(SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact')`).all()
   const unresolvedIdentifiedPhones=[...new Set(textual.filter(row=>normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??''))).map(row=>row.atendimento_id))]
-  const details={unresolvedIdentifiedPhones,duplicateGroups:inventory.duplicateGroups,nullKeysWithPhone,differingKeys,missingOwners,missingChannelContacts,channelConflicts}
+  const details={unresolvedIdentifiedPhones,duplicateGroups:inventory.duplicateGroups,nullKeysWithPhone,differingKeys,missingOwners,missingChannelContacts,channelConflicts,shortNumbersPending}
   if(privateReport){
     const fd=openSync(privateReport,'wx',0o600)
     try{chmodSync(privateReport,0o600);writeFileSync(fd,JSON.stringify({version,...details},null,2)+'\n')}
@@ -52,6 +63,6 @@ try{
   }
   const counts=Object.fromEntries(Object.entries(details).map(([key,rows])=>[key,rows.length]))
   const needsReview=Object.values(counts).some(count=>count>0)
-  process.stdout.write(JSON.stringify({version,...counts,unresolvedReferences:inventory.partialReferences,needsReview})+'\n')
+  process.stdout.write(JSON.stringify({version,...counts,reviewedHistoryLinks,unresolvedReferences:inventory.partialReferences,needsReview})+'\n')
   if(needsReview)process.exitCode=2
 }finally{db.close()}

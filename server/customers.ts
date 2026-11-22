@@ -10,6 +10,14 @@ import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
 const invalid=():never=>{throw new ServiceError(400,'INVALID_REFERENCE','Referência inválida.')}
 const kinds=['person','contact','vehicle','payer'] as const
+export function pendingShortNumber(db:DatabaseSync,conversationId:string) {
+  if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_confirmed_short_numbers'").get())return null
+  return db.prepare(`SELECT COALESCE((SELECT a.pn FROM chat_provider_alias_evidence a WHERE a.instance=p.instance AND a.lid=p.remote_jid),p.remote_jid) AS jid,
+    EXISTS(SELECT 1 FROM customer_channel_contacts v JOIN v20_associations a USING(conversation_id)
+      WHERE v.contact_id=c.id AND a.unlinked_at IS NULL) AS active
+    FROM customer_records c JOIN chat_provider_conversations p ON p.id=c.conversation_id
+    WHERE c.kind='contact' AND c.conversation_id=? AND json_extract(c.data,'$.shortNumberReviewPending')=1`).get(conversationId)??null
+}
 export class CustomerRepository {
   readonly db:DatabaseSync
   constructor(db:DatabaseSync){this.db=db}
@@ -235,14 +243,14 @@ export class CustomerRepository {
     return {person:entity,contact:this.bindConfirmedPhone(existing,phone,entity.id,conversationId),receipted:false}
   }
 
-  /** A new authenticated LID-only channel can register one shared provisional owner
-   * without inventing a telephone. Caller owns the transaction and checked uniqueness.
+  /** Register an authenticated channel with its own provisional owner and no invented phone.
+   * Caller owns the transaction and checked uniqueness.
    */
-  createUnnumberedChannelContact(name:string,conversationId:string) {
+  createUnnumberedChannelContact(name:string,conversationId:string,shortNumberReviewPending=false) {
     const entity=this.provisionalChannelOwner(name)
     const id=randomUUID()
     this.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,entity_id) VALUES(?,'contact',?,?,?)")
-      .run(id,JSON.stringify({text:'',channelState:'response_received'}),conversationId,entity.id)
+      .run(id,JSON.stringify({text:'',channelState:'response_received',...(shortNumberReviewPending?{shortNumberReviewPending:true}:{})}),conversationId,entity.id)
     return {person:entity,contact:this.record(id)}
   }
 
@@ -270,7 +278,12 @@ export class CustomerRepository {
       const owner=contact?.entityId?this.record(contact.entityId):this.provisionalChannelOwner(name)
       return this.confirmChannelContact(owner,name.trim()||phone,contact,phone,conversationId).contact
     }
-    if(candidate)throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O número informado pelo canal precisa de revisão.')
+    if(candidate){
+      const pending=contact?.conversationId===conversationId&&contact.entityId&&this.db.prepare(`SELECT 1 FROM customer_records
+        WHERE id=? AND json_extract(data,'$.shortNumberReviewPending')=1`).get(contact.id)
+      if(pending&&contact)return contact
+      throw new ServiceError(409,'CHAT_IDENTITY_CONFLICT','O número informado pelo canal precisa de revisão.')
+    }
     if(!contact)return this.createUnnumberedChannelContact(name,conversationId).contact
     if(!contact.entityId||!contact.conversationId){
       const owner=contact.entityId?this.record(contact.entityId):this.provisionalChannelOwner(name)

@@ -2,7 +2,7 @@ import type {ConversationRuntime} from './conversation-runtime.ts'
 import {validateMedia,type MediaGateway,type MediaInput} from './evolution-media.ts'
 import {createHash,randomUUID} from 'node:crypto'
 import type {DatabaseSync} from 'node:sqlite'
-import {CustomerRepository} from '../customers.ts'
+import {CustomerRepository,pendingShortNumber} from '../customers.ts'
 import {normalizeCustomerPhone as normalizePhone} from '../phone.ts'
 import {ServiceError} from '../errors.ts'
 import {transaction} from '../scenarios.ts'
@@ -12,6 +12,7 @@ import {SendOperations,type SendCommand} from './send-operations.ts'
 import type {EvolutionReadPoc} from '../experimental/evolution-read/client.ts'
 import type {EvolutionTextSender} from './evolution-send.ts'
 import type {ContactAvailability,EntityRecord} from '../../shared/customer.ts'
+import {reviewedNumber} from './short-number-review.ts'
 
 const conflict=():never=>{throw new ServiceError(409,'CONTACT_CHANNEL_CONFLICT','Contato ou identidade mudou. Atualize o cadastro e verifique o WhatsApp novamente.')}
 /** Read by verified Contact. Reserve the Atendimento only on confirmed dispatch. */
@@ -46,6 +47,12 @@ export class ContactChannels {
   private technical(phone:string) {return this.identities.identityJids(phone.slice(1)+'@s.whatsapp.net')}
   status(id:string):ContactAvailability {
     const c=this.contact(id),phone=normalizePhone(c.text)
+    const review=c.conversationId?reviewedNumber(this.db,c.conversationId):null
+    if(review)return review.active===1?{state:'history_only',checkedAt:null,conversationId:c.conversationId??null}:
+      {state:'conflict',checkedAt:null,conversationId:null}
+    const pending=c.conversationId?pendingShortNumber(this.db,c.conversationId):null
+    if(pending)return pending.active===1?{state:'history_only',checkedAt:null,conversationId:c.conversationId??null,
+      observedPhone:'+'+String(pending.jid).split('@')[0]}:{state:'conflict',checkedAt:null,conversationId:null}
     if(!phone)return {state:'incomplete',checkedAt:null,conversationId:null}
     const check=this.db.prepare('SELECT * FROM contact_channel_checks WHERE contact_id=?').get(id)
     const checkedAt=check?.checked_at?new Date(Number(check.checked_at)).toISOString():null
@@ -60,6 +67,7 @@ export class ContactChannels {
   }
   async verify(id:string) {
     const c=this.contact(id),phone=normalizePhone(c.text)
+    if(c.conversationId&&reviewedNumber(this.db,c.conversationId))return this.status(id)
     if(!phone||!this.unique(id,phone)||!this.technical(phone))return this.status(id)
     const lease=randomUUID(),time=this.now()
     const acquired=transaction(this.db,()=>{

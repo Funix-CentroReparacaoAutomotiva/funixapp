@@ -18,9 +18,10 @@ export type CustomerRecord = CustomerReference & {
   channelState?: 'informed' | 'observed' | 'response_received'
 }
 export type ContactAvailability = {
-  state: 'pending' | 'available' | 'unavailable' | 'conflict' | 'incomplete'
+  state: 'pending' | 'available' | 'unavailable' | 'conflict' | 'incomplete' | 'history_only'
   checkedAt: string | null
   conversationId: string | null
+  observedPhone?: string
 }
 export type EntityContact = CustomerRecord & {whatsapp: ContactAvailability}
 export type EntityRecord = CustomerRecord & {contacts: EntityContact[]}

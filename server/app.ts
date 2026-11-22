@@ -1,6 +1,7 @@
 import {SharedConversationIdentity} from './chat/shared-identity.ts'
+import {ShortNumberReview,reviewedNumber} from './chat/short-number-review.ts'
 import {ContactChannels} from './chat/contact-channels.ts'
-import { CustomerRepository } from './customers.ts'
+import { CustomerRepository,pendingShortNumber } from './customers.ts'
 import { funnelProjection } from './funnel.ts'
 import { identifier as chatIdentifier } from './chat/events.ts'
 import type { ConversationRuntime } from './chat/conversation-runtime.ts'
@@ -466,10 +467,11 @@ export function createRequestHandler(options: AppOptions) {
       if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
         const triageRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/atendimentos\/triagem$/.exec(url.pathname)
+        const numberRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/atendimentos\/([a-f0-9-]{36})\/numeracao$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         const identityRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/identity$/.exec(url.pathname)
-        if (associationRoute || contextRoute || identityRoute || triageRoute) {
-          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1] ?? triageRoute?.[1])!
+        if (associationRoute || contextRoute || identityRoute || triageRoute || numberRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1] ?? triageRoute?.[1] ?? numberRoute?.[1])!
           const authority=options.conversationRuntime?.authority
           const contacts=options.evolutionChat.contacts
           const scope=identityRoute?undefined:(authority?.associationScope(conversationId) ??
@@ -477,15 +479,21 @@ export function createRequestHandler(options: AppOptions) {
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
           const identity=identityRoute?new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
+          const numberReview=authority?new ShortNumberReview(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
+          if(numberRoute&&!numberReview)return fail(409,'CHAT_NUMBER_REVIEW_UNAVAILABLE','Revisão de numeração indisponível.')
+          if(numberRoute&&numberReview&&req.method==='GET')return send(200,numberReview.preview(conversationId,numberRoute[2]!))
           if(identity&&req.method==='GET')return send(200,identity.preview(conversationId))
           if (associationRoute && req.method === 'GET' && !associationRoute[3]){
             let readIdentityBlocked=false
             if(authority)try{authority.technicalHistoryJid(conversationId)}
             catch(error){if(!(error instanceof ServiceError)||error.code!=='CHAT_IDENTITY_CONFLICT')throw error;readIdentityBlocked=true}
             const resolution=readIdentityBlocked?undefined:authority?.suggestAtendimentos(conversationId)
+            const shortTriage=!!options.conversationRuntime?.read&&!!numberReview?.triageCandidate(conversationId)
             return send(200, {...options.v20Associations.listActive(conversationId,scope),readIdentityBlocked,
+              ...(numberReview?{numberReviewAvailable:numberReview.available(conversationId),
+                historyOnly:scope?.some(id=>!!(reviewedNumber(options.atendimentos.db,id)||pendingShortNumber(options.atendimentos.db,id)))??false}:{}),
               ...(resolution?{suggestedAtendimentos:resolution.candidates,atendimentoConflict:resolution.conflict,
-                canCreateTriage:!!options.conversationRuntime?.read&&resolution.canCreateTriage}:{}),
+                canCreateTriage:!!options.conversationRuntime?.read&&resolution.canCreateTriage}:shortTriage?{canCreateTriage:true}:{}),
               sendAtendimentoId:options.evolutionChat.activeAtendimentoForConversation(conversationId)})
           }
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
@@ -494,6 +502,7 @@ export function createRequestHandler(options: AppOptions) {
           if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
           const input = body as Record<string, unknown>
           if(identity&&req.method==='POST')return send(200,identity.confirm(conversationId,input))
+          if(numberRoute&&numberReview&&req.method==='POST')return send(200,numberReview.confirm(conversationId,numberRoute[2]!,input))
           if(triageRoute&&req.method==='POST'){
             if(Object.keys(input).length)return fail(400,'CHAT_INVALID_BODY','Campos inválidos.')
             if(!authority||!options.conversationRuntime?.read)
@@ -683,18 +692,26 @@ export function createRequestHandler(options: AppOptions) {
         try {
           if(scope==='linked'){
             const runtime=options.conversationRuntime
-            const conversationId=syncedEvolutionRoute[2]!
-            const jid=runtime?.authority?.linkedHistoryJid(syncedEvolutionRoute[1]!,conversationId)
-            if(!runtime?.authority&&options.v20Associations&&!options.codaSync){
+            const [atendimentoId,conversationId]=[syncedEvolutionRoute[1]!,syncedEvolutionRoute[2]!]
+            const authority=runtime?.authority
+            if(authority){
+              const linked=(jid:string)=>authority.linkedHistoryJid(atendimentoId,conversationId)===jid
+              // Use the configured history source while authorizing against the exact
+              // historical link before and after any provider request.
+              const history=await options.evolutionChat.messages(conversationId,Number(page),cursor,linked)
+              if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+              if(!history)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
+              return send(200,{...history,mediaReadAvailable:history.source==='local'&&options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
+            }
+            if(options.v20Associations&&!options.codaSync){
               const association=options.v20Associations,bridge=options.evolutionChat
               const scope=bridge.contacts?.identities.associationScope(conversationId)
-              const linked=()=>association.listActive(conversationId,scope).items.some(link=>link.atendimentoId===syncedEvolutionRoute[1])
+              const linked=()=>association.listActive(conversationId,scope).items.some(link=>link.atendimentoId===atendimentoId)
               const history=linked()?await bridge.messages(conversationId,Number(page)):null
               if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
               return history&&linked()?send(200,history):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
             }
-            if(!runtime?.read||!jid)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-            return send(200,{conversationId,...runtime.store.page(jid,Number(page),cursor),mediaReadAvailable:options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
+            return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
           }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')

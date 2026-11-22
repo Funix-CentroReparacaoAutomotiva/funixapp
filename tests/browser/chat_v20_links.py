@@ -15,6 +15,7 @@ from m1_atendimentos import Harness, ROOT, ORIGIN
 ARTIFACTS = ROOT / "docs/evidencias/issue98-chat-v20-links-browser"
 A = "11111111-1111-4111-8111-111111111111"
 B = "22222222-2222-4222-8222-222222222222"
+C = "33333333-3333-4333-8333-333333333333"
 AT1 = "aaaa1111-1111-4111-8111-111111111111"
 AT2 = "aaaa2222-2222-4222-8222-222222222222"
 L1 = "bbbb1111-1111-4111-8111-111111111111"
@@ -37,7 +38,7 @@ async def device_case(browser, width, height):
     state = {
         "revision": 0, "links": [], "active": None, "enabled": True,
         "fail_next_link": False, "fail_search": False, "writes": [], "requests": [],
-        "triage": None,
+        "triage": None, "review_atendimento": None, "number_linked": False,
     }
     try:
         h.check_ports()
@@ -66,6 +67,8 @@ async def device_case(browser, width, height):
                          "phoneNumber": "5531999990001", "updatedAt": None, "unreadCount": 0},
                         {"conversationId": B, "displayName": "Contato Sintético Beta",
                          "phoneNumber": "5531999990002", "updatedAt": None, "unreadCount": 0},
+                        {"conversationId": C, "displayName": "Contato Sintético Gama",
+                         "phoneNumber": "553199990003", "updatedAt": None, "unreadCount": 0},
                     ],
                 }))
             if path in [f"/api/chat/conversations/{A}/active-atendimento",
@@ -82,6 +85,9 @@ async def device_case(browser, width, height):
                         "items": [], "total": 0, "nextOffset": None, "stages": [],
                     }))
                 assert parameters.get("limit") == ["20"]
+                if parameters.get("q") == ["Ficha para revisão"]:
+                    items = [{"id": state["review_atendimento"], "name": "Ficha para revisão", "vehicle": "", "plate": ""}]
+                    return await route.fulfill(**response(200, {"items": items, "total": 1}))
                 return await route.fulfill(**response(200, {
                     "items": RECORDS, "total": 2, "nextOffset": None, "stages": [],
                 }))
@@ -111,6 +117,30 @@ async def device_case(browser, width, height):
                 state["triage"] = (await created.json())["id"]
                 state["writes"].append(["triage", {}])
                 return await route.fulfill(**response(201, {"atendimentoId": state["triage"]}))
+            if path == f"/api/chat/conversations/{C}/atendimentos" and method == "GET":
+                return await route.fulfill(**response(200, {
+                    "revision": int(state["number_linked"]), "activeAtendimentoId": None, "sendAtendimentoId": None,
+                    "items": [{"linkId": L3, "atendimentoId": state["review_atendimento"], "name": "Ficha para revisão", "vehicle": "", "plate": ""}] if state["number_linked"] else [],
+                    "numberReviewAvailable": not state["number_linked"], "historyOnly": state["number_linked"],
+                }))
+            if path == f"/api/chat/conversations/{C}/atendimentos/{state['review_atendimento']}/numeracao":
+                if method == "GET":
+                    return await route.fulfill(**response(200, {"token": "synthetic-preview-token", "entityName": "Ficha para revisão",
+                        "registeredPhone": "+5531999990003", "observedPhone": "+553199990003"}))
+                assert method == "POST" and not state["number_linked"]
+                data = request.post_data_json
+                assert data["token"] == "synthetic-preview-token" and len(data["requestId"]) == 36
+                assert data["reason"] == "Revisão sintética de identidade"
+                state["number_linked"] = True
+                state["writes"].append(["number_review", data])
+                return await route.fulfill(**response(201, {"linkId": L3, "revision": 1}))
+            if path == f"/api/atendimentos/{state['review_atendimento']}/evolution-conversations/{C}/messages":
+                assert method == "GET" and parse_qs(parsed.query)["scope"] == ["linked"] and state["number_linked"]
+                return await route.fulfill(**response(200, {"source": "evolution", "conversationId": C,
+                    "items": [{"messageId": "synthetic-number-review", "timestamp": 1794045600,
+                               "fromMe": True, "kind": "text", "text": "Histórico revisado"}],
+                    "page": 1, "nextPage": None, "reportedTotal": 1,
+                    "consistency": "offset-not-snapshot", "historyComplete": "unknown"}))
             if path == f"/api/chat/conversations/{A}/atendimentos" and method == "GET":
                 return await route.fulfill(**response(200, {
                     "revision": state["revision"], "items": list(state["links"]),
@@ -162,6 +192,7 @@ async def device_case(browser, width, height):
         await ctx.route("**/api/chat/conversations**", mock)
         await ctx.route("**/api/atendimentos?*", mock)
         await ctx.route(f"**/api/atendimentos/*/evolution-conversations/{B}/messages?*", mock)
+        await ctx.route(f"**/api/atendimentos/*/evolution-conversations/{C}/messages?*", mock)
         await page.goto(ORIGIN + "/conversas")
         await page.get_by_role("button", name="Abrir conversa: Contato Sintético Alfa", exact=True).click()
         panel = page.get_by_role("region", name="Vínculos com Atendimentos")
@@ -231,10 +262,34 @@ async def device_case(browser, width, height):
         h.mark(f"{width}px: historical triage opens linked read-only Atendimento and returns to Conversas")
         h.mark(f"{width}px: conversation switch isolates manual association panels")
 
+        created = await ctx.request.post(ORIGIN + "/api/atendimentos", headers={"Origin": ORIGIN},
+            data={"name": "Ficha para revisão", "phone": "+5531999990003", "purpose": "unclassified"})
+        assert created.status == 201
+        state["review_atendimento"] = (await created.json())["id"]
+        await page.get_by_role("button", name="Abrir conversa: Contato Sintético Gama", exact=True).click()
+        await panel.get_by_role("searchbox", name="Localizar Atendimento existente").fill("Ficha para revisão")
+        await panel.get_by_role("button", name="Buscar", exact=True).click()
+        await panel.get_by_role("button", name="Revisar numeração", exact=True).click()
+        review = panel.get_by_role("group", name="Confirmar número do WhatsApp")
+        await expect(review.get_by_text("+553199990003", exact=True)).to_be_visible()
+        await expect(review.get_by_text("+5531999990003", exact=True)).to_be_visible()
+        submit = review.get_by_role("button", name="Confirmar e vincular histórico")
+        await expect(submit).to_be_disabled()
+        await panel.get_by_role("textbox", name="Motivo para vincular ou desvincular").fill("Revisão sintética de identidade")
+        await expect(submit).to_be_disabled()
+        await review.get_by_role("checkbox").check()
+        await submit.click()
+        await page.wait_for_url(lambda url: urlparse(url).path == f"/atendimentos/{state['review_atendimento']}")
+        await expect(page.get_by_text("Histórico revisado", exact=True)).to_be_visible()
+        await expect(page.get_by_role("button", name="Enviar", exact=True)).to_have_count(0)
+        await page.get_by_role("button", name="Voltar à visão anterior").click()
+        await expect(page.get_by_role("button", name="Abrir conversa: Contato Sintético Gama", exact=True)).to_be_visible()
+        h.mark(f"{width}px: explicit number review opens the existing Atendimento in read-only mode")
+
         assert await page.evaluate("w => document.documentElement.scrollWidth <= w + 1", width)
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         assert all("@" not in p for _, p in state["requests"])
-        assert all(kind in ["link", "unlink", "context", "triage"] for kind, _ in state["writes"])
+        assert all(kind in ["link", "unlink", "context", "triage", "number_review"] for kind, _ in state["writes"])
         h.mark(f"{width}px: no horizontal overflow, no external network, no JS exceptions")
 
         state["enabled"] = False

@@ -1,4 +1,4 @@
-import {createCustomerIdentitySchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
+import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
 import {createProductionSchema} from './production-schema.ts'
 import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
@@ -376,6 +376,7 @@ export function migrate(db: DatabaseSync) {
       migration.apply(db)
       db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES (?,?)').run(migration.version, new Date().toISOString())
     }
+    createShortNumberReviewSchema(db)
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
