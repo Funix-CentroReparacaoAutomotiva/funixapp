@@ -408,6 +408,27 @@ test('explicit autonomous cutover creates a shared registration on first authent
  }finally{db.close()}
 })
 
+test('future abbreviated PN automatically reuses the sole matching ficha and only opens history',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true',
+   FUNIX_CHAT_AUTONOMOUS_SINCE:'2026-01-01T00:00:00.000Z'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  const owner=customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:'+5531999990101'}]})
+  const ficha=at.create({references:{person:[{id:owner.id,text:owner.text}],
+   contact:[{id:customers.contacts(owner.id)[0]!.id,text:'+5531999990101'}],vehicle:[],payer:[]}})
+  const abbreviated=event('future-short','553199990101@s.whatsapp.net')
+  runtime.store.ingest(JSON.stringify(abbreviated))
+  assert.equal(at.list().total,1)
+  assert.equal(runtime.authority!.linkedHistoryJid(ficha.id,runtime.authority!.rememberProviderConversation(abbreviated.message.remoteJid)),
+   abbreviated.message.remoteJid)
+  assert.equal(runtime.authority!.canonicalChannelSendAllowed(abbreviated.message.remoteJid),false)
+  assert.equal(db.prepare('SELECT count(*) n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').get(ficha.id)!.n,1)
+  assert.equal(db.prepare('SELECT count(*) n FROM chat_confirmed_short_numbers').get()!.n,1)
+  assert.equal(db.prepare('SELECT count(*) n FROM atendimento_contact_events WHERE atendimento_id=?').get(ficha.id)!.n,1)
+ }finally{db.close()}
+})
+
 test('Atendimento references resolve equivalent phone through the explicitly selected owner without a Chat',()=>{
  const f=fixture()
  try{

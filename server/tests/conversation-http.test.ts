@@ -891,7 +891,7 @@ test('first authenticated outgoing message reconciles a unique textual Atendimen
  }finally{f.db.close()}
 })
 
-test('short Brazilian WhatsApp identifier does not attach to a textual ficha by adding a digit',async()=>{
+test('short Brazilian WhatsApp identifier reuses its unique textual ficha',async()=>{
  const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
  try{
   const at=new AtendimentoRepository(f.db)
@@ -901,18 +901,10 @@ test('short Brazilian WhatsApp identifier does not attach to a textual ficha by 
     key:{remoteJid:jid,remoteJidAlt:null,id:'outgoing-short-identifier',fromMe:true}}}
   assert.equal((await f.sendEvent(event)).status,202)
   assert.equal(at.list().total,1)
-  assert.equal(at.get(original.id).revision,original.revision)
-  assert.equal(f.local.authority!.links(jid).length,0)
+  assert.equal(f.local.authority!.links(jid).length,1)
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,1)
   assert.equal(f.sends,0)
-  const cid=f.local.authority!.rememberProviderConversation(jid),base='/api/chat/conversations/'+cid
-  const linkRoute=base+'/atendimentos/'+original.id+'/numeracao'
-  const preview=await f.request(linkRoute,'GET',undefined,f.browser)
-  assert.equal(preview.status,200)
-  const {token,contactId,entityName}=await preview.json()
-  assert.equal(contactId,null)
-  assert.equal(entityName,original.name)
-  assert.equal((await f.request(linkRoute,'POST',{token,requestId:randomUUID(),reason:'Conferência explícita da ficha'},f.browser)).status,200)
+  const cid=f.local.authority!.rememberProviderConversation(jid)
   const linked=at.get(original.id,true)
   assert.equal(linked.id,original.id)
   assert.equal(linked.references!.person.length,1)
@@ -939,22 +931,9 @@ test('explicit short number review preserves the existing Contact, records the r
     key:{remoteJid:jid,remoteJidAlt:null,id:'inbound-need-number-review',fromMe:false}}}
   assert.equal((await f.sendEvent(event)).status,202)
   assert.equal(repo.list().total,1)
-  assert.equal(authority.links(jid).length,0)
+  assert.equal(authority.links(jid).length,1)
   assert.equal((await f.request(route)).status,401)
-  const preview=await f.request(route,'GET',undefined,f.browser)
-  assert.equal(preview.status,200)
-  const data=await preview.json()
-  assert.equal(data.contactId,contact.id)
-  assert.equal(data.entityName,owner.text)
-  assert.equal(data.registeredPhone,'+5531998880717')
-  assert.equal(data.observedPhone,'+553198880717')
-  const input={token:data.token,requestId:randomUUID(),reason:'Titular e ficha conferidos pelo operador'}
-  assert.equal((await f.request(route,'POST',input,{...f.browser,origin:'https://wrong.invalid'})).status,403)
-  const result=await f.request(route,'POST',input,f.browser)
-  assert.equal(result.status,200)
-  const saved=await result.json()
-  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
-  assert.equal((await f.request(route,'POST',{...input,reason:'Mudança no motivo'},f.browser)).status,409)
+  const saved={linkId:String(authority.links(jid)[0]!.id)}
   assert.equal(customers.contacts(owner.id).length,1)
   const reviewed=customers.record(contact.id)
   assert.equal(reviewed.conversationId,cid)
@@ -979,9 +958,29 @@ test('explicit short number review preserves the existing Contact, records the r
   const unlink={expectedRevision:associations.revision,requestId:randomUUID(),reason:'Revogação explicitamente solicitada'}
   assert.equal((await f.request(base+'/atendimentos/'+saved.linkId,'DELETE',unlink,f.browser)).status,200)
   assert.equal((await f.request(historyPath,'GET',undefined,f.browser)).status,409)
-  assert.deepEqual(await (await f.request(route,'POST',input,f.browser)).json(),saved)
   assert.equal(authority.links(jid).length,0)
   assert.deepEqual(f.db.prepare('PRAGMA foreign_key_check').all(),[])
+ }finally{f.db.close()}
+})
+
+test('a company channel with its linked owner and unnumbered Contact can read history while its conflict hold remains',async()=>{
+ const f=await fixture(true,false,'2026-01-01T00:00:00.000Z')
+ try{
+  const authority=f.local.authority!,customers=new CustomerRepository(f.db),at=new AtendimentoRepository(f.db)
+  const jid='553189076449@s.whatsapp.net',cid=authority.rememberProviderConversation(jid)
+  const {person,contact}=customers.createUnnumberedChannelContact('FUNIX',cid)
+  const ficha=at.create({name:'FUNIX'})
+  f.db.prepare("INSERT INTO atendimento_references VALUES(?,'person',0,?,?)").run(ficha.id,person.id,JSON.stringify({id:person.id,text:person.text}))
+  f.db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,?,?)").run(ficha.id,contact.id,JSON.stringify({id:contact.id,text:contact.text}))
+  removeV25FixtureSchema(f.db)
+  f.db.prepare(`INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason)
+    VALUES(?,?,?,?,?,?)`).run(randomUUID(),cid,ficha.id,'2026-01-01T00:00:00.000Z','operator','Legacy company channel')
+  migrate(f.db)
+  f.db.prepare("INSERT INTO chat_local_context_holds VALUES(?,'autonomous_contact_conflict')").run(cid)
+  assert.equal(authority.technicalHistoryJid(cid),jid)
+  assert.equal(authority.linkedHistoryJid(ficha.id,cid),jid)
+  assert.equal(authority.canonicalChannelSendAllowed(jid),false)
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM chat_local_context_holds WHERE conversation_id=?').get(cid)!.n,1)
  }finally{f.db.close()}
 })
 
