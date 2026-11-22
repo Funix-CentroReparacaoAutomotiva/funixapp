@@ -186,24 +186,43 @@ class Store:
             previous = None
         return data, previous
 
-    def apply(self, name, old_digest, new_digest, preview):
-        """Atomically write individual files; coordinator journals intermediate state.
+    def stage_override(self, name, old_digest, preview):
+        """Persist only the preview overlay; pin remains unchanged until verified.
 
-        A crash between these writes MUST be explicitly recovered before HML
-        access or any updater action is allowed. This is not a multi-file atomic
-        commit.
+        Caller must keep HML in the restricted maintenance gate and render the
+        effective Docker Compose with this staged override before committing.
         """
         check_hash(old_digest)
-        check_hash(new_digest)
         data, old_override = self._snapshot(name)
         require(data["old_contract_sha256"] == old_digest, "snapshot pin mismatch")
-        current_pin, current_override = self.observe()
-        require(current_pin == old_digest and current_override == old_override,
+        pin, current_override = self.observe()
+        require(pin == old_digest and current_override == old_override,
                 "pre-transition files differ")
-        expected = override_bytes(preview)
-        require(old_digest != new_digest, "no-op contract forbidden")
-        atomic_replace(self.override, expected)
-        atomic_replace(self.pin, (new_digest + "\n").encode())
+        atomic_replace(self.override, override_bytes(preview))
+
+    def commit_pin(self, name, plan_record, original, observed):
+        """Accept a new pin only after independently verifying full Compose delta.
+
+        The caller must get 'observed' from Docker Compose using the staged
+        override, not copy or reconstruct it from the plan itself. This method
+        intentionally does not invoke Docker or take authority to deploy.
+        """
+        data, previous = self._snapshot(name)
+        require(plan_record["old_contract_sha256"] == data["old_contract_sha256"],
+                "snapshot pin mismatch")
+        pinned, staged = self.observe()
+        require(pinned == data["old_contract_sha256"]
+                and staged == override_bytes(plan_record["to"] == "PREVIEW_ONLY"),
+                "staged flags or pinned contract differ")
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "hml_cilia_plan_store", Path(__file__).with_name("hml-cilia-plan.py"))
+        planner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(planner)
+        planner.verify_applied(plan_record, original, observed)
+        atomic_replace(self.pin, (plan_record["new_contract_sha256"] + "\\n").encode())
+        require(self.observe()[0] == plan_record["new_contract_sha256"],
+                "accepted contract pin differs")
 
     def restore(self, name, old_digest, new_digest, preview):
         """Restore original bytes, including an absent override, idempotently.
