@@ -15,7 +15,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository == 'Funix-CentroReparacaoAutomotiva/funixapp'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    environment: hml-authorization
+    environment: homologacao
     permissions:
       contents: read
     steps:
