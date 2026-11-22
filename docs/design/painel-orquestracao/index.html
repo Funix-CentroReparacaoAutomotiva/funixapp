@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src https://api.github.com; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>FUNIX · Acompanhamento do ERP</title>
+  <meta name="description" content="Visão resumida e somente de leitura do desenvolvimento do FUNIX ERP.">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">F<span>.</span></span><div><span class="brand-name">FUNIX</span><span class="brand-line">ACOMPANHAMENTO DO ERP</span></div></div>
+      <div class="header-meta"><span class="read-only"><span class="read-dot"></span>Somente leitura</span><a class="source-link" href="https://github.com/Funix-CentroReparacaoAutomotiva/funixapp" target="_blank" rel="noopener noreferrer">Fonte: GitHub <span aria-hidden="true">↗</span></a></div>
+    </header>
+
+    <main>
+      <div class="intro"><div><p class="eyebrow">VISÃO DO PROGRAMA</p><h1>Como está caminhando o ERP?</h1><p class="lead">Uma visão das frentes de trabalho. Sem precisar acompanhar PRs, agentes ou tarefas técnicas.</p></div><div class="freshness"><span id="data-status" role="status" aria-live="polite">Conectando ao GitHub…</span><button id="refresh" class="refresh" type="button"><span aria-hidden="true">↻</span> Atualizar</button></div></div>
+
+      <div id="notice" class="notice" role="alert" hidden></div>
+
+      <section class="summary" aria-label="Resumo do programa">
+        <div class="metric"><span class="metric-label">Frentes do ERP</span><strong id="metric-fronts">6</strong><span class="metric-hint">Mapa de responsabilidades</span></div>
+        <div class="metric"><span class="metric-label">Iniciativas abertas</span><strong id="metric-open">—</strong><span class="metric-hint">Estado registrado no GitHub</span></div>
+        <div class="metric"><span class="metric-label">PRs abertas</span><strong id="metric-prs">—</strong><span class="metric-hint">No repositório inteiro</span></div>
+      </section>
+
+      <section class="visual-section" aria-labelledby="map-title">
+        <div class="section-heading"><div><p class="eyebrow">MAPA DE TRABALHO</p><h2 id="map-title">Frentes coordenadas pelo CTO</h2></div><span class="section-hint">Toque em uma frente para ver os detalhes</span></div>
+        <div class="flow-area">
+          <div class="hub-wrap"><div class="hub"><div class="hub-avatar" aria-hidden="true">CTO</div><div><strong>CTO Virtual</strong><span>Coordenação técnica</span></div><div class="hub-chip">FUNIX ERP</div></div></div>
+          <div class="stem" aria-hidden="true"></div>
+          <div class="front-grid" id="front-grid" aria-label="Frentes de desenvolvimento"></div>
+        </div>
+      </section>
+
+      <section class="details" id="details" aria-labelledby="details-title">
+        <div class="details-top"><div><p class="eyebrow">FRENTE SELECIONADA</p><h2 id="details-title">Selecione uma frente</h2><p id="details-description" class="details-description">Veja o objetivo, as linhas de trabalho e a última movimentação registrada.</p></div><a id="details-link" class="details-link" target="_blank" rel="noopener noreferrer" hidden>Ver origem ↗</a></div>
+        <div id="details-info" class="details-info"><p class="muted">As informações serão carregadas a partir das issues do GitHub.</p></div>
+      </section>
+
+      <section class="activity" aria-labelledby="activity-title">
+        <div class="section-heading"><div><p class="eyebrow">SINAIS RECENTES</p><h2 id="activity-title">Movimentações técnicas</h2></div><span class="section-hint">Contexto opcional, não uma lista de tarefas para você</span></div>
+        <ul id="activity-list" class="activity-list"><li class="muted">Consultando as PRs abertas…</li></ul>
+      </section>
+
+      <div class="truth-note"><span aria-hidden="true">ⓘ</span><p>O painel mostra registros verificáveis do GitHub. <strong>Issue encerrada não comprova homologação, publicação ou aceite operacional.</strong> Atribuições de agentes e percentuais de conclusão não são inferidos sem evidências.</p></div>
+    </main>
+
+    <footer><span>FUNIX ERP · Painel conceitual de acompanhamento</span><span>Sem ações de escrita ou aprovação</span></footer>
+  </div>
+</body>
+</html>

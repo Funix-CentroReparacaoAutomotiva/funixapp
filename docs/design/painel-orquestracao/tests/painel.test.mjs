@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {FRONTS,cleanIssues,isBlocked,mapData,statusOf,safeGitHubUrl,formattedDate} from '../app.mjs';
+test('mapa contém seis iniciativas e não duplica épicos',()=>{assert.equal(FRONTS.length,6);assert.equal(new Set(FRONTS.flatMap(f=>f.epics)).size,FRONTS.flatMap(f=>f.epics).length)});
+test('não confunde PR com issue e mantém desconhecido quando falta evidência',()=>{const data=[{number:291,state:'open',updated_at:'2026-11-20T18:00:00Z'},{number:292,state:'closed'},{number:299,state:'open',updated_at:'2026-11-21T18:00:00Z'},{number:999,pull_request:{url:'https://api.github.com/pr/999'}}];const m=mapData(data,[]);assert.equal(cleanIssues(data).length,3);assert.equal(m.find(x=>x.id===291).status.label,'Em acompanhamento');assert.equal(m.find(x=>x.id===291).validEpics,1);assert.equal(m.find(x=>x.id===291).updated,'2026-11-21T18:00:00Z');assert.equal(m.find(x=>x.id===292).status.label,'Encerrada no GitHub');assert.equal(m.find(x=>x.id===293).status.label,'Estado não verificado')});
+test('somente label explícita determina bloqueio',()=>{assert.equal(isBlocked({labels:[{name:'blocked'}]}),true);assert.equal(isBlocked({labels:[{name:'enhancement'}]}),false);assert.equal(statusOf({state:'open',labels:['bloqueado']}).key,'blocked')});
+test('não cria autorização, aceite ou percentual por estado',()=>{assert.ok(!JSON.stringify(mapData([{number:291,state:'closed'}])).includes('homologado'));assert.ok(!JSON.stringify(mapData([{number:291,state:'closed'}])).includes('percentual'))});
+test('links externos são limitados ao domínio público do GitHub',()=>{assert.equal(safeGitHubUrl('https://github.com/a/b'), 'https://github.com/a/b');assert.equal(safeGitHubUrl('https://github.com.evil.test/a'),null);assert.equal(safeGitHubUrl('javascript:alert(1)'),null)});
+test('data inválida é explicitada',()=>{assert.equal(formattedDate('invalid'),'data não informada')});
