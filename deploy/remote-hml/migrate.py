@@ -535,13 +535,24 @@ def migration_inventory(mapping, original, retry):
 
 
 def accepted_baseline(mapping, original, retry):
-    """Bind this upgrade to the accepted retry and the original restoration."""
+    """Accept either the original restored journal or an accepted retry."""
+    original_digest = prior_restoration(mapping, original)
+    if not exists(retry):
+        prior_restoration(mapping, original, require_installed_old=True)
+        baseline = {
+            'old': inventory(mapping),
+            'new': inventory(mapping),
+            'modes': {str(target): file_mode(target) for target in mapping},
+        }
+        return original_digest, baseline
+
     baseline = current_record(mapping, retry)
     if baseline['phase'] != 'accepted' or exists(retry/'hold'):
         raise ValueError('previous migration is not accepted')
-    if baseline.get('prior_journal_sha256') != prior_restoration(mapping, original):
+    if baseline.get('prior_journal_sha256') != original_digest:
         raise ValueError('previous migration history changed')
     verify_bundle(mapping, retry, baseline)
+    check_files(mapping, baseline, ('new',))
     return digest(retry/'journal.json'), baseline
 
 
