@@ -240,3 +240,23 @@ Antes de qualquer futura autorização de atualização, preparar formalmente o
 novo candidato para gerar `prepared.json`; aprovações anteriores não são
 convertidas. A conferência do host e qualquer execução operacional exigem
 autorização separada.
+
+## Registro de um novo candidato
+
+A versão em revisão do controlador oferece `rootctl.py register-candidate`
+para o canal administrativo. O comando recebe um objeto JSON pela entrada
+padrão com `pr`, `run_id`, `attempt`, `artifact_id`, `revision`, `sha256`
+e `size`. O servidor determina a revisão instalada a partir do journal.
+A resposta `candidate_registered` confirma a gravação da seleção. A
+preparação, a aprovação de uso único e o despacho continuam etapas distintas.
+
+Para substituir o PowerShell na rotina, o próximo incremento precisa de um
+canal remoto de autorização independente do executor n8n. Esse canal deve
+registrar o candidato, obter o recibo de preparação e aprovar a prévia exata.
+O n8n então despacha o ticket pelo mTLS existente e acompanha o estado até
+`accepted` ou `auto_restored`. O aceite da liberação exige uma revisão
+diferente da instalada, com backup, HTTPS e serviços externos conferidos.
+
+O piloto desta VPS já consumiu a tentativa de migração e sua repetição.
+A instalação de outro controlador precisa de uma migração que parta do
+inventário aceito. Os journals de migração existentes fazem parte da trilha.

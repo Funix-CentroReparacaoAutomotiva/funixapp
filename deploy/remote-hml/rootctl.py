@@ -150,6 +150,45 @@ def armed_ticket():
 
 def base(status): return {'schema':SCHEMA,'scope':'funix-hml','status':status}
 
+def register_candidate(body):
+    """Record only a candidate selection. Approval and dispatch stay separate."""
+    with locked():
+        require_idle()
+        require(armed_ticket() is None, 'approval_already_armed')
+        prep = prep_module()
+        prep.private_dir(prep.PRIVATE)
+        prep.private_dir(prep.STATE)
+        selection = prep.official_module('hml-selection')
+        try:
+            candidate = selection.parse(body)
+        except ValueError:
+            raise Blocked('candidate_selection') from None
+        operation = prep.STATE / selection.operation_id(candidate)
+        approval_path = prep.PRIVATE / 'approval.json'
+        token = prep.private_file(prep.PRIVATE / 'github.token').read_text(encoding='ascii').strip()
+        require(re.fullmatch(r'github_pat_[A-Za-z0-9_]{20,240}', token) is not None, 'token_format')
+        lock_fd = os.open(prep.private_file(prep.STATE / 'lock'), os.O_RDWR | os.O_NOFOLLOW)
+        with os.fdopen(lock_fd, 'r+') as updater_lock:
+            fcntl.flock(updater_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            journal, record = active_record(prep)
+            installed = prep.installed_from_journal(record)['revision']
+            require(installed != candidate['revision'], 'candidate_already_installed')
+            require(not exists(operation / 'operation.json'), 'operation_already_used')
+            if exists(operation):
+                prep.private_dir(operation)
+            approval = {
+                'identity': {key: candidate[key] for key in ('pr', 'run_id', 'attempt', 'artifact_id', 'revision')},
+                'digest': candidate['sha256'],
+                'size': candidate['size'],
+                'installed_revision': installed,
+            }
+            prep.metadata(approval, token)
+            require(active_record(prep) == (journal, record), 'active_journal_changed')
+            replace(approval_path, approval)
+    return {**base('candidate_registered'), 'operation': operation.name,
+            'revision': candidate['revision'], 'installed_revision': installed}
+
+
 def view():
     with locked():
         require_idle(); require(armed_ticket() is None,'approval_already_armed')
@@ -279,6 +318,7 @@ def main():
     os.umask(0o077); require(os.geteuid()==0,'root_only')
     args=sys.argv[1:]
     if args==['status']: return status()
+    if args==['register-candidate']: return register_candidate(sys.stdin.buffer.read(4097))
     if args==['preview']: return view()
     if len(args)==2 and args[0]=='approve': return approve(args[1])
     if len(args)==2 and args[0]=='cancel': return cancel(args[1])
