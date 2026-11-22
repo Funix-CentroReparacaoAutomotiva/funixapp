@@ -292,6 +292,11 @@ def prepare_operation(operation, config_path, identity):
     override = STATE / "images.json"
     if override.exists() or override.is_symlink():
         base += ["-f", str(root_file(override))]
+    cilia_overlay = STATE / "cilia-flags.json"
+    if cilia_overlay.exists() or cilia_overlay.is_symlink():
+        cilia_store = load("hml-cilia-contract-store")
+        cilia_store.validate_override(cilia_store.existing_file(cilia_overlay))
+        base += ["-f", str(cilia_overlay)]
     rendered = json.loads(subprocess.check_output(base + ["config", "--format", "json"],
                                                  text=True, timeout=45))
     digest = load("hml-docker-adapter").contract_digest(rendered)
