@@ -40,3 +40,19 @@ jobs:
           set -euo pipefail
           docker build --target web-hml-painel --build-arg APP_REVISION=development -t funix-web:ci .
           bash deploy/test-painel-hml.sh
+
+  gateway-preflight:
+    # Somente GET HTTPS sem credenciais. O resultado da HML real é um gate
+    # independente do build Docker e jamais dispara publicação.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Conferir Basic Auth real de todos os recursos em /painel/
+        run: |
+          set -euo pipefail
+          python3 deploy/painel-hml-acceptance.py --mode preflight
