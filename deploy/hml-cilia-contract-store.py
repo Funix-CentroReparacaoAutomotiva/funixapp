@@ -220,7 +220,7 @@ class Store:
         planner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(planner)
         planner.verify_applied(plan_record, original, observed)
-        atomic_replace(self.pin, (plan_record["new_contract_sha256"] + "\\n").encode())
+        atomic_replace(self.pin, (plan_record["new_contract_sha256"] + "\n").encode())
         require(self.observe()[0] == plan_record["new_contract_sha256"],
                 "accepted contract pin differs")
 
