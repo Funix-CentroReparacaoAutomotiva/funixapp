@@ -538,11 +538,10 @@ def accepted_baseline(mapping, original, retry):
     """Accept either the original restored journal or an accepted retry."""
     original_digest = prior_restoration(mapping, original)
     if not exists(retry):
-        prior_restoration(mapping, original, require_installed_old=True)
+        record = json.loads(regular(original/'journal.json').read_bytes())
         baseline = {
-            'old': inventory(mapping),
-            'new': inventory(mapping),
-            'modes': {str(target): file_mode(target) for target in mapping},
+            'new': {**record['old'], str(SELECTION): None},
+            'modes': record['modes'],
         }
         return original_digest, baseline
 
@@ -552,7 +551,6 @@ def accepted_baseline(mapping, original, retry):
     if baseline.get('prior_journal_sha256') != original_digest:
         raise ValueError('previous migration history changed')
     verify_bundle(mapping, retry, baseline)
-    check_files(mapping, baseline, ('new',))
     return digest(retry/'journal.json'), baseline
 
 

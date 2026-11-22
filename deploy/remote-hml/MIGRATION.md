@@ -271,7 +271,7 @@ ticket vale por vinte minutos e só pode ser usada uma vez. O despacho
 continua em `POST /v1/update` com o ticket devolvido por `GET /v1/status`.
 
 Antes de liberar o workflow de assinatura, configurar no GitHub o ambiente
-`hml-authorization` para a branch `main`, com aprovadores designados,
+`homologation` para a branch `main`, com aprovadores designados,
 prevenção de autoaprovação e proibição de contornar a proteção. Armazenar
 a chave Ed25519 privada somente como segredo desse ambiente, com o nome
 `HML_PERMIT_SIGNING_KEY`. Na VPS, instalar apenas a chave pública em
