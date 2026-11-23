@@ -14,7 +14,7 @@ permissions:
 jobs:
   preview:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -29,6 +29,13 @@ jobs:
       - name: Gerar HTML autônomo
         working-directory: docs/design/painel-orquestracao
         run: python3 build_standalone.py
+      - name: Testar fluxograma e janela de detalhes em Chromium
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --target "$RUNNER_TEMP/painel-python" 'playwright==1.55.0'
+          export PYTHONPATH="$RUNNER_TEMP/painel-python"
+          python3 -m playwright install --with-deps chromium
+          python3 docs/design/painel-orquestracao/tests/browser_smoke.py
       - name: Checar pacote e preparar artefato
         run: |
           python3 - <<'PY2'
