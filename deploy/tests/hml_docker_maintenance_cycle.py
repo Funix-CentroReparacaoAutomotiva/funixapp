@@ -210,8 +210,23 @@ server {
                             "-subj","/CN=hml.funix.com.br","-addext","subjectAltName=DNS:hml.funix.com.br",
                             "-keyout",str(key),"-out",str(cert)],check=True,capture_output=True)
 
+            # Deterministic TLS edge unavailability immediately after the
+            # maintenance gateway is recreated. Real TLS, auth, Docker, and
+            # the post-recovery release validation still run unchanged.
+            edge_faults = []
+            edge_fault_lock = threading.Lock()
+            edge_fault_count = [0]
+
             class Edge(BaseHTTPRequestHandler):
                 def forward(self):
+                    with edge_fault_lock:
+                        fault = edge_faults.pop(0) if edge_faults else None
+                        if fault is not None:
+                            edge_fault_count[0] += 1
+                    if fault is not None:
+                        self.send_response(fault)
+                        self.end_headers()
+                        return
                     # Resolve the real gateway's current Docker IP on every request.
                     ip = run("docker","inspect","--format",
                              '{{(index .NetworkSettings.Networks "traefik_default").IPAddress}}',
@@ -253,7 +268,15 @@ server {
                 run(*base,"up","-d","--pull","never")
                 contract = json.loads(run(*base,"config","--format","json"))
                 def restricted(release, credentials):
+                    with edge_fault_lock:
+                        assert not edge_faults, "unconsumed prior TLS edge faults"
+                        edge_faults.extend((502, 503, 504))
+                    # The first requests in each real restricted gateway
+                    # validation see transient TLS-edge 502/503/504 responses,
+                    # then reach the actual gateway via Docker.
                     updater.validator(credentials,normal_credentials=normal_login)(release)
+                    with edge_fault_lock:
+                        assert not edge_faults, "TLS edge never converged"
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone()[0] != "unexpected user write"
                 def fresh_adapter():
@@ -375,6 +398,8 @@ server {
                             assert db.execute('SELECT value FROM atendimentos').fetchone()==('original',)
                         assert all(file.read_bytes()==content for file,content in before.items())
                         print('HML_REMOTE_FAILURE_DATA_PRESERVED_OK',flush=True)
+                        assert edge_fault_count[0] >= 3, "TLS edge injection did not run"
+                        print('HML_EDGE_TRANSIENT_GATEWAY_CONVERGENCE_OK',flush=True)
                         return
                     operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
@@ -457,6 +482,8 @@ server {
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("unexpected user write",)
                     print("HML_POST_ACCEPT_RECOVERY_PRESERVES_WRITES_OK", flush=True)
                 assert all(file.read_bytes()==content for file,content in before.items())
+                assert edge_fault_count[0] >= 3, "TLS edge injection did not run"
+                print('HML_EDGE_TRANSIENT_GATEWAY_CONVERGENCE_OK',flush=True)
                 print("HML_DOCKER_MAINTENANCE_TLS_ROLLBACK_OK")
             finally:
                 edge.shutdown()
