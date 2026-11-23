@@ -102,7 +102,8 @@ async function enrich(records){const model=state.model;if(!model)return;const no
 function renderHistoryNoFetch(){const previous=state.loadVersion;const m=state.model,node=currentNode();if(!node)return;const all=recordsOf(m,node.id),filtered=all.filter(r=>state.filter==='all'||r.kind===state.filter),shown=state.expanded?filtered:filtered.slice(0,4);const list=$('history-list');if(list.children.length!==shown.length)return;
   for(let i=0;i<shown.length;i++){const r=shown[i],v=state.live.get(`${r.kind}:${r.number}`),msg=v?.data?stateOfRecord(r,v.data):v?.error?'Estado não verificado — API indisponível':'A consultar estado atual';list.children[i].querySelector('small').textContent=`#${r.number} · ${msg}${r.context?' · '+r.context:''}`}
 }
-function selectNode(id,scroll=false){if(!state.model?.byId.has(id))return;state.selected=id;state.filter='all';state.expanded=false;updateMapSelection();renderDetails();if(scroll&&window.innerWidth<=1100)$('detail').scrollIntoView({behavior:window.matchMedia('(prefersfunction applySnapshot(raw,model,origin){
+function selectNode(id,scroll=false){if(!state.model?.byId.has(id))return;state.selected=id;state.filter='all';state.expanded=false;updateMapSelection();renderDetails();if(scroll&&window.innerWidth<=1100)$('detail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}
+function applySnapshot(raw,model,origin){
   const old=state.selected;
   state.raw=raw;state.model=model;state.loadVersion++;state.live.clear();
   state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));
@@ -158,9 +159,6 @@ async function checkPublished(){
   }finally{state.loading=false;$('refresh').disabled=false}
 }
 $('refresh').addEventListener('click',checkPublished);
-sh').disabled=false;}
-}
-$('refresh').addEventListener('click',load);
 $('roles-toggle').addEventListener('click',()=>{state.roles=!state.roles;$('roles-toggle').setAttribute('aria-pressed',String(state.roles));$('map').classList.toggle('roles-visible',state.roles);requestAnimationFrame(drawWires)});
 $('history-filters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;state.filter=b.dataset.filter;state.expanded=false;renderHistory()});
 $('history-more').addEventListener('click',()=>{state.expanded=!state.expanded;renderHistory()});
