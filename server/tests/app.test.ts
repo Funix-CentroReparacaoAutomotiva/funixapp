@@ -154,7 +154,7 @@ test('manual creation warns for same contact and same or unknown plate, with exp
       assert.equal(response.status,409)
       const body=await response.json() as {error:{code:string;candidates:{id:string}[];confirmationToken:string}}
       assert.equal(body.error.code,'ATENDIMENTO_DUPLICATE_REVIEW')
-      assert.equal(body.error.candidates[0]?.id,first.id)
+      assert.ok(body.error.candidates.some(candidate=>candidate.id===first.id))
       assert.match(body.error.confirmationToken,/^[a-f0-9]{64}$/)
       return body.error.confirmationToken
     }
@@ -509,7 +509,12 @@ test('manual Atendimento resolves a phone transactionally and requires explicit 
   const contact=saved.references.contact[0]
   assert.ok(contact.id)
   assert.equal((await app.write('/api/atendimentos','POST',{name:'Nome diferente',phone:'5531999990182'},cookie)).status,409)
-  const next=await app.write('/api/atendimentos','POST',{references:{person:[],contact:[contact],vehicle:[],payer:[]}},cookie)
+  const another={references:{person:[],contact:[contact],vehicle:[],payer:[]}}
+  const review=await app.write('/api/atendimentos','POST',another,cookie)
+  assert.equal(review.status,409)
+  const preview=await review.json()
+  assert.equal(preview.error.code,'ATENDIMENTO_DUPLICATE_REVIEW')
+  const next=await app.write('/api/atendimentos','POST',{...another,duplicateConfirmation:preview.error.confirmationToken},cookie)
   assert.equal(next.status,201)
   const reused=await next.json()
   assert.equal(reused.references.contact[0].id,contact.id)
