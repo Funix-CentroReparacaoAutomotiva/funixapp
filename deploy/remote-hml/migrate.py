@@ -554,9 +554,23 @@ def accepted_baseline(mapping, original, retry):
     return digest(retry/'journal.json'), baseline
 
 
+def reconciliation_baseline(mapping, original, retry, upgrade):
+    prior, _ = accepted_baseline(mapping, original, retry)
+    record = current_record(mapping, upgrade)
+    if (record['phase'] != 'accepted' or exists(upgrade/'hold')
+            or record.get('prior_journal_sha256') != prior):
+        raise ValueError('controller upgrade history changed')
+    verify_bundle(mapping, upgrade, record)
+    return digest(upgrade/'journal.json'), record
+
+
+RECONCILE_ACTIONS = {name+'-reconcile': name for name in
+                     ('apply', 'probe', 'accept', 'recover', 'rollback')}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('inventory','inventory-upgrade','apply','probe','accept','recover','rollback',*RETRY_ACTIONS,*UPGRADE_ACTIONS))
+    parser.add_argument('action',choices=('inventory','inventory-upgrade','inventory-reconcile','apply','probe','accept','recover','rollback',*RETRY_ACTIONS,*UPGRADE_ACTIONS,*RECONCILE_ACTIONS))
     parser.add_argument('--authorize',action='store_true')
     args=parser.parse_args()
     if os.geteuid()!=0: raise ValueError('local administrator required')
@@ -569,8 +583,23 @@ def execute(requested_action, authorized):
     original = STATE/'migration'
     retry = STATE/'migration-retry'
     upgrade = STATE/'migration-controller-permits'
+    reconcile = STATE/'migration-controller-web-adoption'
     with locks():
         expected = idle()
+        if requested_action == 'inventory-reconcile':
+            prior, baseline = reconciliation_baseline(mapping, original, retry, upgrade)
+            if exists(reconcile):
+                state = current_record(mapping, reconcile)
+                if state.get('prior_journal_sha256') != prior:
+                    raise ValueError('reconciliation history binding changed')
+                print(json.dumps({'phase':state['phase']}))
+            else:
+                check_files(mapping, baseline, ('new',))
+                print(json.dumps({'old':inventory(mapping), 'new':source_integrity(mapping),
+                                  'prior_journal_sha256':prior}, sort_keys=True))
+            return
+        if exists(reconcile) and requested_action not in RECONCILE_ACTIONS:
+            raise ValueError('reconciliation requires explicit action')
         if requested_action == 'inventory-upgrade':
             prior, baseline = accepted_baseline(mapping, original, retry)
             if exists(upgrade):
@@ -590,10 +619,15 @@ def execute(requested_action, authorized):
 
         is_retry = requested_action in RETRY_ACTIONS
         is_upgrade = requested_action in UPGRADE_ACTIONS
-        action = UPGRADE_ACTIONS.get(requested_action, RETRY_ACTIONS.get(requested_action, requested_action))
-        directory = upgrade if is_upgrade else retry if is_retry else original
+        is_reconcile = requested_action in RECONCILE_ACTIONS
+        action = RECONCILE_ACTIONS.get(requested_action) or UPGRADE_ACTIONS.get(requested_action) or RETRY_ACTIONS.get(requested_action, requested_action)
+        directory = reconcile if is_reconcile else upgrade if is_upgrade else retry if is_retry else original
         prior = None
-        if is_upgrade:
+        if is_reconcile:
+            prior, baseline = reconciliation_baseline(mapping, original, retry, upgrade)
+            if action == 'apply':
+                check_files(mapping, baseline, ('new',))
+        elif is_upgrade:
             prior, baseline = accepted_baseline(mapping, original, retry)
             if action == 'apply':
                 check_files(mapping, baseline, ('new',))
@@ -605,7 +639,7 @@ def execute(requested_action, authorized):
             raise ValueError('retry requires explicit retry action')
 
         if action == 'apply':
-            if exists(directory) or exists(GATE):
+            if exists(directory) or (exists(GATE) and not is_reconcile):
                 raise ValueError('existing migration or transport drop-in requires inspection')
         else:
             private_directory(directory)
@@ -625,9 +659,18 @@ def execute(requested_action, authorized):
         def validate():
             command('/usr/bin/python3','-I','-B','-c',"import importlib.util; s=importlib.util.spec_from_file_location('r','/usr/local/lib/funix-hml-ops/rootctl.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.prep_module().load_updater('')")
         if action == 'apply':
-            name = directory.name + '-approval.json' if is_upgrade else 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
+            name = directory.name + '-approval.json' if is_upgrade or is_reconcile else 'migration-approval-retry.json' if is_retry else 'migration-approval.json'
             new = source_integrity(mapping)
-            result = begin(mapping,directory,authorization(name),validate,prior=prior,verified_new=new)
+            approved = authorization(name)
+            if is_reconcile and exists(GATE):
+                if (approved != {'old':inventory(mapping), 'new':new,'prior_journal_sha256':prior}
+                        or regular(GATE).read_bytes() != gate_content(upgrade)
+                        or command('systemctl','is-active',TRANSPORT) != 'active'):
+                    raise ValueError('previous transport condition or approval changed')
+                GATE.unlink()
+                sync_directory(GATE.parent)
+                command('systemctl','daemon-reload')
+            result = begin(mapping,directory,approved,validate,prior=prior,verified_new=new)
         elif action == 'probe':
             result = open_probe(mapping,directory,expected)
         elif action == 'accept':
@@ -644,11 +687,11 @@ def execute(requested_action, authorized):
                 raise
             result = accept(mapping,directory,response,expected,validate)
         elif action == 'rollback':
-            name = directory.name + '-rollback-approval.json' if is_upgrade else 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
+            name = directory.name + '-rollback-approval.json' if is_upgrade or is_reconcile else 'migration-rollback-approval-retry.json' if is_retry else 'migration-rollback-approval.json'
             result = rollback(mapping,directory,authorization(name),expected,validate)
         else:
             result = recover(mapping,directory,expected,validate)
-        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'upgrade' if is_upgrade else 'retry' if is_retry else 'original'}))
+        print(json.dumps({'scope':'funix-hml','migration':result,'attempt':'reconcile' if is_reconcile else 'upgrade' if is_upgrade else 'retry' if is_retry else 'original'}))
 
 
 if __name__=='__main__':
