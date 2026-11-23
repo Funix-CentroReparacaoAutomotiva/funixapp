@@ -81,3 +81,19 @@ O CTO pode criar um nó com `presentation: "group"` (e `type` livre, por exemplo
 O snapshot inicial associa as seis frentes públicas do ERP ao projeto real **FunixApp**; isso apenas demonstra a agrupação e pode ser reorganizado pelo CTO. Não equivale à aprovação de prioridades, cronogramas ou homologação. Nenhuma rotina de agentes atualiza o snapshot automaticamente nesta fase.
 
 Antes de publicar em HML, reconciliar e testar o build da PR de hospedagem #320 contra a versão atualizada da interface. Sem merge/deploy ou alteração de gateway pela simples inclusão desta funcionalidade.
+
+## Atualização de dados sob demanda (proposta v2, ainda não implantada na HML)
+
+**Software e dados têm ciclos independentes.** A versão Web HML existente continua exibindo o `snapshot.json` instalado. Nesta branch de desenvolvimento, o botão **Atualizar** consulta, uma única vez por clique, a API pública GitHub Contents para o arquivo
+`painel-publicado:docs/design/painel-orquestracao/snapshot.json`.
+Não há `setInterval`, cron, GitHub Actions agendado, n8n ou atualização de agentes automática.
+
+- Na abertura, usa a cópia estática instalada (ou embutida, no HTML avulso); **não consulta a publicação remota automaticamente**.
+- Ao clicar em Atualizar, busca os metadados e bytes da publicação pelo HTTPS, com cache desativado e tempo-limite de 15 s. Compara o SHA do blob; conteúdo igual mantém o mapa visível sem redesenhar.
+- Nova versão válida e mais recente substitui os cards; preserva a seleção quando o nó ainda existe. Exige alteração de `snapshotId` em toda atualização material.
+- Falha HTTP, limite GitHub, JSON inválido, repositório divergente ou versão antiga **não apaga os dados já apresentados**. Exibe o resultado da consulta e a hora da última verificação, distinguindo da hora de publicação do CTO.
+- A consulta só aceita um endereço/repositório/branch predeterminados; o navegador não recebe tokens nem permissões de escrita. O GitHub limita consultas anônimas; o painel informa indisponibilidade sem inferir progresso.
+- Após recarregar a página, volta a mostrar a cópia instalada até o próximo clique em Atualizar. Isso evita sincronização não solicitada; não é cache persistente entre sessões.
+- A publicação de dados exige revisão explícita do CTO e commit na branch `painel-publicado`. Instruções: `docs/design/painel-orquestracao/PUBLICACAO_DADOS.md` **naquela branch**.
+
+**Implantação:** esse comportamento requer uma única nova publicação Web HML, aprovada após revisão e testes, **sem atualização da API/banco**. Novos snapshots posteriores não exigem deploy. Não publicar o código ou ativar atualizações na VPS automaticamente.
