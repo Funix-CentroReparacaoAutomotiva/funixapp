@@ -20,7 +20,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   <header><strong>Pessoa e telefone</strong></header>
   <div className="customer-primary">
     <div><label className="customer-field-label">Nome</label>{line('person',primaryPerson,0)}</div>
-    <div><label className="customer-field-label">Telefone</label>{line('contact',primaryPhone,0)}</div>
+    <div role="region" aria-label="Contatos"><label className="customer-field-label">Telefone</label>{line('contact',primaryPhone,0)}</div>
   </div>
   <details className="customer-secondary">
     <summary>Outras pessoas e telefones</summary>
