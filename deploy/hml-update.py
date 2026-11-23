@@ -138,8 +138,12 @@ def validator(credentials, *, normal_credentials=None):
             except ssl.SSLError:
                 print(f"HTTPS attempt={attempt} category=tls-security retry=false", file=sys.stderr)
                 raise
-            except (OSError, http.client.RemoteDisconnected, http.client.IncompleteRead, TransientHttpsError):
-                retry = attempt < max_attempts and time.monotonic() + 1 < deadline
+            except (OSError, http.client.RemoteDisconnected, http.client.IncompleteRead, TransientHttpsError) as failure:
+                # Preserve the established three-attempt limit for transport
+                # failures. Only explicit HTTP edge unavailability may wait
+                # longer for the freshly recreated gateway to become routable.
+                limit = max_attempts if isinstance(failure, TransientHttpsError) else 3
+                retry = attempt < limit and time.monotonic() + 1 < deadline
                 print(f"HTTPS attempt={attempt} category=transient retry={str(retry).lower()}", file=sys.stderr)
                 if not retry:
                     raise ValueError("HTTPS transient attempts exhausted") from None
