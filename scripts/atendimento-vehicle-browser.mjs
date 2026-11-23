@@ -84,6 +84,23 @@ try{
    console.log('PASS telefone',width,'visível nas três abas')
    await page.getByRole('button',{name:'Editar Atendimento'}).click()
    const edit=page.getByRole('dialog',{name:'Editar Atendimento'});await edit.waitFor()
+   const personBlock=edit.getByRole('region',{name:'Pessoas'})
+   assert.equal(await personBlock.getByText('Pessoa e telefone').isVisible(),true)
+   const numberBefore=fixture.atendimentos.get(record.id,true).references.contact[0].id
+   assert.ok(numberBefore)
+   assert.equal(await personBlock.getByText('31999990000').count()>0,true,'telefone principal não deve ficar oculto')
+   await personBlock.getByRole('button',{name:'Editar cadastro selecionado'}).first().click()
+   const personDialog=page.getByRole('dialog',{name:'Editar cadastro selecionado'})
+   await personDialog.waitFor()
+   assert.equal(await personDialog.getByRole('textbox',{name:'Telefone da Entidade 1'}).inputValue(),'31999990000')
+   await personDialog.getByRole('textbox',{name:'Nome da Entidade'}).fill('Contato Sintético Atualizado')
+   await personDialog.getByRole('button',{name:'Salvar pessoa e telefones'}).click()
+   await personDialog.waitFor({state:'hidden'})
+   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   assert.equal(fixture.atendimentos.get(record.id,true).references.contact[0].id,numberBefore,
+     'editar nome não pode perder a referência telefônica')
+   assert.equal(fixture.atendimentos.get(record.id,true).references.contact.length,1,
+     'editar nome não deve duplicar contatos')
    assert.equal(await edit.getByRole('textbox',{name:'Marca e modelo',exact:true}).inputValue(),'Fiat Punto')
    assert.equal(await edit.getByRole('textbox',{name:'Ano de fabricação'}).inputValue(),'2019')
    assert.equal(await edit.getByRole('textbox',{name:'Ano do modelo'}).inputValue(),'2020')
