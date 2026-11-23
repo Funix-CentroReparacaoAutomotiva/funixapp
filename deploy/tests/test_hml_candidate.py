@@ -31,6 +31,11 @@ class CandidateGateTest(unittest.TestCase):
         return gate.check_candidate(self.pr,
             {"total_count": len(self.runs), "workflow_runs": self.runs}, 42, SHA)
 
+    def check_merged(self, comparison):
+        return gate.check_candidate(self.pr,
+            {"total_count": len(self.runs), "workflow_runs": self.runs},
+            42, SHA, comparison)
+
     def test_accept_reviewed_exact_revision(self):
         self.assertEqual(gate.validate_inputs("42", SHA, "true", "refs/heads/main",
                                              gate.REPO), 42)
@@ -45,7 +50,7 @@ class CandidateGateTest(unittest.TestCase):
             with self.subTest(i=i), self.assertRaises(gate.Blocked):
                 gate.validate_inputs(*args)
 
-    def test_wrong_pr_fork_closed_changed_or_base(self):
+    def test_wrong_pr_fork_changed_or_base(self):
         original = copy.deepcopy(self.pr)
         for field, key, value in [
             ("head", "sha", "b" * 40), ("head", "repo", {"full_name": "other/fork"}),
@@ -55,8 +60,24 @@ class CandidateGateTest(unittest.TestCase):
             self.pr[field][key] = value
             with self.subTest(field=field, key=key), self.assertRaises(gate.Blocked):
                 self.check()
-        self.pr = original
+    def test_merged_pr_requires_its_merge_commit_on_main(self):
         self.pr["state"] = "closed"
+        self.pr["merged"] = True
+        self.pr["merge_commit_sha"] = "c" * 40
+        comparison = {"status": "ahead", "behind_by": 0,
+                      "base_commit": {"sha": "c" * 40}}
+        self.assertEqual(self.check_merged(comparison), SHA)
+        for invalid in [None,
+                        {"status": "behind", "behind_by": 1,
+                         "base_commit": {"sha": "c" * 40}},
+                        {"status": "ahead", "behind_by": 0,
+                         "base_commit": {"sha": "d" * 40}}]:
+            with self.subTest(comparison=invalid), self.assertRaises(gate.Blocked):
+                self.check_merged(invalid)
+
+    def test_closed_unmerged_pr_blocks(self):
+        self.pr["state"] = "closed"
+        self.pr["merged"] = False
         with self.assertRaises(gate.Blocked):
             self.check()
 

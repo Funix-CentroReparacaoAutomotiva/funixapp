@@ -34,13 +34,25 @@ def validate_inputs(number, revision, authorized, ref, repository):
     return int(number)
 
 
-def check_candidate(pr, runs_response, number, revision):
+def check_candidate(pr, runs_response, number, revision, main_comparison=None):
     head, base = pr["head"], pr["base"]
-    if (pr["number"] != number or pr["state"] != "open"
-            or head["sha"] != revision or base["ref"] != "main"
+    if (pr["number"] != number or head["sha"] != revision or base["ref"] != "main"
             or head["repo"]["full_name"].lower() != REPO.lower()
             or base["repo"]["full_name"].lower() != REPO.lower()):
-        raise Blocked("PR closed, changed, forked or targets another branch")
+        raise Blocked("PR changed, forked or targets another branch")
+    if pr["state"] == "open":
+        pass
+    elif pr["state"] == "closed" and pr.get("merged") is True:
+        merge_sha = pr.get("merge_commit_sha")
+        if not isinstance(merge_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", merge_sha):
+            raise Blocked("merged PR has no valid merge commit")
+        if (not isinstance(main_comparison, dict)
+                or main_comparison.get("status") not in ("ahead", "identical")
+                or main_comparison.get("behind_by") != 0
+                or main_comparison.get("base_commit", {}).get("sha") != merge_sha):
+            raise Blocked("merged PR is not contained in main")
+    else:
+        raise Blocked("PR is neither open nor merged")
     runs = runs_response["workflow_runs"]
     if runs_response["total_count"] != len(runs):
         raise Blocked("incomplete or oversized CI run listing")
@@ -90,9 +102,24 @@ def main():
         pr = api(f"pulls/{number}")
         runs = api("actions/runs?event=pull_request&head_sha="
                    + revision + "&per_page=100")
-        result = check_candidate(pr, runs, number, revision)
-        # Recheck after CI query to catch a changed PR head.
-        check_candidate(api(f"pulls/{number}"), runs, number, revision)
+        comparison = None
+        if pr.get("state") == "closed" and pr.get("merged") is True:
+            merge_sha = pr.get("merge_commit_sha")
+            if not isinstance(merge_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", merge_sha):
+                raise Blocked("merged PR has no valid merge commit")
+            comparison = api(f"compare/{merge_sha}...main")
+        result = check_candidate(pr, runs, number, revision, comparison)
+        # Recheck PR identity, merge inclusion and CI after metadata queries.
+        current_pr = api(f"pulls/{number}")
+        current_runs = api("actions/runs?event=pull_request&head_sha="
+                           + revision + "&per_page=100")
+        current_comparison = None
+        if current_pr.get("state") == "closed" and current_pr.get("merged") is True:
+            merge_sha = current_pr.get("merge_commit_sha")
+            if not isinstance(merge_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", merge_sha):
+                raise Blocked("merged PR has no valid merge commit")
+            current_comparison = api(f"compare/{merge_sha}...main")
+        check_candidate(current_pr, current_runs, number, revision, current_comparison)
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write(f"revision={result}\npr={number}\n")
         print(f"Candidate approved for isolated build: PR {number} {result}")
