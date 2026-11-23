@@ -188,6 +188,31 @@ class NextReconciliationTest(unittest.TestCase):
             self.call('apply-reconcile-v2',True)
         self.assertFalse(self.next.exists())
 
+    def test_prior_history_tampering_and_missing_dropin_block(self):
+        self._authorize()
+        saved = (self.first/'journal.json').read_bytes()
+        old = json.loads(saved)
+        old['prior_journal_sha256'] = '0'*64
+        m.durable_json(self.first/'journal.json',old)
+        with self.assertRaisesRegex(ValueError,'history changed'):
+            self.call('inventory-reconcile-v2')
+        self.assertFalse(self.next.exists())
+        m.durable_bytes(self.first/'journal.json',saved)
+
+        target = m.backup_path(self.first,self.target)
+        backup = target.read_bytes()
+        target.write_bytes(b'adulterated backup')
+        with self.assertRaisesRegex(ValueError,'backup digest changed'):
+            self.call('inventory-reconcile-v2')
+        target.write_bytes(backup)
+        self.assertFalse(self.next.exists())
+
+        self.gate.unlink()
+        with self.assertRaisesRegex(ValueError,'previous transport condition'):
+            self.call('apply-reconcile-v2',True)
+        self.assertFalse(self.next.exists())
+        self.assertEqual(self.transport,'active')
+
     def test_existing_first_attempt_is_not_reused(self):
         self._authorize()
         with self.assertRaisesRegex(ValueError,'reconciliation requires explicit action'):
