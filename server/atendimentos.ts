@@ -18,8 +18,12 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
 
 export class PossibleDuplicateAtendimentoError extends ServiceError {
-  constructor(readonly candidates: DuplicateAtendimento[],readonly confirmationToken:string) {
+  readonly candidates:DuplicateAtendimento[]
+  readonly confirmationToken:string
+  constructor(candidates: DuplicateAtendimento[],confirmationToken:string) {
     super(409,'ATENDIMENTO_DUPLICATE_REVIEW','Já existe Atendimento em aberto para este contato e veículo. Confira antes de criar outro.')
+    this.candidates=candidates
+    this.confirmationToken=confirmationToken
   }
 }
 
