@@ -55,7 +55,7 @@ try {
       }
 
       // Open conversation → confirm the proposed legacy identity → open the existing Atendimento.
-      await row.getByRole('button',{name:'Detalhes: 1 Atendimentos'}).click()
+      await row.getByRole('button',{name:'Abrir conversa: Sem nome'}).click()
       const chat=page.getByRole('dialog',{name:'Detalhes da conversa'})
       await chat.getByText('Histórico independente 1',{exact:true}).waitFor()
       await chat.getByRole('textbox',{name:'Pessoa deste número'}).waitFor()
@@ -91,7 +91,7 @@ try {
       await page.goto(origin+'/conversas')
       await page.getByRole('button',{name:'Abrir conversa: Pessoa com nome atualizado'}).waitFor()
       await page.screenshot({path:out+'/conversas-'+width+'.png'})
-      await page.locator('.conversation-row').filter({hasText:'+'+linked[1].pn}).getByRole('button',{name:'Detalhes: 1 Atendimentos'}).click()
+      await page.locator('.conversation-row').filter({hasText:'+'+linked[1].pn}).getByRole('button',{name:/Abrir conversa/}).click()
       assert.equal(await chat.getByRole('textbox',{name:'Pessoa deste número'}).inputValue(),'Pessoa cadastrada')
       await chat.getByText('Histórico independente 2',{exact:true}).waitFor()
       assert.equal(await chat.getByText('Histórico independente 1',{exact:true}).count(),0)
@@ -101,7 +101,7 @@ try {
       assert.equal(f.at.get(linked[1].at.id,true).phone,'+'+linked[1].pn)
       await chat.getByRole('button',{name:'Fechar detalhes'}).click()
 
-      await page.locator('.conversation-row').filter({hasText:'+'+linked[2].pn}).getByRole('button',{name:'Detalhes: 1 Atendimentos'}).click()
+      await page.locator('.conversation-row').filter({hasText:'+'+linked[2].pn}).getByRole('button',{name:/Abrir conversa/}).click()
       const person=chat.getByLabel('Pessoa da ficha',{exact:true})
       await person.waitFor()
       assert.equal(await person.inputValue(),'')

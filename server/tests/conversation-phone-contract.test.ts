@@ -14,7 +14,7 @@ const origin='http://localhost:5173',lid='phone-contract@lid',commercial='+55319
 test('provider list with manual N:N links uses the same primary Contact phone as the Atendimento HTTP detail, without a channel authority',async()=>{
  const db=openDatabase(':memory:'),at=new AtendimentoRepository(db),links=new V20AssociationRepository(db)
  const record=at.create({name:'Ficha sintética'}),contactId=randomUUID()
- db.prepare("INSERT INTO customer_records(id,kind,data,phone_normalized) VALUES(?,'contact',?,?)").run(contactId,JSON.stringify({text:commercial}),commercial)
+ db.prepare("INSERT INTO customer_records(id,kind,data) VALUES(?,'contact',?)").run(contactId,JSON.stringify({text:commercial}))
  db.prepare("INSERT INTO atendimento_references VALUES(?,'contact',0,?,?)").run(record.id,contactId,JSON.stringify({id:contactId,text:commercial}))
  let historyCalls=0,sends=0
  const provider=new EvolutionReadPoc({instance:'funix_comercial',instanceId:'synthetic-phone-instance',transport:async request=>{

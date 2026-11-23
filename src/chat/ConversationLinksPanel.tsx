@@ -2,26 +2,22 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { RequestFailure } from '../api'
 type Linked = { linkId: string; atendimentoId: string; linkedAt: string; name: string; vehicle: string; plate: string }
-type Links = { revision: number; items: Linked[]; activeAtendimentoId: string | null; suggestedAtendimentos?:Candidate[]; atendimentoConflict?:boolean; numberReviewAvailable?:boolean; historyOnly?:boolean }
+type Links = { revision: number; items: Linked[]; activeAtendimentoId: string | null }
 type Candidate = { id: string; name: string; vehicle: string; plate: string }
 type List = { items: Candidate[]; total: number }
-type NumberReview = {token:string;entityName:string;registeredPhone:string;observedPhone:string}
 function description(row: Candidate | Linked): string {
   return [row.name || 'Atendimento sem nome', row.vehicle, row.plate].filter(Boolean).join(' · ')
 }
 function errorText(error: unknown): string {
-  const failure=error as RequestFailure
-  const message=failure.code==='V20_ASSOCIATION_CONFLICT'?'Vínculo alterado durante a operação. Atualize e tente novamente.':failure.message
-  return [message||'Não foi possível concluir. Confira os dados e tente novamente.',
-    failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' ')
+  if ((error as RequestFailure).status === 409) return 'Vínculo alterado durante a operação. Atualize e tente novamente.'
+  return 'Não foi possível concluir. Confira os dados e tente novamente.'
 }
 /** Explicit operator choice only; no phone/PN/LID-based automatic association. */
-export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange, onLinksChange, onOpenLinkedAtendimento }: {
+export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiveAtendimentoChange, onLinksChange }: {
   conversationId: string
   onUnauthorized: () => void
   onLinksChange?: (links:Links)=>void
   onActiveAtendimentoChange?: (atendimentoId: string | null) => void
-  onOpenLinkedAtendimento?: (id: string) => void
 }) {
   const base = '/api/chat/conversations/' + encodeURIComponent(conversationId)
   const [links, setLinks] = useState<Links | null>(null)
@@ -32,9 +28,6 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
   const [busy, setBusy] = useState(false)
   const [searching, setSearching] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
-  const [review,setReview] = useState<{candidate:Candidate;preview:NumberReview}|null>(null)
-  const [confirmed,setConfirmed] = useState(false)
-  const [reviewRequest,setReviewRequest] = useState<{reason:string;id:string}|null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -59,7 +52,6 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
       const value = await api<Links>(base + '/atendimentos')
       setLinks(value);onLinksChange?.(value)
       onActiveAtendimentoChange?.(value.activeAtendimentoId)
-      return value
     }
     catch (cause) {
       if ((cause as RequestFailure).status === 401) onUnauthorized()
@@ -76,36 +68,6 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
       if ((cause as RequestFailure).status === 401) onUnauthorized()
       else setError(errorText(cause))
     } finally { setSearching(false) }
-  }
-  async function reviewNumber(candidate:Candidate) {
-    if(busy)return
-    setBusy(true);setError('');setReview(null);setConfirmed(false);setReviewRequest(null)
-    try{
-      const preview=await api<NumberReview>(base+'/atendimentos/'+encodeURIComponent(candidate.id)+'/numeracao')
-      setReview({candidate,preview})
-    }catch(cause){
-      if((cause as RequestFailure).status===401)onUnauthorized()
-      else setError(errorText(cause))
-    }finally{setBusy(false)}
-  }
-  async function confirmNumber() {
-    if(!review||!confirmed||!reason.trim()||busy)return
-    const reasonText=reason.trim()
-    const requestId=reviewRequest?.reason===reasonText?reviewRequest.id:crypto.randomUUID()
-    setReviewRequest({reason:reasonText,id:requestId});setBusy(true);setError('')
-    try{
-      await api(base+'/atendimentos/'+encodeURIComponent(review.candidate.id)+'/numeracao',{
-        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:review.preview.token,requestId,reason:reasonText}),
-      })
-      setReview(null);setConfirmed(false);setReason('');setCandidates([])
-      const current=await reload()
-      if(current?.items.some(link=>link.atendimentoId===review.candidate.id))onOpenLinkedAtendimento?.(review.candidate.id)
-      else if(current)setError('O vínculo já foi removido. Atualize a conversa antes de tentar novamente.')
-    }catch(cause){
-      if((cause as RequestFailure).status===401)onUnauthorized()
-      else setError(errorText(cause))
-      if((cause as RequestFailure).status===409){setReview(null);await reload()}
-    }finally{setBusy(false)}
   }
   async function change(kind: 'link' | 'unlink' | 'context', id: string | null) {
     if (!links || busy) return
@@ -135,17 +97,13 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
     {error && <p role="alert" className="ev-links-error">{error}</p>}
     {!links ? <p>Carregando vínculos…</p> : <>
       {links.items.length === 0 && <p>Nenhum Atendimento vinculado.</p>}
-      {links.historyOnly&&<p role="status">Histórico vinculado para leitura. O envio permanece bloqueado para este número.</p>}
       {links.items.map(item => <div className="ev-linked" key={item.linkId}>
         <span>{description(item)}</span>
         <div className="ev-link-actions">
-          {links.numberReviewAvailable&&<button type="button" disabled={busy||!!review}
-            onClick={()=>void reviewNumber({id:item.atendimentoId,name:item.name,vehicle:item.vehicle,plate:item.plate})}>
-            Revisar numeração</button>}
-          {!links.historyOnly&&!links.numberReviewAvailable&&<button type="button" disabled={busy}
+          <button type="button" disabled={busy}
             aria-pressed={links.activeAtendimentoId === item.atendimentoId}
             onClick={() => void change('context', links.activeAtendimentoId === item.atendimentoId ? null : item.linkId)}>
-            {links.activeAtendimentoId === item.atendimentoId ? 'Contexto ativo ✓' : 'Usar contexto'}</button>}
+            {links.activeAtendimentoId === item.atendimentoId ? 'Contexto ativo ✓' : 'Usar contexto'}</button>
           {pendingRemove === item.linkId ? <>
             <button type="button" disabled={busy || !reason.trim()} onClick={() => void change('unlink', item.linkId)}>Confirmar desvínculo</button>
             <button type="button" disabled={busy} onClick={() => setPendingRemove(null)}>Cancelar</button>
@@ -162,28 +120,12 @@ export function ConversationLinksPanel({ conversationId, onUnauthorized, onActiv
         <button type="button" onClick={() => void search()} disabled={busy || searching || query.trim().length < 2}>
           {searching ? 'Buscando…' : 'Buscar'}</button>
       </div>
-      {links.atendimentoConflict&&<p role="status">Há fichas com dados de titularidade divergentes. Confira o cadastro antes de vincular.</p>}
-      {!query.trim()&&!!links.suggestedAtendimentos?.length&&<p role="status">Confirme qual Atendimento deve receber este vínculo.</p>}
-      {review&&<fieldset className="ev-number-review">
-        <legend>Confirmar número do WhatsApp</legend>
-        <p>{review.preview.entityName} · {description(review.candidate)}</p>
-        <p>WhatsApp <strong>{review.preview.observedPhone}</strong><br/>Cadastro <strong>{review.preview.registeredPhone}</strong></p>
-        <label><input type="checkbox" checked={confirmed} disabled={busy} onChange={event=>setConfirmed(event.target.checked)}/>
-          Conferi que os dois números pertencem ao mesmo contato.
-        </label>
-        <p>O histórico ficará disponível na ficha para leitura.</p>
-        <button type="button" disabled={busy||!confirmed||!reason.trim()} onClick={()=>void confirmNumber()}>
-          {links.items.some(item=>item.atendimentoId===review.candidate.id)?'Confirmar e recuperar histórico':'Confirmar e vincular histórico'}</button>
-        <button type="button" disabled={busy} onClick={()=>setReview(null)}>Cancelar revisão</button>
-      </fieldset>}
-      {(query.trim()?candidates:links.suggestedAtendimentos??[]).map(candidate => {
+      {candidates.map(candidate => {
         const existing = links.items.some(link => link.atendimentoId === candidate.id)
         return <div className="ev-linked" key={candidate.id}>
           <span>{description(candidate)}</span>
-          {links.numberReviewAvailable&&!links.items.length
-            ? <button type="button" disabled={busy||!!review} onClick={()=>void reviewNumber(candidate)}>Revisar numeração</button>
-            : <button type="button" disabled={busy || existing || !reason.trim()}
-                onClick={() => void change('link', candidate.id)}>{existing ? 'Já vinculado' : 'Vincular'}</button>}
+          <button type="button" disabled={busy || existing || !reason.trim()}
+            onClick={() => void change('link', candidate.id)}>{existing ? 'Já vinculado' : 'Vincular'}</button>
         </div>
       })}
     </>}

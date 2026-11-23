@@ -47,9 +47,8 @@ for(const method of ["GET","POST","OPTIONS"]){
 }
 const list=await fetch(base+"/api/atendimentos",{headers:{Cookie:cookie}});
 assert.equal(list.status,200); assert.equal((await list.json()).total,0);
-const created=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({name:"Titular sintético CI",phone:"+5511999990000"})});
+const created=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"+5511999990000"})});
 assert.equal(created.status,201); const record=await created.json();
-assert.ok(record.references.person[0].id); assert.ok(record.references.contact[0].id);
 assert.equal((await fetch(base+"/api/atendimentos/"+record.id+"/messages")).status,401);
 const messages=await fetch(base+"/api/atendimentos/"+record.id+"/messages",{headers:{Cookie:cookie}});
 assert.equal(messages.status,200); assert.equal(messages.headers.get("cache-control"),"no-store");

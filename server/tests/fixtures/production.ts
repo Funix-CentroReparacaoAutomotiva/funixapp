@@ -5,16 +5,8 @@ import {AtendimentoRepository} from '../../atendimentos.ts'
 import {ProductionRepository} from '../../production.ts'
 import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 
-export function removeV25FixtureSchema(db: DatabaseSync) {
-  db.exec(`DROP TRIGGER IF EXISTS chat_short_number_context_insert; DROP TRIGGER IF EXISTS chat_short_number_context_update;
-    DROP TRIGGER IF EXISTS chat_short_number_receipt_update; DROP TRIGGER IF EXISTS chat_short_number_receipt_delete;
-    DROP TABLE IF EXISTS chat_confirmed_short_numbers;`)
-  db.exec('DROP TRIGGER IF EXISTS customer_contact_owner_transfer; DROP TRIGGER IF EXISTS customer_active_channel_update; DROP TRIGGER IF EXISTS customer_active_channel_delete; DROP TRIGGER IF EXISTS customer_channel_owner_kind; DROP TRIGGER IF EXISTS customer_archived_contact_update; DROP TRIGGER IF EXISTS customer_association_contact_insert; DROP TRIGGER IF EXISTS customer_association_contact_update; DROP VIEW IF EXISTS customer_channel_contacts; DROP TRIGGER IF EXISTS customer_phone_key_insert; DROP TRIGGER IF EXISTS customer_phone_key_update; DROP INDEX IF EXISTS customer_contact_phone_unique; DELETE FROM schema_migrations WHERE version=25;')
-}
-
 /** Synthetic downgrade for migration fixtures. */
 export function removeV24FixtureSchema(db: DatabaseSync) {
-  removeV25FixtureSchema(db)
   db.exec(`
     DROP TRIGGER production_budget_cancellation;
     DROP TRIGGER production_transition_guard;

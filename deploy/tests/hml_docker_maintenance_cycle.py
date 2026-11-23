@@ -22,7 +22,6 @@ import ssl
 import subprocess
 import tempfile
 import threading
-import time
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -325,17 +324,6 @@ server {
                         patch.object(provenance,"verify",side_effect=verify_local), \
                         patch.object(updater,"load",side_effect=load_for_rehearsal):
                     # A preflight must work before any candidate is loaded.
-                    # Compose start does not wait for the initial Docker healthcheck.
-                    deadline = time.monotonic() + 30
-                    while True:
-                        records = adapter.containers()
-                        if len(records) == 3 and all(
-                                row['State'].get('Health', {}).get('Status') == 'healthy'
-                                for row in records):
-                            break
-                        if time.monotonic() >= deadline:
-                            raise AssertionError('synthetic installation health deadline')
-                        time.sleep(.2)
                     assert updater.installed_preflight(updater.make_adapter(config)) == previous
                     wrong = dict(config, candidate=dict(candidate, revision=OLD))
                     try:
@@ -351,40 +339,15 @@ server {
                                                capture_output=True)
                         if check.returncode == 0:
                             run("docker", "image", "rm", image["image_id"])
-                    official = load("hml-official-update")
-                    official.updater = updater
-                    op = state / "op-123-1-prep-456"
-                    def prepare_local(operation, config_path, requested):
-                        assert requested == identity
-                        updater.prepare_candidate(config, adapter, load("hml-update-safety"), load_images=False)
-                        config_path.write_text(json.dumps(config))
-                        config_path.chmod(0o600)
-                    # Only host path/bootstrap binding is replaced for the disposable
-                    # runner. Package validation, lock, preflight and update are real.
-                    with patch.object(updater, "STATE", state), \
-                         patch.object(updater, "host_scope"), \
-                         patch.object(updater, "check_config"), \
-                         patch.object(updater, "prepare_operation", side_effect=prepare_local):
-                        from hml_remote_chain import run_chain
-                        remote_case=os.environ.get('HML_REMOTE_CASE','accepted')
-                        run_chain(updater,config,previous,op,root,identity,fake_api,remote_case)
-                    if remote_case!='accepted':
-                        fresh_adapter().assert_installed(previous)
-                        assert json.loads((op/'operation.json').read_text())['phase']=='restored'
-                        with closing(sqlite3.connect(database)) as db:
-                            assert db.execute('SELECT value FROM atendimentos').fetchone()==('original',)
-                        assert all(file.read_bytes()==content for file,content in before.items())
-                        print('HML_REMOTE_FAILURE_DATA_PRESERVED_OK',flush=True)
-                        return
-                    operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
-                    print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
+                    operation = updater.execute_operation("update", config, root/"operation",
+                                                          authorized=True)
                     print("HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK", flush=True)
                     print("HML_MAINTENANCE_UPDATE_OK", flush=True)
                     assert json.loads(operation.journal.read_text())["phase"] == "accepted"
                     adapter.assert_installed(candidate)
                     with closing(sqlite3.connect(database)) as db, db:
                         assert db.execute("SELECT value FROM atendimentos").fetchone() == ("candidate migration",)
-                    operation = updater.execute_operation("rollback", config, op,
+                    operation = updater.execute_operation("rollback", config, root/"operation",
                                                           authorized=True, discard_post_update_data=True)
                     print("HML_MAINTENANCE_ROLLBACK_OK", flush=True)
                     adapter.assert_installed(previous)

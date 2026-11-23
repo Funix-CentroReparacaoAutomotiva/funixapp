@@ -4,16 +4,18 @@ import type {CommercialSave} from '../shared/commercial.ts'
 import type { ComponentItem } from '../shared/pricing.ts'
 import { conflict,inputObject,invalid,selectedScenario,touchComposition,transaction } from './scenarios.ts'
 import { decimal,optionalDecimal } from './pricing-config.ts'
+import type {NativeTransactionRunner} from './scenarios.ts'
 
 export class ComponentRepository {
  readonly db:DatabaseSync
- constructor(db:DatabaseSync){this.db=db}
+ readonly runTransaction:NativeTransactionRunner
+ constructor(db:DatabaseSync,runTransaction?:NativeTransactionRunner){this.db=db;this.runTransaction=runTransaction??(action=>transaction(db,action))}
  list(at:string):ComponentItem[]{return this.db.prepare('SELECT * FROM component_items WHERE atendimento_id=? ORDER BY created_at,rowid').all(at).map(r=>({id:String(r.id),atendimentoId:at,pieceId:String(r.piece_id),name:String(r.name),quantity:String(r.quantity),manualPrice:r.manual_price===null?null:String(r.manual_price),notes:String(r.notes),revision:Number(r.revision)}))}
  save(at:string,input:unknown,id?:string):ComponentItem
  save(at:string,input:unknown,id:string|undefined,withRevision:true):CommercialSave<ComponentItem>
  save(at:string,input:unknown,id?:string,withRevision=false):ComponentItem|CommercialSave<ComponentItem>{
   const data=inputObject(input,['revision','pieceId','name','quantity','manualPrice','notes','scenarioId','scenarioRevision','clientId'])
-  return transaction(this.db,()=>{
+  return this.runTransaction(()=>{
    const selected=selectedScenario(this.db,at,data.scenarioId,data.scenarioRevision)
    const reply=(item:ComponentItem)=>withRevision?{item,scenarioRevision:Number(this.db.prepare('SELECT revision FROM scenarios WHERE id=?').get(selected)!.revision)}:item
    const old=id?this.list(at).find(c=>c.id===id):undefined
@@ -37,7 +39,7 @@ export class ComponentRepository {
  }
  remove(at:string,id:string,input:unknown){
   const data=inputObject(input,['revision'])
-  return transaction(this.db,()=>{
+  return this.runTransaction(()=>{
    const old=this.list(at).find(c=>c.id===id)
    if(!old)invalid('Componente não encontrado neste Atendimento.')
    if(old.revision!==data.revision)conflict()

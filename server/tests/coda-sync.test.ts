@@ -1,4 +1,3 @@
-import {removeV25FixtureSchema} from './fixtures/production.ts'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
@@ -36,7 +35,7 @@ test('Coda sync: one canonical Coda row, replay receipt, same row with another m
     assert.equal(f.atendimentos.get(first.atendimentoId).phone, '+5531999990001')
     assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM atendimentos').get()!.n),1)
     assert.equal(Number(f.db.prepare('SELECT count(*) AS n FROM coda_sync_receipts').get()!.n),2)
-    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,25)
+    assert.equal(f.db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,24)
   } finally { f.db.close() }
 })
 
@@ -265,7 +264,6 @@ test('ambiguous or unmapped LID never borrows a phone from a matching-looking At
 test('list fallback agrees with Atendimento detail when the primary linked Contact has the number', () => {
   const f = fixture()
   try {
-    removeV25FixtureSchema(f.db)
     const lid = 'synthetic_detail_phone@lid'
     const created = f.sync.sync({
       ...synthetic('i-SYNTH_DETAIL_PHONE', 'evo:synthetic:detail-phone', lid),
@@ -273,8 +271,8 @@ test('list fallback agrees with Atendimento detail when the primary linked Conta
     })
     const contactId = randomUUID()
     const phone = '+5531987654321'
-    f.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id,phone_normalized) VALUES(?,'contact',?,NULL,?)")
-      .run(contactId, JSON.stringify({ text: phone }),phone)
+    f.db.prepare("INSERT INTO customer_records(id,kind,data,conversation_id) VALUES(?,'contact',?,NULL)")
+      .run(contactId, JSON.stringify({ text: phone }))
     f.db.prepare("INSERT INTO atendimento_references(atendimento_id,kind,position,record_id,data) VALUES(?,'contact',0,?,?)")
       .run(created.atendimentoId, contactId, JSON.stringify({ id: contactId, text: phone }))
     // This reproduces a detail screen with a phone while the base column remains empty.

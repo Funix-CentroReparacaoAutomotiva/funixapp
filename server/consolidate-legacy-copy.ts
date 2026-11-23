@@ -1,7 +1,6 @@
 import {DatabaseSync} from 'node:sqlite'
 import {lstatSync,existsSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {registerCustomerPhoneFunction} from './customer-identity-schema.ts'
 import {backupDatabase} from './database.ts'
 import {consolidateLegacyCustomers} from './chat/legacy-consolidation.ts'
 
@@ -11,14 +10,13 @@ const source=resolve(sourceArg),target=resolve(targetArg)
 if(source===target||existsSync(target)||!lstatSync(source).isFile())throw Error('Use uma origem regular e um destino novo e diferente.')
 const readOnly=new DatabaseSync(source,{readOnly:true})
 try{
-  if(![23,24,25].includes(Number(readOnly.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)))
-    throw Error('Requer origem V23, V24 ou V25; nenhuma migração automática.')
+  if(Number(readOnly.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)!==23)
+    throw Error('Requer origem V23; nenhuma migração automática.')
   await backupDatabase(readOnly,target)
 }finally{readOnly.close()}
 const db=new DatabaseSync(target)
 try{
   db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=3000; PRAGMA synchronous=FULL;')
-  registerCustomerPhoneFunction(db)
   const preview=consolidateLegacyCustomers(db)
   const applied=consolidateLegacyCustomers(db,true)
   if(JSON.stringify(preview)!==JSON.stringify(applied))throw Error('Relatórios divergentes. Não utilize esta cópia.')

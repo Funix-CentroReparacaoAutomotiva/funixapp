@@ -9,6 +9,7 @@ import { pieceDisplayName } from '../shared/piece-display-name.ts'
 import { AtendimentoRepository } from './atendimentos.ts'
 import { ServiceError } from './errors.ts'
 import { selectedScenario, touchComposition } from './scenarios.ts'
+import type {NativeTransactionRunner} from './scenarios.ts'
 import { hierarchy } from './hierarchy.ts'
 
 type Row = Record<string, SQLOutputValue>
@@ -33,7 +34,8 @@ function catalog(row: Row): CatalogItem {
 
 export class CommercialRepository {
   readonly db: DatabaseSync
-  constructor(db: DatabaseSync) { this.db = db }
+  readonly runTransaction?:NativeTransactionRunner
+  constructor(db: DatabaseSync,runTransaction?:NativeTransactionRunner) { this.db = db;this.runTransaction=runTransaction }
   catalogs() { return { items: this.db.prepare('SELECT * FROM catalog_items ORDER BY kind,name,id').all().map(row=>{const item=catalog(row);return {...item,name:pieceDisplayName(item)}}), hierarchy } }
   item(id: string) { const row = this.db.prepare('SELECT * FROM catalog_items WHERE id=?').get(id); if (!row) notFound(); return catalog(row) }
   usable(id: string, kind: CatalogKind) {
@@ -43,6 +45,7 @@ export class CommercialRepository {
     return item
   }
   private transaction<T>(operation: () => T): T {
+    if(this.runTransaction)return this.runTransaction(operation)
     this.db.exec('BEGIN IMMEDIATE')
     try { const value = operation(); this.db.exec('COMMIT'); return value }
     catch (error) { this.db.exec('ROLLBACK'); throw error }

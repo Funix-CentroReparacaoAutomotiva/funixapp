@@ -1,4 +1,3 @@
-import {removeV25FixtureSchema} from './fixtures/production.ts'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
@@ -33,18 +32,7 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
   assert.equal(view.targets.length,2)
   const input={token:view.token,requestId:randomUUID(),atendimentoId:at.id,entityId:existing.id,legacyIndex:1}
   assert.throws(()=>service.confirm(cid,{...input,atendimentoId:null}),/Confirme/)
-  const provisional=f.customers.phoneMatches(phone)[0]!
-  const receipt=()=>f.db.prepare('SELECT result_json FROM v20_association_receipts WHERE conversation_id=? AND request_id=?')
-    .get(cid,input.requestId)
-  f.db.exec(`CREATE TEMP TRIGGER test_reject_owner_update BEFORE UPDATE OF entity_id ON customer_records
-    BEGIN SELECT RAISE(ABORT,'synthetic rollback'); END`)
-  assert.throws(()=>service.confirm(cid,input),/synthetic rollback/)
-  assert.equal(receipt(),undefined)
-  assert.equal(f.customers.record(provisional.id).entityId,provisional.entityId)
-  f.db.exec('DROP TRIGGER test_reject_owner_update')
   const result=service.confirm(cid,input)
-  assert.equal(result.contactId,provisional.id)
-  assert.deepEqual(JSON.parse(String(receipt()?.result_json)),{...result,previousEntityId:provisional.entityId})
   assert.deepEqual(service.confirm(cid,input),result)
   assert.throws(()=>service.confirm(cid,{...input,atendimentoId:second.id}),/outros dados/)
   assert.throws(()=>service.confirm(cid,{...input,requestId:randomUUID()}),/mudou/)
@@ -53,7 +41,7 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
   assert.deepEqual(refs.contact.map(contact=>contact.text),['+5531999990202',phone])
   assert.equal(f.customers.contacts(existing.id)[0]!.id,result.contactId)
   assert.deepEqual(service.forAtendimento(cid,at.id),{name:existing.text,phone})
-  assert.deepEqual(service.forAtendimento(cid,second.id),{name:existing.text,phone})
+  assert.equal(service.forAtendimento(cid,second.id),null)
   const renamed=f.customers.save({text:'Nome corrigido',revision:existing.revision},existing.id)
   const afterRestart=new SharedConversationIdentity(f.db,()=>false)
   assert.equal(afterRestart.forAtendimento(cid,at.id)?.name,renamed.text)
@@ -65,9 +53,8 @@ test('reconciliation preserves separate people, other phones and Atendimento lin
  }finally{f.db.close()}
 })
 
-test('legacy LID without evidence and contradictory aliases fail closed',async()=>{
+test('LID without evidence, contradictory aliases, stale confirmations and ownership conflicts fail closed',async()=>{
  const f=entityContactsFixture()
- removeV25FixtureSchema(f.db)
  try{
   const owner=f.customers.save({kind:'entity',text:'Titular',contacts:[{text:phone}]})
   const original=f.customers.contacts(owner.id)[0]!
@@ -113,27 +100,6 @@ test('provider-only V20 reads the selected Atendimento history without granting 
   assert.equal(history?.mediaReadAvailable,false)
   f.links.selectAtendimento(cid,null)
   assert.equal(await f.bridge.messagesForAtendimento(at.id,cid,1),null)
-  assert.equal(f.sends(),0)
- }finally{f.db.close()}
-})
-
-test('identity review alone clears a recovered identity hold after revalidating the exact owner',()=>{
- const f=entityContactsFixture()
- try{
-  const owner=f.customers.save({kind:'entity',text:'Titular sintético',contacts:[{text:phone}]})
-  const at=f.at.create({name:'Ficha sintética'})
-  const cid=link(f,pn,at.id)
-  f.db.prepare("INSERT INTO chat_local_context_holds VALUES(?,'autonomous_contact_conflict')").run(cid)
-  const linkId=f.links.listActive(cid).items[0]!.linkId
-  assert.throws(()=>f.links.selectAtendimento(cid,linkId),/identidade/)
-  const identity=new SharedConversationIdentity(f.db,()=>true)
-  const preview=identity.preview(cid)
-  const input={requestId:randomUUID(),token:preview.token,entityId:owner.id,atendimentoId:at.id}
-  const revision=Number(f.db.prepare('SELECT context_revision FROM v20_conversations WHERE id=?').get(cid)!.context_revision)
-  const confirmed=identity.confirm(cid,input)
-  assert.deepEqual(identity.confirm(cid,input),confirmed)
-  assert.equal(f.db.prepare('SELECT context_revision FROM v20_conversations WHERE id=?').get(cid)!.context_revision,revision+1)
-  assert.equal(f.db.prepare('SELECT reason FROM chat_local_context_holds WHERE conversation_id=?').get(cid),undefined)
   assert.equal(f.sends(),0)
  }finally{f.db.close()}
 })
