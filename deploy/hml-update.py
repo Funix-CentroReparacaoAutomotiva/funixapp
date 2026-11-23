@@ -73,8 +73,11 @@ def validator(credentials, *, normal_credentials=None):
                 if connection.sock is not None:
                     connection.sock.settimeout(budget)
                 response = connection.getresponse()
-                # An observed security violation must not become a retriable body error.
-                if expected == 200 and response.status in (502, 503, 504):
+                # The TLS edge can briefly return 502/503/504 while Docker
+                # recreates the maintenance gateway. Retry only availability
+                # failures; unexpected success and auth/revision violations
+                # remain immediate, non-retriable contract failures.
+                if response.status in (502, 503, 504) and response.status != expected:
                     raise TransientHttpsError()
                 if response.status != expected:
                     raise ValueError("HTTPS/authentication contract failed")
@@ -123,7 +126,10 @@ def validator(credentials, *, normal_credentials=None):
     def validate(release):
         nonlocal deadline
         deadline = time.monotonic() + 60
-        for attempt in range(1, 4):
+        # Keep the 60-second total deadline; allow the TLS edge to converge
+        # after gateway recreation instead of stopping after two short sleeps.
+        max_attempts = 30
+        for attempt in range(1, max_attempts + 1):
             try:
                 once(release)
                 if time.monotonic() >= deadline:
@@ -133,7 +139,7 @@ def validator(credentials, *, normal_credentials=None):
                 print(f"HTTPS attempt={attempt} category=tls-security retry=false", file=sys.stderr)
                 raise
             except (OSError, http.client.RemoteDisconnected, http.client.IncompleteRead, TransientHttpsError):
-                retry = attempt < 3 and time.monotonic() + 1 < deadline
+                retry = attempt < max_attempts and time.monotonic() + 1 < deadline
                 print(f"HTTPS attempt={attempt} category=transient retry={str(retry).lower()}", file=sys.stderr)
                 if not retry:
                     raise ValueError("HTTPS transient attempts exhausted") from None
