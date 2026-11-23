@@ -24,6 +24,9 @@ on:
           - web-hml-painel
         default: web
 
+  issue_comment:
+    types: [created]
+
 permissions: {}
 
 concurrency:
@@ -32,6 +35,14 @@ concurrency:
 
 jobs:
   select:
+    # Issue comments are explicitly authorized HML artifact-build requests only.
+    # Deployment and registry credentials are never available to this workflow.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       github.actor == 'Funix-CentroReparacaoAutomotiva' &&
+       startsWith(github.event.comment.body, '/hml-build-'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -41,36 +52,33 @@ jobs:
     outputs:
       revision: ${{ steps.candidate.outputs.revision }}
       pr: ${{ steps.candidate.outputs.pr }}
-      web_target: ${{ steps.web-target.outputs.web_target }}
+      web_target: ${{ steps.intent.outputs.web_target }}
     steps:
-      - name: Reject unapproved dispatch or non-main workflow
-        env:
-          AUTHORIZED: ${{ inputs.authorized }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = refs/heads/main
-          test "$AUTHORIZED" = true
-      - name: Fixar variante de imagem Web
-        id: web-target
-        env:
-          WEB_TARGET_INPUT: ${{ inputs.web_target }}
-        run: |
-          set -euo pipefail
-          case "$WEB_TARGET_INPUT" in
-            web|web-hml-painel) ;;
-            *) echo 'WEB_TARGET_INVALID' >&2; exit 1 ;;
-          esac
-          echo "web_target=$WEB_TARGET_INPUT" >> "$GITHUB_OUTPUT"
+      # Checkout only trusted main when interpreting the request.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: main
           persist-credentials: false
+      - name: Validar intencao HML sem acesso a producao
+        id: intent
+        env:
+          HML_INPUT_AUTHORIZED: ${{ inputs.authorized }}
+          HML_INPUT_PR: ${{ inputs.pr_number }}
+          HML_INPUT_REVISION: ${{ inputs.revision }}
+          HML_INPUT_WEB_TARGET: ${{ inputs.web_target }}
+          HML_COMMENT_BODY: ${{ github.event.comment.body }}
+          HML_COMMENT_ACTOR: ${{ github.event.comment.user.login }}
+          HML_COMMENT_ASSOCIATION: ${{ github.event.comment.author_association }}
+          HML_ISSUE_IS_PR: ${{ github.event.issue.pull_request != null }}
+          HML_ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python3 deploy/hml-cto-build-request.py
       - name: Select immutable tested PR head
         id: candidate
         env:
           GH_TOKEN: ${{ github.token }}
-          HML_PR: ${{ inputs.pr_number }}
-          HML_REVISION: ${{ inputs.revision }}
-          HML_AUTHORIZED: ${{ inputs.authorized }}
+          HML_PR: ${{ steps.intent.outputs.pr }}
+          HML_REVISION: ${{ steps.intent.outputs.revision }}
+          HML_AUTHORIZED: ${{ steps.intent.outputs.authorized }}
         run: python3 deploy/hml-candidate.py
 
   build:
