@@ -13,7 +13,7 @@ import {UpdatePackageRepository} from '../update-packages.ts'
 import {GmailAnalysisService} from '../gmail-analysis.ts'
 import {syntheticAnalysisProviders,loadGmailAnalysis} from '../gmail-analysis-providers.ts'
 import {analysisFixture,analysisNotice,analysisRecord} from './fixtures/gmail-analysis.ts'
-import {validateExtraction,validateContext} from '../gmail-analysis-contract.ts'
+import {validateExtraction,validateContext,isAnalysisContextReference} from '../gmail-analysis-contract.ts'
 import {simulateUpdatePackageExecution} from '../update-packages-execution-simulation.ts'
 function setup(path=':memory:'){
  const db=openDatabase(path);createGmailIntakeSchema(db);createUpdatePackageSchema(db);createGmailAnalysisSchema(db)
@@ -223,5 +223,50 @@ test('shutdown interrompe a etapa atual e não inicia o restante do lote',async(
   const running=x.service.drain();await reached;await x.service.stop();await running
   assert.equal(reads,1)
   assert.equal(x.db.prepare("SELECT COUNT(*) AS n FROM gmail_analysis_jobs WHERE state='queued'").get()!.n,1)
+ }finally{x.db.close()}
+})
+
+test('context ports: referências legadas e nativas opacas, sem aceitar caminhos ou IDs inválidos',()=>{
+ const fixture=analysisFixture(),item=fixture.messages[0]!,extraction=validateExtraction(item.interpretation,item.message)
+ const native='ctx:funix:11111111-1111-4111-8111-111111111111'
+ for(const rowId of ['i-caseA',native,'ctx:another-erp:case_42']){
+  assert.equal(isAnalysisContextReference(rowId),true)
+  const result=validateContext([analysisRecord({rowId})],extraction,{},'2026-11-19T00:00:00.000Z')
+  assert.equal(result.status,'matched');assert.equal(result.selected?.rowId,rowId)
+ }
+ for(const rowId of ['', 'ctx:funix:', 'ctx:funix:../case', 'ctx:funix:case/42', 'ctx:funix:case\\42', 'ctx:funix:case?query', 'ctx:funix:case\n', 'i-case\n','ctx:funix:'+ 'a'.repeat(91),'11111111-1111-4111-8111-111111111111']){
+  assert.equal(isAnalysisContextReference(rowId),false)
+  assert.throws(()=>validateContext([analysisRecord({rowId})],extraction,{},'2026-11-19T00:00:00.000Z'),{code:'GMAIL_ANALYSIS_CONTEXT_INVALID'})
+ }
+ assert.throws(()=>validateContext([analysisRecord({rowId:native}),analysisRecord({rowId:native})],extraction,{},'2026-11-19T00:00:00.000Z'),{code:'GMAIL_ANALYSIS_CONTEXT_INVALID'})
+})
+test('context ports: adaptador alternativo sem Coda, escolha humana exata e revisão persistida',async()=>{
+ const x=setup()
+ const a=analysisRecord({rowId:'ctx:funix:11111111-1111-4111-8111-111111111111'})
+ const b=analysisRecord({rowId:'ctx:funix:22222222-2222-4222-8222-222222222222',experienceId:'XP2345'})
+ const rows=[a,b]
+ let reads=0,interpretations=0,lookups=0
+ const source=x.providers.readMessage,model=x.providers.interpret
+ x.providers.readMessage=async(...args)=>{reads++;return source(...args)}
+ x.providers.interpret=async(...args)=>{interpretations++;return model(...args)}
+ x.providers.lookup=async(query)=>{
+  lookups++
+  return structuredClone(query.selectedRowId?rows.filter(r=>r.rowId===query.selectedRowId):rows.filter(r=>r.processId===query.processId))
+ }
+ try{
+  await x.service.drain();assert.deepEqual([reads,interpretations,lookups],[0,0,0])
+  x.authorize();await x.service.drain()
+  const initial=x.service.get(x.n.id)!,p=initial.proposal!
+  assert.equal(initial.result!.context.status,'ambiguous');assert.equal(p.reviewOnly,true)
+  assert.deepEqual(p.missingFields[0]!.options?.map(o=>o.value),[a.rowId,b.rowId])
+  assert.throws(()=>x.packages.decide(p.id,decision(p),'operator'),{code:'PACKAGE_INCOMPLETE'})
+  x.packages.submitClarification(p.id,{revision:p.revision,snapshotHash:p.snapshotHash,requestId:randomUUID(),answers:{contextSelection:b.rowId}},'operator')
+  await new GmailAnalysisService(x.db,x.providers).drain()
+  const next=x.service.get(x.n.id)!
+  assert.equal(next.state,'ready');assert.equal(next.result!.context.selected?.rowId,b.rowId);assert.equal(next.result!.context.humanSelection,b.rowId)
+  assert.equal(next.proposal!.experienceId,'XP2345');assert.equal(next.proposal!.reviewOnly,true)
+  assert.equal(x.packages.get(p.id).status,'superseded')
+  assert.deepEqual([reads,interpretations,lookups],[1,1,2])
+  assert.throws(()=>simulateUpdatePackageExecution(x.packages.decide(next.proposal!.id,decision(next.proposal!),'operator'),[]),/ANALYSIS_REVIEW_ONLY/)
  }finally{x.db.close()}
 })

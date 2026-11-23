@@ -48,3 +48,17 @@ test('IA adapter sem ferramentas, store false e dados não confiáveis separados
   await assert.rejects(()=>openAIAnalysisInterpreter({apiKey:'synthetic',model:'synthetic',fetchImpl:async()=>json(output)})(item.message,signal))
  }
 })
+
+test('Coda conserva sua fronteira: recusa referência nativa, retorno de outro namespace e seleção divergente',async()=>{
+ let calls=0
+ const config={token:'synthetic',docId:'doc',tableId:'grid-table',columns}
+ const lookup=analysisCodaReader({...config,fetchImpl:async()=>{
+  calls++;return json({items:[{id:'ctx:funix:case42',values:{'c-process':'12345'}}]})
+ }})
+ await assert.rejects(()=>lookup({selectedRowId:'ctx:funix:case42'},signal),/GMAIL_ANALYSIS_CONTEXT_INVALID/)
+ assert.equal(calls,0)
+ await assert.rejects(()=>lookup({processId:'12345'},signal),/GMAIL_ANALYSIS_CONTEXT_INVALID/)
+ assert.equal(calls,1)
+ const wrong=analysisCodaReader({...config,fetchImpl:async()=>json({id:'i-different',values:{'c-process':'12345'}})})
+ await assert.rejects(()=>wrong({selectedRowId:'i-original'},signal),/GMAIL_ANALYSIS_CONTEXT_INVALID/)
+})
