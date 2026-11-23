@@ -3,6 +3,7 @@ import base64
 import contextlib
 import fcntl
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -18,7 +19,7 @@ import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
 PREP=Path('/usr/local/lib/funix-hml-prepare/control.py')
-PREP_SHA='ac36d9d4a8dcd4bfb6a4e831c323098610c9bb5198c7243527ff54480f000423'
+PREP_SHA='b28d92e02ba5e993897e4fe9cbace216eaf410b05d0b825d47b859645585f701'
 WORKER='funix-hml-ops-worker.service'
 SCHEMA='funix-hml-ops/1'
 PHASES={'prepared','quiescing','installing','restoring','accepted_pending_open','restored_pending_open','accepted','restored','rollback_requested'}
@@ -109,12 +110,14 @@ def context(check_archive=True):
     if check_archive: require(p.sha(archive)==a['digest'],'archive_digest')
     j,rec=active_record(p); phase=rec['phase']
     require(phase in ('accepted','restored'),'project_recovery_pending')
-    previous=rec['candidate' if phase=='accepted' else 'previous']
+    previous,adoption_sha=p.effective_release(rec,j)
     require(previous['revision']==a['installed_revision'] and previous['revision']!=i['revision'],'installed_revision_changed')
-    require(p.read_json(op/'prepared.json')==p.preparation_record(op,candidate,previous,j),'prepared_record_changed')
+    require(p.read_json(op/'prepared.json')==p.preparation_record(op,candidate,previous,j,adoption_sha),'prepared_record_changed')
     preview={'action':'update','scope':'funix-hml','identity':i,'operation':op.name,'revision':i['revision'],
              'installed_revision':previous['revision'],'sha256':a['digest'],'size':a['size'],
              'config_sha256':p.sha(op/'config.json'),'prepared_sha256':p.sha(op/'prepared.json'),'active_operation':j.parent.name,'active_journal_sha256':p.sha(j)}
+    if adoption_sha is not None:
+        preview['active_web_adoption_sha256'] = adoption_sha
     return p,u,a,token,op,cfg,j,rec,previous,preview
 
 def ticket_valid(t):
@@ -360,6 +363,7 @@ def worker():
             j,rec=active_record(p); require(j==old_j and p.sha(j)==v['active_journal_sha256'] and rec==old_rec,'active_journal_changed')
             require(not exists(op/'operation.json') and p.sha(op/'config.json')==v['config_sha256'] and p.sha(op/'candidate.zip')==v['sha256'],'approved_files_changed')
             require(p.sha(op/'prepared.json')==v['prepared_sha256'],'prepared_record_changed')
+            require(p.effective_release(rec,j)==(previous,v.get('active_web_adoption_sha256')),'web_adoption_changed')
             require(u.installed_preflight(adapter)==previous,'installed_release_changed')
             require(p.external_snapshot()==before,'external_scope_changed')
             original(config,adapter)
@@ -400,6 +404,59 @@ def worker():
         with locked(): write(rd/'result.json',result)
     return result
 
+def adopt_published_panel():
+    """Record the exact accepted Web-only release from issue #301."""
+    with locked():
+        require_idle()
+        require(not exists(ROOT/'armed.json'),'approval_present')
+        p=prep_module()
+        with os.fdopen(os.open(p.private_file(p.STATE/'lock'),os.O_RDWR|os.O_NOFOLLOW),'r+') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            require(subprocess.check_output(
+                ['/usr/bin/systemctl','show','--property=ActiveState','--value',WORKER],
+                text=True,timeout=15).strip()=='inactive','worker_busy')
+            journal,record=active_record(p)
+            require(record['phase']=='accepted','web_adoption_phase')
+            original=p.installed_from_journal(record)
+            require(original['revision']=='54b60d98b6c39ff0dc8ada0f7daa60bcf6cf2325'
+                    and original['web']=='sha256:cc2e9a6b9ef4d8679d1e9830876d32f0cbd065ccf3305ed4e384aba2c1988476',
+                    'web_adoption_predecessor')
+            web='sha256:828eb94e74f35ae51faff66436baf7ddbcce57895b6de00a6f4554a075de7d7e'
+            release={**original,'web':web}
+            u=p.load_updater('')
+            config_path=journal.parent/'config.json'
+            u.host_scope(journal.parent,config_path)
+            cfg=p.read_json(config_path)
+            u.check_config(cfg,journal.parent)
+            adapter=u.make_adapter(cfg)
+            require(u.installed_preflight(adapter)==release,'web_adoption_live_release')
+            login=u.read_login(p.private_file(Path(cfg['credentials'])))
+            for headers,expected in (({},401),({'Authorization':login},200)):
+                conn=http.client.HTTPSConnection('hml.funix.com.br',timeout=5)
+                try:
+                    conn.request('GET','/painel/',headers=headers)
+                    response=conn.getresponse()
+                    require(response.status==expected,'web_adoption_https')
+                    if expected==401:
+                        require(response.getheader('WWW-Authenticate','').lower().startswith('basic '),
+                                'web_adoption_auth')
+                    else:
+                        body=response.read(65537)
+                        require(len(body)<=65536 and 'Orquestração do ERP'.encode() in body,
+                                'web_adoption_panel')
+                finally:
+                    conn.close()
+            path=journal.parent/'web-adoption.json'
+            expected={'schema':'funix-hml-web-adoption/1','journal_sha256':p.sha(journal),
+                      'original':original,'web':web,
+                      'panel_revision':'f142beae5f26224e9fd587fb9b56151a26785266'}
+            if exists(path):
+                require(p.read_json(path)==expected,'web_adoption_already_exists')
+            else:
+                replace(path,expected)
+            return {**base('web_adopted'),'revision':original['revision'],'web':web}
+
+
 def main():
     os.umask(0o077); require(os.geteuid()==0,'root_only')
     args=sys.argv[1:]
@@ -414,6 +471,7 @@ def main():
             return authorize_permit(body.removeprefix(b'FUNIX-HML-PERMIT\n'))
         return dispatch(body)
     if args==['worker']: return worker()
+    if args==['adopt-published-panel','--authorize']: return adopt_published_panel()
     raise Blocked('command_not_allowed')
 
 if __name__=='__main__':
