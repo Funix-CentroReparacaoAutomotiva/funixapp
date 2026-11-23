@@ -28,7 +28,7 @@ function metricIcon(kind) {
 }
 function shortPublishedDate(value){
   if(!value||!Number.isFinite(Date.parse(value)))return '—';
-  const day=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  const day=d=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);return [parts.find(p=>p.type==='year').value,parts.find(p=>p.type==='month').value,parts.find(p=>p.type==='day').value].join('-')};
   const a=day(new Date()),b=day(new Date(value));
   // Formato en-CA gera AAAA-MM-DD. Ignorar horas para evitar diferencas na virada do dia.
   const parse=s=>{const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)};
@@ -45,7 +45,7 @@ function appendCompactCard(button,node){
   const status=element('span','card-status');status.dataset.state=node.status;
   status.title='Situação: '+STATUS_LABEL[node.status];
   status.append(element('span','status-dot'));left.append(status);
-  const updated=element('span','updated-top',shortPublishedDate(state.model.publishedAt));
+  const updated=element('span','updated-top');updated.append(metricIcon('active'),element('span','',shortPublishedDate(state.model.publishedAt)));
   updated.title='Publicação dos dados: '+dt(state.model.publishedAt);
   head.append(left,updated);
   const metrics=element('span','mini-metrics');
@@ -108,7 +108,7 @@ function makeGroup(node){
   appendCompactCard(title,node);
   title.addEventListener('click',()=>selectNode(node.id));
   const toggle=element('button','project-toggle');
-  toggle.type='button';
+  toggle.type='button';toggle.hidden=children.length===0;
   const body=element('div','project-children');body.id='group-'+state.model.nodes.indexOf(node);
   for(const child of children)body.append(makeTreeBranch(child));
   const update=()=>{
