@@ -23,3 +23,8 @@
 .project-children[hidden]{display:none}.node-inside{min-height:125px}
 @media(max-width:720px){.project-group{padding:12px}.project-children{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}}
 @media(max-width:480px){.project-head{align-items:flex-start;gap:7px}.project-title-block strong{font-size:12px}.project-icon{width:32px;height:32px;font-size:17px}.project-actions{max-width:90px;gap:5px;flex-direction:column;align-items:flex-end}.project-actions .status{font-size:9px}.project-children{grid-template-columns:1fr}.node-inside{min-height:90px}.node-grid:has(.project-group){margin-left:0}.project-group{padding:10px}}
+
+/* Publicação de dados e última verificação são informações distintas. */
+.update-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;max-width:350px;white-space:normal;text-align:right}
+.update-meta span{overflow-wrap:anywhere}
+@media(max-width:720px){.update-meta{align-items:flex-start;text-align:left;flex:1;max-width:100%}}
