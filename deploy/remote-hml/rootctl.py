@@ -404,8 +404,16 @@ def worker():
         with locked(): write(rd/'result.json',result)
     return result
 
+def approved_model_b_release(original):
+    """The published Web-only Modelo B from #330; never infer a release from Docker."""
+    require(original['revision']=='54b60d98b6c39ff0dc8ada0f7daa60bcf6cf2325'
+            and original['web']=='sha256:cc2e9a6b9ef4d8679d1e9830876d32f0cbd065ccf3305ed4e384aba2c1988476',
+            'web_adoption_predecessor')
+    return {**original, 'web':'sha256:4aae0d21ec1a207285f48cbaea5e1bd1ba889abc9e2053d54079fc90066c521a'}
+
+
 def adopt_published_panel():
-    """Record the exact accepted Web-only release from issue #301."""
+    """Adopt only the pinned, already-published Modelo B Web release from #330."""
     with locked():
         require_idle()
         require(not exists(ROOT/'armed.json'),'approval_present')
@@ -418,11 +426,8 @@ def adopt_published_panel():
             journal,record=active_record(p)
             require(record['phase']=='accepted','web_adoption_phase')
             original=p.installed_from_journal(record)
-            require(original['revision']=='54b60d98b6c39ff0dc8ada0f7daa60bcf6cf2325'
-                    and original['web']=='sha256:cc2e9a6b9ef4d8679d1e9830876d32f0cbd065ccf3305ed4e384aba2c1988476',
-                    'web_adoption_predecessor')
-            web='sha256:828eb94e74f35ae51faff66436baf7ddbcce57895b6de00a6f4554a075de7d7e'
-            release={**original,'web':web}
+            release=approved_model_b_release(original)
+            web=release['web']
             u=p.load_updater('')
             config_path=journal.parent/'config.json'
             u.host_scope(journal.parent,config_path)
@@ -449,7 +454,7 @@ def adopt_published_panel():
             path=journal.parent/'web-adoption.json'
             expected={'schema':'funix-hml-web-adoption/1','journal_sha256':p.sha(journal),
                       'original':original,'web':web,
-                      'panel_revision':'f142beae5f26224e9fd587fb9b56151a26785266'}
+                      'panel_revision':'dbfad4be34546497a833fda0c06fc1119332204a'}
             if exists(path):
                 require(p.read_json(path)==expected,'web_adoption_already_exists')
             else:
