@@ -111,13 +111,15 @@ def main():
         result = check_candidate(pr, runs, number, revision, comparison)
         # Recheck PR identity, merge inclusion and CI after metadata queries.
         current_pr = api(f"pulls/{number}")
+        current_runs = api("actions/runs?event=pull_request&head_sha="
+                           + revision + "&per_page=100")
         current_comparison = None
         if current_pr.get("state") == "closed" and current_pr.get("merged") is True:
             merge_sha = current_pr.get("merge_commit_sha")
             if not isinstance(merge_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", merge_sha):
                 raise Blocked("merged PR has no valid merge commit")
             current_comparison = api(f"compare/{merge_sha}...main")
-        check_candidate(current_pr, runs, number, revision, current_comparison)
+        check_candidate(current_pr, current_runs, number, revision, current_comparison)
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write(f"revision={result}\npr={number}\n")
         print(f"Candidate approved for isolated build: PR {number} {result}")
