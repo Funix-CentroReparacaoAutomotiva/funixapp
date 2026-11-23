@@ -32,6 +32,19 @@ Quando houver dúvidas, manter `nao_verificado` ou `acompanhamento`, com explica
 
 Para estados materiais (`em_execucao`, `em_revisao`, `homologacao`, `bloqueado`, `concluido`), fornecer **`statusReason`**, **`updatedAt`** e **`evidence`** ao menos com uma issue ou PR pertinente. Para `bloqueado`, preencher também `blocker`. O vínculo é rastreabilidade, não prova automática de conclusão: verificar se a evidência sustenta a afirmação.
 
+## 3.1. Vários projetos precisam aparecer como raízes no mapa
+
+O painel **não descobre projetos automaticamente** a partir de outros chats, agentes, issues ou PRs. Para cada projeto que a direção deve visualizar, criar/atualizar um nó próprio em `snapshot.json` com:
+
+- `id` único e estável, `title` curto e `presentation: "group"`;
+- `parentId: null` para ser um **projeto principal**, irmão de `proj-funixapp` (não filho dele);
+- `type: "Projeto"` ou classificação realmente adotada, `status` conservador e demais campos conforme evidências;
+- frentes e subfrentes vinculadas pelos seus `parentId` corretos, preservando a rastreabilidade.
+
+Exemplo de **estrutura**, não de projetos a inventar: `CTO → [Projeto A, Projeto B] → [Frentes] → [Subfrentes]`.
+
+Projetos registrados só em outras branches ou em tarefas do GitHub **não aparecem** até sua entrada explícita nessa branch. Não inventar projetos ausentes nem marcar atividades de outros repositórios como comprovadas por issues do FunixApp. Atualizar `snapshotId` e `publishedAt` ao publicar uma mudança do mapa, confirmar o commit em `painel-publicado` e pedir à direção que clique em **Atualizar**.
+
 ## 4. Atualização sob demanda, sem deploy
 
 1. **Receber a solicitação do CTO** com o escopo (frentes a revisar ou mapa completo).
