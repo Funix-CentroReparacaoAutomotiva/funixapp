@@ -1,4 +1,4 @@
-import type {DuplicateAtendimento} from '../shared/contracts'
+import type {DuplicateAtendimento} from '../shared/contracts.ts'
 export type Session = { authenticated: boolean; configured: boolean }
 export type RequestFailure = Error & { status?: number; code?: string; kind?: 'network' | 'http' | 'response'; method?: string; endpoint?: string; requestId?: string; elapsedMs?: number; candidates?:DuplicateAtendimento[]; confirmationToken?:string }
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
