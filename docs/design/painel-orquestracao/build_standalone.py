@@ -12,7 +12,7 @@ html=html.replace('<link rel="stylesheet" href="./styles.css">',f'<style>\n{css}
 html=html.replace('<script type="module" src="./app.mjs"></script>', '')
 model=model.replace('export const','const').replace('export function','function')
 # Remove a importacao ES module ao gerar HTML autonomo: o model ja esta inline.
-app,n_imports=re.subn(r"^import \\{[^}]+\\} from '\\./model\\.mjs';\\s*", '', app, count=1)
+app,n_imports=re.subn(r"^import \{[^}]+\} from '\./model\.mjs';\s*", '', app, count=1)
 if n_imports!=1:
     raise RuntimeError('Importacao do model nao reconhecida ao gerar standalone')
 # This replacement stays literal data, not executable: encode < to prevent a closing script injection.
