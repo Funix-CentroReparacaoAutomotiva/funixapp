@@ -184,3 +184,12 @@ test('resumo: confirmação numa frente vence incerteza da mesma categoria, sem 
   // Decisões são contadas em trabalhos confirmados, e ausência de campo é incerteza.
   assert.deepEqual(x.decisions,{value:1,complete:false,display:'1+'});
 });
+
+test('piloto HML: dados CTO da PR 327 combinados com interface da PR 337',()=>{
+  assert.equal(base.visibility,'public');
+  assert.equal(base.nodes.length,24);
+  assert.equal(base.records.length,42);
+  assert.ok(base.nodes.some(x=>x.id==='proj-super-consolidador'));
+  const checked=validateSnapshot(base);
+  assert.equal(projectOverview(checked,'proj-funixapp').decisions.display,'—');
+});
