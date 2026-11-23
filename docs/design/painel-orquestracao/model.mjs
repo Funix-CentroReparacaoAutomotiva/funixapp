@@ -99,6 +99,15 @@ export function inspectPublishedFile(file, previousRaw, knownSha = null) {
     throw new Error('Não foi possível decodificar o JSON publicado.');
   }
   const model = validateSnapshot(raw);
+  const material = new Set(['em_execucao','em_revisao','homologacao','bloqueado','concluido']);
+  for (const node of model.nodes) {
+    if (material.has(node.status) && (!node.statusReason || !node.updatedAt || node.evidence.length === 0)) {
+      throw new Error('Estado material sem justificativa, data e evidência: ' + node.id);
+    }
+    if (node.status === 'bloqueado' && !node.blocker) {
+      throw new Error('Bloqueio sem motivo informado: ' + node.id);
+    }
+  }
   if (model.repository !== PUBLISHED_REPO || !model.publishedAt) {
     throw new Error('Repositório ou data de publicação inválidos.');
   }
