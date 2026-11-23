@@ -1,11 +1,13 @@
 # FUNIX — publicação sob demanda do mapa do CTO
 
-**Fonte lida pelo painel (após a próxima atualização de código Web):**
+**Fonte lida pelo painel HML já implantado:**
 `painel-publicado:docs/design/painel-orquestracao/snapshot.json`.
 
 Esta branch é o canal separado de **dados públicos**. Nenhum commit nela
 implanta software na VPS; a Web da HML consulta o arquivo pela API pública
 do GitHub somente quando o usuário clica em **Atualizar**.
+
+**Instruções operacionais para agentes e CTO:** [AGENTS.md](./AGENTS.md). Este documento resume o canal de publicação; o guia define responsabilidades, provas e critérios de aceite.
 
 ## Procedimento do CTO / subagente
 
