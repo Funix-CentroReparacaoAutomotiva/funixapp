@@ -19,6 +19,7 @@ ORIGINAL = {
     'gateway': 'sha256:1d4bb63430ffa684179547f9b14656ffe7ccb10d2a7f3776befc1f6b40012c5e',
 }
 MODEL_B_WEB = 'sha256:4aae0d21ec1a207285f48cbaea5e1bd1ba889abc9e2053d54079fc90066c521a'
+PRIOR_WEB = 'sha256:1399b35c184a48591fab864685b4a82d4fa350d2cc79ea8fd9ff80f9f338b50b'
 
 
 class Response:
@@ -76,7 +77,16 @@ class ModeloBAdoptionTest(unittest.TestCase):
             journal.write_text('{"phase":"accepted"}')
             config = operation / 'config.json'
             config.write_text('{"credentials":"/ignored-private-credential"}')
-            adoption = operation / 'web-adoption.json'
+            prior_path = operation / 'web-adoption.json'
+            prior_record = {
+                'schema': 'funix-hml-web-adoption/1',
+                'journal_sha256': 'f' * 64, 'original': ORIGINAL,
+                'web': PRIOR_WEB,
+                'panel_revision': '6ba7797c3ffa14dd192665ae3adef451761d640b',
+            }
+            prior_path.write_text(json.dumps(prior_record))
+            prior_bytes = prior_path.read_bytes()
+            adoption = operation / 'web-adoption-model-b.json'
             if existing is not None:
                 adoption.write_text(json.dumps(existing))
             record = {'phase': 'accepted'}
@@ -85,7 +95,12 @@ class ModeloBAdoptionTest(unittest.TestCase):
             prep.private_file.side_effect = lambda path: Path(path)
             prep.installed_from_journal.return_value = dict(ORIGINAL)
             prep.read_json.side_effect = lambda path: json.loads(Path(path).read_text())
-            prep.sha.return_value = 'f' * 64
+            prep.sha.side_effect = lambda path: 'e' * 64 if Path(path).name == 'web-adoption-model-b.json' else 'f' * 64
+            prep.web_adoption_predecessor.return_value = ({**ORIGINAL, 'web': PRIOR_WEB}, 'd' * 64)
+            prep.effective_release.side_effect = lambda rec, path: (
+                ({**ORIGINAL, 'web': MODEL_B_WEB}, 'e' * 64) if adoption.exists()
+                else ({**ORIGINAL, 'web': PRIOR_WEB}, 'd' * 64)
+            )
             updater = Mock()
             updater.installed_preflight.return_value = live
             updater.read_login.return_value = 'Basic synthetic-only'
@@ -106,6 +121,7 @@ class ModeloBAdoptionTest(unittest.TestCase):
                 again = ctl.adopt_published_panel()
                 self.assertEqual(result, again)
                 self.assertEqual(journal.read_text(), '{"phase":"accepted"}')
+                self.assertEqual(prior_path.read_bytes(), prior_bytes)
                 return result, saved
 
     def test_model_b_adopted_and_idempotent(self):
@@ -114,6 +130,9 @@ class ModeloBAdoptionTest(unittest.TestCase):
         self.assertEqual(record['web'], MODEL_B_WEB)
         self.assertEqual(record['original'], ORIGINAL)
         self.assertEqual(record['journal_sha256'], 'f' * 64)
+        self.assertEqual(record['schema'], 'funix-hml-web-adoption/2')
+        self.assertEqual(record['previous_web'], PRIOR_WEB)
+        self.assertEqual(record['previous_adoption_sha256'], 'd' * 64)
         self.assertEqual(record['panel_revision'], 'dbfad4be34546497a833fda0c06fc1119332204a')
 
     def test_old_web_is_rejected_without_writing(self):
@@ -137,9 +156,11 @@ class ModeloBAdoptionTest(unittest.TestCase):
 
     def test_existing_different_adoption_is_not_overwritten(self):
         prior = {
-            'schema': 'funix-hml-web-adoption/1',
+            'schema': 'funix-hml-web-adoption/2',
             'journal_sha256': 'f' * 64,
             'original': ORIGINAL,
+            'previous_adoption_sha256': 'd' * 64,
+            'previous_web': PRIOR_WEB,
             'web': 'sha256:828eb94e74f35ae51faff66436baf7ddbcce57895b6de00a6f4554a075de7d7e',
             'panel_revision': 'f142beae5f26224e9fd587fb9b56151a26785266',
         }
