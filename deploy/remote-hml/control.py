@@ -26,7 +26,7 @@ STATE = Path('/var/lib/funix-hml/updater')
 REPO = 'Funix-CentroReparacaoAutomotiva/funixapp'
 WORKFLOW = '.github/workflows/funix-hml-candidate.yml'
 FILES = {
-    'hml-update':'1b5644664197aed80876a5985784049fae16cd13',
+    'hml-update':'3e70c16129764a099dad45a55c2567779a48997b',
     'hml-update-safety':'ee35bfce1c8c323d5f69cccbb7b493a24cf9ac18',
     'hml-update-transaction':'2d9c7008775f775f3019feb825e38ee4b9b433f9',
     'hml-docker-adapter':'f6cced157db9fc77ac1ef261e968c34371822d41',
