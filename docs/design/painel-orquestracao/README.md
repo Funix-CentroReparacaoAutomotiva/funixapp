@@ -109,3 +109,18 @@ A tela principal prioriza apenas o **mapa de conexões**: CTO → projetos princ
 - Layout testado (via navegador) em 1440, 390 e 320 px, incluindo dois projetos de topo, frentes avulsas, níveis de árvore, abertura/fechamento do diálogo e ausência de rolagem horizontal.
 
 **Esta alteração exige nova publicação da Web HML, separada da edição de dados.** A fonte `painel-publicado` permanece independente e não será alterada pelo merge desta PR.
+
+
+## Modelo B: cards compactos e contagens verificáveis
+
+**Visual definido pela direção:** linha 1 = nome + ponto de status à esquerda, data da publicação à direita; linha 2 = ícones e valores de frentes diretas, decisões, ativos, bloqueados, concluídos, nessa ordem. Nenhum subcard, rótulo visível, alerta de informação antiga, mudança de ícone dos ativos ou nova lógica de classificação dos status. Hover revela o título do indicador; clique no card abre as informações existentes.
+
+Apenas o **ajuste de confiabilidade das contagens** foi acrescentado:
+- **Frentes:** número de filhos diretos do nó exibido; um projeto sem filhos tem 0 comprovável estruturalmente.
+- **Ativos, bloqueados, concluídos:** percorrer todos os descendentes da árvore, mas contar somente *trabalhos terminais* (folhas não-grupo), para não duplicar o status da frente contêiner com o status dos seus filhos. Um card de trabalho terminal conta a si mesmo. A comparação usa respectivamente `em_execucao`, `bloqueado` e `concluido`, sem inferir outros estados.
+- Se houver folhas com `status: nao_verificado`, um número positivo é **mínimo confirmado** (`2+`), e zero é mostrado como **`—`** (desconhecido), nunca como zero comprovado. Quando todas as folhas têm estado conhecido, o número é exato, inclusive 0.
+- **Decisões:** a fonte v1 pode indicar `decisionPending: true` ou `false` nos trabalhos terminais; o campo é opcional, ausente/null = não verificado. A agregação aplica a mesma regra de zero e mínimo confirmado e não deduz decisões de bloqueios ou texto livre. Não preencher `false` em massa sem levantamento: isso criaria zeros fictícios.
+- A data permanece vinculada a `publishedAt` da fonte, sem avisos de idade ou mudança na regra de atualização sob demanda. Um estado verificado e uma publicação do JSON são conceitos diferentes.
+- Nem o frontend nem os testes inserem decisões, tarefas ou projetos fictícios na fonte efetivamente publicada pelo CTO.
+
+O contrato é aditivo na versão `schemaVersion:1`. A branch `painel-publicado` é governada separadamente, pelo CTO; a atualização deste código exige uma implantação Web-only HML e preserva API/banco.

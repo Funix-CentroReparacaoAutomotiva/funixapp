@@ -36,7 +36,9 @@ export function validateSnapshot(raw){
       return {kind:ref.kind,number:ref.number};
     }):[];
     if(evidence.length>30)throw new Error('Excesso de evidências por nó');
-    return {id,parentId,presentation,type:optionalText(node.type,'node.type',50),title:asText(node.title,'node.title'),description:optionalText(node.description,'node.description',1200),status,statusReason:optionalText(node.statusReason,'node.statusReason',700),nextResult:optionalText(node.nextResult,'nextResult',500),blocker:optionalText(node.blocker,'node.blocker',500),updatedAt:node.updatedAt||null,roles,evidence};
+    const decisionPending=node.decisionPending==null?null:node.decisionPending;
+    if(decisionPending!==null && typeof decisionPending!=='boolean')throw new Error('decisionPending deve ser booleano ou null');
+    return {id,parentId,presentation,type:optionalText(node.type,'node.type',50),title:asText(node.title,'node.title'),description:optionalText(node.description,'node.description',1200),status,statusReason:optionalText(node.statusReason,'node.statusReason',700),nextResult:optionalText(node.nextResult,'nextResult',500),blocker:optionalText(node.blocker,'node.blocker',500),updatedAt:node.updatedAt||null,roles,evidence,decisionPending};
   });
   const byId=new Map(nodes.map(n=>[n.id,n]));
   for(const node of nodes){if(node.parentId!==null && node.parentId!==root.id && !byId.has(node.parentId)) throw new Error('Referência ao pai inexistente');
@@ -63,6 +65,30 @@ export function subtreeIds(model,id){const out=[];const walk=(curr)=>{out.push(c
 export function recordsOf(model,id){const ids=new Set(subtreeIds(model,id));return model.records.filter(r=>ids.has(r.nodeId))}
 export function branchOf(model,id){const b=[];let cur=model.byId.get(id);while(cur){b.unshift(cur);cur=model.byId.get(cur.parentId)}return b}
 export function metrics(model){const top=childrenOf(model,model.root.id);const groups=model.nodes.filter(x=>x.presentation==='group').length;return {fronts:top.length,groups,cards:model.nodes.length-groups,nodes:model.nodes.length,blocked:model.nodes.filter(x=>x.status==='bloqueado').length,unknown:model.nodes.filter(x=>x.status==='nao_verificado').length};}
+/**
+ * Contagens de cards: cada nó terminal de trabalho é contado uma única vez.
+ * Pai com filhos representa somente a estrutura e não duplica o andamento.
+ * Um valor zero só é exato quando não há folhas nao_verificado/sem campo.
+ */
+export function cardCounts(model, id) {
+  if(!model?.byId?.has(id))throw new Error('Nó inexistente para contagem');
+  const fronts=childrenOf(model,id).length;
+  const leaves=subtreeIds(model,id).map(k=>model.byId.get(k))
+    .filter(n=>n.presentation!=='group' && childrenOf(model,n.id).length===0);
+  const statusUnknown=leaves.filter(n=>n.status==='nao_verificado').length;
+  const decisionsUnknown=leaves.filter(n=>n.decisionPending===null).length;
+  const metric=(value,unknown)=>Object.freeze({
+    value, complete:unknown===0,
+    display:unknown ? (value===0?'—':String(value)+'+') : String(value)
+  });
+  return Object.freeze({
+    fronts,
+    active:metric(leaves.filter(n=>n.status==='em_execucao').length,statusUnknown),
+    blocked:metric(leaves.filter(n=>n.status==='bloqueado').length,statusUnknown),
+    done:metric(leaves.filter(n=>n.status==='concluido').length,statusUnknown),
+    decisions:metric(leaves.filter(n=>n.decisionPending===true).length,decisionsUnknown)
+  });
+}
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
 
 

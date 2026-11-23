@@ -27,6 +27,16 @@ with sync_playwright() as p:
     page.set_content(HTML,wait_until='load',timeout=15000)
     page.wait_for_function('document.querySelectorAll(".project-group").length===1',timeout=15000)
     assert page.locator('.project-group').count()==1
+    # O card aprovado tem duas linhas, um unico contorno e cinco metricas iconicas.
+    assert page.locator('.project-select > .card-head').count()==1
+    assert page.locator('.project-select > .mini-metrics .stat').count()==5
+    assert page.locator('.project-select > .mini-metrics .num').first.inner_text()=='6'
+    assert page.locator('.project-select > .mini-metrics .decisions .num').inner_text()=='—'
+    assert page.locator('.project-select > .card-head .name-and-status .card-status').count()==1
+    assert page.locator('.project-select > .card-head .updated-top').count()==1
+    assert page.locator('.project-select .project-select').count()==0
+    assert page.locator('.project-select .node').count()==0
+    assert page.locator('.project-select .stat[title]').count()==5
     assert page.locator('#detail').is_hidden()
     assert page.locator('.project-children > .tree-branch > .node').count()==6
     page.locator('.project-select').click()
@@ -34,7 +44,7 @@ with sync_playwright() as p:
     assert page.locator('#subgrid .sub-node').count()==6
     page.locator('#detail-close').click()
     assert page.locator('#detail').is_hidden()
-    assert 'FunixApp' in page.locator('.project-name').inner_text()
+    assert 'FunixApp' in page.locator('.project-select .node-name').inner_text()
     page.locator('.project-toggle').click()
     assert page.locator('.project-children').is_hidden()
     assert page.locator('.project-toggle').get_attribute('aria-expanded')=='false'
@@ -80,8 +90,11 @@ with sync_playwright() as p:
   page.set_content(html_with_snapshot(custom))
   page.wait_for_function('document.querySelectorAll(".project-group").length===2')
   assert page.locator('.project-group').count()==2
-  assert 'Projeto especial' in page.locator('.project-name').all_inner_texts()
-  assert 'Projeto B' in page.locator('.project-name').all_inner_texts()
+  assert page.locator('.project-select > .mini-metrics .stat').count()==10
+  assert page.locator('.project-select > .mini-metrics .num').first.inner_text()=='1'
+
+  assert 'Projeto especial' in page.locator('.project-select .node-name').all_inner_texts()
+  assert 'Projeto B' in page.locator('.project-select .node-name').all_inner_texts()
   assert page.locator('#detail').is_hidden()
   assert page.locator('#node-grid > .node').count()==1
   page.locator('.project-children .node').first.click()
