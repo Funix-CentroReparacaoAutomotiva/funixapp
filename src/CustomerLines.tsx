@@ -9,8 +9,28 @@ const registryKind=(kind:ReferenceKind)=>kind==='person'||kind==='payer'?'entity
 export function CustomerLines({value,onChange,disabled,onMessage}:{value:CustomerReferences;onChange:(v:CustomerReferences)=>void;disabled:boolean;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
  const [editing,setEditing]=useState<CustomerRecord|null>(null),[failure,setFailure]=useState(''),[saving,setSaving]=useState(false),[version,setVersion]=useState(0)
  const dialog=useRef<HTMLDialogElement>(null)
+ const latest=useRef(value)
+ latest.current=value
  useEffect(()=>{if(editing&&!dialog.current?.open)dialog.current?.showModal()},[editing])
- function update(kind:ReferenceKind,index:number,next:CustomerReference){const rows=[...value[kind]];rows[index]=next;onChange({...value,[kind]:rows})}
+ function update(kind:ReferenceKind,index:number,next:CustomerReference){
+  const rows=[...value[kind]];rows[index]=next
+  const changed={...value,[kind]:rows}
+  latest.current=changed
+  onChange(changed)
+  // An explicitly selected person with one saved phone needs no second selection.
+  // Do not infer a number from the name text or overwrite a number already informed.
+  if(kind==='person'&&index===0&&next.id)
+    void api<EntityRecord>('/api/customer-records/'+encodeURIComponent(next.id)).then(entity=>{
+      const current=latest.current
+      if(current.person[0]?.id!==next.id||current.contact.some(ref=>!!ref.id||!!ref.text.trim()))return
+      const phones=entity.contacts.filter(contact=>!!contact.text.trim()&&contact.whatsapp.state!=='conflict')
+      if(phones.length!==1)return
+      const contact=phones[0]!
+      const hydrated={...current,contact:[{id:contact.id,text:contact.text,entityId:entity.id},...current.contact.slice(1)]}
+      latest.current=hydrated
+      onChange(hydrated)
+    }).catch(()=>{})
+ }
  const primaryPerson=value.person[0]??{id:null,text:''}
  const primaryPhone=value.contact[0]??{id:null,text:''}
  const add=(kind:ReferenceKind)=>onChange({...value,[kind]:[...value[kind],{id:null,text:''}]})
