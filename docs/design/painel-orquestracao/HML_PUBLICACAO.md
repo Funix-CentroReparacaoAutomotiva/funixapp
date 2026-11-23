@@ -1,6 +1,6 @@
 # FUNIX — Painel de Orquestração em `/painel/` da HML
 
-**Estado:** preparação técnica **não implantada**. Não autoriza merge, alteração de DNS, VPS, gateway, Traefik ou publicação.
+**Estado histórico e atual:** a versão inicial do painel foi implantada manualmente na Web da HML em 22/11/2026, com evidência `PANEL_DEPLOY_OK` registrada na issue #301; a arquitetura descrita abaixo foi originalmente preparada antes daquela implantação. **A atualização sob demanda da branch `painel-publicado` ainda é desenvolvimento e não está implantada.** Nenhuma alteração nesta documentação autoriza novo merge/deploy, DNS, gateway, Traefik ou API.
 
 ## Decisão de desenho
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord} from '../model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH} from '../model.mjs';
 const base=JSON.parse(readFileSync(new URL('../snapshot.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(base);
 test('snapshot atual é válido sem impor frentes ou quantidade fixa',()=>{const m=validateSnapshot(base);assert.equal(m.nodes.length,base.nodes.length);assert.equal(childrenOf(m,m.root.id).length,metrics(m).fronts);assert.equal(metrics(m).nodes,base.nodes.length);assert.equal(metrics(m).groups,base.nodes.filter(x=>x.presentation==='group').length);assert.equal(recordsOf(m,m.root.id).length,base.records.length)});
@@ -28,4 +28,63 @@ test('projetos são contêineres opcionais, não tipos de negócio fixos',()=>{
   const other=validateSnapshot(alternative);assert.equal(metrics(other).groups,2);
   assert.equal(metrics(other).cards,2);assert.equal(childrenOf(other,other.root.id).length,3);
   alternative.nodes[0].presentation='invento';assert.throws(()=>validateSnapshot(alternative),/Apresentação desconhecida/);
+});
+
+
+function publishedFile(raw,{sha='a'.repeat(40)}={}){
+  const content=Buffer.from(JSON.stringify(raw),'utf8');
+  return {type:'file',path:PUBLISHED_PATH,sha,encoding:'base64',size:content.length,
+    content:content.toString('base64')};
+}
+test('endereço publicado aponta só para a branch de dados, não para main',()=>{
+  assert.equal(PUBLISHED_BRANCH,'painel-publicado');
+  assert.equal(publishedSnapshotUrl(),
+    'https://api.github.com/repos/Funix-CentroReparacaoAutomotiva/funixapp/contents/docs/design/painel-orquestracao/snapshot.json?ref=painel-publicado');
+});
+test('clique com mesma versão não pede novo desenho nem troca os cards',()=>{
+  const file=publishedFile(base);
+  assert.deepEqual(inspectPublishedFile(file,base),{changed:false,sha:file.sha});
+  const sameSha={...file,content:undefined};
+  assert.deepEqual(inspectPublishedFile(sameSha,base,file.sha),{changed:false,sha:file.sha});
+});
+test('nova publicação válida passa a ser visível somente após confirmação de versão',()=>{
+  const next=clone();
+  next.snapshotId='funix-cto-nova-versao';
+  next.publishedAt='2026-11-23T08:00:00-03:00';
+  next.nodes[0].title='Projeto atualizado pelo CTO';
+  const result=inspectPublishedFile(publishedFile(next,{sha:'b'.repeat(40)}),base);
+  assert.equal(result.changed,true);
+  assert.equal(result.model.nodes[0].title,'Projeto atualizado pelo CTO');
+  assert.equal(result.sha,'b'.repeat(40));
+});
+test('não aceita mudança silenciosa sem novo snapshotId',()=>{
+  const draft=clone();draft.nodes[0].title='Alteração não versionada';
+  assert.throws(()=>inspectPublishedFile(publishedFile(draft),base),/snapshotId/);
+});
+test('publicação mais antiga, outro repositório ou JSON inválido não substituem o atual',()=>{
+  const older=clone();older.snapshotId='versao-anterior';older.publishedAt='2026-11-01T00:00:00-03:00';
+  assert.throws(()=>inspectPublishedFile(publishedFile(older),base),/anterior/);
+  const other=clone();other.snapshotId='falso';other.repository='outro/repo';other.publishedAt='2026-11-23T08:00:00-03:00';
+  assert.throws(()=>inspectPublishedFile(publishedFile(other),base),/URL|Repositório/);
+  const broken=clone();broken.snapshotId='novo';broken.nodes[0].status='sem_evidencia';
+  assert.throws(()=>inspectPublishedFile(publishedFile(broken),base),/desconhecido/);
+});
+test('rejeita objeto remoto alterado ou truncado antes de renderizar',()=>{
+  const file=publishedFile(base);
+  assert.throws(()=>inspectPublishedFile({...file,path:'outro.json'},base),/inesperado/);
+  assert.throws(()=>inspectPublishedFile({...file,size:350001},base),/limite/);
+  assert.throws(()=>inspectPublishedFile({...file,content:'not-base64'},base),/decodificar/);
+  assert.throws(()=>inspectPublishedFile({...file,size:file.size+1},base),/decodificar/);
+});
+
+test('publicação recusa estado material sem data, justificativa ou evidência',()=>{
+  const draft=clone();
+  draft.snapshotId='versao-nova-sem-evidencia';
+  draft.publishedAt='2026-11-23T08:00:00-03:00';
+  draft.nodes[0].status='concluido';
+  assert.throws(()=>inspectPublishedFile(publishedFile(draft),base),/sem justificativa/);
+  draft.nodes[0].status='bloqueado';draft.nodes[0].statusReason='Falha com evidência';
+  draft.nodes[0].updatedAt='2026-11-23T08:00:00-03:00';
+  draft.nodes[0].evidence=[{kind:'issue',number:301}];
+  assert.throws(()=>inspectPublishedFile(publishedFile(draft),base),/Bloqueio sem motivo/);
 });
