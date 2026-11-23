@@ -1,7 +1,7 @@
 """Smoke read-only de grupos dinâmicos, rotas e responsividade; GitHub simulado."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import json,re
+import json,re,shutil
 
 ROOT=Path(__file__).resolve().parents[1]
 HTML=(ROOT/'FUNIX_Painel_Orquestracao_Funcional.html').read_text()
@@ -15,7 +15,10 @@ def configure(page):
   page.route('**/api.github.com/**',lambda route: route.fulfill(status=200,content_type='application/json',body=json.dumps({'number':int(route.request.url.split('/')[-1]),'state':'open','draft':True,'merged':False,'updated_at':'2026-11-22T00:00:00Z'})))
 
 with sync_playwright() as p:
-  browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage','--no-zygote'])
+  installed=shutil.which('chromium') or shutil.which('google-chrome')
+  launch=dict(headless=True,args=['--no-sandbox','--disable-dev-shm-usage','--no-zygote'])
+  if installed: launch['executable_path']=installed
+  browser=p.chromium.launch(**launch)
   for width,height,name in [(1440,900,'desktop'),(390,844,'mobile'),(320,760,'small')]:
     page=browser.new_page(viewport={'width':width,'height':height},device_scale_factor=1)
     errors=[]
