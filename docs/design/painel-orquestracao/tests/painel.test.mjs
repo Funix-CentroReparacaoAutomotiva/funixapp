@@ -76,3 +76,15 @@ test('rejeita objeto remoto alterado ou truncado antes de renderizar',()=>{
   assert.throws(()=>inspectPublishedFile({...file,content:'not-base64'},base),/decodificar/);
   assert.throws(()=>inspectPublishedFile({...file,size:file.size+1},base),/decodificar/);
 });
+
+test('publicação recusa estado material sem data, justificativa ou evidência',()=>{
+  const draft=clone();
+  draft.snapshotId='versao-nova-sem-evidencia';
+  draft.publishedAt='2026-11-23T08:00:00-03:00';
+  draft.nodes[0].status='concluido';
+  assert.throws(()=>inspectPublishedFile(publishedFile(draft),base),/sem justificativa/);
+  draft.nodes[0].status='bloqueado';draft.nodes[0].statusReason='Falha com evidência';
+  draft.nodes[0].updatedAt='2026-11-23T08:00:00-03:00';
+  draft.nodes[0].evidence=[{kind:'issue',number:301}];
+  assert.throws(()=>inspectPublishedFile(publishedFile(draft),base),/Bloqueio sem motivo/);
+});
