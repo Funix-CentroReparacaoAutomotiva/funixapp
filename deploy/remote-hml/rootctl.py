@@ -19,7 +19,7 @@ import time
 
 ROOT=Path('/var/lib/funix-hml-ops')
 PREP=Path('/usr/local/lib/funix-hml-prepare/control.py')
-PREP_SHA='b28d92e02ba5e993897e4fe9cbace216eaf410b05d0b825d47b859645585f701'
+PREP_SHA='87d5962143dccdfa957f64ff410b86e63f520dd35d06f13d2e4d7c895f8a2e5a'
 WORKER='funix-hml-ops-worker.service'
 SCHEMA='funix-hml-ops/1'
 PHASES={'prepared','quiescing','installing','restoring','accepted_pending_open','restored_pending_open','accepted','restored','rollback_requested'}
@@ -428,6 +428,20 @@ def adopt_published_panel():
             original=p.installed_from_journal(record)
             release=approved_model_b_release(original)
             web=release['web']
+            prior_path=journal.parent/'web-adoption.json'
+            prior,prior_sha=p.web_adoption_predecessor(original,journal)
+            require(prior_sha is not None
+                    and prior['web']=='sha256:1399b35c184a48591fab864685b4a82d4fa350d2cc79ea8fd9ff80f9f338b50b'
+                    and p.read_json(prior_path)['panel_revision']=='6ba7797c3ffa14dd192665ae3adef451761d640b',
+                    'web_adoption_predecessor')
+            target=journal.parent/'web-adoption-model-b.json'
+            current,current_sha=p.effective_release(record,journal)
+            if exists(target):
+                require(current==release and current_sha==p.sha(target),
+                        'web_adoption_already_exists')
+            else:
+                require(current==prior and current_sha==prior_sha,
+                        'web_adoption_state_changed')
             u=p.load_updater('')
             config_path=journal.parent/'config.json'
             u.host_scope(journal.parent,config_path)
@@ -451,14 +465,16 @@ def adopt_published_panel():
                                 'web_adoption_panel')
                 finally:
                     conn.close()
-            path=journal.parent/'web-adoption.json'
-            expected={'schema':'funix-hml-web-adoption/1','journal_sha256':p.sha(journal),
-                      'original':original,'web':web,
+            expected={'schema':'funix-hml-web-adoption/2','journal_sha256':p.sha(journal),
+                      'original':original,'previous_adoption_sha256':prior_sha,
+                      'previous_web':prior['web'],'web':web,
                       'panel_revision':'dbfad4be34546497a833fda0c06fc1119332204a'}
-            if exists(path):
-                require(p.read_json(path)==expected,'web_adoption_already_exists')
+            if exists(target):
+                require(p.read_json(target)==expected,'web_adoption_already_exists')
             else:
-                replace(path,expected)
+                write(target,expected)
+            require(p.effective_release(record,journal)==(release,p.sha(target)),
+                    'web_adoption_final_state')
             return {**base('web_adopted'),'revision':original['revision'],'web':web}
 
 
