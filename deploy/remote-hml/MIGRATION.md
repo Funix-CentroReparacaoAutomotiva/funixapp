@@ -291,8 +291,7 @@ root, shell, Docker socket, produção, recuperação ou rollback genéricos.
 Manter validação de proveniência, mTLS, ticket único, preflight, backup,
 journal e restauração antes de habilitar atualização sem console.
 
-Armazenar
-a chave Ed25519 privada somente como segredo desse ambiente, com o nome
+A chave Ed25519 privada permanece exclusivamente como segredo desse ambiente, com o nome
 `HML_PERMIT_SIGNING_KEY`. Na VPS, instalar apenas a chave pública em
 `/var/lib/funix-hml-ops/permit-public.pem` com modo 0600 e criar
 `/var/lib/funix-hml-ops/permits` com modo 0700, ambos root:root. A credencial
