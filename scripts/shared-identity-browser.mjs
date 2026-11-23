@@ -79,7 +79,7 @@ try {
       await page.getByRole('button',{name:'Editar Atendimento',exact:true}).click()
       const editor=page.getByRole('dialog',{name:'Editar Atendimento',exact:true})
       await editor.getByRole('region',{name:'Pessoas',exact:true}).getByText(first.phone,{exact:true}).waitFor()
-      assert.equal(await editor.getByRole('region',{name:'Contatos',exact:true}).isVisible(),false)
+      assert.equal(await editor.getByRole('region',{name:'Contatos',exact:true}).isVisible(),true)
       await page.screenshot({path:out+'/pessoa-e-telefone-'+width+'.png'})
       await editor.getByRole('region',{name:'Pessoas',exact:true}).getByRole('button',{name:'Editar cadastro selecionado'}).click()
       const registration=page.getByRole('dialog',{name:'Editar cadastro selecionado'})
