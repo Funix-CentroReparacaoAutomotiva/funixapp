@@ -64,3 +64,52 @@ export function recordsOf(model,id){const ids=new Set(subtreeIds(model,id));retu
 export function branchOf(model,id){const b=[];let cur=model.byId.get(id);while(cur){b.unshift(cur);cur=model.byId.get(cur.parentId)}return b}
 export function metrics(model){const top=childrenOf(model,model.root.id);const groups=model.nodes.filter(x=>x.presentation==='group').length;return {fronts:top.length,groups,cards:model.nodes.length-groups,nodes:model.nodes.length,blocked:model.nodes.filter(x=>x.status==='bloqueado').length,unknown:model.nodes.filter(x=>x.status==='nao_verificado').length};}
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
+
+
+/**
+ * Canal de publicação SOB DEMANDA: a branch painel-publicado contém somente
+ * dados revisados pelo CTO. Nunca usar main/HEAD nem ler URL fornecida por usuário.
+ * A API pública fornece o SHA do blob; a UI só consulta quando o usuário pede.
+ */
+export const PUBLISHED_REPO = 'Funix-CentroReparacaoAutomotiva/funixapp';
+export const PUBLISHED_BRANCH = 'painel-publicado';
+export const PUBLISHED_PATH = 'docs/design/painel-orquestracao/snapshot.json';
+export const publishedSnapshotUrl = () =>
+  'https://api.github.com/repos/' + PUBLISHED_REPO + '/contents/' + PUBLISHED_PATH +
+  '?ref=' + encodeURIComponent(PUBLISHED_BRANCH);
+
+/** Valida metadados, conteúdo, versão e escopo ANTES de substituir a estrutura. */
+export function inspectPublishedFile(file, previousRaw, knownSha = null) {
+  if (!isObject(file) || file.type !== 'file' || file.path !== PUBLISHED_PATH ||
+      !/^[a-f0-9]{40}$/.test(file.sha || '') || file.encoding !== 'base64' ||
+      !Number.isInteger(file.size) || file.size < 1 || file.size > 300000) {
+    throw new Error('Arquivo publicado inesperado ou acima do limite.');
+  }
+  if (knownSha && file.sha === knownSha) return {changed: false, sha: file.sha};
+  if (typeof file.content !== 'string' || file.content.length > 410000) {
+    throw new Error('Conteúdo publicado ausente ou acima do limite.');
+  }
+  let raw;
+  try {
+    const decoded = atob(file.content.replace(/\s/g, ''));
+    const bytes = Uint8Array.from(decoded, ch => ch.charCodeAt(0));
+    if (bytes.length !== file.size) throw new Error('Tamanho divergente');
+    raw = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));
+  } catch {
+    throw new Error('Não foi possível decodificar o JSON publicado.');
+  }
+  const model = validateSnapshot(raw);
+  if (model.repository !== PUBLISHED_REPO || !model.publishedAt) {
+    throw new Error('Repositório ou data de publicação inválidos.');
+  }
+  if (previousRaw && JSON.stringify(previousRaw) === JSON.stringify(raw)) {
+    return {changed: false, sha: file.sha};
+  }
+  if (previousRaw?.snapshotId === raw.snapshotId) {
+    throw new Error('O CTO deve alterar snapshotId ao publicar novos dados.');
+  }
+  if (previousRaw?.publishedAt && Date.parse(model.publishedAt) < Date.parse(previousRaw.publishedAt)) {
+    throw new Error('A publicação é anterior à estrutura exibida.');
+  }
+  return {changed: true, sha: file.sha, raw, model};
+}
