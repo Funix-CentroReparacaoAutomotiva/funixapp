@@ -113,7 +113,7 @@ A tela principal prioriza apenas o **mapa de conexões**: CTO → projetos princ
 
 ## Modelo B: cards compactos e contagens verificáveis
 
-**Visual definido pela direção:** linha 1 = nome + ponto de status à esquerda, data da publicação à direita; linha 2 = ícones e valores de frentes diretas, decisões, ativos, bloqueados, concluídos, nessa ordem. Nenhum subcard, rótulo visível, alerta de informação antiga, mudança de ícone dos ativos ou nova lógica de classificação dos status. Hover revela o título do indicador; clique no card abre as informações existentes.
+**Visual definido pela direção:** linha 1 = nome + ponto de status à esquerda, data da publicação à direita; linha 2 = ícones e valores de frentes diretas, decisões, ativos, bloqueados, concluídos, nessa ordem. Nenhum subcard, rótulo visível, alerta de informação antiga ou nova lógica de classificação dos status. **Posteriormente, em 23/11/2026, a direção aprovou trocar o relógio de trabalhos ativos por play em círculo; o relógio fica reservado à data.** Hover revela o título do indicador; clique no card abre as informações existentes.
 
 Apenas o **ajuste de confiabilidade das contagens** foi acrescentado:
 - **Frentes:** número de filhos diretos do nó exibido; um projeto sem filhos tem 0 comprovável estruturalmente.
@@ -124,3 +124,20 @@ Apenas o **ajuste de confiabilidade das contagens** foi acrescentado:
 - Nem o frontend nem os testes inserem decisões, tarefas ou projetos fictícios na fonte efetivamente publicada pelo CTO.
 
 O contrato é aditivo na versão `schemaVersion:1`. A branch `painel-publicado` é governada separadamente, pelo CTO; a atualização deste código exige uma implantação Web-only HML e preserva API/banco.
+
+
+## Hierarquia visual dos projetos — aprovada pela direção em 23/11/2026
+
+**Problema relatado:** projeto e frente estavam visualmente semelhantes, e a cor/contorno do projeto não agrupava suas frentes. A direção pediu que o projeto fosse um contêiner diferenciado e que o relógio não representasse mais trabalhos ativos.
+
+**Mudanças de interface aprovadas e implementadas na PR #335 (ainda não publicadas):** agrupamento com fundo azul-claro, cabeçalho identificado como **PROJETO**, e cards de frentes dentro dessa área, preservando níveis aninhados e expansão. O ícone de **trabalhos ativos** passa a ser **play em círculo**, preservando o relógio exclusivamente para data.
+
+**Indicadores do projeto aprovados, distintos dos indicadores de cada frente:**
+- **Frentes diretas:** total estrutural de filhos imediatos.
+- **Frentes com atividade confirmada:** cada frente direta conta no máximo uma vez, mesmo com diversos trabalhos em execução.
+- **Frentes com bloqueio confirmado:** cada frente direta conta no máximo uma vez, mesmo com diversos bloqueios.
+- **Decisões pendentes:** trabalhos terminais explicitamente marcados `decisionPending:true`.
+
+As três últimas métricas seguem a distinção já aprovada entre **`N` exato**, **`N+` mínimo confirmado** e **`—` não verificado**. Não deduzir execução, bloqueio ou decisão de uma issue apenas aberta. **Projetos não recebem automaticamente o mesmo conjunto de cinco contadores dos trabalhos.**
+
+A direção aprovou explicitamente estes **quatro indicadores** em 23/11/2026, após analisar o HTML de referência `FUNIX_Proposta_Projeto_Container.html`. O CTO mantém responsabilidade por evidências e dados publicados. Nenhum `snapshot.json` real é alterado por esta mudança. **A aprovação visual não equivale a deploy:** integração, segurança da HML, revisão do candidato e publicação seguem seus gates próprios, sem merge ou deploy automático.

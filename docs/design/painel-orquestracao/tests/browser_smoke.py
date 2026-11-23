@@ -27,16 +27,26 @@ with sync_playwright() as p:
     page.set_content(HTML,wait_until='load',timeout=15000)
     page.wait_for_function('document.querySelectorAll(".project-group").length===1',timeout=15000)
     assert page.locator('.project-group').count()==1
-    # O card aprovado tem duas linhas, um unico contorno e cinco metricas iconicas.
+    # Projeto identificado como contêiner, com quatro indicadores diferentes das frentes.
     assert page.locator('.project-select > .card-head').count()==1
-    assert page.locator('.project-select > .mini-metrics .stat').count()==5
+    assert page.locator('.project-select .project-label').inner_text()=='PROJETO'
+    assert page.locator('.project-select .stat.activeFronts').count()==1
+    assert page.locator('.project-select .stat.blockedFronts').count()==1
+    assert page.locator('.project-children .stat.done').count()>=6
+    assert page.locator('.project-group .project-children').count()==1
+    assert page.locator('.project-group .project-children > .tree-branch').count()==6
+    # O icon de atividade é play; o icon da data continua sendo relogio.
+    assert page.locator('.project-children .stat.active svg path').first.get_attribute('d')=='m10 8 6 4-6 4z'
+    assert page.locator('.project-select .updated-top svg path').first.get_attribute('d')=='M12 6v6l4 2'
+
+    assert page.locator('.project-select > .mini-metrics .stat').count()==4
     assert page.locator('.project-select > .mini-metrics .num').first.inner_text()=='6'
     assert page.locator('.project-select > .mini-metrics .decisions .num').inner_text()=='—'
     assert page.locator('.project-select > .card-head .name-and-status .card-status').count()==1
     assert page.locator('.project-select > .card-head .updated-top').count()==1
     assert page.locator('.project-select .project-select').count()==0
     assert page.locator('.project-select .node').count()==0
-    assert page.locator('.project-select .stat[title]').count()==5
+    assert page.locator('.project-select .stat[title]').count()==4
     assert page.locator('#detail').is_hidden()
     assert page.locator('.project-children > .tree-branch > .node').count()==6
     page.locator('.project-select').click()
@@ -90,7 +100,7 @@ with sync_playwright() as p:
   page.set_content(html_with_snapshot(custom))
   page.wait_for_function('document.querySelectorAll(".project-group").length===2')
   assert page.locator('.project-group').count()==2
-  assert page.locator('.project-select > .mini-metrics .stat').count()==10
+  assert page.locator('.project-select > .mini-metrics .stat').count()==8
   assert page.locator('.project-select > .mini-metrics .num').first.inner_text()=='1'
 
   assert 'Projeto especial' in page.locator('.project-select .node-name').all_inner_texts()

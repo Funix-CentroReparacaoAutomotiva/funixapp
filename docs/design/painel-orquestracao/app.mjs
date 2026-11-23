@@ -1,4 +1,4 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview} from './model.mjs';
 const $=id=>document.getElementById(id);
 const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
@@ -12,7 +12,10 @@ function statusChip(node){const b=element('span','status',STATUS_LABEL[node.stat
 const metricPaths={
   fronts:['M6 3v12a4 4 0 0 0 4 4h8','M6 12h9a4 4 0 0 0 4-4V5'],
   decisions:['M12 2 3 12l9 10 9-10-9-10Z','M12 8v5','M12 16h.01'],
-  active:['M12 6v6l4 2'],
+  active:['m10 8 6 4-6 4z'],
+  date:['M12 6v6l4 2'],
+  activeFronts:['M4 7l8-4 8 4-8 4-8-4Z','M4 12l8 4 8-4','M4 17l8 4 8-4'],
+  blockedFronts:['M4 4h16v16H4z','M12 8v5','M12 16h.01'],
   blocked:['m12 3 10 18H2L12 3Z','M12 9v5','M12 17h.01'],
   done:['m7.5 12 3 3 6-7']
 };
@@ -20,7 +23,7 @@ function metricIcon(kind) {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
   svg.setAttribute('focusable','false');
-  if(kind==='active'||kind==='done'){
+  if(kind==='active'||kind==='date'||kind==='done'){
     const c=document.createElementNS(ns,'circle');c.setAttribute('cx','12');c.setAttribute('cy','12');c.setAttribute('r','9');svg.append(c);
   }
   for(const d of metricPaths[kind]){const p=document.createElementNS(ns,'path');p.setAttribute('d',d);svg.append(p);}
@@ -38,18 +41,24 @@ function shortPublishedDate(value){
   if(diff>1)return 'há '+diff+' dias';
   return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'}).format(new Date(value));
 }
-function appendCompactCard(button,node){
-  const counts=cardCounts(state.model,node.id);
+function appendCompactCard(button,node,project=false){
+  const counts=project?projectOverview(state.model,node.id):cardCounts(state.model,node.id);
   const head=element('span','card-head'),left=element('span','name-and-status');
+  if(project)left.append(element('span','project-label','PROJETO'));
   left.append(element('strong','node-name',node.title));
   const status=element('span','card-status');status.dataset.state=node.status;
   status.title='Situação: '+STATUS_LABEL[node.status];
   status.append(element('span','status-dot'));left.append(status);
-  const updated=element('span','updated-top');updated.append(metricIcon('active'),element('span','',shortPublishedDate(state.model.publishedAt)));
+  const updated=element('span','updated-top');updated.append(metricIcon('date'),element('span','',shortPublishedDate(state.model.publishedAt)));
   updated.title='Publicação dos dados: '+dt(state.model.publishedAt);
   head.append(left,updated);
   const metrics=element('span','mini-metrics');
-  const specs=[
+  const specs=project?[
+    ['fronts','Frentes diretas',{display:String(counts.fronts),complete:true}],
+    ['activeFronts','Frentes com atividade confirmada',counts.activeFronts],
+    ['blockedFronts','Frentes com bloqueio confirmado',counts.blockedFronts],
+    ['decisions','Decisões pendentes nos trabalhos',counts.decisions]
+  ]:[
     ['fronts','Frentes diretas',{display:String(counts.fronts),complete:true}],
     ['decisions','Decisões pendentes',counts.decisions],
     ['active','Trabalhos ativos',counts.active],
@@ -66,6 +75,7 @@ function appendCompactCard(button,node){
   }
   button.setAttribute('aria-label',node.title+'. '+STATUS_LABEL[node.status]+
       '. Publicação: '+shortPublishedDate(state.model.publishedAt)+'. '+spoken.join('. ')+'. Abrir detalhes.');
+  button.classList.toggle('project-summary',project);
   button.append(head,metrics);
 }
 function makeNodeCard(node,nested=false){
@@ -105,7 +115,7 @@ function makeGroup(node){
   const title=element('button','project-select');
   title.type='button';title.dataset.id=node.id;
   title.setAttribute('aria-pressed',String(state.selected===node.id));
-  appendCompactCard(title,node);
+  appendCompactCard(title,node,true);
   title.addEventListener('click',()=>selectNode(node.id));
   const toggle=element('button','project-toggle');
   toggle.type='button';toggle.hidden=children.length===0;

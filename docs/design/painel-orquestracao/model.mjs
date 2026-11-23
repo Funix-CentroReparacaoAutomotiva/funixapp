@@ -89,6 +89,36 @@ export function cardCounts(model, id) {
     decisions:metric(leaves.filter(n=>n.decisionPending===true).length,decisionsUnknown)
   });
 }
+/**
+ * Resumo do PROJETO por frentes diretas, não por quantidade de tarefas.
+ * Cada frente pode contribuir no máximo uma vez em cada contagem.
+ * Contagens com dados parciais seguem '—' e 'N+' para não produzir falsos zeros.
+ */
+export function projectOverview(model,id){
+  if(!model?.byId?.has(id))throw new Error('Projeto inexistente');
+  const fronts=childrenOf(model,id);
+  const metric=(value,unknown)=>Object.freeze({
+    value,complete:unknown===0,
+    display:unknown ? (value===0?'—':String(value)+'+') : String(value)
+  });
+  let active=0,blocked=0,unknownActive=0,unknownBlocked=0;
+  const decisions=cardCounts(model,id).decisions;
+  for(const front of fronts){
+    const leaves=subtreeIds(model,front.id).map(k=>model.byId.get(k))
+      .filter(n=>n.presentation!=='group' && childrenOf(model,n.id).length===0);
+    if(leaves.length===0){unknownActive++;unknownBlocked++;continue;}
+    if(leaves.some(n=>n.status==='em_execucao'))active++;
+    else if(leaves.some(n=>n.status==='nao_verificado'))unknownActive++;
+    if(leaves.some(n=>n.status==='bloqueado'))blocked++;
+    else if(leaves.some(n=>n.status==='nao_verificado'))unknownBlocked++;
+  }
+  return Object.freeze({
+    fronts:fronts.length,
+    activeFronts:metric(active,unknownActive),
+    blockedFronts:metric(blocked,unknownBlocked),
+    decisions
+  });
+}
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
 
 
