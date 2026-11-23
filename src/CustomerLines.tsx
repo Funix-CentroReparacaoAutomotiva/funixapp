@@ -28,8 +28,8 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
     <button type="button" disabled={disabled} onClick={()=>add('person')}>+ Outra pessoa</button>
     {value.contact.slice(1).map((row,index)=>line('contact',row,index+1))}
     <button type="button" disabled={disabled} onClick={()=>add('contact')}>+ Outro telefone</button>
+    {!primaryPerson.id&&<button type="button" disabled={disabled} onClick={()=>setEditing({id:'',kind:'entity',text:'',revision:0})}>Cadastro avançado de pessoa</button>}
   </details>
-  {!primaryPerson.id&&<button type="button" disabled={disabled} onClick={()=>setEditing({id:'',kind:'entity',text:'',revision:0})}>Cadastrar pessoa com telefones</button>}
  </section>
  {(['vehicle','payer'] as const).map(kind=><section key={kind} aria-label={titles[kind]}><header><strong>{titles[kind]}</strong><button type="button" disabled={disabled} onClick={()=>add(kind)}>+ Adicionar</button></header>
  {value[kind].map((row,index)=>line(kind,row,index))}
