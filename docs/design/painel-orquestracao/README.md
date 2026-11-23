@@ -124,3 +124,20 @@ Apenas o **ajuste de confiabilidade das contagens** foi acrescentado:
 - Nem o frontend nem os testes inserem decisões, tarefas ou projetos fictícios na fonte efetivamente publicada pelo CTO.
 
 O contrato é aditivo na versão `schemaVersion:1`. A branch `painel-publicado` é governada separadamente, pelo CTO; a atualização deste código exige uma implantação Web-only HML e preserva API/banco.
+
+
+## Hierarquia visual dos projetos — proposta para aprovação
+
+**Problema relatado:** projeto e frente estavam visualmente semelhantes, e a cor/contorno do projeto não agrupava suas frentes. A direção pediu que o projeto fosse um contêiner diferenciado e que o relógio não representasse mais trabalhos ativos.
+
+**Mudanças em avaliação, sem deploy:** agrupamento com fundo azul-claro, cabeçalho identificado como **PROJETO**, e os cards de frentes dentro dessa área, sempre preservando níveis aninhados e expansão. O ícone de **trabalhos ativos** passa a ser **play em círculo**, preservando o relógio exclusivamente para data.
+
+**Sugestão de indicadores para projeto, distinta do card da frente:**
+- **Frentes diretas:** total estrutural de filhos imediatos.
+- **Frentes com atividade confirmada:** cada frente direta conta no máximo uma vez, mesmo com diversos trabalhos em execução.
+- **Frentes com bloqueio confirmado:** cada frente direta conta no máximo uma vez, mesmo com diversos bloqueios.
+- **Decisões pendentes:** trabalhos terminais explicitamente marcados `decisionPending:true`.
+
+As três últimas métricas seguem a distinção já aprovada entre **`N` exato**, **`N+` mínimo confirmado** e **`—` não verificado**. Não deduzir execução, bloqueio ou decisão de uma issue apenas aberta. **Projetos não recebem automaticamente o mesmo conjunto de cinco contadores dos trabalhos.**
+
+A composição de quatro indicadores do projeto é **proposta da interface nesta PR**, não um novo padrão aprovado até aceite da direção. O CTO mantém responsabilidade por evidências e dados publicados. Nenhum `snapshot.json` real é alterado por esta mudança.
