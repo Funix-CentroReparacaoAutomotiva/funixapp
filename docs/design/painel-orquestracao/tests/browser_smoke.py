@@ -28,7 +28,7 @@ with sync_playwright() as p:
     page.wait_for_function('document.querySelectorAll(".project-group").length===1',timeout=15000)
     assert page.locator('.project-group').count()==1
     assert page.locator('#detail').is_hidden()
-    assert page.locator('.project-children .node').count()==6
+    assert page.locator('.project-children > .tree-branch > .node').count()==6
     page.locator('.project-select').click()
     assert page.locator('#detail').is_visible()
     assert page.locator('#subgrid .sub-node').count()==6
