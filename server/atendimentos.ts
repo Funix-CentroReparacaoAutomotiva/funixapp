@@ -117,15 +117,17 @@ export class AtendimentoRepository {
     return includeReferences ? customers.present([record])[0]! : record
   }
 
-  private possibleDuplicates(record:Atendimento,refs:CustomerReferences|undefined):DuplicateAtendimento[] {
+  private possibleDuplicates(record:{phoneNormalized:string|null;plate:string},refs:CustomerReferences|undefined):DuplicateAtendimento[] {
     const phone=record.phoneNormalized,contactIds=[...new Set((refs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))]
     if(!phone&&!contactIds.length)return []
     const refIdMatch=contactIds.length?`r.record_id IN (${contactIds.map(()=>'?').join(',')})`:'0'
-    const refPhoneMatch=phone?"r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?":'0'
+    const refPhoneMatch=phone?`(r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?
+      OR EXISTS(SELECT 1 FROM customer_records c WHERE c.id=r.record_id
+        AND c.kind='contact' AND c.phone_normalized=?))`:'0'
     const conditions=[...(phone?['a.phone_normalized=?']:[]),
       `EXISTS (SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact'
         AND (${refIdMatch} OR (${refPhoneMatch})))`]
-    const args=[...(phone?[phone]:[]),...contactIds,...(phone?[phone]:[])]
+    const args=[...(phone?[phone]:[]),...contactIds,...(phone?[phone,phone]:[])]
     const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.stage,a.revision
       FROM atendimentos a WHERE a.closed_at IS NULL AND a.stage<>'rejeitados'
       AND (${conditions.join(' OR ')}) ORDER BY a.created_at DESC,a.id ASC`).all(...args)
@@ -141,24 +143,30 @@ export class AtendimentoRepository {
     const customers=new CustomerRepository(this.db)
     if (!inTransaction) this.db.exec('BEGIN IMMEDIATE')
     try {
-      const refs=this.manualReferences(customers,fields,references,manual)
-      if(refs)Object.assign(fields,references===undefined?this.identityFields(customers,refs):customers.primaryFields(refs))
-      const now = new Date().toISOString()
-      const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', fabricationYear: null, modelYear: null, plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
-      record.phoneNormalized = normalizeCustomerPhone(record.phone)
-      checkRefusal(record)
+      // Check before mutating shared customer references: a manual lead using an existing
+      // number must see the open case warning before the ownership gate for new records.
       if(manual){
-        const candidates=this.possibleDuplicates(record,refs)
+        const draftRefs=references===undefined?undefined:customers.validate(references)
+        const draftIdentity=draftRefs?customers.primaryFields(draftRefs):fields
+        const candidatePhone=typeof draftIdentity.phone==='string'?normalizeCustomerPhone(draftIdentity.phone):null
+        const candidatePlate=typeof draftIdentity.plate==='string'?draftIdentity.plate:''
+        const candidates=this.possibleDuplicates({phoneNormalized:candidatePhone,plate:candidatePlate},draftRefs)
         if(candidates.length){
           const confirmationToken=createHash('sha256').update(JSON.stringify([
-            record.phoneNormalized,normalizedPlate(record.plate),
-            [...new Set((refs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))].sort(),
+            candidatePhone,normalizedPlate(candidatePlate),
+            [...new Set((draftRefs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))].sort(),
             candidates.map(({id,revision})=>[id,revision]),
           ])).digest('hex')
           if(confirmationToken!==duplicateConfirmation)
             throw new PossibleDuplicateAtendimentoError(candidates,confirmationToken)
         }
       }
+      const refs=this.manualReferences(customers,fields,references,manual)
+      if(refs)Object.assign(fields,references===undefined?this.identityFields(customers,refs):customers.primaryFields(refs))
+      const now = new Date().toISOString()
+      const record: Atendimento = { id: randomUUID(), phone: '', phoneNormalized: null, name: '', vehicle: '', brand: '', model: '', fabricationYear: null, modelYear: null, plate: '', reason: '', notes: '', stage: 'novo-lead', rejectionReason: '', explicitRefusal: false, createdAt: now, updatedAt: now, revision: 1, ...fields }
+      record.phoneNormalized = normalizeCustomerPhone(record.phone)
+      checkRefusal(record)
       try {
         this.db.prepare(`INSERT INTO atendimentos(id,phone,phone_normalized,name,vehicle,brand,model,fabrication_year,model_year,plate,reason,notes,search_text,stage,rejection_reason,explicit_refusal,created_at,updated_at,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.phone, record.phoneNormalized, record.name, record.vehicle, record.brand, record.model, record.fabricationYear, record.modelYear, record.plate, record.reason, record.notes, searchText(record), record.stage, record.rejectionReason, record.explicitRefusal ? 1 : 0, now, now, 1)
       } catch(error) {
