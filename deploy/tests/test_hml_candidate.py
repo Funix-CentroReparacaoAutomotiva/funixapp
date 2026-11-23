@@ -16,7 +16,7 @@ class CandidateGateTest(unittest.TestCase):
     def setUp(self):
         repo = {"full_name": gate.REPO}
         self.pr = {"number": 42, "state": "open", "draft": True,
-                   "head": {"sha": SHA, "repo": repo},
+                   "head": {"sha": SHA, "repo": repo, "ref": "feature"},
                    "base": {"ref": "main", "repo": repo}}
         self.runs = [
             {"id": i, "run_number": 1, "run_attempt": 1, "path": path,
@@ -74,6 +74,18 @@ class CandidateGateTest(unittest.TestCase):
                          "base_commit": {"sha": "d" * 40}}]:
             with self.subTest(comparison=invalid), self.assertRaises(gate.Blocked):
                 self.check_merged(invalid)
+
+    def test_merged_pr_with_empty_run_associations(self):
+        self.pr.update(state="closed", merged=True, merge_commit_sha="c" * 40)
+        comparison = {"status": "ahead", "behind_by": 0,
+                      "base_commit": {"sha": "c" * 40}}
+        for run in self.runs:
+            run.update(pull_requests=[], head_branch="feature",
+                       head_repository={"full_name": gate.REPO})
+        self.assertEqual(self.check_merged(comparison), SHA)
+        self.runs[0]["head_branch"] = "other"
+        with self.assertRaises(gate.Blocked):
+            self.check_merged(comparison)
 
     def test_closed_unmerged_pr_blocks(self):
         self.pr["state"] = "closed"
