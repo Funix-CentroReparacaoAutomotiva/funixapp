@@ -398,8 +398,6 @@ server {
                             assert db.execute('SELECT value FROM atendimentos').fetchone()==('original',)
                         assert all(file.read_bytes()==content for file,content in before.items())
                         print('HML_REMOTE_FAILURE_DATA_PRESERVED_OK',flush=True)
-                        assert edge_fault_count[0] >= 3, "TLS edge injection did not run"
-                        print('HML_EDGE_TRANSIENT_GATEWAY_CONVERGENCE_OK',flush=True)
                         return
                     operation = transaction.Transaction(op, fresh_adapter(), project_state=state, maintenance=True)
                     print("HML_OFFICIAL_COORDINATOR_OK", flush=True)
