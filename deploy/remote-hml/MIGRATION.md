@@ -270,9 +270,28 @@ completa do artefato e a revisão instalada. Cada autorização para emitir
 ticket vale por vinte minutos e só pode ser usada uma vez. O despacho
 continua em `POST /v1/update` com o ticket devolvido por `GET /v1/status`.
 
-Antes de liberar o workflow de assinatura, configurar no GitHub o ambiente
-`homologation` para a branch `main`, com aprovadores designados,
-prevenção de autoaprovação e proibição de contornar a proteção. Armazenar
+**Modelo de operador único da FUNIX (23/11/2026):** como não existe uma segunda
+conta de direção, não configurar uma aprovação supostamente independente no
+GitHub. No ambiente `homologation`, manter restrição à branch `main` e
+armazenar a chave de assinatura exclusivamente no segredo do ambiente.
+O workflow `funix-hml-authorize.yml` só executa assinatura em despacho
+`workflow_dispatch` iniciado e reexecutado pelo login da direção
+`Funix-CentroReparacaoAutomotiva`; solicitações de outras identidades
+falham fechadas. Não cadastrar como revisor a própria conta nem criar
+uma segunda identidade fictícia apenas para passar no gate.
+
+Este é um controle de **titular único**, não uma revisão independente e
+não permite a agentes emitir automaticamente permissões por conta própria.
+O despacho manual específico no GitHub continua sendo a prova de decisão
+do titular nesta etapa. Automatizar a partir de chats/agentes requer
+posterior contrato de autorização para cada ação sensível, ligado a escopo,
+operação, revisão, pacote, predecessor e trilha auditável. Não transferir
+a chave privada para n8n, ChatGPT, Codex ou servidor público e não liberar
+root, shell, Docker socket, produção, recuperação ou rollback genéricos.
+Manter validação de proveniência, mTLS, ticket único, preflight, backup,
+journal e restauração antes de habilitar atualização sem console.
+
+Armazenar
 a chave Ed25519 privada somente como segredo desse ambiente, com o nome
 `HML_PERMIT_SIGNING_KEY`. Na VPS, instalar apenas a chave pública em
 `/var/lib/funix-hml-ops/permit-public.pem` com modo 0600 e criar
