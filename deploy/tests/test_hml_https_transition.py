@@ -29,6 +29,7 @@ class FakeResponse:
         self.challenge = challenge
         self.offset = 0
         self.length = len(body)
+        self.fp = None  # HTTPResponse-like socket reference for the real validator
 
     def getheader(self, name, default=""):
         if name.lower() == "www-authenticate" and self.status == 401 and self.challenge:
