@@ -39,7 +39,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   const next={...value,person:[...value.person],contact:[...value.contact]}
   const index=next.person.findIndex(r=>r.id===record.id)
   if(index>=0)next.person[index]={id:record.id,text:record.text}
-  else if(!editing.id){const blank=next.person.findIndex(r=>!r.id&&!r.text.trim());if(blank>=0)next.person[blank]={id:record.id,text:record.text};else next.person.push({id:record.id,text:record.text})}
+  else if(!editing.id){const firstFree=next.person.findIndex(r=>!r.id);if(firstFree>=0)next.person[firstFree]={id:record.id,text:record.text};else next.person.push({id:record.id,text:record.text})}
   // Saving a person with one contact also selects that number on a new/blank
   // Atendimento. Never replace a nonempty contact or guess among multiple numbers.
   const sole=record.contacts.length===1?record.contacts[0]:null
