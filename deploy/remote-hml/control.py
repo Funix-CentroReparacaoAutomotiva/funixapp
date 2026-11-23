@@ -213,9 +213,8 @@ def installed_from_journal(rec):
          'current_transaction')
     return release
 
-def effective_release(record, journal):
-    """Apply a local, journal-bound Web adoption to the installed release only."""
-    original = installed_from_journal(record)
+def web_adoption_predecessor(original, journal):
+    """Validate immutable first Web-only adoption bound to the official journal."""
     path = journal.parent / 'web-adoption.json'
     if not path.exists() and not path.is_symlink():
         return original, None
@@ -232,6 +231,30 @@ def effective_release(record, journal):
          and re.fullmatch(r'[a-f0-9]{40}', adoption['panel_revision']), 'invalid_web_adoption')
     return {**original, 'web': adoption['web']}, sha(path)
 
+
+def effective_release(record, journal):
+    """Resolve one immutable legacy adoption and the journal-bound Modelo B successor."""
+    original = installed_from_journal(record)
+    predecessor, predecessor_sha = web_adoption_predecessor(original, journal)
+    successor = journal.parent / 'web-adoption-model-b.json'
+    if not successor.exists() and not successor.is_symlink():
+        return predecessor, predecessor_sha
+    must(predecessor_sha is not None, 'invalid_web_adoption')
+    adoption = read_json(successor)
+    expected = {'schema', 'journal_sha256', 'original', 'previous_adoption_sha256',
+                'previous_web', 'web', 'panel_revision'}
+    must(isinstance(adoption, dict) and set(adoption) == expected
+         and adoption['schema'] == 'funix-hml-web-adoption/2'
+         and adoption['journal_sha256'] == sha(journal)
+         and adoption['original'] == original
+         and adoption['previous_adoption_sha256'] == predecessor_sha
+         and adoption['previous_web'] == predecessor['web']
+         and isinstance(adoption['web'], str)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}', adoption['web'])
+         and adoption['web'] != predecessor['web']
+         and isinstance(adoption['panel_revision'], str)
+         and re.fullmatch(r'[a-f0-9]{40}', adoption['panel_revision']), 'invalid_web_adoption')
+    return {**predecessor, 'web': adoption['web']}, sha(successor)
 
 def prepare():
     must(os.geteuid()==0 and len(sys.argv)==1,'local_scope'); private_dir(PRIVATE); private_dir(STATE)
