@@ -142,6 +142,62 @@ test('creates, searches, edits and reopens local Atendimento without any Coda or
   } finally { globalThis.fetch = oldFetch; app.close() }
 })
 
+test('manual creation warns for same contact and same or unknown plate, with explicit override only',async()=>{
+  const app=start()
+  try {
+    const cookie=await authenticate(app)
+    const firstResponse=await app.write('/api/atendimentos','POST',{phone:'31999991111',name:'Cliente sintético',plate:'ABC1D23'},cookie)
+    assert.equal(firstResponse.status,201)
+    const first=await firstResponse.json() as {id:string;references:{person:unknown[];contact:unknown[];vehicle:unknown[];payer:unknown[]}}
+    const matches=async(input:unknown)=>{
+      const response=await app.write('/api/atendimentos','POST',input,cookie)
+      assert.equal(response.status,409)
+      const body=await response.json() as {error:{code:string;candidates:{id:string}[];confirmationToken:string}}
+      assert.equal(body.error.code,'ATENDIMENTO_DUPLICATE_REVIEW')
+      assert.equal(body.error.candidates[0]?.id,first.id)
+      assert.match(body.error.confirmationToken,/^[a-f0-9]{64}$/)
+      return body.error.confirmationToken
+    }
+
+    // A lead typed as free text must receive the warning *before* conflicting
+    // with an already shared Contact owner.
+    const token=await matches({phone:'+55 (31) 99999-1111',name:'Cliente sintético',plate:'abc-1d23'})
+    assert.equal(app.repository.list().total,1)
+    const refs={...first.references,vehicle:[{id:null,text:'Carro 1',plate:'ABC1D23'}]}
+    const createAnother={references:refs,phone:'31999991111',name:'Cliente sintético',plate:'ABC1D23'}
+    const created=await app.write('/api/atendimentos','POST',{...createAnother,duplicateConfirmation:token},cookie)
+    // A confirmation for a different draft (selected canonical Contact) is stale.
+    assert.equal(created.status,409)
+    const current=await created.json() as {error:{confirmationToken:string}}
+    const accepted=await app.write('/api/atendimentos','POST',{...createAnother,duplicateConfirmation:current.error.confirmationToken},cookie)
+    assert.equal(accepted.status,201)
+    assert.equal(app.repository.list().total,2)
+
+    const noPlate={...createAnother,references:{...refs,vehicle:[{id:null,text:'Carro 1',plate:''}]},plate:''}
+    await matches(noPlate)
+    // An independent known vehicle for the same contact is not a duplicate.
+    const otherVehicle=await app.write('/api/atendimentos','POST',{
+      ...createAnother,references:{...refs,vehicle:[{id:null,text:'Carro 2',plate:'DEF2G34'}]},plate:'DEF2G34'
+    },cookie)
+    assert.equal(otherVehicle.status,201)
+    assert.equal(app.repository.list().total,3)
+  } finally {app.close()}
+})
+
+test('manual duplicate warning excludes rejected/closed cases and ignores missing contact evidence',async()=>{
+  const app=start()
+  try{
+    const cookie=await authenticate(app)
+    const first=await (await app.write('/api/atendimentos','POST',{phone:'31988887777',name:'Cliente sintético',plate:'AAA1B23'},cookie)).json() as {id:string;revision:number;references:unknown}
+    assert.equal((await app.write('/api/atendimentos/'+first.id,'PATCH',{
+      revision:first.revision,stage:'rejeitados',explicitRefusal:true,rejectionReason:'Recusa do cliente'
+    },cookie)).status,200)
+    assert.equal((await app.write('/api/atendimentos','POST',{phone:'31988887777',name:'Cliente sintético',plate:'AAA1B23',references:first.references},cookie)).status,201)
+    const empty=await app.write('/api/atendimentos','POST',{name:'Sem telefone',plate:'AAA1B23'},cookie)
+    assert.equal(empty.status,201)
+  }finally{app.close()}
+})
+
 test('writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies', async () => {
   const app = start()
   try {
