@@ -55,6 +55,9 @@ class NextReconciliationTest(unittest.TestCase):
         patch.object(m,'locks',side_effect=contextlib.nullcontext).start()
         patch.object(m,'idle',return_value=self.expected).start()
         patch.object(m,'targets',return_value=self.mapping).start()
+        # The real source-integrity verifier requires all 15 fixed host paths;
+        # this isolated routing test supplies a deterministic, pinned synthetic map.
+        patch.object(m,'source_integrity',return_value=self.new).start()
         patch.object(m,'command',side_effect=self.command).start()
         self.addCleanup(patch.stopall)
         self.gate.parent.mkdir(mode=0o755)
