@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-cto-2026-11-22-hml-implantado-v2",
-  "publishedAt": "2026-11-22T20:53:00-03:00",
+  "snapshotId": "funix-cto-20261123012839-revisao-operacional-v1",
+  "publishedAt": "2026-11-23T01:28:39.502Z",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
   "title": "FUNIX ERP",
-  "subtitle": "Projeto FunixApp e suas frentes de desenvolvimento. Agrupamentos, títulos e vínculos são definidos pelo CTO.",
+  "subtitle": "FunixApp, suas frentes de desenvolvimento e projetos acompanhados pelo CTO.",
   "root": {
     "id": "cto",
     "title": "CTO Virtual",
@@ -49,15 +49,19 @@
       "type": "subfrente",
       "title": "Cadastro comercial",
       "description": "Entidades, contatos, veículos e identidade comercial.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "acompanhamento",
+      "statusReason": "A integridade cadastral V25 foi integrada, com verificações de identidade e vínculo. O aceite do cadastro comercial completo permanece pendente.",
+      "nextResult": "Conferir titular, contato e vínculo em cenários de cadastro na HML.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 300
+        },
+        {
+          "kind": "pr",
+          "number": 283
         }
       ]
     },
@@ -85,15 +89,27 @@
       "type": "subfrente",
       "title": "Orçamento e migração histórica",
       "description": "Orçamentos versionados, histórico e importação controlada.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "acompanhamento",
+      "statusReason": "O importador Coda tem PR em rascunho. A prévia de Cilia tem uma proposta separada em rascunho, com escrita desativada.",
+      "nextResult": "Revisar a prévia de Cilia e demonstrar a transição e a reversão em ambiente descartável.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 304
+        },
+        {
+          "kind": "issue",
+          "number": 286
+        },
+        {
+          "kind": "pr",
+          "number": 257
+        },
+        {
+          "kind": "pr",
+          "number": 316
         }
       ]
     },
@@ -121,15 +137,27 @@
       "type": "subfrente",
       "title": "Conversas vinculadas ao Atendimento",
       "description": "Identidade, vínculos e navegação entre Chat e Atendimento.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "homologacao",
+      "statusReason": "A issue registra aplicação da recuperação com backup e integridade. As correções de triagem, vínculos e histórico foram integradas. A validação visual de casos legados segue pendente.",
+      "nextResult": "Validar casos legados de abertura de Atendimento, vínculo e histórico.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
+          "number": 289
+        },
+        {
+          "kind": "issue",
           "number": 307
+        },
+        {
+          "kind": "pr",
+          "number": 317
+        },
+        {
+          "kind": "pr",
+          "number": 319
         }
       ]
     },
@@ -193,15 +221,19 @@
       "type": "subfrente",
       "title": "Atendimento e ciclo operacional",
       "description": "Entrada, triagem, acompanhamento e saída do veículo.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "acompanhamento",
+      "statusReason": "A fundação da conversão comercial e da Ordem de Serviço foi integrada. A verificação do ciclo completo da oficina continua pendente.",
+      "nextResult": "Verificar o fluxo de Atendimento até a entrega.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 305
+        },
+        {
+          "kind": "pr",
+          "number": 267
         }
       ]
     },
@@ -247,15 +279,19 @@
       "type": "subfrente",
       "title": "Ordem de Serviço e PDF",
       "description": "Geração, layout, paginação, cache e impressão.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "em_revisao",
+      "statusReason": "Há uma PR aberta para compactar os títulos técnicos da Ordem de Serviço, com ensaio local de layout descrito na PR.",
+      "nextResult": "Conferir os checks e revisar o PDF de referência.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 312
+        },
+        {
+          "kind": "pr",
+          "number": 254
         }
       ]
     },
@@ -355,15 +391,23 @@
       "type": "subfrente",
       "title": "Infraestrutura e operação técnica",
       "description": "Docker, VPS, configuração, recuperação e operação.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "homologacao",
+      "statusReason": "Controlador restrito de HML instalado e leitura remota confirmada. O aceite da escrita depende da validação de release.",
+      "nextResult": "Demonstrar preparação, atualização e verificação de uma revisão pela HML.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
-          "number": 299
+          "number": 274
+        },
+        {
+          "kind": "pr",
+          "number": 288
+        },
+        {
+          "kind": "pr",
+          "number": 323
         }
       ]
     },
@@ -391,17 +435,34 @@
       "type": "subfrente",
       "title": "Homologação e release",
       "description": "Critérios de pronto, revisão, aprovação e publicação.",
-      "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "status": "bloqueado",
+      "statusReason": "HML acessível e migração do controlador aceita. O build e a assinatura no GitHub passaram. A preparação recusou a diferença entre o release em execução e o registro oficial.",
+      "nextResult": "Conciliar a imagem Web com o release oficial e validar um ciclo de atualização por inteiro.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 303
+        },
+        {
+          "kind": "issue",
+          "number": 301
+        },
+        {
+          "kind": "pr",
+          "number": 323
+        },
+        {
+          "kind": "pr",
+          "number": 324
+        },
+        {
+          "kind": "pr",
+          "number": 326
         }
-      ]
+      ],
+      "blocker": "A imagem Web publicada separadamente tem registro próprio. O atualizador exige correspondência com o seu registro antes de preparar candidatos."
     },
     {
       "id": "ep-301",
@@ -410,9 +471,9 @@
       "title": "Governança de agentes e entregas",
       "description": "Protocolo de execução, evidências, revisões e handoff.",
       "status": "homologacao",
-      "statusReason": "Painel de orquestração implantado em homologação em 22/11/2026; o operador confirmou PANEL_DEPLOY_OK e abertura no navegador. Atualização de dados sob demanda ainda não implantada.",
-      "nextResult": "Validar e publicar no código Web o botão de consulta à branch painel-publicado, sem afetar a API ou o banco.",
-      "updatedAt": "2026-11-22T20:53:00-03:00",
+      "statusReason": "O painel de acompanhamento está disponível na HML. A atualização sob demanda usa a branch de dados publicada, conforme verificação informada pela direção.",
+      "nextResult": "Publicar a revisão de dados aprovada e confirmar o carregamento pelo botão Atualizar.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
       "roles": [
         "CTO — coordenação técnica"
       ],
@@ -423,7 +484,33 @@
         },
         {
           "kind": "pr",
-          "number": 318
+          "number": 325
+        }
+      ]
+    },
+    {
+      "id": "proj-super-consolidador",
+      "parentId": null,
+      "type": "Projeto",
+      "title": "Super Consolidador de Informações",
+      "description": "Projeto independente de consolidação e análise contextual. O repositório do ERP contém referências aos incrementos iniciais.",
+      "status": "acompanhamento",
+      "statusReason": "O MVP contextual foi integrado com ativação desabilitada por padrão. A pré-verificação e a proposta de desacoplamento continuam em rascunho.",
+      "nextResult": "Definir o projeto independente e validar o próximo adaptador de origem.",
+      "updatedAt": "2026-11-23T01:28:39.502Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "pr",
+          "number": 222
+        },
+        {
+          "kind": "pr",
+          "number": 225
+        },
+        {
+          "kind": "pr",
+          "number": 277
         }
       ]
     }
@@ -591,7 +678,7 @@
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/295"
     },
     {
-      "nodeId": "ep-309",
+      "nodeId": "proj-super-consolidador",
       "kind": "pr",
       "number": 277,
       "title": "Portas de contexto independentes do ERP",
@@ -701,6 +788,70 @@
       "title": "Infraestrutura e operação técnica",
       "context": "Épico público",
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/299"
+    },
+    {
+      "nodeId": "proj-super-consolidador",
+      "kind": "pr",
+      "number": 222,
+      "title": "MVP01 de análise contextual",
+      "context": "Integrado com ativação desabilitada por padrão",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/222"
+    },
+    {
+      "nodeId": "proj-super-consolidador",
+      "kind": "pr",
+      "number": 225,
+      "title": "Pré-verificação do MVP01",
+      "context": "Rascunho de pré-verificação",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/225"
+    },
+    {
+      "nodeId": "ep-304",
+      "kind": "pr",
+      "number": 316,
+      "title": "Prévia isolada de orçamentos Cilia",
+      "context": "Rascunho da transição e da reversão",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/316"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "pr",
+      "number": 317,
+      "title": "Recuperar triagem, vínculos e histórico",
+      "context": "Correção integrada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/317"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "pr",
+      "number": 319,
+      "title": "Vincular número abreviado e liberar histórico",
+      "context": "Correção integrada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/319"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "pr",
+      "number": 325,
+      "title": "Atualizar os cards sob demanda",
+      "context": "Integrada à branch de release do painel",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/325"
+    },
+    {
+      "nodeId": "ep-303",
+      "kind": "pr",
+      "number": 323,
+      "title": "Autorizações assinadas de homologação",
+      "context": "Controlador HML",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/323"
+    },
+    {
+      "nodeId": "ep-303",
+      "kind": "pr",
+      "number": 326,
+      "title": "Reconhecer os checks de PRs após merge",
+      "context": "Correção da seleção de candidatos",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/326"
     }
   ],
   "visibility": "public"
