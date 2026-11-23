@@ -20,8 +20,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
-      - name: Validar contrato e dados versionados
+      - name: Validar sintaxe, contrato e dados versionados
         run: |
+          node --check docs/design/painel-orquestracao/app.mjs
+          node --check docs/design/painel-orquestracao/model.mjs
           node --test docs/design/painel-orquestracao/tests/painel.test.mjs
           node docs/design/painel-orquestracao/validate_snapshot.mjs
       - name: Gerar HTML autônomo
