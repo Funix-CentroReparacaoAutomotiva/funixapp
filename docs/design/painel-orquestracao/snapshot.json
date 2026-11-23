@@ -1,0 +1,707 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "funix-cto-2026-11-22-hml-implantado-v2",
+  "publishedAt": "2026-11-22T20:53:00-03:00",
+  "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
+  "title": "FUNIX ERP",
+  "subtitle": "Projeto FunixApp e suas frentes de desenvolvimento. Agrupamentos, títulos e vínculos são definidos pelo CTO.",
+  "root": {
+    "id": "cto",
+    "title": "CTO Virtual",
+    "subtitle": "Coordenação técnica"
+  },
+  "nodes": [
+    {
+      "id": "proj-funixapp",
+      "parentId": null,
+      "type": "Projeto",
+      "presentation": "group",
+      "title": "FunixApp",
+      "description": "Desenvolvimento do ERP da FUNIX, organizado pelo CTO.",
+      "status": "acompanhamento",
+      "statusReason": "Agrupamento de acompanhamento; não representa aceite operacional.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": []
+    },
+    {
+      "id": "fr-293",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "Comercial",
+      "description": "Cadastro, catálogo, orçamentos e negociação.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 293
+        }
+      ]
+    },
+    {
+      "id": "ep-300",
+      "parentId": "fr-293",
+      "type": "subfrente",
+      "title": "Cadastro comercial",
+      "description": "Entidades, contatos, veículos e identidade comercial.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 300
+        }
+      ]
+    },
+    {
+      "id": "ep-297",
+      "parentId": "fr-293",
+      "type": "subfrente",
+      "title": "Catálogo, diagnóstico e precificação",
+      "description": "Catálogo, composição, diagnósticos e regras de preço.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 297
+        }
+      ]
+    },
+    {
+      "id": "ep-304",
+      "parentId": "fr-293",
+      "type": "subfrente",
+      "title": "Orçamento e migração histórica",
+      "description": "Orçamentos versionados, histórico e importação controlada.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 304
+        }
+      ]
+    },
+    {
+      "id": "fr-294",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "WhatsApp",
+      "description": "Conversas, identidade e vínculos com Atendimentos.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 294
+        }
+      ]
+    },
+    {
+      "id": "ep-307",
+      "parentId": "fr-294",
+      "type": "subfrente",
+      "title": "Conversas vinculadas ao Atendimento",
+      "description": "Identidade, vínculos e navegação entre Chat e Atendimento.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 307
+        }
+      ]
+    },
+    {
+      "id": "ep-298",
+      "parentId": "fr-294",
+      "type": "subfrente",
+      "title": "Integração WhatsApp e mídia",
+      "description": "Evolution, histórico, eventos, mídias e replay.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 298
+        }
+      ]
+    },
+    {
+      "id": "ep-311",
+      "parentId": "fr-294",
+      "type": "subfrente",
+      "title": "Segurança de identidade e autorização",
+      "description": "Titularidade, permissões, HMAC e contexto de envio.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 311
+        }
+      ]
+    },
+    {
+      "id": "fr-292",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "Operação",
+      "description": "Atendimentos, planejamento e execução dos serviços.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 292
+        }
+      ]
+    },
+    {
+      "id": "ep-305",
+      "parentId": "fr-292",
+      "type": "subfrente",
+      "title": "Atendimento e ciclo operacional",
+      "description": "Entrada, triagem, acompanhamento e saída do veículo.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 305
+        }
+      ]
+    },
+    {
+      "id": "ep-310",
+      "parentId": "fr-292",
+      "type": "subfrente",
+      "title": "Planejamento e execução de serviços",
+      "description": "Peças, etapas técnicas, responsáveis e progresso.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 310
+        }
+      ]
+    },
+    {
+      "id": "fr-295",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "Documentos",
+      "description": "Ordens de Serviço, PDFs e documentos.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 295
+        }
+      ]
+    },
+    {
+      "id": "ep-312",
+      "parentId": "fr-295",
+      "type": "subfrente",
+      "title": "Ordem de Serviço e PDF",
+      "description": "Geração, layout, paginação, cache e impressão.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 312
+        }
+      ]
+    },
+    {
+      "id": "ep-313",
+      "parentId": "fr-295",
+      "type": "subfrente",
+      "title": "Revisões documentais e comunicação",
+      "description": "Documentos versionados e comunicação rastreável.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 313
+        }
+      ]
+    },
+    {
+      "id": "fr-296",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "Integrações e IA",
+      "description": "Automação, copilotos e integrações externas.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 296
+        }
+      ]
+    },
+    {
+      "id": "ep-306",
+      "parentId": "fr-296",
+      "type": "subfrente",
+      "title": "Copilotos de voz e comercial",
+      "description": "Voz, interpretação, pesquisa de preços e apoio ao orçamento.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 306
+        }
+      ]
+    },
+    {
+      "id": "ep-309",
+      "parentId": "fr-296",
+      "type": "subfrente",
+      "title": "Workflows n8n e integrações externas",
+      "description": "Automações, Coda, ERP, Cilia e integrações reversíveis.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 309
+        }
+      ]
+    },
+    {
+      "id": "fr-291",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "Plataforma",
+      "description": "Segurança, infraestrutura e governança.",
+      "status": "acompanhamento",
+      "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 291
+        }
+      ]
+    },
+    {
+      "id": "ep-299",
+      "parentId": "fr-291",
+      "type": "subfrente",
+      "title": "Infraestrutura e operação técnica",
+      "description": "Docker, VPS, configuração, recuperação e operação.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 299
+        }
+      ]
+    },
+    {
+      "id": "ep-302",
+      "parentId": "fr-291",
+      "type": "subfrente",
+      "title": "Ambientes, segurança e qualidade",
+      "description": "Ambientes, autorização, CI, observabilidade e testes.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 302
+        }
+      ]
+    },
+    {
+      "id": "ep-303",
+      "parentId": "fr-291",
+      "type": "subfrente",
+      "title": "Homologação e release",
+      "description": "Critérios de pronto, revisão, aprovação e publicação.",
+      "status": "nao_verificado",
+      "statusReason": "Etapa operacional não verificada",
+      "nextResult": null,
+      "updatedAt": null,
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 303
+        }
+      ]
+    },
+    {
+      "id": "ep-301",
+      "parentId": "fr-291",
+      "type": "subfrente",
+      "title": "Governança de agentes e entregas",
+      "description": "Protocolo de execução, evidências, revisões e handoff.",
+      "status": "homologacao",
+      "statusReason": "Painel de orquestração implantado em homologação em 22/11/2026; o operador confirmou PANEL_DEPLOY_OK e abertura no navegador. Atualização de dados sob demanda ainda não implantada.",
+      "nextResult": "Validar e publicar no código Web o botão de consulta à branch painel-publicado, sem afetar a API ou o banco.",
+      "updatedAt": "2026-11-22T20:53:00-03:00",
+      "roles": [
+        "CTO — coordenação técnica"
+      ],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 301
+        },
+        {
+          "kind": "pr",
+          "number": 318
+        }
+      ]
+    }
+  ],
+  "relations": [],
+  "records": [
+    {
+      "nodeId": "ep-304",
+      "kind": "pr",
+      "number": 257,
+      "title": "Importador nativo Coda com integração ChatGPT/n8n",
+      "context": "Importação comercial",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/257"
+    },
+    {
+      "nodeId": "ep-304",
+      "kind": "issue",
+      "number": 256,
+      "title": "Importação de orçamento histórico do ERP",
+      "context": "Requisito de produto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/256"
+    },
+    {
+      "nodeId": "ep-304",
+      "kind": "issue",
+      "number": 304,
+      "title": "Orçamento e migração histórica",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/304"
+    },
+    {
+      "nodeId": "ep-297",
+      "kind": "issue",
+      "number": 297,
+      "title": "Catálogo, diagnóstico e precificação",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/297"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "issue",
+      "number": 300,
+      "title": "Cadastro comercial",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/300"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "bug",
+      "number": 289,
+      "title": "Conversas precisam abrir o Atendimento correto",
+      "context": "Falha operacional registrada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/289"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "pr",
+      "number": 315,
+      "title": "Recuperação de chats bloqueados",
+      "context": "Correção técnica",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/315"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "pr",
+      "number": 314,
+      "title": "Vincular conversas a Contatos e Atendimentos",
+      "context": "Integração de identidade",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/314"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "issue",
+      "number": 282,
+      "title": "Integridade cadastral e identidade do Chat",
+      "context": "Requisito de domínio",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/282"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "pr",
+      "number": 283,
+      "title": "Integridade cadastral V25",
+      "context": "Implementação",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/283"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "issue",
+      "number": 307,
+      "title": "Conversas vinculadas ao Atendimento",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/307"
+    },
+    {
+      "nodeId": "ep-305",
+      "kind": "pr",
+      "number": 267,
+      "title": "Produção V1: fundação e conversão comercial",
+      "context": "Ordem de Serviço e Experiência",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/267"
+    },
+    {
+      "nodeId": "ep-305",
+      "kind": "issue",
+      "number": 305,
+      "title": "Atendimento e ciclo operacional",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/305"
+    },
+    {
+      "nodeId": "ep-310",
+      "kind": "issue",
+      "number": 310,
+      "title": "Planejamento e execução de serviços",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/310"
+    },
+    {
+      "nodeId": "fr-292",
+      "kind": "issue",
+      "number": 292,
+      "title": "Operação da oficina",
+      "context": "Iniciativa",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/292"
+    },
+    {
+      "nodeId": "ep-312",
+      "kind": "pr",
+      "number": 254,
+      "title": "Compactar títulos técnicos da Ordem de Serviço",
+      "context": "Ajuste de layout",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/254"
+    },
+    {
+      "nodeId": "ep-312",
+      "kind": "issue",
+      "number": 275,
+      "title": "Teste intermitente de PDF em viewport mobile",
+      "context": "Investigação de qualidade",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/275"
+    },
+    {
+      "nodeId": "ep-312",
+      "kind": "issue",
+      "number": 312,
+      "title": "Ordem de Serviço e PDF",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/312"
+    },
+    {
+      "nodeId": "ep-313",
+      "kind": "issue",
+      "number": 313,
+      "title": "Revisões documentais e comunicação",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/313"
+    },
+    {
+      "nodeId": "fr-295",
+      "kind": "issue",
+      "number": 295,
+      "title": "Documentos e experiência do cliente",
+      "context": "Iniciativa",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/295"
+    },
+    {
+      "nodeId": "ep-309",
+      "kind": "pr",
+      "number": 277,
+      "title": "Portas de contexto independentes do ERP",
+      "context": "Núcleo de análise",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/277"
+    },
+    {
+      "nodeId": "fr-296",
+      "kind": "pr",
+      "number": 257,
+      "title": "Integração Coda com API ChatGPT/n8n",
+      "context": "Integração comercial",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/257"
+    },
+    {
+      "nodeId": "ep-306",
+      "kind": "issue",
+      "number": 77,
+      "title": "Copiloto de Voz: medir custo e preparar piloto",
+      "context": "Pesquisa de custo",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/77"
+    },
+    {
+      "nodeId": "ep-309",
+      "kind": "issue",
+      "number": 309,
+      "title": "Workflows n8n e integrações externas",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/309"
+    },
+    {
+      "nodeId": "ep-306",
+      "kind": "issue",
+      "number": 306,
+      "title": "Copilotos de voz e comercial",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/306"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "pr",
+      "number": 318,
+      "title": "Painel visual de orquestração FUNIX",
+      "context": "Protótipo em desenvolvimento",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/318"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "issue",
+      "number": 274,
+      "title": "Acesso remoto seguro para homologação",
+      "context": "Dívida técnica",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/274"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "pr",
+      "number": 288,
+      "title": "Controladores remotos para homologação",
+      "context": "Infraestrutura",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/288"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "issue",
+      "number": 301,
+      "title": "Governança de agentes e entregas",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/301"
+    },
+    {
+      "nodeId": "ep-302",
+      "kind": "issue",
+      "number": 302,
+      "title": "Ambientes, segurança e qualidade",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/302"
+    },
+    {
+      "nodeId": "ep-303",
+      "kind": "issue",
+      "number": 303,
+      "title": "Homologação e release",
+      "context": "Épico",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/303"
+    },
+    {
+      "nodeId": "ep-298",
+      "kind": "issue",
+      "number": 298,
+      "title": "Integração WhatsApp e mídia",
+      "context": "Épico público",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/298"
+    },
+    {
+      "nodeId": "ep-311",
+      "kind": "issue",
+      "number": 311,
+      "title": "Segurança de identidade e autorização",
+      "context": "Épico público",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/311"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "issue",
+      "number": 299,
+      "title": "Infraestrutura e operação técnica",
+      "context": "Épico público",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/299"
+    }
+  ],
+  "visibility": "public"
+}
