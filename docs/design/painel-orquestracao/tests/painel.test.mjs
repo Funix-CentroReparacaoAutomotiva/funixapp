@@ -165,3 +165,22 @@ test('resumo de projeto não transforma frente sem conferência em zero',()=>{
   assert.deepEqual(x.blockedFronts,{value:0,complete:false,display:'—'});
   assert.deepEqual(x.decisions,{value:0,complete:false,display:'—'});
 });
+
+test('resumo: confirmação numa frente vence incerteza da mesma categoria, sem mascarar outras',()=>{
+  const r=clone();r.nodes=[
+    {id:'proj',title:'Projeto',presentation:'group',status:'acompanhamento'},
+    {id:'f1',parentId:'proj',title:'Frente mista',status:'acompanhamento'},
+    {id:'f2',parentId:'proj',title:'Frente bloqueada',status:'acompanhamento'},
+    {id:'t1',parentId:'f1',title:'Trabalho ativo',status:'em_execucao',decisionPending:true},
+    {id:'t2',parentId:'f1',title:'Trabalho sem confirmação',status:'nao_verificado'},
+    {id:'t3',parentId:'f2',title:'Trabalho bloqueado',status:'bloqueado',decisionPending:false},
+  ];r.records=[];r.relations=[];
+  const x=projectOverview(validateSnapshot(r),'proj');
+  assert.equal(x.fronts,2);
+  // f1 já é comprovadamente ativa, embora t2 ainda não tenha sido verificada.
+  assert.deepEqual(x.activeFronts,{value:1,complete:true,display:'1'});
+  // t2 pode estar bloqueada: o mínimo confirmado é f2, nunca um zero fictício.
+  assert.deepEqual(x.blockedFronts,{value:1,complete:false,display:'1+'});
+  // Decisões são contadas em trabalhos confirmados, e ausência de campo é incerteza.
+  assert.deepEqual(x.decisions,{value:1,complete:false,display:'1+'});
+});
