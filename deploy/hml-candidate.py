@@ -60,11 +60,19 @@ def check_candidate(pr, runs_response, number, revision, main_comparison=None):
     for run in runs:
         if run.get("event") != "pull_request" or run.get("head_sha") != revision:
             continue
-        if not any(
+        associated = any(
             item.get("number") == number
             and item.get("head", {}).get("sha") == revision
             and item.get("base", {}).get("ref") == "main"
             for item in run.get("pull_requests", [])
+        )
+        # GitHub can omit PR associations after merge. The immutable head SHA,
+        # source repository and branch must then match the merged PR.
+        if not associated and not (
+            pr["state"] == "closed" and pr.get("merged") is True
+            and run.get("pull_requests") == []
+            and run.get("head_branch") == head.get("ref")
+            and run.get("head_repository", {}).get("full_name", "").lower() == REPO.lower()
         ):
             continue
         path = run["path"]
