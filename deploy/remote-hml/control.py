@@ -120,10 +120,15 @@ def check_approval(a):
     return a['identity']
 
 
-def preparation_record(op, candidate, current, journal):
-    return {'schema':'funix-hml-prepared/1', 'selection':candidate,
+def preparation_record(op, candidate, current, journal, adoption_sha=None):
+    record = {'schema':'funix-hml-prepared/1', 'selection':candidate,
             'installed_revision':current['revision'], 'config_sha256':sha(op/'config.json'),
             'active_operation':journal.parent.name, 'active_journal_sha256':sha(journal)}
+
+
+    if adoption_sha is not None:
+        record['active_web_adoption_sha256'] = adoption_sha
+    return record
 
 
 def metadata(a,token):
@@ -208,6 +213,26 @@ def installed_from_journal(rec):
          'current_transaction')
     return release
 
+def effective_release(record, journal):
+    """Apply a local, journal-bound Web adoption to the installed release only."""
+    original = installed_from_journal(record)
+    path = journal.parent / 'web-adoption.json'
+    if not path.exists() and not path.is_symlink():
+        return original, None
+    adoption = read_json(path)
+    expected = {'schema', 'journal_sha256', 'original', 'web', 'panel_revision'}
+    must(isinstance(adoption, dict) and set(adoption) == expected
+         and adoption['schema'] == 'funix-hml-web-adoption/1'
+         and adoption['journal_sha256'] == sha(journal)
+         and adoption['original'] == original
+         and isinstance(adoption['web'], str)
+         and re.fullmatch(r'sha256:[a-f0-9]{64}', adoption['web'])
+         and adoption['web'] != original['web']
+         and isinstance(adoption['panel_revision'], str)
+         and re.fullmatch(r'[a-f0-9]{40}', adoption['panel_revision']), 'invalid_web_adoption')
+    return {**original, 'web': adoption['web']}, sha(path)
+
+
 def prepare():
     must(os.geteuid()==0 and len(sys.argv)==1,'local_scope'); private_dir(PRIVATE); private_dir(STATE)
     a=read_json(PRIVATE/'approval.json')
@@ -222,7 +247,7 @@ def prepare():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         pointer=read_json(STATE/'active.json'); journal=Path(pointer['journal']); active=journal.parent
         must(journal.name=='operation.json' and active.parent==STATE and re.fullmatch(r'op-[A-Za-z0-9_-]{1,80}',active.name) is not None,'active_pointer'); private_dir(active)
-        rec=read_json(journal); installed=installed_from_journal(rec)
+        rec=read_json(journal); installed, adoption_sha=effective_release(rec,journal)
         must(installed['revision']==a['installed_revision'],'current_transaction')
         u=load_updater(token); u.host_scope(active,active/'config.json')
         cfg=read_json(active/'config.json'); u.check_config(cfg,active)
@@ -234,7 +259,7 @@ def prepare():
         receipt = op/'prepared.json'
         recorded = receipt.exists() or receipt.is_symlink()
         if recorded:
-            must(read_json(receipt)==preparation_record(op,candidate,current,journal),'prepared_record_changed')
+            must(read_json(receipt)==preparation_record(op,candidate,current,journal,adoption_sha),'prepared_record_changed')
             private_file(op/'candidate.zip')
         u.host_scope(op,op/'config.json'); download(a,token,op)
         selection.verify_package(candidate, op/'candidate.zip', query=lambda path:query(path,token))
@@ -247,9 +272,9 @@ def prepare():
             with contextlib.redirect_stdout(io.StringIO()): u.prepare_operation(op,op/'config.json',i)
             candidate_cfg=read_json(op/'config.json'); u.check_config(candidate_cfg,op)
         must(candidate_cfg.get('identity')==i and sha(op/'candidate.zip')==a['digest'],'prepared_artifact')
-        must(u.installed_preflight(u.make_adapter(cfg))==current and external_snapshot()==before and read_json(STATE/'active.json')==pointer and read_json(journal)==rec,'final_scope')
+        must(u.installed_preflight(u.make_adapter(cfg))==current and external_snapshot()==before and read_json(STATE/'active.json')==pointer and read_json(journal)==rec and effective_release(rec,journal)==(installed,adoption_sha),'final_scope')
         if not recorded:
-            record = preparation_record(op,candidate,current,journal)
+            record = preparation_record(op,candidate,current,journal,adoption_sha)
             save(receipt,json.dumps(record,sort_keys=True).encode('ascii'))
         return {'schema':'funix-hml-prepare/1','status':'prepared','scope':'funix-hml','pr':i['pr'],'run_id':i['run_id'],'attempt':i['attempt'],'artifact_id':i['artifact_id'],'revision':i['revision'],'sha256':a['digest'],'operation':op.name,'installed_revision':current['revision'],'preflight':True,'provenance':True,'docker_load':False,'deploy':False,'backup_executed':False,'external_preserved':True}
 

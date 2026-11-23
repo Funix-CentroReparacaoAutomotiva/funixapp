@@ -29,6 +29,7 @@ def worker_rehearsal():
         ticket=dict(schema=ctl.SCHEMA,ticket_id='d'*32,issued_at=now,expires_at=now+1200,
                     preview=preview,preview_sha256=ctl.hash_obj(preview))
         p=Mock(); p.external_snapshot.return_value={}; p.sha.return_value='b'*64
+        p.effective_release.return_value=(previous,None)
         p.read_json.side_effect=lambda path: json.loads(Path(path).read_text())
         u=Mock(); u.load.return_value=coordinator
         old_record={'phase':'accepted','candidate':previous,'previous':previous}
