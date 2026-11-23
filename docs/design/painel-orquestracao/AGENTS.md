@@ -45,6 +45,17 @@ Exemplo de **estrutura**, não de projetos a inventar: `CTO → [Projeto A, Proj
 
 Projetos registrados só em outras branches ou em tarefas do GitHub **não aparecem** até sua entrada explícita nessa branch. Não inventar projetos ausentes nem marcar atividades de outros repositórios como comprovadas por issues do FunixApp. Atualizar `snapshotId` e `publishedAt` ao publicar uma mudança do mapa, confirmar o commit em `painel-publicado` e pedir à direção que clique em **Atualizar**.
 
+## 3.2. Indicadores compactos do Modelo B e confiança dos números
+
+O painel usa os dados do `snapshot.json` para mostrar um card com **nome + status**, **data de publicação** e, na linha inferior, **frentes diretas, decisões, ativos, bloqueados e concluídos**. Não adicionar alertas de desatualização, textos ou novos rótulos à superfície do card.
+
+- Frentes = quantidade de `parentId` diretamente vinculados ao nó. A árvore determina isso sem lançamento manual.
+- Ativos, bloqueados e concluídos = folhas de trabalho no ramo (sem contagem dupla de pai e filho), avaliadas pelos `status` `em_execucao`, `bloqueado` e `concluido` já vigentes.
+- `status: nao_verificado` não comprova zero nos três estados. Se houver folhas sem verificação, números positivos aparecem como **mínimos** (`2+`); se não houver nenhum conhecido, aparece **`—`**, não 0.
+- Para **decisões**, o contrato do frontend aceita `decisionPending: true` ou `false` por trabalho terminal quando o CTO tiver verificado esse campo; ausente/null significa não verificado. Se ainda não houver campo confiável, o painel exibirá **`—`**. Não preencher falsos zeros em massa, nem criar decisões com base em texto, status ou bloqueio.
+- Um **0** no card deve ser entendido como valor efetivamente determinado na árvore publicada, não como suposição sobre trabalhos ainda não investigados.
+- As contagens são projeção da fonte, **não substituem** a conferência técnica e não autorizam marcar trabalho como concluído ou implantar qualquer mudança.
+
 ## 4. Atualização sob demanda, sem deploy
 
 1. **Receber a solicitação do CTO** com o escopo (frentes a revisar ou mapa completo).
