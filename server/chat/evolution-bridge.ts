@@ -9,7 +9,7 @@ import type { V20AssociationRepository } from './v20-associations.ts'
 import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { LocalConversationAssociations } from './local-associations.ts'
 import type { CommercialConversation } from '../../shared/customer.ts'
-export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'|'linkedAtendimentoPhone'|'canonicalChannelSendAllowed'>>
+export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'|'linkedAtendimentoPhone'>>
 import type { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
 import type { MediaGateway, MediaInput } from './evolution-media.ts'
@@ -246,7 +246,6 @@ export function createEvolutionChatBridge(
         !remoteJid ||
         !recipient ||
         canonicalFor(remoteJid) !== atendimentoId ||
-        (codaSync.canonicalChannelSendAllowed?.(remoteJid)===false) ||
         (contacts&&!contacts.allowsExistingSend(atendimentoId,remoteJid)) ||
         codaSync.resolveActive(recipient) !== atendimentoId
       )
@@ -259,8 +258,7 @@ export function createEvolutionChatBridge(
         // Revalidate before any network side effect, including an active-context switch.
         if (
           canonicalFor(remoteJid) !== atendimentoId ||
-          (codaSync.canonicalChannelSendAllowed?.(remoteJid)===false) ||
-        (contacts&&!contacts.allowsExistingSend(atendimentoId,remoteJid)) ||
+          (contacts&&!contacts.allowsExistingSend(atendimentoId,remoteJid)) ||
           codaSync.resolveActive(recipient) !== atendimentoId
         )
           return { state: 'unlinked' as const }
@@ -294,7 +292,6 @@ export function createEvolutionChatBridge(
         !jid ||
         !recipient ||
         canonicalFor(jid) !== atendimentoId ||
-        (codaSync.canonicalChannelSendAllowed?.(jid)===false) ||
         (contacts&&!contacts.allowsExistingSend(atendimentoId,jid)) ||
         codaSync.resolveActive(recipient) !== atendimentoId
       )
@@ -306,8 +303,7 @@ export function createEvolutionChatBridge(
       try {
         if (
           canonicalFor(jid) !== atendimentoId ||
-          (codaSync.canonicalChannelSendAllowed?.(jid)===false) ||
-        (contacts&&!contacts.allowsExistingSend(atendimentoId,jid)) ||
+          (contacts&&!contacts.allowsExistingSend(atendimentoId,jid)) ||
           codaSync.resolveActive(recipient) !== atendimentoId
         )
           return { state: 'unlinked' as const }
@@ -323,13 +319,11 @@ export function createEvolutionChatBridge(
         pendingSends.delete(conversationId)
       }
     },
-    supportsMediaRead: Boolean(media && provider.findMediaEnvelope),
     async mediaForAtendimento(
       atendimentoId: string,
       conversationId: string,
       messageId: string,
       page: number,
-      allowsLinkedRead?: (jid:string)=>boolean,
     ) {
       if (!media || !codaSync) return null
       const entry = byId.get(conversationId)
@@ -337,9 +331,7 @@ export function createEvolutionChatBridge(
         codaSync?.providerJid(conversationId) ??
         associations?.resolveRemoteJid(conversationId, 'funix_comercial') ??
         entry?.jid
-      if (!jid) return null
-      const authorized=()=>allowsLinkedRead?allowsLinkedRead(jid):canonicalFor(jid)===atendimentoId
-      if(!authorized())return null
+      if (!jid || canonicalFor(jid) !== atendimentoId) return null
       const localMediaState = () => {
         if (!local?.read) return 'legacy'
         const message = local.store.states(jid, [{ messageId }])[0]
@@ -360,12 +352,12 @@ export function createEvolutionChatBridge(
             remoteJidAlt: typeof key.remoteJidAlt === 'string' ? key.remoteJidAlt : null,
           },
         ])
-      if (!authorized() || localMediaState() !== expectedMedia) return null
+      if (canonicalFor(jid) !== atendimentoId || localMediaState() !== expectedMedia) return null
       if (item.bytes !== null && item.bytes > 12 * 1024 * 1024)
         return { state: 'too_large' as const }
-      if (!authorized() || localMediaState() !== expectedMedia) return null
+      if (canonicalFor(jid) !== atendimentoId || localMediaState() !== expectedMedia) return null
       const result = await media.get(item.envelope, item.kind)
-      if (!authorized() || localMediaState() !== expectedMedia) return null
+      if (canonicalFor(jid) !== atendimentoId || localMediaState() !== expectedMedia) return null
       return { state: 'ready' as const, ...result }
     },
     async messageStates(
@@ -465,14 +457,12 @@ export function createEvolutionChatBridge(
             sendTextAvailable: Boolean(
               sendText &&
                 sendTarget(jid) &&
-                codaSync.canonicalChannelSendAllowed?.(jid)!==false &&
                 (!contacts||contacts.allowsExistingSend(atendimentoId,jid)) &&
                 codaSync.resolveActive(sendTarget(jid)!) === atendimentoId,
             ),
             mediaSendAvailable: Boolean(
               media &&
                 sendTarget(jid) &&
-                codaSync.canonicalChannelSendAllowed?.(jid)!==false &&
                 (!contacts||contacts.allowsExistingSend(atendimentoId,jid)) &&
                 codaSync.resolveActive(sendTarget(jid)!) === atendimentoId,
             ),
@@ -480,7 +470,7 @@ export function createEvolutionChatBridge(
           }
         : null
     },
-    async messages(conversationId: string, page: number, cursor?: string, allowsTechnicalRead?: (jid:string)=>boolean) {
+    async messages(conversationId: string, page: number, cursor?: string) {
       purge()
       const entry = byId.get(conversationId)
       const jid =
@@ -489,9 +479,8 @@ export function createEvolutionChatBridge(
         entry?.jid
       if (!jid || (contacts&&!contacts.identities.identityJids(jid))) return null
       if (entry) entry.at = now()
-      const active = codaSync && !allowsTechnicalRead ? canonicalFor(jid) : null
-      const authorized=()=>allowsTechnicalRead?allowsTechnicalRead(jid):!codaSync||!!active&&canonicalFor(jid)===active
-      if (!authorized()) return null
+      const active = codaSync ? canonicalFor(jid) : null
+      if (codaSync && !active) return null
       if (local?.read) {
         // Local is the authoritative read source. Refresh page 1 only; provider failure
         // cannot be misreported as an empty result if no local message is available.
@@ -515,7 +504,7 @@ export function createEvolutionChatBridge(
             providerUnavailable = true
           }
         }
-        if (!authorized()) return null
+        if (codaSync && canonicalFor(jid) !== active) return null
         const result = local.store.page(jid, page, cursor)
         codaSync?.markRead?.(jid,result.items.map(m=>m.messageId))
         if (providerUnavailable && result.reportedTotal === 0)
@@ -532,7 +521,7 @@ export function createEvolutionChatBridge(
       local?.store.observePage(jid, result.items, page)
       if(codaSync)codaSync.rememberProviderAliases(result.items,false,'findMessages')
       else contacts?.identities.rememberProviderAliases(result.items,false,'findMessages')
-      if ((contacts&&!contacts.identities.identityJids(jid))||!authorized()) return null
+      if ((contacts&&!contacts.identities.identityJids(jid))||(codaSync&&canonicalFor(jid)!==active)) return null
       return {
         conversationId,
         items: result.items.map(

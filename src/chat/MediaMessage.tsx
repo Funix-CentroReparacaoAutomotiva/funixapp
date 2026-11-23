@@ -3,8 +3,8 @@ import { api } from '../api'
 import type { RequestFailure } from '../api'
 
 type Kind = 'image' | 'video' | 'audio'
-export function MediaMessage({ atendimentoId, conversationId, messageId, page, kind, enabled, apiBase, linkedHistory }:{
-  atendimentoId:string; conversationId:string;messageId:string;page:number;kind:Kind;enabled:boolean;apiBase?:string;linkedHistory?:boolean
+export function MediaMessage({ atendimentoId, conversationId, messageId, page, kind, enabled, apiBase }:{
+  atendimentoId:string; conversationId:string;messageId:string;page:number;kind:Kind;enabled:boolean;apiBase?:string
 }) {
   const [uri,setUri]=useState('')
   const [error,setError]=useState('')
@@ -18,7 +18,7 @@ export function MediaMessage({ atendimentoId, conversationId, messageId, page, k
       const result=await api<{kind:Kind;mimeType:string;base64:string}>(
         (apiBase??('/api/atendimentos/'+encodeURIComponent(atendimentoId)+
         '/evolution-conversations/'+encodeURIComponent(conversationId)))+
-        '/messages/'+encodeURIComponent(messageId)+'/media?page='+page+(linkedHistory?'&scope=linked':''))
+        '/messages/'+encodeURIComponent(messageId)+'/media?page='+page)
       if(result.kind!==kind || !result.mimeType.startsWith(kind+'/') ||
           !result.base64 || result.base64.length>17*1024*1024)throw Error('Invalid media')
       setUri('data:'+result.mimeType+';base64,'+result.base64)

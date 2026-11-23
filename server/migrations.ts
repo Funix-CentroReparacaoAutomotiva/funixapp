@@ -1,4 +1,3 @@
-import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
 import {createProductionSchema} from './production-schema.ts'
 import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
@@ -352,12 +351,10 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:22,apply:createContactChannelSchema},
   {version:23,apply:db=>db.exec(`ALTER TABLE atendimentos ADD COLUMN purpose TEXT
     CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)},
-  {version:24,apply:createProductionSchema},
-  {version:25,apply:createCustomerIdentitySchema}
+  {version:24,apply:createProductionSchema}
 ]
 
 export function migrate(db: DatabaseSync) {
-  registerCustomerPhoneFunction(db)
   // Serialize discovery and upgrades too: concurrent startups must not both apply V2.
   db.exec('BEGIN IMMEDIATE')
   try {
@@ -369,14 +366,11 @@ export function migrate(db: DatabaseSync) {
       applied = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => Number(row.version))
       if (applied.some(version => version > migrations.length)) throw new Error('Banco de versão mais recente; restaure o aplicativo compatível.')
       if (!applied.length || applied.some((version, index) => version !== index + 1)) throw new Error('Histórico de migrações inconsistente; banco preservado.')
-      if(applied.includes(25)&&!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='trigger' AND name='customer_contact_owner_transfer'").get())
-        throw Error('Cópia V25 de uma revisão preliminar. Refaça o ensaio a partir da cópia V23/V24 preservada.')
     }
     for (const migration of migrations.slice(applied.length)) {
       migration.apply(db)
       db.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES (?,?)').run(migration.version, new Date().toISOString())
     }
-    createShortNumberReviewSchema(db)
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

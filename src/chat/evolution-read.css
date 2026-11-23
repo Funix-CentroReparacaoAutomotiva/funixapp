@@ -47,10 +47,6 @@
 .ev-link-search{display:flex;align-items:flex-end;gap:7px}
 .ev-link-search label,.ev-link-field{display:flex;flex:1;flex-direction:column;gap:5px;min-width:0;color:#536b84}
 .ev-link-search input,.ev-link-field input{box-sizing:border-box;width:100%;border:1px solid #bdccdc;border-radius:6px;background:#fff;color:#244768;padding:9px;font-size:12px}
-.ev-number-review{min-width:0;border:1px solid #bdccdc;border-radius:6px;padding:10px}
-.ev-number-review legend{font-weight:600}
-.ev-number-review label{display:flex;gap:8px;align-items:flex-start}
-.ev-number-review button{margin:4px 4px 0 0}
 .ev-links-hint{color:#617890;font-size:11px;line-height:1.5;margin:0}
 .ev-links-error{color:#993c27;margin:0}
 @media(max-width:520px){.ev-linked{align-items:stretch;flex-direction:column}.ev-link-actions{justify-content:flex-start}.ev-links>header{align-items:flex-start}}

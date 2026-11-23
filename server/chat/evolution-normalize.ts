@@ -1,5 +1,5 @@
 import { EvolutionReadPoc, displayName } from '../experimental/evolution-read/client.ts'
-import { individualJid, parseConversationEvent, type ConversationEvent } from './conversation-event.ts'
+import { parseConversationEvent, type ConversationEvent } from './conversation-event.ts'
 import { ServiceError } from '../errors.ts'
 
 function invalid(): never {
@@ -83,7 +83,7 @@ export async function normalizeEvolutionEvent(
   const edited = x.event === 'messages.edited' || x.event === 'send.message.update'
   if (x.event !== 'messages.upsert' && !edited) return invalid()
   const key = object(row.key)
-  if (typeof key.remoteJid !== 'string' || !individualJid.test(key.remoteJid) || typeof key.id !== 'string') return invalid()
+  if (typeof key.remoteJid !== 'string' || typeof key.id !== 'string') return invalid()
   let record: Record<string, unknown>, at: number | undefined
   if (edited) {
     at = milliseconds(row.timestampMs)
@@ -126,12 +126,9 @@ export async function normalizeEvolutionEvent(
     }),
   })
   const message = (await provider.findMessages(key.remoteJid)).items[0]!
-  const sender=typeof x.sender==='string'?x.sender.replace(/:\d+@/,'@'):null
-  const selfChat=!edited&&message.fromMe&&sender!==null&&(sender===message.remoteJid||sender===message.remoteJidAlt)
   return parseConversationEvent(
     JSON.stringify({
       schemaVersion: 2,
-      ...(selfChat?{selfChat:true}:{}),
       ...(!message.fromMe && displayName(row.pushName)
         ? { displayName: displayName(row.pushName)! }
         : {}),
@@ -141,8 +138,7 @@ export async function normalizeEvolutionEvent(
       type: edited ? 'message.edit' : 'message.upsert',
       message: {
         remoteJid: message.remoteJid,
-        // Evolution may repeat the same PN or LID in both fields. This is not alias evidence.
-        remoteJidAlt: message.remoteJidAlt === message.remoteJid ? null : message.remoteJidAlt,
+        remoteJidAlt: message.remoteJidAlt,
         messageId: message.messageId,
         timestamp: message.timestamp,
         fromMe: message.fromMe,

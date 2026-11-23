@@ -121,8 +121,8 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly, linkedHistory, onTechnicalHistory }: {
-  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; linkedHistory?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void; onTechnicalHistory?:(available:boolean)=>void
+export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void
 }) {
   const apiBase=readOnly?'/api/chat/conversations/'+encodeURIComponent(conversationId):contactId?`/api/customer-records/${encodeURIComponent(contactId)}/chat/${encodeURIComponent(conversationId)}`:`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}`
   const [items, setItems] = useState<ReadUiMessage[]>([])
@@ -131,7 +131,6 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   const [failure, setFailure] = useState('')
   const [canSendText, setCanSendText] = useState(false)
   const [canMedia, setCanMedia] = useState(false)
-  const [canReadMedia,setCanReadMedia]=useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [draft, setDraftState] = useState(()=>drafts?.get(contactId??'')??'')
   function setDraft(value:string){setDraftState(value);if(contactId)drafts?.set(contactId,value)}
@@ -202,18 +201,16 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
     lastCheckedAt.current = Date.now()
     if (!silent) { autoPaused.current = false; setAutoError(false); setBusy(true); setFailure('') }
     try {
-      const raw = await api<unknown>(`${apiBase}/messages?page=${page}${linkedHistory?'&scope=linked':readOnly?'&scope=technical':''}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
+      const raw = await api<unknown>(`${apiBase}/messages?page=${page}${cursors.current.has(page)?'&cursor='+encodeURIComponent(cursors.current.get(page)!):''}`, { signal: controller.signal })
       const result = parseConversationMessages(raw, conversationId)
       if (controller.signal.aborted) return
-      if(readOnly&&page===1)onTechnicalHistory?.(result.items.length>0)
-      setCanSendText(!readOnly&&!linkedHistory&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
-      setCanReadMedia((raw as {mediaReadAvailable?:unknown}).mediaReadAvailable===true)
-      setCanMedia(!readOnly&&!linkedHistory&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
+      setCanSendText(!readOnly&&(raw as { sendTextAvailable?: unknown }).sendTextAvailable === true)
+      setCanMedia(!readOnly&&(raw as { mediaSendAvailable?: unknown }).mediaSendAvailable === true)
       contextToken.current=typeof (raw as {contextToken?:unknown}).contextToken==='string'?(raw as {contextToken:string}).contextToken:null
-      setLocalHistory(result.source==='local'&&!contactId&&!readOnly&&!linkedHistory)
-      if(result.nextCursor)cursors.current.set(page+1,result.nextCursor)
+      setLocalHistory(result.source==='local'&&!contactId&&!readOnly)
+      if(result.nextCursor&&!readOnly)cursors.current.set(page+1,result.nextCursor)
       const refreshed:ReadUiMessage[]=[]
-      if(!readOnly&&!linkedHistory&&result.source==='local'&&page===1){
+      if(!readOnly&&result.source==='local'&&page===1){
         const recent=new Set(result.items.map(item=>item.messageId))
         const older=itemsRef.current.filter(item=>!recent.has(item.messageId))
         for(let i=0;i<older.length;i+=50){
@@ -248,21 +245,19 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
       setAutoError(false)
     } catch (cause) {
       if (controller.signal.aborted) return
-      if(readOnly&&page===1)onTechnicalHistory?.(false)
       const error = cause as RequestFailure
       if (error.status === 401) { itemsRef.current = []; setItems([]); onUnauthorized(); return }
       // Revoke composer capabilities on every failed authorization/refresh.
       setCanSendText(false)
       setCanMedia(false)
-      setCanReadMedia(false)
       contextToken.current=null
-      if (error.status === 404 || error.code === 'CHAT_IDENTITY_CONFLICT' || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
+      if (error.status === 404 || error.code === 'CHAT_PROVIDER_SCOPE' || error.code === 'CHAT_CONTEXT_CHANGED') {
         itemsRef.current = []
         setItems([])
-        setFailure(error.message + (error.requestId ? ` Referência: ${error.requestId}.` : ''))
+        setFailure('O vínculo entre conversa e Atendimento não foi confirmado. Atualize a lista de conversas.')
       } else if (silent) { autoPaused.current = true; setAutoError(true); return }
       else {
-        const detail = error.code ? error.message : 'Não foi possível carregar o histórico Evolution. Tente novamente.'
+        const detail = error.code?.startsWith('CHAT_PROVIDER_') ? error.message : 'Não foi possível carregar o histórico Evolution. Tente novamente.'
         setFailure(detail + (error.requestId ? ` Referência: ${error.requestId}` : ''))
       }
       autoPaused.current = true
@@ -273,7 +268,7 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
         if (!controller.signal.aborted && !silent) setBusy(false)
       }
     }
-  }, [readOnly, linkedHistory, apiBase, atendimentoId, conversationId, contactId, onUnauthorized, readingPosition, onTechnicalHistory])
+  }, [readOnly, apiBase, atendimentoId, conversationId, contactId, onUnauthorized, readingPosition])
 
   useEffect(() => {
     let active = true
@@ -395,14 +390,13 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
           setNewMessages(0)
         }}>Ver {newMessages} {newMessages === 1 ? 'nova mensagem' : 'novas mensagens'}</button>}
         {syncFailure && <p role="status">{syncFailure}</p>}
-        {linkedHistory&&<p role="status">Histórico para leitura. O envio depende do contexto confirmado.</p>}
         {localHistory && <small className="chat-auto-state">Histórico salvo no FunixApp · histórico anterior pode estar incompleto</small>}
         {failure && <Notice title="Falha ao consultar conversa vinculada" error retry={() => void load(1)}>{failure}</Notice>}
         {busy && <Notice title="Carregando mensagens…" />}
         {!busy && !failure && items.length === 0 && <Notice title="Nenhuma mensagem retornada">Isso não comprova histórico vazio ou completo.</Notice>}
         {items.length > 0 && <ol className="chat-messages">{items.map(message => <li key={message.messageId} data-chat-message-id={message.messageId} className={`chat-message ${message.fromMe ? 'chat-outgoing' : 'chat-incoming'}`}><article aria-label={message.fromMe ? 'Mensagem de saída' : 'Mensagem recebida'}>
           
-          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canReadMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId||readOnly?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canReadMedia} linkedHistory={linkedHistory}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
+          {message.kind !== 'text' && <div className="chat-media"><span className="sr-only">{kinds[message.kind]}</span>{canMedia && ['image','video','audio'].includes(message.kind) ? <MediaMessage apiBase={contactId?apiBase:undefined} atendimentoId={atendimentoId} conversationId={conversationId} messageId={message.messageId} page={message.page??1} kind={message.kind as 'image'|'video'|'audio'} enabled={canMedia}/> : <span>{message.kind==='unsupported'?'Conteúdo indisponível ou formato não suportado':'Mídia indisponível'}</span>}</div>}
           {message.text !== null && <p className="chat-text" dir="auto">{message.text}</p>}
           <footer><time dateTime={new Date(message.timestamp * 1000).toISOString()}>{date.format(new Date(message.timestamp * 1000))}</time>{message.fromMe&&<span className="chat-message-status">{message.statuses?.includes('READ')?'Lida no canal':message.statuses?.includes('DELIVERY_ACK')?'Entregue no canal':message.statuses?.includes('SERVER_ACK')?'Aceita pelo canal':message.statuses?.includes('ERROR')?'Falha no canal':'Envio sem confirmação de entrega'}</span>}</footer>
         </article></li>)}</ol>}
@@ -469,10 +463,10 @@ function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
     ? <EvolutionAtendimentoChat key={`${atendimentoId}:${resolution.id}`} atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
     : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
 }
-export function ChatPanel({ atendimentoId, evolutionConversationId, linkedHistory, onUnauthorized, children }: {
-  atendimentoId: string; evolutionConversationId?: string | null; linkedHistory?:boolean; onUnauthorized: () => void; children: ReactNode
+export function ChatPanel({ atendimentoId, evolutionConversationId, onUnauthorized, children }: {
+  atendimentoId: string; evolutionConversationId?: string | null; onUnauthorized: () => void; children: ReactNode
 }) {
   return evolutionConversationId
-    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${evolutionConversationId}:${linkedHistory}`} atendimentoId={atendimentoId} conversationId={evolutionConversationId} linkedHistory={linkedHistory} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${evolutionConversationId}`} atendimentoId={atendimentoId} conversationId={evolutionConversationId} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
     : <ResolvedAtendimentoChat key={atendimentoId} atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
 }

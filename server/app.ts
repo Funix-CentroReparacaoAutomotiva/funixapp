@@ -1,7 +1,6 @@
 import {SharedConversationIdentity} from './chat/shared-identity.ts'
-import {ShortNumberReview,reviewedNumber} from './chat/short-number-review.ts'
 import {ContactChannels} from './chat/contact-channels.ts'
-import { CustomerRepository,pendingShortNumber } from './customers.ts'
+import { CustomerRepository } from './customers.ts'
 import { funnelProjection } from './funnel.ts'
 import { identifier as chatIdentifier } from './chat/events.ts'
 import type { ConversationRuntime } from './chat/conversation-runtime.ts'
@@ -61,7 +60,19 @@ import type{QuoteService}from'./component-quote-service.ts'
 import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
+import type {HistoricalBudgetRepository} from './historical-budget-repository.ts'
+import {historicalBudgetNumber,type HistoricalCaptureProvider} from './historical-coda-provider.ts'
+
+import { createExternalBudgetEndpoint, type ExternalBudgetApi } from './external-budget-api.ts'
+
+import {consultCiliaUpload,compareCiliaUpload} from './cilia-operator-api.ts'
+import {CiliaApplication} from './cilia-application.ts'
+
 export interface AppOptions {
+  ciliaPreviewEnabled?: boolean
+  ciliaWriteEnabled?: boolean
+  externalBudget?: ExternalBudgetApi
+  historicalBudget?:{repo:HistoricalBudgetRepository;provider:HistoricalCaptureProvider;allowConfirmation?:boolean} // explicit isolated harness only
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -86,8 +97,11 @@ export interface AppOptions {
 }
 
 export function createRequestHandler(options: AppOptions) {
+  const externalBudget = options.externalBudget && createExternalBudgetEndpoint(options.atendimentos.db, options.externalBudget)
   const contactChannels=options.evolutionChat?.contacts??new ContactChannels(options.atendimentos.db,{checkNumber:async()=>{throw Error('disabled')},findMessages:async()=>{throw Error('disabled')}},'disabled')
-  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(r.id)}:r}
+  const customerView=(id:string)=>{const r=contactChannels.customers.record(id);return r.kind==='entity'?contactChannels.entity(id):r.kind==='contact'?{...r,whatsapp:contactChannels.status(id)}:r}
+  const ciliaApplication=new CiliaApplication(options.atendimentos.db)
+  const ciliaWriteEnabled=()=>options.ciliaPreviewEnabled===true&&options.ciliaWriteEnabled===true&&ciliaApplication.available()
   const commercial = new CommercialRepository(options.atendimentos.db)
   const chat = new ChatRepository(options.atendimentos.db)
   const updates = new UpdatePackageRepository(options.atendimentos.db)
@@ -162,6 +176,18 @@ export function createRequestHandler(options: AppOptions) {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+      const externalBudgetRoute = /^\/api\/integrations\/external-budgets\/(consulta|previa|confirmar)$/.exec(url.pathname)
+      if (externalBudgetRoute) {
+        if (!externalBudget) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (url.search) return fail(400, 'INVALID_QUERY', 'Parâmetros não permitidos.')
+        const result = await externalBudget(externalBudgetRoute[1]!, req.headers.authorization, () => {
+          if (req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
+            throw new ServiceError(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
+          return readJson(req, 512 * 1024)
+        })
+        return send(result.status, result.value)
+      }
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
         if (!decisionIntake) return fail(404,'NOT_FOUND','Rota não encontrada.')
@@ -241,6 +267,28 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      const ciliaRoute=/^\/api\/atendimentos\/([A-Za-z0-9_-]{1,100})\/importar-cilia(?:\/(comparar|preparar|confirmar|recibos))?$/.exec(url.pathname)
+      if(ciliaRoute){
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        if(req.method==='GET'&&!ciliaRoute[2])return send(200,{enabled:options.ciliaPreviewEnabled===true,writeEnabled:ciliaWriteEnabled(),historyEnabled:options.ciliaPreviewEnabled===true&&ciliaApplication.available()})
+        if(ciliaRoute[2]==='recibos'){
+          if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+          if(options.ciliaPreviewEnabled!==true||!ciliaApplication.available())return fail(503,'CILIA_PREVIEW_DISABLED','Histórico Cilia ainda não habilitado.')
+          return send(200,ciliaApplication.list(ciliaRoute[1]!))
+        }
+        if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(options.ciliaPreviewEnabled!==true)return fail(503,'CILIA_PREVIEW_DISABLED','Prévia Cilia ainda não habilitada.')
+        if((ciliaRoute[2]==='preparar'||ciliaRoute[2]==='confirmar')&&!ciliaWriteEnabled())return fail(503,'CILIA_WRITE_DISABLED','Gravação Cilia ainda não habilitada.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(req.headers['content-type']?.split(';',1)[0]?.trim().toLowerCase()!=='application/json')return fail(415,'JSON_REQUIRED','Envie JSON.')
+        const raw=await readJson(req,1024*1024)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+        const at=options.atendimentos.get(ciliaRoute[1]!)
+        if(ciliaRoute[2]==='comparar')return send(200,compareCiliaUpload(raw,commercial.catalogs().items,at,pricing.get(),pricing.settings(at.id)))
+        if(ciliaRoute[2]==='preparar')return send(200,ciliaApplication.preview(at.id,raw))
+        if(ciliaRoute[2]==='confirmar')return send(200,ciliaApplication.confirm(at.id,raw,'funix_operator'))
+        return send(200,consultCiliaUpload(raw,commercial.catalogs().items,at))
+      }
       if(url.pathname==='/api/atualizacoes/analises-gmail'){
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         const ids=url.searchParams.has('ids')?(url.searchParams.get('ids')?url.searchParams.get('ids')!.split(','):[]):undefined
@@ -370,13 +418,10 @@ export function createRequestHandler(options: AppOptions) {
         return send(200,options.conversationRuntime.authority.prepareConversation(prepareConversationRoute[1]!,input.contactIndex,input.revision))
       }
       const localConversationsRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/conversations$/.exec(url.pathname)
-      if(localConversationsRoute&&(options.conversationRuntime?.authority||options.codaSync&&options.evolutionChat)){
+      if(localConversationsRoute&&options.conversationRuntime?.authority){
         if(req.method!=='GET'||url.search)return fail(400,'CHAT_INVALID_QUERY','Solicitação inválida.')
         options.atendimentos.get(localConversationsRoute[1]!)
-        const items=options.conversationRuntime?.authority?.conversationsForAtendimento(localConversationsRoute[1]!)??[]
-        if(items.length||options.conversationRuntime?.authority)return send(200,{items})
-        const existing=options.evolutionChat?.conversationForAtendimento(localConversationsRoute[1]!)
-        return send(200,{items:existing?[{...existing,phone:null}]:[]})
+        return send(200,{items:options.conversationRuntime.authority.conversationsForAtendimento(localConversationsRoute[1]!)})
       }
       const photoRoute=/^\/api\/chat\/conversations\/([a-f0-9-]{36})\/profile-photo$/.exec(url.pathname)
       if(photoRoute&&options.evolutionChat){
@@ -400,7 +445,7 @@ export function createRequestHandler(options: AppOptions) {
       if(contactChannelRoute){
         const [,contactId,action,conversationId,operation]=contactChannelRoute
         if(req.method==='GET'&&action==='chat'&&conversationId&&operation==='messages'){
-          if([...url.searchParams.keys()].some(k=>!['page','cursor','scope'].includes(k))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('cursor').length>1)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+          if([...url.searchParams.keys()].some(k=>!['page','cursor'].includes(k))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('cursor').length>1)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
           const cursor=url.searchParams.get('cursor')??undefined
           if(cursor&&!/^[A-Za-z0-9_-]{1,900}$/.test(cursor))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
           const page=url.searchParams.get('page')??'1'
@@ -449,8 +494,7 @@ export function createRequestHandler(options: AppOptions) {
       const customerRoute=/^\/api\/customer-records(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
       if(customerRoute){
         const customers=new CustomerRepository(options.atendimentos.db),id=customerRoute[1]
-        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'').map(record=>
-          record.kind==='contact'&&record.entityId?{...record,ownerName:customers.record(record.entityId).text}:record)})
+        if(req.method==='GET')return send(200,id?customerView(id):{items:customers.search(url.searchParams.get('kind')??'',url.searchParams.get('q')??'')})
         if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
         if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
         if(req.method==='POST'&&!id || req.method==='PATCH'&&id){
@@ -466,12 +510,10 @@ export function createRequestHandler(options: AppOptions) {
       // These operations NEVER contact Evolution or change legacy chat/messages.
       if ((!options.conversationRuntime || options.conversationRuntime.authority) && options.evolutionChat && options.v20Associations && url.pathname.startsWith('/api/chat/conversations/')) {
         const associationRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/(atendimentos)(?:\/([a-f0-9-]{36}))?$/.exec(url.pathname)
-        const triageRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/atendimentos\/triagem$/.exec(url.pathname)
-        const numberRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/atendimentos\/([a-f0-9-]{36})\/numeracao$/.exec(url.pathname)
         const contextRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/context$/.exec(url.pathname)
         const identityRoute = /^\/api\/chat\/conversations\/([a-f0-9-]{36})\/identity$/.exec(url.pathname)
-        if (associationRoute || contextRoute || identityRoute || triageRoute || numberRoute) {
-          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1] ?? triageRoute?.[1] ?? numberRoute?.[1])!
+        if (associationRoute || contextRoute || identityRoute) {
+          const conversationId = (associationRoute?.[1] ?? contextRoute?.[1] ?? identityRoute?.[1])!
           const authority=options.conversationRuntime?.authority
           const contacts=options.evolutionChat.contacts
           const scope=identityRoute?undefined:(authority?.associationScope(conversationId) ??
@@ -479,37 +521,15 @@ export function createRequestHandler(options: AppOptions) {
           if (!options.v20Associations.resolveRemoteJid(conversationId, 'funix_comercial')) return fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
           if ([...url.searchParams.keys()].length) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
           const identity=identityRoute?new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
-          const numberReview=authority?new ShortNumberReview(options.atendimentos.db,options.evolutionChat.observedConversation):undefined
-          if(numberRoute&&!numberReview)return fail(409,'CHAT_NUMBER_REVIEW_UNAVAILABLE','Revisão de numeração indisponível.')
-          if(numberRoute&&numberReview&&req.method==='GET')return send(200,numberReview.preview(conversationId,numberRoute[2]!))
           if(identity&&req.method==='GET')return send(200,identity.preview(conversationId))
-          if (associationRoute && req.method === 'GET' && !associationRoute[3]){
-            let readIdentityBlocked=false
-            if(authority)try{authority.technicalHistoryJid(conversationId)}
-            catch(error){if(!(error instanceof ServiceError)||error.code!=='CHAT_IDENTITY_CONFLICT')throw error;readIdentityBlocked=true}
-            const resolution=readIdentityBlocked?undefined:authority?.suggestAtendimentos(conversationId)
-            const shortTriage=!!options.conversationRuntime?.read&&!!numberReview?.triageCandidate(conversationId)
-            return send(200, {...options.v20Associations.listActive(conversationId,scope),readIdentityBlocked,
-              ...(numberReview?{numberReviewAvailable:numberReview.available(conversationId),
-                historyOnly:scope?.some(id=>!!(reviewedNumber(options.atendimentos.db,id)||pendingShortNumber(options.atendimentos.db,id)))??false}:{}),
-              ...(resolution?{suggestedAtendimentos:resolution.candidates,atendimentoConflict:resolution.conflict,
-                canCreateTriage:!!options.conversationRuntime?.read&&resolution.canCreateTriage}:shortTriage?{canCreateTriage:true}:{}),
-              sendAtendimentoId:options.evolutionChat.activeAtendimentoForConversation(conversationId)})
-          }
+          if (associationRoute && req.method === 'GET' && !associationRoute[3])
+            return send(200, options.v20Associations.listActive(conversationId,scope))
           if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
           if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
           const body = await readJson(req, 2048)
           if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'CHAT_INVALID_BODY', 'Corpo inválido.')
           const input = body as Record<string, unknown>
           if(identity&&req.method==='POST')return send(200,identity.confirm(conversationId,input))
-          if(numberRoute&&numberReview&&req.method==='POST')return send(200,numberReview.confirm(conversationId,numberRoute[2]!,input))
-          if(triageRoute&&req.method==='POST'){
-            if(Object.keys(input).length)return fail(400,'CHAT_INVALID_BODY','Campos inválidos.')
-            if(!authority||!options.conversationRuntime?.read)
-              return fail(409,'CHAT_TRIAGE_UNAVAILABLE','Conversa indisponível para triagem.')
-            const result=authority.createTriageFromHistory(conversationId)
-            return send(result.created?201:200,{atendimentoId:result.atendimentoId})
-          }
           if (associationRoute && req.method === 'POST' && !associationRoute[3]) {
             if (Object.keys(input).some(key => !['atendimentoId','expectedRevision','requestId','reason'].includes(key)))
               return fail(400, 'CHAT_INVALID_BODY', 'Campos inválidos.')
@@ -642,30 +662,23 @@ export function createRequestHandler(options: AppOptions) {
         }catch(cause){if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message);return fail(502,'CHAT_MEDIA_SEND_UNCERTAIN','Envio não confirmado. Confira o WhatsApp antes de tentar outra vez.')}
       }
       const mediaReadRoute=/^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
-      const technicalMediaRoute=/^\/api\/chat\/conversations\/([a-f0-9-]{36})\/messages\/([A-Za-z0-9_:-]{1,200})\/media$/.exec(url.pathname)
-      if(mediaReadRoute||technicalMediaRoute){
+      if(mediaReadRoute){
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Use GET.')
         if(!options.evolutionChat||!(options.codaSync || options.conversationRuntime?.authority)||process.env.FUNIX_EVOLUTION_MEDIA_ENABLED!=='true')
           return fail(503,'CHAT_MEDIA_DISABLED','Mídias não habilitadas.')
-        if([...url.searchParams.keys()].some(key=>!['page','scope'].includes(key))||url.searchParams.getAll('page').length>1||url.searchParams.getAll('scope').length>1)
+        if([...url.searchParams.keys()].some(key=>key!=='page')||url.searchParams.getAll('page').length>1)
           return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
-        const scope=url.searchParams.get('scope')
-        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
-        const [at,conversation,messageId]=mediaReadRoute?[mediaReadRoute[1]!,mediaReadRoute[2]!,mediaReadRoute[3]!]:['',technicalMediaRoute![1]!,technicalMediaRoute![2]!]
-        const runtime=options.conversationRuntime
-        const allowsLinkedRead=technicalMediaRoute?(jid:string)=>!!runtime?.read&&runtime.authority?.technicalHistoryJid(conversation)===jid:scope==='linked'?(jid:string)=>!!runtime?.read&&runtime.authority?.linkedHistoryJid(at,conversation)===jid:undefined
         const page=url.searchParams.get('page')??'1'
         if(!/^[1-9][0-9]{0,3}$/.test(page)||Number(page)>1000)
           return fail(400,'CHAT_INVALID_QUERY','Página inválida.')
         try{
           const result=await options.evolutionChat.mediaForAtendimento(
-            at,conversation,messageId,Number(page),allowsLinkedRead)
+            mediaReadRoute[1]!,mediaReadRoute[2]!,mediaReadRoute[3]!,Number(page))
           if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
           if(!result)return fail(404,'CHAT_MEDIA_NOT_FOUND','Mídia indisponível neste Atendimento.')
           if(result.state==='too_large')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo excede o limite suportado.')
           return send(200,{kind:result.kind,mimeType:result.mimeType,base64:result.base64})
         }catch(cause){
-          if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message)
           // Never leak provider URLs, keys, raw media or error bodies.
           const code=cause instanceof Error?cause.message:''
           if(code==='MEDIA_PROVIDER_TOO_LARGE')return fail(413,'CHAT_MEDIA_TOO_LARGE','Arquivo acima do limite disponível para o Chat.')
@@ -680,39 +693,14 @@ export function createRequestHandler(options: AppOptions) {
       const syncedEvolutionRoute = /^\/api\/atendimentos\/([a-f0-9-]{36})\/evolution-conversations\/([a-f0-9-]{36})\/messages$/.exec(url.pathname)
       if (syncedEvolutionRoute && options.evolutionChat && (options.codaSync || options.conversationRuntime?.authority || (!options.conversationRuntime && options.v20Associations && options.evolutionChat.contacts))) {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'O Chat está disponível somente para leitura.')
-        if ([...url.searchParams.keys()].some(key => !['page','cursor','scope'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1 || url.searchParams.getAll('scope').length>1)
+        if ([...url.searchParams.keys()].some(key => !['page','cursor'].includes(key)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
-        const scope=url.searchParams.get('scope')
-        if(scope!==null&&scope!=='linked')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
         const cursor=url.searchParams.get('cursor')??undefined
         if(cursor&&(!options.conversationRuntime?.read||! /^[A-Za-z0-9_-]{1,900}$/.test(cursor)))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
         const page = url.searchParams.get('page') ?? '1'
         if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000)
           return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         try {
-          if(scope==='linked'){
-            const runtime=options.conversationRuntime
-            const [atendimentoId,conversationId]=[syncedEvolutionRoute[1]!,syncedEvolutionRoute[2]!]
-            const authority=runtime?.authority
-            if(authority){
-              const linked=(jid:string)=>authority.linkedHistoryJid(atendimentoId,conversationId)===jid
-              // Use the configured history source while authorizing against the exact
-              // historical link before and after any provider request.
-              const history=await options.evolutionChat.messages(conversationId,Number(page),cursor,linked)
-              if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
-              if(!history)return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-              return send(200,{...history,mediaReadAvailable:history.source==='local'&&options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'})
-            }
-            if(options.v20Associations&&!options.codaSync){
-              const association=options.v20Associations,bridge=options.evolutionChat
-              const scope=bridge.contacts?.identities.associationScope(conversationId)
-              const linked=()=>association.listActive(conversationId,scope).items.some(link=>link.atendimentoId===atendimentoId)
-              const history=linked()?await bridge.messages(conversationId,Number(page)):null
-              if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
-              return history&&linked()?send(200,history):fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-            }
-            return fail(404,'CHAT_NOT_LINKED','Conversa não vinculada a este Atendimento.')
-          }
           const result = await options.evolutionChat.messagesForAtendimento(syncedEvolutionRoute[1]!, syncedEvolutionRoute[2]!, Number(page),cursor)
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
           return result ? send(200, result) : fail(404, 'CHAT_NOT_LINKED', 'Conversa não vinculada a este Atendimento.')
@@ -735,20 +723,13 @@ export function createRequestHandler(options: AppOptions) {
             return send(200, options.v20Associations && (!options.conversationRuntime || options.conversationRuntime.authority) ? { ...result, linksEnabled: true } : result)
           } catch (cause) { return providerFailure(cause, 'list') }
         }
-        if (keys.some(k => !['page','cursor','scope'].includes(k)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+        if (keys.some(k => k !== 'page') || url.searchParams.getAll('page').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         const page = url.searchParams.get('page') ?? '1'
         if (!/^[1-9][0-9]{0,3}$/.test(page) || Number(page) > 1000) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
         try {
-          const cid=messagesRoute![1]!,runtime=options.conversationRuntime
-          const authority=runtime?.authority
-          const scope=url.searchParams.get('scope')
-          if(scope!==null&&scope!=='technical')return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
-          const allowsTechnicalRead=authority&&scope==='technical'?(jid:string)=>authority.technicalHistoryJid(cid)===jid:undefined
-          const cursor=url.searchParams.get('cursor')??undefined
-          if(cursor&&(!runtime?.read||! /^[A-Za-z0-9_-]{1,900}$/.test(cursor)))return fail(400,'CHAT_INVALID_QUERY','Cursor inválido.')
-          const result = await options.evolutionChat.messages(cid,Number(page),cursor,allowsTechnicalRead)
+          const result = await options.evolutionChat.messages(messagesRoute![1]!, Number(page))
           if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-          return result ? send(200, {...result,...(allowsTechnicalRead?{mediaReadAvailable:!!runtime?.read&&options.evolutionChat.supportsMediaRead&&process.env.FUNIX_EVOLUTION_MEDIA_ENABLED==='true'}:{})}) : fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
+          return result ? send(200, result) : fail(404, 'CHAT_NOT_FOUND', 'Conversa não encontrada.')
         } catch (cause) { if(cause instanceof ServiceError)return fail(cause.status,cause.code,cause.message);return providerFailure(cause, 'history') }
       }
       const chatReadRoute = /^\/api\/atendimentos\/([^/]+)\/messages$/.exec(url.pathname)
@@ -822,6 +803,34 @@ export function createRequestHandler(options: AppOptions) {
       }
       // Operational OS: frozen emitted version and immutable SQLite record.
       // PDF uses the configured jsreport OS template or the existing local fallback.
+      // Historical import is opt-in injection only. No production startup or env activation.
+      const historicalRoute=/^\/api\/atendimentos\/([^/]{1,100})\/orcamentos-historicos(?:\/([^/]{1,100}))?$/.exec(url.pathname)
+      if(historicalRoute){
+        const historical=options.historicalBudget
+        if(!historical)return fail(503,'HISTORICAL_IMPORT_DISABLED','Importação histórica ainda não habilitada.')
+        if(url.search)return fail(400,'INVALID_QUERY','Parâmetros não permitidos.')
+        const at=historicalRoute[1]!,action=historicalRoute[2]
+        if(req.method==='GET')return send(200,action?historical.repo.get(at,action):historical.repo.list(at))
+        if(req.method!=='POST'||!['consulta','previa','confirmar'].includes(action??''))return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
+        if(req.headers.origin!==origin)return fail(403,'ORIGIN_REJECTED','Origem não autorizada.')
+        if(!req.headers['content-type']?.startsWith('application/json'))return fail(415,'JSON_REQUIRED','Envie JSON.')
+        if(action==='confirmar'&&historical.allowConfirmation!==true)return fail(503,'HISTORICAL_CONFIRMATION_DISABLED','Confirmação indisponível nesta fase de desenvolvimento.')
+        const body=await readJson(req,512*1024)
+        if(!body||typeof body!=='object'||Array.isArray(body))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const data=body as Record<string,unknown>
+        const keys=action==='consulta'?['number']:action==='previa'?['number','review']:['number','review','previewToken','confirmed']
+        if(Object.keys(data).length!==keys.length||keys.some(k=>!Object.hasOwn(data,k)))return fail(400,'INVALID_INPUT','Campos inválidos.')
+        const number=historicalBudgetNumber(data.number)
+        if(action==='confirmar'&&(data.confirmed!==true||typeof data.previewToken!=='string'||!/^[a-f0-9]{64}$/.test(data.previewToken)))return fail(422,'HISTORICAL_CONFIRMATION_REQUIRED','Confirmação explícita e prévia válida obrigatórias.')
+        options.atendimentos.get(at)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada.')
+        const captures=await historical.provider(number)
+        if((sessions.get(cookie)??0)<=now())return fail(401,'AUTH_REQUIRED','Sessão encerrada durante a consulta.')
+        if(action==='consulta')return send(200,historical.repo.consult(at,captures))
+        if(action==='previa')return send(200,historical.repo.preview(at,captures,data.review))
+        const result=historical.repo.confirm({atendimentoId:at,captures,review:data.review,previewToken:String(data.previewToken),confirmed:true},'funix_operator')
+        return send(result.state==='created'?201:200,result)
+      }
       const cancellationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/orcamentos\/([^/]{1,100})\/cancelamento$/.exec(url.pathname)
       if(cancellationRoute){
         if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
@@ -1013,7 +1022,7 @@ export function createRequestHandler(options: AppOptions) {
           options.v20Associations.resolveRemoteJid(cid,'funix_comercial')){
           const identity=new SharedConversationIdentity(options.atendimentos.db,options.evolutionChat.observedConversation)
           const chatIdentity=identity.forAtendimento(cid,atendimento.id)
-          if(chatIdentity)atendimento.chatIdentity={...chatIdentity,conversationId:cid}
+          if(chatIdentity)atendimento.chatIdentity=chatIdentity
         }
         return atendimento
       }
@@ -1022,8 +1031,8 @@ export function createRequestHandler(options: AppOptions) {
         if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem da solicitação não autorizada.')
         if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie um corpo JSON.')
         const body = await readJson(req, 64 * 1024)
-        if (collection) return send(201, options.atendimentos.create(body,false,true))
-        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true,true)))
+        if (collection) return send(201, options.atendimentos.create(body))
+        return send(200, withChatIdentity(options.atendimentos.update(record![1]!, body,true)))
       }
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')

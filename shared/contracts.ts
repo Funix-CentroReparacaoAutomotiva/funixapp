@@ -58,7 +58,7 @@ export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
 
 export interface Atendimento {
   purpose?: AtendimentoPurpose
-  chatIdentity?: {name:string;phone:string;conversationId:string}
+  chatIdentity?: {name:string;phone:string}
   closedAt?: string | null
   references?: CustomerReferences
   lastContactAt?: string | null

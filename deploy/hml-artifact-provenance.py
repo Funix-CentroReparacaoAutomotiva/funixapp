@@ -1,55 +1,23 @@
 """Authenticate an Actions artifact against GitHub metadata and ZIP digest.
 
 Call before extracting the downloaded artifact. Local manifest checks alone
-are not provenance. Optional authentication uses FUNIX_HML_GITHUB_TOKEN.
+are not provenance. Authentication uses the caller's existing gh session.
 """
 import hashlib
 import json
-import os
-import ssl
-from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler
+import subprocess
 from pathlib import Path
 
 REPO = "Funix-CentroReparacaoAutomotiva/funixapp"
 WORKFLOW = ".github/workflows/funix-hml-candidate.yml"
 
 
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        return None
-
-
-def unique_fields(pairs):
-    fields = {}
-    for key, value in pairs:
-        if key in fields:
-            raise ValueError("duplicate GitHub metadata field")
-        fields[key] = value
-    return fields
-
-
 def api(path):
-    """Official HTTPS API; optional fine-grained read-only token, never gh."""
-    if not isinstance(path, str) or path.startswith("/") or ".." in path or ":" in path:
-        raise ValueError("invalid GitHub API path")
-    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
-               "User-Agent": "funix-hml-provenance"}
-    token = os.environ.get("FUNIX_HML_GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = "Bearer " + token
-    request = Request(f"https://api.github.com/repos/{REPO}/{path}", headers=headers)
-    try:
-        opener = build_opener(HTTPSHandler(context=ssl.create_default_context()), NoRedirect())
-        with opener.open(request, timeout=15) as response:
-            body = response.read(2 * 1024**2 + 1)
-            if response.status != 200 or len(body) > 2 * 1024**2:
-                raise ValueError()
-            data = json.loads(body, object_pairs_hook=unique_fields)
-            if not isinstance(data, dict):
-                raise ValueError()
-            return data
-    except Exception:
-        raise ValueError("GitHub metadata unavailable, unauthorized or invalid") from None
+    result = subprocess.run(["gh", "api", f"repos/{REPO}/{path}"],
+                            capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise ValueError("GitHub provenance query failed")
+    return json.loads(result.stdout)
 
 
 def verify(archive, *, artifact_id, run_id, attempt, revision, pr, query=api):
@@ -62,16 +30,14 @@ def verify(archive, *, artifact_id, run_id, attempt, revision, pr, query=api):
         "head_branch": "main", "path": WORKFLOW,
         "status": "completed", "conclusion": "success",
     }
-    if any(type(run.get(key)) is not type(value) or run[key] != value
-           for key, value in expected.items()):
+    if any(run.get(key) != value for key, value in expected.items()):
         raise ValueError("untrusted workflow run")
     if run.get("repository", {}).get("full_name") != REPO:
         raise ValueError("wrong workflow repository")
     artifact = query(f"actions/artifacts/{artifact_id}")
-    artifact_run_id = artifact.get("workflow_run", {}).get("id")
     if (artifact.get("expired") is not False
             or artifact.get("name") != f"funix-hml-{revision}-{attempt}"
-            or type(artifact_run_id) is not int or artifact_run_id != run_id):
+            or artifact.get("workflow_run", {}).get("id") != run_id):
         raise ValueError("artifact identity mismatch")
     with Path(archive).open("rb") as stream:
         digest = "sha256:" + hashlib.file_digest(stream, "sha256").hexdigest()
