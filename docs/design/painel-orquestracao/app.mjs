@@ -1,4 +1,4 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts} from './model.mjs';
 const $=id=>document.getElementById(id);
 const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
@@ -8,13 +8,73 @@ function notice(message){$('notice').hidden=!message;if(message)$('notice').text
 function topAncestor(id){let node=state.model?.byId.get(id);while(node?.parentId && state.model.byId.has(node.parentId))node=state.model.byId.get(node.parentId);return node?.id||id}
 function currentNode(){return state.model?.byId.get(state.selected)}
 function statusChip(node){const b=element('span','status',STATUS_LABEL[node.status]);b.dataset.status=node.status;return b}
-function makeNodeCard(node, nested=false){
+
+const metricPaths={
+  fronts:['M6 3v12a4 4 0 0 0 4 4h8','M6 12h9a4 4 0 0 0 4-4V5'],
+  decisions:['M12 2 3 12l9 10 9-10-9-10Z','M12 8v5','M12 16h.01'],
+  active:['M12 6v6l4 2'],
+  blocked:['m12 3 10 18H2L12 3Z','M12 9v5','M12 17h.01'],
+  done:['m7.5 12 3 3 6-7']
+};
+function metricIcon(kind) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('focusable','false');
+  if(kind==='active'||kind==='done'){
+    const c=document.createElementNS(ns,'circle');c.setAttribute('cx','12');c.setAttribute('cy','12');c.setAttribute('r','9');svg.append(c);
+  }
+  for(const d of metricPaths[kind]){const p=document.createElementNS(ns,'path');p.setAttribute('d',d);svg.append(p);}
+  return svg;
+}
+function shortPublishedDate(value){
+  if(!value||!Number.isFinite(Date.parse(value)))return '—';
+  const day=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  const a=day(new Date()),b=day(new Date(value));
+  // Formato en-CA gera AAAA-MM-DD. Ignorar horas para evitar diferencas na virada do dia.
+  const parse=s=>{const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)};
+  const diff=Math.round((parse(a)-parse(b))/86400000);
+  if(diff===0)return 'hoje';
+  if(diff===1)return 'ontem';
+  if(diff>1)return 'há '+diff+' dias';
+  return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'}).format(new Date(value));
+}
+function appendCompactCard(button,node){
+  const counts=cardCounts(state.model,node.id);
+  const head=element('span','card-head'),left=element('span','name-and-status');
+  left.append(element('strong','node-name',node.title));
+  const status=element('span','card-status');status.dataset.state=node.status;
+  status.title='Situação: '+STATUS_LABEL[node.status];
+  status.append(element('span','status-dot'));left.append(status);
+  const updated=element('span','updated-top',shortPublishedDate(state.model.publishedAt));
+  updated.title='Publicação dos dados: '+dt(state.model.publishedAt);
+  head.append(left,updated);
+  const metrics=element('span','mini-metrics');
+  const specs=[
+    ['fronts','Frentes diretas',{display:String(counts.fronts),complete:true}],
+    ['decisions','Decisões pendentes',counts.decisions],
+    ['active','Trabalhos ativos',counts.active],
+    ['blocked','Trabalhos bloqueados',counts.blocked],
+    ['done','Trabalhos concluídos',counts.done]
+  ];
+  const spoken=[];
+  for(const [kind,label,m] of specs){
+    const item=element('span','stat '+kind),num=element('span','num',m.display);
+    const description=m.complete?label+': '+m.display:(
+      m.value===0?label+': não verificado':label+': pelo menos '+m.value+' confirmado(s), há registros não verificados'
+    );
+    item.title=description;item.append(metricIcon(kind),num);metrics.append(item);spoken.push(description);
+  }
+  button.setAttribute('aria-label',node.title+'. '+STATUS_LABEL[node.status]+
+      '. Publicação: '+shortPublishedDate(state.model.publishedAt)+'. '+spoken.join('. ')+'. Abrir detalhes.');
+  button.append(head,metrics);
+}
+function makeNodeCard(node,nested=false){
   const button=element('button',nested?'node node-inside':'node graph-top-item');
-  button.type='button';button.dataset.id=node.id;button.setAttribute('aria-pressed',String(state.selected===node.id));
-  const top=element('div','node-top');
-  top.append(element('span','node-icon',node.title.charAt(0).toUpperCase()),element('strong','node-name',node.title));
-  button.append(top);
-  button.addEventListener('click',()=>selectNode(node.id));return button;
+  button.type='button';button.dataset.id=node.id;
+  button.setAttribute('aria-pressed',String(state.selected===node.id));
+  appendCompactCard(button,node);
+  button.addEventListener('click',()=>selectNode(node.id));
+  return button;
 }
 function makeTreeBranch(node){
   const branch=element('div','tree-branch');
@@ -44,7 +104,8 @@ function makeGroup(node){
   const head=element('div','project-head');
   const title=element('button','project-select');
   title.type='button';title.dataset.id=node.id;
-  title.append(element('span','project-icon','▣'),element('strong','project-name',node.title));
+  title.setAttribute('aria-pressed',String(state.selected===node.id));
+  appendCompactCard(title,node);
   title.addEventListener('click',()=>selectNode(node.id));
   const toggle=element('button','project-toggle');
   toggle.type='button';
