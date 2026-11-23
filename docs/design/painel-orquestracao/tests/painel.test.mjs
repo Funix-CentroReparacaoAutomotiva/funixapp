@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts} from '../model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts,projectOverview} from '../model.mjs';
 const base=JSON.parse(readFileSync(new URL('../snapshot.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(base);
 test('snapshot atual é válido sem impor frentes ou quantidade fixa',()=>{const m=validateSnapshot(base);assert.equal(m.nodes.length,base.nodes.length);assert.equal(childrenOf(m,m.root.id).length,metrics(m).fronts);assert.equal(metrics(m).nodes,base.nodes.length);assert.equal(metrics(m).groups,base.nodes.filter(x=>x.presentation==='group').length);assert.equal(recordsOf(m,m.root.id).length,base.records.length)});
@@ -136,4 +136,32 @@ test('card compacto: decisão só aceita true, false ou ausente; número inventa
   assert.throws(()=>validateSnapshot(r),/decisionPending/);
   r.nodes[0].decisionPending=false;
   assert.equal(validateSnapshot(r).nodes[0].decisionPending,false);
+});
+
+test('resumo de projeto conta frentes, não total de tarefas, e não duplica o ramo',()=>{
+  const r=clone();r.nodes=[
+    {id:'proj',title:'Projeto',presentation:'group',status:'acompanhamento'},
+    {id:'f1',parentId:'proj',title:'Frente 1',status:'acompanhamento'},
+    {id:'f2',parentId:'proj',title:'Frente 2',status:'acompanhamento'},
+    {id:'a',parentId:'f1',title:'Entrega ativa A',status:'em_execucao',decisionPending:true},
+    {id:'b',parentId:'f1',title:'Entrega ativa B',status:'em_execucao',decisionPending:false},
+    {id:'c',parentId:'f2',title:'Entrega bloqueada',status:'bloqueado',decisionPending:false}
+  ];r.records=[];r.relations=[];
+  const x=projectOverview(validateSnapshot(r),'proj');
+  assert.equal(x.fronts,2);
+  assert.deepEqual(x.activeFronts,{value:1,complete:true,display:'1'});
+  assert.deepEqual(x.blockedFronts,{value:1,complete:true,display:'1'});
+  assert.deepEqual(x.decisions,{value:1,complete:true,display:'1'});
+});
+test('resumo de projeto não transforma frente sem conferência em zero',()=>{
+  const r=clone();r.nodes=[
+    {id:'proj',title:'Projeto',presentation:'group',status:'acompanhamento'},
+    {id:'f1',parentId:'proj',title:'Frente 1',status:'em_execucao',decisionPending:null},
+    {id:'f2',parentId:'proj',title:'Frente 2',status:'nao_verificado',decisionPending:null},
+  ];r.records=[];r.relations=[];
+  const x=projectOverview(validateSnapshot(r),'proj');
+  assert.equal(x.fronts,2);
+  assert.deepEqual(x.activeFronts,{value:1,complete:false,display:'1+'});
+  assert.deepEqual(x.blockedFronts,{value:0,complete:false,display:'—'});
+  assert.deepEqual(x.decisions,{value:0,complete:false,display:'—'});
 });
