@@ -43,7 +43,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   // Saving a person with one contact also selects that number on a new/blank
   // Atendimento. Never replace a nonempty contact or guess among multiple numbers.
   const sole=record.contacts.length===1?record.contacts[0]:null
-  if(sole&&!next.contact[0]?.id&&!next.contact[0]?.text.trim())
+  if(sole?.text.trim()&&!next.contact[0]?.id&&!next.contact[0]?.text.trim())
     next.contact[0]={id:sole.id,text:sole.text,entityId:record.id}
   onChange(next);setEditing(null);setVersion(v=>v+1)
  }}/>:<><h3>Cadastro compartilhado</h3><p>Alterações aparecem nos Atendimentos que selecionaram este registro.</p><label>{editing.kind==='contact'?'Telefone':'Nome / marca e modelo'}<input value={editing.text} readOnly={!!editing.conversationId} onChange={e=>setEditing({...editing,text:e.target.value})}/></label>{editing.kind==='vehicle'&&<><label>Placa<input value={editing.plate??''} onChange={e=>setEditing({...editing,plate:e.target.value})}/></label><label>Fabricação<input value={editing.fabricationYear??''} onChange={e=>setEditing({...editing,fabricationYear:e.target.value})}/></label><label>Ano-modelo<input value={editing.modelYear??''} onChange={e=>setEditing({...editing,modelYear:e.target.value})}/></label></>}
