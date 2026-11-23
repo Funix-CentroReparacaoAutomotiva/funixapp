@@ -50,6 +50,26 @@ class CandidateGateTest(unittest.TestCase):
             with self.subTest(i=i), self.assertRaises(gate.Blocked):
                 gate.validate_inputs(*args)
 
+    def test_required_workflows_follow_changed_scope(self):
+        hml_paths = [
+            ".github/workflows/funix-hml-authorize.yml",
+            "deploy/hml-sign-permits.py",
+            "deploy/remote-hml/rootctl.py",
+            "deploy/tests/test_hml_signed_permits.py",
+        ]
+        self.assertEqual(gate.required_for_paths(hml_paths), gate.REQUIRED_HML)
+        self.assertEqual(gate.required_for_paths(hml_paths + ["src/app.js"]),
+                         gate.REQUIRED_APP | gate.REQUIRED_HML)
+        self.assertEqual(gate.required_for_paths(["src/app.js"]), gate.REQUIRED_APP)
+
+    def test_changed_file_listing_fails_closed(self):
+        with self.assertRaises(gate.Blocked):
+            gate.changed_paths([])
+        with self.assertRaises(gate.Blocked):
+            gate.changed_paths([{"filename": f"file-{i}.txt"} for i in range(100)])
+        with self.assertRaises(gate.Blocked):
+            gate.changed_paths([{"filename": "../outside.py"}])
+
     def test_wrong_pr_fork_changed_or_base(self):
         original = copy.deepcopy(self.pr)
         for field, key, value in [
@@ -60,6 +80,7 @@ class CandidateGateTest(unittest.TestCase):
             self.pr[field][key] = value
             with self.subTest(field=field, key=key), self.assertRaises(gate.Blocked):
                 self.check()
+
     def test_merged_pr_requires_its_merge_commit_on_main(self):
         self.pr["state"] = "closed"
         self.pr["merged"] = True
