@@ -12,7 +12,14 @@ permissions: {}
 
 jobs:
   authorize:
-    if: github.ref == 'refs/heads/main' && github.repository == 'Funix-CentroReparacaoAutomotiva/funixapp'
+    # HML opera com um titular GitHub. Nao fingir revisao independente.
+    # Somente despacho manual do titular na main pode acessar o signer.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'Funix-CentroReparacaoAutomotiva/funixapp' &&
+      github.actor == 'Funix-CentroReparacaoAutomotiva' &&
+      github.triggering_actor == 'Funix-CentroReparacaoAutomotiva'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: homologation
@@ -22,6 +29,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Conferir identidade do operador
+        env:
+          EXPECTED_OPERATOR: Funix-CentroReparacaoAutomotiva
+          EFFECTIVE_ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          set -euo pipefail
+          test "$EFFECTIVE_ACTOR" = "$EXPECTED_OPERATOR"
+          test "$TRIGGERING_ACTOR" = "$EXPECTED_OPERATOR"
       - name: Emitir autorização com validade de vinte minutos
         env:
           HML_PERMIT_REQUEST: ${{ inputs.request }}
