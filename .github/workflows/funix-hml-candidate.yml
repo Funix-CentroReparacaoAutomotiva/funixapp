@@ -15,6 +15,14 @@ on:
         description: "Confirmo revisao da fonte e autorizo build isolado, sem deploy"
         type: boolean
         default: false
+      web_target:
+        description: "Imagem Web do candidato; variante de painel somente para PR revisada"
+        required: true
+        type: choice
+        options:
+          - web
+          - web-hml-painel
+        default: web
 
 permissions: {}
 
@@ -33,6 +41,7 @@ jobs:
     outputs:
       revision: ${{ steps.candidate.outputs.revision }}
       pr: ${{ steps.candidate.outputs.pr }}
+      web_target: ${{ steps.web-target.outputs.web_target }}
     steps:
       - name: Reject unapproved dispatch or non-main workflow
         env:
@@ -41,6 +50,17 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
           test "$AUTHORIZED" = true
+      - name: Fixar variante de imagem Web
+        id: web-target
+        env:
+          WEB_TARGET_INPUT: ${{ inputs.web_target }}
+        run: |
+          set -euo pipefail
+          case "$WEB_TARGET_INPUT" in
+            web|web-hml-painel) ;;
+            *) echo 'WEB_TARGET_INVALID' >&2; exit 1 ;;
+          esac
+          echo "web_target=$WEB_TARGET_INPUT" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
@@ -62,6 +82,7 @@ jobs:
     env:
       REVISION: ${{ needs.select.outputs.revision }}
       PR_NUMBER: ${{ needs.select.outputs.pr }}
+      WEB_TARGET: ${{ needs.select.outputs.web_target }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -85,7 +106,21 @@ jobs:
         run: |
           set -euo pipefail
           docker build --target api --label "org.opencontainers.image.revision=$REVISION" -t funix-api:ci .
-          docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
+          case "$WEB_TARGET" in
+            web)
+              docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
+              ;;
+            web-hml-painel)
+              # Fail closed when a candidate lacks the reviewed HML-only panel stage.
+              test -f docs/design/painel-orquestracao/snapshot.json
+              test -f deploy/test-painel-hml.sh
+              docker build --target web --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:base .
+              docker run --rm --network none --entrypoint sh funix-web:base -ec 'test ! -e /usr/share/nginx/html/painel/index.html'
+              docker build --target web-hml-painel --build-arg "APP_REVISION=$REVISION" --label "org.opencontainers.image.revision=$REVISION" -t funix-web:ci .
+              bash deploy/test-painel-hml.sh
+              ;;
+            *) echo 'WEB_TARGET_INVALID' >&2; exit 1 ;;
+          esac
           GITHUB_SHA="$REVISION" bash deploy/test-containers.sh
       - name: Export HML-only candidate artifact, no registry or VPS access
         run: |
