@@ -1,6 +1,6 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile} from './model.mjs';
 const $=id=>document.getElementById(id);
-const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set()};
+const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
 const set=(id,v)=>{$(id).textContent=String(v)};
 const dt=(date)=>!date?'Não informada':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date(date));
@@ -102,17 +102,63 @@ async function enrich(records){const model=state.model;if(!model)return;const no
 function renderHistoryNoFetch(){const previous=state.loadVersion;const m=state.model,node=currentNode();if(!node)return;const all=recordsOf(m,node.id),filtered=all.filter(r=>state.filter==='all'||r.kind===state.filter),shown=state.expanded?filtered:filtered.slice(0,4);const list=$('history-list');if(list.children.length!==shown.length)return;
   for(let i=0;i<shown.length;i++){const r=shown[i],v=state.live.get(`${r.kind}:${r.number}`),msg=v?.data?stateOfRecord(r,v.data):v?.error?'Estado não verificado — API indisponível':'A consultar estado atual';list.children[i].querySelector('small').textContent=`#${r.number} · ${msg}${r.context?' · '+r.context:''}`}
 }
-function selectNode(id,scroll=false){if(!state.model?.byId.has(id))return;state.selected=id;state.filter='all';state.expanded=false;updateMapSelection();renderDetails();if(scroll&&window.innerWidth<=1100)$('detail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}
-async function load(){if(state.loading)return;state.loading=true;$('refresh').disabled=true;set('source-status','Consultando estrutura…');notice('');
-  try{let raw;const embedded=$('embedded-snapshot');const isLocal=!/^https?:$/.test(location.protocol);let fallbackUsed=false;
-    if(isLocal&&embedded){fallbackUsed=true;raw=JSON.parse(embedded.textContent)}
-    else {const res=await fetch('./snapshot.json',{cache:'no-store'});if(!res.ok)throw new Error(`Snapshot HTTP ${res.status}`);raw=await res.json()}
-    const model=validateSnapshot(raw);const old=state.selected;state.model=model;state.loadVersion++;state.live.clear();state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));state.selected=model.byId.has(old)?old:childrenOf(model,model.root.id)[0]?.id||null;
-    const mm=metrics(model);set('kpi-groups',mm.groups);set('kpi-cards',mm.cards);set('kpi-blocked',mm.blocked);set('hero-title',model.title+' · desenvolvimento');set('hero-summary',model.subtitle||'Estrutura definida pelo CTO.');set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');set('snapshot-revision',`Snapshot: ${model.snapshotId}`);
-    set('source-status',`Estrutura: ${dt(model.publishedAt)} (BRT)${isLocal?(fallbackUsed?' · cópia embutida':' · GitHub público'):''}`);
-    renderMap();renderDetails();if(!mm.fronts){$('detail').hidden=true}
-  }catch(e){state.model=null;state.selected=null;set('source-status','Fonte indisponível');notice('Não foi possível carregar ou validar o arquivo de estrutura do CTO. Nenhum andamento foi inferido. '+e.message);$('node-grid').replaceChildren();$('detail').hidden=true;set('kpi-groups','—');set('kpi-cards','—');set('kpi-blocked','—');}
-  finally{state.loading=false;$('refresh').disabled=false;}
+function selectNode(id,scroll=false){if(!state.model?.byId.has(id))return;state.selected=id;state.filter='all';state.expanded=false;updateMapSelection();renderDetails();if(scroll&&window.innerWidth<=1100)$('detail').scrollIntoView({behavior:window.matchMedia('(prefersfunction applySnapshot(raw,model,origin){
+  const old=state.selected;
+  state.raw=raw;state.model=model;state.loadVersion++;state.live.clear();
+  state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));
+  state.selected=model.byId.has(old)?old:childrenOf(model,model.root.id)[0]?.id||null;
+  const mm=metrics(model);
+  set('kpi-groups',mm.groups);set('kpi-cards',mm.cards);set('kpi-blocked',mm.blocked);
+  set('hero-title',model.title+' · desenvolvimento');set('hero-summary',model.subtitle||'Estrutura definida pelo CTO.');
+  set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');
+  set('snapshot-revision','Snapshot: '+model.snapshotId);
+  set('source-status','Publicação: '+dt(model.publishedAt)+' (BRT) · '+origin);
+  renderMap();renderDetails();if(!mm.fronts)$('detail').hidden=true;
+}
+async function load(){
+  if(state.loading)return;state.loading=true;$('refresh').disabled=true;notice('');
+  set('source-status','Carregando cópia instalada…');
+  try{
+    let raw;const embedded=$('embedded-snapshot');const isLocal=!/^https?:$/.test(location.protocol);
+    if(isLocal&&embedded)raw=JSON.parse(embedded.textContent);
+    else {const res=await fetch('./snapshot.json',{cache:'no-store'});if(!res.ok)throw new Error('Snapshot HTTP '+res.status);raw=await res.json()}
+    const model=validateSnapshot(raw);state.publishedSha=null;
+    applySnapshot(raw,model,isLocal&&embedded?'cópia embutida':'cópia instalada');
+    set('check-status','GitHub publicado: ainda não verificado');
+  }catch{
+    state.model=null;state.raw=null;state.selected=null;
+    set('source-status','Fonte instalada indisponível');
+    set('check-status','Verificação indisponível');
+    notice('Não foi possível carregar a cópia instalada. Nenhum andamento foi inferido.');
+    $('node-grid').replaceChildren();$('detail').hidden=true;
+    set('kpi-groups','—');set('kpi-cards','—');set('kpi-blocked','—');
+  }finally{state.loading=false;$('refresh').disabled=false}
+}
+/** Nenhuma sincronização em segundo plano: consulta externa SOMENTE no clique. */
+async function checkPublished(){
+  if(state.loading||!state.model)return;
+  state.loading=true;$('refresh').disabled=true;notice('');
+  set('check-status','Consultando publicação no GitHub…');
+  try{
+    const res=await fetch(publishedSnapshotUrl(),{
+      cache:'no-store',headers:{Accept:'application/vnd.github+json'},
+      signal:AbortSignal.timeout(15000)
+    });
+    if(!res.ok)throw new Error('GitHub HTTP '+res.status);
+    const candidate=inspectPublishedFile(await res.json(),state.raw,state.publishedSha);
+    state.publishedSha=candidate.sha;
+    if(candidate.changed){
+      applySnapshot(candidate.raw,candidate.model,'GitHub publicado');
+      notice('Uma nova versão validada do mapa foi carregada. Estados de tarefas não comprovam implantação.');
+    }else notice('A publicação não mudou. Os cards foram mantidos.');
+    set('check-status','Última verificação: '+dt(new Date().toISOString())+' (BRT)');
+  }catch{
+    set('check-status','Falha na verificação: '+dt(new Date().toISOString())+' (BRT)');
+    notice('Não foi possível verificar a publicação no GitHub (rede, limite da API ou dados inválidos). Os cards atuais foram preservados.');
+  }finally{state.loading=false;$('refresh').disabled=false}
+}
+$('refresh').addEventListener('click',checkPublished);
+sh').disabled=false;}
 }
 $('refresh').addEventListener('click',load);
 $('roles-toggle').addEventListener('click',()=>{state.roles=!state.roles;$('roles-toggle').setAttribute('aria-pressed',String(state.roles));$('map').classList.toggle('roles-visible',state.roles);requestAnimationFrame(drawWires)});
