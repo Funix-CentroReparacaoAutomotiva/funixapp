@@ -97,3 +97,15 @@ Não há `setInterval`, cron, GitHub Actions agendado, n8n ou atualização de a
 - A publicação de dados exige revisão explícita do CTO e commit na branch `painel-publicado`. Instruções: `docs/design/painel-orquestracao/PUBLICACAO_DADOS.md` **naquela branch**.
 
 **Implantação:** esse comportamento requer uma única nova publicação Web HML, aprovada após revisão e testes, **sem atualização da API/banco**. Novos snapshots posteriores não exigem deploy. Não publicar o código ou ativar atualizações na VPS automaticamente.
+
+## Visualização focada em fluxograma (proposta de UX)
+
+A tela principal prioriza apenas o **mapa de conexões**: CTO → projetos principais → frentes; cada frente pode ter subfrentes expandidas por `+` sem criar novos dados. **Nenhum projeto é descoberto automaticamente**: cada projeto precisa existir como nó de primeiro nível (normalmente `presentation: "group"` e `parentId: null`) no snapshot publicado. O arquivo atual contém somente FunixApp como projeto principal; isso não prova inexistência de outros trabalhos no GitHub.
+
+- Cards mostram essencialmente **nomes**. Descrições, estados detalhados, evidências, próximos passos, bloqueios e histórico permanecem disponíveis ao clicar, num diálogo acessível com botão Fechar e Escape.
+- O diálogo não se abre automaticamente ao carregar/atualizar; a área do fluxograma ocupa toda a largura da página.
+- Expansões permitem explorar níveis adicionais sem transformar a página inicial num relatório; independem da navegação dos detalhes.
+- Um controle discreto mostra versão dos dados e data da verificação; o botão `Atualizar` mantém a consulta sob demanda ao GitHub.
+- Layout testado (via navegador) em 1440, 390 e 320 px, incluindo dois projetos de topo, frentes avulsas, níveis de árvore, abertura/fechamento do diálogo e ausência de rolagem horizontal.
+
+**Esta alteração exige nova publicação da Web HML, separada da edição de dados.** A fonte `painel-publicado` permanece independente e não será alterada pelo merge desta PR.
