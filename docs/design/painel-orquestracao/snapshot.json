@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-cto-2026-11-22-hml-implantado-v2",
-  "publishedAt": "2026-11-22T20:53:00-03:00",
+  "snapshotId": "funix-portfolio-2026-11-24-flexivel-v1",
+  "publishedAt": "2026-11-24T03:38:38.136Z",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
-  "title": "FUNIX ERP",
-  "subtitle": "Projeto FunixApp e suas frentes de desenvolvimento. Agrupamentos, títulos e vínculos são definidos pelo CTO.",
+  "title": "FUNIX — Desenvolvimento",
+  "subtitle": "Projetos, frentes e demandas de desenvolvimento; estrutura organizada pelo ChatGPT sob solicitação.",
   "root": {
     "id": "cto",
-    "title": "CTO Virtual",
-    "subtitle": "Coordenação técnica"
+    "title": "Central de Desenvolvimento",
+    "subtitle": "Portfólio FUNIX"
   },
   "nodes": [
     {
@@ -16,14 +16,19 @@
       "parentId": null,
       "type": "Projeto",
       "presentation": "group",
-      "title": "FunixApp",
-      "description": "Desenvolvimento do ERP da FUNIX, organizado pelo CTO.",
+      "title": "FunixApp → FunixERP",
+      "description": "Evolução modular do aplicativo para o ERP da FUNIX; roadmap proposto na PR #354.",
       "status": "acompanhamento",
       "statusReason": "Agrupamento de acompanhamento; não representa aceite operacional.",
-      "nextResult": null,
+      "nextResult": "Revisar roadmap e iniciar os próximos incrementos por frente.",
       "updatedAt": null,
       "roles": [],
-      "evidence": []
+      "evidence": [
+        {
+          "kind": "pr",
+          "number": 354
+        }
+      ]
     },
     {
       "id": "fr-293",
@@ -405,14 +410,14 @@
     },
     {
       "id": "ep-301",
-      "parentId": "fr-291",
-      "type": "subfrente",
-      "title": "Governança de agentes e entregas",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Governança e acompanhamento",
       "description": "Protocolo de execução, evidências, revisões e handoff.",
-      "status": "homologacao",
-      "statusReason": "Painel de orquestração implantado em homologação em 22/11/2026; o operador confirmou PANEL_DEPLOY_OK e abertura no navegador. Atualização de dados sob demanda ainda não implantada.",
-      "nextResult": "Validar e publicar no código Web o botão de consulta à branch painel-publicado, sem afetar a API ou o banco.",
-      "updatedAt": "2026-11-22T20:53:00-03:00",
+      "status": "acompanhamento",
+      "statusReason": "Acompanhamento dos trabalhos de governança e do painel; a instalação atual não foi conferida nesta consulta.",
+      "nextResult": "Revisar o fluxo de curadoria sob demanda e a separação entre dados e software.",
+      "updatedAt": "2026-11-24T03:38:38.136Z",
       "roles": [
         "CTO — coordenação técnica"
       ],
@@ -424,6 +429,73 @@
         {
           "kind": "pr",
           "number": 318
+        }
+      ]
+    },
+    {
+      "id": "proj-painel-desenvolvimento",
+      "parentId": null,
+      "type": "Projeto",
+      "presentation": "group",
+      "title": "Painel de Desenvolvimento",
+      "description": "Visualização flexível do portfólio FUNIX, com dados mantidos pelo ChatGPT sob demanda.",
+      "status": "acompanhamento",
+      "statusReason": "Projeto confirmado; evolução da interface e da curadoria acompanhada separadamente do ERP.",
+      "nextResult": null,
+      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "painel-curadoria",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Curadoria dos dados",
+      "description": "Organizar projetos e demandas por dados, sem cadastro manual; reconciliar projetos confirmados.",
+      "status": "acompanhamento",
+      "statusReason": "Requisito registrado nas issues #329 e #347; política proposta na PR #354.",
+      "nextResult": "Reconciliar outras fontes autorizadas e publicar o mapa revisado sob solicitação.",
+      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 329
+        },
+        {
+          "kind": "issue",
+          "number": 347
+        },
+        {
+          "kind": "pr",
+          "number": 354
+        }
+      ]
+    },
+    {
+      "id": "painel-interface",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Visualização e Minha atenção",
+      "description": "Interface de leitura e navegação, com agrupamentos definidos pelos dados.",
+      "status": "acompanhamento",
+      "statusReason": "PRs #337 e #348 abertas, sem aceite operacional confirmado.",
+      "nextResult": "Revisar PR #337 e a PR #348 empilhada; validar o candidato antes de eventual deploy.",
+      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "pr",
+          "number": 337
+        },
+        {
+          "kind": "pr",
+          "number": 348
         }
       ]
     }
@@ -701,6 +773,46 @@
       "title": "Infraestrutura e operação técnica",
       "context": "Épico público",
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/299"
+    },
+    {
+      "nodeId": "proj-funixapp",
+      "kind": "pr",
+      "number": 354,
+      "title": "Roadmap FunixERP e escopo multiprojeto",
+      "context": "Proposta documental",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/354"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "issue",
+      "number": 329,
+      "title": "Publicar projetos ausentes no mapa",
+      "context": "Reconciliação do portfólio",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/329"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "issue",
+      "number": 347,
+      "title": "Central do orquestrador",
+      "context": "Requisito de produto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/347"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 337,
+      "title": "Projeto e indicadores aprovados para main",
+      "context": "PR aberta",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/337"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 348,
+      "title": "Minha atenção para o orquestrador",
+      "context": "PR aberta empilhada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/348"
     }
   ],
   "visibility": "public"
