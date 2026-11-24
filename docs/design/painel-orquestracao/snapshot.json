@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-portfolio-2026-11-24-v4",
-  "publishedAt": "2026-11-24T11:49:45.775Z",
+  "snapshotId": "funix-portfolio-2026-11-24-mvp-358-v1",
+  "publishedAt": "2026-11-24T12:21:51.241Z",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
   "title": "FUNIX — Central de Orquestração",
   "subtitle": "Projetos, ideias e melhorias da FUNIX; curadoria do ChatGPT sob solicitação da direção.",
@@ -17,16 +17,20 @@
       "type": "Projeto",
       "presentation": "group",
       "title": "FunixApp → FunixERP",
-      "description": "Evolução modular do aplicativo para o ERP da FUNIX; roadmap proposto na PR #354.",
+      "description": "Evolução modular do FunixApp para FunixERP. Primeiro MVP horizontal utilizável (#358); roadmap amplo #354 para evolução posterior.",
       "status": "acompanhamento",
       "statusReason": "Agrupamento de acompanhamento; não representa aceite operacional.",
-      "nextResult": "Revisar roadmap e iniciar os próximos incrementos por frente.",
-      "updatedAt": null,
+      "nextResult": "Prioridade: entregar MVP integrado (#358), começando pelo controle de recebimentos.",
+      "updatedAt": "2026-11-24T12:21:51.241Z",
       "roles": [],
       "evidence": [
         {
           "kind": "pr",
           "number": 354
+        },
+        {
+          "kind": "issue",
+          "number": 358
         }
       ]
     },
@@ -206,7 +210,7 @@
       "description": "Atendimentos, planejamento e execução dos serviços.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": "Próximo pacote proposto no roadmap #354: especificar Pátio V1 sobre Produção V1.",
+      "nextResult": "MVP #358: controle Em operação; Pátio V1 completo fica para evolução posterior.",
       "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
@@ -260,7 +264,7 @@
       "description": "Ordens de Serviço, PDFs e documentos.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": "Próximo pacote proposto no roadmap #354: inventariar OS/revisões e especificar vistoria e índice documental.",
+      "nextResult": "Reutilizar OS/PDF no MVP #358; vistoria e índice documental ficam para evolução posterior.",
       "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
@@ -673,6 +677,78 @@
         {
           "kind": "issue",
           "number": 347
+        }
+      ]
+    },
+    {
+      "id": "erp-mvp-integrado",
+      "parentId": "proj-funixapp",
+      "type": "frente",
+      "title": "MVP Integrado — prioridade",
+      "description": "Fluxo essencial de ponta a ponta; financeiro primeiro, sem reprodução completa do legado.",
+      "status": "planejado",
+      "statusReason": "Escopo registrado na issue #358; execução ainda não verificada.",
+      "nextResult": "Entregar primeiro candidato utilizável para homologação.",
+      "updatedAt": "2026-11-24T12:21:51.241Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 358
+        }
+      ]
+    },
+    {
+      "id": "erp-mvp-financeiro",
+      "parentId": "erp-mvp-integrado",
+      "type": "subfrente",
+      "title": "Financeiro — títulos e caixa",
+      "description": "Receber/pagar, vencimento, baixa e totais; XP opcional.",
+      "status": "planejado",
+      "statusReason": "Escopo registrado na issue #358; execução ainda não verificada.",
+      "nextResult": "Implementar títulos e baixas com visão de recebimentos.",
+      "updatedAt": "2026-11-24T12:21:51.241Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 358
+        }
+      ]
+    },
+    {
+      "id": "erp-mvp-agenda-os",
+      "parentId": "erp-mvp-integrado",
+      "type": "subfrente",
+      "title": "Agendamento → Experiência → OS",
+      "description": "Reaproveitar fluxo existente e reduzir atrito.",
+      "status": "planejado",
+      "statusReason": "Escopo registrado na issue #358; execução ainda não verificada.",
+      "nextResult": "Agendar e gerar OS com ações simples.",
+      "updatedAt": "2026-11-24T12:21:51.241Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 358
+        }
+      ]
+    },
+    {
+      "id": "erp-mvp-operacao",
+      "parentId": "erp-mvp-integrado",
+      "type": "subfrente",
+      "title": "Operação — sim/não",
+      "description": "Controle manual reversível na Experiência.",
+      "status": "planejado",
+      "statusReason": "Escopo registrado na issue #358; execução ainda não verificada.",
+      "nextResult": "Marcar em operação e listar experiências ativas.",
+      "updatedAt": "2026-11-24T12:21:51.241Z",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 358
         }
       ]
     }
@@ -1110,6 +1186,14 @@
       "title": "Diretriz de operação simplificada",
       "context": "Procedimento vigente",
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/356"
+    },
+    {
+      "nodeId": "erp-mvp-integrado",
+      "kind": "issue",
+      "number": 358,
+      "title": "FunixERP — MVP integrado horizontal",
+      "context": "Prioridade da direção: escopo e três pacotes",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/358"
     }
   ],
   "visibility": "public"
