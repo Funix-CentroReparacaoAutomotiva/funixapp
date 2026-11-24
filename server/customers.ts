@@ -41,10 +41,11 @@ export class CustomerRepository {
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
-    const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear','entityId'])
+    const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear','entityId','participantKey'])
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
+    if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))invalid();result.participantKey=r.participantKey}
     if(kind==='vehicle'){
       if(r.plate!==undefined&&(typeof r.plate!=='string'||r.plate.length>100))invalid()
       result.plate=String(r.plate??'').trim().toUpperCase()
@@ -85,7 +86,66 @@ export class CustomerRepository {
       this.db.prepare('UPDATE v20_conversations SET context_revision=context_revision+1 WHERE id=?').run(cid)
     }
   }
+  /** Resolve the participant's own numbers as a unit, never by global
+   * person[0]/contact[0] positions. Flat references are a compatibility adapter.
+   * Existing unkeyed clients retain their legacy behavior until migrated.
+   */
   resolveManualContactReferences(refs:CustomerReferences,previous?:CustomerReferences) {
+    if(!refs.person.some(p=>p.participantKey)&&!refs.contact.some(c=>c.participantKey))
+      return this.resolveLegacyContactReferences(refs,previous)
+    const keys=new Set<string>(),used=new Set<string>(),people:CustomerReference[]=[],phones:CustomerReference[]=[]
+    for(const person of refs.person){
+      const key=person.participantKey
+      if(!key||keys.has(key))invalid()
+      keys.add(key)
+      const own=refs.contact.filter(c=>c.participantKey===key)
+      // A selected Contact is authoritative about its owner, not the client key.
+      for(const c of own)if(c.id){
+        const stored=this.record(c.id)
+        if(stored.entityId&&person.id&&stored.entityId!==person.id)
+          throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este telefone pertence a outra pessoa. Adicione essa pessoa separadamente.')
+      }
+      const knownOwners=new Set(own.flatMap(c=>{
+        const stored=c.id?this.record(c.id):this.phoneMatches(normalizePhone(c.text)??'')[0]
+        return stored?.entityId?[stored.entityId]:[]
+      }))
+      if(knownOwners.size>1||person.id&&knownOwners.size&&!knownOwners.has(person.id))
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Os telefones deste bloco pertencem a pessoas diferentes.')
+      let selected=person
+      if(!selected.id&&knownOwners.size===1){
+        const owner=this.record([...knownOwners][0]!)
+        selected={id:owner.id,text:owner.text,participantKey:key}
+      }
+      if(!selected.id&&!selected.text.trim()&&own.some(c=>!c.id&&!!normalizePhone(c.text))){
+        const owner=this.provisionalChannelOwner('')
+        selected={id:owner.id,text:owner.text,participantKey:key}
+      }
+      // Preserve unnumbered observed Contacts, incomplete text and draft keys.
+      // Resolve each group separately; the legacy resolver can only see this owner.
+      const resolved=this.resolveLegacyContactReferences({person:[selected],contact:own,vehicle:[],payer:[]})
+      const owner=resolved.person[0]??selected
+      people.push({...owner,participantKey:key})
+      for(const c of resolved.contact){
+        const stored=c.id?this.record(c.id):null
+        if(stored?.entityId&&owner.id!==stored.entityId)
+          throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Contato fora da pessoa selecionada.')
+        const identity=c.id?'id:'+c.id:normalizePhone(c.text)?'phone:'+normalizePhone(c.text):null
+        if(identity&&used.has(identity))continue
+        if(identity)used.add(identity)
+        phones.push({...c,participantKey:key,...(stored?.entityId?{entityId:stored.entityId}:{})})
+      }
+    }
+    for(const c of refs.contact)if(!c.participantKey){
+      // Old ambiguous rows may survive an unrelated edit, but new orphan
+      // numbers may not be introduced by the grouped form.
+      if(!previous?.contact.some(p=>p.id===c.id&&p.text===c.text&&!p.participantKey))
+        throw new ServiceError(409,'CONTACT_OWNER_REQUIRED','Informe o telefone dentro da pessoa correspondente.')
+      phones.push(c)
+    }else if(!keys.has(c.participantKey))invalid()
+    return {...refs,person:people,contact:phones}
+  }
+
+  private resolveLegacyContactReferences(refs:CustomerReferences,previous?:CustomerReferences) {
     if(!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='customer_contact_phone_unique'").get())return refs
     const person=[...refs.person]
     let ownerIds=[...new Set(person.flatMap(ref=>ref.id?[ref.id]:[]))]
@@ -179,7 +239,7 @@ export class CustomerRepository {
     const row=this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(at)!
     const refs:CustomerReferences={person:[{id:null,text:String(row.name)}],contact:[{id:null,text:String(row.phone)}],vehicle:[{id:null,text:String(row.vehicle),plate:String(row.plate),fabricationYear:row.fabrication_year as string|null,modelYear:row.model_year as string|null}],payer:[]}
     const stored=this.db.prepare('SELECT * FROM atendimento_references WHERE atendimento_id=? ORDER BY position').all(at)
-    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
+    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
     return refs
   }
   present(items:Atendimento[]):Atendimento[] {
