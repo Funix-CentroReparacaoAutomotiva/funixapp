@@ -1,7 +1,7 @@
 # FUNIX — Escopo do Painel de Desenvolvimento multiprojeto
 
-**Versão:** proposta v0.1 — 24/11/2026.  
-**Decisão de escopo da direção:** o painel não existe exclusivamente para o FunixERP. Deve acompanhar outros projetos e necessidades de desenvolvimento da FUNIX. O desenho técnico abaixo é proposto; não concede novas autorizações. Complementa #301, #329 e #347 sem substituir suas decisões ou abrir backlog concorrente.
+**Versão:** proposta v0.2 — 24/11/2026.  
+**Decisão de escopo da direção:** o painel não existe exclusivamente para o FunixERP. Deve acompanhar outros projetos e necessidades de desenvolvimento da FUNIX. Em 24/11/2026, a direção também definiu que o painel é uma visualização flexível e o ChatGPT faz a curadoria e atualização dos dados por solicitação, sem cadastro manual pela direção. O desenho técnico abaixo é proposto; não concede novas autorizações. Complementa #301, #329 e #347 sem substituir suas decisões ou abrir backlog concorrente.
 
 ## 1. Modelo de portfólio
 
@@ -13,9 +13,19 @@ O proprietário é o orquestrador e diretor de produto. A Central de Desenvolvim
 - Demandas sem projeto podem ter apresentação avulsa se o contrato vigente permitir; caso contrário, preparar evolução de contrato em PR específica, não forçar tipos inexistentes.
 - A prioridade é global: limitar simultaneidade pela capacidade real de decisão, revisão e homologação de todos os projetos, não só pela capacidade dos agentes.
 
+### 1.1. Princípio de produto: estrutura orientada pelos dados, não pelo código
+
+- O painel exibe; o ChatGPT organiza, registra, reorganiza, atualiza e contextualiza os dados a pedido da direção, com as ferramentas autorizadas. O usuário não precisa cadastrar cards, preencher formulários ou manter uma taxonomia.
+- Projetos, agrupamentos, frentes, subfrentes, trabalhos avulsos, nomes, ordenação e vínculos podem evoluir por edição de dados, preservando IDs e histórico. A árvore é uma representação útil do momento, não um organograma obrigatório. Não exigir quatro níveis nem número fixo de frentes, e não criar código/rotas para cada projeto.
+- Manter apenas contrato técnico mínimo de integridade, segurança e apresentação. Campos opcionais ausentes permanecem desconhecidos. Novas categorias ou relacionamentos só exigem código se o contrato atual não puder representá-los corretamente.
+- A direção pode solicitar em linguagem natural: "atualize o painel", "inclua este projeto", "reorganize as frentes" ou "registre esta decisão". O ChatGPT lê a fonte vigente, interpreta o pedido, consulta evidências, altera somente o necessário, valida e publica dados quando houver autorização aplicável, verifica a leitura de retorno e informa a revisão. No botão Atualizar, o painel apenas lê a última versão publicada.
+- Não exigir uma issue para toda demanda avulsa: o snapshot pode ser registro primário de acompanhamento público quando não existir sistema de tarefas apropriado. Quando houver fonte canônica (por exemplo, issue técnica), manter referência sem replicar sua gestão. Informação privada permanece na fonte autorizada, não no snapshot público.
+- Atualizações sob demanda de dados são operação distinta de alterações de código e deploy. Solicitação explícita da direção para publicar dados dentro do escopo permitido deve ser tratada como autorização dessa publicação, sem pedir aprovação repetitiva para a mesma ação; se houver conflito de regra, proteção de branch, dúvida de divulgação ou alteração de software, preparar proposta e escalar. Não autoriza merge de software, produção, ações externas ou publicação de informações privadas.
+- Não transformar o painel em sistema de cadastro, edição de tarefas ou operador de agentes. Ações úteis de navegação/copiar briefing são opcionais; integração de escrita pela interface só será reconsiderada se houver demanda e benefício demonstrados. Sem sincronização contínua, cron ou API de IA paga por padrão.
+
 ## 2. Fontes e privacidade
 
-O GitHub é fonte canônica das tarefas técnicas deste repositório, não de todo projeto ou necessidade da empresa. Para cada projeto/trabalho, definir fonte autorizada, ID estável, status verificável, próximo resultado, responsável quando conhecido, dependências e evidências. Um projeto pode usar fonte diferente. Painel é projeção de gestão, não banco duplicado de tarefas.
+O GitHub é fonte canônica das tarefas técnicas deste repositório, não de todo projeto ou necessidade da empresa. Para cada projeto/trabalho, definir fonte autorizada, ID estável, status verificável, próximo resultado, responsável quando conhecido, dependências e evidências. Um projeto pode usar fonte diferente. Painel é projeção de gestão, não banco duplicado de tarefas. O ChatGPT mantém a representação publicada; não presume acesso a todos os chats, aplicativos ou projetos.
 
 **Limite do MVP atual:** contrato `schemaVersion: 1` e `repository: Funix-CentroReparacaoAutomotiva/funixapp`, validação e referências GitHub deste repositório. Não simular suporte a fontes externas, links privados ou múltiplos repositórios; evoluir de maneira compatível em projeto separado quando necessário.
 
@@ -36,7 +46,7 @@ O repositório e a branch `painel-publicado` são públicos, ainda que o painel 
 | P1 — Curadoria e leitura | Reconciliar #329; completar #347 fase 1 e PR #348 | Vários projetos confirmados em raízes próprias, frentes diretas, decisão/bloqueio explícitos, estados desconhecidos preservados; visual mobile. |
 | P2 — Gestão do portfólio | Próximos resultados, dependências e filas de homologação, visual de roadmap por projeto | Não inferir prioridade, dependência ou disponibilidade; respeitar contrato e associar ao trabalho canônico; separar evolução do snapshot e publicação do código. |
 | P3 — Atalhos locais | Abrir fonte de tarefa, copiar briefing, abrir chat previamente autorizado mediante índice privado | Sem chamada paga de IA, sem presumir criação de chat em Projeto, sem publicar URL privada. |
-| P4 — Ações autenticadas | Criar demanda/registrar decisão em fonte canônica, se autorizado | Controle de papéis, confirmação, idempotência, trilha e erros; não criar fonte concorrente. |
+| P4 — Ações autenticadas (opcional, não prioritário) | Reavaliar somente se a curadoria via ChatGPT não for suficiente | Controle de papéis, confirmação, idempotência, trilha e erros; sem cadastro manual obrigatório nem fonte concorrente. |
 | P5 — Assistência opcional | Avaliar automação/IA mediante benefício e interfaces suportadas | Piloto e controle de custos; sem agente autônomo, cron ou API paga sem aprovação. |
 
 Estas etapas refinam #347, não autorizam sua execução integral nem substituem suas fases. Não condicionar desenvolvimento do ERP à perfeição do painel. Uma atualização do mapa deve continuar independente de deploy de software quando o contrato permitir.
@@ -45,7 +55,7 @@ Estas etapas refinam #347, não autorizam sua execução integral nem substituem
 
 1. Reutilizar #329/#347. Inventariar projetos externos e demandas por fonte confirmada; quando não localizável, pedir somente a referência mínima ao titular. Manter catálogo privado de links de conversas até haver solução autorizada. Não cadastrar placeholders como projetos reais.
 2. Reconciliar tarefas existentes e o roadmap ERP com o mapa publicado. Preservar IDs estáveis, não transformar prioridade proposta em status, não declarar decisões pendentes sem evidência. Mapear novas iniciativas ERP somente após confirmar necessidade e registro canônico; não duplicar #167, #176 ou #212.
-3. Curador prepara alteração de dados em branch derivada de `painel-publicado`, com novo snapshotId, timestamp real de publicação conforme procedimento, validação do schema, testes do código compatível, diff e revisão. PR de dados com base `painel-publicado`; publicação somente após aprovação aplicável. Não alterar código, banco ou VPS para editar mapa.
+3. Curador prepara alteração de dados em branch derivada de `painel-publicado`, com novo snapshotId, timestamp real de publicação conforme procedimento, validação do schema, testes do código compatível, diff e revisão. PR de dados com base `painel-publicado`; publicação sob solicitação explícita da direção, após validação e conforme aprovação aplicável; não criar uma segunda aprovação para a mesma publicação se já autorizada. Não alterar código, banco ou VPS para editar mapa.
 4. Para qualquer evolução do contrato/UI: coordenar com #347/#348 e #337; PR independente ou continuação autorizada, fixtures multiprojeto e estados desconhecidos, regressão mobile, CI no SHA exato e gate HML.
 5. Após publicação autorizada, conferir snapshot e orientar direção a clicar Atualizar. Se houver evolução de UI, homologar em candidato próprio e conferir instalação separadamente.
 
@@ -55,4 +65,4 @@ Em cada trabalho registrar: projeto/frente, origem, objetivo, prioridade explici
 
 Cada sessão especializada entrega uma síntese curta: issue, branch, PR/SHA, testes efetivos, pendências, próximo passo e decisão requerida. Central consolida sem duplicar histórico. Revisão periódica do portfólio decide qual trabalho entra ou sai da execução; não pressupõe operação assíncrona ou agentes continuamente ativos.
 
-**Limites desta proposta:** documentos de planejamento apenas. Sem atualização do snapshot publicado, merge, deploy, alteração de VPS/API/banco, dados de produção, integração externa, disparo de agentes ou custo adicional autorizado por este texto.
+**Limites desta PR documental:** não publica dados por si só. Sem atualização do snapshot publicado, merge, deploy, alteração de VPS/API/banco, dados de produção, integração externa, disparo de agentes ou custo adicional autorizado por este texto.
