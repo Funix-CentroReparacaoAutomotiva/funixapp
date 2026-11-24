@@ -1,6 +1,6 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview,workfrontOverview,briefingForChat} from './model.mjs';
 const $=id=>document.getElementById(id);
-const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),raw:null,publishedSha:null};
+const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),attentionFilter:'all',attentionExpanded:false,workfrontExpanded:false,raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
 const set=(id,v)=>{$(id).textContent=String(v)};
 const dt=(date)=>!date?'Não informada':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date(date));
@@ -8,13 +8,83 @@ function notice(message){$('notice').hidden=!message;if(message)$('notice').text
 function topAncestor(id){let node=state.model?.byId.get(id);while(node?.parentId && state.model.byId.has(node.parentId))node=state.model.byId.get(node.parentId);return node?.id||id}
 function currentNode(){return state.model?.byId.get(state.selected)}
 function statusChip(node){const b=element('span','status',STATUS_LABEL[node.status]);b.dataset.status=node.status;return b}
-function makeNodeCard(node, nested=false){
+
+const metricPaths={
+  fronts:['M6 3v12a4 4 0 0 0 4 4h8','M6 12h9a4 4 0 0 0 4-4V5'],
+  decisions:['M12 2 3 12l9 10 9-10-9-10Z','M12 8v5','M12 16h.01'],
+  active:['m10 8 6 4-6 4z'],
+  date:['M12 6v6l4 2'],
+  activeFronts:['M4 7l8-4 8 4-8 4-8-4Z','M4 12l8 4 8-4','M4 17l8 4 8-4'],
+  blockedFronts:['M4 4h16v16H4z','M12 8v5','M12 16h.01'],
+  blocked:['m12 3 10 18H2L12 3Z','M12 9v5','M12 17h.01'],
+  done:['m7.5 12 3 3 6-7']
+};
+function metricIcon(kind) {
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('focusable','false');
+  if(kind==='active'||kind==='date'||kind==='done'){
+    const c=document.createElementNS(ns,'circle');c.setAttribute('cx','12');c.setAttribute('cy','12');c.setAttribute('r','9');svg.append(c);
+  }
+  for(const d of metricPaths[kind]){const p=document.createElementNS(ns,'path');p.setAttribute('d',d);svg.append(p);}
+  return svg;
+}
+function shortPublishedDate(value){
+  if(!value||!Number.isFinite(Date.parse(value)))return '—';
+  const day=d=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);return [parts.find(p=>p.type==='year').value,parts.find(p=>p.type==='month').value,parts.find(p=>p.type==='day').value].join('-')};
+  const a=day(new Date()),b=day(new Date(value));
+  // Formato en-CA gera AAAA-MM-DD. Ignorar horas para evitar diferencas na virada do dia.
+  const parse=s=>{const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)};
+  const diff=Math.round((parse(a)-parse(b))/86400000);
+  if(diff===0)return 'hoje';
+  if(diff===1)return 'ontem';
+  if(diff>1)return 'há '+diff+' dias';
+  return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'}).format(new Date(value));
+}
+function appendCompactCard(button,node,project=false){
+  const counts=project?projectOverview(state.model,node.id):cardCounts(state.model,node.id);
+  const head=element('span','card-head'),left=element('span','name-and-status');
+  if(project)left.append(element('span','project-label','PROJETO'));
+  left.append(element('strong','node-name',node.title));
+  const status=element('span','card-status');status.dataset.state=node.status;
+  status.title='Situação: '+STATUS_LABEL[node.status];
+  status.append(element('span','status-dot'));left.append(status);
+  const updated=element('span','updated-top');updated.append(metricIcon('date'),element('span','',shortPublishedDate(state.model.publishedAt)));
+  updated.title='Publicação dos dados: '+dt(state.model.publishedAt);
+  head.append(left,updated);
+  const metrics=element('span','mini-metrics');
+  const specs=project?[
+    ['fronts','Frentes diretas',{display:String(counts.fronts),complete:true}],
+    ['activeFronts','Frentes com atividade confirmada',counts.activeFronts],
+    ['blockedFronts','Frentes com bloqueio confirmado',counts.blockedFronts],
+    ['decisions','Decisões pendentes nos trabalhos',counts.decisions]
+  ]:[
+    ['fronts','Frentes diretas',{display:String(counts.fronts),complete:true}],
+    ['decisions','Decisões pendentes',counts.decisions],
+    ['active','Trabalhos ativos',counts.active],
+    ['blocked','Trabalhos bloqueados',counts.blocked],
+    ['done','Trabalhos concluídos',counts.done]
+  ];
+  const spoken=[];
+  for(const [kind,label,m] of specs){
+    const item=element('span','stat '+kind),num=element('span','num',m.display);
+    const description=m.complete?label+': '+m.display:(
+      m.value===0?label+': não verificado':label+': pelo menos '+m.value+' confirmado(s), há registros não verificados'
+    );
+    item.title=description;item.append(metricIcon(kind),num);metrics.append(item);spoken.push(description);
+  }
+  button.setAttribute('aria-label',node.title+'. '+STATUS_LABEL[node.status]+
+      '. Publicação: '+shortPublishedDate(state.model.publishedAt)+'. '+spoken.join('. ')+'. Abrir detalhes.');
+  button.classList.toggle('project-summary',project);
+  button.append(head,metrics);
+}
+function makeNodeCard(node,nested=false){
   const button=element('button',nested?'node node-inside':'node graph-top-item');
-  button.type='button';button.dataset.id=node.id;button.setAttribute('aria-pressed',String(state.selected===node.id));
-  const top=element('div','node-top');
-  top.append(element('span','node-icon',node.title.charAt(0).toUpperCase()),element('strong','node-name',node.title));
-  button.append(top);
-  button.addEventListener('click',()=>selectNode(node.id));return button;
+  button.type='button';button.dataset.id=node.id;
+  button.setAttribute('aria-pressed',String(state.selected===node.id));
+  appendCompactCard(button,node);
+  button.addEventListener('click',()=>selectNode(node.id));
+  return button;
 }
 function makeTreeBranch(node){
   const branch=element('div','tree-branch');
@@ -44,10 +114,11 @@ function makeGroup(node){
   const head=element('div','project-head');
   const title=element('button','project-select');
   title.type='button';title.dataset.id=node.id;
-  title.append(element('span','project-icon','▣'),element('strong','project-name',node.title));
+  title.setAttribute('aria-pressed',String(state.selected===node.id));
+  appendCompactCard(title,node,true);
   title.addEventListener('click',()=>selectNode(node.id));
   const toggle=element('button','project-toggle');
-  toggle.type='button';
+  toggle.type='button';toggle.hidden=children.length===0;
   const body=element('div','project-children');body.id='group-'+state.model.nodes.indexOf(node);
   for(const child of children)body.append(makeTreeBranch(child));
   const update=()=>{
@@ -71,10 +142,106 @@ function updateMapSelection(){
   for(const node of $('node-grid').querySelectorAll('button.node,button.project-select'))node.setAttribute('aria-pressed',String(node.dataset.id===state.selected));
   for(const group of $('node-grid').querySelectorAll('.project-group'))group.dataset.active=String(topAncestor(state.selected)===group.dataset.id);
 }
+/**
+ * Navegação por evidências do snapshot: não verifica prioridade nem inicia agentes.
+ * Um item aparece apenas uma vez, mesmo quando tem mais de um motivo de atenção.
+ */
+function renderAttention(){
+  const box=$('attention-list'),tabs=$('attention-filters'),more=$('attention-more');
+  if(!state.model){box.replaceChildren();tabs.replaceChildren();more.hidden=true;return;}
+  const overview=attentionOverview(state.model),{items,counts}=overview;
+  const choices=[
+    ['all','Todos',items.length],
+    ['decision','Decisões confirmadas',counts.decision],
+    ['blocked','Bloqueios confirmados',counts.blocked],
+    ['unverified','Estados não verificados',counts.unverified]
+  ];
+  tabs.replaceChildren();
+  for(const [key,label,count] of choices){
+    const b=element('button','attention-filter',label+' · '+count);
+    b.type='button';b.dataset.filter=key;
+    b.setAttribute('aria-pressed',String(state.attentionFilter===key));
+    tabs.append(b);
+  }
+  set('attention-source','Fonte: '+state.model.snapshotId+'. '+counts.decisionsUnknown+
+    ' trabalho(s) sem classificação de decisão. A ordem é para navegação, não prioridade aprovada.');
+  const selected=items.filter(item=>state.attentionFilter==='all'||item.reasons.includes(state.attentionFilter));
+  const shown=state.attentionExpanded?selected:selected.slice(0,7);
+  box.replaceChildren();
+  const names={decision:'Decisão pendente',blocked:'Bloqueio registrado',unverified:'Estado não verificado'};
+  if(!selected.length){
+    const fallback=state.attentionFilter==='decision'
+      ? 'Nenhuma decisão pendente confirmada neste snapshot. Campos ausentes permanecem não verificados.'
+      : state.attentionFilter==='blocked'
+        ? 'Nenhum bloqueio confirmado nesta seleção. Isso não comprova ausência de obstáculos.'
+        : state.attentionFilter==='unverified'
+          ? 'Nenhum estado não verificado entre os trabalhos terminais.'
+          : 'Nenhum item sinalizado nesta versão dos dados; isso não é uma auditoria das frentes.';
+    box.append(element('p','attention-empty',fallback));
+  }
+  for(const item of shown){
+    const b=element('button','attention-item');b.type='button';
+    const top=element('span','attention-item-top');
+    top.append(element('strong','attention-item-title',item.title),element('small','attention-context',item.context));
+    const tags=element('span','attention-tags');
+    for(const kind of item.reasons)tags.append(element('span','attention-tag '+kind,names[kind]));
+    const next=element('span','attention-next','Próximo: '+(item.nextResult||'não informado'));
+    b.append(top,tags,next);
+    b.setAttribute('aria-label',item.title+'. '+item.reasons.map(x=>names[x]).join('; ')+
+      '. '+next.textContent+'. Abrir detalhes.');
+    b.addEventListener('click',()=>selectNode(item.id));
+    box.append(b);
+  }
+  more.hidden=selected.length<=7;
+  more.textContent=state.attentionExpanded?'Mostrar menos':'Ver todos os '+selected.length+' itens';
+  more.setAttribute('aria-expanded',String(state.attentionExpanded));
+}
+/**
+ * Quadro de trabalho baseado no snapshot, não um quadro de tarefas paralelo.
+ * A ordem é a da fonte publicada, jamais uma classificação automática de prioridade.
+ */
+function renderWorkfronts(){
+  const list=$('workfront-list'),more=$('workfront-more');
+  if(!state.model){
+    list.replaceChildren();more.hidden=true;set('workfront-count','—');
+    set('workfront-source','Fonte indisponível. Nenhuma frente foi inferida.');
+    return;
+  }
+  const {items,projectsWithoutFronts}=workfrontOverview(state.model);
+  set('workfront-count',items.length+' '+(items.length===1?'registro':'registros'));
+  set('workfront-source','Snapshot: '+state.model.snapshotId+'. Ordem da fonte, sem prioridade inferida.'+
+    (projectsWithoutFronts?' '+projectsWithoutFronts+' projeto(s) sem frentes diretas registradas.':''));
+  const shown=state.workfrontExpanded?items:items.slice(0,10);
+  list.replaceChildren();
+  if(!items.length){
+    list.append(element('p','workfront-empty',
+      'Nenhuma frente registrada nesta publicação. Isso não comprova ausência de trabalho.'));
+  }
+  for(const item of shown){
+    const b=element('button','workfront-item');b.type='button';
+    const top=element('span','workfront-item-top');
+    top.append(element('strong','workfront-name',item.title));
+    const status=element('span','workfront-status',STATUS_LABEL[item.status]);
+    status.dataset.status=item.status;
+    top.append(status);
+    const context=element('span','workfront-context',item.project||'Iniciativa avulsa');
+    const next=element('span','workfront-next','Próximo resultado: '+(item.nextResult||'não informado'));
+    const date=element('span','workfront-date',
+      item.updatedAt?'Última atualização registrada: '+dt(item.updatedAt):'Data de atualização não informada');
+    b.append(top,context,next,date);
+    b.setAttribute('aria-label',item.title+'. '+STATUS_LABEL[item.status]+'. '+
+      next.textContent+'. Abrir detalhes do registro.');
+    b.addEventListener('click',()=>selectNode(item.id));
+    list.append(b);
+  }
+  more.hidden=items.length<=10;
+  more.textContent=state.workfrontExpanded?'Mostrar menos':'Ver todos os '+items.length+' registros';
+  more.setAttribute('aria-expanded',String(state.workfrontExpanded));
+}
 function renderMap(){
   const m=state.model,top=childrenOf(m,m.root.id),grid=$('node-grid');grid.replaceChildren();
   const groups=top.filter(x=>x.presentation==='group').length;
-  set('graph-count',`${groups} ${groups===1?'grupo':'grupos'} · ${top.length} ${top.length===1?'item principal':'itens principais'}`);
+  set('graph-count',`${groups} ${groups===1?'projeto':'projetos'} · ${top.length-groups} ${top.length-groups===1?'item avulso':'itens avulsos'}`);
   $('empty-map').hidden=top.length!==0;
   for(const node of top)grid.append(node.presentation==='group'?makeGroup(node):makeNodeCard(node));
   updateMapSelection();requestAnimationFrame(drawWires);
@@ -88,12 +255,14 @@ function drawWires(){const m=state.model;if(!m)return;const area=$('graph-body')
 }
 function drawSubwires(){const root=$('subroot'),grid=$('subgrid'),svg=$('subwires'),area=$('submap');svg.replaceChildren();if($('subtree').hidden||!grid.children.length)return;const r=area.getBoundingClientRect(),a=root.getBoundingClientRect();if(!r.width)return;svg.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);const sx=a.left+a.width/2-r.left,sy=a.bottom-r.top;for(const b of grid.children){const q=b.getBoundingClientRect(),x=q.left+q.width/2-r.left,y=q.top-r.top,d=Math.max(10,(y-sy)*.44);svgLine(svg,`M ${sx} ${sy} C ${sx} ${sy+d}, ${x} ${y-d}, ${x} ${y}`,b.dataset.id===state.selected)} }
 function renderDetails(){const m=state.model,node=currentNode();if(!node)return;
+  set('copy-status','');
+  $('briefing-manual').hidden=true;$('briefing-manual').value='';
   set('detail-type',node.type||'TRABALHO');set('detail-title',node.title);set('detail-desc',node.description||'Sem descrição registrada');
   const ch=$('detail-status');ch.replaceWith(statusChip(node));const repl=$('detail').querySelector('.detail-top .status');repl.id='detail-status';
-  set('detail-reason',node.statusReason||'Situação operacional ainda não detalhada pelo CTO.');
-  set('detail-next',node.nextResult||'Próximo resultado não informado pelo CTO.');
+  set('detail-reason',node.statusReason||'Situação ainda não detalhada na publicação.');
+  set('detail-next',node.nextResult||'Próximo resultado não informado na publicação.');
   set('detail-blocker',node.blocker||(node.status==='bloqueado'?'Motivo do bloqueio não informado.':'Nenhum bloqueio confirmado neste registro.'));
-  set('detail-updated',node.updatedAt?`Atualização do CTO: ${dt(node.updatedAt)}`:'Atualização operacional não informada');
+  set('detail-updated',node.updatedAt?`Atualização do registro: ${dt(node.updatedAt)}`:'Atualização operacional não informada');
   const roles=$('detail-roles');roles.replaceChildren();if(node.roles.length){for(const name of node.roles)roles.append(element('span','role-chip',name))}else roles.append(element('span','node-desc','Nenhum papel confirmado no registro'));
   const breadcrumbs=$('breadcrumbs');breadcrumbs.replaceChildren();const parents=branchOf(m,node.id);for(let i=0;i<parents.length;i++){if(i)breadcrumbs.append(element('span','crumb-sep','›'));const p=parents[i],btn=element('button','crumb',p.title);btn.type='button';btn.disabled=p.id===node.id;btn.addEventListener('click',()=>selectNode(p.id));breadcrumbs.append(btn)}
   const rels=state.model.relations.filter(r=>r.from===node.id||r.to===node.id),relBox=$('detail-relations');relBox.replaceChildren();$('relation-section').hidden=rels.length===0;
@@ -114,7 +283,7 @@ function renderHistory(){const m=state.model,node=currentNode();if(!node)return;
   for(const r of shown){const a=element('a','history-item');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';const tag=element('span','kind',KIND_LABEL[r.kind]);tag.dataset.kind=r.kind;const copy=element('span','history-copy'),title=element('strong','',r.title);copy.append(title);
     const key=`${r.kind}:${r.number}`,live=state.live.get(key);const details=live?.data?stateOfRecord(r,live.data):live?.error?'Estado não verificado — API indisponível':'A consultar estado atual';copy.append(element('small','',`#${r.number} · ${details}${r.context?' · '+r.context:''}`));a.append(tag,copy,element('span','history-arrow','↗'));list.append(a)}
   $('history-more').hidden=filtered.length<=4;$('history-more').textContent=state.expanded?'Mostrar menos':`Ver todos os ${filtered.length} registros`;
-  set('history-source','Registros associados pelo CTO, com links públicos para o GitHub. Estado da PR/issue consultado quando a API permite; isso não comprova implantação.');
+  set('history-source','Registros vinculados na publicação, com links públicos para o GitHub. Estado da PR/issue consultado quando a API permite; isso não comprova implantação.');
   enrich(shown);
 }
 async function readGithub(record){const api=record.kind==='pr'?'pulls':'issues',url=`https://api.github.com/repos/${state.model.repository}/${api}/${record.number}`;
@@ -144,10 +313,11 @@ function applySnapshot(raw,model,origin){
   state.raw=raw;state.model=model;state.loadVersion++;state.live.clear();
   state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));
   state.selected=selected&&model.byId.has(selected)?selected:null;
-  set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');
+  set('hub-title','Direção FUNIX');set('hub-subtitle','Você orquestra as frentes');
+  $('hub').title='Estrutura registrada na fonte: '+model.root.title;
   set('snapshot-revision','Snapshot: '+model.snapshotId);
   set('source-status','Publicação: '+dt(model.publishedAt)+' (BRT) · '+origin);
-  renderMap();
+  renderMap();state.attentionExpanded=false;renderAttention();state.workfrontExpanded=false;renderWorkfronts();
   if($('detail').open){
     if(state.selected)renderDetails();
     else $('detail').close();
@@ -168,7 +338,7 @@ async function load(){
     set('source-status','Fonte instalada indisponível');
     set('check-status','Verificação indisponível');
     notice('Não foi possível carregar a cópia instalada. Nenhum andamento foi inferido.');
-    $('node-grid').replaceChildren();if($('detail').open)$('detail').close();
+    $('node-grid').replaceChildren();renderAttention();renderWorkfronts();set('attention-source','Fonte indisponível. Nenhum item foi inferido.');if($('detail').open)$('detail').close();
   }finally{state.loading=false;$('refresh').disabled=false}
 }
 /** Nenhuma sincronização em segundo plano: consulta externa SOMENTE no clique. */
@@ -194,7 +364,40 @@ async function checkPublished(){
     notice('Não foi possível verificar a publicação no GitHub (rede, limite da API ou dados inválidos). Os cards atuais foram preservados.');
   }finally{state.loading=false;$('refresh').disabled=false}
 }
+$('attention-filters').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-filter]');if(!b||!state.model)return;
+  state.attentionFilter=b.dataset.filter;state.attentionExpanded=false;renderAttention();
+  $('attention-filters').querySelector('button[data-filter="'+state.attentionFilter+'"]')?.focus();
+});
+$('workfront-more').addEventListener('click',()=>{
+  state.workfrontExpanded=!state.workfrontExpanded;renderWorkfronts();
+  $('workfront-more').focus();
+});
+$('attention-more').addEventListener('click',()=>{
+  state.attentionExpanded=!state.attentionExpanded;renderAttention();
+  $('attention-more').focus();
+});
 $('refresh').addEventListener('click',checkPublished);
+$('copy-briefing').addEventListener('click',async()=>{
+  const id=state.selected,model=state.model;
+  if(!id||!model?.byId?.has(id))return;
+  const content=briefingForChat(model,id);
+  const manual=$('briefing-manual');
+  set('copy-status','');
+  manual.hidden=true;manual.value='';
+  try{
+    if(typeof navigator.clipboard?.writeText!=='function')throw new Error('clipboard unavailable');
+    await navigator.clipboard.writeText(content);
+    if(state.selected!==id||state.model!==model)return;
+    set('copy-status','Contexto copiado. Abra o ChatGPT, escolha sua conversa e cole o texto.');
+  }catch{
+    if(state.selected!==id||state.model!==model)return;
+    manual.value=content;
+    manual.hidden=false;
+    set('copy-status','A cópia automática não foi permitida. Selecione e copie o texto abaixo manualmente.');
+    manual.focus();manual.select();
+  }
+});
 $('detail-close').addEventListener('click',()=>$('detail').close());
 $('detail').addEventListener('close',()=>{
   state.selected=null;updateMapSelection();
