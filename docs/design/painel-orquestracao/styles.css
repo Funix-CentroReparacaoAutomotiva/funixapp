@@ -253,3 +253,19 @@
 .workfront-more[hidden]{display:none}
 @media(max-width:720px){.workfronts{padding:13px}.workfront-list{grid-template-columns:1fr}.workfronts-header{flex-wrap:wrap}.workfronts-header h2{font-size:16px}}
 @media(max-width:360px){.workfront-item-top{flex-wrap:wrap}.workfront-status{white-space:normal}}
+
+
+/* Handoff manual: somente clipboard, sem API de IA nem persistência. */
+.chat-handoff{margin-top:18px;border:1px solid #cfdeed;border-radius:12px;background:#f7faff;padding:13px}
+.chat-handoff h3{font-size:14px;color:#244a73;margin:0 0 7px}
+.chat-handoff p{font-size:11px;line-height:1.5;color:#536b83;margin:0 0 10px}
+.chat-handoff-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chat-handoff-actions button,.chat-handoff-actions a{font:inherit;font-size:11px;font-weight:700;padding:10px 12px;line-height:1.25;border-radius:8px;text-align:center;min-height:38px}
+.chat-handoff-actions button{color:#fff;border:1px solid #214c7b;background:#214c7b}
+.chat-handoff-actions button:hover{background:#18395e}
+.chat-handoff-actions a{color:#214c7b;border:1px solid #b7cde2;background:#fff;text-decoration:none}
+.chat-handoff-actions a:hover{background:#ecf3fa}
+#copy-status{margin:9px 0 0;color:#496781;font-size:11px;min-height:1em}
+#briefing-manual{display:block;width:100%;margin-top:9px;box-sizing:border-box;border:1px solid #aac3db;background:#fff;color:#263f57;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;resize:vertical}
+#briefing-manual[hidden]{display:none}
+@media(max-width:390px){.chat-handoff-actions button,.chat-handoff-actions a{flex:1 1 100%}}
