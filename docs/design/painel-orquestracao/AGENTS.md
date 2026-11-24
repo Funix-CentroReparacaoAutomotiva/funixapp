@@ -1,82 +1,38 @@
-# AGENTS.md — FUNIX | Painel de Orquestração do CTO
+# AGENTS.md — FUNIX | Central de Orquestração
 
-> **Escopo:** exclusivamente a manutenção dos **dados de acompanhamento** do painel FUNIX. Este arquivo complementa o `AGENTS.md` da raiz do repositório, a governança técnica e as autorizações vigentes. **Não concede permissões novas.**
->
-> **Ler também:** [PUBLICACAO_DADOS.md](./PUBLICACAO_DADOS.md), [snapshot.json](./snapshot.json), [issue #301](https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/301) e o contrato/validador do painel na branch `release/301-painel-hml-candidate`.
+> Diretriz consolidada em 24/11/2026, issue #347. Escopo exclusivo: curadoria de dados de acompanhamento. Não concede permissões novas.
+> Roadmap de referência: PR #354, `docs/governanca/painel-desenvolvimento-portfolio.md` (v0.3). Leia [PUBLICACAO_DADOS.md](./PUBLICACAO_DADOS.md) e [snapshot.json](./snapshot.json).
 
-## 1. O que já existe
+## 1. Papéis e fonte
+- Direção é orquestradora: decide prioridades, escopo, autorizações e aceite.
+- ChatGPT organiza, registra, reagrupa e atualiza sob solicitação. Não exigir cadastro manual, taxonomia fixa ou issue para demanda não técnica. Não existe CTO autônomo responsável pelo mapa nem monitoramento contínuo.
+- Sessões especializadas entregam evidências e próximos passos; não duplicam execução ou publicam sem autorização aplicável.
+- A Web HML em https://hml.funix.com.br/painel/ lê o snapshot público desta branch ao clicar Atualizar; falha conserva o mapa exibido. Consulta de issues/PRs não mede atividade de agentes. Não presumir implantação de nova UI.
 
-- A interface do painel está implantada na **HML**, em `https://hml.funix.com.br/painel/`, sob a autenticação existente.
-- A interface possui botão **Atualizar** que consulta **somente quando acionado pelo usuário** o arquivo `snapshot.json` desta branch `painel-publicado`.
-- O painel carrega a cópia instalada ao abrir a página; não sincroniza a estrutura automaticamente. A cada clique, compara a versão publicada e só substitui os cards se receber um mapa novo e válido. Em falha, preserva o mapa exibido.
-- O estado de PRs/issues vinculadas pode ser consultado separadamente pela API pública do GitHub; **não** é um medidor automático de progresso dos agentes.
-- **Não existe** coleta horária, agendamento de agente, atualização contínua, banco de tarefas do painel ou publicação de dados sem intervenção autorizada.
+## 2. Portfólio flexível
+- Projetos raiz confirmados: FunixERP (`proj-funixapp`), SGF (`proj-sgf`) e Painel de Orquestração (`proj-painel-desenvolvimento`). Não fixar esses nomes/quantidades no código. Caixa de ideias é card avulso, não projeto.
+- Projeto: ID único e estável, `presentation: "group"`, `parentId: null`; frentes/subfrentes ligadas por ID. Demandas sem projeto podem ser cards avulsos. Preservar IDs, evidências e histórico ao reagrupar; não duplicar uma ideia após classificação. O painel não descobre projetos/chats automaticamente.
+- SGF abrange assistentes de gestão (arquitetura a definir) e automações gerenciais. Não declarar boletim diário ou assistente operacional sem evidência; acesso cotidiano a recursos disponíveis é evolução futura.
+- GitHub é fonte canônica de tarefas técnicas deste repositório, não de toda necessidade FUNIX. Usar fontes autorizadas; contrato atual restringe referências públicas GitHub ao repositório indicado. Não simular suporte a fontes externas ou privadas. Não inventar projetos/links.
 
-## 2. Papéis e gatilho de trabalho
+## 3. Estados e evidências
+- Distinguir issue aberta de atividade; PR integrada, CI aprovado, instalação e aceite operacional são estados distintos. Planos, protótipos e relatórios históricos não comprovam execução atual.
+- Se incerto, `nao_verificado` ou `acompanhamento`, com explicação. Não inventar estado, responsável, prioridade, data, bloqueio ou percentual.
+- Estados materiais (`em_execucao`, `em_revisao`, `homologacao`, `bloqueado`, `concluido`) exigem `statusReason`, `updatedAt` e evidência issue/PR pertinente; `bloqueado` exige `blocker`. Vínculo por si só não comprova conclusão.
+- `decisionPending: true/false` apenas após conferência explícita; ausente/null = não verificado. Não inferir decisão a partir de bloqueio. Contagens por folhas de trabalho não duplicam pais. Exibir — para desconhecido sem positivos, N+ para mínimo confirmado, zero somente quando determinado. A UI consolidada #353 traz quatro indicadores por projeto e cinco por frente; não pressupor sua instalação na HML. Não adicionar alertas de dado antigo ou textos excessivos ao card.
 
-- **Direção:** usa o painel para acompanhar as frentes e autoriza decisões fora da alçada delegada.
-- **CTO:** é o curador responsável pela estrutura, estados, evidências e prioridades exibidos. Define quando atualizar e pode designar um subagente para pesquisar, reconciliar e preparar a proposta.
-- **Subagente:** só trabalha quando convocado pelo CTO ou por instrução autorizada no contexto; não assume autonomia recorrente, não publica dados sem a revisão/aprovação cabível e não modifica código nem infraestrutura por dedução deste arquivo.
-- **Usuário:** clica em **Atualizar** no painel quando quiser consultar a versão aprovada.
+## 4. Atualização sob demanda (sem deploy)
+1. Receber pedido da direção; ler mapa vigente e histórico.
+2. Confrontar mudanças com evidências. Preparar proposta em branch derivada de `painel-publicado`, só mapa e documentação pertinente. Se for problema de código, tratar na #347/#353 ou PR técnica própria.
+3. Alterar `snapshotId` a cada publicação material e `publishedAt` para horário real; manter schemaVersion 1, repository `Funix-CentroReparacaoAutomotiva/funixapp`, hierarquia sem ciclos, URLs canônicas e limites do contrato.
+4. Validar pelo modelo/validador e testes compatíveis; revisar diff, privacidade e evidências. Se execução oficial indisponível, declarar limitação, não fingir testes.
+5. Publicar por PR com base `painel-publicado` após aprovação aplicável. Pedido explícito de publicação de dados dentro do escopo é autorização dessa publicação, sem pedir confirmação repetida. Não autoriza merge de software ou deploy. Não contornar proteção de branch ou validações.
+6. Conferir leitura de retorno e versão publicada. Informar direção para clicar Atualizar; não declarar aceite visual sem evidência.
 
-## 3. Fonte de verdade e interpretação
+## 5. Limites
+- Repositório e snapshot públicos mesmo com Basic Auth da página. Somente metadados genéricos autorizados. Nunca dados financeiros/RH/operacionais confidenciais, clientes, links privados de chats/documentos, credenciais ou identificadores sensíveis. Recursos e vínculos privados exigem fonte privada autorizada.
+- Sem alteração de API, SQLite, VPS, produção, Traefik, gateway, Docker ou autenticação em atualização de mapa. Sem cron, webhook, agente autônomo ou API IA paga por padrão. A restrição é sobre atualização do painel, não proibição de automações SGF autorizadas separadamente.
+- Código: #353 consolida #337/#348/#352; não iniciar implementação concorrente. HML segue #356 e procedimento simplificado; #330 encerrada por obsolescência. Não reativar controlador legado. Release e autorização operacional são independentes.
 
-Consultar registros atuais e públicos do repositório `Funix-CentroReparacaoAutomotiva/funixapp` (issues, PRs, checks, commits e decisões técnicas). Não confundir:
-
-- Issue aberta com desenvolvimento ativo; comentário ou commit com entrega homologada.
-- PR aberta/integrada com implantação, aceite funcional ou atendimento concluído.
-- Plano, rascunho, evidência histórica ou teste simulado com capacidade operacional vigente.
-- Agrupamento do mapa com uma equipe/agente trabalhando nele naquele momento.
-
-Quando houver dúvidas, manter `nao_verificado` ou `acompanhamento`, com explicação factual; jamais inventar status, responsável, data, bloqueio ou percentual.
-
-Para estados materiais (`em_execucao`, `em_revisao`, `homologacao`, `bloqueado`, `concluido`), fornecer **`statusReason`**, **`updatedAt`** e **`evidence`** ao menos com uma issue ou PR pertinente. Para `bloqueado`, preencher também `blocker`. O vínculo é rastreabilidade, não prova automática de conclusão: verificar se a evidência sustenta a afirmação.
-
-## 3.1. Vários projetos precisam aparecer como raízes no mapa
-
-O painel **não descobre projetos automaticamente** a partir de outros chats, agentes, issues ou PRs. Para cada projeto que a direção deve visualizar, criar/atualizar um nó próprio em `snapshot.json` com:
-
-- `id` único e estável, `title` curto e `presentation: "group"`;
-- `parentId: null` para ser um **projeto principal**, irmão de `proj-funixapp` (não filho dele);
-- `type: "Projeto"` ou classificação realmente adotada, `status` conservador e demais campos conforme evidências;
-- frentes e subfrentes vinculadas pelos seus `parentId` corretos, preservando a rastreabilidade.
-
-Exemplo de **estrutura**, não de projetos a inventar: `CTO → [Projeto A, Projeto B] → [Frentes] → [Subfrentes]`.
-
-Projetos registrados só em outras branches ou em tarefas do GitHub **não aparecem** até sua entrada explícita nessa branch. Não inventar projetos ausentes nem marcar atividades de outros repositórios como comprovadas por issues do FunixApp. Atualizar `snapshotId` e `publishedAt` ao publicar uma mudança do mapa, confirmar o commit em `painel-publicado` e pedir à direção que clique em **Atualizar**.
-
-## 3.2. Indicadores compactos do Modelo B e confiança dos números
-
-O painel usa os dados do `snapshot.json` para mostrar um card com **nome + status**, **data de publicação** e, na linha inferior, **frentes diretas, decisões, ativos, bloqueados e concluídos**. Não adicionar alertas de desatualização, textos ou novos rótulos à superfície do card.
-
-- Frentes = quantidade de `parentId` diretamente vinculados ao nó. A árvore determina isso sem lançamento manual.
-- Ativos, bloqueados e concluídos = folhas de trabalho no ramo (sem contagem dupla de pai e filho), avaliadas pelos `status` `em_execucao`, `bloqueado` e `concluido` já vigentes.
-- `status: nao_verificado` não comprova zero nos três estados. Se houver folhas sem verificação, números positivos aparecem como **mínimos** (`2+`); se não houver nenhum conhecido, aparece **`—`**, não 0.
-- Para **decisões**, o contrato do frontend aceita `decisionPending: true` ou `false` por trabalho terminal quando o CTO tiver verificado esse campo; ausente/null significa não verificado. Se ainda não houver campo confiável, o painel exibirá **`—`**. Não preencher falsos zeros em massa, nem criar decisões com base em texto, status ou bloqueio.
-- Um **0** no card deve ser entendido como valor efetivamente determinado na árvore publicada, não como suposição sobre trabalhos ainda não investigados.
-- As contagens são projeção da fonte, **não substituem** a conferência técnica e não autorizam marcar trabalho como concluído ou implantar qualquer mudança.
-
-## 4. Atualização sob demanda, sem deploy
-
-1. **Receber a solicitação do CTO** com o escopo (frentes a revisar ou mapa completo).
-2. **Ler o arquivo publicado atual** desta branch e seu histórico. Preservar IDs estáveis de nós, relações e registros; editar apenas o necessário. Não acrescentar cards somente para espelhar toda issue.
-3. **Confrontar cada mudança relevante com fontes**. Registrar descrição, situação, motivo, próximo resultado, bloqueio, papel e evidência quando cabível. Se uma atividade não puder ser confirmada, identificá-la como não verificada.
-4. **Preparar a proposta** numa branch de trabalho derivada de `painel-publicado`, alterando somente o mapa `docs/design/painel-orquestracao/snapshot.json` e eventual documentação pertinente.
-5. **Versionar corretamente**: cada publicação material de dados precisa de um novo `snapshotId` único e de `publishedAt` com data/hora real de publicação. Não reutilizar um ID anterior. Não retroceder silenciosamente a data nem mudar o conteúdo mantendo a mesma versão.
-6. **Validar e revisar**: manter `schemaVersion: 1`, `repository: Funix-CentroReparacaoAutomotiva/funixapp`, hierarquia sem ciclos, referências/URLs GitHub coerentes e conteúdo sem segredos ou dados pessoais. Usar o validador e os testes do painel da branch de desenvolvimento/release correspondente; se a base de trabalho não os contiver, testar com checkout isolado do código que implementa o contrato. Revisar o diff antes de publicar.
-7. **Publicar somente após a aprovação aplicável**: preferir PR de dados com **base `painel-publicado`**. Integrar a PR aprovada nessa branch; nunca confundir com merge em `main` ou com release de software. Não disparar workflow de deploy da HML.
-8. **Conferir o resultado**: confirmar que o commit está em `painel-publicado` e que a API pública disponibiliza o `snapshot.json`; orientar a direção a clicar em **Atualizar** no painel. O botão confirma a consulta no navegador, não a implantação do FunixApp.
-9. **Registrar o que mudou**: informar ao CTO revisão/commit, frentes alteradas, evidências, pendências não verificadas e eventual limitação de sincronização ou acesso ao GitHub.
-
-## 5. Limites de segurança e mudança
-
-- Esta branch e os arquivos são **públicos**, ainda que a HML exija login. Não publicar nomes de clientes, informações internas de funcionários, senhas, tokens, IPs privados, arquivos operacionais sensíveis ou qualquer dado que não deva ser público.
-- **Não alterar** API, banco, produção, VPS, Traefik, gateway, Docker, configurações de autenticação, fluxos financeiros nem a estrutura de deploy para atualizar os cards.
-- **Não criar** cron, GitHub Actions agendado, n8n, webhooks ou agentes autônomos de atualização. O modelo aprovado é exclusivamente sob demanda.
-- **Não forçar** PR, burlar proteção de branch, remover validações ou conceder acesso a si próprio. Em conflito ou falta de autorização, preparar proposta e escalar ao CTO/direção.
-- Se houver problema no **código do painel**, abrir tarefa/PR técnica distinta, em branch própria, com testes e aprovação de implantação. Uma alteração de código não se publica como se fosse apenas mudança de `snapshot.json`.
-- A atualização dos dados **não constitui deploy**. Novos merges em `painel-publicado` não substituem imagens da HML e não devem alterar o FunixApp em produção.
-
-## 6. Critério de pronto de uma atualização
-
-Considerar concluída a **publicação de dados** somente quando: mapa aprovado e validado, novo `snapshotId`, commit visível na branch `painel-publicado`, histórico/evidências rastreáveis e comunicação ao CTO. **Aceite visual no painel** é verificação separada e deve ser relatado como tal; não alegar que o usuário clicou em Atualizar ou que visualizou a revisão sem evidência.
+## 6. Critério de pronto
+Mapa validado e autorizado, novo snapshotId, commit visível na branch, evidências rastreáveis e comunicação à direção. Aceite no navegador separado. Registrar limitações. Não confundir publicação de dados, instalação de código e uso efetivo.
