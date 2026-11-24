@@ -61,7 +61,10 @@ export class CustomerRepository {
   }
   primaryFields(refs:CustomerReferences,previous?:Atendimento) {
     const value=(kind:ReferenceKind)=>{const r=refs[kind][0];return r?.id?this.record(r.id):r}
-    const person=value('person'),contact=value('contact'),vehicle=value('vehicle')
+    const person=value('person'),vehicle=value('vehicle')
+    const first=refs.person[0]
+    const selected=first?.participantKey?refs.contact.find(c=>c.participantKey===first.participantKey):refs.contact[0]
+    const contact=selected?.id?this.record(selected.id):selected
     const old=previous?this.references(previous.id).vehicle[0]:undefined,next=refs.vehicle[0]
     const unchanged=!!previous&&!next?.id&&old?.id===next?.id&&old?.text===next?.text&&(old?.plate??'')===(next?.plate??'')&&(old?.fabricationYear??null)===(next?.fabricationYear??null)&&(old?.modelYear??null)===(next?.modelYear??null)
     const vehicleFields=unchanged?{vehicle:previous.vehicle,model:previous.model,brand:previous.brand,plate:previous.plate,fabricationYear:previous.fabricationYear,modelYear:previous.modelYear}:{vehicle:vehicle?.text??'',model:vehicle?.text??'',brand:'',plate:vehicle?.plate??'',fabricationYear:vehicle?.fabricationYear??null,modelYear:vehicle?.modelYear??null}
@@ -245,7 +248,12 @@ export class CustomerRepository {
   present(items:Atendimento[]):Atendimento[] {
     if(!items.length)return items
     const rows=this.db.prepare(`SELECT r.atendimento_id,r.kind,r.data,c.data AS record FROM atendimento_references r LEFT JOIN customer_records c ON c.id=r.record_id WHERE r.position=0 AND r.atendimento_id IN (${items.map(()=>'?').join(',')})`).all(...items.map(i=>i.id))
-    return items.map(item=>{const out={...item};for(const row of rows.filter(r=>r.atendimento_id===item.id)){const r=JSON.parse(String(row.record??row.data));if(row.kind==='person')out.name=String(r.text??'');if(row.kind==='contact')out.phone=String(r.text??'');if(row.kind==='vehicle'){out.vehicle=String(r.text??'');out.plate=String(r.plate??'');out.fabricationYear=r.fabricationYear??null;out.modelYear=r.modelYear??null}}out.phoneNormalized=normalizePhone(out.phone);return out})
+    return items.map(item=>{const out={...item};for(const row of rows.filter(r=>r.atendimento_id===item.id)){const r=JSON.parse(String(row.record??row.data));if(row.kind==='person')out.name=String(r.text??'');if(row.kind==='contact')out.phone=String(r.text??'');if(row.kind==='vehicle'){out.vehicle=String(r.text??'');out.plate=String(r.plate??'');out.fabricationYear=r.fabricationYear??null;out.modelYear=r.modelYear??null}}const first=rows.find(r=>r.atendimento_id===item.id&&r.kind==='person')
+      if(first&&JSON.parse(String(first.data)).participantKey){
+        const projected=this.primaryFields(this.references(item.id))
+        out.name=projected.name;out.phone=projected.phone
+      }
+      out.phoneNormalized=normalizePhone(out.phone);return out})
   }
   applyLegacyFields(at:string,fields:Record<string,string|boolean|number|null>,manual=false) {
     for(const [kind,key]of [['person','name'],['contact','phone'],['vehicle','vehicle']]as const){
@@ -289,6 +297,19 @@ export class CustomerRepository {
           if(c.id!==undefined&&(typeof c.id!=='string'||!/^[a-f0-9-]{36}$/.test(c.id)||seen.has(c.id)))invalid()
           if(c.id)seen.add(c.id)
           const old=c.id?this.record(c.id):null
+          if(!old&&typeof c.text==='string'){
+            const normalized=normalizePhone(c.text)
+            // A repeated number belonging to this entity is already saved.
+            if(normalized&&this.phoneMatches(normalized).some(match=>match.entityId===saved.id))continue
+            // A short observed PN is not a confirmed civil phone. Equivalent
+            // presentation must not manufacture a second Contact for this owner.
+            const raw=c.text.replace(/[\s().-]/g,'')
+            const digits=/^\d{10,11}$/.test(raw)?'55'+raw:raw.replace(/^\+/,'')
+            if(/^\d{12,13}$/.test(digits)&&this.contacts(saved.id).some(match=>{
+              const pending=match.conversationId?pendingShortNumber(this.db,match.conversationId):null
+              return pending&&String(pending.jid)===digits+'@s.whatsapp.net'
+            }))continue
+          }
           if(old&&(old.kind!=='contact'||old.entityId&&old.entityId!==saved.id))throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este número pertence a outro cadastro. Revise a associação antes de continuar.')
           this.saveRecord({kind:'contact',text:c.text,revision:c.revision,entityId:saved.id},c.id)
         }
@@ -489,6 +510,12 @@ export class CustomerRepository {
       if(this.phoneMatches(phone).some(r=>r.id!==id))throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Número já cadastrado. Selecione o Contato existente; duplicidades exigem revisão.')
     }
     if(old?.conversationId&&old.text!==ref.text)throw new ServiceError(409,'CONTACT_HISTORY_PROTECTED','Contato com histórico: use outra referência para informar outro telefone.')
+    if(old?.conversationId&&old.text===ref.text&&entityId===old.entityId&&source.nickname===undefined){
+      if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.')
+      // Saving only the entity name must not rewrite the channel payload,
+      // clear shortNumberReviewPending, or invalidate a protected history.
+      return this.record(id!)
+    }
     {
       const key=id??randomUUID(),data=JSON.stringify({...ref,...(old?.channelProvisional===1?{channelProvisional:1}:{}),nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
       if(old){if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.');const changed=this.db.prepare('UPDATE customer_records SET data=?,entity_id=?,phone_normalized=?,revision=revision+1 WHERE id=? AND revision=?').run(data,entityId as string|null,phone,key,old.revision);if(!changed.changes)invalid()}
