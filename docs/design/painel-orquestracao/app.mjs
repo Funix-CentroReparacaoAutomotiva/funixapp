@@ -1,6 +1,6 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview,workfrontOverview} from './model.mjs';
 const $=id=>document.getElementById(id);
-const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),raw:null,publishedSha:null};
+const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),attentionFilter:'all',attentionExpanded:false,workfrontExpanded:false,raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
 const set=(id,v)=>{$(id).textContent=String(v)};
 const dt=(date)=>!date?'Não informada':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date(date));
@@ -142,6 +142,102 @@ function updateMapSelection(){
   for(const node of $('node-grid').querySelectorAll('button.node,button.project-select'))node.setAttribute('aria-pressed',String(node.dataset.id===state.selected));
   for(const group of $('node-grid').querySelectorAll('.project-group'))group.dataset.active=String(topAncestor(state.selected)===group.dataset.id);
 }
+/**
+ * Navegação por evidências do snapshot: não verifica prioridade nem inicia agentes.
+ * Um item aparece apenas uma vez, mesmo quando tem mais de um motivo de atenção.
+ */
+function renderAttention(){
+  const box=$('attention-list'),tabs=$('attention-filters'),more=$('attention-more');
+  if(!state.model){box.replaceChildren();tabs.replaceChildren();more.hidden=true;return;}
+  const overview=attentionOverview(state.model),{items,counts}=overview;
+  const choices=[
+    ['all','Todos',items.length],
+    ['decision','Decisões confirmadas',counts.decision],
+    ['blocked','Bloqueios confirmados',counts.blocked],
+    ['unverified','Estados não verificados',counts.unverified]
+  ];
+  tabs.replaceChildren();
+  for(const [key,label,count] of choices){
+    const b=element('button','attention-filter',label+' · '+count);
+    b.type='button';b.dataset.filter=key;
+    b.setAttribute('aria-pressed',String(state.attentionFilter===key));
+    tabs.append(b);
+  }
+  set('attention-source','Fonte: '+state.model.snapshotId+'. '+counts.decisionsUnknown+
+    ' trabalho(s) sem classificação de decisão. A ordem é para navegação, não prioridade aprovada.');
+  const selected=items.filter(item=>state.attentionFilter==='all'||item.reasons.includes(state.attentionFilter));
+  const shown=state.attentionExpanded?selected:selected.slice(0,7);
+  box.replaceChildren();
+  const names={decision:'Decisão pendente',blocked:'Bloqueio registrado',unverified:'Estado não verificado'};
+  if(!selected.length){
+    const fallback=state.attentionFilter==='decision'
+      ? 'Nenhuma decisão pendente confirmada neste snapshot. Campos ausentes permanecem não verificados.'
+      : state.attentionFilter==='blocked'
+        ? 'Nenhum bloqueio confirmado nesta seleção. Isso não comprova ausência de obstáculos.'
+        : state.attentionFilter==='unverified'
+          ? 'Nenhum estado não verificado entre os trabalhos terminais.'
+          : 'Nenhum item sinalizado nesta versão dos dados; isso não é uma auditoria das frentes.';
+    box.append(element('p','attention-empty',fallback));
+  }
+  for(const item of shown){
+    const b=element('button','attention-item');b.type='button';
+    const top=element('span','attention-item-top');
+    top.append(element('strong','attention-item-title',item.title),element('small','attention-context',item.context));
+    const tags=element('span','attention-tags');
+    for(const kind of item.reasons)tags.append(element('span','attention-tag '+kind,names[kind]));
+    const next=element('span','attention-next','Próximo: '+(item.nextResult||'não informado'));
+    b.append(top,tags,next);
+    b.setAttribute('aria-label',item.title+'. '+item.reasons.map(x=>names[x]).join('; ')+
+      '. '+next.textContent+'. Abrir detalhes.');
+    b.addEventListener('click',()=>selectNode(item.id));
+    box.append(b);
+  }
+  more.hidden=selected.length<=7;
+  more.textContent=state.attentionExpanded?'Mostrar menos':'Ver todos os '+selected.length+' itens';
+  more.setAttribute('aria-expanded',String(state.attentionExpanded));
+}
+/**
+ * Quadro de trabalho baseado no snapshot, não um quadro de tarefas paralelo.
+ * A ordem é a da fonte publicada, jamais uma classificação automática de prioridade.
+ */
+function renderWorkfronts(){
+  const list=$('workfront-list'),more=$('workfront-more');
+  if(!state.model){
+    list.replaceChildren();more.hidden=true;set('workfront-count','—');
+    set('workfront-source','Fonte indisponível. Nenhuma frente foi inferida.');
+    return;
+  }
+  const {items,projectsWithoutFronts}=workfrontOverview(state.model);
+  set('workfront-count',items.length+' '+(items.length===1?'registro':'registros'));
+  set('workfront-source','Snapshot: '+state.model.snapshotId+'. Ordem da fonte, sem prioridade inferida.'+
+    (projectsWithoutFronts?' '+projectsWithoutFronts+' projeto(s) sem frentes diretas registradas.':''));
+  const shown=state.workfrontExpanded?items:items.slice(0,10);
+  list.replaceChildren();
+  if(!items.length){
+    list.append(element('p','workfront-empty',
+      'Nenhuma frente registrada nesta publicação. Isso não comprova ausência de trabalho.'));
+  }
+  for(const item of shown){
+    const b=element('button','workfront-item');b.type='button';
+    const top=element('span','workfront-item-top');
+    top.append(element('strong','workfront-name',item.title));
+    const status=element('span','workfront-status',STATUS_LABEL[item.status]);
+    status.dataset.status=item.status;
+    top.append(status);
+    const context=element('span','workfront-context',item.project||'Trabalho principal avulso');
+    const next=element('span','workfront-next','Próximo resultado: '+(item.nextResult||'não informado'));
+    const date=element('span','workfront-date',
+      item.updatedAt?'Última atualização registrada: '+dt(item.updatedAt):'Data de atualização não informada');
+    b.append(top,context,next,date);
+    b.setAttribute('aria-label',item.title+'. '+STATUS_LABEL[item.status]+'. '+
+      next.textContent+'. Abrir detalhes da frente.');
+    b.addEventListener('click',()=>selectNode(item.id));
+    list.append(b);
+  }
+  more.hidden=items.length<=10;
+  more.textContent=state.workfrontExpanded?'Mostrar menos':'Ver todas as '+items.length+' frentes e trabalhos principais';
+  more.setAttribute('aria-expanded',String(state.workfrontExpanded));
+}
 function renderMap(){
   const m=state.model,top=childrenOf(m,m.root.id),grid=$('node-grid');grid.replaceChildren();
   const groups=top.filter(x=>x.presentation==='group').length;
@@ -215,10 +311,11 @@ function applySnapshot(raw,model,origin){
   state.raw=raw;state.model=model;state.loadVersion++;state.live.clear();
   state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));
   state.selected=selected&&model.byId.has(selected)?selected:null;
-  set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');
+  set('hub-title','Direção FUNIX');set('hub-subtitle','Você orquestra as frentes');
+  $('hub').title='Estrutura registrada na fonte: '+model.root.title;
   set('snapshot-revision','Snapshot: '+model.snapshotId);
   set('source-status','Publicação: '+dt(model.publishedAt)+' (BRT) · '+origin);
-  renderMap();
+  renderMap();state.attentionExpanded=false;renderAttention();state.workfrontExpanded=false;renderWorkfronts();
   if($('detail').open){
     if(state.selected)renderDetails();
     else $('detail').close();
@@ -239,7 +336,7 @@ async function load(){
     set('source-status','Fonte instalada indisponível');
     set('check-status','Verificação indisponível');
     notice('Não foi possível carregar a cópia instalada. Nenhum andamento foi inferido.');
-    $('node-grid').replaceChildren();if($('detail').open)$('detail').close();
+    $('node-grid').replaceChildren();renderAttention();renderWorkfronts();set('attention-source','Fonte indisponível. Nenhum item foi inferido.');if($('detail').open)$('detail').close();
   }finally{state.loading=false;$('refresh').disabled=false}
 }
 /** Nenhuma sincronização em segundo plano: consulta externa SOMENTE no clique. */
@@ -265,6 +362,19 @@ async function checkPublished(){
     notice('Não foi possível verificar a publicação no GitHub (rede, limite da API ou dados inválidos). Os cards atuais foram preservados.');
   }finally{state.loading=false;$('refresh').disabled=false}
 }
+$('attention-filters').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-filter]');if(!b||!state.model)return;
+  state.attentionFilter=b.dataset.filter;state.attentionExpanded=false;renderAttention();
+  $('attention-filters').querySelector('button[data-filter="'+state.attentionFilter+'"]')?.focus();
+});
+$('workfront-more').addEventListener('click',()=>{
+  state.workfrontExpanded=!state.workfrontExpanded;renderWorkfronts();
+  $('workfront-more').focus();
+});
+$('attention-more').addEventListener('click',()=>{
+  state.attentionExpanded=!state.attentionExpanded;renderAttention();
+  $('attention-more').focus();
+});
 $('refresh').addEventListener('click',checkPublished);
 $('detail-close').addEventListener('click',()=>$('detail').close());
 $('detail').addEventListener('close',()=>{

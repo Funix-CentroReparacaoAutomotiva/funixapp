@@ -119,6 +119,71 @@ export function projectOverview(model,id){
     decisions
   });
 }
+/**
+ * Fila de atenção SOMENTE LEITURA. Fonte: nós terminais do snapshot publicado.
+ * Não infere prioridade, execução, bloqueio ou decisão a partir de PRs/CI.
+ * Um mesmo trabalho pode possuir vários motivos, mas aparece uma única vez.
+ */
+export function attentionOverview(model) {
+  if(!model?.byId || !Array.isArray(model.nodes))throw new Error('Modelo de atenção inválido');
+  const leaves=model.nodes.filter(n=>n.presentation!=='group' && childrenOf(model,n.id).length===0);
+  const items=leaves.map(n=>{
+    const reasons=[];
+    if(n.decisionPending===true)reasons.push('decision');
+    if(n.status==='bloqueado')reasons.push('blocked');
+    if(n.status==='nao_verificado')reasons.push('unverified');
+    if(!reasons.length)return null;
+    const branch=branchOf(model,n.id);
+    const context=branch.find(x=>x.presentation==='group')||branch[0]||n;
+    return Object.freeze({
+      id:n.id,title:n.title,context:context.title,
+      nextResult:n.nextResult||null,reasons:Object.freeze(reasons)
+    });
+  }).filter(Boolean);
+  // Ordenação de navegação, não prioridade empresarial aprovada.
+  const rank=item=>item.reasons.includes('decision')?0:item.reasons.includes('blocked')?1:2;
+  items.sort((a,b)=>rank(a)-rank(b));
+  return Object.freeze({
+    items:Object.freeze(items),
+    counts:Object.freeze({
+      decision:items.filter(x=>x.reasons.includes('decision')).length,
+      blocked:items.filter(x=>x.reasons.includes('blocked')).length,
+      unverified:items.filter(x=>x.reasons.includes('unverified')).length,
+      decisionsUnknown:leaves.filter(x=>x.decisionPending===null).length
+    })
+  });
+}
+
+/**
+ * Diretório de frentes efetivamente registradas na versão publicada.
+ * Filhos diretos de projetos de topo são frentes; um trabalho de topo sem
+ * projeto também aparece, mas identificado como avulso. Não consulta GitHub,
+ * não descobre projetos e não transforma 'acompanhamento' em execução.
+ */
+export function workfrontOverview(model) {
+  if(!model?.byId || !Array.isArray(model.nodes))throw new Error('Modelo de frentes inválido');
+  const items=[];
+  let projectsWithoutFronts=0;
+  for(const top of childrenOf(model,model.root.id)){
+    if(top.presentation==='group'){
+      const fronts=childrenOf(model,top.id);
+      if(!fronts.length)projectsWithoutFronts++;
+      for(const node of fronts)items.push(Object.freeze({
+        id:node.id,title:node.title,project:top.title,
+        status:node.status,nextResult:node.nextResult||null,
+        updatedAt:node.updatedAt||null,standalone:false
+      }));
+    }else{
+      items.push(Object.freeze({
+        id:top.id,title:top.title,project:null,
+        status:top.status,nextResult:top.nextResult||null,
+        updatedAt:top.updatedAt||null,standalone:true
+      }));
+    }
+  }
+  return Object.freeze({items:Object.freeze(items),projectsWithoutFronts});
+}
+
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
 
 
