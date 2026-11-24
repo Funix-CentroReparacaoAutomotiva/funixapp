@@ -56,6 +56,54 @@ test('manual lead with equivalent phone reuses a known WhatsApp Contact and link
  }finally{f.db.close()}
 })
 
+test('participant grouping creates and projects each person with their own numbers, irrespective of contact order',()=>{
+ const f=entityContactsFixture()
+ try{
+  const references={
+   person:[{id:null,text:'Pessoa A',participantKey:'a'},{id:null,text:'Pessoa B',participantKey:'b'}],
+   contact:[{id:null,text:phone2,participantKey:'b'},{id:null,text:phone1,participantKey:'a'},
+    {id:null,text:'(31) 99999-0101',participantKey:'a'}],
+   vehicle:[],payer:[]
+  }
+  const saved=f.at.create({references},false,true)
+  const refs=saved.references!,a=refs.person[0]!,b=refs.person[1]!
+  assert.ok(a.id&&b.id&&a.id!==b.id)
+  assert.equal(refs.contact.length,2)
+  assert.equal(refs.contact.find(c=>c.participantKey==='a')!.entityId,a.id)
+  assert.equal(refs.contact.find(c=>c.participantKey==='b')!.entityId,b.id)
+  assert.equal(saved.name,'Pessoa A');assert.equal(saved.phone,phone1)
+  const withoutPrimaryPhone=f.at.update(saved.id,{revision:saved.revision,references:{...refs,
+    contact:refs.contact.filter(c=>c.participantKey==='b')}},true,true)
+  assert.equal(withoutPrimaryPhone.name,'Pessoa A')
+  assert.equal(withoutPrimaryPhone.phone,'','B’s phone must not be projected as A’s')
+  assert.equal(f.customers.contacts(a.id!).length,1)
+  const bContact=refs.contact.find(c=>c.participantKey==='b')!
+  assert.throws(()=>f.at.update(saved.id,{revision:withoutPrimaryPhone.revision,references:{...refs,
+    contact:[{...bContact,participantKey:'a'}]}},true,true),code('CONTACT_OWNER_CONFLICT'))
+  const removed=f.at.update(saved.id,{revision:withoutPrimaryPhone.revision,references:{
+    ...refs,person:[a],contact:[]}},true,true)
+  assert.equal(removed.references!.person.length,1)
+  assert.equal(f.customers.contacts(b.id!).length,1)
+ }finally{f.db.close()}
+})
+
+test('renaming an entity preserves a short observed WhatsApp PN and avoids readding that same observed number',()=>{
+ const f=entityContactsFixture()
+ try{
+  const observed='553188888888',handle=f.channels.identities.rememberProviderConversation(observed+'@s.whatsapp.net')
+  const {person,contact}=f.customers.createUnnumberedChannelContact('',handle,true)
+  const before=f.db.prepare('SELECT data,conversation_id FROM customer_records WHERE id=?').get(contact.id)!
+  const updated=f.customers.save({text:'Nome informado depois',revision:person.revision,
+    contacts:[{id:contact.id,text:contact.text,revision:contact.revision},{text:'(31) 8888-8888'}]},person.id)
+  assert.equal(updated.text,'Nome informado depois')
+  assert.equal(f.customers.contacts(person.id).length,1)
+  const after=f.db.prepare('SELECT data,conversation_id FROM customer_records WHERE id=?').get(contact.id)!
+  assert.deepEqual(after,before)
+  assert.equal(JSON.parse(String(after.data)).shortNumberReviewPending,true)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
+
 test('entity has multiple phones; availability/negative/pending retain all records and send nothing',async()=>{
  const f=entityContactsFixture();try{
   f.answers.set(phone2.slice(1),'unavailable')
