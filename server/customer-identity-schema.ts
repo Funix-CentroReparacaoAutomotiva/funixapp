@@ -175,3 +175,34 @@ export function createShortNumberReviewSchema(db:DatabaseSync) {
     BEGIN SELECT RAISE(ABORT,'Reviewed historical number receipt is immutable'); END;
   `)
 }
+
+
+/** V26: re-key only derived phone columns, leaving historical text, UUIDs,
+ * messages, document snapshots and explicit links untouched.
+ * A collision aborts the enclosing migration transaction before any writes.
+ */
+export function rekeyCanonicalBrazilPhones(db:DatabaseSync) {
+  if(!db.isTransaction)throw Error('Re-key requires an exclusive migration transaction')
+  const contacts=db.prepare("SELECT id,data,phone_normalized FROM customer_records WHERE kind='contact'").all()
+    .map(row=>({
+      id:String(row.id),
+      key:normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??'')),
+      previous:row.phone_normalized===null?null:String(row.phone_normalized)
+    }))
+  const seen=new Set<string>(),duplicates=new Set<string>()
+  for(const contact of contacts)if(contact.key){
+    if(seen.has(contact.key))duplicates.add(contact.key)
+    seen.add(contact.key)
+  }
+  if(duplicates.size)
+    throw Error(`V26 bloqueada: ${duplicates.size} grupo(s) de telefone colidente(s). Execute o inventário numa cópia e revise os registros antes do upgrade.`)
+  const updateContact=db.prepare("UPDATE customer_records SET phone_normalized=? WHERE id=?")
+  for(const contact of contacts)
+    if(contact.key!==contact.previous)updateContact.run(contact.key,contact.id)
+  const updateAt=db.prepare("UPDATE atendimentos SET phone_normalized=? WHERE id=?")
+  for(const row of db.prepare('SELECT id,phone,phone_normalized FROM atendimentos').all()){
+    const key=normalizeCustomerPhone(String(row.phone??''))
+    if(key!==(row.phone_normalized===null?null:String(row.phone_normalized)))
+      updateAt.run(key,row.id)
+  }
+}
