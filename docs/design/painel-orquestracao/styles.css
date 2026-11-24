@@ -227,3 +227,29 @@
 .attention-more[hidden]{display:none}
 @media(max-width:720px){.attention{padding:13px}.attention-header{flex-wrap:wrap}.attention-list{grid-template-columns:1fr}.attention-header h2{font-size:16px}.attention-context{max-width:42%}}
 @media(max-width:360px){.attention-filter{font-size:10px;padding:7px 8px}.attention-item-top{flex-direction:column;gap:3px}.attention-context{max-width:100%;text-align:left}}
+
+
+/* Diretório de frentes: um resumo fiel do snapshot, com toque para abrir detalhes. */
+.workfronts{background:#fff;border:1px solid #d9e3ef;border-radius:16px;padding:17px;margin:15px 0 20px}
+.workfronts-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.workfronts-header h2{margin:0 0 4px;font-size:18px;color:#183c67}
+.workfronts-header p{font-size:12px;line-height:1.45;color:#53687c;margin:0}
+.workfront-count{color:#315b7e;background:#eff5fb;border-radius:8px;padding:6px 9px;white-space:nowrap;font-size:11px}
+.workfront-source{font-size:10px;line-height:1.4;color:#718197;margin:11px 0}
+.workfront-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.workfront-item{background:#fbfdff;border:1px solid #dce5ee;border-radius:11px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:6px;color:#273e55;min-width:0}
+.workfront-item:hover{background:#f5f9fe;border-color:#86a8ca}
+.workfront-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;min-width:0}
+.workfront-name{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.workfront-status{border-radius:6px;background:#f0f3f7;color:#56697e;padding:3px 6px;font-size:10px;white-space:nowrap;line-height:1.35}
+.workfront-status[data-status="em_execucao"]{background:#e6f4eb;color:#246c46}
+.workfront-status[data-status="bloqueado"]{background:#fbe8e6;color:#9d3f37}
+.workfront-status[data-status="nao_verificado"]{background:#f0f3f7;color:#526477}
+.workfront-context{font-size:10px;color:#55748e}
+.workfront-next{font-size:11px;color:#3a526b;line-height:1.4;overflow-wrap:anywhere}
+.workfront-date{font-size:10px;color:#718197;line-height:1.4}
+.workfront-empty{grid-column:1/-1;color:#627588;font-size:12px;margin:4px 0;padding:6px 0}
+.workfront-more{display:block;margin:12px auto 0;padding:8px 12px;border:1px solid #d6e0eb;background:#f8fafd;color:#315a82;border-radius:8px;font-size:11px;font-weight:650}
+.workfront-more[hidden]{display:none}
+@media(max-width:720px){.workfronts{padding:13px}.workfront-list{grid-template-columns:1fr}.workfronts-header{flex-wrap:wrap}.workfronts-header h2{font-size:16px}}
+@media(max-width:360px){.workfront-item-top{flex-wrap:wrap}.workfront-status{white-space:normal}}
