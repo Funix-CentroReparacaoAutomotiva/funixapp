@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-portfolio-2026-11-24-flexivel-v1",
-  "publishedAt": "2026-11-24T03:38:38.136Z",
+  "snapshotId": "funix-portfolio-2026-11-24-flexivel-v2",
+  "publishedAt": "2026-11-24T08:32:03-03:00",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
   "title": "FUNIX — Desenvolvimento",
-  "subtitle": "Projetos, frentes e demandas de desenvolvimento; estrutura organizada pelo ChatGPT sob solicitação.",
+  "subtitle": "Projetos, frentes e demandas de desenvolvimento; curadoria do ChatGPT sob solicitação da direção.",
   "root": {
     "id": "cto",
     "title": "Central de Desenvolvimento",
-    "subtitle": "Portfólio FUNIX"
+    "subtitle": "Direção e acompanhamento das frentes"
   },
   "nodes": [
     {
@@ -38,8 +38,8 @@
       "description": "Cadastro, catálogo, orçamentos e negociação.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Concluir pacote de identidade/cadastro #344, preservando contratos comerciais.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -55,14 +55,34 @@
       "title": "Cadastro comercial",
       "description": "Entidades, contatos, veículos e identidade comercial.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issue #344 aberta; PRs #343, #345 e #349 em rascunho; PR #351 é QA combinado, não integrar. Estado operacional não verificado.",
+      "nextResult": "Concluir validação conjunta de nome, telefone, identidade e prevenção de duplicidade; coordenar integração das PRs de origem.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 300
+        },
+        {
+          "kind": "issue",
+          "number": 344
+        },
+        {
+          "kind": "pr",
+          "number": 343
+        },
+        {
+          "kind": "pr",
+          "number": 345
+        },
+        {
+          "kind": "pr",
+          "number": 349
+        },
+        {
+          "kind": "pr",
+          "number": 351
         }
       ]
     },
@@ -110,8 +130,8 @@
       "description": "Conversas, identidade e vínculos com Atendimentos.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Coordenar correções de vínculo e identidade com Comercial (#289/#344).",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -127,14 +147,18 @@
       "title": "Conversas vinculadas ao Atendimento",
       "description": "Identidade, vínculos e navegação entre Chat e Atendimento.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issues #289 e #344 abertas; correções de identidade e vínculo em PRs de cadastro. Aceite do fluxo Chat–Atendimento não verificado.",
+      "nextResult": "Validar vínculos Chat–Atendimento nos casos de identidade inequívoca e conflito real, em coordenação com cadastro.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 307
+        },
+        {
+          "kind": "issue",
+          "number": 344
         }
       ]
     },
@@ -182,8 +206,8 @@
       "description": "Atendimentos, planejamento e execução dos serviços.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Próximo pacote proposto no roadmap #354: especificar Pátio V1 sobre Produção V1.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -236,8 +260,8 @@
       "description": "Ordens de Serviço, PDFs e documentos.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Próximo pacote proposto no roadmap #354: inventariar OS/revisões e especificar vistoria e índice documental.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -290,8 +314,8 @@
       "description": "Automação, copilotos e integrações externas.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Reconciliar iniciativas de voz e integrações com evidências e custos antes de novos pilotos.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -344,8 +368,8 @@
       "description": "Segurança, infraestrutura e governança.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Validar fluxo HML simplificado e coordenar candidatos autorizados.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -361,14 +385,22 @@
       "title": "Infraestrutura e operação técnica",
       "description": "Docker, VPS, configuração, recuperação e operação.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issue #330 encerrada por obsolescência; PR #356 integrada. HML recuperada conforme registros técnicos de 24/11; controlador mTLS legado descontinuado. Não foi feita inspeção direta da VPS nesta curadoria.",
+      "nextResult": "Validar obtenção de novos artefatos e atualização HML pelo procedimento simplificado autorizado; não reativar controlador legado.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 299
+        },
+        {
+          "kind": "issue",
+          "number": 330
+        },
+        {
+          "kind": "pr",
+          "number": 356
         }
       ]
     },
@@ -397,14 +429,18 @@
       "title": "Homologação e release",
       "description": "Critérios de pronto, revisão, aprovação e publicação.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Diretriz de operação simplificada da HML integrada em #356; candidato consolidado do painel #353 tem CI aprovado; publicação ainda não confirmada.",
+      "nextResult": "Aplicar somente candidato autorizado pelo fluxo vigente, verificar procedência, backup, convergência HTTPS e aceite.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 303
+        },
+        {
+          "kind": "pr",
+          "number": 356
         }
       ]
     },
@@ -415,11 +451,12 @@
       "title": "Governança e acompanhamento",
       "description": "Protocolo de execução, evidências, revisões e handoff.",
       "status": "acompanhamento",
-      "statusReason": "Acompanhamento dos trabalhos de governança e do painel; a instalação atual não foi conferida nesta consulta.",
-      "nextResult": "Revisar o fluxo de curadoria sob demanda e a separação entre dados e software.",
-      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "statusReason": "Direção assume a orquestração; ChatGPT organiza os dados sob solicitação. Roadmap registrado em #347; proposta de governança multiprojeto em #354.",
+      "nextResult": "Consolidar o procedimento de atualização sob demanda, sem cadastro manual nem execução autônoma.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [
-        "CTO — coordenação técnica"
+        "Direção — orquestração",
+        "ChatGPT — curadoria sob demanda"
       ],
       "evidence": [
         {
@@ -429,6 +466,14 @@
         {
           "kind": "pr",
           "number": 318
+        },
+        {
+          "kind": "issue",
+          "number": 347
+        },
+        {
+          "kind": "pr",
+          "number": 354
         }
       ]
     },
@@ -441,8 +486,8 @@
       "description": "Visualização flexível do portfólio FUNIX, com dados mantidos pelo ChatGPT sob demanda.",
       "status": "acompanhamento",
       "statusReason": "Projeto confirmado; evolução da interface e da curadoria acompanhada separadamente do ERP.",
-      "nextResult": null,
-      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "nextResult": "Disponibilizar mapa multiprojeto e candidato Web consolidado; validar utilidade no celular, sem API de IA.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -458,9 +503,9 @@
       "title": "Curadoria dos dados",
       "description": "Organizar projetos e demandas por dados, sem cadastro manual; reconciliar projetos confirmados.",
       "status": "acompanhamento",
-      "statusReason": "Requisito registrado nas issues #329 e #347; política proposta na PR #354.",
-      "nextResult": "Reconciliar outras fontes autorizadas e publicar o mapa revisado sob solicitação.",
-      "updatedAt": "2026-11-24T03:38:38.136Z",
+      "statusReason": "PR #355 prepara dois projetos confirmados; a fonte publicada ainda contém somente FunixApp. Outros projetos e vínculos privados não foram inventariados.",
+      "nextResult": "Validar e publicar a PR de dados #355 na branch painel-publicado mediante autorização aplicável; depois clicar Atualizar. Inventariar fontes adicionais.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -474,6 +519,10 @@
         {
           "kind": "pr",
           "number": 354
+        },
+        {
+          "kind": "pr",
+          "number": 355
         }
       ]
     },
@@ -484,10 +533,12 @@
       "title": "Visualização e Minha atenção",
       "description": "Interface de leitura e navegação, com agrupamentos definidos pelos dados.",
       "status": "acompanhamento",
-      "statusReason": "PRs #337 e #348 abertas, sem aceite operacional confirmado.",
-      "nextResult": "Revisar PR #337 e a PR #348 empilhada; validar o candidato antes de eventual deploy.",
-      "updatedAt": "2026-11-24T03:38:38.136Z",
-      "roles": [],
+      "statusReason": "PR #353 aberta e integrável na consulta; 11 workflows aprovados no SHA 019d5c72a04e25a0755d6eb7cf70c3d05f37663d. Reúne indicadores, Minha atenção, frentes registradas e cópia de contexto; instalação e aceite não confirmados.",
+      "nextResult": "Preparar candidato Web HML da PR #353 pelo fluxo simplificado vigente; publicar somente mediante autorização aplicável.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
+      "roles": [
+        "Direção — aceite"
+      ],
       "evidence": [
         {
           "kind": "pr",
@@ -496,6 +547,18 @@
         {
           "kind": "pr",
           "number": 348
+        },
+        {
+          "kind": "issue",
+          "number": 350
+        },
+        {
+          "kind": "pr",
+          "number": 352
+        },
+        {
+          "kind": "pr",
+          "number": 353
         }
       ]
     }
@@ -813,6 +876,126 @@
       "title": "Minha atenção para o orquestrador",
       "context": "PR aberta empilhada",
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/348"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "issue",
+      "number": 347,
+      "title": "Central do orquestrador",
+      "context": "Roadmap de produto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/347"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "pr",
+      "number": 354,
+      "title": "Roadmap ERP e escopo multiprojeto",
+      "context": "Proposta documental",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/354"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "issue",
+      "number": 350,
+      "title": "Copiar contexto para ChatGPT sem API paga",
+      "context": "Ação local",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/350"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 352,
+      "title": "Copiar contexto para ChatGPT",
+      "context": "Origem da implementação",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/352"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 353,
+      "title": "Central do orquestrador consolidada",
+      "context": "Candidato de código; CI 11/11",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/353"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "pr",
+      "number": 355,
+      "title": "Mapa flexível de desenvolvimento",
+      "context": "Proposta de dados multiprojeto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/355"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "issue",
+      "number": 344,
+      "title": "Simplificar pessoa + telefone e estabilizar identidade/Chat",
+      "context": "P1 registrado",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/344"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 343,
+      "title": "Aviso de possível duplicidade de Atendimento manual",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/343"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 345,
+      "title": "Nome e telefone principal juntos",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/345"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 349,
+      "title": "Reutilizar Contato existente pelo telefone",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/349"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 351,
+      "title": "QA combinado de cadastro e identidade",
+      "context": "Somente evidência; não integrar",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/351"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "issue",
+      "number": 344,
+      "title": "Simplificar identidade e Chat",
+      "context": "Dependência compartilhada com Comercial",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/344"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "issue",
+      "number": 330,
+      "title": "Reconciliação do controlador HML legado",
+      "context": "Encerrada por obsolescência",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/330"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "pr",
+      "number": 356,
+      "title": "Diretriz vigente de operação simplificada HML",
+      "context": "Documentação integrada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/356"
+    },
+    {
+      "nodeId": "ep-303",
+      "kind": "pr",
+      "number": 356,
+      "title": "Diretriz de operação simplificada",
+      "context": "Procedimento vigente",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/356"
     }
   ],
   "visibility": "public"
