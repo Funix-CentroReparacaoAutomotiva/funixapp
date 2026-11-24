@@ -1,7 +1,11 @@
 # FunixERP — Roadmap técnico de evolução modular
 
-**Versão:** proposta v0.2 — 24/11/2026.  
+**Versão:** proposta v0.3 — 24/11/2026.  
 **Escopo:** evolução do FunixApp existente para FunixERP; não é o roadmap de todos os projetos FUNIX. A direção autorizou estruturar o planejamento, não aprovou automaticamente cada regra de negócio, desenvolvimento, migração ou publicação. Prazos e capacidade são hipóteses. Este documento é uma visão de marcos e dependências; tarefas executáveis ficam nas issues canônicas. Não substitui contratos técnicos vigentes nem o registro empresarial privado.
+
+## Prioridade vigente — MVP integrado horizontal (#358)
+
+Decisão de produto de 24/11/2026: entregar primeiro um fluxo essencial utilizável, não módulos completos nem uma reprodução do legado. O MVP reaproveita Atendimento, Orçamento, Agendamento/Experiência e OS existentes; simplifica agendamento e autorização sem eliminar integridade material, adiciona um controle manual reversível de operação e títulos financeiros simples (pagar/receber, baixa com valor/data, vínculo opcional à XP e visão de vencimentos). Financeiro é prioritário e pode ser entregue antes dos demais. Não exigir fatura, fases produtivas, compras, vistoria digital, integrações, conciliação bancária, permissões complexas ou automação para este MVP. A meta de um candidato no mesmo dia é aspiracional, não compromisso de implantação. Três pacotes A/B/C na #358; preservar os trabalhos existentes, coordenar schema e integração. Os marcos M0–M4 abaixo são evolução posterior, **não gates cumulativos do MVP**. A estratégia de migração/convivência deve evitar duplicidade de títulos reais. O aceite funcional deve medir também a fricção do operador, não apenas CI.
 
 ## 1. Princípios
 
@@ -61,7 +65,7 @@ Esta divisão é uma proposta inicial, não uma taxonomia permanente do painel. 
 
 Não abrir duplicatas dos épicos/requests existentes. Verificar estado e escopo de cada issue antes de vincular, dividir ou criar nova. As novas iniciativas são candidatas, não trabalho ativo.
 
-## 5. Primeiro ciclo: execução paralela limitada
+## 5. Evolução após o MVP: execução paralela limitada
 
 Limite inicial proposto: até quatro pacotes de implementação em paralelo no ERP, sujeito à capacidade global de revisão/homologação e a outros projetos do portfólio. Uma entrega por frente, sem sessão duplicada sobre a mesma issue.
 
@@ -88,7 +92,7 @@ Preparação paralela, não implementação: E — Suprimentos (contrato pedido/
 
 Congelar apenas contratos necessários para o próximo incremento. Toda mudança em schema/migração, sessão, identidade, API transversal, rotas globais ou eventos requer coordenação do responsável transversal; reservar versão de migração antes de implementar e revalidar contra a base integrada. Usar fixtures sintéticas e adaptadores de teste, não substituir banco real. Branch/worktree exclusivo por pacote; integração serializada em base atualizada, candidato HML identificado por SHA e testes. Uma HML compartilhada = fila única de publicação, salvo ambiente adicional explicitamente aprovado.
 
-## 7. Sequência indicativa de ciclos
+## 7. Sequência indicativa de ciclos posteriores ao MVP
 
 C1: inventário, contratos, estabilização e especificação V1 de Pátio/Financeiro. C2: entrada/saída e primeira unidade financeira, documentos mínimos. C3: etapas e prontidão, compras e títulos. C4: custos por Experiência, caixa e fechamento documental. C5: conciliar fluxos econômicos e operacionais. C6: piloto integrado e migração gradual, avaliar gate M2. Cadência inicial semanal ou quinzenal, sem compromisso de data; reduzir escopo ou WIP se a direção não conseguir validar. Replanejar com evidências após C1.
 
