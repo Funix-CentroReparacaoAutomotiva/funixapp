@@ -35,11 +35,12 @@ export function EntityEditor({record,onSaved,onClose}:{record:CustomerRecord;onS
  async function refresh(){if(entity.id){const r=await api<EntityRecord>('/api/customer-records/'+entity.id);setEntity(r);setNumbers(p=>p.map(n=>{const c=r.contacts.find(c=>c.id===n.id);return c?{...n,revision:c.revision}:n}))}}
  return <div className="entity-editor" onKeyDown={e=>{if(e.key==='Enter'&&e.target instanceof HTMLInputElement)e.preventDefault()}}><h3>Pessoa ou organização</h3><label>Nome<input aria-label="Nome da Entidade" value={entity.text} maxLength={250} disabled={busy||!loaded} onChange={e=>setEntity({...entity,text:e.target.value})}/></label><p>Nome e telefone ficam no mesmo cadastro. Salvar não envia mensagens.</p>
  <div aria-label="Números da Entidade">{numbers.map((n,i)=>{
-   const linked=entity.contacts.some(c=>c.id===n.id&&!!c.conversationId)
+   const registered=entity.contacts.find(c=>c.id===n.id)
+   const linked=!!registered?.conversationId
    return <div className="entity-number" key={n.id??'new-'+i}><label>Telefone {i+1}
-     <input aria-label={'Telefone da Entidade '+(i+1)} inputMode="tel" placeholder="+55…" value={n.text}
+     <input aria-label={'Telefone da Entidade '+(i+1)} inputMode="tel" placeholder="+55…" value={n.text||(linked?registered?.whatsapp.observedPhone??'':'')}
        disabled={busy} readOnly={linked} onChange={e=>setNumbers(numbers.map((v,j)=>j===i?{...v,text:e.target.value}:v))}/>
-     {linked&&<small>Número vinculado ao WhatsApp. O histórico permanece neste número.</small>}
+     {linked&&<small>{!n.text&&registered?.whatsapp.observedPhone?'Número observado pelo WhatsApp · somente leitura':'Número vinculado ao WhatsApp. O histórico permanece neste número.'}</small>}
    </label>{!n.id&&<button type="button" aria-label={'Remover telefone '+(i+1)} onClick={()=>setNumbers(numbers.filter((_,j)=>j!==i))}>×</button>}</div>
  })}</div>
  <button type="button" disabled={busy||!loaded||numbers.length>=50} onClick={()=>setNumbers([...numbers,{text:''}])}>Adicionar telefone</button>
