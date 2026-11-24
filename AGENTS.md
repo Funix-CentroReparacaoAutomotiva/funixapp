@@ -1,5 +1,17 @@
 # AGENTS.md — FUNIX, Issue #7 / MVP Comercial integrado
 
+## Diretriz vigente — implantação e operação HML simplificadas (24/11/2026)
+
+Decisão expressa da direção: simplicidade, funcionamento real e autonomia operacional. Esta seção substitui as instruções anteriores de infraestrutura HML que exigiam controlador remoto mTLS, journals, pins encadeados, aprovação técnica de candidatos ou reconciliação de releases. A issue #330 foi encerrada por obsolescência e a PR #346 encerrada sem merge. Não reativar o controlador, executar recovery legado ou solicitar ao proprietário scripts PowerShell para operações rotineiras.
+
+- Fonte vigente: [operação HML simplificada](docs/entregas/HML_OPERACAO_ATUALIZADOR.md). Usar GitHub para desenvolver/testar e n8n para executar SSH administrativo autenticado, com Docker Compose exclusivo da HML e validação funcional após a implantação.
+- Consultar estado real dos serviços e da configuração instalada, não o registro histórico do controlador. `ECONNREFUSED` no antigo transporte é esperado. A referência instalada foi atualizada com êxito para `20a1a1561223a00ba4aec6290b55ddd9c0b52696` na execução n8n 48345; 48349 confirmou saúde dos três serviços. Reconsultar antes de cada implantação.
+- Acesso administrativo por n8n já comprovado; limitação definitiva de privilégios e obtenção de **novos** artefatos ainda não foram validadas ponta a ponta. Não tratar essas pendências como dependência de recuperação do legado. Não criar outra arquitetura de controle, serviço ou protocolo sem benefício demonstrável.
+- Separar HML de produção; manter autenticação HTTPS, configurações de integração isoladas, imagens de origem verificável e proteção dos dados reais. Dados exclusivamente sintéticos da HML são descartáveis quando autorizado; não preservar histórico de teste como bloqueio. Backups e reversão proporcionais ao risco da intervenção.
+- Autorização de merge/deploy ou alteração produtiva continua específica ao escopo. O acesso administrativo não autoriza por si só mudanças. Não expor credenciais, não publicar webhooks administrativos nem dar a entradas externas controle de shell.
+- Publicação apenas Web do painel: preservar API e banco, confirmar identidade da imagem e testar a rota real; não exigir igualdade de revisão Web/API se a diferença é intencional. PR #353 não depende de #330 ou #346.
+- Entrega técnica só é considerada operacionalmente validada após teste no ambiente pertinente. Não confundir CI verde, execução n8n iniciada ou status de workflow com sucesso do comando remoto.
+
 ## Política de uso ChatGPT / Codex
 
 A decisão de convocar o Codex ocorre **antes** da execução, preferencialmente nas instruções do projeto ChatGPT. Para tarefas de desenvolvimento, priorize o ChatGPT quando ele conseguir concluir e verificar o trabalho com as ferramentas disponíveis; use Codex quando o checkout, os testes locais, a depuração ou alterações integradas justificarem materialmente o seu ambiente. Complexidade aparente não é critério suficiente. Antes de iniciar, delimite escopo, verificações, permissões e restrições; não repita análise já concluída e não comprometa testes para economizar uso.
