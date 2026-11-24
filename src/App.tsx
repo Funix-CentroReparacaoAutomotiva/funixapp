@@ -176,7 +176,7 @@ function App() {
   const selectedChat=tab==='chat'&&!!detailConversation
   const chatIdentity=record?.chatIdentity?.conversationId===detailConversation?record?.chatIdentity:undefined
   const detailName=selectedChat?(chatIdentity?.name||'Identidade do Chat pendente'):(record?.name||'Sem nome')
-  const detailPhone=selectedChat?(chatIdentity?.phone||'Telefone pendente'):(record?.phone.trim()||'Não informado')
+  const detailPhone=selectedChat?(chatIdentity?.phone||(chatIdentity?.observedPhone?chatIdentity.observedPhone+' · observado':'Telefone pendente')):(record?.phone.trim()||'Não informado')
   const reloadScheduledRecord=useCallback(()=>{
     cache.current.clear()
     const path=`/api/atendimentos/${encodeURIComponent(detailId)}`
