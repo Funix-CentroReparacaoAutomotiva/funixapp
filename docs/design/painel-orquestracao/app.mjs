@@ -269,7 +269,8 @@ function applySnapshot(raw,model,origin){
   state.raw=raw;state.model=model;state.loadVersion++;state.live.clear();
   state.collapsedGroups=new Set([...state.collapsedGroups].filter(x=>model.byId.has(x)&&model.byId.get(x).presentation==='group'));
   state.selected=selected&&model.byId.has(selected)?selected:null;
-  set('hub-title',model.root.title);set('hub-subtitle',model.root.subtitle||'Coordenação técnica');
+  set('hub-title','Direção FUNIX');set('hub-subtitle','Você orquestra as frentes');
+  $('hub').title='Estrutura registrada na fonte: '+model.root.title;
   set('snapshot-revision','Snapshot: '+model.snapshotId);
   set('source-status','Publicação: '+dt(model.publishedAt)+' (BRT) · '+origin);
   renderMap();state.attentionExpanded=false;renderAttention();
