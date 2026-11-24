@@ -224,24 +224,24 @@ function renderWorkfronts(){
     const status=element('span','workfront-status',STATUS_LABEL[item.status]);
     status.dataset.status=item.status;
     top.append(status);
-    const context=element('span','workfront-context',item.project||'Trabalho principal avulso');
+    const context=element('span','workfront-context',item.project||'Iniciativa avulsa');
     const next=element('span','workfront-next','Próximo resultado: '+(item.nextResult||'não informado'));
     const date=element('span','workfront-date',
       item.updatedAt?'Última atualização registrada: '+dt(item.updatedAt):'Data de atualização não informada');
     b.append(top,context,next,date);
     b.setAttribute('aria-label',item.title+'. '+STATUS_LABEL[item.status]+'. '+
-      next.textContent+'. Abrir detalhes da frente.');
+      next.textContent+'. Abrir detalhes do registro.');
     b.addEventListener('click',()=>selectNode(item.id));
     list.append(b);
   }
   more.hidden=items.length<=10;
-  more.textContent=state.workfrontExpanded?'Mostrar menos':'Ver todas as '+items.length+' frentes e trabalhos principais';
+  more.textContent=state.workfrontExpanded?'Mostrar menos':'Ver todos os '+items.length+' registros';
   more.setAttribute('aria-expanded',String(state.workfrontExpanded));
 }
 function renderMap(){
   const m=state.model,top=childrenOf(m,m.root.id),grid=$('node-grid');grid.replaceChildren();
   const groups=top.filter(x=>x.presentation==='group').length;
-  set('graph-count',`${groups} ${groups===1?'grupo':'grupos'} · ${top.length} ${top.length===1?'item principal':'itens principais'}`);
+  set('graph-count',`${groups} ${groups===1?'projeto':'projetos'} · ${top.length-groups} ${top.length-groups===1?'item avulso':'itens avulsos'}`);
   $('empty-map').hidden=top.length!==0;
   for(const node of top)grid.append(node.presentation==='group'?makeGroup(node):makeNodeCard(node));
   updateMapSelection();requestAnimationFrame(drawWires);
@@ -259,10 +259,10 @@ function renderDetails(){const m=state.model,node=currentNode();if(!node)return;
   $('briefing-manual').hidden=true;$('briefing-manual').value='';
   set('detail-type',node.type||'TRABALHO');set('detail-title',node.title);set('detail-desc',node.description||'Sem descrição registrada');
   const ch=$('detail-status');ch.replaceWith(statusChip(node));const repl=$('detail').querySelector('.detail-top .status');repl.id='detail-status';
-  set('detail-reason',node.statusReason||'Situação operacional ainda não detalhada pelo CTO.');
-  set('detail-next',node.nextResult||'Próximo resultado não informado pelo CTO.');
+  set('detail-reason',node.statusReason||'Situação ainda não detalhada na publicação.');
+  set('detail-next',node.nextResult||'Próximo resultado não informado na publicação.');
   set('detail-blocker',node.blocker||(node.status==='bloqueado'?'Motivo do bloqueio não informado.':'Nenhum bloqueio confirmado neste registro.'));
-  set('detail-updated',node.updatedAt?`Atualização do CTO: ${dt(node.updatedAt)}`:'Atualização operacional não informada');
+  set('detail-updated',node.updatedAt?`Atualização do registro: ${dt(node.updatedAt)}`:'Atualização operacional não informada');
   const roles=$('detail-roles');roles.replaceChildren();if(node.roles.length){for(const name of node.roles)roles.append(element('span','role-chip',name))}else roles.append(element('span','node-desc','Nenhum papel confirmado no registro'));
   const breadcrumbs=$('breadcrumbs');breadcrumbs.replaceChildren();const parents=branchOf(m,node.id);for(let i=0;i<parents.length;i++){if(i)breadcrumbs.append(element('span','crumb-sep','›'));const p=parents[i],btn=element('button','crumb',p.title);btn.type='button';btn.disabled=p.id===node.id;btn.addEventListener('click',()=>selectNode(p.id));breadcrumbs.append(btn)}
   const rels=state.model.relations.filter(r=>r.from===node.id||r.to===node.id),relBox=$('detail-relations');relBox.replaceChildren();$('relation-section').hidden=rels.length===0;
@@ -283,7 +283,7 @@ function renderHistory(){const m=state.model,node=currentNode();if(!node)return;
   for(const r of shown){const a=element('a','history-item');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';const tag=element('span','kind',KIND_LABEL[r.kind]);tag.dataset.kind=r.kind;const copy=element('span','history-copy'),title=element('strong','',r.title);copy.append(title);
     const key=`${r.kind}:${r.number}`,live=state.live.get(key);const details=live?.data?stateOfRecord(r,live.data):live?.error?'Estado não verificado — API indisponível':'A consultar estado atual';copy.append(element('small','',`#${r.number} · ${details}${r.context?' · '+r.context:''}`));a.append(tag,copy,element('span','history-arrow','↗'));list.append(a)}
   $('history-more').hidden=filtered.length<=4;$('history-more').textContent=state.expanded?'Mostrar menos':`Ver todos os ${filtered.length} registros`;
-  set('history-source','Registros associados pelo CTO, com links públicos para o GitHub. Estado da PR/issue consultado quando a API permite; isso não comprova implantação.');
+  set('history-source','Registros vinculados na publicação, com links públicos para o GitHub. Estado da PR/issue consultado quando a API permite; isso não comprova implantação.');
   enrich(shown);
 }
 async function readGithub(record){const api=record.kind==='pr'?'pulls':'issues',url=`https://api.github.com/repos/${state.model.repository}/${api}/${record.number}`;

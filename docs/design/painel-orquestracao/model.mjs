@@ -228,7 +228,7 @@ export function stateOfRecord(record,live){if(!live)return 'Estado atual não co
 
 /**
  * Canal de publicação SOB DEMANDA: a branch painel-publicado contém somente
- * dados revisados pelo CTO. Nunca usar main/HEAD nem ler URL fornecida por usuário.
+ * dados revisados sob orientação da direção. Nunca usar main/HEAD nem ler URL fornecida por usuário.
  * A API pública fornece o SHA do blob; a UI só consulta quando o usuário pede.
  */
 export const PUBLISHED_REPO = 'Funix-CentroReparacaoAutomotiva/funixapp';
@@ -275,7 +275,7 @@ export function inspectPublishedFile(file, previousRaw, knownSha = null) {
     return {changed: false, sha: file.sha};
   }
   if (previousRaw?.snapshotId === raw.snapshotId) {
-    throw new Error('O CTO deve alterar snapshotId ao publicar novos dados.');
+    throw new Error('A publicação de novos dados exige um novo snapshotId.');
   }
   if (previousRaw?.publishedAt && Date.parse(model.publishedAt) < Date.parse(previousRaw.publishedAt)) {
     throw new Error('A publicação é anterior à estrutura exibida.');

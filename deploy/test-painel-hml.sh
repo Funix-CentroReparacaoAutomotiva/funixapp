@@ -20,7 +20,7 @@ done
 docker --host=unix:///var/run/docker.sock exec "$container" sh -eu -c '
   base="http://127.0.0.1:8080/painel"
   wget -Y off -q -O /tmp/panel.html "$base/"
-  grep -q "Orquestração do ERP" /tmp/panel.html
+  grep -q "Central de Orquestração" /tmp/panel.html
   wget -Y off -q -O /tmp/snapshot.json "$base/snapshot.json"
   grep -q '"'"'"schemaVersion"'"'"' /tmp/snapshot.json
   wget -Y off -q -O /tmp/model.mjs "$base/model.mjs"

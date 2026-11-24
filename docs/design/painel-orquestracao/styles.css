@@ -269,3 +269,6 @@
 #briefing-manual{display:block;width:100%;margin-top:9px;box-sizing:border-box;border:1px solid #aac3db;background:#fff;color:#263f57;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;resize:vertical}
 #briefing-manual[hidden]{display:none}
 @media(max-width:390px){.chat-handoff-actions button,.chat-handoff-actions a{flex:1 1 100%}}
+
+/* Nome do portfólio sem forçar largura da barra em telas estreitas. */
+@media(max-width:480px){.topbar-inner{gap:8px}.brand{min-width:0;gap:8px}.brand-mark{flex:none}.brand-copy{min-width:0}.brand-copy small{line-height:1.2;overflow-wrap:anywhere}.top-actions{flex:none}.top-actions .read-only{white-space:nowrap}}

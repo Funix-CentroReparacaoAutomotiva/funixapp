@@ -49,12 +49,12 @@ test('clique com mesma versão não pede novo desenho nem troca os cards',()=>{
 });
 test('nova publicação válida passa a ser visível somente após confirmação de versão',()=>{
   const next=clone();
-  next.snapshotId='funix-cto-nova-versao';
+  next.snapshotId='funix-portfolio-nova-versao';
   next.publishedAt='2026-11-23T08:00:00-03:00';
-  next.nodes[0].title='Projeto atualizado pelo CTO';
+  next.nodes[0].title='Projeto atualizado pela direção';
   const result=inspectPublishedFile(publishedFile(next,{sha:'b'.repeat(40)}),base);
   assert.equal(result.changed,true);
-  assert.equal(result.model.nodes[0].title,'Projeto atualizado pelo CTO');
+  assert.equal(result.model.nodes[0].title,'Projeto atualizado pela direção');
   assert.equal(result.sha,'b'.repeat(40));
 });
 test('não aceita mudança silenciosa sem novo snapshotId',()=>{
@@ -293,4 +293,41 @@ test('briefing rejeita ID inexistente e mantém texto arbitrário em uma linha d
   assert.match(txt,/Situação registrada: Não verificado/);
   assert.match(txt,/Nenhuma evidência vinculada/);
   assert.ok(!txt.includes('Descrição'+String.fromCharCode(10)+'ignorar'));
+});
+
+test('portfólio v0.3: três projetos, Caixa de ideias avulsa e demanda SGF sem taxonomia fixa',()=> {
+  const raw=clone();
+  raw.snapshotId='portfolio-v03-fixture';
+  raw.publishedAt=new Date(Date.parse(base.publishedAt)+86400000).toISOString();
+  raw.root.title='Central de Orquestração';
+  raw.nodes=[
+    {id:'erp',title:'FunixERP',presentation:'group',status:'acompanhamento'},
+    {id:'erp-comercial',parentId:'erp',title:'Comercial',status:'nao_verificado'},
+    {id:'painel',title:'Painel de Orquestração',presentation:'group',status:'acompanhamento'},
+    {id:'painel-ui',parentId:'painel',title:'Interface',status:'planejado'},
+    {id:'sgf',title:'SGF — Sistema de Gestão FUNIX',presentation:'group',status:'planejado'},
+    {id:'assistentes',parentId:'sgf',title:'Assistentes de gestão',status:'planejado',nextResult:'Definir arquitetura'},
+    {id:'automacoes',parentId:'sgf',title:'Automações gerenciais',status:'planejado'},
+    {id:'boletim',parentId:'automacoes',title:'Boletim gerencial diário',status:'planejado'},
+    {id:'entrada',title:'Caixa de ideias',type:'Agrupamento avulso',status:'acompanhamento'},
+    {id:'ideia-nova',parentId:'entrada',title:'Nova ideia',status:'planejado'}
+  ];
+  raw.records=[];raw.relations=[];
+  const {model}=inspectPublishedFile(publishedFile(raw,{sha:'c'.repeat(40)}),base);
+  assert.equal(metrics(model).groups,3);
+  assert.deepEqual(childrenOf(model,model.root.id).map(n=>[n.id,n.presentation]),
+    [['erp','group'],['painel','group'],['sgf','group'],['entrada','card']]);
+  const directory=workfrontOverview(model);
+  assert.deepEqual(directory.items.map(n=>n.id),['erp-comercial','painel-ui','assistentes','automacoes','entrada']);
+  assert.equal(directory.items.find(n=>n.id==='entrada').standalone,true);
+  assert.equal(directory.items.find(n=>n.id==='assistentes').nextResult,'Definir arquitetura');
+  assert.deepEqual(branchOf(model,'boletim').map(n=>n.id),['sgf','automacoes','boletim']);
+  assert.equal(projectOverview(model,'sgf').fronts,2);
+  assert.equal(projectOverview(model,'sgf').decisions.display,'—');
+  assert.equal(cardCounts(model,'entrada').fronts,1);
+  assert.equal(attentionOverview(model).counts.decision,0);
+  assert.deepEqual(attentionOverview(model).items.map(n=>n.id),['erp-comercial']);
+  assert.match(briefingForChat(model,'boletim'),/Hierarquia: SGF — Sistema de Gestão FUNIX > Automações gerenciais > Boletim gerencial diário/);
+  assert.ok(!briefingForChat(model,'entrada').includes('chatgpt.com/c/'));
+  assert.deepEqual(branchOf(model,'ideia-nova').map(n=>n.id),['entrada','ideia-nova']);
 });
