@@ -81,7 +81,7 @@ try {
       await editor.getByRole('region',{name:'Pessoas',exact:true}).getByText(first.phone,{exact:true}).waitFor()
       assert.equal(await editor.getByRole('region',{name:'Contatos',exact:true}).isVisible(),true)
       await page.screenshot({path:out+'/pessoa-e-telefone-'+width+'.png'})
-      await editor.getByRole('region',{name:'Pessoas',exact:true}).getByRole('button',{name:'Editar cadastro selecionado'}).click()
+      await editor.getByRole('region',{name:'Pessoas',exact:true}).getByRole('button',{name:'Editar cadastro selecionado'}).first().click()
       const registration=page.getByRole('dialog',{name:'Editar cadastro selecionado'})
       await registration.getByRole('textbox',{name:'Nome da Entidade'}).fill('Pessoa com nome atualizado')
       await registration.getByRole('button',{name:'Salvar pessoa e telefones'}).click()
