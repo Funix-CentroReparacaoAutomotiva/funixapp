@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-portfolio-2026-11-24-flexivel-v2",
-  "publishedAt": "2026-11-24T08:32:03-03:00",
+  "snapshotId": "funix-portfolio-2026-11-24-flexivel-v3",
+  "publishedAt": "2026-11-24T08:45:56-03:00",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
-  "title": "FUNIX — Desenvolvimento",
-  "subtitle": "Projetos, frentes e demandas de desenvolvimento; curadoria do ChatGPT sob solicitação da direção.",
+  "title": "FUNIX — Central de Orquestração",
+  "subtitle": "Projetos, ideias e melhorias da FUNIX; curadoria do ChatGPT sob solicitação da direção.",
   "root": {
     "id": "cto",
-    "title": "Central de Desenvolvimento",
-    "subtitle": "Direção e acompanhamento das frentes"
+    "title": "Central de Orquestração",
+    "subtitle": "Direção e acompanhamento de projetos e iniciativas"
   },
   "nodes": [
     {
@@ -482,12 +482,12 @@
       "parentId": null,
       "type": "Projeto",
       "presentation": "group",
-      "title": "Painel de Desenvolvimento",
-      "description": "Visualização flexível do portfólio FUNIX, com dados mantidos pelo ChatGPT sob demanda.",
+      "title": "Painel de Orquestração",
+      "description": "Evolução da ferramenta de acompanhamento de projetos, ideias e acesso a recursos de gestão.",
       "status": "acompanhamento",
       "statusReason": "Projeto confirmado; evolução da interface e da curadoria acompanhada separadamente do ERP.",
-      "nextResult": "Disponibilizar mapa multiprojeto e candidato Web consolidado; validar utilidade no celular, sem API de IA.",
-      "updatedAt": "2026-11-24T08:32:03-03:00",
+      "nextResult": "Publicar o mapa multiprojeto e homologar a interface consolidada; planejar acesso aos recursos de gestão.",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
       "roles": [],
       "evidence": [
         {
@@ -559,6 +559,120 @@
         {
           "kind": "pr",
           "number": 353
+        }
+      ]
+    },
+    {
+      "id": "proj-sgf",
+      "parentId": null,
+      "type": "Projeto",
+      "title": "SGF — Sistema de Gestão FUNIX",
+      "description": "Assistência à gestão empresarial por meio de assistentes e automações.",
+      "status": "planejado",
+      "statusReason": "Projeto confirmado pela direção; implementação não presumida.",
+      "nextResult": "Organizar assistentes de gestão e automações gerenciais, sem definir a arquitetura dos chats nesta etapa.",
+      "presentation": "group",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-assistentes",
+      "parentId": "proj-sgf",
+      "type": "frente",
+      "title": "Assistentes de gestão",
+      "description": "Recursos de apoio à gestão financeira, operacional, pessoas e demais áreas.",
+      "status": "planejado",
+      "statusReason": "Frente aprovada; número, especialização e organização dos assistentes ainda não definidos.",
+      "nextResult": "Definir arquitetura e responsabilidades em etapa própria.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-automacoes",
+      "parentId": "proj-sgf",
+      "type": "frente",
+      "title": "Automações gerenciais",
+      "description": "Rotinas de apoio à gestão, com fontes verificadas e custos proporcionais.",
+      "status": "planejado",
+      "statusReason": "Frente aprovada; automações não declaradas operacionais.",
+      "nextResult": "Delimitar o boletim gerencial diário.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-boletim-diario",
+      "parentId": "sgf-automacoes",
+      "type": "demanda",
+      "title": "Boletim gerencial diário",
+      "description": "Resumo diário de informações financeiras e operacionais relevantes à gestão.",
+      "status": "planejado",
+      "statusReason": "Ideia registrada; indicadores, fontes, canal e implementação ainda não definidos.",
+      "nextResult": "Definir escopo e fontes, avaliar solução econômica antes de implementar.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "painel-recursos",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Acesso a recursos de gestão",
+      "description": "Atalhos para assistentes e ferramentas efetivamente disponibilizados.",
+      "status": "planejado",
+      "statusReason": "Evolução futura aprovada conceitualmente; sem links privados publicados.",
+      "nextResult": "Definir acesso privado e separar ferramentas disponíveis de trabalhos em desenvolvimento.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "caixa-ideias",
+      "parentId": null,
+      "type": "Caixa de ideias",
+      "title": "Caixa de ideias",
+      "description": "Entrada de novas ideias ainda sem classificação em projeto ou frente.",
+      "status": "acompanhamento",
+      "statusReason": "Agrupamento aprovado; não é projeto nem prova de atividade.",
+      "nextResult": "Registrar ideias sob solicitação e classificá-las quando houver escopo suficiente.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
         }
       ]
     }
