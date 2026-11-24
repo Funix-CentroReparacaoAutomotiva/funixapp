@@ -4,3 +4,17 @@
 .at-vehicle-hint{margin:-5px 0 12px}
 .at-legacy-vehicle{margin:0 0 12px;padding:7px;border-left:2px solid #d5a95c;background:#fffaf2;color:#72531f}
 @media(min-width:720px){.at-vehicle-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.at-vehicle-fields>.at-field:last-child{grid-column:auto}}
+
+/* Manual Atendimento duplicate review; kept inside the editor, above its fixed save bar. */
+.at-duplicate-review{margin:8px;padding:12px;border:1px solid #d9b875;border-radius:10px;background:#fff9eb;color:#1c3458;max-height:min(48vh,360px);overflow-y:auto}
+.at-duplicate-review>strong{display:block;font-size:14px}
+.at-duplicate-review p{font-size:13px;line-height:1.4;margin:8px 0}
+.at-duplicate-items{display:flex;flex-direction:column;gap:6px}
+.at-duplicate-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid #eadfc7}
+.at-duplicate-item>div{min-width:0;overflow-wrap:anywhere}
+.at-duplicate-item strong,.at-duplicate-item small{display:block;font-size:13px}
+.at-duplicate-item small{color:#576b84;margin-top:3px}
+.at-duplicate-review button{padding:8px 10px;border-radius:7px;border:1px solid #b2c5db;background:#fff;color:#234b74;cursor:pointer}
+.at-duplicate-review button:disabled{opacity:.55;cursor:default}
+.at-duplicate-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.at-duplicate-actions .at-duplicate-confirm{background:#14265d;color:#fff;border-color:#14265d}

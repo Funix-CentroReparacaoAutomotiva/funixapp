@@ -9,33 +9,69 @@ const registryKind=(kind:ReferenceKind)=>kind==='person'||kind==='payer'?'entity
 export function CustomerLines({value,onChange,disabled,onMessage}:{value:CustomerReferences;onChange:(v:CustomerReferences)=>void;disabled:boolean;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
  const [editing,setEditing]=useState<CustomerRecord|null>(null),[failure,setFailure]=useState(''),[saving,setSaving]=useState(false),[version,setVersion]=useState(0)
  const dialog=useRef<HTMLDialogElement>(null)
+ const latest=useRef(value)
+ latest.current=value
  useEffect(()=>{if(editing&&!dialog.current?.open)dialog.current?.showModal()},[editing])
- function update(kind:ReferenceKind,index:number,next:CustomerReference){const rows=[...value[kind]];rows[index]=next;onChange({...value,[kind]:rows})}
- const participantIds=new Set(value.person.flatMap(row=>row.id?[row.id]:[]))
- const legacyContacts=value.contact.flatMap((row,index)=>row.entityId&&participantIds.has(row.entityId)?[]:[{row,index}])
+ function update(kind:ReferenceKind,index:number,next:CustomerReference){
+  const rows=[...value[kind]];rows[index]=next
+  const changed={...value,[kind]:rows}
+  latest.current=changed
+  onChange(changed)
+  // An explicitly selected person with one saved phone needs no second selection.
+  // Do not infer a number from the name text or overwrite a number already informed.
+  if(kind==='person'&&index===0&&next.id)
+    void api<EntityRecord>('/api/customer-records/'+encodeURIComponent(next.id)).then(entity=>{
+      const current=latest.current
+      if(current.person[0]?.id!==next.id||current.contact.some(ref=>!!ref.id||!!ref.text.trim()))return
+      const phones=entity.contacts.filter(contact=>!!contact.text.trim()&&contact.whatsapp.state!=='conflict')
+      if(phones.length!==1)return
+      const contact=phones[0]!
+      const hydrated={...current,contact:[{id:contact.id,text:contact.text,entityId:entity.id},...current.contact.slice(1)]}
+      latest.current=hydrated
+      onChange(hydrated)
+    }).catch(()=>{})
+ }
+ const primaryPerson=value.person[0]??{id:null,text:''}
+ const primaryPhone=value.contact[0]??{id:null,text:''}
  const add=(kind:ReferenceKind)=>onChange({...value,[kind]:[...value[kind],{id:null,text:''}]})
- const line=(kind:ReferenceKind,row:CustomerReference,index:number)=><SmartLine key={index} version={version} kind={kind} row={row} disabled={disabled} onChange={next=>update(kind,index,next)} onEdit={setEditing} onMessage={onMessage?cid=>onMessage(cid,index):undefined} onRemove={()=>onChange({...value,[kind]:value[kind].filter((_,n)=>n!==index)})}/>
+ const line=(kind:ReferenceKind,row:CustomerReference,index:number)=><SmartLine key={index} version={version} kind={kind} row={row} primaryContactId={value.contact[0]?.id??null} disabled={disabled} onChange={next=>update(kind,index,next)} onEdit={setEditing} onMessage={onMessage?cid=>onMessage(cid,index):undefined} onRemove={()=>onChange({...value,[kind]:value[kind].filter((_,n)=>n!==index)})}/>
  return <div className="customer-lines">
- <section aria-label="Pessoas"><header><strong>Pessoas</strong><button type="button" disabled={disabled} onClick={()=>add('person')}>+ Adicionar</button></header>
- {value.person.map((row,index)=>line('person',row,index))}
- <button type="button" disabled={disabled} onClick={()=>setEditing({id:'',kind:'entity',text:'',revision:0})}>Cadastrar pessoa com telefones</button>
- <details open={legacyContacts.some(({row})=>!!row.text)||participantIds.size===0||undefined}>
-   <summary>Telefones informados na ficha</summary>
-   <div role="region" aria-label="Contatos">
-     {legacyContacts.map(({row,index})=>line('contact',row,index))}
-     <button type="button" disabled={disabled} onClick={()=>add('contact')}>+ Informar telefone</button>
-   </div>
- </details></section>
+ <section aria-label="Pessoas">
+  <header><strong>Pessoa e telefone</strong></header>
+  <div className="customer-primary">
+    <div><label className="customer-field-label">Nome</label>{line('person',primaryPerson,0)}</div>
+    <div role="region" aria-label="Contatos"><label className="customer-field-label">Telefone</label>{line('contact',primaryPhone,0)}</div>
+  </div>
+  <details className="customer-secondary" open={value.person.length>1||value.contact.length>1}>
+    <summary>Outras pessoas e telefones</summary>
+    {value.person.slice(1).map((row,index)=>line('person',row,index+1))}
+    <button type="button" disabled={disabled} onClick={()=>add('person')}>+ Outra pessoa</button>
+    {value.contact.slice(1).map((row,index)=>line('contact',row,index+1))}
+    <button type="button" disabled={disabled} onClick={()=>add('contact')}>+ Outro telefone</button>
+    {!primaryPerson.id&&<button type="button" disabled={disabled} onClick={()=>setEditing({id:'',kind:'entity',text:'',revision:0})}>Cadastro avançado de pessoa</button>}
+  </details>
+ </section>
  {(['vehicle','payer'] as const).map(kind=><section key={kind} aria-label={titles[kind]}><header><strong>{titles[kind]}</strong><button type="button" disabled={disabled} onClick={()=>add(kind)}>+ Adicionar</button></header>
  {value[kind].map((row,index)=>line(kind,row,index))}
  {kind==='vehicle'&&<button type="button" disabled={disabled} onClick={()=>setEditing({id:'',kind:'vehicle',text:'',revision:0})}>Cadastrar veículo</button>}
  </section>)}
- {editing&&<dialog className="customer-record-dialog" onKeyDown={e=>e.stopPropagation()} ref={dialog} aria-label="Editar cadastro selecionado" onClose={()=>setEditing(null)}>{editing.kind==='entity'?<EntityEditor key={editing.id} record={editing} onClose={()=>setEditing(null)} onSaved={record=>{const next={...value,person:[...value.person]};const index=next.person.findIndex(r=>r.id===record.id);if(index>=0)next.person[index]={id:record.id,text:record.text};else if(!editing.id){const blank=next.person.findIndex(r=>!r.id&&!r.text.trim());if(blank>=0)next.person[blank]={id:record.id,text:record.text};else next.person.push({id:record.id,text:record.text})}onChange(next);setEditing(null);setVersion(v=>v+1)}}/>:<><h3>Cadastro compartilhado</h3><p>Alterações aparecem nos Atendimentos que selecionaram este registro.</p><label>{editing.kind==='contact'?'Telefone':'Nome / marca e modelo'}<input value={editing.text} readOnly={!!editing.conversationId} onChange={e=>setEditing({...editing,text:e.target.value})}/></label>{editing.kind==='vehicle'&&<><label>Placa<input value={editing.plate??''} onChange={e=>setEditing({...editing,plate:e.target.value})}/></label><label>Fabricação<input value={editing.fabricationYear??''} onChange={e=>setEditing({...editing,fabricationYear:e.target.value})}/></label><label>Ano-modelo<input value={editing.modelYear??''} onChange={e=>setEditing({...editing,modelYear:e.target.value})}/></label></>}
+ {editing&&<dialog className="customer-record-dialog" onKeyDown={e=>e.stopPropagation()} ref={dialog} aria-label="Editar cadastro selecionado" onClose={()=>setEditing(null)}>{editing.kind==='entity'?<EntityEditor key={editing.id} record={editing} onClose={()=>setEditing(null)} onSaved={record=>{
+  const next={...value,person:[...value.person],contact:[...value.contact]}
+  const index=next.person.findIndex(r=>r.id===record.id)
+  if(index>=0)next.person[index]={id:record.id,text:record.text}
+  else if(!editing.id){const firstFree=next.person.findIndex(r=>!r.id);if(firstFree>=0)next.person[firstFree]={id:record.id,text:record.text};else next.person.push({id:record.id,text:record.text})}
+  // Saving a person with one contact also selects that number on a new/blank
+  // Atendimento. Never replace a nonempty contact or guess among multiple numbers.
+  const sole=record.contacts.length===1?record.contacts[0]:null
+  if(sole?.text.trim()&&!next.contact[0]?.id&&!next.contact[0]?.text.trim())
+    next.contact[0]={id:sole.id,text:sole.text,entityId:record.id}
+  onChange(next);setEditing(null);setVersion(v=>v+1)
+ }}/>:<><h3>Cadastro compartilhado</h3><p>Alterações aparecem nos Atendimentos que selecionaram este registro.</p><label>{editing.kind==='contact'?'Telefone':'Nome / marca e modelo'}<input value={editing.text} readOnly={!!editing.conversationId} onChange={e=>setEditing({...editing,text:e.target.value})}/></label>{editing.kind==='vehicle'&&<><label>Placa<input value={editing.plate??''} onChange={e=>setEditing({...editing,plate:e.target.value})}/></label><label>Fabricação<input value={editing.fabricationYear??''} onChange={e=>setEditing({...editing,fabricationYear:e.target.value})}/></label><label>Ano-modelo<input value={editing.modelYear??''} onChange={e=>setEditing({...editing,modelYear:e.target.value})}/></label></>}
  <button type="button" disabled={saving} onClick={()=>{const kind=Object.keys(titles).find(k=>value[k as ReferenceKind].some(r=>r.id===editing.id))as ReferenceKind|undefined;if(kind)onChange({...value,[kind]:value[kind].map(r=>r.id===editing.id?{...r,id:null}:r)});setEditing(null)}}>Trocar seleção neste Atendimento</button>
  {failure&&<p role="alert">{failure}</p>}<button type="button" disabled={saving} onClick={()=>setEditing(null)}>Fechar</button><button type="button" disabled={saving} onClick={async()=>{setSaving(true);setFailure('');try{const record=await api<CustomerRecord>('/api/customer-records'+(editing.id?'/'+editing.id:''),{method:editing.id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:editing.kind,text:editing.text,revision:editing.revision,...(editing.kind==='vehicle'?{plate:editing.plate,fabricationYear:editing.fabricationYear,modelYear:editing.modelYear}:{})})});onChange(Object.fromEntries(Object.entries(value).map(([k,rows])=>[k,rows.map((r:CustomerReference)=>r.id===record.id?{id:record.id,text:record.text,...(record.kind==='vehicle'?{plate:record.plate,fabricationYear:record.fabricationYear,modelYear:record.modelYear}:{})}:r)]))as CustomerReferences);setEditing(null)}catch(e){setFailure((e as Error).message)}finally{setSaving(false)}}}>Salvar cadastro</button></>}</dialog>}
  </div>
 }
-function SmartLine({kind,row,version,disabled,onChange,onEdit,onRemove,onMessage}:{kind:ReferenceKind;row:CustomerReference;version:number;disabled:boolean;onChange:(v:CustomerReference)=>void;onEdit:(r:CustomerRecord)=>void;onRemove:()=>void;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
+function SmartLine({kind,row,primaryContactId,version,disabled,onChange,onEdit,onRemove,onMessage}:{kind:ReferenceKind;row:CustomerReference;primaryContactId:string|null;version:number;disabled:boolean;onChange:(v:CustomerReference)=>void;onEdit:(r:CustomerRecord)=>void;onRemove:()=>void;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
  const [suggestions,setSuggestions]=useState<Array<CustomerRecord&{ownerName?:string}>>([]),[record,setRecord]=useState<CustomerRecord|null>(null),[error]=useState(''),[focused,setFocused]=useState(false)
  useEffect(()=>{const c=new AbortController();if(row.id){void api<CustomerRecord>('/api/customer-records/'+row.id,{signal:c.signal}).then(r=>{if(!c.signal.aborted)setRecord(r)}).catch(()=>{});return()=>c.abort()}setRecord(null);return()=>c.abort()},[row.id,version])
  useEffect(()=>{const c=new AbortController();if(row.id||row.text.trim().length<2){setSuggestions([]);return()=>c.abort()}const timer=setTimeout(()=>{void api<{items:Array<CustomerRecord&{ownerName?:string}>}>('/api/customer-records?kind='+registryKind(kind)+'&q='+encodeURIComponent(row.text),{signal:c.signal}).then(r=>{if(!c.signal.aborted)setSuggestions(r.items)}).catch(()=>{})},250);return()=>{clearTimeout(timer);c.abort()}},[kind,row.id,row.text])
@@ -45,6 +81,6 @@ function SmartLine({kind,row,version,disabled,onChange,onEdit,onRemove,onMessage
  {row.id?<span className="smart-locked">{record?.text??row.text}{kind==='vehicle'&&[record?.plate,record?.fabricationYear,record?.modelYear].filter(Boolean).map(v=>' · '+v)}</span>:<div className="smart-free"><input aria-label={kind==='contact'?'Telefone':kind==='vehicle'?'Marca e modelo':kind==='payer'?'Pagador':'Pessoa de referência'} inputMode={kind==='contact'?'tel':'text'} placeholder={kind==='contact'?'Telefone':kind==='vehicle'?'Marca e modelo':'Nome informado'} value={row.text} maxLength={250} disabled={disabled} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)} onChange={e=>onChange({...row,text:e.target.value})}/>{kind==='vehicle'&&<><input aria-label="Placa" placeholder="Placa" value={row.plate??''} onChange={e=>onChange({...row,plate:e.target.value.toUpperCase()})}/><div className="smart-years">{(['fabricationYear','modelYear']as const).map(key=><label key={key}>{key==='fabricationYear'?'Fabricação':'Ano-modelo'}<input aria-label={key==='fabricationYear'?'Ano de fabricação':'Ano do modelo'} inputMode="numeric" maxLength={4} value={row[key]??''} onChange={e=>onChange({...row,[key]:e.target.value})}/></label>)}</div></>}</div>}
  {kind==='contact'&&<button type="button" disabled={disabled||!onMessage||(!record?.conversationId&&!/^\+[1-9]\d{7,14}$/.test(row.text.replace(/[\s().-]/g,'')))} aria-label="Escrever mensagem opcional" title={record?.conversationId?'Abrir Chat; envio exige confirmação':'Abrir conversa para o telefone salvo com + e DDI; nenhum envio automático'} onClick={()=>onMessage?.(record?.conversationId??null)}>✉</button>}
  {row.id?<button type="button" aria-label="Editar cadastro selecionado" disabled={disabled||!record} onClick={()=>record&&onEdit(record)}>✎</button>:<button type="button" aria-label="Remover linha" disabled={disabled} onClick={onRemove}>×</button>}
- </div>{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='vehicle'?{plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{row.id&&kind==='person'&&(record as EntityRecord|null)?.contacts&&<EntityContacts contacts={(record as EntityRecord).contacts} onRefresh={()=>{void api<EntityRecord>('/api/customer-records/'+row.id).then(setRecord).catch(()=>{})}}/>}{error&&<p role="alert">{error}</p>}</div>
+ </div>{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='vehicle'?{plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{row.id&&kind==='person'&&!!(record as EntityRecord|null)?.contacts?.length&&<details className="customer-linked-phones" open={(record as EntityRecord).contacts.some(c=>c.whatsapp?.state==='available'||c.whatsapp?.state==='history_only')}><summary>WhatsApp e números cadastrados</summary><EntityContacts contacts={(record as EntityRecord).contacts} primaryContactId={primaryContactId} onRefresh={()=>{void api<EntityRecord>('/api/customer-records/'+row.id).then(setRecord).catch(()=>{})}}/></details>}{error&&<p role="alert">{error}</p>}</div>
  </div>
 }

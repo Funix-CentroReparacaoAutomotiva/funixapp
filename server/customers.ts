@@ -89,14 +89,24 @@ export class CustomerRepository {
     if(!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='customer_contact_phone_unique'").get())return refs
     const person=[...refs.person]
     let ownerIds=[...new Set(person.flatMap(ref=>ref.id?[ref.id]:[]))]
+    const selectExistingOwner=(entityId:string)=>{
+      if(ownerIds.some(id=>id!==entityId)||ownerIds.length>1||!ownerIds.length&&person.length>1)
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','O número pertence a outro titular. Revise os responsáveis desta ficha.')
+      if(!ownerIds.length){
+        const owner=this.record(entityId)
+        if(person.length)person[0]={id:owner.id,text:owner.text}
+        else person.push({id:owner.id,text:owner.text})
+        ownerIds=[owner.id]
+      }
+    }
     const contact=refs.contact.map((ref,index)=>{
       if(ref.id){
         const selected=this.record(ref.id)
-        if(selected.entityId&&!person.some(row=>row.id||row.text)){
-          const owner=this.record(selected.entityId)
-          person.splice(0,person.length,{id:owner.id,text:owner.text})
-          ownerIds=[owner.id]
-        }
+        if(selected.kind!=='contact')throw new ServiceError(400,'INVALID_REFERENCE','A referência deve ser um telefone cadastrado.')
+        // Explicitly selected third-party numbers may coexist with a different
+        // responsible person (e.g. someone calling on the owner's behalf).
+        // Auto-select an owner only when the person is still free text.
+        if(selected.entityId&&!ownerIds.length&&person.length<=1)selectExistingOwner(selected.entityId)
         return ref
       }
       const phone=normalizePhone(ref.text)
@@ -104,8 +114,11 @@ export class CustomerRepository {
       // Existing unresolved legacy text may survive unrelated edits.
       if(previous?.contact[index]?.id===null&&previous.contact[index]?.text===ref.text)return ref
       const matches=this.phoneMatches(phone),existing=matches[0]
-      if(matches.length>1||existing?.entityId&&!ownerIds.includes(existing.entityId)||ownerIds.length>1)
-        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Busque pelo telefone e selecione o Contato cadastrado, ou selecione o titular deste número.')
+      if(matches.length>1||ownerIds.length>1)
+        throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este número possui mais de uma referência ou titular. Revise o cadastro.')
+      // A unique canonical phone is sufficient to reuse its known person and
+      // contact. Free-text names do not create a second owner for the same number.
+      if(existing?.entityId)selectExistingOwner(existing.entityId)
       let ownerId=ownerIds[0]
       if(!ownerId){
         if(person.length!==1||!person[0]!.text)
@@ -128,8 +141,13 @@ export class CustomerRepository {
       this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(r))
       // Selecting a known channel Contact is explicit; a textual phone match never reaches here.
       const cid=kind==='contact'&&r.id?this.record(r.id).conversationId:null
-      if(cid&&!this.hasConversationReference(cid,at)){
+      if(cid&&!this.hasConversationReference(cid,at)&&!this.wasConversationRevoked(cid,at)){
         this.resolveChannelContact(cid,r.id!)
+        // A Contact can be verified before any commercial V20 conversation row
+        // exists. Materialize the exact provider handle before linking history.
+        this.db.prepare(`INSERT OR IGNORE INTO v20_conversations(id,instance,remote_jid,created_at)
+          SELECT id,instance,remote_jid,? FROM chat_provider_conversations WHERE id=?`)
+          .run(new Date().toISOString(),cid)
         this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(randomUUID(),cid,at,new Date().toISOString(),'operator','explicit_contact_reference')
         this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
       }
@@ -143,6 +161,18 @@ export class CustomerRepository {
     return !!this.db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
       WHERE a.atendimento_id=? AND a.unlinked_at IS NULL AND c.instance='funix_comercial'
       AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(at,...members)
+  }
+
+  /** Automatic contact selection never resurrects a deliberately revoked chat link.
+   * Re-association after revocation goes through the explicit, auditable Chat action.
+   */
+  private wasConversationRevoked(conversationId:string,at:string) {
+    const identities=new ConversationIdentities(this.db)
+    const jid=identities.providerJid(conversationId),members=jid?identities.identityJids(jid):null
+    if(!members)return !!this.db.prepare('SELECT 1 FROM v20_associations WHERE conversation_id=? AND atendimento_id=? AND unlinked_at IS NOT NULL').get(conversationId,at)
+    return !!this.db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
+      WHERE a.atendimento_id=? AND a.unlinked_at IS NOT NULL AND c.instance='funix_comercial'
+        AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(at,...members)
   }
 
   references(at:string):CustomerReferences {

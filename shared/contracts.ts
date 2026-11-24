@@ -85,6 +85,16 @@ export interface Atendimento {
   revision: number
 }
 
+/** Open manual-creation candidate; a match requests review, never a forced merge. */
+export interface DuplicateAtendimento {
+  id:string
+  name:string
+  vehicle:string
+  plate:string
+  stage:string
+  revision:number
+}
+
 export interface AtendimentoList {
   items: Atendimento[]
   total: number
