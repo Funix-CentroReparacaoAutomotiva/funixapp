@@ -174,7 +174,7 @@ test('manual name and equivalent phone automatically reuse the unique registered
   assert.equal((await denied.json()).error.code,'CONTACT_OWNER_CONFLICT')
   const renamed=customers.save({text:'Pessoa renomeada',revision:entity.revision},entity.id)
   assert.equal(app.repository.get(first.id,true).name,renamed.text)
-  assert.equal(app.repository.get(second.id,true).references.contact[0].id,contact.id)
+  assert.equal(app.repository.get(second.id,true).references!.contact[0]!.id,contact.id)
   assert.equal(customers.contacts(entity.id).length,1)
  }finally{app.close()}
 })
