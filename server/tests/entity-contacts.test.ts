@@ -43,6 +43,13 @@ test('manual lead with equivalent phone reuses a known WhatsApp Contact and link
   const links=f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').get(created.id)!
   assert.equal(links.n,1)
   assert.equal(f.customers.contacts(entity.id).length,1)
+  // If the operator explicitly unlinked this Chat, an unrelated cadastro save
+  // must not silently resurrect it.
+  f.db.prepare('UPDATE v20_associations SET unlinked_at=? WHERE atendimento_id=? AND unlinked_at IS NULL')
+    .run(new Date().toISOString(),created.id)
+  const edit=f.at.get(created.id,true)
+  f.at.update(created.id,{revision:edit.revision,notes:'Nota sem alterar telefone',references:edit.references},true,true)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').get(created.id)!.n,0)
   // A recognized history link is not a new message or authorization to send.
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,0)
   assert.equal(f.sends(),0)
