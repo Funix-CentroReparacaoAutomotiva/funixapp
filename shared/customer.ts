@@ -60,11 +60,28 @@ export function participantGroups(refs:CustomerReferences) {
   const unassigned:Array<{contact:CustomerReference;index:number}>=[]
   refs.contact.forEach((contact,index)=>{
     const owner=contact.entityId
-    const candidates=owner?groups.filter(g=>g.person.id===owner):
-      contact.participantKey?groups.filter(g=>g.key===contact.participantKey):
+    const candidates=contact.participantKey?
+      groups.filter(g=>g.key===contact.participantKey&&(!owner||!g.person.id||g.person.id===owner)):
+      owner?groups.filter(g=>g.person.id===owner):
       groups.length===1?[groups[0]!]:[]
     if(candidates.length===1)candidates[0]!.contacts.push({contact,index})
     else unassigned.push({contact,index})
   })
   return {groups,unassigned}
+}
+
+/** Add explicit grouping to an edit without changing IDs or guessing among
+ * several possible owners. Old orphan rows stay untouched for review. */
+export function groupedCustomerReferences(refs:CustomerReferences):CustomerReferences {
+  const {groups,unassigned}=participantGroups(refs)
+  const person=groups.map(g=>({...g.person,participantKey:g.key}))
+  const contact=refs.contact.map(c=>({...c}))
+  for(const g of groups)for(const item of g.contacts)
+    contact[item.index]={...item.contact,participantKey:g.key}
+  for(const item of unassigned) {
+    const {participantKey,...legacy}=item.contact
+    void participantKey
+    contact[item.index]=legacy
+  }
+  return {...refs,person,contact}
 }
