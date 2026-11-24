@@ -480,7 +480,7 @@ test('real PDF preview endpoint is authenticated, same-origin, inline/no-store a
  }finally{app.close()}
 })
 
-test('manual Atendimento resolves a phone transactionally and requires explicit reuse of an existing owner',async()=>{
+test('manual Atendimento resolves an existing phone transactionally and preserves its canonical owner',async()=>{
  const app=start()
  try{
   const cookie=await authenticate(app)
@@ -489,13 +489,17 @@ test('manual Atendimento resolves a phone transactionally and requires explicit 
   const saved=await first.json()
   const contact=saved.references.contact[0]
   assert.ok(contact.id)
-  assert.equal((await app.write('/api/atendimentos','POST',{name:'Nome diferente',phone:'5531999990182'},cookie)).status,409)
+  const automatic=await app.write('/api/atendimentos','POST',{name:'Nome diferente',phone:'5531999990182'},cookie)
+  assert.equal(automatic.status,201)
+  const auto=await automatic.json()
+  assert.equal(auto.references.person[0].id,saved.references.person[0].id)
+  assert.equal(auto.references.contact[0].id,contact.id)
   const next=await app.write('/api/atendimentos','POST',{references:{person:[],contact:[contact],vehicle:[],payer:[]}},cookie)
   assert.equal(next.status,201)
   const reused=await next.json()
   assert.equal(reused.references.contact[0].id,contact.id)
   assert.equal(reused.references.person[0].id,saved.references.person[0].id)
-  assert.equal(app.repository.list().total,2)
+  assert.equal(app.repository.list().total,3)
   const newPhone=await app.write('/api/atendimentos/'+saved.id,'PATCH',{revision:saved.revision,phone:'(31) 99999-0183'},cookie)
   assert.equal(newPhone.status,200)
   const updated=await newPhone.json()
