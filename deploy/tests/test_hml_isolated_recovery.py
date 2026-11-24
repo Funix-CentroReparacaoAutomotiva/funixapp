@@ -34,7 +34,7 @@ def assignment(source, key):
 
 
 def git_blob(raw):
-    return hashlib.sha1(f"blob {len(raw)}\\0".encode() + raw).hexdigest()
+    return hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
 
 
 def digest(path):
@@ -90,7 +90,7 @@ class IsolatedRecoveryTest(unittest.TestCase):
     def test_tampered_staging_is_blocked_before_import(self):
         self.assertEqual(verify_staged_sources(self.root), self.stage)
         target = self.stage / "hml-update.py"
-        target.write_bytes(target.read_bytes() + b"# drift\\n")
+        target.write_bytes(target.read_bytes() + b"# drift\n")
         with self.assertRaisesRegex(ValueError, "pin mismatch"):
             verify_staged_sources(self.root)
 
@@ -177,7 +177,7 @@ class IsolatedRecoveryTest(unittest.TestCase):
                 self.events.append("reopen")
 
         adapter = SyntheticAdapter()
-        with patch.object(updater, "make_adapter", return_value=adapter), \\
+        with patch.object(updater, "make_adapter", return_value=adapter), \
              patch.object(updater, "load", side_effect=lambda name:
                           isolated_transaction if name == "hml-update-transaction"
                           else original_loader(name)):
