@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts,projectOverview} from '../model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts,projectOverview,attentionOverview} from '../model.mjs';
 const base=JSON.parse(readFileSync(new URL('../snapshot.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(base);
 test('snapshot atual é válido sem impor frentes ou quantidade fixa',()=>{const m=validateSnapshot(base);assert.equal(m.nodes.length,base.nodes.length);assert.equal(childrenOf(m,m.root.id).length,metrics(m).fronts);assert.equal(metrics(m).nodes,base.nodes.length);assert.equal(metrics(m).groups,base.nodes.filter(x=>x.presentation==='group').length);assert.equal(recordsOf(m,m.root.id).length,base.records.length)});
@@ -183,4 +183,41 @@ test('resumo: confirmação numa frente vence incerteza da mesma categoria, sem 
   assert.deepEqual(x.blockedFronts,{value:1,complete:false,display:'1+'});
   // Decisões são contadas em trabalhos confirmados, e ausência de campo é incerteza.
   assert.deepEqual(x.decisions,{value:1,complete:false,display:'1+'});
+});
+
+test('minha atenção agrega motivos em um único trabalho e conserva contexto de projeto',()=>{
+  const r=clone();r.nodes=[
+    {id:'g1',title:'Projeto 1',presentation:'group',status:'acompanhamento'},
+    {id:'g2',title:'Projeto 2',presentation:'group',status:'acompanhamento'},
+    {id:'f1',title:'Frente A',parentId:'g1',status:'bloqueado'},
+    {id:'a',title:'Tarefa com decisão e bloqueio',parentId:'f1',status:'bloqueado',decisionPending:true,nextResult:'Validar contrato'},
+    {id:'b',title:'Sem verificação',parentId:'f1',status:'nao_verificado'},
+    {id:'c',title:'Bloqueado B',parentId:'g2',status:'bloqueado',decisionPending:false},
+    {id:'d',title:'Concluído',parentId:'g2',status:'concluido',decisionPending:false}
+  ];r.records=[];r.relations=[];
+  const overview=attentionOverview(validateSnapshot(r));
+  assert.equal(overview.items.length,3); // status do pai não vira outra tarefa
+  assert.deepEqual(overview.counts,{decision:1,blocked:2,unverified:1,decisionsUnknown:1});
+  assert.deepEqual(overview.items.map(x=>x.id),['a','c','b']);
+  assert.deepEqual(overview.items[0].reasons,['decision','blocked']);
+  assert.equal(overview.items[0].context,'Projeto 1');
+  assert.equal(overview.items[0].nextResult,'Validar contrato');
+  assert.equal(overview.items[1].context,'Projeto 2');
+  assert.equal(overview.items[2].nextResult,null);
+});
+test('minha atenção não cria decisão pendente de dados ausentes nem de texto livre',()=>{
+  const r=clone();r.nodes=[
+    {id:'p',title:'Projeto',presentation:'group',status:'bloqueado',decisionPending:true},
+    {id:'a',parentId:'p',title:'Trabalho em andamento',status:'em_execucao',nextResult:'Decidir depois'},
+    {id:'b',parentId:'p',title:'Planejado',status:'planejado',decisionPending:false}
+  ];r.records=[];r.relations=[];
+  const overview=attentionOverview(validateSnapshot(r));
+  assert.deepEqual(overview.items,[]);
+  assert.deepEqual(overview.counts,{decision:0,blocked:0,unverified:0,decisionsUnknown:1});
+});
+test('minha atenção aceita mapa vazio sem emitir pendências fictícias',()=>{
+  const r=clone();r.nodes=[];r.records=[];r.relations=[];
+  const overview=attentionOverview(validateSnapshot(r));
+  assert.equal(overview.items.length,0);
+  assert.deepEqual(overview.counts,{decision:0,blocked:0,unverified:0,decisionsUnknown:0});
 });
