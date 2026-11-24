@@ -106,7 +106,7 @@ export class CustomerRepository {
         // Explicitly selected third-party numbers may coexist with a different
         // responsible person (e.g. someone calling on the owner's behalf).
         // Auto-select an owner only when the person is still free text.
-        if(selected.entityId&&!ownerIds.length)selectExistingOwner(selected.entityId)
+        if(selected.entityId&&!ownerIds.length&&person.length<=1)selectExistingOwner(selected.entityId)
         return ref
       }
       const phone=normalizePhone(ref.text)
