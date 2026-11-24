@@ -1,159 +1,32 @@
-# FUNIX — operação do atualizador HML (proposta pré-deploy)
+# FUNIX — operação HML simplificada
 
-**Estado:** incremento em draft; não usar na VPS antes de CI, revisão e
-aceite do primeiro pacote real. Nenhum merge/comando remoto foi executado.
-O ensaio no HEAD 593c885 (run 44311960313/job 134828086264) concluiu 86 testes,
-HML_ARTIFACT_MAINTENANCE_ENTRYPOINT_OK, update, rollback e recuperação pré/pós
-aceite. API GitHub simulada; Docker/SQLite/Nginx/TLS sintéticos reais.
+**Vigente desde 24/11/2026, por decisão expressa da direção.** Substitui os manuais de recuperação, migração e reconciliação do controlador anterior. A FUNIX precisa de um ERP funcional, não de uma plataforma própria de atualização.
 
-## Escopo e ordem
+## Estado verificado
 
-Entrypoint de coordenação (#273), para revisão: executar localmente como
-administrador, a partir do diretório deploy completo da revisão confiável:
+- HML: https://hml.funix.com.br. Projeto Docker Compose `funix-hml`, serviços API, Web e Gateway. O transporte mTLS legado está intencionalmente desativado. Não reativar, reparar journals ou reconciliar o registro antigo. #330 e #346 foram encerradas.
+- Execução n8n [48345](https://n8n-eez8.srv2060217.hstgr.cloud/workflow/2ay7vrShi3PKN6Tr/executions/48345): atualização de `54b60d98b6c39ff0dc8ada0f7daa60bcf6cf2325` para `20a1a1561223a00ba4aec6290b55ddd9c0b52696`, imagens verificadas pelo conteúdo, backup SQLite, HTTPS, integridade final e contêineres externos inalterados. Respostas 404 transitórias durante a convergência do gateway não impediram o aceite. Execução 48349 confirmou três serviços saudáveis.
+- Acesso: [workflow administrativo manual no n8n](https://n8n-eez8.srv2060217.hstgr.cloud/workflow/2ay7vrShi3PKN6Tr), credencial `FUNIX - VPS Administrativo`. Não publicar webhook nem aceitar comandos provenientes de entradas externas. Conferir configuração e autorização antes de executar. O acesso atual é root; a configuração permanente com privilégios controlados ainda está pendente. Não registrar segredos em código, chat ou logs.
 
-```bash
-python3 hml-official-update.py --operation op-IDENTIFICADOR \
-  --revision SHA40 --artifact-id ID --run-id RUN --attempt TENTATIVA --pr NUMERO \
-  --authorize-operation op-IDENTIFICADOR --authorize-revision SHA40
+## Fluxo operacional
+
+1. Selecionar a revisão autorizada, revisar alterações e confirmar CI da revisão exata. Gerar imagens API/Web (ou somente Web quando o escopo é o painel) por processo confiável. O workflow **FUNIX - Homologacao (candidato)** ainda permite build isolado de PR revisada e artefato privado. A obtenção de novos artefatos via acesso conectado ainda deve ser comprovada; não afirmar automação completa. Não acionar o workflow legado de assinatura.
+2. Obter o pacote por canal autenticado. Conferir procedência, digest e conteúdo das imagens; diferenças de ID entre classic Docker e containerd não são, isoladamente, corrupção. Reutilizar `deploy/hml-image-identity.py` quando aplicável. Não usar apenas labels como prova de identidade.
+3. Consultar o ambiente real e confirmar escopo: arquivos `/opt/funix-hml/compose.yaml`, `gateway.compose.yaml`, `release.env`, `release-simple.json`; banco `/var/lib/funix-hml/app-data/funix.sqlite`. Usar sempre projeto `funix-hml`, imagens fixadas e o override `release-simple.json`. Manter redes e montagens HML, integrações produtivas desativadas, autenticação e HTTPS. Não modificar Traefik global, produção ou outros projetos.
+4. Após autorização aplicável, preservar release anterior e backup SQLite consistente se API/banco puderem mudar; executar somente as operações Compose necessárias. Para painel Web-only, preservar API, banco e configurações não relacionadas; verificar a revisão Web própria. Não restaurar banco em uma simples troca Web.
+5. Aguardar convergência por prazo limitado: 404/502/503/504 transitórios durante recriação não comprovam falha definitiva. Validar TLS, ausência de acesso sem autenticação, status de saúde, revisão esperada, imagens e rotas funcionais relevantes. Acesso indevido ou erro de TLS não deve ser aceito. Verificar integridade SQLite quando a API/banco forem afetados e confirmar que contêineres externos não mudaram.
+6. Se falhar, identificar etapa e resposta efetiva, retornar à release anterior quando necessário e verificar o resultado. Não repetir cegamente a intervenção nem iniciar recovery do controlador legado. Se a HML contém apenas dados sintéticos e a direção autoriza descarte, reconstrução simples pode ser preferível.
+
+Exemplo de consulta, não de implantação automática:
+
+```sh
+docker compose -p funix-hml --env-file /opt/funix-hml/release.env \
+  -f /opt/funix-hml/compose.yaml -f /opt/funix-hml/gateway.compose.yaml \
+  -f /opt/funix-hml/release-simple.json ps
 ```
 
-O canal autorizado deve disponibilizar candidate.zip no diretório privado da
-operação antes do comando. Não há parâmetro de host, comando, projeto ou caminho
-livre. A autorização repete operação e SHA exatos. O coordenador usa host_scope,
-prepare_operation, installed_preflight e execute_operation; o update repete
-seus controles sob o lock oficial antes de qualquer mutação. Preparação e
-preflight usam o mesmo lock; a liberação entre preparação e execução não
-dispensa a nova checagem oficial de operação pendente. Operação existente não
-é reutilizada nem apagada. Em falha, não há rollback paralelo: apenas o que o
-atualizador oficial já realiza.
+## Limites e aceite
 
-O JSON final contém identidade da operação/artefato, revisões, etapas,
-accepted/rejected/rejected_restored/pending_recovery/busy/inspection_required
-e próxima ação. `operation` sempre identifica o pedido; `recovery_operation`
-é o ID canônico distinto da operação efetivamente apontada pelo estado global,
-somente após validar caminho, nome operation.json, schema, projeto e fase.
-Um alvo ilegível/inválido exige inspeção administrativa, sem recomendar recover.
-Contenção ou impossibilidade de confirmar o estado global produz recovery=unknown,
-nunca not_required. O coordenador reconcilia o resultado sob o lock oficial
-após falhas entre preparação/preflight e execução, sem nova mutação.
-Código de saída zero somente para accepted. Falhas antes do journal exigem
-revisão; pendência exige recover oficial autorizado no diretório de
-recovery_operation, não necessariamente o diretório do pedido atual.
-Rollback de aceite continua sendo comando separado com confirmação de perda
-dos dados posteriores. O entrypoint nunca o executa automaticamente.
+O fluxo já foi comprovado com imagens previamente disponíveis na VPS, não com um novo artefato transferido automaticamente. Não depender de #330 ou #346 para publicar uma nova revisão. A direção autoriza cada intervenção relevante conforme escopo, sem novo controlador ou aprovação técnica encadeada. Produção requer autorização específica e preservação dos dados reais. Preferir operações pelo ChatGPT/n8n, sem pedir ao proprietário terminal ou scripts de rotina.
 
-Interface remota futura: um executor local previamente aprovado poderia
-receber apenas esses identificadores/autorização e devolver JSON/código de
-saída. Transporte, identidade remota e concessão de escrita não são
-implementados aqui, nem podem usar a credencial de diagnóstico de leitura.
-
-Saídas CLI: stdout contém apenas o JSON final. Durante a coordenação, stdout e
-stderr Python e descritores herdados por subprocessos são capturados em arquivo
-temporário anônimo; somente linhas completas do diagnóstico HTTPS com campos
-fechados attempt/category/retry são emitidas em stderr. Texto bruto, exceções,
-config e mensagens Docker não são retransmitidos. O parser também não repete
-argumentos inválidos. Captura local não é serviço nem mecanismo remoto.
-
-Issues #271/#272: a consulta de procedência usa urllib da biblioteca padrão,
-HTTPS verificado para api.github.com, sem gh obrigatório e sem seguir redirects.
-Para repositório privado, disponibilizar FUNIX_HML_GITHUB_TOKEN apenas no
-ambiente do processo autorizado, com token de curta duração e leitura mínima
-de Actions/Pull requests/metadata no repositório FUNIX. Não colocar token na
-linha de comando, config, logs ou pacote. Sem token, acesso público só funciona
-se os metadados estiverem públicos; 401/403/404 ou resposta inválida bloqueiam.
-A sessão do gh não é reutilizada implicitamente. Download do artefato continua
-sendo uma etapa separada do transporte autorizado.
-
-O validador HTTPS repete a suíte completa até três vezes, espera um segundo
-entre tentativas e impõe orçamento de aceite de 60s, com timeout de socket de
-até 5s ajustado ao tempo remanescente antes de headers e leituras. Nunca aceita
-resultado após o prazo, inclusive no EOF final. Isso não é uma garantia rígida
-de retorno em 60s: resolução DNS e chamadas internas da biblioteca (incluindo
-recepção fragmentada de headers) podem exceder o orçamento antes de retornar
-ao controle Python. A próxima checagem reprova o resultado vencido.
-EOF com Content-Length remanescente é leitura incompleta e segue o retry
-limitado; HEAD e respostas sem corpo mantêm a semântica HTTP, e chunked
-continua suportado. Status/challenge incompatíveis são rejeitados antes de
-ler corpo, sem retry mesmo se o corpo também estiver truncado.
-Somente erros de transporte e 502/503/504 de endpoints esperados como 200 são
-transitórios. Certificado/TLS, autenticação, revisão, prontidão, limites de corpo
-e bloqueio de escrita falham imediatamente. Diagnóstico em stderr contém
-somente tentativa/categoria/retry, nunca URL arbitrária, corpo ou credenciais.
-A causa da instabilidade histórica permanece não demonstrada.
-
-Distribuição do código: gerar o pacote **da revisão aprovada** com
-`git archive --format=tar REVISAO_APROVADA deploy/` e transportar o arquivo
-íntegro pelo canal já autorizado. Instalar o diretório `deploy` completo em um
-diretório versionado de código confiável; não copiar apenas hml-update.py.
-Isso inclui hml-image-identity.py e todos os módulos carregados dinamicamente.
-Antes de prepare/preflight, conferir o SHA aprovado e a presença de
-`deploy/hml-image-identity.py` no pacote e na instalação. Não misturar módulos
-de revisões diferentes nem sobrescrever código de uma operação em andamento.
-
-1. Integrar #230 e #262 somente após revisão, CI da revisão exata e autorização
-   separada de merge. A ação produtiva permanece manual e inalterada.
-2. Despachar **FUNIX - Homologacao (candidato)** na main, para PR interna
-   revisada e SHA exato, com checks verdes. Nunca selecionar código não
-   confiável. O artefato é privado, retido por 3 dias.
-3. Usar administrador local da VPS e somente os utilitários de atualização
-   de uma revisão confiável/registrada. Transportar candidate.zip sem
-   descompactar, via SSH com host verificado. Não copiar chave root,
-   credenciais da produção ou token GitHub para o chat. A consulta de
-   proveniência usa a API HTTPS oficial com acesso **somente leitura** do
-   repositório (Actions, Pull requests); disponibilidade/credencial ainda
-   não verificadas na VPS. gh não é necessário. Para metadados privados,
-   fornecer token de curta duração conforme o contrato acima.
-4. Preparar diretórios privados root 0700 /var/lib/funix-hml/updater e
-   subdiretório novo op-IDENTIFICADOR. Artefato root 0600
-   op-IDENTIFICADOR/candidate.zip. O comando prepare verifica metadados
-   autenticados, ZIP, SHA e IDs, sem docker load, troca de serviços ou
-   gravação no banco. Registra somente hash do Compose normalizado
-   (não duplica senha) e config privada. Primeira operação exige revisão
-   auditada 8e801e9b e gateway estável, hash de gateway.compose.yaml.
-   O contrato é reutilizado e mudanças exigem revisão independente.
-5. Preflight confirma o release atual, saúde, rede/mounts e HTTPS. Conferir
-   disponibilidade de janela HML, espaço e ausência de operação pendente.
-   Somente após aceite do operador, update com --authorize. Sob lock
-   global, repete validação do ambiente e do pacote antes de parar
-   serviços. Preserva configurações originais, gateway fixo e SQLite
-   via backup durável. A HML poderá ficar indisponível brevemente.
-6. Em interrupção verificar journal privado. Recover exige autorização e
-   usa o mesmo diretório; não depende de pacote ainda disponível. Rollback
-   de atualização aceita exige também confirmação explícita de descarte
-   dos dados pós-update, com backup separado. Não repetir update com
-   journal existente, não remover lock/journal manualmente. Não tocar
-   produção, rede compartilhada ou Traefik.
-
-Exemplo de contrato da CLI (placeholders, **não executar agora**):
-```bash
-python3 /CAMINHO-CONFIAVEL/hml-update.py prepare --operation /var/lib/funix-hml/updater/op-IDENTIFICADOR --config /var/lib/funix-hml/updater/op-IDENTIFICADOR/config.json --artifact-id ID --run-id RUN --attempt TENTATIVA --revision SHA40 --pr NUMERO
-```
-Os verbos preflight, update, recover e rollback usam o mesmo par operation/config.
-Update/recover/rollback exigem --authorize; rollback também
---discard-post-update-data. O código proposto restringe caminhos e contexto
-Docker local, exige arquivos privados, hash do contrato, autenticação do
-artefato e journal. **Não constitui liberação antes dos testes e revisão.**
-
-## Limitações / aceite restante
-
-- O teste anterior não verificou a semântica da API GitHub real nem a
-  disponibilidade de gh na VPS. Validar o primeiro pacote autêntico.
-- A auditoria aprovada da VPS não executou o atualizador nem migrações.
-- O comando prepare grava metadados privados locais e extrai ZIP apenas
-  temporariamente. Não faz deploy. O teste da CLI é unitário; o ciclo
-  Docker usa o entrypoint compartilhado, sem VPS.
-- A base de Compose permanece instalada; não executar compose up normal
-  sem o override images.json depois de atualização, pois apontaria a release
-  inicial. Não substituir os arquivos instalados com o Compose produtivo.
-- A direção precisa aprovar a revisão funcional na HML; produção é outro
-  fluxo. Não remover as travas para obter sucesso artificial.
-
-## Correção do primeiro CI da interface operacional
-
-Run 44314802858, job 134837973022: regressões Python aprovadas;
-ensaio integrado falhou antes de carregar o pacote, por importação local
-de shutil em prepare_candidate, causando UnboundLocalError no cálculo
-do espaço livre. Removidas as importações locais redundantes de shutil
-e subprocess. Acrescentado teste de prepare_candidate com ZIP temporário
-real, espaço simulado e validação de ausência de docker load no modo
-preparação. Aguardar nova execução completa; nenhuma VPS foi acessada.
+A infraestrutura legada e seus testes podem permanecer no repositório até limpeza específica; não são instruções operacionais vigentes. Não há exigência de preservar seus dados de teste nem de concluir seus journals. Não remover automaticamente recursos compartilhados. A publicação de uma nova revisão somente se conclui após validação real, não por CI ou status n8n isolado.
