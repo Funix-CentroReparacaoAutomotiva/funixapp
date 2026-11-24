@@ -83,6 +83,17 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
     <p>Estes registros foram preservados. Não pertencem automaticamente à primeira pessoa.</p>
     {unassigned.filter(({contact})=>contact.id||contact.text).map(({contact,index})=>
       <div key={index}><strong>{contact.text||'Telefone observado no WhatsApp'}</strong>
+      {contact.entityId&&<button type="button" disabled={disabled} onClick={async()=>{
+        try{
+          const owner=await api<EntityRecord>('/api/customer-records/'+encodeURIComponent(contact.entityId!))
+          const grouped=groupedCustomerReferences(latest.current)
+          const existing=grouped.person.find(p=>p.id===owner.id)
+          const key=existing?.participantKey??'entity:'+owner.id
+          const person=existing?grouped.person:[...grouped.person,{id:owner.id,text:owner.text,participantKey:key}]
+          const contacts=grouped.contact.map(c=>c.id===contact.id?{...c,entityId:owner.id,participantKey:key}:c)
+          change({...grouped,person,contact:contacts})
+        }catch(e){setGroupError((e as Error).message)}
+      }}>Adicionar titular deste telefone</button>}
       {!contact.entityId&&<select aria-label="Pessoa deste telefone antigo" value="" disabled={disabled} onChange={e=>{
         const grouped=groupedCustomerReferences(value)
         if(!e.target.value)return
