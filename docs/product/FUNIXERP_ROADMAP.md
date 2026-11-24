@@ -23,8 +23,8 @@ Consulta ao repositório em 24/11/2026. Não constitui auditoria da instalação
 | Comunicação | #294, #298, #307, #311, #289 | Reusar contratos e corrigir somente lacunas verificadas; separar leitura de envio. |
 | Produção | #292, #305, #310, PR #267, [Produção V1](../PRODUCAO_V1.md) | PR #267 integrada em 19/11; fundação de agendamento, consentimento e OS. Pátio, vistoria de entrada, planejamento e registro de execução são próximos incrementos, não funcionalidades presumidas. |
 | Documentos | #295, #312, #313 | Reutilizar OS/PDF e revisões; definir documentos da operação. |
-| Plataforma | #291, #299, #302, #303; #330, PR #346 | Conferir condições efetivas de HML antes de publicação; não bloquear especificação/desenvolvimento isolado sem motivo. |
-| Governança | #301, #329, #347, PR #348 | Painel multiprojeto; mapa publicado ainda com apenas uma raiz de projeto. |
+| Plataforma | #291, #299, #302, #303; PR #356 | Operação HML simplificada vigente; #330 encerrada por obsolescência. Conferir ambiente e novo artefato antes de publicação. |
+| Governança | #301, #329, #347, PRs #353 e #355 | Central de Orquestração multiprojeto; mapa v4 publicado com FunixERP, SGF e Painel de Orquestração. Interface #353 ainda sem confirmação de instalação. |
 | Financeiro/fiscal/gestão | #167, #176, #212 | Requisitos futuros já registrados para extrato, emissão fiscal e indicadores; não são capacidades operacionais confirmadas. |
 
 Blueprint de descoberta: citado em #301, não localizado em `main` nem nas buscas iniciais autorizadas no Drive. Reconciliar versão e decisões antes de congelar modelo de domínio; não recriar uma especificação anterior sem verificar a fonte.
@@ -97,9 +97,9 @@ C1: inventário, contratos, estabilização e especificação V1 de Pátio/Finan
 1. Curadoria: demanda → issue existente (ou nova se necessário), objetivo, dono, dependências, limites, próximo resultado e critérios.
 2. ChatGPT prepara requisitos/contratos, revisa PRs e usa conectores; Codex quando checkout, edição integrada, depuração e testes locais oferecem vantagem.
 3. Executor em branch isolada, CI no SHA exato, evidência, limitações e revisão proporcional ao risco; não declarar revisão independente sem evidência.
-4. Fila HML: verificar integridade do controlador, backups/reversão, candidato e isolamento. Homologação sintética/funcional e aceite explícito. Produção só com autorização específica.
+4. Fila HML: verificar ambiente real, procedência do artefato, backups/reversão e isolamento pelo procedimento HML simplificado. Homologação sintética/funcional e aceite explícito. Produção só com autorização específica.
 5. Encerrar apenas após evidência de resultado e registrar o próximo passo. Contabilizar tempo até aceite, fila de revisão, bloqueios e retrabalho, não commits por agente.
 
 ## 9. Interface com o portfólio
 
-O Painel de Desenvolvimento FUNIX é transversal a projetos, frentes e demandas avulsas. O FunixERP é apenas um projeto (manter ID estável `proj-funixapp` durante evolução). Ver [escopo do painel multiprojeto](../governanca/painel-desenvolvimento-portfolio.md). Não reclassificar projetos externos como módulos do ERP. ChatGPT é o curador e editor dos dados de acompanhamento sob demanda; o painel é uma interface de leitura, não um cadastro obrigatório. Não exigir que toda demanda tenha issue quando não se tratar de tarefa técnica que necessite desse registro. O GitHub é a fonte das tarefas deste repositório, não de toda necessidade empresarial.
+A Central de Orquestração FUNIX é transversal a projetos, frentes e demandas avulsas. O SGF é projeto independente de assistência à gestão (assistentes e automações); o ERP mantém a responsabilidade pelos registros e processamento dos dados. O FunixERP é apenas um projeto (manter ID estável `proj-funixapp` durante evolução). Ver [escopo e roadmap da Central de Orquestração v0.3](../governanca/painel-desenvolvimento-portfolio.md). Não reclassificar projetos externos como módulos do ERP. ChatGPT é o curador e editor dos dados de acompanhamento sob demanda; o painel é uma interface de leitura, não um cadastro obrigatório. Não exigir que toda demanda tenha issue quando não se tratar de tarefa técnica que necessite desse registro. O GitHub é a fonte das tarefas deste repositório, não de toda necessidade empresarial.
