@@ -96,6 +96,17 @@ export class CustomerRepository {
   resolveManualContactReferences(refs:CustomerReferences,previous?:CustomerReferences) {
     if(!refs.person.some(p=>p.participantKey)&&!refs.contact.some(c=>c.participantKey))
       return this.resolveLegacyContactReferences(refs,previous)
+    // Incoming WhatsApp and older clients may have appended a canonical
+    // participant since the last grouped edit. Adopt only explicit ownership;
+    // retain unmatched historical rows for review and never infer by position.
+    const groupedPeople=refs.person.map(p=>p.participantKey?p:{...p,participantKey:randomUUID()})
+    const groupedPhones=refs.contact.map(c=>{
+      if(c.participantKey||!c.id)return c
+      const owner=this.record(c.id).entityId
+      const matches=owner?groupedPeople.filter(p=>p.id===owner):[]
+      return matches.length===1?{...c,participantKey:matches[0]!.participantKey}:c
+    })
+    refs={...refs,person:groupedPeople,contact:groupedPhones}
     const keys=new Set<string>(),used=new Set<string>(),people:CustomerReference[]=[],phones:CustomerReference[]=[]
     for(const person of refs.person){
       const key=person.participantKey
