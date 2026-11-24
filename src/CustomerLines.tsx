@@ -18,7 +18,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
  function change(next:CustomerReferences){latest.current=next;onChange(next)}
  function update(kind:ReferenceKind,index:number,next:CustomerReference,participantKey?:string){
   setGroupError('')
-  const grouped=groupedCustomerReferences(value)
+  const grouped=kind==='person'||kind==='contact'?groupedCustomerReferences(value):value
   const rows=[...grouped[kind]]
   const key=participantKey??rows[index]?.participantKey
   if(kind==='contact'&&key&&next.entityId){
@@ -41,7 +41,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
  }
  function add(kind:ReferenceKind){change({...value,[kind]:[...value[kind],{id:null,text:''}]})}
  function remove(kind:ReferenceKind,index:number,participantKey?:string){
-  const grouped=groupedCustomerReferences(value)
+  const grouped=kind==='person'||kind==='contact'?groupedCustomerReferences(value):value
   if(kind==='person'&&participantKey){
     const person=grouped.person.filter((_,n)=>n!==index)
     change({...grouped,person:person.length?person:[{id:null,text:'',participantKey:crypto.randomUUID()}],
