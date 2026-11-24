@@ -1,6 +1,6 @@
 # FunixERP — Roadmap técnico de evolução modular
 
-**Versão:** proposta v0.1 — 24/11/2026.  
+**Versão:** proposta v0.2 — 24/11/2026.  
 **Escopo:** evolução do FunixApp existente para FunixERP; não é o roadmap de todos os projetos FUNIX. A direção autorizou estruturar o planejamento, não aprovou automaticamente cada regra de negócio, desenvolvimento, migração ou publicação. Prazos e capacidade são hipóteses. Este documento é uma visão de marcos e dependências; tarefas executáveis ficam nas issues canônicas. Não substitui contratos técnicos vigentes nem o registro empresarial privado.
 
 ## 1. Princípios
@@ -42,6 +42,8 @@ Blueprint de descoberta: citado em #301, não localizado em `main` nem nas busca
 Marcos podem sobrepor desenvolvimento, nunca substituir gates. A designação 1.0 depende de aceite e operação, não de calendário.
 
 ## 4. Mapa de frentes e propriedade
+
+Esta divisão é uma proposta inicial, não uma taxonomia permanente do painel. A Central/ChatGPT pode reagrupar, renomear, criar ou arquivar frentes por dados, a pedido da direção e preservando as referências. O limite de simultaneidade é adaptável.
 
 | Frente | Referência existente ou candidata | Limite e primeiro incremento |
 | --- | --- | --- |
@@ -100,4 +102,4 @@ C1: inventário, contratos, estabilização e especificação V1 de Pátio/Finan
 
 ## 9. Interface com o portfólio
 
-O Painel de Desenvolvimento FUNIX é transversal a projetos, frentes e demandas avulsas. O FunixERP é apenas um projeto (manter ID estável `proj-funixapp` durante evolução). Ver [escopo do painel multiprojeto](../governanca/painel-desenvolvimento-portfolio.md). Não reclassificar projetos externos como módulos do ERP. O GitHub é a fonte das tarefas deste repositório, não de toda necessidade empresarial.
+O Painel de Desenvolvimento FUNIX é transversal a projetos, frentes e demandas avulsas. O FunixERP é apenas um projeto (manter ID estável `proj-funixapp` durante evolução). Ver [escopo do painel multiprojeto](../governanca/painel-desenvolvimento-portfolio.md). Não reclassificar projetos externos como módulos do ERP. ChatGPT é o curador e editor dos dados de acompanhamento sob demanda; o painel é uma interface de leitura, não um cadastro obrigatório. Não exigir que toda demanda tenha issue quando não se tratar de tarefa técnica que necessite desse registro. O GitHub é a fonte das tarefas deste repositório, não de toda necessidade empresarial.
