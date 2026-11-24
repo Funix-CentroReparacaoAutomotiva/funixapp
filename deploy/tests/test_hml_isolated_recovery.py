@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import shutil
 import sqlite3
+import sys
 import stat
 import tempfile
 import unittest
@@ -177,12 +178,24 @@ class IsolatedRecoveryTest(unittest.TestCase):
                 self.events.append("reopen")
 
         adapter = SyntheticAdapter()
+        config_path = operation / "config.json"
+        config_path.write_text(json.dumps({"state": str(state)}))
+        config_path.chmod(0o600)
+        # Exercise the *real staged CLI*, not only the transaction method.
+        # Only host-scope/config validation is mocked because its fixed VPS
+        # paths deliberately do not exist on a disposable runner.
         with patch.object(updater, "make_adapter", return_value=adapter), \
              patch.object(updater, "load", side_effect=lambda name:
                           isolated_transaction if name == "hml-update-transaction"
-                          else original_loader(name)):
-            updater.execute_operation("recover", {"state": str(state)},
-                                      operation, authorized=True)
+                          else original_loader(name)), \
+             patch.object(updater, "host_scope", return_value=operation) as host_scope, \
+             patch.object(updater, "check_config") as check_config, \
+             patch.object(sys, "argv", ["staged-updater", "recover", "--config",
+                                       str(config_path), "--operation",
+                                       str(operation), "--authorize"]):
+            updater.main()
+            host_scope.assert_called_once_with(operation, config_path)
+            check_config.assert_called_once()
 
         self.assertEqual(json.loads(journal.read_text())["phase"], "restored")
         self.assertEqual(digest(database), digest(backup))
