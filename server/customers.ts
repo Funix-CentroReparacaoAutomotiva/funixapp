@@ -101,7 +101,14 @@ export class CustomerRepository {
       const key=person.participantKey
       if(!key||keys.has(key))return invalid()
       keys.add(key)
-      const own=refs.contact.filter(c=>c.participantKey===key)
+      const own=refs.contact.filter(c=>c.participantKey===key).map(c=>{
+        if(!c.id)return c
+        const stored=this.record(c.id)
+        // Explicitly selected unowned civil number may be claimed by this
+        // participant through the same ownership resolver, never by guessing.
+        if(!stored.entityId&&!stored.conversationId&&normalizePhone(stored.text))return {...c,id:null,text:stored.text}
+        return c
+      })
       // A selected Contact is authoritative about its owner, not the client key.
       for(const c of own)if(c.id){
         const stored=this.record(c.id)
@@ -109,7 +116,8 @@ export class CustomerRepository {
           throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este telefone pertence a outra pessoa. Adicione essa pessoa separadamente.')
       }
       const knownOwners=new Set(own.flatMap(c=>{
-        const stored=c.id?this.record(c.id):this.phoneMatches(normalizePhone(c.text)??'')[0]
+        const normalized=normalizePhone(c.text)
+        const stored=c.id?this.record(c.id):normalized?this.phoneMatches(normalized)[0]:null
         return stored?.entityId?[stored.entityId]:[]
       }))
       if(knownOwners.size>1||person.id&&knownOwners.size&&!knownOwners.has(person.id))
@@ -127,7 +135,9 @@ export class CustomerRepository {
       // Resolve each group separately; the legacy resolver can only see this owner.
       const resolved=this.resolveLegacyContactReferences({person:[selected],contact:own,vehicle:[],payer:[]})
       const owner=resolved.person[0]??selected
-      people.push({...owner,participantKey:key})
+      const already=owner.id?people.find(p=>p.id===owner.id):undefined
+      const effectiveKey=already?.participantKey??key
+      if(!already)people.push({...owner,participantKey:key})
       for(const c of resolved.contact){
         const stored=c.id?this.record(c.id):null
         if(stored?.entityId&&owner.id!==stored.entityId)
@@ -135,7 +145,7 @@ export class CustomerRepository {
         const identity=c.id?'id:'+c.id:normalizePhone(c.text)?'phone:'+normalizePhone(c.text):null
         if(identity&&used.has(identity))continue
         if(identity)used.add(identity)
-        phones.push({...c,participantKey:key,...(stored?.entityId?{entityId:stored.entityId}:{})})
+        phones.push({...c,participantKey:effectiveKey,...(stored?.entityId?{entityId:stored.entityId}:{})})
       }
     }
     for(const c of refs.contact)if(!c.participantKey){
@@ -517,7 +527,7 @@ export class CustomerRepository {
       return this.record(id!)
     }
     {
-      const key=id??randomUUID(),data=JSON.stringify({...ref,...(old?.channelProvisional===1?{channelProvisional:1}:{}),nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
+      const key=id??randomUUID(),data=JSON.stringify({...ref,...(old?.channelProvisional===1&&!(kind==='entity'&&ref.text!==old.text&&ref.text!=='Sem nome')?{channelProvisional:1}:{}),nickname:source.nickname??(old as CustomerRecord&{nickname?:string})?.nickname??'',channelState:old?.channelState??'informed'})
       if(old){if(source.revision!==old.revision)throw new ServiceError(409,'VERSION_CONFLICT','Cadastro alterado em outra edição.');const changed=this.db.prepare('UPDATE customer_records SET data=?,entity_id=?,phone_normalized=?,revision=revision+1 WHERE id=? AND revision=?').run(data,entityId as string|null,phone,key,old.revision);if(!changed.changes)invalid()}
       else this.db.prepare('INSERT INTO customer_records(id,kind,data,entity_id,phone_normalized) VALUES(?,?,?,?,?)').run(key,String(kind),data,entityId as string|null,phone)
       for(const affected of this.db.prepare('SELECT DISTINCT atendimento_id FROM atendimento_references WHERE record_id=?').all(key))
