@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "snapshotId": "funix-cto-2026-11-22-hml-implantado-v2",
-  "publishedAt": "2026-11-22T20:53:00-03:00",
+  "snapshotId": "funix-portfolio-2026-11-24-v4",
+  "publishedAt": "2026-11-24T11:49:45.775Z",
   "repository": "Funix-CentroReparacaoAutomotiva/funixapp",
-  "title": "FUNIX ERP",
-  "subtitle": "Projeto FunixApp e suas frentes de desenvolvimento. Agrupamentos, títulos e vínculos são definidos pelo CTO.",
+  "title": "FUNIX — Central de Orquestração",
+  "subtitle": "Projetos, ideias e melhorias da FUNIX; curadoria do ChatGPT sob solicitação da direção.",
   "root": {
     "id": "cto",
-    "title": "CTO Virtual",
-    "subtitle": "Coordenação técnica"
+    "title": "Central de Orquestração",
+    "subtitle": "Direção e acompanhamento de projetos e iniciativas"
   },
   "nodes": [
     {
@@ -16,14 +16,19 @@
       "parentId": null,
       "type": "Projeto",
       "presentation": "group",
-      "title": "FunixApp",
-      "description": "Desenvolvimento do ERP da FUNIX, organizado pelo CTO.",
+      "title": "FunixApp → FunixERP",
+      "description": "Evolução modular do aplicativo para o ERP da FUNIX; roadmap proposto na PR #354.",
       "status": "acompanhamento",
       "statusReason": "Agrupamento de acompanhamento; não representa aceite operacional.",
-      "nextResult": null,
+      "nextResult": "Revisar roadmap e iniciar os próximos incrementos por frente.",
       "updatedAt": null,
       "roles": [],
-      "evidence": []
+      "evidence": [
+        {
+          "kind": "pr",
+          "number": 354
+        }
+      ]
     },
     {
       "id": "fr-293",
@@ -33,8 +38,8 @@
       "description": "Cadastro, catálogo, orçamentos e negociação.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Concluir pacote de identidade/cadastro #344, preservando contratos comerciais.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -50,14 +55,34 @@
       "title": "Cadastro comercial",
       "description": "Entidades, contatos, veículos e identidade comercial.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issue #344 aberta; PRs #343, #345 e #349 em rascunho; PR #351 é QA combinado, não integrar. Estado operacional não verificado.",
+      "nextResult": "Concluir validação conjunta de nome, telefone, identidade e prevenção de duplicidade; coordenar integração das PRs de origem.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 300
+        },
+        {
+          "kind": "issue",
+          "number": 344
+        },
+        {
+          "kind": "pr",
+          "number": 343
+        },
+        {
+          "kind": "pr",
+          "number": 345
+        },
+        {
+          "kind": "pr",
+          "number": 349
+        },
+        {
+          "kind": "pr",
+          "number": 351
         }
       ]
     },
@@ -105,8 +130,8 @@
       "description": "Conversas, identidade e vínculos com Atendimentos.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Coordenar correções de vínculo e identidade com Comercial (#289/#344).",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -122,14 +147,18 @@
       "title": "Conversas vinculadas ao Atendimento",
       "description": "Identidade, vínculos e navegação entre Chat e Atendimento.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issues #289 e #344 abertas; correções de identidade e vínculo em PRs de cadastro. Aceite do fluxo Chat–Atendimento não verificado.",
+      "nextResult": "Validar vínculos Chat–Atendimento nos casos de identidade inequívoca e conflito real, em coordenação com cadastro.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 307
+        },
+        {
+          "kind": "issue",
+          "number": 344
         }
       ]
     },
@@ -177,8 +206,8 @@
       "description": "Atendimentos, planejamento e execução dos serviços.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Próximo pacote proposto no roadmap #354: especificar Pátio V1 sobre Produção V1.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -231,8 +260,8 @@
       "description": "Ordens de Serviço, PDFs e documentos.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Próximo pacote proposto no roadmap #354: inventariar OS/revisões e especificar vistoria e índice documental.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -285,8 +314,8 @@
       "description": "Automação, copilotos e integrações externas.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Reconciliar iniciativas de voz e integrações com evidências e custos antes de novos pilotos.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -339,8 +368,8 @@
       "description": "Segurança, infraestrutura e governança.",
       "status": "acompanhamento",
       "statusReason": "Iniciativa pública em acompanhamento. Não significa trabalho ativo ou homologação.",
-      "nextResult": null,
-      "updatedAt": null,
+      "nextResult": "Validar fluxo HML simplificado e coordenar candidatos autorizados.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
@@ -356,14 +385,22 @@
       "title": "Infraestrutura e operação técnica",
       "description": "Docker, VPS, configuração, recuperação e operação.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Issue #330 encerrada por obsolescência; PR #356 integrada. HML recuperada conforme registros técnicos de 24/11; controlador mTLS legado descontinuado. Não foi feita inspeção direta da VPS nesta curadoria.",
+      "nextResult": "Validar obtenção de novos artefatos e atualização HML pelo procedimento simplificado autorizado; não reativar controlador legado.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 299
+        },
+        {
+          "kind": "issue",
+          "number": 330
+        },
+        {
+          "kind": "pr",
+          "number": 356
         }
       ]
     },
@@ -392,29 +429,34 @@
       "title": "Homologação e release",
       "description": "Critérios de pronto, revisão, aprovação e publicação.",
       "status": "nao_verificado",
-      "statusReason": "Etapa operacional não verificada",
-      "nextResult": null,
-      "updatedAt": null,
+      "statusReason": "Diretriz de operação simplificada da HML integrada em #356; candidato consolidado do painel #353 tem CI aprovado; publicação ainda não confirmada.",
+      "nextResult": "Aplicar somente candidato autorizado pelo fluxo vigente, verificar procedência, backup, convergência HTTPS e aceite.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [],
       "evidence": [
         {
           "kind": "issue",
           "number": 303
+        },
+        {
+          "kind": "pr",
+          "number": 356
         }
       ]
     },
     {
       "id": "ep-301",
-      "parentId": "fr-291",
-      "type": "subfrente",
-      "title": "Governança de agentes e entregas",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Governança e acompanhamento",
       "description": "Protocolo de execução, evidências, revisões e handoff.",
-      "status": "homologacao",
-      "statusReason": "Painel de orquestração implantado em homologação em 22/11/2026; o operador confirmou PANEL_DEPLOY_OK e abertura no navegador. Atualização de dados sob demanda ainda não implantada.",
-      "nextResult": "Validar e publicar no código Web o botão de consulta à branch painel-publicado, sem afetar a API ou o banco.",
-      "updatedAt": "2026-11-22T20:53:00-03:00",
+      "status": "acompanhamento",
+      "statusReason": "Direção assume a orquestração; ChatGPT organiza os dados sob solicitação. Roadmap registrado em #347; proposta de governança multiprojeto em #354.",
+      "nextResult": "Consolidar o procedimento de atualização sob demanda, sem cadastro manual nem execução autônoma.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
       "roles": [
-        "CTO — coordenação técnica"
+        "Direção — orquestração",
+        "ChatGPT — curadoria sob demanda"
       ],
       "evidence": [
         {
@@ -424,6 +466,213 @@
         {
           "kind": "pr",
           "number": 318
+        },
+        {
+          "kind": "issue",
+          "number": 347
+        },
+        {
+          "kind": "pr",
+          "number": 354
+        }
+      ]
+    },
+    {
+      "id": "proj-painel-desenvolvimento",
+      "parentId": null,
+      "type": "Projeto",
+      "presentation": "group",
+      "title": "Painel de Orquestração",
+      "description": "Evolução da ferramenta de acompanhamento de projetos, ideias e acesso a recursos de gestão.",
+      "status": "acompanhamento",
+      "statusReason": "Projeto confirmado; evolução da interface e da curadoria acompanhada separadamente do ERP.",
+      "nextResult": "Publicar o mapa multiprojeto e homologar a interface consolidada; planejar acesso aos recursos de gestão.",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "painel-curadoria",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Curadoria dos dados",
+      "description": "Organizar projetos e demandas por dados, sem cadastro manual; reconciliar projetos confirmados.",
+      "status": "acompanhamento",
+      "statusReason": "PR #355 prepara dois projetos confirmados; a fonte publicada ainda contém somente FunixApp. Outros projetos e vínculos privados não foram inventariados.",
+      "nextResult": "Validar e publicar a PR de dados #355 na branch painel-publicado mediante autorização aplicável; depois clicar Atualizar. Inventariar fontes adicionais.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 329
+        },
+        {
+          "kind": "issue",
+          "number": 347
+        },
+        {
+          "kind": "pr",
+          "number": 354
+        },
+        {
+          "kind": "pr",
+          "number": 355
+        }
+      ]
+    },
+    {
+      "id": "painel-interface",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Visualização e Minha atenção",
+      "description": "Interface de leitura e navegação, com agrupamentos definidos pelos dados.",
+      "status": "acompanhamento",
+      "statusReason": "PR #353 aberta e integrável na consulta; 11 workflows aprovados no SHA 019d5c72a04e25a0755d6eb7cf70c3d05f37663d. Reúne indicadores, Minha atenção, frentes registradas e cópia de contexto; instalação e aceite não confirmados.",
+      "nextResult": "Preparar candidato Web HML da PR #353 pelo fluxo simplificado vigente; publicar somente mediante autorização aplicável.",
+      "updatedAt": "2026-11-24T08:32:03-03:00",
+      "roles": [
+        "Direção — aceite"
+      ],
+      "evidence": [
+        {
+          "kind": "pr",
+          "number": 337
+        },
+        {
+          "kind": "pr",
+          "number": 348
+        },
+        {
+          "kind": "issue",
+          "number": 350
+        },
+        {
+          "kind": "pr",
+          "number": 352
+        },
+        {
+          "kind": "pr",
+          "number": 353
+        }
+      ]
+    },
+    {
+      "id": "proj-sgf",
+      "parentId": null,
+      "type": "Projeto",
+      "title": "SGF — Sistema de Gestão FUNIX",
+      "description": "Assistência à gestão empresarial por meio de assistentes e automações.",
+      "status": "planejado",
+      "statusReason": "Projeto confirmado pela direção; implementação não presumida.",
+      "nextResult": "Organizar assistentes de gestão e automações gerenciais, sem definir a arquitetura dos chats nesta etapa.",
+      "presentation": "group",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-assistentes",
+      "parentId": "proj-sgf",
+      "type": "frente",
+      "title": "Assistentes de gestão",
+      "description": "Recursos de apoio à gestão financeira, operacional, pessoas e demais áreas.",
+      "status": "planejado",
+      "statusReason": "Frente aprovada; número, especialização e organização dos assistentes ainda não definidos.",
+      "nextResult": "Definir arquitetura e responsabilidades em etapa própria.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-automacoes",
+      "parentId": "proj-sgf",
+      "type": "frente",
+      "title": "Automações gerenciais",
+      "description": "Rotinas de apoio à gestão, com fontes verificadas e custos proporcionais.",
+      "status": "planejado",
+      "statusReason": "Frente aprovada; automações não declaradas operacionais.",
+      "nextResult": "Delimitar o boletim gerencial diário.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "sgf-boletim-diario",
+      "parentId": "sgf-automacoes",
+      "type": "demanda",
+      "title": "Boletim gerencial diário",
+      "description": "Resumo diário de informações financeiras e operacionais relevantes à gestão.",
+      "status": "planejado",
+      "statusReason": "Ideia registrada; indicadores, fontes, canal e implementação ainda não definidos.",
+      "nextResult": "Definir escopo e fontes, avaliar solução econômica antes de implementar.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "painel-recursos",
+      "parentId": "proj-painel-desenvolvimento",
+      "type": "frente",
+      "title": "Acesso a recursos de gestão",
+      "description": "Atalhos para assistentes e ferramentas efetivamente disponibilizados.",
+      "status": "planejado",
+      "statusReason": "Evolução futura aprovada conceitualmente; sem links privados publicados.",
+      "nextResult": "Definir acesso privado e separar ferramentas disponíveis de trabalhos em desenvolvimento.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
+        }
+      ]
+    },
+    {
+      "id": "caixa-ideias",
+      "parentId": null,
+      "type": "Caixa de ideias",
+      "title": "Caixa de ideias",
+      "description": "Entrada de novas ideias ainda sem classificação em projeto ou frente.",
+      "status": "acompanhamento",
+      "statusReason": "Agrupamento aprovado; não é projeto nem prova de atividade.",
+      "nextResult": "Registrar ideias sob solicitação e classificá-las quando houver escopo suficiente.",
+      "presentation": "card",
+      "updatedAt": "2026-11-24T08:45:56-03:00",
+      "roles": [],
+      "evidence": [
+        {
+          "kind": "issue",
+          "number": 347
         }
       ]
     }
@@ -701,6 +950,166 @@
       "title": "Infraestrutura e operação técnica",
       "context": "Épico público",
       "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/299"
+    },
+    {
+      "nodeId": "proj-funixapp",
+      "kind": "pr",
+      "number": 354,
+      "title": "Roadmap FunixERP e escopo multiprojeto",
+      "context": "Proposta documental",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/354"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "issue",
+      "number": 329,
+      "title": "Publicar projetos ausentes no mapa",
+      "context": "Reconciliação do portfólio",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/329"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "issue",
+      "number": 347,
+      "title": "Central do orquestrador",
+      "context": "Requisito de produto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/347"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 337,
+      "title": "Projeto e indicadores aprovados para main",
+      "context": "PR aberta",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/337"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 348,
+      "title": "Minha atenção para o orquestrador",
+      "context": "PR aberta empilhada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/348"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "issue",
+      "number": 347,
+      "title": "Central do orquestrador",
+      "context": "Roadmap de produto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/347"
+    },
+    {
+      "nodeId": "ep-301",
+      "kind": "pr",
+      "number": 354,
+      "title": "Roadmap ERP e escopo multiprojeto",
+      "context": "Proposta documental",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/354"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "issue",
+      "number": 350,
+      "title": "Copiar contexto para ChatGPT sem API paga",
+      "context": "Ação local",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/350"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 352,
+      "title": "Copiar contexto para ChatGPT",
+      "context": "Origem da implementação",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/352"
+    },
+    {
+      "nodeId": "painel-interface",
+      "kind": "pr",
+      "number": 353,
+      "title": "Central do orquestrador consolidada",
+      "context": "Candidato de código; CI 11/11",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/353"
+    },
+    {
+      "nodeId": "painel-curadoria",
+      "kind": "pr",
+      "number": 355,
+      "title": "Mapa flexível de desenvolvimento",
+      "context": "Proposta de dados multiprojeto",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/355"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "issue",
+      "number": 344,
+      "title": "Simplificar pessoa + telefone e estabilizar identidade/Chat",
+      "context": "P1 registrado",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/344"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 343,
+      "title": "Aviso de possível duplicidade de Atendimento manual",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/343"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 345,
+      "title": "Nome e telefone principal juntos",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/345"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 349,
+      "title": "Reutilizar Contato existente pelo telefone",
+      "context": "PR em rascunho",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/349"
+    },
+    {
+      "nodeId": "ep-300",
+      "kind": "pr",
+      "number": 351,
+      "title": "QA combinado de cadastro e identidade",
+      "context": "Somente evidência; não integrar",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/351"
+    },
+    {
+      "nodeId": "ep-307",
+      "kind": "issue",
+      "number": 344,
+      "title": "Simplificar identidade e Chat",
+      "context": "Dependência compartilhada com Comercial",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/344"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "issue",
+      "number": 330,
+      "title": "Reconciliação do controlador HML legado",
+      "context": "Encerrada por obsolescência",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/issues/330"
+    },
+    {
+      "nodeId": "ep-299",
+      "kind": "pr",
+      "number": 356,
+      "title": "Diretriz vigente de operação simplificada HML",
+      "context": "Documentação integrada",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/356"
+    },
+    {
+      "nodeId": "ep-303",
+      "kind": "pr",
+      "number": 356,
+      "title": "Diretriz de operação simplificada",
+      "context": "Procedimento vigente",
+      "url": "https://github.com/Funix-CentroReparacaoAutomotiva/funixapp/pull/356"
     }
   ],
   "visibility": "public"
