@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts,projectOverview,attentionOverview} from '../model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,repoUrl,safeRepoUrl,stateOfRecord,inspectPublishedFile,publishedSnapshotUrl,PUBLISHED_BRANCH,PUBLISHED_PATH,cardCounts,projectOverview,attentionOverview,workfrontOverview} from '../model.mjs';
 const base=JSON.parse(readFileSync(new URL('../snapshot.json',import.meta.url),'utf8'));
 const clone=()=>structuredClone(base);
 test('snapshot atual é válido sem impor frentes ou quantidade fixa',()=>{const m=validateSnapshot(base);assert.equal(m.nodes.length,base.nodes.length);assert.equal(childrenOf(m,m.root.id).length,metrics(m).fronts);assert.equal(metrics(m).nodes,base.nodes.length);assert.equal(metrics(m).groups,base.nodes.filter(x=>x.presentation==='group').length);assert.equal(recordsOf(m,m.root.id).length,base.records.length)});
@@ -220,4 +220,32 @@ test('minha atenção aceita mapa vazio sem emitir pendências fictícias',()=>{
   const overview=attentionOverview(validateSnapshot(r));
   assert.equal(overview.items.length,0);
   assert.deepEqual(overview.counts,{decision:0,blocked:0,unverified:0,decisionsUnknown:0});
+});
+
+test('diretório mostra apenas frentes diretas de projetos, sem duplicar subfrentes',()=>{
+  const r=clone();r.nodes=[
+    {id:'p1',title:'Projeto A',presentation:'group',status:'acompanhamento'},
+    {id:'f1',title:'Frente um',parentId:'p1',status:'acompanhamento',nextResult:'Revisar integração',updatedAt:'2026-11-24T01:00:00-03:00'},
+    {id:'child',title:'Atividade filha',parentId:'f1',status:'em_execucao',nextResult:'Entregar código'},
+    {id:'p2',title:'Projeto vazio',presentation:'group',status:'planejado'},
+    {id:'single',title:'Trabalho avulso',status:'nao_verificado'}
+  ];r.records=[];r.relations=[];
+  const overview=workfrontOverview(validateSnapshot(r));
+  assert.equal(overview.projectsWithoutFronts,1);
+  assert.deepEqual(overview.items.map(x=>x.id),['f1','single']);
+  assert.deepEqual(overview.items[0],{
+    id:'f1',title:'Frente um',project:'Projeto A',status:'acompanhamento',
+    nextResult:'Revisar integração',updatedAt:'2026-11-24T01:00:00-03:00',standalone:false
+  });
+  assert.equal(overview.items[1].standalone,true);
+  assert.equal(overview.items[1].nextResult,null);
+  assert.equal(overview.items[1].status,'nao_verificado');
+});
+test('diretório de frentes não inventa registros em projeto vazio ou mapa vazio',()=>{
+  const r=clone();r.nodes=[{id:'empty',title:'Vazio',presentation:'group',status:'planejado'}];
+  r.records=[];r.relations=[];
+  assert.deepEqual(workfrontOverview(validateSnapshot(r)).items,[]);
+  assert.equal(workfrontOverview(validateSnapshot(r)).projectsWithoutFronts,1);
+  r.nodes=[];
+  assert.deepEqual(workfrontOverview(validateSnapshot(r)),{items:[],projectsWithoutFronts:0});
 });
