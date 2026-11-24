@@ -347,7 +347,7 @@ function App() {
       }
     }}><section className="at-editor" role="dialog" aria-modal="true" aria-labelledby="at-editor-title" ref={modal}><header><h1 id="at-editor-title">{editor.record ? 'Editar Atendimento' : 'Novo Atendimento'}</h1><button type="button" aria-label="Fechar formulário" onClick={()=>canLeaveEditor()}>×</button></header>
       {!session?.authenticated && <div className="at-reauth"><p>Sua sessão expirou. Entre novamente para continuar; as alterações do formulário foram mantidas.</p>{login}</div>}
-      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} conversationId={detailConversation} onSaved={saved} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} onMessage={conversationId=>{if(editor.record&&canLeaveEditor()){const id=editor.record.id;setEditor(null);navigate(`/atendimentos/${id}?aba=chat&conversa=${conversationId}`)}}} /></div>
+      <div className="at-editor-body" hidden={!session?.authenticated}><AtendimentoForm record={editor.record} conversationId={detailConversation} onSaved={saved} onOpenExisting={id=>{void navigate(`/atendimentos/${id}?aba=chat`)}} onAutoSaved={autosaved} onDirty={onDirty} onBusy={onBusy} onAuthRequired={expireSession} onMessage={conversationId=>{if(editor.record&&canLeaveEditor()){const id=editor.record.id;setEditor(null);navigate(`/atendimentos/${id}?aba=chat&conversa=${conversationId}`)}}} /></div>
     </section></div>}
   </div>
 }
