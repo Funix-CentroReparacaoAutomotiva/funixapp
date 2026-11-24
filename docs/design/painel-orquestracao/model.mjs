@@ -154,6 +154,36 @@ export function attentionOverview(model) {
   });
 }
 
+/**
+ * Diretório de frentes efetivamente registradas na versão publicada.
+ * Filhos diretos de projetos de topo são frentes; um trabalho de topo sem
+ * projeto também aparece, mas identificado como avulso. Não consulta GitHub,
+ * não descobre projetos e não transforma 'acompanhamento' em execução.
+ */
+export function workfrontOverview(model) {
+  if(!model?.byId || !Array.isArray(model.nodes))throw new Error('Modelo de frentes inválido');
+  const items=[];
+  let projectsWithoutFronts=0;
+  for(const top of childrenOf(model,model.root.id)){
+    if(top.presentation==='group'){
+      const fronts=childrenOf(model,top.id);
+      if(!fronts.length)projectsWithoutFronts++;
+      for(const node of fronts)items.push(Object.freeze({
+        id:node.id,title:node.title,project:top.title,
+        status:node.status,nextResult:node.nextResult||null,
+        updatedAt:node.updatedAt||null,standalone:false
+      }));
+    }else{
+      items.push(Object.freeze({
+        id:top.id,title:top.title,project:null,
+        status:top.status,nextResult:top.nextResult||null,
+        updatedAt:top.updatedAt||null,standalone:true
+      }));
+    }
+  }
+  return Object.freeze({items:Object.freeze(items),projectsWithoutFronts});
+}
+
 export function stateOfRecord(record,live){if(!live)return 'Estado atual não consultado';if(live.error)return 'Estado não verificado';if(record.kind==='pr')return live.merged?'Integrada ao GitHub':live.state==='open'?(live.draft?'PR em rascunho':'PR aberta'):'PR encerrada sem merge';return live.state==='open'?'Aberta no GitHub':'Encerrada no GitHub'}
 
 
