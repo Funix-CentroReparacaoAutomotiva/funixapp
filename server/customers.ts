@@ -138,7 +138,7 @@ export class CustomerRepository {
       this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(r))
       // Selecting a known channel Contact is explicit; a textual phone match never reaches here.
       const cid=kind==='contact'&&r.id?this.record(r.id).conversationId:null
-      if(cid&&!this.hasConversationReference(cid,at)){
+      if(cid&&!this.hasConversationReference(cid,at)&&!this.wasConversationRevoked(cid,at)){
         this.resolveChannelContact(cid,r.id!)
         this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(randomUUID(),cid,at,new Date().toISOString(),'operator','explicit_contact_reference')
         this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
@@ -153,6 +153,18 @@ export class CustomerRepository {
     return !!this.db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
       WHERE a.atendimento_id=? AND a.unlinked_at IS NULL AND c.instance='funix_comercial'
       AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(at,...members)
+  }
+
+  /** Automatic contact selection never resurrects a deliberately revoked chat link.
+   * Re-association after revocation goes through the explicit, auditable Chat action.
+   */
+  private wasConversationRevoked(conversationId:string,at:string) {
+    const identities=new ConversationIdentities(this.db)
+    const jid=identities.providerJid(conversationId),members=jid?identities.identityJids(jid):null
+    if(!members)return !!this.db.prepare('SELECT 1 FROM v20_associations WHERE conversation_id=? AND atendimento_id=? AND unlinked_at IS NOT NULL').get(conversationId,at)
+    return !!this.db.prepare(`SELECT 1 FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
+      WHERE a.atendimento_id=? AND a.unlinked_at IS NOT NULL AND c.instance='funix_comercial'
+        AND c.remote_jid IN (${members.map(()=>'?').join(',')}) LIMIT 1`).get(at,...members)
   }
 
   references(at:string):CustomerReferences {
