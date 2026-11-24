@@ -1,6 +1,6 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview,workfrontOverview} from './model.mjs';
 const $=id=>document.getElementById(id);
-const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),attentionFilter:'all',attentionExpanded:false,raw:null,publishedSha:null};
+const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),attentionFilter:'all',attentionExpanded:false,workfrontExpanded:false,raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
 const set=(id,v)=>{$(id).textContent=String(v)};
 const dt=(date)=>!date?'Não informada':new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date(date));
@@ -196,6 +196,48 @@ function renderAttention(){
   more.textContent=state.attentionExpanded?'Mostrar menos':'Ver todos os '+selected.length+' itens';
   more.setAttribute('aria-expanded',String(state.attentionExpanded));
 }
+/**
+ * Quadro de trabalho baseado no snapshot, não um quadro de tarefas paralelo.
+ * A ordem é a da fonte publicada, jamais uma classificação automática de prioridade.
+ */
+function renderWorkfronts(){
+  const list=$('workfront-list'),more=$('workfront-more');
+  if(!state.model){
+    list.replaceChildren();more.hidden=true;set('workfront-count','—');
+    set('workfront-source','Fonte indisponível. Nenhuma frente foi inferida.');
+    return;
+  }
+  const {items,projectsWithoutFronts}=workfrontOverview(state.model);
+  set('workfront-count',items.length+' '+(items.length===1?'registro':'registros'));
+  set('workfront-source','Snapshot: '+state.model.snapshotId+'. Ordem da fonte, sem prioridade inferida.'+
+    (projectsWithoutFronts?' '+projectsWithoutFronts+' projeto(s) sem frentes diretas registradas.':''));
+  const shown=state.workfrontExpanded?items:items.slice(0,10);
+  list.replaceChildren();
+  if(!items.length){
+    list.append(element('p','workfront-empty',
+      'Nenhuma frente registrada nesta publicação. Isso não comprova ausência de trabalho.'));
+  }
+  for(const item of shown){
+    const b=element('button','workfront-item');b.type='button';
+    const top=element('span','workfront-item-top');
+    top.append(element('strong','workfront-name',item.title));
+    const status=element('span','workfront-status',STATUS_LABEL[item.status]);
+    status.dataset.status=item.status;
+    top.append(status);
+    const context=element('span','workfront-context',item.project||'Trabalho principal avulso');
+    const next=element('span','workfront-next','Próximo resultado: '+(item.nextResult||'não informado'));
+    const date=element('span','workfront-date',
+      item.updatedAt?'Última atualização registrada: '+dt(item.updatedAt):'Data de atualização não informada');
+    b.append(top,context,next,date);
+    b.setAttribute('aria-label',item.title+'. '+STATUS_LABEL[item.status]+'. '+
+      next.textContent+'. Abrir detalhes da frente.');
+    b.addEventListener('click',()=>selectNode(item.id));
+    list.append(b);
+  }
+  more.hidden=items.length<=10;
+  more.textContent=state.workfrontExpanded?'Mostrar menos':'Ver todas as '+items.length+' frentes e trabalhos principais';
+  more.setAttribute('aria-expanded',String(state.workfrontExpanded));
+}
 function renderMap(){
   const m=state.model,top=childrenOf(m,m.root.id),grid=$('node-grid');grid.replaceChildren();
   const groups=top.filter(x=>x.presentation==='group').length;
@@ -273,7 +315,7 @@ function applySnapshot(raw,model,origin){
   $('hub').title='Estrutura registrada na fonte: '+model.root.title;
   set('snapshot-revision','Snapshot: '+model.snapshotId);
   set('source-status','Publicação: '+dt(model.publishedAt)+' (BRT) · '+origin);
-  renderMap();state.attentionExpanded=false;renderAttention();
+  renderMap();state.attentionExpanded=false;renderAttention();state.workfrontExpanded=false;renderWorkfronts();
   if($('detail').open){
     if(state.selected)renderDetails();
     else $('detail').close();
@@ -294,7 +336,7 @@ async function load(){
     set('source-status','Fonte instalada indisponível');
     set('check-status','Verificação indisponível');
     notice('Não foi possível carregar a cópia instalada. Nenhum andamento foi inferido.');
-    $('node-grid').replaceChildren();renderAttention();set('attention-source','Fonte indisponível. Nenhum item foi inferido.');if($('detail').open)$('detail').close();
+    $('node-grid').replaceChildren();renderAttention();renderWorkfronts();set('attention-source','Fonte indisponível. Nenhum item foi inferido.');if($('detail').open)$('detail').close();
   }finally{state.loading=false;$('refresh').disabled=false}
 }
 /** Nenhuma sincronização em segundo plano: consulta externa SOMENTE no clique. */
@@ -324,6 +366,10 @@ $('attention-filters').addEventListener('click',e=>{
   const b=e.target.closest('button[data-filter]');if(!b||!state.model)return;
   state.attentionFilter=b.dataset.filter;state.attentionExpanded=false;renderAttention();
   $('attention-filters').querySelector('button[data-filter="'+state.attentionFilter+'"]')?.focus();
+});
+$('workfront-more').addEventListener('click',()=>{
+  state.workfrontExpanded=!state.workfrontExpanded;renderWorkfronts();
+  $('workfront-more').focus();
 });
 $('attention-more').addEventListener('click',()=>{
   state.attentionExpanded=!state.attentionExpanded;renderAttention();
