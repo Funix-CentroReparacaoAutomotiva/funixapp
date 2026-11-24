@@ -182,14 +182,16 @@ class IsolatedRecoveryTest(unittest.TestCase):
         config_path.write_text(json.dumps({"state": str(state)}))
         config_path.chmod(0o600)
         # Exercise the *real staged CLI*, not only the transaction method.
-        # Only host-scope/config validation is mocked because its fixed VPS
-        # paths deliberately do not exist on a disposable runner.
+        # The local unprivileged unittest runner cannot create root-owned
+        # fixture files. Host scope and root-file ownership are tested by
+        # separate boundary tests; only those checks are mocked here.
         with patch.object(updater, "make_adapter", return_value=adapter), \
              patch.object(updater, "load", side_effect=lambda name:
                           isolated_transaction if name == "hml-update-transaction"
                           else original_loader(name)), \
              patch.object(updater, "host_scope", return_value=operation) as host_scope, \
              patch.object(updater, "check_config") as check_config, \
+             patch.object(updater, "root_file", side_effect=lambda path: Path(path)), \
              patch.object(sys, "argv", ["staged-updater", "recover", "--config",
                                        str(config_path), "--operation",
                                        str(operation), "--authorize"]):
