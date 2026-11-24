@@ -1,4 +1,4 @@
-import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview,workfrontOverview} from './model.mjs';
+import {validateSnapshot,childrenOf,recordsOf,branchOf,metrics,STATUS_LABEL,KIND_LABEL,stateOfRecord,repoUrl,publishedSnapshotUrl,inspectPublishedFile,cardCounts,projectOverview,attentionOverview,workfrontOverview,briefingForChat} from './model.mjs';
 const $=id=>document.getElementById(id);
 const state={model:null,selected:null,filter:'all',expanded:false,roles:false,live:new Map(),loading:false,loadVersion:0,collapsedGroups:new Set(),attentionFilter:'all',attentionExpanded:false,workfrontExpanded:false,raw:null,publishedSha:null};
 const element=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);return e};
@@ -255,6 +255,8 @@ function drawWires(){const m=state.model;if(!m)return;const area=$('graph-body')
 }
 function drawSubwires(){const root=$('subroot'),grid=$('subgrid'),svg=$('subwires'),area=$('submap');svg.replaceChildren();if($('subtree').hidden||!grid.children.length)return;const r=area.getBoundingClientRect(),a=root.getBoundingClientRect();if(!r.width)return;svg.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);const sx=a.left+a.width/2-r.left,sy=a.bottom-r.top;for(const b of grid.children){const q=b.getBoundingClientRect(),x=q.left+q.width/2-r.left,y=q.top-r.top,d=Math.max(10,(y-sy)*.44);svgLine(svg,`M ${sx} ${sy} C ${sx} ${sy+d}, ${x} ${y-d}, ${x} ${y}`,b.dataset.id===state.selected)} }
 function renderDetails(){const m=state.model,node=currentNode();if(!node)return;
+  set('copy-status','');
+  $('briefing-manual').hidden=true;$('briefing-manual').value='';
   set('detail-type',node.type||'TRABALHO');set('detail-title',node.title);set('detail-desc',node.description||'Sem descrição registrada');
   const ch=$('detail-status');ch.replaceWith(statusChip(node));const repl=$('detail').querySelector('.detail-top .status');repl.id='detail-status';
   set('detail-reason',node.statusReason||'Situação operacional ainda não detalhada pelo CTO.');
@@ -376,6 +378,26 @@ $('attention-more').addEventListener('click',()=>{
   $('attention-more').focus();
 });
 $('refresh').addEventListener('click',checkPublished);
+$('copy-briefing').addEventListener('click',async()=>{
+  const id=state.selected,model=state.model;
+  if(!id||!model?.byId?.has(id))return;
+  const content=briefingForChat(model,id);
+  const manual=$('briefing-manual');
+  set('copy-status','');
+  manual.hidden=true;manual.value='';
+  try{
+    if(typeof navigator.clipboard?.writeText!=='function')throw new Error('clipboard unavailable');
+    await navigator.clipboard.writeText(content);
+    if(state.selected!==id||state.model!==model)return;
+    set('copy-status','Contexto copiado. Abra o ChatGPT, escolha sua conversa e cole o texto.');
+  }catch{
+    if(state.selected!==id||state.model!==model)return;
+    manual.value=content;
+    manual.hidden=false;
+    set('copy-status','A cópia automática não foi permitida. Selecione e copie o texto abaixo manualmente.');
+    manual.focus();manual.select();
+  }
+});
 $('detail-close').addEventListener('click',()=>$('detail').close());
 $('detail').addEventListener('close',()=>{
   state.selected=null;updateMapSelection();
