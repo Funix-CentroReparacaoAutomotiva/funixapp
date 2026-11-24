@@ -45,7 +45,7 @@ export class CustomerRepository {
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
-    if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))invalid();result.participantKey=r.participantKey}
+    if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))return invalid();result.participantKey=r.participantKey}
     if(kind==='vehicle'){
       if(r.plate!==undefined&&(typeof r.plate!=='string'||r.plate.length>100))invalid()
       result.plate=String(r.plate??'').trim().toUpperCase()
@@ -99,7 +99,7 @@ export class CustomerRepository {
     const keys=new Set<string>(),used=new Set<string>(),people:CustomerReference[]=[],phones:CustomerReference[]=[]
     for(const person of refs.person){
       const key=person.participantKey
-      if(!key||keys.has(key))invalid()
+      if(!key||keys.has(key))return invalid()
       keys.add(key)
       const own=refs.contact.filter(c=>c.participantKey===key)
       // A selected Contact is authoritative about its owner, not the client key.
