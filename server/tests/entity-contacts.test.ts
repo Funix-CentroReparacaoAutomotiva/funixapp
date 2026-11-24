@@ -34,7 +34,7 @@ test('manual lead with equivalent phone reuses a known WhatsApp Contact and link
   assert.ok(contact.conversationId)
   const created=f.at.create({references:{
    person:[{id:null,text:'Nome digitado no Atendimento'}],
-   contact:[{id:null,text:'031999990101'}],
+   contact:[{id:null,text:'(31) 99999-0101'}],
    vehicle:[],payer:[]
   }},false,true)
   assert.equal(created.references!.person[0]!.id,entity.id)
@@ -45,7 +45,7 @@ test('manual lead with equivalent phone reuses a known WhatsApp Contact and link
   assert.equal(f.customers.contacts(entity.id).length,1)
   // If the operator explicitly unlinked this Chat, an unrelated cadastro save
   // must not silently resurrect it.
-  f.db.prepare('UPDATE v20_associations SET unlinked_at=? WHERE atendimento_id=? AND unlinked_at IS NULL')
+  f.db.prepare("UPDATE v20_associations SET unlinked_at=?,unlinked_by='operator',unlink_reason='Revisão sintética' WHERE atendimento_id=? AND unlinked_at IS NULL")
     .run(new Date().toISOString(),created.id)
   const edit=f.at.get(created.id,true)
   f.at.update(created.id,{revision:edit.revision,notes:'Nota sem alterar telefone',references:edit.references},true,true)
