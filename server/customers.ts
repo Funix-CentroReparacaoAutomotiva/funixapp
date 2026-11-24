@@ -143,6 +143,11 @@ export class CustomerRepository {
       const cid=kind==='contact'&&r.id?this.record(r.id).conversationId:null
       if(cid&&!this.hasConversationReference(cid,at)&&!this.wasConversationRevoked(cid,at)){
         this.resolveChannelContact(cid,r.id!)
+        // A Contact can be verified before any commercial V20 conversation row
+        // exists. Materialize the exact provider handle before linking history.
+        this.db.prepare(`INSERT OR IGNORE INTO v20_conversations(id,instance,remote_jid,created_at)
+          SELECT id,instance,remote_jid,? FROM chat_provider_conversations WHERE id=?`)
+          .run(new Date().toISOString(),cid)
         this.db.prepare('INSERT INTO v20_associations(id,conversation_id,atendimento_id,linked_at,linked_by,link_reason) VALUES(?,?,?,?,?,?)').run(randomUUID(),cid,at,new Date().toISOString(),'operator','explicit_contact_reference')
         this.db.prepare('UPDATE v20_conversations SET revision=revision+1 WHERE id=?').run(cid)
       }
