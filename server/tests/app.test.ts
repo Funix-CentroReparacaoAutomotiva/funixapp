@@ -6,6 +6,7 @@ import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
 import { openDatabase } from '../database.ts'
 import { AtendimentoRepository } from '../atendimentos.ts'
+import { CustomerRepository } from '../customers.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 
 const origin = 'http://localhost:5173'
@@ -140,6 +141,42 @@ test('creates, searches, edits and reopens local Atendimento without any Coda or
     assert.equal((await app.request('/api/experiencias/i-test', { headers })).status, 410)
     assert.equal(networkCalls, 0)
   } finally { globalThis.fetch = oldFetch; app.close() }
+})
+
+test('manual name and equivalent phone automatically reuse the unique registered owner',async()=>{
+ const app=start()
+ try{
+  const cookie=await authenticate(app),customers=new CustomerRepository(app.db)
+  const entity=customers.save({kind:'entity',text:'Pessoa já cadastrada',contacts:[{text:'+5531999990202'}]})
+  const contact=customers.contacts(entity.id)[0]!
+  const draft=(phone:string,person:{id:string|null;text:string})=>({
+   references:{person:[person],contact:[{id:null,text:phone}],vehicle:[],payer:[]}
+  })
+  const created=await app.write('/api/atendimentos','POST',
+    draft('(31) 99999-0202',{id:null,text:'Nome digitado diferente'}),cookie)
+  assert.equal(created.status,201)
+  const first=await created.json()
+  assert.equal(first.references.person[0].id,entity.id)
+  assert.equal(first.references.contact[0].id,contact.id)
+  assert.equal(first.name,entity.text)
+  const again=await app.write('/api/atendimentos','POST',
+    draft('5531999990202',{id:null,text:'Nome informado sem cadastro'}),cookie)
+  assert.equal(again.status,201)
+  const second=await again.json()
+  assert.equal(second.references.person[0].id,entity.id)
+  assert.equal(second.references.contact[0].id,contact.id)
+  assert.equal(customers.search('entity','').length,1)
+  assert.equal(customers.phoneMatches('+5531999990202').length,1)
+  const another=customers.save({kind:'entity',text:'Outra pessoa'})
+  const denied=await app.write('/api/atendimentos','POST',
+    draft('+5531999990202',{id:another.id,text:another.text}),cookie)
+  assert.equal(denied.status,409)
+  assert.equal((await denied.json()).error.code,'CONTACT_OWNER_CONFLICT')
+  const renamed=customers.save({text:'Pessoa renomeada',revision:entity.revision},entity.id)
+  assert.equal(app.repository.get(first.id,true).name,renamed.text)
+  assert.equal(app.repository.get(second.id,true).references.contact[0].id,contact.id)
+  assert.equal(customers.contacts(entity.id).length,1)
+ }finally{app.close()}
 })
 
 test('writes require origin and JSON; reject malformed payloads, readonly fields and oversized bodies', async () => {
