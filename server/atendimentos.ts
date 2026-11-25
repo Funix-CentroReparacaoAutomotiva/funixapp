@@ -206,7 +206,8 @@ export class AtendimentoRepository {
       return manual||refs.person.some(ref=>ref.id)?customers.resolveManualContactReferences(refs,previous):refs
     }
     if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerInputPhone(fields.phone))return undefined
-    fields.phone=canonicalizeCustomerInputPhone(fields.phone)
+    const inputPhone=canonicalizeCustomerInputPhone(fields.phone)
+    fields.phone=inputPhone
     const person=previous?.person??[]
     if(person[0]?.id&&typeof fields.name==='string'&&fields.name!==person[0].text)
       throw new ServiceError(409,'SHARED_CUSTOMER_REFERENCE','Edite o titular no cadastro compartilhado.')
@@ -214,7 +215,7 @@ export class AtendimentoRepository {
     const primary=contact[0]
     return customers.resolveManualContactReferences({
       person:typeof fields.name==='string'&&!person[0]?.id?[{id:null,text:fields.name},...person.slice(1)]:person,
-      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(fields.phone)?primary:{id:null,text:fields.phone},...contact.slice(1)],
+      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(inputPhone)?primary:{id:null,text:inputPhone},...contact.slice(1)],
       vehicle:previous?.vehicle??[],payer:previous?.payer??[],
     },previous)
   }
