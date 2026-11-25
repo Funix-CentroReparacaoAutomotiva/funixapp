@@ -14,8 +14,8 @@ function seed(){
    return id
  }
  const safe=legacy('031999990101')
- const collision=legacy('031999990202')
  f.customers.save({kind:'contact',text:'+5531999990202',entityId:owner.id})
+ const collision=legacy('031999990202')
  const observed=legacy('031999990303')
  f.channels.identities.rememberProviderConversation('5531999990303@s.whatsapp.net')
  const at=f.at.create({}).id
