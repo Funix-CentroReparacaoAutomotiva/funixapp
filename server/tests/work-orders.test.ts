@@ -275,6 +275,8 @@ test('PDF cancelado usa receita static-pdf com a marca em todas as páginas',asy
   calls++
   const payload=JSON.parse(String(init?.body))
   assert.equal(payload.template.recipe,'static-pdf')
+  assert.equal(payload.template.engine,'none')
+  assert.equal(payload.template.content,'FUNIX PDF')
   assert.deepEqual(Buffer.from(payload.template.staticPdf.pdfAsset.content,'base64'),pdf)
   assert.equal(payload.template.pdfOperations.length,1)
   assert.equal(payload.template.pdfOperations[0].mergeToFront,true)
