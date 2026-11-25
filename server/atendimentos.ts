@@ -9,7 +9,7 @@ import type { Atendimento, AtendimentoList, AtendimentoStage, DuplicateAtendimen
 import { ServiceError } from './errors.ts'
 import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-date.ts'
 
-import {normalizeCustomerPhone} from './phone.ts'
+import {normalizeCustomerPhone,normalizeCustomerInputPhone,canonicalizeCustomerInputPhone} from './phone.ts'
 
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
 const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
@@ -152,7 +152,7 @@ export class AtendimentoRepository {
       if(manual){
         const draftRefs=references===undefined?undefined:customers.validate(references)
         const draftIdentity=draftRefs?customers.primaryFields(draftRefs):fields
-        const candidatePhone=typeof draftIdentity.phone==='string'?normalizeCustomerPhone(draftIdentity.phone):null
+        const candidatePhone=typeof draftIdentity.phone==='string'?normalizeCustomerInputPhone(draftIdentity.phone):null
         const candidatePlate=typeof draftIdentity.plate==='string'?draftIdentity.plate:''
         const candidates=this.possibleDuplicates({phoneNormalized:candidatePhone,plate:candidatePlate},draftRefs)
         if(candidates.length){
@@ -205,7 +205,8 @@ export class AtendimentoRepository {
       const refs=customers.validate(references)
       return manual||refs.person.some(ref=>ref.id)?customers.resolveManualContactReferences(refs,previous):refs
     }
-    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerPhone(fields.phone))return undefined
+    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerInputPhone(fields.phone))return undefined
+    fields.phone=canonicalizeCustomerInputPhone(fields.phone)
     const person=previous?.person??[]
     if(person[0]?.id&&typeof fields.name==='string'&&fields.name!==person[0].text)
       throw new ServiceError(409,'SHARED_CUSTOMER_REFERENCE','Edite o titular no cadastro compartilhado.')
