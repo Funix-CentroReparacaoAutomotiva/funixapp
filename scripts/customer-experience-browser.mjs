@@ -39,7 +39,9 @@ try{
    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message))
    await page.goto(origin+'/conversas');await page.locator('.conversation-row').first().waitFor()
    assert.equal(await page.locator('.conversation-row').count(),3)
-   assert.equal(await page.getByRole('navigation',{name:'Áreas da FUNIX'}).getByRole('button').count(),2)
+   for(const area of ['Funil','Conversas','Operação','Financeiro']) {
+    await page.getByRole('navigation',{name:'Áreas da FUNIX'}).getByRole('button',{name:area,exact:true}).waitFor()
+   }
    assert.equal(await page.locator('.conversation-unread').count(),3)
    assert.equal(await page.getByRole('button',{name:'Detalhes: 20 Atendimentos'}).count(),1)
    assert.equal(await page.getByRole('button',{name:'Detalhes: 1 Atendimentos'}).count(),2)

@@ -9,12 +9,13 @@ import {AtendimentoRepository} from '../atendimentos.ts'
 import {BudgetCancellationRepository} from '../budget-cancellations.ts'
 import {openDatabase} from '../database.ts'
 import {ServiceError} from '../errors.ts'
+import {FinanceRepository} from '../finance.ts'
 import {migrate} from '../migrations.ts'
 import {ProductionRepository} from '../production.ts'
 import {WorkOrderRepository} from '../work-orders.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
-import {identifyForProduction,legacyOrder,removeV24FixtureSchema,scheduleInput} from './fixtures/production.ts'
+import {identifyForProduction,legacyOrder,removeV24FixtureSchema,removeV26FixtureSchema,removeV27FixtureSchema,scheduleInput} from './fixtures/production.ts'
 
 const code=(name:string)=>(error:unknown)=>error instanceof ServiceError && error.code===name
 const instant=Date.parse('2026-11-18T11:45:00Z')
@@ -31,6 +32,50 @@ async function issued(db:Db, count:number) {
   for(let index=0;index<count;index++)versions.push(await emit(budgets,f.at.id,f.scenario.id))
   return {at:f.at.id, budgets, versions}
 }
+
+test('V25 e V26 migram com Experiência preservada, operação desligada e baixas existentes intactas',async()=>{
+  for(const version of [25,26]){
+    const db=openDatabase(':memory:')
+    try{
+      const {at,versions}=await issued(db,1)
+      const production=new ProductionRepository(db,()=>instant)
+      const record=new AtendimentoRepository(db).get(at,true)
+      assert.ok(record.references?.person.length)
+      assert.ok(record.references?.vehicle.length)
+      assert.deepEqual(record.references.payer,[])
+      const budget=versions[0]!
+      const scheduled=production.schedule(at,{
+        budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+        expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+      }).experience!
+      assert.equal(scheduled.scheduledEntry,'2026-11-20')
+      assert.deepEqual(scheduled.payer,scheduled.customer)
+      const order=production.authorize(at,budget.id,{confirmed:true})
+      const finance=new FinanceRepository(db)
+      if(version===26){
+        const id=randomUUID()
+        finance.create({id,kind:'receivable',counterparty:'Cliente teste',description:'Serviço',
+          amountCents:2000,dueDate:'2026-11-22',experienceId:scheduled.id})
+        finance.settle(id,{id:randomUUID(),amountCents:500,date:'2026-11-21'})
+      }
+      const financialBefore=finance.overview()
+      if(version===25)removeV26FixtureSchema(db)
+      else removeV27FixtureSchema(db)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,version)
+      migrate(db)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,27)
+      assert.deepEqual(production.get(at).experience,scheduled)
+      assert.deepEqual(production.listInOperation(),[])
+      assert.equal(production.setInOperation(at,{inOperation:true}).experience?.inOperation,true)
+      assert.equal(production.listInOperation()[0]?.id,scheduled.id)
+      assert.equal(production.setInOperation(at,{inOperation:false}).experience?.inOperation,false)
+      assert.deepEqual(production.listInOperation(),[])
+      assert.deepEqual(finance.overview(),financialBefore)
+      assert.deepEqual(new WorkOrderRepository(db).get(at,budget.id),order)
+      assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+    }finally{db.close()}
+  }
+})
 
 test('Agendamento múltiplo e complementos compartilham a Experiência, com rastreio e documentos preservados',async()=>{
   const db=openDatabase(':memory:')

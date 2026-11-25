@@ -1,5 +1,14 @@
 import type {DatabaseSync} from 'node:sqlite'
 
+export function addExperienceOperation(db: DatabaseSync) {
+  db.exec(`
+    ALTER TABLE production_experiences ADD COLUMN in_operation INTEGER NOT NULL DEFAULT 0
+      CHECK(in_operation IN (0,1));
+    CREATE INDEX production_experiences_in_operation ON production_experiences(scheduled_entry, id)
+      WHERE in_operation=1;
+  `)
+}
+
 export function createProductionSchema(db: DatabaseSync) {
   db.exec(`
     CREATE TABLE production_experiences (

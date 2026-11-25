@@ -2,7 +2,7 @@ import {useEffect, useEffectEvent, useRef, useState} from 'react'
 import type {FormEvent} from 'react'
 import type {CustomerReference} from '../shared/customer'
 import {deliveryDateLabel} from '../shared/delivery-date'
-import {budgetLifecycleLabels} from '../shared/production'
+import {budgetLifecycleLabels, scheduledEntryLabel} from '../shared/production'
 import type {ProductionBudget, ProductionOverview} from '../shared/production'
 import {api} from './api'
 import type {RequestFailure} from './api'
@@ -11,11 +11,6 @@ import './production.css'
 
 const label = (ref: CustomerReference) => [ref.text, ref.plate].filter(Boolean).join(' · ')
 const budgetLabel = (budget: ProductionBudget) => budget.documentNumber ?? 'Orçamento ' + budget.label
-const fields = [
-  {name:'customer', source:'person', caption:'Cliente'},
-  {name:'vehicle', source:'vehicle', caption:'Veículo'},
-  {name:'payer', source:'payer', caption:'Pagador'},
-] as const
 const formatEvent = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
   timeZone:'America/Sao_Paulo', dateStyle:'short', timeStyle:'short',
 })
@@ -31,7 +26,7 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
   const [data,setData]=useState<ProductionOverview|null>(null)
   const [busy,setBusy]=useState(false), [error,setError]=useState(''), [notice,setNotice]=useState('')
   const [editing,setEditing]=useState(false)
-  const [entry,setEntry]=useState(''), [delivery,setDelivery]=useState('')
+  const [entryDate,setEntryDate]=useState(''), [entryTime,setEntryTime]=useState(''), [delivery,setDelivery]=useState('')
   const [selections,setSelections]=useState({customer:'',vehicle:'',payer:''})
   const [budgetIds,setBudgetIds]=useState<string[]>([])
   const [rejection,setRejection]=useState<{budget: ProductionBudget; reason: string}|null>(null)
@@ -67,9 +62,12 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
   }
 
   function openSchedule() {
-    setEntry(data?.experience?.scheduledEntry??'')
+    const [date='', time='']=(experience?.scheduledEntry??'').split('T')
+    setEntryDate(date)
+    setEntryTime(time)
     setDelivery(data?.deliveryDate??'')
-    setBudgetIds([])
+    setBudgetIds(!experience&&candidates.length===1?[candidates[0]!.id]:[])
+    setSelections({customer:'',vehicle:'',payer:''})
     setError('');setNotice('');setEditing(true)
   }
 
@@ -77,12 +75,12 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
     event.preventDefault()
     if(!data)return
     const current=data.experience
-    const parties=current
-      ? {customer:current.customer,vehicle:current.vehicle,payer:current.payer}
-      : Object.fromEntries(fields.map(field=>[field.name,JSON.parse(selections[field.name]||'null')]))
+    const parties=Object.fromEntries(Object.entries(selections)
+      .filter(([,selection])=>selection)
+      .map(([kind,selection])=>[kind,JSON.parse(selection)]))
     void run(async()=>{
       const result=await post<ProductionOverview>('/agendamento',{
-        parties, budgetIds, scheduledEntry:entry, deliveryDate:delivery||null,
+        parties, budgetIds, scheduledEntry:entryTime?entryDate+'T'+entryTime:entryDate, deliveryDate:delivery||null,
         expectedAtendimentoRevision:data.atendimentoRevision, expectedExperienceRevision:current?.revision??null,
       })
       setData(result);onScheduleSaved();setEditing(false);setNotice('Agendamento confirmado.')
@@ -90,7 +88,6 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
   }
 
   function authorize(budget: ProductionBudget) {
-    if(!window.confirm('Autorizar tecnicamente '+budgetLabel(budget)+' e gerar a Ordem de Serviço? A inspeção de recebimento continua necessária.'))return
     void run(async()=>{
       const result=await post<{number:string}>('/orcamentos/'+encodeURIComponent(budget.id)+'/autorizacao-tecnica',{confirmed:true})
       setData(await api<ProductionOverview>(base+'/experiencia'))
@@ -109,10 +106,17 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
   }
 
   const experience=data?.experience
-  const candidates=data?.budgets.flatMap(budget=>budget.state==='negotiating'||budget.state==='consented'
-    ?[{...budget,state:budget.state}]:[])??[]
-  const requiredReferences=fields.every(field=>data?.references[field.source].some(ref=>ref.text.trim()))
-  const selectionsValid=fields.every(field=>data?.references[field.source].some(ref=>JSON.stringify(ref)===selections[field.name]))
+  const candidates=data?.budgets.flatMap(budget=>budget.state==='negotiating'?[{...budget,state:budget.state}]:[])??[]
+  const customers=data?.references.person.filter(ref=>ref.text)??[]
+  const vehicles=data?.references.vehicle.filter(ref=>ref.text||ref.plate)??[]
+  const payers=data?.references.payer.filter(ref=>ref.text)??[]
+  const fields=[
+    {name:'customer', caption:'Cliente', options:customers},
+    {name:'vehicle', caption:'Veículo', options:vehicles},
+    {name:'payer', caption:'Pagador', options:payers},
+  ] as const
+  const requiredReferences=customers.length>0 && vehicles.length>0
+  const selectionsValid=fields.every(field=>field.options.length<=1||selections[field.name])
   const showSchedule=!!data && (experience||candidates.length>0 && requiredReferences)
 
   return <section className="production-panel" aria-label="Experiência do Atendimento">
@@ -125,28 +129,43 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
       <div><dt>Cliente</dt><dd>{label(experience.customer)}</dd></div>
       <div><dt>Veículo</dt><dd>{label(experience.vehicle)}</dd></div>
       <div><dt>Pagador</dt><dd>{label(experience.payer)}</dd></div>
-      <div><dt>Entrada agendada</dt><dd>{deliveryDateLabel(experience.scheduledEntry.slice(0,10))} às {experience.scheduledEntry.slice(11)}</dd></div>
+      <div><dt>Entrada agendada</dt><dd>{scheduledEntryLabel(experience.scheduledEntry)}</dd></div>
       <div><dt>Entrega combinada</dt><dd>{experience.deliveryDate?deliveryDateLabel(experience.deliveryDate):'A combinar'}</dd></div>
     </dl>}
-    {data&&!experience&&<p className="at-form-hint">{!candidates.length?'Nenhum orçamento emitido disponível para agendamento.':!requiredReferences?'Identifique cliente, veículo e pagador na ficha do Atendimento para agendar.':'Nenhuma experiência agendada.'}</p>}
+    {experience&&<div className="production-actions production-experience-controls">
+      <label className="production-check">
+        <input type="checkbox" checked={experience.inOperation} disabled={busy} onChange={event=>{
+          const inOperation=event.target.checked
+          void run(async()=>setData(await post<ProductionOverview>('/experiencia/operacao',{inOperation})))
+        }}/>
+        Em operação
+      </label>
+      <a className="fh-filter" href={'/financeiro?'+new URLSearchParams({experiencia:experience.id,nova:'receber'})}>Lançar valor a receber</a>
+    </div>}
+    {data&&!experience&&!showSchedule&&<p className="at-form-hint">{!candidates.length?'Nenhum orçamento emitido disponível para agendamento.':'Identifique cliente e veículo na ficha do Atendimento para agendar.'}</p>}
     {showSchedule&&!editing&&<button type="button" className="primary-btn" disabled={busy||!!rejection} onClick={openSchedule}>{experience?'Reagendar ou incluir orçamentos':'Agendar Atendimento'}</button>}
     {editing&&data&&<form className="production-form diagnosis-card" aria-label="Agendamento" onSubmit={submitSchedule}>
-      {!experience&&fields.map(field=><div className="at-field" key={field.name}>
+      {!experience&&fields.map(field=>field.options.length<=1
+        ? <p className="at-form-hint" key={field.name}>{field.caption} · {field.options[0]?label(field.options[0]):'O mesmo cliente'}</p>
+        : <div className="at-field" key={field.name}>
         <label htmlFor={'production-'+field.name}>{field.caption}</label>
         <select id={'production-'+field.name} required value={selections[field.name]} disabled={busy}
           onChange={event=>setSelections(previous=>({...previous,[field.name]:event.target.value}))}>
           <option value="">Selecionar…</option>
-          {data.references[field.source].filter(ref=>ref.text.trim()).map((ref,index)=><option key={index} value={JSON.stringify(ref)}>{label(ref)}</option>)}
+          {field.options.map((ref,index)=><option key={index} value={JSON.stringify(ref)}>{label(ref)}</option>)}
         </select>
       </div>)}
-      <label className="at-field">Entrada agendada (horário de Brasília)
-        <input type="datetime-local" required value={entry} disabled={busy} onChange={event=>setEntry(event.target.value)}/>
+      <label className="at-field">Data da entrada
+        <input type="date" required value={entryDate} disabled={busy} onChange={event=>setEntryDate(event.target.value)}/>
+      </label>
+      <label className="at-field">Horário da entrada (opcional, Brasília)
+        <input type="time" value={entryTime} disabled={busy} onChange={event=>setEntryTime(event.target.value)}/>
       </label>
       <label className="at-field">Entrega combinada (opcional)
-        <input type="date" min={entry.slice(0,10)||undefined} value={delivery} disabled={busy} onChange={event=>setDelivery(event.target.value)}/>
+        <input type="date" min={entryDate||undefined} value={delivery} disabled={busy} onChange={event=>setDelivery(event.target.value)}/>
       </label>
       {!!candidates.length&&<fieldset disabled={busy}>
-        <legend>Orçamentos com consentimento comercial</legend>
+        <legend>Orçamentos aceitos pelo cliente</legend>
         {candidates.map(budget=><label className="production-check" key={budget.id}>
           <input type="checkbox" checked={budgetIds.includes(budget.id)} onChange={event=>setBudgetIds(previous=>
             event.target.checked?[...previous,budget.id]:previous.filter(id=>id!==budget.id))}/>
@@ -172,6 +191,7 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
           <button type="button" className="primary-btn" disabled={busy||editing||!!rejection} onClick={()=>authorize(budget)}>Autorizar e gerar OS</button>
           <button type="button" className="fh-filter" disabled={busy||editing||!!rejection} onClick={()=>{setError('');setRejection({budget,reason:''})}}>Rejeitar tecnicamente</button>
         </div>}
+        {budget.state==='consented'&&<p className="at-form-hint">A inspeção de recebimento continua necessária.</p>}
         {rejection?.budget.id===budget.id&&<form aria-label="Rejeição técnica" onSubmit={reject}>
           <label className="at-field">Motivo da rejeição técnica
             <textarea value={rejection.reason} required minLength={5} maxLength={500} disabled={busy}

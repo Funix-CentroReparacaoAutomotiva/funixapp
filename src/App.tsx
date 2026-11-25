@@ -9,6 +9,8 @@ import { AtendimentoForm } from './AtendimentoForm'
 import { Icon, Login, Notice, RecordButton } from './ui'
 import { SettingsPage } from './SettingsPage'
 import { UpdatesPage } from './UpdatesPage'
+import { FinancePage } from './FinancePage'
+import { OperationPanel } from './OperationPanel'
 import{VoiceCopilot}from'./VoiceCopilot'
 import type{VoiceCaptureContext}from'../shared/voice-input'
 import { CommercialPanel } from './CommercialPanel'
@@ -19,12 +21,13 @@ import { EvolutionConversationReader } from './chat/EvolutionConversationReader'
 import './App.css'
 import './footer-copilot.css'
 
-type Area = 'conversas' | 'funil' | 'atualizacoes' | 'configuracoes'
+type Area = 'conversas' | 'funil' | 'atualizacoes' | 'configuracoes' | 'financeiro' | 'operacao'
+const mainAreas: Area[] = ['funil', 'conversas', 'operacao', 'financeiro']
 type Route = { path: string; search: string }
 type Editor = { record?: Atendimento }
 const readRoute = (): Route => ({ path: window.location.pathname, search: window.location.search })
-const labels: Record<Area, string> = { conversas: 'Conversas', funil: 'Funil', atualizacoes: 'Atualizações', configuracoes: 'Configurações' }
-const symbols: Record<Area, string> = { conversas: '▤', funil: '▥', atualizacoes: '▣', configuracoes: '⚙' }
+const labels: Record<Area, string> = { conversas: 'Conversas', funil: 'Funil', atualizacoes: 'Atualizações', configuracoes: 'Configurações', financeiro: 'Financeiro', operacao: 'Operação' }
+const symbols: Record<Area, string> = { conversas: '▤', funil: '▥', atualizacoes: '▣', configuracoes: '⚙', financeiro: 'R$', operacao: '▦' }
 function vehicleLabel(record: Atendimento) { return record.vehicle || [record.brand, record.model].filter(Boolean).join(' ') }
 function dateLabel(value: string) { return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(value)) }
 
@@ -35,7 +38,8 @@ function App() {
   })
   const routeRef = useRef(route), historyState = useRef(window.history.state), restoringHistory = useRef(false)
   const params = new URLSearchParams(route.search)
-  const area: Area = route.path === '/configuracoes' ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
+  const isFinance = route.path === '/financeiro', isOperation = route.path === '/operacao'
+  const area: Area = isFinance ? 'financeiro' : isOperation ? 'operacao' : route.path === '/configuracoes' ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
   const mode = params.get('modo') === 'lista' ? 'lista' : 'quadro', query = params.get('q') || ''
   const isDetail = /^\/atendimentos\/[^/]+$/.test(route.path), detailId = isDetail ? route.path.split('/')[2] : ''
   const removedRoute = route.path.startsWith('/veiculos') || route.path.startsWith('/experiencias')
@@ -295,9 +299,9 @@ function App() {
       if (!isDetail) positions.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
     }}>
       {!isDetail ? <main className="fh-work">
-        <nav className="fh-tabs" aria-label="Áreas da FUNIX"><strong className="navigation-brand">FUNIX</strong>{(['funil','conversas'] as Area[]).map(item => <button key={item} className={area === item && !removedRoute ? 'selected' : ''} onClick={() => navigate('/' + item)} aria-current={area === item && !removedRoute ? 'page' : undefined}><span aria-hidden="true">{symbols[item]}</span> {labels[item]}</button>)}</nav>
-        <header className="commercial-brand"><strong>FUNIX</strong><small>COMERCIAL</small></header>
-        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/><button className="session-exit" onClick={logout}>Sair</button></>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/><button className="session-exit" onClick={logout}>Sair</button></>:<>
+        <nav className="fh-tabs" aria-label="Áreas da FUNIX"><strong className="navigation-brand">FUNIX</strong>{mainAreas.map(item => <button key={item} className={area === item && !removedRoute ? 'selected' : ''} onClick={() => navigate('/' + item)} aria-current={area === item && !removedRoute ? 'page' : undefined}><span aria-hidden="true">{symbols[item]}</span> {labels[item]}</button>)}</nav>
+        <header className="commercial-brand"><strong>FUNIX</strong><small>{isFinance || isOperation ? 'ERP' : 'COMERCIAL'}</small></header>
+        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /><button className="session-exit" onClick={logout}>Sair</button></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /><button className="session-exit" onClick={logout}>Sair</button></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/><button className="session-exit" onClick={logout}>Sair</button></>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/><button className="session-exit" onClick={logout}>Sair</button></>:<>
           <div className="fh-tools"><label className="fh-search"><span aria-hidden="true">⌕</span><input aria-label={area === 'conversas' ? 'Buscar conversas carregadas por nome ou telefone' : 'Buscar nome, telefone, placa ou Atendimento'} autoComplete="off" placeholder={area === 'conversas' ? 'Buscar conversas carregadas…' : 'Buscar nome, telefone, placa…'} value={query} onChange={event => updateParams({ q: event.target.value })} /></label><div className="fh-tools-right">
             <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
@@ -336,7 +340,7 @@ function App() {
         </>}
       </>}
     </div>
-    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
+    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen && !isFinance && !isOperation} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {
