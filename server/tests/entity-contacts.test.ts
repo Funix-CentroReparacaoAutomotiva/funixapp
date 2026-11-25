@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {entityContactsFixture} from './fixtures/entity-contacts.ts'
 import {ContactChannels} from '../chat/contact-channels.ts'
+import {participantInventory} from '../customer-inventory.ts'
 import {createEvolutionChatBridge} from '../chat/evolution-bridge.ts'
 import {EvolutionReadPoc} from '../experimental/evolution-read/client.ts'
 import {createApp} from '../app.ts'
@@ -53,6 +54,36 @@ test('manual lead with equivalent phone reuses a known WhatsApp Contact and link
   // A recognized history link is not a new message or authorization to send.
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,0)
   assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
+
+test('legacy participant inventory only proposes grouping for explicit consistent ownership and never writes',()=>{
+ const f=entityContactsFixture()
+ try{
+  const a=f.customers.save({kind:'entity',text:'Pessoa A',contacts:[{text:phone1}]})
+  const b=f.customers.save({kind:'entity',text:'Pessoa B',contacts:[{text:phone2}]})
+  const ca=f.customers.contacts(a.id)[0]!,cb=f.customers.contacts(b.id)[0]!
+  const make=()=>f.at.create({}).id
+  const add=(id:string,kind:string,pos:number,recordId:string|null,text:string,key?:string)=>
+    f.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(id,kind,pos,recordId,JSON.stringify({id:recordId,text,...(key?{participantKey:key}:{})}))
+  const safe=make();add(safe,'person',0,a.id,a.text);add(safe,'contact',0,ca.id,ca.text)
+  const grouped=make();add(grouped,'person',0,a.id,a.text,'a');add(grouped,'contact',0,ca.id,ca.text,'a')
+  const third=make();add(third,'person',0,a.id,a.text);add(third,'contact',0,cb.id,cb.text)
+  const unresolved=make();add(unresolved,'person',0,a.id,a.text);add(unresolved,'contact',0,null,phone1)
+  const conflict=make();add(conflict,'person',0,a.id,a.text,'a');add(conflict,'person',1,b.id,b.text,'b');add(conflict,'contact',0,cb.id,cb.text,'a')
+  const empty=make()
+  const before=f.db.prepare('SELECT total_changes() AS n').get()!.n
+  const result=participantInventory(f.db)
+  assert.deepEqual(result.groupingCandidates,[safe])
+  assert.deepEqual(result.alreadyGrouped,[grouped])
+  assert.deepEqual(result.ownerMissingFromCase,[third])
+  assert.deepEqual(result.unresolvedPhones,[unresolved])
+  assert.deepEqual(result.ownerConflicts,[conflict])
+  assert.deepEqual(result.primaryMismatch.slice().sort(),[third,conflict].sort())
+  assert.ok(result.withoutPhone.includes(empty))
+  assert.equal(f.db.prepare('SELECT total_changes() AS n').get()!.n,before)
+  assert.ok(!JSON.stringify(result).includes(phone1))
+  assert.ok(!JSON.stringify(result).includes('Pessoa A'))
  }finally{f.db.close()}
 })
 
