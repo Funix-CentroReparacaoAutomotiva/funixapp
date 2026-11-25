@@ -274,6 +274,27 @@ test('authenticated inbound references the explicitly assigned Entity without co
 })
 
 
+test('inbound keeps the message but does not duplicate an unindexed historical dialing contact',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  const owner=customers.save({kind:'entity',text:'Cadastro antigo'})
+  const id=randomUUID()
+  db.prepare("INSERT INTO customer_records(id,kind,data,entity_id,phone_normalized) VALUES(?,'contact',?,?,NULL)")
+    .run(id,JSON.stringify({id:null,text:'031999990101'}),owner.id)
+  const first=event('historical-dialing-conflict')
+  const receipt=runtime.store.ingest(JSON.stringify(first))
+  assert.deepEqual(runtime.store.ingest(JSON.stringify(first)),receipt)
+  assert.equal(at.list().total,0)
+  assert.equal(customers.contacts(owner.id).length,1)
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,1)
+  assert.equal(runtime.authority!.canonicalChannelSendAllowed(PN),false)
+  assert.equal(customers.record(id).text,'031999990101')
+ }finally{db.close()}
+})
+
 test('target autonomous runtime creates the shared Entity and Contact atomically; exact known number reuses owner',()=>{
  const db=openDatabase(':memory:')
  try{
