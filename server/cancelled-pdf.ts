@@ -19,6 +19,8 @@ export async function cancelledPdf(source:Buffer,connection:JsreportConnection=c
  padding:14px 0;box-sizing:border-box}
  </style></head><body><div class="watermark">CANCELADO</div></body></html>`
  const body=JSON.stringify({template:{
+  // jsreport validates inline template identity before the static recipe loads the original PDF.
+  content:'FUNIX PDF',engine:'none',
   recipe:'static-pdf',
   staticPdf:{pdfAsset:{content:source.toString('base64'),encoding:'base64'}},
   pdfOperations:[{type:'merge',mergeToFront:true,mergeWholeDocument:false,
