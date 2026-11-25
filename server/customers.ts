@@ -434,7 +434,7 @@ export class CustomerRepository {
       !provisional.entityId||provisional.entityId!==canonical.entityId||
       canonical.conversationId&&!handles.includes(canonical.conversationId)||
       normalizePhone(canonical.text)!==phone)return null
-    const refs=this.db.prepare('SELECT atendimento_id,position FROM atendimento_references WHERE record_id=? AND kind=?')
+    const refs=this.db.prepare('SELECT atendimento_id,position,data FROM atendimento_references WHERE record_id=? AND kind=?')
       .all(provisional.id,'contact')
     if(refs.some(ref=>this.db.prepare("SELECT 1 FROM atendimento_references WHERE atendimento_id=? AND kind='contact' AND record_id=?")
       .get(ref.atendimento_id!,canonical.id)))return null
@@ -443,7 +443,7 @@ export class CustomerRepository {
     const saved=this.bindConfirmedPhone(canonical,phone,canonical.entityId,provisional.conversationId)
     for(const ref of refs){
       this.db.prepare("UPDATE atendimento_references SET record_id=?,data=? WHERE atendimento_id=? AND kind='contact' AND position=?")
-        .run(saved.id,JSON.stringify({id:saved.id,text:saved.text}),ref.atendimento_id!,ref.position!)
+        .run(saved.id,JSON.stringify({...JSON.parse(String(ref.data)),id:saved.id,text:saved.text}),ref.atendimento_id!,ref.position!)
       this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(ref.atendimento_id!)
       this.updateSearch(String(ref.atendimento_id))
     }
@@ -475,10 +475,37 @@ export class CustomerRepository {
     return this.record(existing.id)
   }
 
+  /** Associate only existing references with a verified common owner. Never
+   * invent a participant from the position of a legacy phone. */
+  groupCanonicalParticipant(at:string,contactId:string,enableForNew=false) {
+    const contact=this.record(contactId)
+    if(!contact.entityId)return false
+    const rows=this.db.prepare("SELECT kind,position,record_id,data FROM atendimento_references WHERE atendimento_id=? AND kind IN ('person','contact')").all(at)
+    const people=rows.filter(r=>r.kind==='person'&&r.record_id===contact.entityId)
+    if(people.length!==1)return false
+    const grouped=rows.some(r=>!!JSON.parse(String(r.data)).participantKey)
+    if(!grouped&&!enableForNew)return false
+    const person=people[0]!
+    const pd=JSON.parse(String(person.data))
+    const key=pd.participantKey??'entity:'+contact.entityId
+    if(rows.some(r=>r.kind==='person'&&r.position!==person.position&&JSON.parse(String(r.data)).participantKey===key))return false
+    const write=this.db.prepare('UPDATE atendimento_references SET data=? WHERE atendimento_id=? AND kind=? AND position=?')
+    let changed=false
+    for(const row of rows){
+      if(row!==person&&!(row.kind==='contact'&&row.record_id&&this.record(String(row.record_id)).entityId===contact.entityId))continue
+      const data=JSON.parse(String(row.data))
+      if(data.participantKey===key)continue
+      write.run(JSON.stringify({...data,participantKey:key}),at,row.kind!,row.position!)
+      changed=true
+    }
+    return changed
+  }
+
   reconcileParticipant(at:string,refs:CustomerReferences,person:CustomerRecord|null,contact:CustomerRecord,legacyIndex?:number,legacyContactIndex?:number) {
     let changed=false
     const write=(kind:'person'|'contact',index:number,record:CustomerRecord)=>{
-      const ref={id:record.id,text:record.text}
+      const previous=refs[kind][index]
+      const ref={id:record.id,text:record.text,...(kind==='person'&&previous?.participantKey?{participantKey:previous.participantKey}:{})}
       this.db.prepare(`INSERT INTO atendimento_references VALUES(?,?,?,?,?)
         ON CONFLICT(atendimento_id,kind,position) DO UPDATE SET record_id=excluded.record_id,data=excluded.data`)
         .run(at,kind,index,ref.id,JSON.stringify(ref))
@@ -504,6 +531,7 @@ export class CustomerRepository {
     const phone=normalizePhone(contact.text)
     const same=phone?refs.contact.findIndex(ref=>!ref.id&&normalizePhone(ref.text)===phone):-1
     append('contact',contact,legacyContactIndex??(same<0?undefined:same))
+    if(this.groupCanonicalParticipant(at,contact.id))changed=true
     if(changed)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     this.updateSearch(at)
   }
