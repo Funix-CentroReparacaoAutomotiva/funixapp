@@ -339,6 +339,7 @@ test('autonomous short PN triage keeps a single participant and the observed cha
   const at=new AtendimentoRepository(db),customers=new CustomerRepository(db),authority=runtime.authority!
   const short='553188888888@s.whatsapp.net'
   const first=event('short-triage-group',short,null,'')
+  delete (first as {displayName?:string}).displayName
   runtime.store.ingest(JSON.stringify(first))
   const original=at.get(at.list().items[0]!.id,true)
   const person=original.references!.person[0]!,contact=original.references!.contact[0]!
