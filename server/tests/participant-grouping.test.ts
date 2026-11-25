@@ -1,5 +1,11 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
+import {DatabaseSync} from 'node:sqlite'
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {execFileSync} from 'node:child_process'
+import {backupDatabase} from '../database.ts'
 import {entityContactsFixture} from './fixtures/entity-contacts.ts'
 import {planParticipantGrouping,applyParticipantGrouping} from '../participant-grouping.ts'
 import {participantInventory} from '../customer-inventory.ts'
@@ -69,4 +75,25 @@ test('legacy grouping rejects a stale plan and rolls back partial writes on fail
   assert.equal(f.at.get(f.safe).revision,revision)
   assert.equal(f.db.isTransaction,false)
  }finally{f.db.close()}
+})
+
+test('offline CLI previews without changing source and applies only to a fresh copy',async()=>{
+ const f=seed(),dir=mkdtempSync(join(tmpdir(),'funix-grouping-'))
+ const source=join(dir,'source.sqlite'),target=join(dir,'target.sqlite')
+ const run=(...args:string[])=>JSON.parse(execFileSync(process.execPath,['server/group-participants-copy.ts',...args],{encoding:'utf8'}))
+ try{
+   await backupDatabase(f.db,source)
+   const original=readFileSync(source)
+   assert.deepEqual(run(source),{mode:'preview_only',atendimentos:1,references:4,deferred:2})
+   assert.deepEqual(readFileSync(source),original)
+   assert.deepEqual(run(source,target),{mode:'copy_only',atendimentos:1,references:4,deferred:2})
+   assert.deepEqual(readFileSync(source),original)
+   const copy=new DatabaseSync(target,{readOnly:true})
+   try{
+     assert.equal(planParticipantGrouping(copy).entries.length,0)
+     assert.ok(participantInventory(copy).alreadyGrouped.includes(f.safe))
+   }finally{copy.close()}
+   assert.throws(()=>run(source,target),/Command failed/)
+   assert.deepEqual(readFileSync(source),original)
+ }finally{f.db.close();rmSync(dir,{recursive:true,force:true})}
 })
