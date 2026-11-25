@@ -29,6 +29,10 @@ export function planParticipantGrouping(db:DatabaseSync):ParticipantGroupingPlan
    if(rows.some(r=>!r.record_id||!r.registered_data||r.registered_kind!==(r.kind==='person'?'entity':'contact')||
      JSON.parse(String(r.registered_data)).canonicalContactId))continue
    if(contacts[0]?.entity_id!==people[0]?.record_id)continue
+   const primaryKey=JSON.parse(String(people[0]!.data)).participantKey
+   // A partly grouped case can already have a different projected primary
+   // contact. Do not silently change that projection in the offline batch.
+   if(primaryKey!==undefined&&JSON.parse(String(contacts[0]!.data)).participantKey!==primaryKey)continue
    const keys=new Map<string,string>(),used=new Set<string>(),changes:Change[]=[]
    let safe=true
    for(const p of people){
