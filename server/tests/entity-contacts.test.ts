@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {entityContactsFixture} from './fixtures/entity-contacts.ts'
 import {ContactChannels} from '../chat/contact-channels.ts'
+import {participantInventory} from '../customer-inventory.ts'
 import {createEvolutionChatBridge} from '../chat/evolution-bridge.ts'
 import {EvolutionReadPoc} from '../experimental/evolution-read/client.ts'
 import {createApp} from '../app.ts'
@@ -21,6 +22,115 @@ test('standalone Contacts keep the verified handle and Entity name without comme
   assert.equal(row.conversationId,contact.conversationId)
   assert.deepEqual(row.commercial?.names,[{name:entity.text,entityId:entity.id}])
   assert.equal((await bridge.list(0)).items[0]!.conversationId,contact.conversationId)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
+
+test('manual lead with equivalent phone reuses a known WhatsApp Contact and links its read history',async()=>{
+ const f=entityContactsFixture()
+ try{
+  f.rows.push(jid(phone1))
+  const entity=f.customers.save({kind:'entity',text:'Contato já identificado',contacts:[{text:phone1}]})
+  const contact=(await f.channels.verifyEntity(entity.id)).contacts[0]!
+  assert.ok(contact.conversationId)
+  const created=f.at.create({references:{
+   person:[{id:null,text:'Nome digitado no Atendimento'}],
+   contact:[{id:null,text:'(31) 99999-0101'}],
+   vehicle:[],payer:[]
+  }},false,true)
+  assert.equal(created.references!.person[0]!.id,entity.id)
+  assert.equal(created.references!.contact[0]!.id,contact.id)
+  assert.equal(f.at.list().total,1)
+  const links=f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').get(created.id)!
+  assert.equal(links.n,1)
+  assert.equal(f.customers.contacts(entity.id).length,1)
+  // If the operator explicitly unlinked this Chat, an unrelated cadastro save
+  // must not silently resurrect it.
+  f.db.prepare("UPDATE v20_associations SET unlinked_at=?,unlinked_by='operator',unlink_reason='Revisão sintética' WHERE atendimento_id=? AND unlinked_at IS NULL")
+    .run(new Date().toISOString(),created.id)
+  const edit=f.at.get(created.id,true)
+  f.at.update(created.id,{revision:edit.revision,notes:'Nota sem alterar telefone',references:edit.references},true,true)
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').get(created.id)!.n,0)
+  // A recognized history link is not a new message or authorization to send.
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,0)
+  assert.equal(f.sends(),0)
+ }finally{f.db.close()}
+})
+
+test('legacy participant inventory only proposes grouping for explicit consistent ownership and never writes',()=>{
+ const f=entityContactsFixture()
+ try{
+  const a=f.customers.save({kind:'entity',text:'Pessoa A',contacts:[{text:phone1}]})
+  const b=f.customers.save({kind:'entity',text:'Pessoa B',contacts:[{text:phone2}]})
+  const ca=f.customers.contacts(a.id)[0]!,cb=f.customers.contacts(b.id)[0]!
+  const make=()=>f.at.create({}).id
+  const add=(id:string,kind:string,pos:number,recordId:string|null,text:string,key?:string)=>
+    f.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(id,kind,pos,recordId,JSON.stringify({id:recordId,text,...(key?{participantKey:key}:{})}))
+  const safe=make();add(safe,'person',0,a.id,a.text);add(safe,'contact',0,ca.id,ca.text)
+  const grouped=make();add(grouped,'person',0,a.id,a.text,'a');add(grouped,'contact',0,ca.id,ca.text,'a')
+  const third=make();add(third,'person',0,a.id,a.text);add(third,'contact',0,cb.id,cb.text)
+  const unresolved=make();add(unresolved,'person',0,a.id,a.text);add(unresolved,'contact',0,null,phone1)
+  const conflict=make();add(conflict,'person',0,a.id,a.text,'a');add(conflict,'person',1,b.id,b.text,'b');add(conflict,'contact',0,cb.id,cb.text,'a')
+  const empty=make()
+  const before=f.db.prepare('SELECT total_changes() AS n').get()!.n
+  const result=participantInventory(f.db)
+  assert.deepEqual(result.groupingCandidates,[safe])
+  assert.deepEqual(result.alreadyGrouped,[grouped])
+  assert.deepEqual(result.ownerMissingFromCase,[third])
+  assert.deepEqual(result.unresolvedPhones,[unresolved])
+  assert.deepEqual(result.ownerConflicts,[conflict])
+  assert.deepEqual(result.primaryMismatch.slice().sort(),[third,conflict].sort())
+  assert.ok(result.withoutPhone.includes(empty))
+  assert.equal(f.db.prepare('SELECT total_changes() AS n').get()!.n,before)
+  assert.ok(!JSON.stringify(result).includes(phone1))
+  assert.ok(!JSON.stringify(result).includes('Pessoa A'))
+ }finally{f.db.close()}
+})
+
+test('participant grouping creates and projects each person with their own numbers, irrespective of contact order',()=>{
+ const f=entityContactsFixture()
+ try{
+  const references={
+   person:[{id:null,text:'Pessoa A',participantKey:'a'},{id:null,text:'Pessoa B',participantKey:'b'}],
+   contact:[{id:null,text:phone2,participantKey:'b'},{id:null,text:phone1,participantKey:'a'},
+    {id:null,text:'(31) 99999-0101',participantKey:'a'}],
+   vehicle:[],payer:[]
+  }
+  const saved=f.at.create({references},false,true)
+  const refs=saved.references!,a=refs.person[0]!,b=refs.person[1]!
+  assert.ok(a.id&&b.id&&a.id!==b.id)
+  assert.equal(refs.contact.length,2)
+  assert.equal(refs.contact.find(c=>c.participantKey==='a')!.entityId,a.id)
+  assert.equal(refs.contact.find(c=>c.participantKey==='b')!.entityId,b.id)
+  assert.equal(saved.name,'Pessoa A');assert.equal(saved.phone,phone1)
+  const withoutPrimaryPhone=f.at.update(saved.id,{revision:saved.revision,references:{...refs,
+    contact:refs.contact.filter(c=>c.participantKey==='b')}},true,true)
+  assert.equal(withoutPrimaryPhone.name,'Pessoa A')
+  assert.equal(withoutPrimaryPhone.phone,'','B’s phone must not be projected as A’s')
+  assert.equal(f.customers.contacts(a.id!).length,1)
+  const bContact=refs.contact.find(c=>c.participantKey==='b')!
+  assert.throws(()=>f.at.update(saved.id,{revision:withoutPrimaryPhone.revision,references:{...refs,
+    contact:[{...bContact,participantKey:'a'}]}},true,true),code('CONTACT_OWNER_CONFLICT'))
+  const removed=f.at.update(saved.id,{revision:withoutPrimaryPhone.revision,references:{
+    ...refs,person:[a],contact:[]}},true,true)
+  assert.equal(removed.references!.person.length,1)
+  assert.equal(f.customers.contacts(b.id!).length,1)
+ }finally{f.db.close()}
+})
+
+test('renaming an entity preserves a short observed WhatsApp PN and avoids readding that same observed number',()=>{
+ const f=entityContactsFixture()
+ try{
+  const observed='553188888888',handle=f.channels.identities.rememberProviderConversation(observed+'@s.whatsapp.net')
+  const {person,contact}=f.customers.createUnnumberedChannelContact('',handle,true)
+  const before=f.db.prepare('SELECT data,conversation_id FROM customer_records WHERE id=?').get(contact.id)!
+  const updated=f.customers.save({text:'Nome informado depois',revision:person.revision,
+    contacts:[{id:contact.id,text:contact.text,revision:contact.revision},{text:'(31) 8888-8888'}]},person.id)
+  assert.equal(updated.text,'Nome informado depois')
+  assert.equal(f.customers.contacts(person.id).length,1)
+  const after=f.db.prepare('SELECT data,conversation_id FROM customer_records WHERE id=?').get(contact.id)!
+  assert.deepEqual(after,before)
+  assert.equal(JSON.parse(String(after.data)).shortNumberReviewPending,true)
   assert.equal(f.sends(),0)
  }finally{f.db.close()}
 })
