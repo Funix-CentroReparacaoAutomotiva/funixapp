@@ -369,6 +369,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       referencesChanged=true
     }
+    if(customers.groupCanonicalParticipant(at,contactId,created&&this.unifiedCustomers))referencesChanged=true
     if(!created&&referencesChanged)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     return at
   }
