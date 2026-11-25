@@ -110,7 +110,8 @@ export class ProductionRepository {
     }
   }
 
-  get(at: string): ProductionOverview {
+  get(at: string, inTransaction = false): ProductionOverview {
+    if (inTransaction) return this.overview(at)
     // A deferred read transaction gives the experience, budgets and history one SQLite snapshot.
     this.db.exec('BEGIN')
     try {return this.overview(at)}
@@ -140,7 +141,7 @@ export class ProductionRepository {
     })
   }
 
-  schedule(at: string, input: unknown): ProductionOverview {
+  schedule(at: string, input: unknown, inTransaction = false): ProductionOverview {
     const data=inputObject(input,['budgetIds','parties','scheduledEntry','deliveryDate','expectedAtendimentoRevision','expectedExperienceRevision'])
     const entry=data.scheduledEntry
     if(typeof entry!=='string'||!/^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d)?$/.test(entry)||!validDeliveryDate(entry.slice(0,10)))
@@ -151,7 +152,7 @@ export class ProductionRepository {
     const ids=data.budgetIds
     if(!Array.isArray(ids)||ids.length>100||ids.some(id=>typeof id!=='string'||id.length<1||id.length>100)||new Set(ids).size!==ids.length)
       throw new ServiceError(422,'INVALID_SCHEDULE_BUDGETS','Selecione orçamentos emitidos distintos deste Atendimento.')
-    return transaction(this.db,()=>{
+    const write = () => {
       const record=this.atendimentos.get(at,true)
       const row=this.row(at)
       const previousDate=record.deliveryDate??null
@@ -185,7 +186,8 @@ export class ProductionRepository {
       writeDeliveryDate(this.db,at,previousDate,deliveryDate,'Entrega combinada no agendamento da Experiência',now,true)
       for(const id of pending)this.append(at,id,'negotiating','consented','commercial',now)
       return this.overview(at)
-    })
+    }
+    return inTransaction ? write() : transaction(this.db, write)
   }
 
   private scheduleParties(raw: unknown, references: Record<ReferenceKind,CustomerReference[]>, existing: Experience | null): ExperienceParties {
