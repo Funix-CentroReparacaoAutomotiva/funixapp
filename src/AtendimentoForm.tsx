@@ -1,6 +1,6 @@
 import {CustomerLines} from './CustomerLines'
 import type {CustomerReferences} from '../shared/customer'
-import {participantGroups} from '../shared/customer'
+import {participantGroups,contactSelectionKey} from '../shared/customer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ATENDIMENTO_PURPOSES, ATENDIMENTO_STAGES } from '../shared/contracts'
@@ -89,7 +89,7 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
       setFields(next)
       onDirty(pending)
       setLastSaved(!pending)
-      onAutoSaved?.(saved,JSON.stringify(snapshot.references?.contact)!==JSON.stringify(baseline.references?.contact))
+      onAutoSaved?.(saved,contactSelectionKey(saved.references?.contact)!==contactSelectionKey(baseline.references?.contact))
     } catch(cause) {
       const error=cause as RequestFailure
       setFailure(error.code==='VERSION_CONFLICT'
