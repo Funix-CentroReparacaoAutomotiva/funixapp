@@ -1,3 +1,4 @@
+import {aiToolsPath, aiToolsTokenHeader, authenticateAiTool, executeAiTool} from './ai-tools.ts'
 import {SharedConversationIdentity} from './chat/shared-identity.ts'
 import {ShortNumberReview,reviewedNumber} from './chat/short-number-review.ts'
 import {ContactChannels} from './chat/contact-channels.ts'
@@ -19,6 +20,7 @@ import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
 import {ProductionRepository} from './production.ts'
+import {FinanceRepository} from './finance.ts'
 import { WorkOrderRepository } from './work-orders.ts'
 import {BudgetCancellationRepository} from './budget-cancellations.ts'
 import {cancelledPdf} from './cancelled-pdf.ts'
@@ -62,6 +64,7 @@ import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
 export interface AppOptions {
+  aiToolCredentials?: () => unknown
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -111,6 +114,7 @@ export function createRequestHandler(options: AppOptions) {
   const components = new ComponentRepository(options.atendimentos.db)
   const budgets = new BudgetRepository(options.atendimentos.db,{render:options.budgetRenderer})
   const production = new ProductionRepository(options.atendimentos.db,options.now)
+  const finance = new FinanceRepository(options.atendimentos.db, options.now)
   const workOrders = new WorkOrderRepository(options.atendimentos.db,options.now)
   // V21 revisions and new explicit issues freeze the first successfully rendered PDF.
   const osCache=new WorkOrderPdfCache(options.atendimentos.db)
@@ -161,6 +165,17 @@ export function createRequestHandler(options: AppOptions) {
     }
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
+      if (url.pathname === aiToolsPath) {
+        if (!options.aiToolCredentials) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        authenticateAiTool(req.headers[aiToolsTokenHeader], options.aiToolCredentials)
+        if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) {
+          return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        }
+        const body = await readJson(req, 16384)
+        const credential = authenticateAiTool(req.headers[aiToolsTokenHeader], options.aiToolCredentials)
+        return send(200, executeAiTool({atendimentos: options.atendimentos, production, finance}, credential, body, requestId, now))
+      }
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
@@ -241,6 +256,36 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      if (url.pathname === '/api/financeiro') {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        return send(200, finance.overview())
+      }
+      const financeTitleRoute = url.pathname === '/api/financeiro/titulos'
+      const financeSettlementRoute = /^\/api\/financeiro\/titulos\/([^/]{1,100})\/baixas(?:\/([^/]{1,100}))?$/.exec(url.pathname)
+      if (financeTitleRoute || financeSettlementRoute) {
+        const titleId = financeSettlementRoute?.[1]
+        const settlementId = financeSettlementRoute?.[2]
+        if (req.method !== (settlementId ? 'DELETE' : 'POST')) return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+        if (titleId && settlementId) return send(200, finance.reverse(titleId, settlementId))
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        const body = await readJson(req, 8192)
+        if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a solicitação.')
+        return send(201, titleId ? finance.settle(titleId, body) : finance.create(body))
+      }
+      if (url.pathname === '/api/operacao') {
+        if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        return send(200, production.listInOperation())
+      }
+      const experienceOperationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/experiencia\/operacao$/.exec(url.pathname)
+      if (experienceOperationRoute) {
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        const body = await readJson(req, 1024)
+        if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a solicitação.')
+        return send(200, production.setInOperation(experienceOperationRoute[1]!, body))
+      }
       if(url.pathname==='/api/atualizacoes/analises-gmail'){
         if(req.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.')
         const ids=url.searchParams.has('ids')?(url.searchParams.get('ids')?url.searchParams.get('ids')!.split(','):[]):undefined

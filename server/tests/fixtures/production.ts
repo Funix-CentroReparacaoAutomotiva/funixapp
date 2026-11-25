@@ -5,7 +5,21 @@ import {AtendimentoRepository} from '../../atendimentos.ts'
 import {ProductionRepository} from '../../production.ts'
 import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 
+export function removeV27FixtureSchema(db: DatabaseSync) {
+  db.exec(`DROP INDEX production_experiences_in_operation;
+    ALTER TABLE production_experiences DROP COLUMN in_operation;
+    DELETE FROM schema_migrations WHERE version=27;`)
+}
+
+export function removeV26FixtureSchema(db: DatabaseSync) {
+  removeV27FixtureSchema(db)
+  db.exec(`DROP TABLE financial_settlements;
+    DROP TABLE financial_titles;
+    DELETE FROM schema_migrations WHERE version=26;`)
+}
+
 export function removeV25FixtureSchema(db: DatabaseSync) {
+  removeV26FixtureSchema(db)
   db.exec(`DROP TRIGGER IF EXISTS chat_short_number_context_insert; DROP TRIGGER IF EXISTS chat_short_number_context_update;
     DROP TRIGGER IF EXISTS chat_short_number_receipt_update; DROP TRIGGER IF EXISTS chat_short_number_receipt_delete;
     DROP TABLE IF EXISTS chat_confirmed_short_numbers;`)

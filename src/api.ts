@@ -4,7 +4,7 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase()
   const started = performance.now()
   // Diagnostic route only: never expose record IDs or query/contact data.
-  const endpoint = url.split('?')[0].replace(/(\/(?:atendimentos|catalogos|cenarios|diagnosticos|componentes|orcamentos))\/[^/]+/g, '$1/:id')
+  const endpoint = url.split('?')[0].replace(/(\/(?:atendimentos|catalogos|cenarios|diagnosticos|componentes|orcamentos|titulos|baixas))\/[^/]+/g, '$1/:id')
   const failure = (message: string, kind: RequestFailure['kind'], status?: number, code?: string, requestId?: string): RequestFailure => Object.assign(new Error(message), {kind,method,endpoint,status,code,requestId,elapsedMs:Math.round(performance.now()-started)})
   let response: Response
   try { response = await fetch(url, { credentials: 'same-origin', ...init, cache: 'no-store' }) }

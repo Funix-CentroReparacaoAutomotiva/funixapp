@@ -15,3 +15,10 @@
 .production-budget details{font-size:.85rem}
 .production-budget ul{padding-inline-start:20px;margin-block:6px}
 .production-feedback{margin-bottom:12px}
+.production-experience-controls{margin-block:8px 16px}
+.production-experience-controls a{box-sizing:border-box;display:inline-flex;align-items:center;text-decoration:none}
+.operation-panel{box-sizing:border-box;width:100%;padding:16px}
+.operation-panel h1{font-size:1.25rem;margin:0 0 16px}
+.operation-list{list-style:none;margin:0;padding:0}
+.operation-list a{display:grid;gap:4px;min-height:44px;color:inherit;text-decoration:none}
+.operation-list a:hover strong,.operation-list a:focus-visible strong{text-decoration:underline}

@@ -1,6 +1,7 @@
 import{syntheticRenderer}from'./fixtures/budget-renderer.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
 import { createRequestHandler } from '../app.ts'
@@ -468,4 +469,48 @@ test('manual Atendimento resolves a phone transactionally and requires explicit 
   assert.equal(removed.status,200)
   assert.equal((await removed.json()).phone,'')
  }finally{app.close()}
+})
+
+test('Financeiro exige sessão e mesma origem e aceita lançamentos avulsos e estornos pela API', async () => {
+  const app = start()
+  try {
+    const path = '/api/financeiro'
+    const title = {
+      id: randomUUID(), kind: 'payable', counterparty: 'Fornecedor QA',
+      description: 'Aluguel de teste', amountCents: 12003, dueDate: '2026-11-24',
+    }
+    const settlement = {id: randomUUID(), amountCents: 12003, date: '2026-11-24'}
+    const settlementPath = `${path}/titulos/${title.id}/baixas`
+    const reversalPath = `${settlementPath}/${settlement.id}`
+    assert.equal((await app.request(path)).status, 401)
+    assert.equal((await app.write(path + '/titulos', 'POST', title, '')).status, 401)
+
+    const cookie = await authenticate(app)
+    const get = () => app.request(path, {headers: {Cookie: cookie}})
+    assert.deepEqual(await (await get()).json(), {titles: [], experiences: []})
+    assert.equal((await app.write(path + '/titulos', 'POST', title, cookie, 'https://example.invalid')).status, 403)
+    const created = await app.write(path + '/titulos', 'POST', title, cookie)
+    assert.equal(created.status, 201)
+    assert.deepEqual(await created.json(), {...title, experienceId: null, balanceCents: 12003, settlements: []})
+
+    const requests = await Promise.all([
+      app.write(settlementPath, 'POST', settlement, cookie),
+      app.write(settlementPath, 'POST', settlement, cookie),
+    ])
+    for (const response of requests) {
+      assert.equal(response.status, 201)
+      const settled = await response.json()
+      assert.equal(settled.balanceCents, 0)
+      assert.deepEqual(settled.settlements, [{...settlement, reversedAt: null}])
+    }
+    assert.equal((await app.write(reversalPath, 'DELETE', null, cookie, 'https://example.invalid')).status, 403)
+    const reverse = () => app.request(reversalPath, {method: 'DELETE', headers: {Cookie: cookie, Origin: origin}})
+    const reversed = await reverse()
+    assert.equal(reversed.status, 200)
+    const restored = await reversed.json()
+    assert.equal(restored.balanceCents, title.amountCents)
+    assert.equal(typeof restored.settlements[0].reversedAt, 'string')
+    assert.deepEqual(await (await reverse()).json(), restored)
+    assert.deepEqual((await (await get()).json()).titles, [restored])
+  } finally { app.close() }
 })
