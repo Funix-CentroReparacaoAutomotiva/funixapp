@@ -305,9 +305,12 @@ export class CustomerRepository {
   }
   /** Prevent a new manual registration from duplicating a historical, unindexed
    * dialing-prefix contact. Keep those cases in the offline reconciliation queue. */
-  private assertNoUnindexedDialingContact(phone:string,exceptId?:string) {
+  hasUnindexedDialingContact(phone:string,exceptId?:string) {
     const rows=this.db.prepare("SELECT id,data FROM customer_records WHERE kind='contact' AND phone_normalized IS NULL AND json_extract(data,'$.canonicalContactId') IS NULL").all()
-    if(rows.some(row=>row.id!==exceptId&&normalizeCustomerInputPhone(String(JSON.parse(String(row.data)).text??''))===phone))
+    return rows.some(row=>row.id!==exceptId&&normalizeCustomerInputPhone(String(JSON.parse(String(row.data)).text??''))===phone)
+  }
+  private assertNoUnindexedDialingContact(phone:string,exceptId?:string) {
+    if(this.hasUnindexedDialingContact(phone,exceptId))
       throw new ServiceError(409,'CONTACT_PHONE_RECONCILIATION_REQUIRED','Este número coincide com um telefone antigo ainda não normalizado. Revise o cadastro existente antes de criar outro.')
   }
   /** Exact full international number only. Existing duplicates remain reviewable, never merged. */
@@ -472,6 +475,7 @@ export class CustomerRepository {
   }
 
   private bindConfirmedPhone(existing:CustomerRecord|null,phone:string,entityId:string,conversationId:string|null) {
+    this.assertNoUnindexedDialingContact(phone,existing?.id)
     if(normalizePhone(phone)!==phone||existing?.entityId&&existing.entityId!==entityId&&!this.canReplaceProvisionalOwner(existing.entityId)||
       existing?.text&&normalizePhone(existing.text)!==phone||this.phoneMatches(phone).some(match=>match.id!==existing?.id))
       throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','O número e a titularidade do Contato precisam de revisão.')
