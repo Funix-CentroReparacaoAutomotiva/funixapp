@@ -1,5 +1,5 @@
 import type {DatabaseSync} from 'node:sqlite'
-import {normalizeCustomerPhone as normalizePhone} from './phone.ts'
+import {normalizeCustomerPhone as normalizePhone,normalizeCustomerInputPhone} from './phone.ts'
 /** Read-only inventory. IDs/counts only: no names, phone numbers, messages or documents in report. */
 export function customerInventory(db:DatabaseSync) {
  const records=db.prepare('SELECT id,kind,data,entity_id,conversation_id FROM customer_records ORDER BY id').all()
@@ -79,4 +79,21 @@ export function participantInventory(db:DatabaseSync) {
    }
  }
  return {groupingCandidates,alreadyGrouped,ownerMissingFromCase,unresolvedPhones,ownerConflicts,primaryMismatch,withoutPhone}
+}
+
+/** Prospective civil input keys; do not change the V25 key function. IDs only. */
+export function dialingPrefixInventory(db:DatabaseSync) {
+ const groups=new Map<string,string[]>(),newlyRecognized:string[]=[],textualAtendimentos:string[]=[]
+ for(const row of db.prepare("SELECT id,data FROM customer_records WHERE kind='contact' AND json_extract(data,'$.canonicalContactId') IS NULL ORDER BY id").all()){
+   const raw=String(JSON.parse(String(row.data)).text??'')
+   const phone=normalizeCustomerInputPhone(raw)
+   if(!phone)continue
+   groups.set(phone,[...(groups.get(phone)??[]),String(row.id)])
+   if(!normalizePhone(raw))newlyRecognized.push(String(row.id))
+ }
+ for(const row of db.prepare("SELECT id,phone FROM atendimentos UNION ALL SELECT atendimento_id AS id,json_extract(data,'$.text') AS phone FROM atendimento_references WHERE kind='contact' AND record_id IS NULL").all()){
+   const raw=String(row.phone??'')
+   if(!normalizePhone(raw)&&normalizeCustomerInputPhone(raw))textualAtendimentos.push(String(row.id))
+ }
+ return {newlyRecognized,collisionGroups:[...groups.values()].filter(ids=>ids.length>1&&ids.some(id=>newlyRecognized.includes(id))),textualAtendimentos:[...new Set(textualAtendimentos)].sort()}
 }
