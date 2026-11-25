@@ -15,8 +15,8 @@ COLORS = {
 ARTIFACTS = ROOT / "docs/evidencias/os-browser"
 
 
-async def color_case(browser, label, viewport):
-    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+async def color_case(browser, label, viewport, artifacts=ARTIFACTS):
+    artifacts.mkdir(parents=True, exist_ok=True)
     h = Harness()
     ctx = None
     results = []
@@ -143,8 +143,8 @@ db.close()
                     assert await r.locator('.budget-history-letter').evaluate("el=>getComputedStyle(el,'::after').transform") != 'none'
                 if reload:
                     results.append({"scenario": "ABCD"[i], "number": v["number"], "buttons": values})
-                    await r.screenshot(path=str(ARTIFACTS / f'{label}-scenario-{ "ABCD"[i] }.png'))
-            await page.screenshot(path=str(ARTIFACTS / f'{label}-four-colors.png'))
+                    await r.screenshot(path=str(artifacts / f'{label}-scenario-{ "ABCD"[i] }.png'))
+            await page.screenshot(path=str(artifacts / f'{label}-four-colors.png'))
         # Detail route must use the same real DocumentButton colors as history.
         for v, states in zip(ids['versions'], expected):
             await page.goto(browse + '&versao=' + v['id'])
@@ -159,7 +159,7 @@ db.close()
         h.mark(label + ': A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed')
     finally:
         try:
-            (ARTIFACTS / f'{label}-computed-colors.json').write_text(json.dumps({'viewport':viewport,'results':results,'checks':h.results},ensure_ascii=False,indent=2)+'\n')
+            (artifacts / f'{label}-computed-colors.json').write_text(json.dumps({'viewport':viewport,'results':results,'checks':h.results},ensure_ascii=False,indent=2)+'\n')
         finally:
             try:
                 if ctx:

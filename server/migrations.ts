@@ -1,5 +1,6 @@
 import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
-import {createProductionSchema} from './production-schema.ts'
+import {addExperienceOperation,createProductionSchema} from './production-schema.ts'
+import {createFinanceSchema} from './finance-schema.ts'
 import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
@@ -353,7 +354,9 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:23,apply:db=>db.exec(`ALTER TABLE atendimentos ADD COLUMN purpose TEXT
     CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)},
   {version:24,apply:createProductionSchema},
-  {version:25,apply:createCustomerIdentitySchema}
+  {version:25,apply:createCustomerIdentitySchema},
+  {version:26,apply:createFinanceSchema},
+  {version:27,apply:addExperienceOperation},
 ]
 
 export function migrate(db: DatabaseSync) {

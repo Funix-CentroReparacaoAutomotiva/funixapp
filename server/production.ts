@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto'
 import type {DatabaseSync, SQLOutputValue} from 'node:sqlite'
 import type {CustomerReference, ReferenceKind} from '../shared/customer.ts'
 import {validDeliveryDate} from '../shared/delivery-date.ts'
-import type {BudgetLifecycleState, BudgetTransition, Experience, ExperienceParties, ProductionOverview} from '../shared/production.ts'
+import type {BudgetLifecycleState, BudgetTransition, Experience, ExperienceInOperation, ExperienceParties, ProductionOverview} from '../shared/production.ts'
 import {AtendimentoRepository} from './atendimentos.ts'
 import {BudgetRepository} from './budgets.ts'
 import {CustomerRepository} from './customers.ts'
@@ -27,6 +27,7 @@ const stale = () => new ServiceError(409,'SCHEDULE_CONFLICT','O agendamento ou o
 function experienceFrom(row: Row, deliveryDate: string | null): Experience {
   return {
     id: String(row.id), revision: Number(row.revision), scheduledEntry: String(row.scheduled_entry), deliveryDate,
+    inOperation: row.in_operation===1,
     customer: JSON.parse(String(row.customer_json)) as CustomerReference,
     vehicle: JSON.parse(String(row.vehicle_json)) as CustomerReference,
     payer: JSON.parse(String(row.payer_json)) as CustomerReference,
@@ -116,11 +117,34 @@ export class ProductionRepository {
     finally {this.db.exec('ROLLBACK')}
   }
 
+  listInOperation(): ExperienceInOperation[] {
+    return this.db.prepare(`SELECT id,atendimento_id,customer_json,vehicle_json,scheduled_entry
+      FROM production_experiences WHERE in_operation=1 ORDER BY scheduled_entry,id`).all().map(row=>({
+      id:String(row.id), atendimentoId:String(row.atendimento_id),
+      customer:JSON.parse(String(row.customer_json)) as CustomerReference,
+      vehicle:JSON.parse(String(row.vehicle_json)) as CustomerReference,
+      scheduledEntry:String(row.scheduled_entry),
+    }))
+  }
+
+  setInOperation(at: string, input: unknown): ProductionOverview {
+    const {inOperation}=inputObject(input,['inOperation'])
+    if(typeof inOperation!=='boolean')
+      throw new ServiceError(422,'INVALID_OPERATION_STATUS','Informe se a Experiência está em operação.')
+    return transaction(this.db,()=>{
+      if(!this.row(at))throw new ServiceError(404,'EXPERIENCE_NOT_FOUND','Agende o Atendimento para registrar a operação.')
+      const status=Number(inOperation)
+      this.db.prepare(`UPDATE production_experiences SET in_operation=?,updated_at=?
+        WHERE atendimento_id=? AND in_operation<>?`).run(status,new Date(this.now()).toISOString(),at,status)
+      return this.overview(at)
+    })
+  }
+
   schedule(at: string, input: unknown): ProductionOverview {
     const data=inputObject(input,['budgetIds','parties','scheduledEntry','deliveryDate','expectedAtendimentoRevision','expectedExperienceRevision'])
     const entry=data.scheduledEntry
-    if(typeof entry!=='string'||!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/.test(entry)||!validDeliveryDate(entry.slice(0,10)))
-      throw new ServiceError(422,'INVALID_SCHEDULE','Informe data e hora válidas para a entrada.')
+    if(typeof entry!=='string'||!/^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d)?$/.test(entry)||!validDeliveryDate(entry.slice(0,10)))
+      throw new ServiceError(422,'INVALID_SCHEDULE','Informe uma data válida para a entrada e confira o horário, se preenchido.')
     const deliveryDate=parseDeliveryDate(data.deliveryDate)
     if(deliveryDate!==null && deliveryDate<entry.slice(0,10))
       throw new ServiceError(422,'INVALID_SCHEDULE','A entrega combinada deve ser na data da entrada ou depois.')
@@ -165,17 +189,22 @@ export class ProductionRepository {
   }
 
   private scheduleParties(raw: unknown, references: Record<ReferenceKind,CustomerReference[]>, existing: Experience | null): ExperienceParties {
-    const data=inputObject(raw,Object.keys(parties))
-    const choose=(key: keyof ExperienceParties)=>{
-      const kind=parties[key]
-      const selected=this.customers.validateReference(data[key],kind)
-      const candidates=existing?[existing[key]]:references[kind]
-      const confirmed=candidates.find(ref=>sameReference(selected,ref))
-      if(!selected.text || !confirmed)
-        throw new ServiceError(409,'SCHEDULE_PARTIES_CONFLICT','Confira o cliente, o veículo e o pagador identificados no Atendimento.')
+    const data=raw===undefined?{}:inputObject(raw,Object.keys(parties))
+    const choose=(key: keyof ExperienceParties,candidates: CustomerReference[])=>{
+      const selection=data[key]
+      const selected=selection===undefined
+        ? (candidates.length===1?candidates[0]:undefined)
+        : this.customers.validateReference(selection,parties[key])
+      const confirmed=selected && candidates.find(ref=>sameReference(selected,ref))
+      if(!confirmed)
+        throw new ServiceError(409,'SCHEDULE_PARTIES_CONFLICT','Confira o cliente, o veículo e o pagador da Experiência.')
       return confirmed
     }
-    return {customer:choose('customer'),vehicle:choose('vehicle'),payer:choose('payer')}
+    const customer=choose('customer',existing?[existing.customer]:references.person.filter(ref=>ref.text))
+    const vehicle=choose('vehicle',existing?[existing.vehicle]:references.vehicle.filter(ref=>ref.text||ref.plate))
+    const registeredPayers=references.payer.filter(ref=>ref.text)
+    const payer=choose('payer',existing?[existing.payer]:registeredPayers.length?registeredPayers:[customer])
+    return {customer,vehicle,payer}
   }
 
   authorize(at: string, versionId: string, input: unknown) {

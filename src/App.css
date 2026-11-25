@@ -201,3 +201,4 @@
 @media(max-width:760px){.fh-work>.fh-tabs{position:fixed;bottom:0;left:0;right:0;height:calc(58px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);margin:0;background:white;border-top:1px solid #dce4ef;border-bottom:0;z-index:30}.fh-work>.fh-tabs button{border:0;border-top:3px solid transparent}.fh-work>.fh-tabs button.selected{border-top-color:#ff6a00}.app-shell:has(.fh-work) .copilot-fixed{bottom:calc(66px + env(safe-area-inset-bottom))}.fh-work{padding-bottom:150px}.fh-lane{flex-basis:min(305px,calc(100vw - 36px));min-width:min(305px,calc(100vw - 36px))}}
 .funnel-last>b{max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:760px){.fh-work>.fh-tabs{max-width:520px;margin-inline:auto}}
+@media(max-width:420px){.fh-work>.fh-tabs button{padding-inline:4px}.fh-work>.fh-tabs button>span{display:none}}
