@@ -56,6 +56,11 @@ Mantenha os fluxos inativos enquanto esse mecanismo estiver pendente.
 
 ## Validação
 
+O workflow oficial `FUNIX - Homologacao (candidato)` requer uma PR aberta
+contra `main`, CI aprovado para o SHA exato e autorização explícita para o
+build. Use a variante `web`. A PR da integração inclui o candidato da #361
+na sua ancestralidade para permitir esse build sem merge.
+
 O ensaio local usa SQLite sintético e confirma as três alterações depois de
 reiniciar a API, pela integração e pelas APIs de interface. Na HML, consulte
 um Atendimento e a Experiência sintética existente, crie um Atendimento,
