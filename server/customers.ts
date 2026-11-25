@@ -1,5 +1,5 @@
 import {withConfirmedOwnerChange} from './customer-identity-schema.ts'
-import {normalizeCustomerPhone as normalizePhone} from './phone.ts'
+import {normalizeCustomerPhone as normalizePhone,normalizeCustomerInputPhone,canonicalizeCustomerInputPhone} from './phone.ts'
 import {AtendimentoRepository} from './atendimentos.ts'
 import type {Atendimento} from '../shared/contracts.ts'
 import {randomUUID} from 'node:crypto'
@@ -36,7 +36,7 @@ export class CustomerRepository {
   }
   search(kind:string,q:string) {
     if(!['entity','vehicle','contact'].includes(kind)||q.length>150)invalid()
-    const phone=kind==='contact'?normalizePhone(q):null
+    const phone=kind==='contact'?normalizeCustomerInputPhone(q):null
     if(phone)return this.phoneMatches(phone).slice(0,20)
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
@@ -94,6 +94,12 @@ export class CustomerRepository {
    * Existing unkeyed clients retain their legacy behavior until migrated.
    */
   resolveManualContactReferences(refs:CustomerReferences,previous?:CustomerReferences) {
+    refs={...refs,contact:refs.contact.map(ref=>{
+      if(ref.id||previous?.contact.some(old=>!old.id&&old.text===ref.text&&old.participantKey===ref.participantKey))return ref
+      const phone=normalizeCustomerInputPhone(ref.text)
+      if(phone)this.assertNoUnindexedDialingContact(phone)
+      return {...ref,text:canonicalizeCustomerInputPhone(ref.text)}
+    })}
     if(!refs.person.some(p=>p.participantKey)&&!refs.contact.some(c=>c.participantKey))
       return this.resolveLegacyContactReferences(refs,previous)
     // Incoming WhatsApp and older clients may have appended a canonical
@@ -297,6 +303,13 @@ export class CustomerRepository {
     if(this.record(entityId).kind!=='entity')invalid()
     return this.db.prepare("SELECT id FROM customer_records WHERE kind='contact' AND entity_id=? AND json_extract(data,'$.canonicalContactId') IS NULL ORDER BY rowid").all(entityId).map(r=>this.record(String(r.id)))
   }
+  /** Prevent a new manual registration from duplicating a historical, unindexed
+   * dialing-prefix contact. Keep those cases in the offline reconciliation queue. */
+  private assertNoUnindexedDialingContact(phone:string,exceptId?:string) {
+    const rows=this.db.prepare("SELECT id,data FROM customer_records WHERE kind='contact' AND phone_normalized IS NULL AND json_extract(data,'$.canonicalContactId') IS NULL").all()
+    if(rows.some(row=>row.id!==exceptId&&normalizeCustomerInputPhone(String(JSON.parse(String(row.data)).text??''))===phone))
+      throw new ServiceError(409,'CONTACT_PHONE_RECONCILIATION_REQUIRED','Este número coincide com um telefone antigo ainda não normalizado. Revise o cadastro existente antes de criar outro.')
+  }
   /** Exact full international number only. Existing duplicates remain reviewable, never merged. */
   phoneMatches(phone:string) {
     if(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='index' AND name='customer_contact_phone_unique'").get())
@@ -310,6 +323,10 @@ export class CustomerRepository {
     const {contacts,...record}=input
     if(contacts!==undefined&&(!Array.isArray(contacts)||contacts.length>50||(id?this.record(id).kind:input.kind)!=='entity'))invalid()
     return transaction(this.db,()=>{
+      if((id?this.record(id).kind:record.kind)==='contact'&&typeof record.text==='string'&&(!id||this.record(id).text!==record.text)){
+        const phone=normalizeCustomerInputPhone(record.text)
+        if(phone)this.assertNoUnindexedDialingContact(phone,id)
+      }
       const saved=this.saveRecord(record,id)
       if(contacts!==undefined) {
         const seen=new Set<string>()
@@ -319,7 +336,7 @@ export class CustomerRepository {
           if(c.id)seen.add(c.id)
           const old=c.id?this.record(c.id):null
           if(!old&&typeof c.text==='string'){
-            const normalized=normalizePhone(c.text)
+            const normalized=normalizeCustomerInputPhone(c.text)
             // A repeated number belonging to this entity is already saved.
             if(normalized&&this.phoneMatches(normalized).some(match=>match.entityId===saved.id))continue
             // A short observed PN is not a confirmed civil phone. Equivalent
@@ -332,6 +349,10 @@ export class CustomerRepository {
             }))continue
           }
           if(old&&(old.kind!=='contact'||old.entityId&&old.entityId!==saved.id))throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Este número pertence a outro cadastro. Revise a associação antes de continuar.')
+          if(typeof c.text==='string'&&c.text!==old?.text){
+            const phone=normalizeCustomerInputPhone(c.text)
+            if(phone)this.assertNoUnindexedDialingContact(phone,c.id)
+          }
           this.saveRecord({kind:'contact',text:c.text,revision:c.revision,entityId:saved.id},c.id)
         }
         if(this.contacts(saved.id).length>50)throw new ServiceError(400,'CONTACT_LIMIT','Limite de 50 números por cadastro.')
@@ -554,6 +575,7 @@ export class CustomerRepository {
     const entityId=source.entityId===undefined?old?.entityId??null:source.entityId
     if(entityId!==null&&(kind!=='contact'||typeof entityId!=='string'||this.record(entityId).kind!=='entity'))invalid()
     if(old?.entityId&&entityId!==old.entityId)throw new ServiceError(409,'CONTACT_OWNER_CONFLICT','Transferência de cadastro exige revisão explícita; o vínculo atual foi preservado.')
+    if(kind==='contact'&&ref.text!==old?.text)ref.text=canonicalizeCustomerInputPhone(ref.text)
     const phone=kind==='contact'?normalizePhone(ref.text):null
     if(kind==='contact'&&phone&&(phone!==normalizePhone(old?.text??'')||entityId!==old?.entityId)){
       if(this.phoneMatches(phone).some(r=>r.id!==id))throw new ServiceError(409,'CONTACT_PHONE_CONFLICT','Número já cadastrado. Selecione o Contato existente; duplicidades exigem revisão.')
