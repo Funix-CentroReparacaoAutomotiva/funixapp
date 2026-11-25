@@ -142,13 +142,13 @@ export class FinanceRepository {
     return [...titles.values()]
   }
 
-  private title(id: string): FinancialTitle {
+  title(id: string): FinancialTitle {
     const [title] = this.titles(id)
     if (!title) throw new ServiceError(404, 'FINANCE_TITLE_NOT_FOUND', 'Título não encontrado.')
     return title
   }
 
-  create(input: unknown): FinancialTitle {
+  create(input: unknown, inTransaction = false): FinancialTitle {
     const data = inputObject(input, ['id', 'kind', 'counterparty', 'description', 'amountCents', 'dueDate', 'experienceId'])
     const id = identifier(data.id)
     const {kind, dueDate} = data
@@ -159,7 +159,7 @@ export class FinanceRepository {
     const amountCents = amount(data.amountCents)
     const experienceId = data.experienceId == null ? null : identifier(data.experienceId)
 
-    return transaction(this.db, () => {
+    const write = () => {
       const [existing] = this.titles(id)
       if (existing) {
         if (existing.kind !== kind || existing.dueDate !== dueDate || existing.counterparty !== counterparty ||
@@ -176,7 +176,8 @@ export class FinanceRepository {
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(id, kind, counterparty, description, amountCents, dueDate, experienceId)
       return this.title(id)
-    })
+    }
+    return inTransaction ? write() : transaction(this.db, write)
   }
 
   settle(titleId: string, input: unknown): FinancialTitle {
