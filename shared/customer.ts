@@ -85,3 +85,9 @@ export function groupedCustomerReferences(refs:CustomerReferences):CustomerRefer
   }
   return {...refs,person,contact}
 }
+
+/** A grouping/label edit does not change the recipient. Preserve the order
+ * because the first selected contact still matters to the legacy send context. */
+export function contactSelectionKey(contacts:CustomerReference[]|undefined) {
+  return JSON.stringify((contacts??[]).filter(c=>c.id||c.text.trim()).map(c=>c.id?'id:'+c.id:'text:'+c.text.trim()))
+}
