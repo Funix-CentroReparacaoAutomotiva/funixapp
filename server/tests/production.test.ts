@@ -77,6 +77,39 @@ test('V25 e V26 migram com Experiência preservada, operação desligada e baixa
   }
 })
 
+test('Cliente com contato agrupado agenda sem pagador separado e gera OS', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const fixture = commercialFixture(db)
+    const repository = new AtendimentoRepository(db)
+    const at = fixture.at.id
+    const current = repository.get(at, true)
+    const record = repository.update(at, {
+      revision: current.revision,
+      references: {
+        person: [{id: null, text: 'Cliente sintético', participantKey: 'cliente'}],
+        contact: [{id: null, text: '31999990199', participantKey: 'cliente'}],
+        vehicle: [{id: null, text: 'Veículo sintético', plate: 'ABC1D23'}],
+        payer: [],
+      },
+    }, true, true)
+    const [customer] = record.references!.person
+    assert.ok(customer?.id)
+    assert.equal(record.references!.contact[0]?.entityId, customer.id)
+    const budget = await emit(new BudgetRepository(db), at, fixture.scenario.id)
+    const production = new ProductionRepository(db, () => instant)
+    const {experience} = production.schedule(at, {
+      budgetIds: [budget.id], scheduledEntry: '2026-11-20', deliveryDate: null,
+      expectedAtendimentoRevision: record.revision, expectedExperienceRevision: null,
+    })
+    assert.equal(experience?.customer.id, customer.id)
+    assert.equal(experience?.payer.id, customer.id)
+    assert.equal(production.authorize(at, budget.id, {confirmed: true}).experienceId, experience?.id)
+  } finally {
+    db.close()
+  }
+})
+
 test('Agendamento múltiplo e complementos compartilham a Experiência, com rastreio e documentos preservados',async()=>{
   const db=openDatabase(':memory:')
   try{

@@ -15,6 +15,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { loginRateLimitIdentity, parseTrustedLoginProxies } from './login-rate-limit.ts'
 import type { AtendimentoRepository } from './atendimentos.ts'
+import {PossibleDuplicateAtendimentoError} from './atendimentos.ts'
 import{InstallmentRepository}from'./budget-terms.ts'
 import type{BudgetOptions}from'./budgets.ts'
 import { BudgetRepository } from './budgets.ts'
@@ -1060,6 +1061,9 @@ export function createRequestHandler(options: AppOptions) {
       if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Este comando não está disponível neste incremento.')
       return fail(404, 'NOT_FOUND', 'Rota ou identificador não encontrado.')
     } catch (error) {
+      if(error instanceof PossibleDuplicateAtendimentoError)
+        return send(409,{error:{code:error.code,message:error.message,requestId,
+          candidates:error.candidates,confirmationToken:error.confirmationToken}})
       if (error instanceof ServiceError) return fail(error.status, error.code, error.message)
       return fail(500, 'INTERNAL_ERROR', 'Não foi possível concluir a consulta. Use o identificador da solicitação para suporte.')
     }

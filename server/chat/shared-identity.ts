@@ -72,9 +72,12 @@ export class SharedConversationIdentity {
   }
 
   forAtendimento(conversationId:string,atendimentoId:string) {
-    const {blocked,contact,owner,targets}=this.inspect(conversationId)
+    const {blocked,contact,owner,targets,phone:observed}=this.inspect(conversationId)
     if(blocked||!contact?.conversationId||!owner||!targets.some(target=>target.id===atendimentoId))return null
-    return {name:owner.text,phone:normalizePhone(contact.text)??''}
+    const phone=normalizePhone(contact.text)??''
+    // An authenticated, linked short PN remains visible for history; it is
+    // not a confirmed canonical phone and grants no sending permission.
+    return {name:owner.text,phone,...(!phone&&observed?{observedPhone:observed}:{})}
   }
 
   confirm(conversationId:string,body:unknown) {

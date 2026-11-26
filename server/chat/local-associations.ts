@@ -260,7 +260,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
     const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
     if(!phone)return undefined
-    const [contact]=new CustomerRepository(this.db).phoneMatches(phone)
+    const customers=new CustomerRepository(this.db)
+    if(customers.hasUnindexedDialingContact(phone))
+      return {candidates:[],conflict:true,canCreateTriage:false}
+    const [contact]=customers.phoneMatches(phone)
     const pair=pn?reviewNumberPair(pn):null
     if(!contact&&pair&&new CustomerRepository(this.db).phoneMatches(pair.registeredPhone).length)
       return {candidates:[],conflict:false,canCreateTriage:false}
@@ -369,6 +372,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       referencesChanged=true
     }
+    if(customers.groupCanonicalParticipant(at,contactId,created&&this.unifiedCustomers))referencesChanged=true
     if(!created&&referencesChanged)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     return at
   }
@@ -390,7 +394,8 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     let channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
-    if(!plan.blocked&&initial.phone&&e.message.remoteJidAlt&&channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id){
+    const historicalDialingConflict=!!initial.phone&&customers.hasUnindexedDialingContact(initial.phone)
+    if(!historicalDialingConflict&&!plan.blocked&&initial.phone&&e.message.remoteJidAlt&&channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id){
       const alias=customers.record(String(channels[0]!.id))
       const origin=alias.conversationId?this.providerJid(alias.conversationId):null
       if(origin?.endsWith('@lid')&&customers.reconcileChannelAlias(alias,matches[0]!,initial.phone,handles))
@@ -441,7 +446,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         return
       }
     }
-    const contactConflict=possibleReview||!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
+    const contactConflict=historicalDialingConflict||possibleReview||!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       incompatible
     // Keep the received message, but require explicit review before associating

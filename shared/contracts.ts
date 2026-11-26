@@ -58,7 +58,7 @@ export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
 
 export interface Atendimento {
   purpose?: AtendimentoPurpose
-  chatIdentity?: {name:string;phone:string;conversationId:string}
+  chatIdentity?: {name:string;phone:string;conversationId:string;observedPhone?:string}
   closedAt?: string | null
   references?: CustomerReferences
   lastContactAt?: string | null
@@ -83,6 +83,16 @@ export interface Atendimento {
   createdAt: string
   updatedAt: string
   revision: number
+}
+
+/** Open manual-creation candidate; a match requests review, never a forced merge. */
+export interface DuplicateAtendimento {
+  id:string
+  name:string
+  vehicle:string
+  plate:string
+  stage:string
+  revision:number
 }
 
 export interface AtendimentoList {
