@@ -357,6 +357,23 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:25,apply:createCustomerIdentitySchema},
   {version:26,apply:createFinanceSchema},
   {version:27,apply:addExperienceOperation},
+  {version:28,apply:db=>db.exec(`
+    ALTER TABLE financial_settlements ADD COLUMN payment_method TEXT
+      CHECK(payment_method IN ('pix','cash','boleto','debit','credit','transfer','other'));
+    ALTER TABLE financial_settlements ADD COLUMN installments INTEGER
+      CHECK(installments IS NULL OR (payment_method IS 'credit' AND installments BETWEEN 1 AND 12));
+  `)},
+  {version:29,apply:db=>db.exec(`
+    ALTER TABLE financial_settlements ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0
+      CHECK(discount_cents BETWEEN 0 AND amount_cents);
+    ALTER TABLE financial_settlements ADD COLUMN withheld_iss_cents INTEGER NOT NULL DEFAULT 0
+      CHECK(withheld_iss_cents BETWEEN 0 AND amount_cents-discount_cents);
+    ALTER TABLE financial_settlements ADD COLUMN discount_reason TEXT
+      CHECK((discount_cents=0 AND discount_reason IS NULL) OR
+        (discount_cents>0 AND discount_reason IS NOT NULL AND discount_reason IN ('commercial','service_issue','other')));
+    ALTER TABLE financial_settlements ADD COLUMN invoice_number TEXT
+      CHECK(invoice_number IS NULL OR length(invoice_number) BETWEEN 1 AND 60);
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {

@@ -1,3 +1,5 @@
+import {discountReasons, paymentCents} from '../shared/finance'
+import {PaymentMethodFields, paymentMethodLabel, readPaymentMethod} from './PaymentMethodFields'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import type { FinancialTitle, FinancialExperienceOption } from '../shared/finance'
@@ -119,7 +121,7 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
       setStatus('all')
       void update('/api/financeiro/titulos', { ...common, body: JSON.stringify(body) }, 'Título lançado.')
     } else if (title) {
-      const body = { ...base, date: get('date') }
+      const body = { ...base, date: get('date'), ...readPaymentMethod(fields) }
       if (amountCents > title.balanceCents) {
         setActionError({ titleId: title.id, message: 'O valor da baixa deve ser de até ' + currency(title.balanceCents) + '.' })
         return
@@ -157,8 +159,8 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
       overdue[title.kind] += BigInt(title.balanceCents)
       overdueCount++
     }
-    return title.settlements.filter(item => !item.reversedAt && (!month || item.date.startsWith(month + '-'))).map(item => {
-      movementTotals[title.kind] += BigInt(item.amountCents)
+    return title.settlements.filter(item => !item.reversedAt && paymentCents(item)>0 && (!month || item.date.startsWith(month + '-'))).map(item => {
+      movementTotals[title.kind] += BigInt(paymentCents(item))
       return { ...item, title }
     })
   }).sort((left, right) => right.date.localeCompare(left.date))
@@ -235,7 +237,7 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
               <h4>{settle[title.kind]}</h4>
               <div className="fin-fields">
                 <label>Valor da baixa (R$)<input name="amount" inputMode="decimal" defaultValue={decimal(titleEditor.balanceCents).replace('.', ',')} required /></label>
-                <label>Data da baixa<input name="date" type="date" defaultValue={today} required /></label>
+                <PaymentMethodFields disabled={busy}/><label>Data da baixa<input name="date" type="date" defaultValue={today} required /></label>
               </div>
               {actionError?.titleId === title.id && <p className="fin-error" role="alert">{actionError.message}</p>}
               <div className="fin-actions"><button type="button" className="fin-button" onClick={() => edit(null)} disabled={busy}>Cancelar</button>
@@ -244,7 +246,10 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
             {title.settlements.length > 0 && <details className="fin-history">
               <summary>Histórico de baixas ({title.settlements.length})</summary>
               <ul>{title.settlements.map(item => <li className="fin-history-item" key={item.id}>
-                <span>{calendarDate(item.date)} · <strong>{currency(item.amountCents)}</strong>{item.reversedAt && ' · Desfeita'}</span>
+                <span>{calendarDate(item.date)}
+                  {paymentCents(item)>0&&<> · {paymentMethodLabel(item)} · <strong>{currency(paymentCents(item))}</strong></>}
+                  {item.discountCents?<> · Desconto {currency(item.discountCents)} ({discountReasons[item.discountReason!]})</>:null}
+                  {item.withheldIssCents?<> · ISS retido {currency(item.withheldIssCents)}</>:null}{item.invoiceNumber?<> · NF {item.invoiceNumber}</>:null}{item.reversedAt && ' · Desfeita'}</span>
                 {!item.reversedAt && <button className="fin-button" disabled={busy} onClick={() => reverse(title, item)}>Desfazer baixa</button>}
               </li>)}</ul>
             </details>}
@@ -268,8 +273,8 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
       </div>
       {!movements.length ? <p className="fin-empty">Nenhuma baixa registrada no período.</p> :
         <ul className="fin-history fin-movements">{movements.map(item => <li className="fin-history-item" key={item.id}>
-          <span><strong>{item.title.description}</strong><small>{calendarDate(item.date)} · {item.title.counterparty} · {settled[item.title.kind]}</small></span>
-          <strong>{currency(item.amountCents)}</strong>
+          <span><strong>{item.title.description}</strong><small>{calendarDate(item.date)} · {item.title.counterparty} · {settled[item.title.kind]} · {paymentMethodLabel(item)}</small></span>
+          <strong>{currency(paymentCents(item))}</strong>
         </li>)}</ul>}
     </section>
   </section>

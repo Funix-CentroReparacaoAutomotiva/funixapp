@@ -1,6 +1,6 @@
 import type {DatabaseSync} from 'node:sqlite'
 import {validDeliveryDate} from '../shared/delivery-date.ts'
-import type {FinancialOverview, FinancialTitle} from '../shared/finance.ts'
+import {paymentMethods, paymentCents, discountReasons, type DiscountReason, type PaymentMethod, type FinancialOverview, type FinancialSettlement, type FinancialTitle} from '../shared/finance.ts'
 import {ProductionRepository} from './production.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject, transaction} from './scenarios.ts'
@@ -31,6 +31,43 @@ function text(value: unknown, max: number, field: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed.length > max || trimmed.includes('\u0000')) invalid(`Informe ${field} com até ${max} caracteres.`)
   return trimmed
+}
+
+function paymentDetails(data: Record<string, unknown>) {
+  const {paymentMethod, installments} = data
+  if (paymentMethod === undefined && installments === undefined) return {method:null, installments:null}
+  if (typeof paymentMethod !== 'string' || !Object.hasOwn(paymentMethods, paymentMethod))
+    invalid('Selecione uma forma de pagamento válida.')
+  if (paymentMethod === 'credit') {
+    if (typeof installments !== 'number' || !Number.isInteger(installments) || installments < 1 || installments > 12)
+      invalid('Informe de 1 a 12 parcelas no cartão de crédito.')
+    return {method:paymentMethod as PaymentMethod, installments}
+  }
+  if (installments !== undefined) invalid('Informe parcelas apenas para cartão de crédito.')
+  return {method:paymentMethod as PaymentMethod, installments:null}
+}
+
+const adjustmentFields = ['discountCents','withheldIssCents','discountReason','invoiceNumber']
+
+function settlementBreakdown(data: Record<string, unknown>) {
+  const optionalCents = (value: unknown) => value === undefined || value === 0 ? 0 : amount(value)
+  const cash = optionalCents(data.amountCents)
+  const discount = optionalCents(data.discountCents)
+  const issuedTax = optionalCents(data.withheldIssCents)
+  const reason = data.discountReason ?? null
+  if (discount ? typeof reason !== 'string' || !Object.hasOwn(discountReasons, reason) : reason !== null)
+    invalid('Selecione o motivo do desconto informado.')
+  const invoiceNumber = data.invoiceNumber == null ? null : text(data.invoiceNumber,60,'o número da nota fiscal')
+  const total = amount(cash + discount + issuedTax)
+  const payment = paymentDetails(data)
+  if (!cash && payment.method) invalid('Informe forma de pagamento apenas quando houver valor recebido.')
+  return {total, discount, issuedTax, reason, payment, invoiceNumber}
+}
+
+function sameBreakdown(existing: FinancialSettlement, breakdown: ReturnType<typeof settlementBreakdown>) {
+  return (existing.invoiceNumber ?? null) === breakdown.invoiceNumber && existing.amountCents === breakdown.total && (existing.discountCents ?? 0) === breakdown.discount &&
+    (existing.withheldIssCents ?? 0) === breakdown.issuedTax && (existing.discountReason ?? null) === breakdown.reason &&
+    (existing.paymentMethod ?? null) === breakdown.payment.method && (existing.installments ?? null) === breakdown.payment.installments
 }
 
 export class FinanceRepository {
@@ -72,29 +109,37 @@ export class FinanceRepository {
       }, 0n)
     const titles = this.titles(undefined, experience.id).filter(title => title.kind === 'receivable')
     const receipts = titles.flatMap(title => title.settlements.map(item => ({...item, titleId: title.id})))
-    const paidCents = receipts.reduce((sum, item) => sum + (item.reversedAt ? 0 : item.amountCents), 0)
+    const active = receipts.filter(item => !item.reversedAt)
+    const paidCents = active.reduce((sum, item) => sum + paymentCents(item), 0)
+    const discountCents = active.reduce((sum, item) => sum + (item.discountCents ?? 0), 0)
+    const withheldIssCents = active.reduce((sum, item) => sum + (item.withheldIssCents ?? 0), 0)
+    const settledCents = paidCents + discountCents + withheldIssCents
     const titledCents = titles.reduce((sum, title) => sum + title.balanceCents, 0)
     const totalCents = Number(total)
-    if (![totalCents,paidCents,titledCents].every(Number.isSafeInteger)) invalid('O total excede o limite financeiro.')
-    const balanceCents = Math.max(0, totalCents - paidCents)
+    if (![totalCents,settledCents,titledCents].every(Number.isSafeInteger)) invalid('O total excede o limite financeiro.')
+    const balanceCents = Math.max(0, totalCents - settledCents)
     const openTitles = titles.filter(title => title.balanceCents > 0).map(({id,dueDate,balanceCents}) => ({id,dueDate,balanceCents}))
-    return {totalCents, paidCents, balanceCents, titledCents, untitledCents: Math.max(0, balanceCents - titledCents), openTitles, receipts}
+    return {totalCents, paidCents, discountCents, withheldIssCents, balanceCents, titledCents, untitledCents: Math.max(0, balanceCents - titledCents), openTitles, receipts}
   }
 
   experienceEntry(at: string, input: unknown) {
-    const data = inputObject(input, ['id','date','amountCents','action'])
+    const data = inputObject(input, ['id','date','amountCents','action','paymentMethod','installments',...adjustmentFields])
     const id = identifier(data.id)
     const {date, action} = data
+    const breakdown = settlementBreakdown(data)
+    if (action === 'title' && (breakdown.payment.method || breakdown.discount || breakdown.issuedTax || breakdown.invoiceNumber))
+      invalid('Informe pagamentos e ajustes ao registrar o recebimento.')
     if (!validDeliveryDate(date) || (action !== 'receive' && action !== 'title')) invalid('Confira a operação e a data.')
     return transaction(this.db, () => {
       const experience = new ProductionRepository(this.db).overview(at).experience
       if (!experience) throw new ServiceError(404, 'FINANCE_EXPERIENCE_NOT_FOUND', 'Experiência não encontrada.')
       const [existing] = this.titles(id)
       const summary = this.experience(at)
-      const amountCents = amount(data.amountCents)
+      const amountCents = breakdown.total
       if (existing) {
         if (existing.experienceId !== experience.id || existing.kind !== 'receivable' || existing.amountCents !== amountCents ||
-            existing.dueDate !== date || Boolean(existing.directReceipt) !== (action === 'receive')) idempotencyConflict()
+            existing.dueDate !== date || Boolean(existing.directReceipt) !== (action === 'receive') || (action === 'receive' &&
+              !sameBreakdown(existing.settlements[0]!,breakdown))) idempotencyConflict()
         return summary
       }
       if (amountCents > summary.untitledCents || (action === 'title' && amountCents !== summary.untitledCents))
@@ -103,15 +148,14 @@ export class FinanceRepository {
         VALUES (?,'receivable',?,?,?,?,?)`).run(id,experience.payer.text.slice(0,150),action === 'receive' ? 'Recebimento da Experiência' : 'Saldo da Experiência',amountCents,date,experience.id)
       // A direct receipt uses the same identifier for its document and settlement.
       // This keeps it in the existing cash history without creating an open balance on reversal.
-      if (action === 'receive') this.db.prepare('INSERT INTO financial_settlements (id,title_id,amount_cents,date) VALUES (?,?,?,?)')
-        .run(id,id,amountCents,date)
+      if (action === 'receive') this.recordSettlement(id,id,date,breakdown)
       return this.experience(at)
     })
   }
 
   private titles(id?: string, experienceId?: string): FinancialTitle[] {
     const query = this.db.prepare(`
-      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at
+      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at, s.payment_method, s.installments, s.discount_cents, s.withheld_iss_cents, s.discount_reason, s.invoice_number
       FROM financial_titles t LEFT JOIN financial_settlements s ON s.title_id = t.id
       ${id !== undefined ? 'WHERE t.id = ?' : experienceId !== undefined ? 'WHERE t.experience_id = ?' : ''}
       ORDER BY t.due_date, t.id, s.date DESC, s.rowid DESC
@@ -132,7 +176,13 @@ export class FinanceRepository {
       if (row.settlement_id !== null) {
         const settlement = {
           id: String(row.settlement_id), amountCents: Number(row.settled_cents),
-          date: String(row.date), reversedAt: row.reversed_at as string | null,
+          date: String(row.date),
+          ...(row.payment_method ? {paymentMethod: row.payment_method as PaymentMethod} : {}),
+          ...(row.installments !== null ? {installments: Number(row.installments)} : {}),
+          ...(row.invoice_number ? {invoiceNumber:String(row.invoice_number)} : {}),
+          ...(row.discount_cents ? {discountCents:Number(row.discount_cents),discountReason:row.discount_reason as DiscountReason} : {}),
+          ...(row.withheld_iss_cents ? {withheldIssCents:Number(row.withheld_iss_cents)} : {}),
+          reversedAt: row.reversed_at as string | null,
         }
         title.settlements.push(settlement)
         if (settlement.id === titleId) { title.directReceipt = true; title.balanceCents = 0 }
@@ -180,26 +230,33 @@ export class FinanceRepository {
     return inTransaction ? write() : transaction(this.db, write)
   }
 
+  private recordSettlement(id: string, titleId: string, date: string, breakdown: ReturnType<typeof settlementBreakdown>) {
+    this.db.prepare(`INSERT INTO financial_settlements
+      (id,title_id,date,amount_cents,payment_method,installments,discount_cents,withheld_iss_cents,discount_reason,invoice_number)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`).run(id,titleId,date,breakdown.total,breakdown.payment.method,
+        breakdown.payment.installments,breakdown.discount,breakdown.issuedTax,breakdown.reason as string|null,breakdown.invoiceNumber)
+  }
+
   settle(titleId: string, input: unknown): FinancialTitle {
-    const data = inputObject(input, ['id', 'amountCents', 'date'])
+    const data = inputObject(input, ['id','amountCents','date','paymentMethod','installments',...adjustmentFields])
     const id = identifier(data.id)
-    const amountCents = amount(data.amountCents)
+    const breakdown = settlementBreakdown(data)
     const {date} = data
     if (!validDeliveryDate(date)) invalid('Informe uma data de baixa válida.')
-
     return transaction(this.db, () => {
       const title = this.title(identifier(titleId))
-      const existing = this.db.prepare('SELECT title_id, amount_cents, date FROM financial_settlements WHERE id = ?').get(id)
+      const existing = this.db.prepare('SELECT title_id FROM financial_settlements WHERE id = ?').get(id)
       if (existing) {
-        if (existing.title_id !== titleId || existing.amount_cents !== amountCents || existing.date !== date) idempotencyConflict()
+        const settlement = title.settlements.find(item=>item.id===id)
+        if (existing.title_id !== titleId || !settlement || settlement.date !== date || !sameBreakdown(settlement,breakdown)) idempotencyConflict()
         return title
       }
       if (id === titleId) idempotencyConflict()
-      if (amountCents > title.balanceCents) {
+      if ((breakdown.discount || breakdown.issuedTax) && (title.kind !== 'receivable' || !title.experienceId))
+        invalid('Desconto e ISS retido estão disponíveis para recebimentos da Experiência.')
+      if (breakdown.total > title.balanceCents)
         throw new ServiceError(409, 'FINANCE_AMOUNT_OVER_BALANCE', 'O valor da baixa excede o saldo pendente. Confira o saldo atualizado.')
-      }
-      this.db.prepare('INSERT INTO financial_settlements (id, title_id, amount_cents, date) VALUES (?, ?, ?, ?)')
-        .run(id, titleId, amountCents, date)
+      this.recordSettlement(id,titleId,date,breakdown)
       return this.title(titleId)
     })
   }
