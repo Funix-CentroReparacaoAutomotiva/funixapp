@@ -41,12 +41,20 @@ export class CustomerRepository {
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
-    const r=inputObject(raw,['id','text','plate','fabricationYear','modelYear','entityId','participantKey'])
+    const r=inputObject(raw,['id','text','brand','model','plate','fabricationYear','modelYear','entityId','participantKey'])
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
     if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))return invalid();result.participantKey=r.participantKey}
     if(kind==='vehicle'){
+      for(const key of ['brand','model'] as const){
+        const value=r[key]
+        if(value===undefined)continue
+        if(typeof value!=='string'||value.length>120)return invalid()
+        result[key]=value.trim()
+      }
+      if(result.brand!==undefined||result.model!==undefined)
+        result.text=[result.brand,result.model].filter(Boolean).join(' ')
       if(r.plate!==undefined&&(typeof r.plate!=='string'||r.plate.length>100))invalid()
       result.plate=String(r.plate??'').trim().toUpperCase()
       for(const key of ['fabricationYear','modelYear']as const){if(r[key]!==undefined&&r[key]!==null&&(typeof r[key]!=='string'||(r[key]!==''&&!/^(19|20)\d{2}$/.test(String(r[key])))))invalid();result[key]=r[key] as string|null|undefined}
@@ -66,8 +74,8 @@ export class CustomerRepository {
     const selected=first?.participantKey?refs.contact.find(c=>c.participantKey===first.participantKey):refs.contact[0]
     const contact=selected?.id?this.record(selected.id):selected
     const old=previous?this.references(previous.id).vehicle[0]:undefined,next=refs.vehicle[0]
-    const unchanged=!!previous&&!next?.id&&old?.id===next?.id&&old?.text===next?.text&&(old?.plate??'')===(next?.plate??'')&&(old?.fabricationYear??null)===(next?.fabricationYear??null)&&(old?.modelYear??null)===(next?.modelYear??null)
-    const vehicleFields=unchanged?{vehicle:previous.vehicle,model:previous.model,brand:previous.brand,plate:previous.plate,fabricationYear:previous.fabricationYear,modelYear:previous.modelYear}:{vehicle:vehicle?.text??'',model:vehicle?.text??'',brand:'',plate:vehicle?.plate??'',fabricationYear:vehicle?.fabricationYear??null,modelYear:vehicle?.modelYear??null}
+    const unchanged=!!previous&&!next?.id&&old?.id===next?.id&&old?.text===next?.text&&old?.brand===next?.brand&&old?.model===next?.model&&(old?.plate??'')===(next?.plate??'')&&(old?.fabricationYear??null)===(next?.fabricationYear??null)&&(old?.modelYear??null)===(next?.modelYear??null)
+    const vehicleFields=unchanged?{vehicle:previous.vehicle,model:previous.model,brand:previous.brand,plate:previous.plate,fabricationYear:previous.fabricationYear,modelYear:previous.modelYear}:{vehicle:vehicle?.text??'',model:vehicle?.model??vehicle?.text??'',brand:vehicle?.brand??'',plate:vehicle?.plate??'',fabricationYear:vehicle?.fabricationYear??null,modelYear:vehicle?.modelYear??null}
     return {name:person?.text??'',phone:contact?.text??'',...vehicleFields}
   }
   /** Revoke working context, retaining auditable N:N links and all messages. */
@@ -269,13 +277,13 @@ export class CustomerRepository {
     const row=this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(at)!
     const refs:CustomerReferences={person:[{id:null,text:String(row.name)}],contact:[{id:null,text:String(row.phone)}],vehicle:[{id:null,text:String(row.vehicle),plate:String(row.plate),fabricationYear:row.fabrication_year as string|null,modelYear:row.model_year as string|null}],payer:[]}
     const stored=this.db.prepare('SELECT * FROM atendimento_references WHERE atendimento_id=? ORDER BY position').all(at)
-    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
+    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{brand:found.brand,model:found.model,plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
     return refs
   }
   present(items:Atendimento[]):Atendimento[] {
     if(!items.length)return items
     const rows=this.db.prepare(`SELECT r.atendimento_id,r.kind,r.data,c.data AS record FROM atendimento_references r LEFT JOIN customer_records c ON c.id=r.record_id WHERE r.position=0 AND r.atendimento_id IN (${items.map(()=>'?').join(',')})`).all(...items.map(i=>i.id))
-    return items.map(item=>{const out={...item};for(const row of rows.filter(r=>r.atendimento_id===item.id)){const r=JSON.parse(String(row.record??row.data));if(row.kind==='person')out.name=String(r.text??'');if(row.kind==='contact')out.phone=String(r.text??'');if(row.kind==='vehicle'){out.vehicle=String(r.text??'');out.plate=String(r.plate??'');out.fabricationYear=r.fabricationYear??null;out.modelYear=r.modelYear??null}}const first=rows.find(r=>r.atendimento_id===item.id&&r.kind==='person')
+    return items.map(item=>{const out={...item};for(const row of rows.filter(r=>r.atendimento_id===item.id)){const r=JSON.parse(String(row.record??row.data));if(row.kind==='person')out.name=String(r.text??'');if(row.kind==='contact')out.phone=String(r.text??'');if(row.kind==='vehicle'){out.vehicle=String(r.text??'');out.brand=r.brand??out.brand;out.model=r.model??out.model;out.plate=String(r.plate??'');out.fabricationYear=r.fabricationYear??null;out.modelYear=r.modelYear??null}}const first=rows.find(r=>r.atendimento_id===item.id&&r.kind==='person')
       if(first&&JSON.parse(String(first.data)).participantKey){
         const projected=this.primaryFields(this.references(item.id))
         out.name=projected.name;out.phone=projected.phone
@@ -322,7 +330,7 @@ export class CustomerRepository {
       .filter(r=>normalizePhone(String(JSON.parse(String(r.data)).text??''))===phone).map(r=>this.record(String(r.id)))
   }
   save(raw:unknown,id?:string) {
-    const input=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId','contacts'])
+    const input=inputObject(raw,['kind','text','brand','model','plate','fabricationYear','modelYear','revision','nickname','entityId','contacts'])
     const {contacts,...record}=input
     if(contacts!==undefined&&(!Array.isArray(contacts)||contacts.length>50||(id?this.record(id).kind:input.kind)!=='entity'))invalid()
     return transaction(this.db,()=>{
@@ -569,11 +577,11 @@ export class CustomerRepository {
   }
 
   private saveRecord(raw:unknown,id?:string) {
-    const source=inputObject(raw,['kind','text','plate','fabricationYear','modelYear','revision','nickname','entityId'])
+    const source=inputObject(raw,['kind','text','brand','model','plate','fabricationYear','modelYear','revision','nickname','entityId'])
     const old=id?this.readRecord(id):null,kind=old?.kind??source.kind
     if(old?.canonicalContactId)throw new ServiceError(409,'CONTACT_ARCHIVED','O Contato foi arquivado. Atualize o cadastro para editar o Contato canônico.')
     if(!['entity','contact','vehicle'].includes(String(kind)))invalid()
-    const ref=this.validateReference({id:null,text:source.text, ...(kind==='vehicle'?{plate:source.plate,fabricationYear:source.fabricationYear,modelYear:source.modelYear}:{})},kind==='entity'?'person':kind as ReferenceKind)
+    const ref=this.validateReference({id:null,text:source.text, ...(kind==='vehicle'?{brand:source.brand,model:source.model,plate:source.plate,fabricationYear:source.fabricationYear,modelYear:source.modelYear}:{})},kind==='entity'?'person':kind as ReferenceKind)
     if(!ref.text.trim()&&!(kind==='contact'&&old?.conversationId))invalid()
     if(source.nickname!==undefined&&(kind!=='contact'||typeof source.nickname!=='string'||source.nickname.length>250))invalid()
     const entityId=source.entityId===undefined?old?.entityId??null:source.entityId
