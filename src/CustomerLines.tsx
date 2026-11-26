@@ -1,4 +1,4 @@
-import {EntityEditor,EntityContacts} from './EntityEditor'
+import {EntityEditor} from './EntityEditor'
 import type {EntityRecord,EntityContact} from '../shared/customer'
 import {groupedCustomerReferences,participantGroups} from '../shared/customer'
 import {useEffect,useId,useRef,useState} from 'react'
@@ -81,8 +81,8 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   const grouped=groupedCustomerReferences(value)
   change({...grouped,contact:[...grouped.contact,{id:null,text:'',participantKey:key}]})
  }
- const line=(kind:ReferenceKind,row:CustomerReference,index:number,key?:string,selectedIds:string[]=[]) =>
-  <SmartLine key={index} version={version} kind={kind} row={row} primaryContactId={selectedIds[0]??null} disabled={disabled}
+ const line=(kind:ReferenceKind,row:CustomerReference,index:number,key?:string) =>
+  <SmartLine key={index} version={version} kind={kind} row={row} disabled={disabled}
     onChange={next=>update(kind,index,next,key)} onEdit={setEditing}
     onMessage={onMessage?cid=>onMessage(cid,index):undefined}
     onRemove={()=>remove(kind,index,key)}/>
@@ -91,7 +91,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   <header><strong>Pessoa e telefone</strong><button type="button" disabled={disabled} onClick={addPerson}>+ Adicionar pessoa</button></header>
   {(groups.length?groups:[{person:{id:null,text:''} as CustomerReference,index:0,key:'legacy:0',contacts:[]}]).map(g=>
     <div className="customer-primary participant-block" key={g.key} role="group" aria-label={'Pessoa '+(g.index+1)}>
-      <div><label className="customer-field-label">Nome</label>{line('person',g.person,g.index,g.key,g.contacts.flatMap(c=>c.contact.id?[c.contact.id]:[]))}</div>
+      <div><label className="customer-field-label">Nome</label>{line('person',g.person,g.index,g.key)}</div>
       <div role="region" aria-label="Contatos"><label className="customer-field-label">Telefone desta pessoa</label>
         {g.contacts.length?g.contacts.map(({contact,index})=>line('contact',contact,index,g.key)):
           <input aria-label="Telefone" placeholder="Telefone" inputMode="tel" value="" disabled={disabled} onChange={e=>{
@@ -103,8 +103,8 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
       </div>
       {groups.length>1&&<button type="button" disabled={disabled} onClick={()=>remove('person',g.index,g.key)}>Remover pessoa do Atendimento</button>}
     </div>)}
-  {unassigned.some(({contact})=>contact.id||contact.text)&&<details open className="customer-secondary">
-    <summary>Telefones antigos sem pessoa identificada</summary>
+  {unassigned.some(({contact})=>contact.id||contact.text)&&<details className="customer-secondary">
+    <summary>Revisar titular de telefones antigos</summary>
     <p>Estes registros foram preservados. Não pertencem automaticamente à primeira pessoa.</p>
     {unassigned.filter(({contact})=>contact.id||contact.text).map(({contact,index})=>
       <div key={index}><strong>{contact.text||'Telefone observado no WhatsApp'}</strong>
@@ -149,7 +149,7 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
  {failure&&<p role="alert">{failure}</p>}<button type="button" disabled={saving} onClick={()=>setEditing(null)}>Fechar</button><button type="button" disabled={saving} onClick={async()=>{setSaving(true);setFailure('');try{const record=await api<CustomerRecord>('/api/customer-records'+(editing.id?'/'+editing.id:''),{method:editing.id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:editing.kind,text:editing.text,revision:editing.revision,...(editing.kind==='vehicle'?{brand:editing.brand,model:editing.model,plate:editing.plate,fabricationYear:editing.fabricationYear,modelYear:editing.modelYear}:{})})});onChange(Object.fromEntries(Object.entries(value).map(([k,rows])=>[k,rows.map((r:CustomerReference)=>r.id===record.id?{...r,id:record.id,text:record.text,...(record.kind==='vehicle'?{brand:record.brand,model:record.model,plate:record.plate,fabricationYear:record.fabricationYear,modelYear:record.modelYear}:{})}:r)]))as CustomerReferences);setEditing(null)}catch(e){setFailure((e as Error).message)}finally{setSaving(false)}}}>Salvar cadastro</button></>}</dialog>}
  </div>
 }
-function SmartLine({kind,row,primaryContactId,version,disabled,onChange,onEdit,onRemove,onMessage}:{kind:ReferenceKind;row:CustomerReference;primaryContactId:string|null;version:number;disabled:boolean;onChange:(v:CustomerReference)=>void;onEdit:(r:CustomerRecord)=>void;onRemove:()=>void;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
+function SmartLine({kind,row,version,disabled,onChange,onEdit,onRemove,onMessage}:{kind:ReferenceKind;row:CustomerReference;version:number;disabled:boolean;onChange:(v:CustomerReference)=>void;onEdit:(r:CustomerRecord)=>void;onRemove:()=>void;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
  const [suggestions,setSuggestions]=useState<Array<CustomerRecord&{ownerName?:string}>>([]),[record,setRecord]=useState<CustomerRecord|null>(null),[error]=useState(''),[focused,setFocused]=useState(false)
  useEffect(()=>{const c=new AbortController();if(row.id){void api<CustomerRecord>('/api/customer-records/'+row.id,{signal:c.signal}).then(r=>{if(!c.signal.aborted)setRecord(r)}).catch(()=>{});return()=>c.abort()}setRecord(null);return()=>c.abort()},[row.id,version])
  useEffect(()=>{const c=new AbortController();if(row.id||row.text.trim().length<2){setSuggestions([]);return()=>c.abort()}const timer=setTimeout(()=>{void api<{items:Array<CustomerRecord&{ownerName?:string}>}>('/api/customer-records?kind='+registryKind(kind)+'&q='+encodeURIComponent(row.text),{signal:c.signal}).then(r=>{if(!c.signal.aborted)setSuggestions(r.items)}).catch(()=>{})},250);return()=>{clearTimeout(timer);c.abort()}},[kind,row.id,row.text])
@@ -159,7 +159,7 @@ function SmartLine({kind,row,primaryContactId,version,disabled,onChange,onEdit,o
  return <div className="smart-row"><span className={'reference-state '+state} role="img" aria-label={labels[state]} title={labels[state]}>{row.id?'✓':invalid?'⊗':suggestions.length?'⚠':'?'}</span><div className="smart-main"><div className="smart-fields">
  {row.id?<span className="smart-locked">{(record?.text??row.text)||(kind==='contact'?observed||'Telefone não informado':'')}{kind==='contact'&&observed&&!record?.text&&<small> · observado pelo WhatsApp</small>}{kind==='vehicle'&&[record?.plate,record?.fabricationYear,record?.modelYear].filter(Boolean).map(v=>' · '+v)}</span>:<div className="smart-free">{kind==='vehicle'?<VehicleIdentityFields row={row} onChange={onChange} disabled={disabled} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)}/>:<input aria-label={kind==='contact'?'Telefone':kind==='payer'?'Pagador':'Pessoa de referência'} inputMode={kind==='contact'?'tel':'text'} placeholder={kind==='contact'?'Telefone':'Nome informado'} value={row.text} maxLength={250} disabled={disabled} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)} onChange={e=>onChange({...row,text:e.target.value})}/>} {kind==='vehicle'&&<><input aria-label="Placa" placeholder="Placa" value={row.plate??''} onChange={e=>onChange({...row,plate:e.target.value.toUpperCase()})}/><div className="smart-years">{(['fabricationYear','modelYear']as const).map(key=><label key={key}>{key==='fabricationYear'?'Fabricação':'Ano-modelo'}<input aria-label={key==='fabricationYear'?'Ano de fabricação':'Ano do modelo'} inputMode="numeric" maxLength={4} value={row[key]??''} onChange={e=>onChange({...row,[key]:e.target.value})}/></label>)}</div></>}</div>}
  {kind==='contact'&&<button type="button" disabled={disabled||!onMessage||(!record?.conversationId&&!/^\+[1-9]\d{7,14}$/.test(row.text.replace(/[\s().-]/g,'')))} aria-label="Escrever mensagem opcional" title={record?.conversationId?'Abrir Chat; envio exige confirmação':'Abrir conversa para o telefone salvo com + e DDI; nenhum envio automático'} onClick={()=>onMessage?.(record?.conversationId??null)}>✉</button>}
- {row.id?<button type="button" aria-label="Editar cadastro selecionado" disabled={disabled||!record} onClick={()=>record&&onEdit(record)}>✎</button>:<button type="button" aria-label="Remover linha" disabled={disabled} onClick={onRemove}>×</button>}
- </div>{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='contact'?{entityId:r.entityId}:{}),...(kind==='vehicle'?{brand:r.brand,model:r.model,plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{row.id&&kind==='person'&&!!(record as EntityRecord|null)?.contacts?.length&&<details className="customer-linked-phones" open={(record as EntityRecord).contacts.some(c=>c.whatsapp?.state==='available'||c.whatsapp?.state==='history_only')}><summary>WhatsApp e números cadastrados</summary><EntityContacts contacts={(record as EntityRecord).contacts} primaryContactId={primaryContactId} onRefresh={()=>{void api<EntityRecord>('/api/customer-records/'+row.id).then(setRecord).catch(()=>{})}}/></details>}{error&&<p role="alert">{error}</p>}</div>
+ {row.id&&kind==='contact'?<button type="button" aria-label="Retirar telefone deste Atendimento" disabled={disabled} onClick={onRemove}>×</button>:row.id?<button type="button" aria-label="Editar cadastro selecionado" disabled={disabled||!record} onClick={()=>record&&onEdit(record)}>✎</button>:<button type="button" aria-label="Remover linha" disabled={disabled} onClick={onRemove}>×</button>}
+ </div>{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='contact'?{entityId:r.entityId}:{}),...(kind==='vehicle'?{brand:r.brand,model:r.model,plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{error&&<p role="alert">{error}</p>}</div>
  </div>
 }
