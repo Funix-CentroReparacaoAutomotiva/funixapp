@@ -2,6 +2,28 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {montadoraSuggestions,vehicleSuggestions,yearSuggestions,composeVehicleDescription,readVehicleRegistration,extractVehicleYear,validVehicleYear} from '../../src/vehicle-registration.ts'
 import {manualComponentSearchLinks} from '../../src/diagnosis-search-links.ts'
+import {openDatabase} from '../database.ts'
+import {AtendimentoRepository} from '../atendimentos.ts'
+import {CustomerRepository} from '../customers.ts'
+
+test('structured vehicle identity persists in the registry and the Atendimento',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const customers=new CustomerRepository(db)
+  const vehicle=customers.save({kind:'vehicle',text:'',brand:'Fiat',model:'Punto',plate:'ABC1D23'})
+  const atendimentos=new AtendimentoRepository(db)
+  const record=atendimentos.create({references:{person:[],contact:[],payer:[],vehicle:[
+   {id:vehicle.id,text:vehicle.text,brand:vehicle.brand,model:vehicle.model},
+  ]}},false,true)
+  assert.equal(record.brand,'Fiat')
+  assert.equal(record.model,'Punto')
+  assert.equal(record.vehicle,'Fiat Punto')
+  const reference=atendimentos.get(record.id,true).references?.vehicle[0]
+  assert.equal(reference?.brand,'Fiat')
+  assert.equal(reference?.model,'Punto')
+  assert.equal(reference?.plate,'ABC1D23')
+ }finally{db.close()}
+})
 
 test('Brazilian makers and representative models are suggestions, never closed allowed values',()=>{
  assert(montadoraSuggestions.includes('Fiat'))
