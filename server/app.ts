@@ -1,3 +1,4 @@
+import {aiToolsPath, aiToolsTokenHeader, authenticateAiTool, executeAiTool} from './ai-tools.ts'
 import {SharedConversationIdentity} from './chat/shared-identity.ts'
 import {ShortNumberReview,reviewedNumber} from './chat/short-number-review.ts'
 import {ContactChannels} from './chat/contact-channels.ts'
@@ -64,6 +65,7 @@ import{readQuoteContext}from'./component-quote-context.ts'
 import{readSavedComponentQuoteContext}from'./component-quote-saved-context.ts'
 
 export interface AppOptions {
+  aiToolCredentials?: () => unknown
   gmailAnalysis?: GmailAnalysisService
   conversationRuntime?: ConversationRuntime
   quotePilot?:QuoteService // explicit isolated harness injection only; no production factory
@@ -164,6 +166,17 @@ export function createRequestHandler(options: AppOptions) {
     }
     try {
       const url = new URL(req.url ?? '/', 'http://localhost')
+      if (url.pathname === aiToolsPath) {
+        if (!options.aiToolCredentials) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        authenticateAiTool(req.headers[aiToolsTokenHeader], options.aiToolCredentials)
+        if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')) {
+          return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        }
+        const body = await readJson(req, 16384)
+        const credential = authenticateAiTool(req.headers[aiToolsTokenHeader], options.aiToolCredentials)
+        return send(200, executeAiTool({atendimentos: options.atendimentos, production, finance}, credential, body, requestId, now))
+      }
       if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', 'Rota não encontrada.')
       if (url.pathname === '/api/integrations/whatsapp/events') return send(202, await ingest(req, res, url))
       if (url.pathname === '/api/integrations/whatsapp/confirmed-decision') {
