@@ -84,11 +84,12 @@ export class FinanceRepository {
     try {
       const experiences = this.db.prepare(`
         SELECT id, json_extract(customer_json, '$.text') AS customer,
-          json_extract(vehicle_json, '$.text') AS vehicle, json_extract(vehicle_json, '$.plate') AS plate
+          json_extract(vehicle_json, '$.text') AS vehicle, json_extract(vehicle_json, '$.plate') AS plate,
+          json_extract(payer_json, '$.text') AS payer
         FROM production_experiences ORDER BY scheduled_entry DESC, id
       `).all().map(row => ({
         id: String(row.id),
-        counterparty: String(row.customer ?? ''),
+        counterparty: String(row.payer ?? row.customer ?? ''),
         label: [row.customer, row.vehicle, row.plate].filter(Boolean).join(' · ') || String(row.id),
       }))
       return {titles: this.titles(), experiences}
@@ -155,8 +156,9 @@ export class FinanceRepository {
 
   private titles(id?: string, experienceId?: string): FinancialTitle[] {
     const query = this.db.prepare(`
-      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at, s.payment_method, s.installments, s.discount_cents, s.withheld_iss_cents, s.discount_reason, s.invoice_number
+      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at, s.payment_method, s.installments, s.discount_cents, s.withheld_iss_cents, s.discount_reason, s.invoice_number, a.transaction_id
       FROM financial_titles t LEFT JOIN financial_settlements s ON s.title_id = t.id
+      LEFT JOIN financial_transaction_allocations a ON a.settlement_id = s.id
       ${id !== undefined ? 'WHERE t.id = ?' : experienceId !== undefined ? 'WHERE t.experience_id = ?' : ''}
       ORDER BY t.due_date, t.id, s.date DESC, s.rowid DESC
     `)
@@ -169,7 +171,11 @@ export class FinanceRepository {
           id: titleId, kind: row.kind as FinancialTitle['kind'],
           counterparty: String(row.counterparty), description: String(row.description),
           amountCents: Number(row.amount_cents), dueDate: String(row.due_date),
-          experienceId: row.experience_id as string | null, balanceCents: Number(row.amount_cents), settlements: [],
+          experienceId: row.experience_id as string | null,
+          ...(row.competence_date ? {competenceDate: String(row.competence_date)} : {}),
+          ...(row.managerial_category ? {category: String(row.managerial_category)} : {}),
+          ...(row.expected_payment_method ? {expectedPaymentMethod: row.expected_payment_method as PaymentMethod} : {}),
+          balanceCents: Number(row.amount_cents), settlements: [],
         }
         titles.set(titleId, title)
       }
@@ -182,6 +188,7 @@ export class FinanceRepository {
           ...(row.invoice_number ? {invoiceNumber:String(row.invoice_number)} : {}),
           ...(row.discount_cents ? {discountCents:Number(row.discount_cents),discountReason:row.discount_reason as DiscountReason} : {}),
           ...(row.withheld_iss_cents ? {withheldIssCents:Number(row.withheld_iss_cents)} : {}),
+          ...(row.transaction_id ? {transactionId: String(row.transaction_id)} : {}),
           reversedAt: row.reversed_at as string | null,
         }
         title.settlements.push(settlement)
@@ -192,6 +199,10 @@ export class FinanceRepository {
     return [...titles.values()]
   }
 
+  openTitles(): FinancialTitle[] {
+    return this.titles().filter(title => title.balanceCents > 0)
+  }
+
   title(id: string): FinancialTitle {
     const [title] = this.titles(id)
     if (!title) throw new ServiceError(404, 'FINANCE_TITLE_NOT_FOUND', 'Título não encontrado.')
@@ -199,7 +210,7 @@ export class FinanceRepository {
   }
 
   create(input: unknown, inTransaction = false): FinancialTitle {
-    const data = inputObject(input, ['id', 'kind', 'counterparty', 'description', 'amountCents', 'dueDate', 'experienceId'])
+    const data = inputObject(input, ['id', 'kind', 'counterparty', 'description', 'amountCents', 'dueDate', 'experienceId', 'competenceDate', 'category', 'expectedPaymentMethod'])
     const id = identifier(data.id)
     const {kind, dueDate} = data
     if (kind !== 'receivable' && kind !== 'payable') invalid('Selecione receber ou pagar.')
@@ -208,12 +219,19 @@ export class FinanceRepository {
     const description = text(data.description, 500, 'a descrição')
     const amountCents = amount(data.amountCents)
     const experienceId = data.experienceId == null ? null : identifier(data.experienceId)
+    const {competenceDate, expectedPaymentMethod} = data
+    if (competenceDate != null && !validDeliveryDate(competenceDate)) invalid('Informe uma data de competência válida.')
+    if (expectedPaymentMethod != null && (typeof expectedPaymentMethod !== 'string' || !Object.hasOwn(paymentMethods, expectedPaymentMethod)))
+      invalid('Selecione uma forma de quitação válida.')
+    const category = data.category == null ? undefined : text(data.category, 100, 'a classificação gerencial')
 
     const write = () => {
       const [existing] = this.titles(id)
       if (existing) {
         if (existing.kind !== kind || existing.dueDate !== dueDate || existing.counterparty !== counterparty ||
-            existing.description !== description || existing.amountCents !== amountCents || existing.experienceId !== experienceId) {
+            existing.description !== description || existing.amountCents !== amountCents || existing.experienceId !== experienceId ||
+            existing.competenceDate !== (competenceDate ?? undefined) || existing.category !== category ||
+            existing.expectedPaymentMethod !== (expectedPaymentMethod ?? undefined)) {
           idempotencyConflict()
         }
         return existing
@@ -222,9 +240,11 @@ export class FinanceRepository {
         throw new ServiceError(404, 'FINANCE_EXPERIENCE_NOT_FOUND', 'Experiência não encontrada.')
       }
       this.db.prepare(`
-        INSERT INTO financial_titles (id, kind, counterparty, description, amount_cents, due_date, experience_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(id, kind, counterparty, description, amountCents, dueDate, experienceId)
+        INSERT INTO financial_titles (id, kind, counterparty, description, amount_cents, due_date, experience_id,
+          competence_date, managerial_category, expected_payment_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, kind, counterparty, description, amountCents, dueDate, experienceId,
+        competenceDate as string | null ?? null, category ?? null, expectedPaymentMethod as string | null ?? null)
       return this.title(id)
     }
     return inTransaction ? write() : transaction(this.db, write)
@@ -237,13 +257,13 @@ export class FinanceRepository {
         breakdown.payment.installments,breakdown.discount,breakdown.issuedTax,breakdown.reason as string|null,breakdown.invoiceNumber)
   }
 
-  settle(titleId: string, input: unknown): FinancialTitle {
+  settle(titleId: string, input: unknown, inTransaction = false): FinancialTitle {
     const data = inputObject(input, ['id','amountCents','date','paymentMethod','installments',...adjustmentFields])
     const id = identifier(data.id)
     const breakdown = settlementBreakdown(data)
     const {date} = data
     if (!validDeliveryDate(date)) invalid('Informe uma data de baixa válida.')
-    return transaction(this.db, () => {
+    const write = () => {
       const title = this.title(identifier(titleId))
       const existing = this.db.prepare('SELECT title_id FROM financial_settlements WHERE id = ?').get(id)
       if (existing) {
@@ -258,7 +278,8 @@ export class FinanceRepository {
         throw new ServiceError(409, 'FINANCE_AMOUNT_OVER_BALANCE', 'O valor da baixa excede o saldo pendente. Confira o saldo atualizado.')
       this.recordSettlement(id,titleId,date,breakdown)
       return this.title(titleId)
-    })
+    }
+    return inTransaction ? write() : transaction(this.db, write)
   }
 
   reverse(titleId: string, settlementId: string): FinancialTitle {

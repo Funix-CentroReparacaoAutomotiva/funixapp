@@ -1,0 +1,63 @@
+.erp-experiences { color: #203554; padding: .75rem; }
+.erp-experiences h1, .erp-experiences h2 { margin: 0 0 .75rem; }
+.erp-experiences label { display: grid; gap: .25rem; font-weight: 650; }
+.erp-experiences input, .erp-experiences select, .erp-experiences textarea, .erp-experiences button {
+  background: #fff;
+  color: inherit;
+  padding: .45rem .6rem;
+  border: 1px solid #a6b7cf;
+  border-radius: .4rem;
+  font: inherit;
+  min-width: 0;
+}
+.erp-experiences textarea { min-height: 5rem; }
+.erp-experiences button { cursor: pointer; }
+.erp-experiences button:disabled { opacity: .65; cursor: default; }
+.erp-experiences a { color: #173d87; }
+.erp-experiences [role="alert"] { color: #8a1420; }
+.erp-experiences-search, .erp-experiences-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .6rem;
+  margin-block: .75rem;
+}
+.erp-experiences-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,12rem),1fr));
+  align-items: end;
+  gap: .75rem;
+  margin-block: 1rem;
+  padding: .75rem;
+  border: 1px solid #a6b7cf;
+  border-radius: .6rem;
+  min-width: 0;
+}
+.erp-experiences-wide { grid-column: 1 / -1; }
+.erp-experiences-results, .erp-experiences-timeline { list-style: none; padding: 0; }
+.erp-experiences-results > li, .erp-experiences-timeline > li {
+  border: 1px solid #c8d4e5;
+  border-radius: .55rem;
+  margin-block: .45rem;
+  overflow-wrap: anywhere;
+  background: #fff;
+}
+.erp-experiences .erp-experiences-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: .5rem;
+  width: 100%;
+  text-align: start;
+  padding: .75rem;
+  border: 0;
+}
+.erp-experiences-timeline > li, .erp-experiences-detail { padding: .75rem; }
+.erp-experiences-timeline header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; }
+.erp-experiences-timeline p { white-space: pre-wrap; }
+.erp-experiences-facts { display: flex; gap: .75rem 1.2rem; flex-wrap: wrap; }
+.erp-experiences dt { font-weight: 700; }
+.erp-experiences dd { margin: 0; }
+.erp-experiences-attachment { display: block; }
+@media (max-width: 580px) {
+  .erp-experiences .erp-experiences-result { grid-template-columns: 1fr; }
+}

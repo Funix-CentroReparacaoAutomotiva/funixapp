@@ -40,7 +40,7 @@ test('V22 inventories duplicates without merging; atomic failed migration, retry
   const corrected=db.prepare('SELECT * FROM customer_records ORDER BY id').all()
   await backup(db,join(dir,'corrected.sqlite'))
   migrate(db)
-  assert.equal(db.prepare('SELECT max(version) n FROM schema_migrations').get()!.n,29)
+  assert.equal(db.prepare('SELECT max(version) n FROM schema_migrations').get()!.n,30)
   assert.deepEqual(db.prepare('SELECT * FROM customer_records ORDER BY id').all().map(({phone_normalized:_,...r})=>({...r})),corrected.map(r=>({...r})))
   assert.deepEqual(db.prepare('SELECT * FROM atendimento_references').all(),refs)
   assert.equal(db.prepare('SELECT count(*) n FROM contact_channel_checks').get()!.n,0)
@@ -48,7 +48,7 @@ test('V22 inventories duplicates without merging; atomic failed migration, retry
   const after=db.prepare('SELECT * FROM customer_records ORDER BY id').all();migrate(db);assert.deepEqual(db.prepare('SELECT * FROM customer_records ORDER BY id').all(),after)
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
   db.close();db=new DatabaseSync(path,{readOnly:true});assert.equal(db.prepare('SELECT count(*) n FROM customer_records').get()!.n,3)
-  assert.equal(verifyV19Copy(join(dir,'corrected.sqlite'),path).afterVersion,29)
+  assert.equal(verifyV19Copy(join(dir,'corrected.sqlite'),path).afterVersion,30)
   copyFileSync(back,restore);const restored=new DatabaseSync(restore,{readOnly:true});try{assert.deepEqual(restored.prepare('SELECT * FROM customer_records ORDER BY id').all(),old);assert.deepEqual(restored.prepare('SELECT * FROM atendimento_references').all(),refs);assert.equal(restored.prepare('SELECT max(version) n FROM schema_migrations').get()!.n,21);assert.equal(restored.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')}finally{restored.close()}
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
@@ -64,7 +64,7 @@ test('V23 upgrades a V22 copy without reclassifying existing Atendimentos',async
   await backup(db,previous)
   migrate(db);migrate(db)
   assert.deepEqual(repo.get(old.id),old)
-  assert.equal(verifyV19Copy(previous,path).afterVersion,29)
+  assert.equal(verifyV19Copy(previous,path).afterVersion,30)
   assert.equal(repo.create({purpose:'unclassified'}).purpose,'unclassified')
  }finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })

@@ -1,3 +1,4 @@
+import { recordConfirmedSalesContact } from '../erp/sales-events.ts'
 import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
@@ -384,7 +385,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const plan=this.interaction(jid), id=this.rememberProviderConversation(jid)
     const timestamp=new Date(e.message.timestamp!*1000).toISOString()
     if(e.message.fromMe!==false&&(!allowOutgoingStart||plan.at)){
-      if(plan.at&&this.canonicalChannelSendAllowed(jid))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
+      if(plan.at&&this.canonicalChannelSendAllowed(jid)){
+        this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
+        if(e.message.fromMe===true)recordConfirmedSalesContact(this.db,plan.at,e.message.messageId,timestamp)
+      }
       return
     }
     const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
@@ -483,6 +487,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       at=this.ensureInteraction(jid,target,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
       this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
+      if(e.message.fromMe===true)recordConfirmedSalesContact(this.db,at,e.message.messageId,timestamp)
     }
     if(!prior)this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
       .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(target?'reused':'created'):historical?'closed':'ambiguous')
@@ -526,7 +531,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
   projection(jid:string) {return this.projections([jid]).get(jid)!}
   recordAccepted(at:string,jid:string,messageId:string) {
-    if(this.members(jid)&&this.links(jid).some(l=>l.atendimento_id===at))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,this.rememberProviderConversation(jid),messageId,this.now())
+    if(this.members(jid)&&this.links(jid).some(l=>l.atendimento_id===at)){
+      const occurredAt=this.now()
+      this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,this.rememberProviderConversation(jid),messageId,occurredAt)
+      recordConfirmedSalesContact(this.db,at,messageId,occurredAt)
+    }
   }
   markRead(jid:string, messages:string[]) {
     const id=this.rememberProviderConversation(jid)

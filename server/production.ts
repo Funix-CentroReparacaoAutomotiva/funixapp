@@ -133,8 +133,12 @@ export class ProductionRepository {
     if(typeof inOperation!=='boolean')
       throw new ServiceError(422,'INVALID_OPERATION_STATUS','Informe se a Experiência está em operação.')
     return transaction(this.db,()=>{
-      if(!this.row(at))throw new ServiceError(404,'EXPERIENCE_NOT_FOUND','Agende o Atendimento para registrar a operação.')
-      const status=Number(inOperation)
+      const experience = this.row(at)
+      if (!experience) throw new ServiceError(404, 'EXPERIENCE_NOT_FOUND', 'Agende o Atendimento para registrar a operação.')
+      const status = Number(inOperation)
+      if (experience.in_operation === status) return this.overview(at)
+      if (this.db.prepare('SELECT 1 FROM erp_workshop_events WHERE experience_id=? LIMIT 1').get(experience.id))
+        throw new ServiceError(409, 'WORKSHOP_MANAGED', 'Use o Pátio para registrar a movimentação física da Experiência.')
       this.db.prepare(`UPDATE production_experiences SET in_operation=?,updated_at=?
         WHERE atendimento_id=? AND in_operation<>?`).run(status,new Date(this.now()).toISOString(),at,status)
       return this.overview(at)

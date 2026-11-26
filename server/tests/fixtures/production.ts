@@ -5,7 +5,27 @@ import {AtendimentoRepository} from '../../atendimentos.ts'
 import {ProductionRepository} from '../../production.ts'
 import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 
+// This helper only operates on synthetic, empty ERP fixture tables.
+export function removeV30FixtureSchema(db: DatabaseSync) {
+  if (!db.prepare('SELECT 1 FROM schema_migrations WHERE version=30').get()) return
+  db.exec('DROP TRIGGER erp_sales_stage_activity')
+  const tables = db.prepare(`SELECT name FROM sqlite_schema
+    WHERE type='table' AND name GLOB 'erp_*' ORDER BY rowid DESC`).all()
+  for (const {name} of tables) {
+    if (typeof name !== 'string' || !/^erp_[a-z0-9_]+$/.test(name)) throw Error('Nome inesperado no fixture ERP.')
+    db.exec(`DROP TABLE "${name}"`)
+  }
+  db.exec(`DROP TABLE financial_transaction_allocations;
+    DROP TABLE financial_transactions;
+    DROP INDEX financial_titles_experience;
+    ALTER TABLE financial_titles DROP COLUMN expected_payment_method;
+    ALTER TABLE financial_titles DROP COLUMN managerial_category;
+    ALTER TABLE financial_titles DROP COLUMN competence_date;
+    DELETE FROM schema_migrations WHERE version=30;`)
+}
+
 export function removeV27FixtureSchema(db: DatabaseSync) {
+  removeV30FixtureSchema(db)
   db.exec(`ALTER TABLE financial_settlements DROP COLUMN invoice_number;
     ALTER TABLE financial_settlements DROP COLUMN discount_reason;
     ALTER TABLE financial_settlements DROP COLUMN withheld_iss_cents;

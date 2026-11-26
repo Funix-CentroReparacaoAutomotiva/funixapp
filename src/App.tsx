@@ -1,3 +1,10 @@
+import Workshop, { WorkshopPhaseSettings } from './erp/Workshop'
+import Sales, { SalesSettings } from './erp/Sales'
+import Stock from './erp/Stock'
+import Tasks from './erp/Tasks'
+import Experiences from './erp/Experiences'
+import { ErpNavigation } from './erp/Navigation'
+import { erpRoute } from './erp/navigation'
 import {ConversationContext} from './chat/ConversationContext'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {flushSync}from'react-dom'
@@ -38,8 +45,11 @@ function App() {
   })
   const routeRef = useRef(route), historyState = useRef(window.history.state), restoringHistory = useRef(false)
   const params = new URLSearchParams(route.search)
+  const erp = erpRoute(route.path)
+  const diaryDialog = useRef<HTMLDialogElement>(null)
+  const [diaryOpen, setDiaryOpen] = useState(false)
   const isFinance = route.path === '/financeiro', isOperation = route.path === '/operacao'
-  const area: Area = isFinance ? 'financeiro' : isOperation ? 'operacao' : route.path === '/configuracoes' ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
+  const area: Area = isFinance ? 'financeiro' : isOperation ? 'operacao' : (route.path === '/configuracoes' || route.path === '/gestao/configuracoes') ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
   const mode = params.get('modo') === 'lista' ? 'lista' : 'quadro', query = params.get('q') || ''
   const isDetail = /^\/atendimentos\/[^/]+$/.test(route.path), detailId = isDetail ? route.path.split('/')[2] : ''
   const removedRoute = route.path.startsWith('/veiculos') || route.path.startsWith('/experiencias')
@@ -161,7 +171,7 @@ function App() {
     return () => controller.abort()
   }, [sessionVersion])
   useEffect(() => {
-    if (!session?.authenticated || isDetail || area !== 'funil' || removedRoute) return
+    if (!session?.authenticated || isDetail || area !== 'funil' || removedRoute || erpRoute(route.path)) return
     const controller = new AbortController(), cached = cache.current.get(key)
     setListKey(key); setList(cached ?? null); setFailure(''); setLoading(!cached)
     const timer = window.setTimeout(() => {
@@ -175,7 +185,7 @@ function App() {
       }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     }, cached ? 0 : 250)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query, expireSession])
+  }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query, expireSession, route.path])
   const detailConversation=params.get('conversa')
   const selectedChat=tab==='chat'&&!!detailConversation
   const chatIdentity=record?.chatIdentity?.conversationId===detailConversation?record?.chatIdentity:undefined
@@ -300,8 +310,26 @@ function App() {
     }}>
       {!isDetail ? <main className="fh-work">
         <nav className="fh-tabs" aria-label="Áreas da FUNIX"><strong className="navigation-brand">FUNIX</strong>{mainAreas.map(item => <button key={item} className={area === item && !removedRoute ? 'selected' : ''} onClick={() => navigate('/' + item)} aria-current={area === item && !removedRoute ? 'page' : undefined}><span aria-hidden="true">{symbols[item]}</span> {labels[item]}</button>)}</nav>
-        <header className="commercial-brand"><strong>FUNIX</strong><small>{isFinance || isOperation ? 'ERP' : 'COMERCIAL'}</small></header>
-        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /><button className="session-exit" onClick={logout}>Sair</button></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /><button className="session-exit" onClick={logout}>Sair</button></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/><button className="session-exit" onClick={logout}>Sair</button></>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/><button className="session-exit" onClick={logout}>Sair</button></>:<>
+        <header className="commercial-brand"><strong>FUNIX</strong><small>{erp || isFinance || isOperation ? 'ERP' : 'COMERCIAL'}</small></header>
+        {session?.authenticated && <ErpNavigation path={route.path} navigate={href => navigate(href)} />}
+        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : erp && erp.view !== 'configuracoes' ? <>
+          <div key={route.path} className="erp-view" onClick={event => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+            const link = event.target instanceof Element ? event.target.closest('a') : null
+            if (!link || link.target || link.hasAttribute('download') || link.origin !== window.location.origin) return
+            if (!link.pathname.startsWith('/atendimentos/') && !erpRoute(link.pathname)) return
+            event.preventDefault()
+            navigate(link.pathname + link.search + link.hash, false, { returnTo: routeKey })
+          }}>
+            {erp.area === 'inicio' && <h1>Início</h1>}
+            {erp.area === 'oficina' && <Workshop view={erp.view} />}
+            {erp.area === 'vendas' && <Sales view={erp.view} />}
+            {erp.area === 'estoque' && <Stock view={erp.view} />}
+            {erp.area === 'tarefas' && <Tasks view={erp.view} />}
+            {erp.area === 'financeiro' && <FinancePage search={route.search} view={erp.view} onAuthRequired={expireSession} onBusy={onBusy} />}
+            {(erp.area === 'biblioteca' || erp.area === 'gestao') && <Experiences view={erp.view} />}
+          </div><button className="session-exit" onClick={logout}>Sair</button>
+        </> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /><button className="session-exit" onClick={logout}>Sair</button></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /><button className="session-exit" onClick={logout}>Sair</button></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/>{erp && <><SalesSettings /><WorkshopPhaseSettings /></>}<button className="session-exit" onClick={logout}>Sair</button></>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/><button className="session-exit" onClick={logout}>Sair</button></>:<>
           <div className="fh-tools"><label className="fh-search"><span aria-hidden="true">⌕</span><input aria-label={area === 'conversas' ? 'Buscar conversas carregadas por nome ou telefone' : 'Buscar nome, telefone, placa ou Atendimento'} autoComplete="off" placeholder={area === 'conversas' ? 'Buscar conversas carregadas…' : 'Buscar nome, telefone, placa…'} value={query} onChange={event => updateParams({ q: event.target.value })} /></label><div className="fh-tools-right">
             <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
@@ -333,6 +361,16 @@ function App() {
         <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? detailName.slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? detailName : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{detailPhone}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
         {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
+          <button className="erp-diary-trigger" onClick={() => { diaryDialog.current?.showModal(); setDiaryOpen(true) }}>Diário</button>
+          <dialog ref={diaryDialog} className="erp-diary-dialog" onClose={() => setDiaryOpen(false)} aria-label="Diário da Experiência">
+            <form method="dialog" className="erp-diary-close"><button>Fechar Diário</button></form>
+            {diaryOpen && <Experiences key={routeKey} view="diario" atendimentoId={record.id} context={
+              screen === 'orcamentos' && params.get('versao') ? {origin: 'orcamento', recordId: params.get('versao')!} :
+              screen === 'experiencia' ? {origin: 'experiencia'} :
+              screen === 'peca' && params.get('peca') ? {origin: 'diagnostico', recordId: params.get('peca')!} :
+              {origin: 'atendimento'}
+            } />}
+          </dialog>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
           {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{(record.fabricationYear!==null||record.modelYear!==null)&&<p>Ano de fabricação: {record.fabricationYear||'—'} · Ano do modelo: {record.modelYear||'—'}</p>}{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>

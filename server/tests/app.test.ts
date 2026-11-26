@@ -632,3 +632,18 @@ test('Financeiro exige sessão e mesma origem e aceita lançamentos avulsos e es
     assert.deepEqual((await (await get()).json()).titles, [restored])
   } finally { app.close() }
 })
+
+test('operational ERP reuses authentication and same-origin writes', async () => {
+  const app = start()
+  try {
+    const path = '/api/erp/tasks/items'
+    assert.equal((await app.request(path)).status, 401)
+    const cookie = await authenticate(app)
+    const headers = {Cookie: cookie}
+    assert.equal((await app.request(path, {headers})).status, 200)
+    assert.equal((await app.request(path, {headers, method: 'PUT'})).status, 405)
+    assert.equal((await app.write(path, 'POST', {}, cookie, 'https://other.example')).status, 403)
+    assert.equal((await app.request(path, {headers: {...headers, Origin: origin}, method: 'POST', body: '{}'})).status, 415)
+    assert.equal((await app.request('/api/erp/unknown/items', {headers})).status, 404)
+  } finally { app.close() }
+})

@@ -28,6 +28,7 @@ export interface FinancialSettlement {
   id: string
   amountCents: number
   date: string
+  transactionId?: string
   reversedAt: string | null
   invoiceNumber?: string
   discountCents?: number
@@ -44,6 +45,9 @@ export interface FinancialTitle {
   description: string
   amountCents: number
   dueDate: string
+  competenceDate?: string
+  category?: string
+  expectedPaymentMethod?: PaymentMethod
   experienceId: string | null
   balanceCents: number
   directReceipt?: boolean

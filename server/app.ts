@@ -1,3 +1,4 @@
+import { erpHandlers } from './erp/index.ts'
 import {aiToolsPath, aiToolsTokenHeader, authenticateAiTool, executeAiTool} from './ai-tools.ts'
 import {SharedConversationIdentity} from './chat/shared-identity.ts'
 import {ShortNumberReview,reviewedNumber} from './chat/short-number-review.ts'
@@ -257,6 +258,27 @@ export function createRequestHandler(options: AppOptions) {
       }
 
       if (!authenticated) return fail(401, 'AUTH_REQUIRED', 'Entre no aplicativo para consultar os registros.')
+      if (url.pathname.startsWith('/api/erp/')) {
+        const [, , , module, ...segments] = url.pathname.split('/')
+        const handler = module && erpHandlers.get(module)
+        if (!handler) return fail(404, 'NOT_FOUND', 'Área operacional indisponível.')
+        const method = req.method
+        if (method !== 'GET' && method !== 'POST')
+          return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        let body: unknown
+        if (method === 'POST') {
+          if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+          if (req.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json')
+            return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+          body = await readJson(req, 64 * 1024)
+          if ((sessions.get(cookie) ?? 0) <= now())
+            return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a solicitação.')
+        }
+        return send(200, handler({
+          db: options.atendimentos.db, method, path: '/' + segments.join('/'), query: url.searchParams, body, now,
+        }))
+      }
+
       if (url.pathname === '/api/financeiro') {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
         return send(200, finance.overview())

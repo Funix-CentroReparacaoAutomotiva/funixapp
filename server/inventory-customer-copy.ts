@@ -10,7 +10,7 @@ const db=new DatabaseSync(source,{readOnly:true})
 try{
   db.exec('BEGIN')
   const version=Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v)
-  if(![23,24,25,26,27,28,29].includes(version))throw Error('O inventário requer uma cópia V23 a V29.')
+  if(![23,24,25,26,27,28,29,30].includes(version))throw Error('O inventário requer uma cópia V23 a V30.')
   if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)
     throw Error('A cópia tem falhas de integridade.')
   const inventory=customerInventory(db)

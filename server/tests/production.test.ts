@@ -63,7 +63,7 @@ test('V25 e V26 migram com Experiência preservada, operação desligada e baixa
       else removeV27FixtureSchema(db)
       assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,version)
       migrate(db)
-      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,29)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,30)
       assert.deepEqual(production.get(at).experience,scheduled)
       assert.deepEqual(production.listInOperation(),[])
       assert.equal(production.setInOperation(at,{inOperation:true}).experience?.inOperation,true)

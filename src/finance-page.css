@@ -149,3 +149,48 @@
   .fin-value { text-align: end; }
   .fin-form { max-width: 620px; }
 }
+
+.fin-table-actions { margin: 12px 0; }
+.fin-table-wrap {
+  overflow: auto;
+  margin-block: 10px;
+  border: 1px solid #dce5ef;
+  border-radius: 8px;
+  background: white;
+}
+.fin-table-wrap h3 { padding: 10px; }
+.fin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+  text-align: left;
+}
+.fin-table th, .fin-table td { padding: 7px 9px; border-bottom: 1px solid #dce5ef; vertical-align: middle; }
+.fin-table thead { background: #f1f5fa; }
+.fin-table tbody tr:last-child td, .fin-table tbody tr:last-child th { border-bottom: 0; }
+.fin-table td:nth-last-child(-n+3) { white-space: nowrap; }
+.fin-check { display: inline-flex; align-items: center; gap: 7px; }
+.fin-table input[type="checkbox"], .fin-check input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; }
+.fin-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+}
+.fin-calendar button {
+  display: grid;
+  place-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 4px 1px;
+  color: #12347c;
+  background: #f1f5fa;
+  border: 1px solid #aebed1;
+  border-radius: 5px;
+}
+.fin-calendar button:disabled { color: #485e77; background: white; }
+.fin-calendar button[aria-pressed=true] { background: #d8e8fa; border-color: #12347c; font-weight: 700; }
+.fin-calendar small { font-size: .65rem; }
+
+.fin-weekday { text-align: center; font-size: .8rem; font-weight: 650; }

@@ -1,0 +1,45 @@
+.erp-sales { width: min(100%,100rem); margin: 0 auto; padding: 1rem; }
+.erp-sales h1 { font-size: clamp(1.4rem,3vw,2rem); margin: 0 0 .7rem; }
+.erp-sales h2 { font-size: 1.05rem; margin: 0 0 .55rem; }
+.erp-sales h3 { font-size: 1rem; margin: 0 0 .45rem; }
+.erp-sales a { color: var(--link, #244f96); text-decoration: underline; }
+.erp-sales button, .erp-sales input, .erp-sales select, .erp-sales textarea { font: inherit; }
+.erp-sales input, .erp-sales select, .erp-sales textarea, .erp-sales button {
+  background: Canvas; color: CanvasText; border: 1px solid GrayText; border-radius: .4rem; min-height: 2.25rem; padding: .28rem .5rem;
+}
+.erp-sales button { cursor: pointer; }
+.erp-sales button:disabled { opacity: .55; cursor: default; }
+.erp-sales [aria-pressed="true"] { background: #d9e8fa; color: #172344; }
+.erp-sales [role="alert"], .erp-sales-alert { color: #b02727; font-weight: 700; }
+.erp-sales-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.erp-sales-fields, .erp-sales-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; margin: .6rem 0; }
+.erp-sales label { display: grid; gap: .2rem; min-width: 0; }
+.erp-sales-details input, .erp-sales label textarea { width: 100%; }
+.erp-sales-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(13.5rem,1fr); gap: .6rem; overflow: auto; padding: .3rem .05rem .7rem; }
+.erp-sales-lane { background: color-mix(in srgb, Canvas 93%, CanvasText); border-radius: .55rem; border-top: .3rem solid var(--erp-phase,#b3bcc8); padding: .65rem; min-width: 0; }
+.erp-sales-lane h2 { display: flex; justify-content: space-between; gap: .3rem; }
+.erp-sales-lane small { font-size: .8em; }
+.erp-sales .erp-sales-card { display: grid; width: 100%; text-align: left; gap: .25rem; margin: .3rem 0; padding: .55rem; border-color: color-mix(in srgb, CanvasText 24%, Canvas); overflow-wrap: anywhere; }
+.erp-sales-card span { font-size: .83rem; }
+.erp-sales .erp-sales-overdue { border-inline-start: .25rem solid #b02727; }
+.erp-sales-table { overflow: auto; }
+.erp-sales table { width: 100%; border-collapse: collapse; }
+.erp-sales th,.erp-sales td { text-align: left; border-bottom: 1px solid GrayText; padding: .35rem; }
+.erp-sales-detail,.erp-sales-priorities,.erp-sales-metrics section { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .55rem; padding: .8rem; margin: .6rem 0; }
+.erp-sales-priorities summary,.erp-sales details summary { cursor: pointer; }
+.erp-sales-priorities > button { margin: .25rem; }
+.erp-sales-form { display: grid; gap: .6rem; margin: .9rem 0; max-width: 60rem; justify-items: start; }
+.erp-sales-form > label { width: min(100%,34rem); }
+.erp-sales-info { display: flex; gap: .8rem 1.5rem; flex-wrap: wrap; margin: .6rem 0; }
+.erp-sales-info dd { margin: 0; font-weight: 600; }
+.erp-sales-info dt,.erp-sales-events time { font-size: .82rem; }
+.erp-sales-events { padding-inline-start: 1.4rem; }
+.erp-sales-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(15rem,1fr)); gap: .7rem; }
+.erp-sales-metrics strong { font-size: 1.3rem; }
+.erp-sales-metrics p { margin: .45rem 0; }
+@media (max-width: 650px) {
+  .erp-sales { padding: .7rem; }
+  .erp-sales .erp-sales-fields > label { flex: 1 1 8rem; }
+  .erp-sales-form .erp-sales-fields { width: 100%; }
+  .erp-sales-board { grid-auto-columns: minmax(12rem,68vw); }
+}

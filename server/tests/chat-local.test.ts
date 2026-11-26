@@ -260,7 +260,7 @@ test('V13→V14 migration rollback and retry preserve preexisting records and cr
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='chat_instances'").get(), undefined)
     assert.deepEqual(db.prepare('SELECT * FROM atendimentos').all(), before)
     db.exec('DROP VIEW chat_messages'); migrate(db)
-    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,29)
+    assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,30)
     assert.equal(count(db, 'chat_instances'), 0)
     assert.equal(count(db, 'chat_messages'), 0)
     assert.equal(new AtendimentoRepository(db).get(at.id).notes, at.notes)

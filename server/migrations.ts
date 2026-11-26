@@ -1,3 +1,4 @@
+import { migrateOperationalErp } from './erp/index.ts'
 import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
 import {addExperienceOperation,createProductionSchema} from './production-schema.ts'
 import {createFinanceSchema} from './finance-schema.ts'
@@ -374,6 +375,7 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     ALTER TABLE financial_settlements ADD COLUMN invoice_number TEXT
       CHECK(invoice_number IS NULL OR length(invoice_number) BETWEEN 1 AND 60);
   `)},
+  {version:30,apply:migrateOperationalErp},
 ]
 
 export function migrate(db: DatabaseSync) {

@@ -8,7 +8,8 @@ export function todayInSaoPaulo() {
 
 export function decimal(cents: number | bigint) {
   const units = BigInt(cents)
-  return `${units / 100n}.${(units % 100n).toString().padStart(2, '0')}`
+  const absolute = units < 0n ? -units : units
+  return `${units < 0n ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`
 }
 
 export function currency(cents: number | bigint) {

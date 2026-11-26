@@ -1,0 +1,61 @@
+.erp-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: .35rem;
+  margin-block: .4rem .75rem;
+  color: #203554;
+}
+.erp-navigation details { position: relative; }
+.erp-navigation summary, .erp-navigation > a {
+  display: block;
+  padding: .5rem .7rem;
+  border: 1px solid #d4dfec;
+  border-radius: .5rem;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 650;
+}
+.erp-navigation details > div {
+  position: absolute;
+  top: calc(100% + .25rem);
+  inset-inline-start: 0;
+  width: max-content;
+  max-width: 15rem;
+  padding: .3rem;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #d4dfec;
+  border-radius: .5rem;
+  box-shadow: 0 .5rem 1.5rem #20355422;
+}
+.erp-navigation details a { display: block; padding: .5rem .65rem; color: inherit; }
+.erp-navigation [aria-current="page"], .erp-navigation [data-current="true"] {
+  background: #e3edff;
+  color: #12347c;
+}
+.erp-navigation a:focus-visible, .erp-navigation summary:focus-visible { outline: 2px solid #12347c; }
+.erp-phase-neutral { --erp-phase: #cbd5e1; }
+.erp-phase-blue { --erp-phase: #60a5fa; }
+.erp-phase-yellow { --erp-phase: #eab308; }
+.erp-phase-orange { --erp-phase: #f97316; }
+.erp-phase-green { --erp-phase: #22c55e; }
+.erp-phase-purple { --erp-phase: #a855f7; }
+@media (max-width: 550px) {
+  .erp-navigation summary, .erp-navigation > a { padding: .45rem .55rem; font-size: .85rem; }
+  .erp-navigation details > div { position: fixed; inset: 6.5rem 1rem auto; max-width: none; width: auto; }
+}
+.erp-diary-trigger { align-self: end; margin: .35rem 1rem; }
+.erp-diary-dialog {
+  width: min(50rem, 94vw);
+  max-height: 85dvh;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid #d4dfec;
+  border-radius: .75rem;
+  color: #203554;
+}
+.erp-diary-dialog::backdrop { background: #15264188; }
+.erp-diary-close { display: flex; justify-content: flex-end; }
