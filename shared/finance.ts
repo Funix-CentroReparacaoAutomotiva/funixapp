@@ -16,6 +16,7 @@ export interface FinancialTitle {
   dueDate: string
   experienceId: string | null
   balanceCents: number
+  directReceipt?: boolean
   settlements: FinancialSettlement[]
 }
 
@@ -28,4 +29,14 @@ export interface FinancialExperienceOption {
 export interface FinancialOverview {
   titles: FinancialTitle[]
   experiences: FinancialExperienceOption[]
+}
+
+export interface ExperienceFinance {
+  totalCents: number
+  paidCents: number
+  balanceCents: number
+  titledCents: number
+  untitledCents: number
+  openTitles: Pick<FinancialTitle, 'id' | 'dueDate' | 'balanceCents'>[]
+  receipts: (FinancialSettlement & {titleId: string})[]
 }

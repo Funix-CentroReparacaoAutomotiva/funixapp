@@ -263,7 +263,18 @@ export function createRequestHandler(options: AppOptions) {
       }
       if (url.pathname === '/api/operacao') {
         if (req.method !== 'GET') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
-        return send(200, production.listInOperation())
+        return send(200, production.listInOperation(url.searchParams.get('agendados') === '1'))
+      }
+      const experienceFinanceRoute = /^\/api\/atendimentos\/([^/]{1,100})\/experiencia\/financeiro$/.exec(url.pathname)
+      if (experienceFinanceRoute) {
+        const at = experienceFinanceRoute[1]!
+        if (req.method === 'GET') return send(200, finance.experience(at))
+        if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.')
+        if (req.headers.origin !== origin) return fail(403, 'ORIGIN_REJECTED', 'Origem não autorizada.')
+        if (!req.headers['content-type']?.startsWith('application/json')) return fail(415, 'JSON_REQUIRED', 'Envie JSON.')
+        const body = await readJson(req, 1024)
+        if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada.')
+        return send(201, finance.experienceEntry(at, body))
       }
       const experienceOperationRoute = /^\/api\/atendimentos\/([^/]{1,100})\/experiencia\/operacao$/.exec(url.pathname)
       if (experienceOperationRoute) {
@@ -1037,7 +1048,7 @@ export function createRequestHandler(options: AppOptions) {
         const limit = url.searchParams.get('limit') ?? '50'
         const offset = url.searchParams.get('offset') ?? '0'
         if (!/^\d+$/.test(limit) || !/^\d+$/.test(offset)) return fail(400, 'INVALID_QUERY', 'Parâmetros de busca inválidos.')
-        const result=options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset) })
+        const result=options.atendimentos.list({ q, limit: Number(limit), offset: Number(offset), funnel: url.searchParams.get('funil') === '1' })
         return send(200,{...result,items:funnelProjection(options.atendimentos.db,new CustomerRepository(options.atendimentos.db).present(result.items))})
       }
       const withChatIdentity=(atendimento:ReturnType<AtendimentoRepository['get']>)=>{

@@ -13,7 +13,7 @@ export function OperationPanel({onAuthRequired}: {onAuthRequired: () => void}) {
 
   useEffect(()=>{
     const controller=new AbortController()
-    api<ExperienceInOperation[]>('/api/operacao',{signal:controller.signal}).then(setExperiences).catch((cause: RequestFailure)=>{
+    api<ExperienceInOperation[]>('/api/operacao?agendados=1',{signal:controller.signal}).then(setExperiences).catch((cause: RequestFailure)=>{
       if(controller.signal.aborted)return
       setError(cause.message)
       if(cause.status===401)requireAuth()
@@ -22,20 +22,23 @@ export function OperationPanel({onAuthRequired}: {onAuthRequired: () => void}) {
   },[request])
 
   return <section className="production-panel operation-panel" aria-labelledby="operation-heading">
-    <h1 id="operation-heading">Experiências em operação</h1>
+    <h1 id="operation-heading">Operação</h1>
     {error&&<div className="production-feedback"><p className="form-error" role="alert">{error}</p>
       <button type="button" className="fh-filter" onClick={()=>{setError('');setRequest(previous=>previous+1)}}>Atualizar lista</button>
     </div>}
     {!experiences&&!error&&<p role="status">Carregando experiências…</p>}
-    {experiences?.length===0&&<p>Nenhuma experiência em operação.</p>}
-    {!!experiences?.length&&<ul className="operation-list">
-      {experiences.map(experience=><li className="diagnosis-card" key={experience.id}>
+    {experiences?.length===0&&<p>Nenhuma experiência agendada.</p>}
+    {experiences&&[true,false].map(inOperation=>{
+      const group=experiences.filter(item=>item.inOperation===inOperation)
+      return group.length>0&&<section key={String(inOperation)}><h2>{inOperation?'Em operação':'Agendados'}</h2><ul className="operation-list">
+      {group.map(experience=><li className="diagnosis-card" key={experience.id}>
         <a href={'/atendimentos/'+encodeURIComponent(experience.atendimentoId)+'?aba=diagnosticos&tela=experiencia'}>
           <strong>{[experience.vehicle.text,experience.vehicle.plate].filter(Boolean).join(' · ')}</strong>
           <span>{experience.customer.text}</span>
           <span>Entrada {scheduledEntryLabel(experience.scheduledEntry)}</span>
         </a>
       </li>)}
-    </ul>}
+    </ul></section>
+    })}
   </section>
 }

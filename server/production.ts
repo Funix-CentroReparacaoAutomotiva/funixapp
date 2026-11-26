@@ -81,7 +81,7 @@ export class ProductionRepository {
     return (row.state ?? 'negotiating') as BudgetLifecycleState
   }
 
-  private overview(at: string): ProductionOverview {
+  overview(at: string): ProductionOverview {
     const record = this.atendimentos.get(at,true)
     const {person,vehicle,payer} = record.references!
     const deliveryDate = record.deliveryDate ?? null
@@ -117,13 +117,13 @@ export class ProductionRepository {
     finally {this.db.exec('ROLLBACK')}
   }
 
-  listInOperation(): ExperienceInOperation[] {
-    return this.db.prepare(`SELECT id,atendimento_id,customer_json,vehicle_json,scheduled_entry
-      FROM production_experiences WHERE in_operation=1 ORDER BY scheduled_entry,id`).all().map(row=>({
+  listInOperation(includeScheduled = false): ExperienceInOperation[] {
+    return this.db.prepare(`SELECT id,atendimento_id,customer_json,vehicle_json,scheduled_entry,in_operation
+      FROM production_experiences WHERE (? OR in_operation=1) ORDER BY scheduled_entry,id`).all(Number(includeScheduled)).map(row=>({
       id:String(row.id), atendimentoId:String(row.atendimento_id),
       customer:JSON.parse(String(row.customer_json)) as CustomerReference,
       vehicle:JSON.parse(String(row.vehicle_json)) as CustomerReference,
-      scheduledEntry:String(row.scheduled_entry),
+      scheduledEntry:String(row.scheduled_entry), inOperation:row.in_operation===1,
     }))
   }
 

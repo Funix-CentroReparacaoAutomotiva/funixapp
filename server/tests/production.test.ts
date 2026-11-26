@@ -110,6 +110,43 @@ test('Cliente com contato agrupado agenda sem pagador separado e gera OS', async
   }
 })
 
+test('Experiência recebe entrada, gera título só do restante e sai da lista do Funil', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const {at,versions} = await issued(db,1)
+    const production = new ProductionRepository(db,()=>instant)
+    const finance = new FinanceRepository(db,()=>instant)
+    const record = new AtendimentoRepository(db).get(at,true)
+    const budget = versions[0]!
+    production.schedule(at,{
+      budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+      expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+    })
+    assert.equal(finance.experience(at).totalCents,0)
+    assert.equal(new AtendimentoRepository(db).list({funnel:true}).total,0)
+    assert.equal(new AtendimentoRepository(db).list().total,1)
+    assert.equal(production.listInOperation().length,0)
+    assert.equal(production.listInOperation(true)[0]?.atendimentoId,at)
+    production.authorize(at,budget.id,{confirmed:true})
+    assert.equal(finance.experience(at).totalCents,30015)
+    const receipt = {id:randomUUID(),action:'receive',amountCents:10000,date:'2026-11-20'}
+    const received = finance.experienceEntry(at,receipt)
+    assert.equal(received.paidCents,10000)
+    assert.equal(received.balanceCents,20015)
+    assert.deepEqual(finance.experienceEntry(at,receipt),received)
+    const title = randomUUID()
+    const closing = finance.experienceEntry(at,{id:title,action:'title',amountCents:20015,date:'2026-11-30'})
+    assert.equal(closing.titledCents,20015)
+    assert.equal(closing.untitledCents,0)
+    finance.reverse(receipt.id,receipt.id)
+    assert.equal(finance.experience(at).paidCents,0)
+    assert.equal(finance.experience(at).untitledCents,10000)
+    assert.equal(finance.overview().titles.find(item=>item.id===receipt.id)?.balanceCents,0)
+  } finally {
+    db.close()
+  }
+})
+
 test('Agendamento múltiplo e complementos compartilham a Experiência, com rastreio e documentos preservados',async()=>{
   const db=openDatabase(':memory:')
   try{

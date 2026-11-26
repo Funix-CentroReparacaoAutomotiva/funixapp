@@ -99,12 +99,12 @@ export class AtendimentoRepository {
 
   ready() { this.db.prepare('SELECT 1 FROM atendimentos LIMIT 1').get() }
 
-  list({ q = '', limit = 50, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): AtendimentoList {
+  list({ q = '', limit = 50, offset = 0, funnel = false }: { q?: string; limit?: number; offset?: number; funnel?: boolean } = {}): AtendimentoList {
     if (q.length > 150 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) invalid('Parâmetros de busca inválidos.')
     const escaped = fold(q.trim()).replace(/[\\%_]/g, '\\$&')
     const search = `%${escaped}%`
     const digits = /^[+\d\s().-]+$/.test(q) ? q.replace(/[^\d+]/g, '') : ''
-    const where = `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
+    const where = (funnel ? 'NOT EXISTS (SELECT 1 FROM production_experiences WHERE atendimento_id=atendimentos.id) AND ' : '') + `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
     const values = [search, digits, `%${digits}%`]
     const total = Number(this.db.prepare(`SELECT count(*) AS total FROM atendimentos WHERE ${where}`).get(...values)!.total)
     const items = this.db.prepare(`SELECT * FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)

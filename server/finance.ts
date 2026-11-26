@@ -1,6 +1,7 @@
 import type {DatabaseSync} from 'node:sqlite'
 import {validDeliveryDate} from '../shared/delivery-date.ts'
 import type {FinancialOverview, FinancialTitle} from '../shared/finance.ts'
+import {ProductionRepository} from './production.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject, transaction} from './scenarios.ts'
 
@@ -59,15 +60,64 @@ export class FinanceRepository {
     }
   }
 
-  private titles(id?: string): FinancialTitle[] {
+  experience(at: string) {
+    const state = new ProductionRepository(this.db).overview(at)
+    if (!state.experience) throw new ServiceError(404, 'FINANCE_EXPERIENCE_NOT_FOUND', 'Experiência não encontrada.')
+    const experience = state.experience
+    const total = state.budgets.filter(budget => budget.state === 'authorized' || budget.state === 'executed')
+      .reduce((sum, budget) => {
+        const [whole, fraction = ''] = budget.total.split('.')
+        const cents = BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0').slice(0, 2))
+        return sum + cents + (Number(fraction[2] ?? 0) >= 5 ? 1n : 0n)
+      }, 0n)
+    const titles = this.titles(undefined, experience.id).filter(title => title.kind === 'receivable')
+    const receipts = titles.flatMap(title => title.settlements.map(item => ({...item, titleId: title.id})))
+    const paidCents = receipts.reduce((sum, item) => sum + (item.reversedAt ? 0 : item.amountCents), 0)
+    const titledCents = titles.reduce((sum, title) => sum + title.balanceCents, 0)
+    const totalCents = Number(total)
+    if (![totalCents,paidCents,titledCents].every(Number.isSafeInteger)) invalid('O total excede o limite financeiro.')
+    const balanceCents = Math.max(0, totalCents - paidCents)
+    const openTitles = titles.filter(title => title.balanceCents > 0).map(({id,dueDate,balanceCents}) => ({id,dueDate,balanceCents}))
+    return {totalCents, paidCents, balanceCents, titledCents, untitledCents: Math.max(0, balanceCents - titledCents), openTitles, receipts}
+  }
+
+  experienceEntry(at: string, input: unknown) {
+    const data = inputObject(input, ['id','date','amountCents','action'])
+    const id = identifier(data.id)
+    const {date, action} = data
+    if (!validDeliveryDate(date) || (action !== 'receive' && action !== 'title')) invalid('Confira a operação e a data.')
+    return transaction(this.db, () => {
+      const experience = new ProductionRepository(this.db).overview(at).experience
+      if (!experience) throw new ServiceError(404, 'FINANCE_EXPERIENCE_NOT_FOUND', 'Experiência não encontrada.')
+      const [existing] = this.titles(id)
+      const summary = this.experience(at)
+      const amountCents = amount(data.amountCents)
+      if (existing) {
+        if (existing.experienceId !== experience.id || existing.kind !== 'receivable' || existing.amountCents !== amountCents ||
+            existing.dueDate !== date || Boolean(existing.directReceipt) !== (action === 'receive')) idempotencyConflict()
+        return summary
+      }
+      if (amountCents > summary.untitledCents || (action === 'title' && amountCents !== summary.untitledCents))
+        throw new ServiceError(409, 'FINANCE_EXPERIENCE_BALANCE', 'Confira o saldo sem título. Valores já lançados podem ser baixados pelo Financeiro.')
+      this.db.prepare(`INSERT INTO financial_titles (id,kind,counterparty,description,amount_cents,due_date,experience_id)
+        VALUES (?,'receivable',?,?,?,?,?)`).run(id,experience.payer.text.slice(0,150),action === 'receive' ? 'Recebimento da Experiência' : 'Saldo da Experiência',amountCents,date,experience.id)
+      // A direct receipt uses the same identifier for its document and settlement.
+      // This keeps it in the existing cash history without creating an open balance on reversal.
+      if (action === 'receive') this.db.prepare('INSERT INTO financial_settlements (id,title_id,amount_cents,date) VALUES (?,?,?,?)')
+        .run(id,id,amountCents,date)
+      return this.experience(at)
+    })
+  }
+
+  private titles(id?: string, experienceId?: string): FinancialTitle[] {
     const query = this.db.prepare(`
       SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at
       FROM financial_titles t LEFT JOIN financial_settlements s ON s.title_id = t.id
-      ${id === undefined ? '' : 'WHERE t.id = ?'}
+      ${id !== undefined ? 'WHERE t.id = ?' : experienceId !== undefined ? 'WHERE t.experience_id = ?' : ''}
       ORDER BY t.due_date, t.id, s.date DESC, s.rowid DESC
     `)
     const titles = new Map<string, FinancialTitle>()
-    for (const row of (id === undefined ? query.all() : query.all(id))) {
+    for (const row of (id === undefined && experienceId === undefined ? query.all() : query.all(id ?? experienceId!))) {
       const titleId = String(row.id)
       let title = titles.get(titleId)
       if (!title) {
@@ -85,7 +135,8 @@ export class FinanceRepository {
           date: String(row.date), reversedAt: row.reversed_at as string | null,
         }
         title.settlements.push(settlement)
-        if (settlement.reversedAt === null) title.balanceCents -= settlement.amountCents
+        if (settlement.id === titleId) { title.directReceipt = true; title.balanceCents = 0 }
+        else if (settlement.reversedAt === null) title.balanceCents -= settlement.amountCents
       }
     }
     return [...titles.values()]
@@ -142,6 +193,7 @@ export class FinanceRepository {
         if (existing.title_id !== titleId || existing.amount_cents !== amountCents || existing.date !== date) idempotencyConflict()
         return title
       }
+      if (id === titleId) idempotencyConflict()
       if (amountCents > title.balanceCents) {
         throw new ServiceError(409, 'FINANCE_AMOUNT_OVER_BALANCE', 'O valor da baixa excede o saldo pendente. Confira o saldo atualizado.')
       }
