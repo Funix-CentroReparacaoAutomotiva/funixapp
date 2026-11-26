@@ -63,7 +63,7 @@ test('V25 e V26 migram com Experiência preservada, operação desligada e baixa
       else removeV27FixtureSchema(db)
       assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,version)
       migrate(db)
-      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,28)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,29)
       assert.deepEqual(production.get(at).experience,scheduled)
       assert.deepEqual(production.listInOperation(),[])
       assert.equal(production.setInOperation(at,{inOperation:true}).experience?.inOperation,true)
@@ -152,6 +152,36 @@ test('Experiência recebe entrada, gera título só do restante e sai da lista d
   } finally {
     db.close()
   }
+})
+
+test('Pagamento, desconto e ISS retido liquidam juntos e preservam o valor efetivamente pago', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const {at,versions} = await issued(db,1)
+    const budget = versions[0]!
+    const record = new AtendimentoRepository(db).get(at,true)
+    const production = new ProductionRepository(db)
+    const finance = new FinanceRepository(db)
+    production.schedule(at,{
+      budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+      expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+    })
+    production.authorize(at,budget.id,{confirmed:true})
+    const input={id:randomUUID(),action:'receive',date:'2026-11-20',amountCents:25000,
+      discountCents:3015,discountReason:'service_issue',withheldIssCents:2000,paymentMethod:'pix',invoiceNumber:'000123'}
+    assert.throws(()=>finance.experienceEntry(at,{...input,amountCents:25001}),code('FINANCE_EXPERIENCE_BALANCE'))
+    const summary=finance.experienceEntry(at,input)
+    assert.equal(summary.balanceCents,0)
+    assert.equal(summary.paidCents,25000)
+    assert.equal(summary.discountCents,3015)
+    assert.equal(summary.withheldIssCents,2000)
+    assert.equal(summary.receipts[0]?.discountReason,'service_issue')
+    assert.equal(summary.receipts[0]?.invoiceNumber,'000123')
+    assert.deepEqual(finance.experienceEntry(at,input),summary)
+    assert.throws(()=>finance.experienceEntry(at,{...input,discountReason:'commercial'}),code('FINANCE_REQUEST_CONFLICT'))
+    finance.reverse(input.id,input.id)
+    assert.equal(finance.experience(at).balanceCents,30015)
+  } finally { db.close() }
 })
 
 test('Agendamento múltiplo e complementos compartilham a Experiência, com rastreio e documentos preservados',async()=>{

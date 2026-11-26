@@ -177,7 +177,7 @@ test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', (
     assert.equal(restored.vehicle,'Gol 2019/2020')
     assert.equal(restored.fabricationYear,null)
     assert.equal(restored.modelYear,null)
-    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),28)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),29)
     db.close()
   } finally { temp.close() }
 })

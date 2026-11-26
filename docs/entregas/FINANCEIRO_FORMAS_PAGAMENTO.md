@@ -20,3 +20,9 @@ A fórmula do título no Coda soma o valor de liquidação apenas das transaçõ
 - Quando for necessário controlar repasse e conciliação, registre conta, valor líquido, tarifas e data de crédito como eventos próprios. Mantenha as regras gerenciais e fiscais explícitas por tipo de evento. Um pagamento por cartão pode quitar o cliente antes de creditar a conta.
 
 Fontes: [ERP FUNIX no Coda](https://docs.superhuman.com/d/Funix_d2zsjI-nqWr), com inspeção de `db_TitulosFinanceiros`, `db_Transacoes`, `Cnf_FormaPagamento`, `cnf_RegrasLancamentos` e `cnf_FamiliaTransacao`.
+
+## Lançamento único na Experiência
+
+O painel registra valor pago, desconto, ISS retido e o número opcional da nota fiscal juntos. Mostra o valor pago, o total liquidado e o saldo resultante antes de confirmar. O motivo é obrigatório para desconto e a forma de pagamento só é solicitada quando houver valor pago.
+
+A migração V29 conserva os três componentes na mesma baixa, com limites no SQLite, gravação atômica, chave de reenvio e estorno do conjunto. Pagamento efetivo alimenta os recebimentos registrados. Desconto e retenção reduzem o saldo do cliente e ficam separados no histórico. O motivo distingue negociação comercial, falha no serviço e outros ajustes. A classificação fica disponível para relatórios futuros. Cada componente tem regra explícita em `settlementRulesV1`. O lançamento não emite NF nem reconhece automaticamente receita ou crédito bancário.

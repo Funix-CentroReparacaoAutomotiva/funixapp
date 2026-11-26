@@ -100,11 +100,11 @@ test('V19 registers additive associations; compatibility startup is idempotent',
   const db = openDatabase(':memory:')
   try {
     const version = db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v
-    assert.equal(version,28)
+    assert.equal(version,29)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
     createV20AssociationSchema(db)
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='v20_associations'").get())
-    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,28)
+    assert.equal(db.prepare('SELECT max(version) AS v FROM schema_migrations').get()!.v,29)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally { db.close() }
 })
@@ -129,7 +129,7 @@ test('stable association survives full SQLite file close/reopen with no legacy m
     assert.deepEqual(reopened.rememberConversation(instance, pn), { conversationId, revision: 1 })
     assert.deepEqual(reopened.listActive(conversationId).items.map(x => x.atendimentoId), [atendimento.id])
     assert.equal(reopened.listActive(conversationId).activeAtendimentoId, atendimento.id)
-    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),28)
+    assert.equal(Number(db.prepare('SELECT max(version) AS version FROM schema_migrations').get()!.version),29)
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0)
   } finally {
     try { db.close() } catch { /* already closed on failure */ }
