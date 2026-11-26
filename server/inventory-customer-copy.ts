@@ -1,6 +1,6 @@
 import {chmodSync,closeSync,lstatSync,openSync,writeFileSync} from 'node:fs'
 import {DatabaseSync} from 'node:sqlite'
-import {customerInventory} from './customer-inventory.ts'
+import {customerInventory,participantInventory,dialingPrefixInventory} from './customer-inventory.ts'
 import {normalizeCustomerPhone} from './phone.ts'
 
 const [source,privateReport,...extra]=process.argv.slice(2)
@@ -14,6 +14,10 @@ try{
   if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok'||db.prepare('PRAGMA foreign_key_check').all().length)
     throw Error('A cópia tem falhas de integridade.')
   const inventory=customerInventory(db)
+  const participants=participantInventory(db)
+  const dialing=dialingPrefixInventory(db)
+  const dialingCounts=Object.fromEntries(Object.entries(dialing).map(([key,ids])=>[key,ids.length]))
+  const participantCounts=Object.fromEntries(Object.entries(participants).map(([key,ids])=>[key,ids.length]))
   const contacts=db.prepare("SELECT id,entity_id,conversation_id,phone_normalized,data FROM customer_records WHERE kind='contact' AND json_extract(data,'$.canonicalContactId') IS NULL").all()
   const nullKeysWithPhone=contacts.filter(row=>row.phone_normalized===null&&normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??''))).map(row=>row.id)
   const differingKeys=contacts.filter(row=>row.phone_normalized!==null&&row.phone_normalized!==normalizeCustomerPhone(String(JSON.parse(String(row.data)).text??''))).map(row=>row.id)
@@ -58,11 +62,11 @@ try{
   const details={unresolvedIdentifiedPhones,duplicateGroups:inventory.duplicateGroups,nullKeysWithPhone,differingKeys,missingOwners,missingChannelContacts,channelConflicts,shortNumbersPending}
   if(privateReport){
     const fd=openSync(privateReport,'wx',0o600)
-    try{chmodSync(privateReport,0o600);writeFileSync(fd,JSON.stringify({version,...details},null,2)+'\n')}
+    try{chmodSync(privateReport,0o600);writeFileSync(fd,JSON.stringify({version,...details,participants,dialing},null,2)+'\n')}
     finally{closeSync(fd)}
   }
   const counts=Object.fromEntries(Object.entries(details).map(([key,rows])=>[key,rows.length]))
-  const needsReview=Object.values(counts).some(count=>count>0)
-  process.stdout.write(JSON.stringify({version,...counts,reviewedHistoryLinks,unresolvedReferences:inventory.partialReferences,needsReview})+'\n')
+  const needsReview=Object.values(counts).some(count=>count>0)||participants.groupingCandidates.length>0||participants.ownerMissingFromCase.length>0||participants.unresolvedPhones.length>0||participants.ownerConflicts.length>0||Object.values(dialingCounts).some(count=>count>0)
+  process.stdout.write(JSON.stringify({version,...counts,reviewedHistoryLinks,unresolvedReferences:inventory.partialReferences,participants:participantCounts,dialing:dialingCounts,needsReview})+'\n')
   if(needsReview)process.exitCode=2
 }finally{db.close()}

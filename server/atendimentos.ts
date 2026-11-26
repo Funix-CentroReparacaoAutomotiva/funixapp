@@ -2,14 +2,14 @@ import type {CustomerReferences} from '../shared/customer.ts'
 import { CustomerRepository } from './customers.ts'
 import{initializeFinancialSettings}from'./financial-initialization.ts'
 import{initializeVehicleComposition}from'./default-vehicle-composition.ts'
-import { randomUUID } from 'node:crypto'
+import {createHash,randomUUID} from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import { ATENDIMENTO_PURPOSES, ATENDIMENTO_STAGES } from '../shared/contracts.ts'
-import type { Atendimento, AtendimentoList, AtendimentoStage } from '../shared/contracts.ts'
+import type { Atendimento, AtendimentoList, AtendimentoStage, DuplicateAtendimento } from '../shared/contracts.ts'
 import { ServiceError } from './errors.ts'
 import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-date.ts'
 
-import {normalizeCustomerPhone} from './phone.ts'
+import {normalizeCustomerPhone,normalizeCustomerInputPhone,canonicalizeCustomerInputPhone} from './phone.ts'
 
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
 const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
@@ -17,10 +17,23 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
 
+export class PossibleDuplicateAtendimentoError extends ServiceError {
+  readonly candidates:DuplicateAtendimento[]
+  readonly confirmationToken:string
+  constructor(candidates: DuplicateAtendimento[],confirmationToken:string) {
+    super(409,'ATENDIMENTO_DUPLICATE_REVIEW','Já existe Atendimento em aberto para este contato e veículo. Confira antes de criar outro.')
+    this.candidates=candidates
+    this.confirmationToken=confirmationToken
+  }
+}
+
+function normalizedPlate(value:string) {return value.toUpperCase().replace(/[^A-Z0-9]/g,'')}
+
 function validate(input: unknown, patch: boolean) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Envie os campos do Atendimento em um objeto JSON.')
   const source = input as Record<string, unknown>
-  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision')) invalid(`Campo não permitido: ${key}.`)
+  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision') && !(!patch && key === 'duplicateConfirmation')) invalid(`Campo não permitido: ${key}.`)
+  if(source.duplicateConfirmation!==undefined && (patch||typeof source.duplicateConfirmation!=='string'||!/^[a-f0-9]{64}$/.test(source.duplicateConfirmation))) invalid('Confirmação de duplicidade inválida.')
   if (patch && (!Number.isSafeInteger(source.revision) || Number(source.revision) < 1)) invalid('Informe a revisão do Atendimento que está editando.')
   const output: Record<string, string | boolean | number | null> = {}
   for (const [key, limit] of Object.entries(textLimits)) {
@@ -51,7 +64,7 @@ function validate(input: unknown, patch: boolean) {
   }
   if(source.closed!==undefined){if(typeof source.closed!=='boolean')invalid('Encerramento inválido.')}
   if (patch && source.closed===undefined && source.references===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
-  return { fields: output, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined }
+  return { fields: output, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined, duplicateConfirmation:source.duplicateConfirmation as string|undefined }
 }
 
 function map(row: Record<string, SQLOutputValue>): Atendimento {
@@ -108,11 +121,50 @@ export class AtendimentoRepository {
     return includeReferences ? customers.present([record])[0]! : record
   }
 
+  private possibleDuplicates(record:{phoneNormalized:string|null;plate:string},refs:CustomerReferences|undefined):DuplicateAtendimento[] {
+    const phone=record.phoneNormalized,contactIds=[...new Set((refs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))]
+    if(!phone&&!contactIds.length)return []
+    const refIdMatch=contactIds.length?`r.record_id IN (${contactIds.map(()=>'?').join(',')})`:'0'
+    const refPhoneMatch=phone?`(r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?
+      OR EXISTS(SELECT 1 FROM customer_records c WHERE c.id=r.record_id
+        AND c.kind='contact' AND c.phone_normalized=?))`:'0'
+    const conditions=[...(phone?['a.phone_normalized=?']:[]),
+      `EXISTS (SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact'
+        AND (${refIdMatch} OR (${refPhoneMatch})))`]
+    const args=[...(phone?[phone]:[]),...contactIds,...(phone?[phone,phone]:[])]
+    const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.stage,a.revision
+      FROM atendimentos a WHERE a.closed_at IS NULL AND a.stage<>'rejeitados'
+      AND (${conditions.join(' OR ')}) ORDER BY a.created_at DESC,a.id ASC`).all(...args)
+    const plate=normalizedPlate(record.plate)
+    return rows.filter(row=>!plate||!normalizedPlate(String(row.plate))||normalizedPlate(String(row.plate))===plate)
+      .map(row=>({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),
+        plate:String(row.plate),stage:String(row.stage),revision:Number(row.revision)}))
+  }
+
   create(input: unknown, inTransaction = false, manual = false): Atendimento {
-    const { fields, references, closed, dateReason } = validate(input, false)
+    const { fields, references, closed, dateReason, duplicateConfirmation } = validate(input, false)
+    if(duplicateConfirmation&&!manual)invalid('Confirmação de duplicidade indisponível para criação automática.')
     const customers=new CustomerRepository(this.db)
     if (!inTransaction) this.db.exec('BEGIN IMMEDIATE')
     try {
+      // Check before mutating shared customer references: a manual lead using an existing
+      // number must see the open case warning before the ownership gate for new records.
+      if(manual){
+        const draftRefs=references===undefined?undefined:customers.validate(references)
+        const draftIdentity=draftRefs?customers.primaryFields(draftRefs):fields
+        const candidatePhone=typeof draftIdentity.phone==='string'?normalizeCustomerInputPhone(draftIdentity.phone):null
+        const candidatePlate=typeof draftIdentity.plate==='string'?draftIdentity.plate:''
+        const candidates=this.possibleDuplicates({phoneNormalized:candidatePhone,plate:candidatePlate},draftRefs)
+        if(candidates.length){
+          const confirmationToken=createHash('sha256').update(JSON.stringify([
+            candidatePhone,normalizedPlate(candidatePlate),
+            [...new Set((draftRefs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))].sort(),
+            candidates.map(({id,revision})=>[id,revision]),
+          ])).digest('hex')
+          if(confirmationToken!==duplicateConfirmation)
+            throw new PossibleDuplicateAtendimentoError(candidates,confirmationToken)
+        }
+      }
       const refs=this.manualReferences(customers,fields,references,manual)
       if(refs)Object.assign(fields,references===undefined?this.identityFields(customers,refs):customers.primaryFields(refs))
       const now = new Date().toISOString()
@@ -153,7 +205,9 @@ export class AtendimentoRepository {
       const refs=customers.validate(references)
       return manual||refs.person.some(ref=>ref.id)?customers.resolveManualContactReferences(refs,previous):refs
     }
-    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerPhone(fields.phone))return undefined
+    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerInputPhone(fields.phone))return undefined
+    const inputPhone=canonicalizeCustomerInputPhone(fields.phone)
+    fields.phone=inputPhone
     const person=previous?.person??[]
     if(person[0]?.id&&typeof fields.name==='string'&&fields.name!==person[0].text)
       throw new ServiceError(409,'SHARED_CUSTOMER_REFERENCE','Edite o titular no cadastro compartilhado.')
@@ -161,7 +215,7 @@ export class AtendimentoRepository {
     const primary=contact[0]
     return customers.resolveManualContactReferences({
       person:typeof fields.name==='string'&&!person[0]?.id?[{id:null,text:fields.name},...person.slice(1)]:person,
-      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(fields.phone)?primary:{id:null,text:fields.phone},...contact.slice(1)],
+      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(inputPhone)?primary:{id:null,text:inputPhone},...contact.slice(1)],
       vehicle:previous?.vehicle??[],payer:previous?.payer??[],
     },previous)
   }

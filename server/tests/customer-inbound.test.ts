@@ -274,6 +274,27 @@ test('authenticated inbound references the explicitly assigned Entity without co
 })
 
 
+test('inbound keeps the message but does not duplicate an unindexed historical dialing contact',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const customers=new CustomerRepository(db),at=new AtendimentoRepository(db)
+  const owner=customers.save({kind:'entity',text:'Cadastro antigo'})
+  const id=randomUUID()
+  db.prepare("INSERT INTO customer_records(id,kind,data,entity_id,phone_normalized) VALUES(?,'contact',?,?,NULL)")
+    .run(id,JSON.stringify({id:null,text:'031999990101'}),owner.id)
+  const first=event('historical-dialing-conflict')
+  const receipt=runtime.store.ingest(JSON.stringify(first))
+  assert.deepEqual(runtime.store.ingest(JSON.stringify(first)),receipt)
+  assert.equal(at.list().total,0)
+  assert.equal(customers.contacts(owner.id).length,1)
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM customer_records WHERE kind='contact'").get()!.n,1)
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM chat_messages').get()!.n,1)
+  assert.equal(runtime.authority!.canonicalChannelSendAllowed(PN),false)
+  assert.equal(customers.record(id).text,'031999990101')
+ }finally{db.close()}
+})
+
 test('target autonomous runtime creates the shared Entity and Contact atomically; exact known number reuses owner',()=>{
  const db=openDatabase(':memory:')
  try{
@@ -287,6 +308,8 @@ test('target autonomous runtime creates the shared Entity and Contact atomically
   const person=a.references!.person[0]!,contact=a.references!.contact[0]!
   assert.ok(person.id);assert.ok(contact.id)
   assert.equal(customers.record(contact.id!).entityId,person.id)
+  assert.ok(person.participantKey)
+  assert.equal(contact.participantKey,person.participantKey)
   assert.equal(customers.contacts(person.id!).length,1)
   assert.equal(runtime.authority!.projection(PN).names[0]?.name,a.name)
   const known=customers.save({kind:'entity',text:'Cadastro compartilhado',contacts:[{text:'+5531999990888'}]})
@@ -330,6 +353,40 @@ test('standalone first LID interaction shares one provisional registration; late
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
  }finally{db.close()}
 })
+test('autonomous short PN triage keeps a single participant and the observed channel after renaming',()=>{
+ const db=openDatabase(':memory:')
+ try{
+  const runtime=loadConversationRuntime({...env,FUNIX_CHAT_AUTONOMOUS_ENABLED:'true'},db)!
+  const at=new AtendimentoRepository(db),customers=new CustomerRepository(db),authority=runtime.authority!
+  const short='553188888888@s.whatsapp.net'
+  const first=event('short-triage-group',short,null,'')
+  delete (first as {displayName?:string}).displayName
+  runtime.store.ingest(JSON.stringify(first))
+  const original=at.get(at.list().items[0]!.id,true)
+  const person=original.references!.person[0]!,contact=original.references!.contact[0]!
+  assert.ok(person.id&&contact.id&&person.participantKey)
+  assert.equal(contact.participantKey,person.participantKey)
+  const owner=customers.record(person.id!)
+  const stored=customers.record(contact.id!)
+  const before=stored.conversationId
+  assert.ok(before)
+  customers.save({text:'Nome informado depois',revision:owner.revision,contacts:[
+    {id:stored.id,text:stored.text,revision:stored.revision},{text:'(31) 8888-8888'}
+  ]},owner.id)
+  runtime.store.ingest(JSON.stringify(event('short-triage-repeat',short,null,'Nome do canal')))
+  const after=at.get(original.id,true)
+  assert.equal(after.name,'Nome informado depois')
+  assert.equal(after.references!.person[0]!.id,person.id)
+  assert.equal(after.references!.contact[0]!.id,contact.id)
+  assert.equal(after.references!.contact[0]!.participantKey,person.participantKey)
+  assert.equal(customers.contacts(owner.id).length,1)
+  assert.equal(customers.record(contact.id!).conversationId,before)
+  assert.equal(authority.canonicalChannelSendAllowed(short),false)
+  assert.equal(at.list().total,1)
+  assert.equal(db.prepare('SELECT count(*) n FROM chat_messages').get()!.n,2)
+ }finally{db.close()}
+})
+
 test('standalone LID without a name keeps phone empty and a shared provisional identity',()=>{
  const db=openDatabase(':memory:')
  try{
@@ -357,6 +414,8 @@ test('same-owner LID then existing PN reconciles references and replays without 
   assert.deepEqual(runtime.store.ingest(signed),receipt)
   assert.equal(at.list().total,1)
   assert.equal(at.get(first.id,true).references!.contact[0]!.id,known.id)
+  assert.ok(first.references!.person[0]!.participantKey)
+  assert.equal(at.get(first.id,true).references!.contact[0]!.participantKey,first.references!.person[0]!.participantKey)
   assert.equal(customers.record(provisional).id,known.id)
   assert.throws(()=>customers.save({text:'+5531999990711',revision:1},provisional),/arquivado/)
   assert.ok(customers.search('contact','').every(contact=>contact.id!==provisional))
