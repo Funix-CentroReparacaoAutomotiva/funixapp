@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {execFileSync} from 'node:child_process'
 import {backupDatabase} from '../database.ts'
+import {removeV26FixtureSchema} from './fixtures/production.ts'
 import {entityContactsFixture} from './fixtures/entity-contacts.ts'
 import {planParticipantGrouping,applyParticipantGrouping} from '../participant-grouping.ts'
 import {participantInventory} from '../customer-inventory.ts'
@@ -82,6 +83,7 @@ test('offline CLI previews without changing source and applies only to a fresh c
  const source=join(dir,'source.sqlite'),target=join(dir,'target.sqlite')
  const run=(...args:string[])=>JSON.parse(execFileSync(process.execPath,['server/group-participants-copy.ts',...args],{encoding:'utf8'}))
  try{
+   removeV26FixtureSchema(f.db)
    await backupDatabase(f.db,source)
    const original=readFileSync(source)
    assert.deepEqual(run(source),{mode:'preview_only',atendimentos:1,references:4,deferred:2})

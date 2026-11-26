@@ -1,3 +1,9 @@
+export const paymentMethods = {
+  pix: 'Pix', cash: 'Dinheiro', boleto: 'Boleto', debit: 'Cartão de débito',
+  credit: 'Cartão de crédito', transfer: 'Transferência bancária', other: 'Outra',
+} as const
+export type PaymentMethod = keyof typeof paymentMethods
+
 export type FinancialKind = 'receivable' | 'payable'
 
 export interface FinancialSettlement {
@@ -5,6 +11,8 @@ export interface FinancialSettlement {
   amountCents: number
   date: string
   reversedAt: string | null
+  paymentMethod?: PaymentMethod
+  installments?: number
 }
 
 export interface FinancialTitle {

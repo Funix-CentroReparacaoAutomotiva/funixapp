@@ -6,7 +6,10 @@ import {ProductionRepository} from '../../production.ts'
 import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 
 export function removeV27FixtureSchema(db: DatabaseSync) {
-  db.exec(`DROP INDEX production_experiences_in_operation;
+  db.exec(`ALTER TABLE financial_settlements DROP COLUMN installments;
+    ALTER TABLE financial_settlements DROP COLUMN payment_method;
+    DELETE FROM schema_migrations WHERE version=28;
+    DROP INDEX production_experiences_in_operation;
     ALTER TABLE production_experiences DROP COLUMN in_operation;
     DELETE FROM schema_migrations WHERE version=27;`)
 }

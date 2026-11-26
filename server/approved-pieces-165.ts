@@ -35,7 +35,7 @@ const equivalentAliases:Record<string,readonly string[]>={veiculo_completo:['vei
 
 export function planApprovedPieces(db:DatabaseSync){
  const versions=db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row=>Number(row.version))
- if(![20,21,22,23,24,25,26,27].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw new Error('Atualização de catálogo #162/#165/#180 exige um banco existente V20, V21, V22, V23, V24, V25, V26 ou V27. Não executa migrações.')
+ if(![20,21,22,23,24,25,26,27,28].includes(versions.length)||versions.some((v,i)=>v!==i+1))throw new Error('Atualização de catálogo #162/#165/#180 exige um banco existente V20, V21, V22, V23, V24, V25, V26, V27 ou V28. Não executa migrações.')
  const rows=db.prepare('SELECT id,kind,code,name,side,active,revision FROM catalog_items ORDER BY id').all() as Row[]
  const relevant=rows.filter(r=>r.kind==='peca'||approvedPieces.some(p=>r.id===stableId(p.code)||r.code===p.code))
  const decisions:Decision[]=approvedPieces.map(piece=>{

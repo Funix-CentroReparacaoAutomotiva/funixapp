@@ -1,3 +1,4 @@
+import {PaymentMethodFields, paymentMethodLabel, readPaymentMethod} from './PaymentMethodFields'
 import {useEffect, useEffectEvent, useRef, useState} from 'react'
 import type {FormEvent} from 'react'
 import type {CustomerReference} from '../shared/customer'
@@ -118,16 +119,17 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
     return ()=>controller.abort()
   },[base,data])
 
-  function submitFinance(event:FormEvent) {
+  function submitFinance(event:FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if(!financeForm)return
     const {action,id,date,titleId}=financeForm, amountCents=inputCents(financeForm.amount)
     if(!amountCents){setError('Informe o valor recebido.');return}
+    const payment = action==='receive' ? readPaymentMethod(new FormData(event.currentTarget)) : {}
     void run(async()=>{
       if(titleId){
-        await api('/api/financeiro/titulos/'+titleId+'/baixas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,date,amountCents})})
+        await api('/api/financeiro/titulos/'+titleId+'/baixas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,date,amountCents,...payment})})
         setFinance(await api<ExperienceFinance>(base+'/experiencia/financeiro'))
-      }else setFinance(await post<ExperienceFinance>('/experiencia/financeiro',{action,id,date,amountCents}))
+      }else setFinance(await post<ExperienceFinance>('/experiencia/financeiro',{action,id,date,amountCents,...payment}))
       setFinanceForm(null)
       setNotice(action==='receive'?'Recebimento registrado.':'Título criado.')
     })
@@ -192,6 +194,7 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
       {financeForm&&<form className="production-form" onSubmit={submitFinance}>
         {financeForm.action==='receive'?<label>Valor recebido<input required inputMode="decimal" value={financeForm.amount} disabled={busy}
           onChange={event=>setFinanceForm({...financeForm,amount:event.target.value})}/></label>:<p>Valor do título {currency(inputCents(financeForm.amount)??0)}</p>}
+        {financeForm.action==='receive'&&<PaymentMethodFields disabled={busy}/>}
         <label>{financeForm.action==='receive'?'Data do recebimento':'Vencimento'}<input required type="date" value={financeForm.date} disabled={busy}
           onChange={event=>setFinanceForm({...financeForm,date:event.target.value})}/></label>
         <div className="production-actions">
@@ -200,7 +203,7 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
         </div>
       </form>}
       {finance.receipts.filter(item=>!item.reversedAt).map(item=><div key={item.id} className="production-actions">
-        <span>{deliveryDateLabel(item.date)} · {currency(item.amountCents)}</span>
+        <span>{deliveryDateLabel(item.date)} · {currency(item.amountCents)} · {paymentMethodLabel(item)}</span>
         <button type="button" className="fh-filter" disabled={busy} onClick={()=>{
           if(!window.confirm('Desfazer este recebimento?'))return
           void run(async()=>{

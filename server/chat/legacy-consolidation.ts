@@ -21,8 +21,8 @@ export function consolidateLegacyCustomers(db:DatabaseSync,apply=false) {
   db.exec('BEGIN IMMEDIATE')
   try {
     const version=Number(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v)
-    if(![23,24,25,26,27].includes(version))
-      throw Error('Requer cópia do banco V23 a V27.')
+    if(![23,24,25,26,27,28].includes(version))
+      throw Error('Requer cópia do banco V23 a V28.')
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Banco com referências inválidas.')
     if(table('coda_sync_conversation_links')){
       const rows=db.prepare(`SELECT l.remote_jid,l.first_seen_at,a.atendimento_id

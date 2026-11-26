@@ -1,6 +1,6 @@
 import type {DatabaseSync} from 'node:sqlite'
 import {validDeliveryDate} from '../shared/delivery-date.ts'
-import type {FinancialOverview, FinancialTitle} from '../shared/finance.ts'
+import {paymentMethods, type PaymentMethod, type FinancialOverview, type FinancialTitle} from '../shared/finance.ts'
 import {ProductionRepository} from './production.ts'
 import {ServiceError} from './errors.ts'
 import {inputObject, transaction} from './scenarios.ts'
@@ -31,6 +31,20 @@ function text(value: unknown, max: number, field: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed.length > max || trimmed.includes('\u0000')) invalid(`Informe ${field} com até ${max} caracteres.`)
   return trimmed
+}
+
+function paymentDetails(data: Record<string, unknown>) {
+  const {paymentMethod, installments} = data
+  if (paymentMethod === undefined && installments === undefined) return {method:null, installments:null}
+  if (typeof paymentMethod !== 'string' || !Object.hasOwn(paymentMethods, paymentMethod))
+    invalid('Selecione uma forma de pagamento válida.')
+  if (paymentMethod === 'credit') {
+    if (typeof installments !== 'number' || !Number.isInteger(installments) || installments < 1 || installments > 12)
+      invalid('Informe de 1 a 12 parcelas no cartão de crédito.')
+    return {method:paymentMethod as PaymentMethod, installments}
+  }
+  if (installments !== undefined) invalid('Informe parcelas apenas para cartão de crédito.')
+  return {method:paymentMethod as PaymentMethod, installments:null}
 }
 
 export class FinanceRepository {
@@ -82,9 +96,11 @@ export class FinanceRepository {
   }
 
   experienceEntry(at: string, input: unknown) {
-    const data = inputObject(input, ['id','date','amountCents','action'])
+    const data = inputObject(input, ['id','date','amountCents','action','paymentMethod','installments'])
     const id = identifier(data.id)
     const {date, action} = data
+    const payment = paymentDetails(data)
+    if (action === 'title' && payment.method) invalid('Informe a forma de pagamento ao receber o valor.')
     if (!validDeliveryDate(date) || (action !== 'receive' && action !== 'title')) invalid('Confira a operação e a data.')
     return transaction(this.db, () => {
       const experience = new ProductionRepository(this.db).overview(at).experience
@@ -94,7 +110,8 @@ export class FinanceRepository {
       const amountCents = amount(data.amountCents)
       if (existing) {
         if (existing.experienceId !== experience.id || existing.kind !== 'receivable' || existing.amountCents !== amountCents ||
-            existing.dueDate !== date || Boolean(existing.directReceipt) !== (action === 'receive')) idempotencyConflict()
+            existing.dueDate !== date || Boolean(existing.directReceipt) !== (action === 'receive') || (action === 'receive' &&
+              ((existing.settlements[0]?.paymentMethod ?? null) !== payment.method || (existing.settlements[0]?.installments ?? null) !== payment.installments))) idempotencyConflict()
         return summary
       }
       if (amountCents > summary.untitledCents || (action === 'title' && amountCents !== summary.untitledCents))
@@ -103,15 +120,15 @@ export class FinanceRepository {
         VALUES (?,'receivable',?,?,?,?,?)`).run(id,experience.payer.text.slice(0,150),action === 'receive' ? 'Recebimento da Experiência' : 'Saldo da Experiência',amountCents,date,experience.id)
       // A direct receipt uses the same identifier for its document and settlement.
       // This keeps it in the existing cash history without creating an open balance on reversal.
-      if (action === 'receive') this.db.prepare('INSERT INTO financial_settlements (id,title_id,amount_cents,date) VALUES (?,?,?,?)')
-        .run(id,id,amountCents,date)
+      if (action === 'receive') this.db.prepare('INSERT INTO financial_settlements (id,title_id,amount_cents,date,payment_method,installments) VALUES (?,?,?,?,?,?)')
+        .run(id,id,amountCents,date,payment.method,payment.installments)
       return this.experience(at)
     })
   }
 
   private titles(id?: string, experienceId?: string): FinancialTitle[] {
     const query = this.db.prepare(`
-      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at
+      SELECT t.*, s.id AS settlement_id, s.amount_cents AS settled_cents, s.date, s.reversed_at, s.payment_method, s.installments
       FROM financial_titles t LEFT JOIN financial_settlements s ON s.title_id = t.id
       ${id !== undefined ? 'WHERE t.id = ?' : experienceId !== undefined ? 'WHERE t.experience_id = ?' : ''}
       ORDER BY t.due_date, t.id, s.date DESC, s.rowid DESC
@@ -132,7 +149,10 @@ export class FinanceRepository {
       if (row.settlement_id !== null) {
         const settlement = {
           id: String(row.settlement_id), amountCents: Number(row.settled_cents),
-          date: String(row.date), reversedAt: row.reversed_at as string | null,
+          date: String(row.date),
+          ...(row.payment_method ? {paymentMethod: row.payment_method as PaymentMethod} : {}),
+          ...(row.installments !== null ? {installments: Number(row.installments)} : {}),
+          reversedAt: row.reversed_at as string | null,
         }
         title.settlements.push(settlement)
         if (settlement.id === titleId) { title.directReceipt = true; title.balanceCents = 0 }
@@ -181,25 +201,26 @@ export class FinanceRepository {
   }
 
   settle(titleId: string, input: unknown): FinancialTitle {
-    const data = inputObject(input, ['id', 'amountCents', 'date'])
+    const data = inputObject(input, ['id', 'amountCents', 'date', 'paymentMethod', 'installments'])
     const id = identifier(data.id)
     const amountCents = amount(data.amountCents)
     const {date} = data
+    const payment = paymentDetails(data)
     if (!validDeliveryDate(date)) invalid('Informe uma data de baixa válida.')
 
     return transaction(this.db, () => {
       const title = this.title(identifier(titleId))
-      const existing = this.db.prepare('SELECT title_id, amount_cents, date FROM financial_settlements WHERE id = ?').get(id)
+      const existing = this.db.prepare('SELECT title_id, amount_cents, date, payment_method, installments FROM financial_settlements WHERE id = ?').get(id)
       if (existing) {
-        if (existing.title_id !== titleId || existing.amount_cents !== amountCents || existing.date !== date) idempotencyConflict()
+        if (existing.title_id !== titleId || existing.amount_cents !== amountCents || existing.date !== date || existing.payment_method !== payment.method || existing.installments !== payment.installments) idempotencyConflict()
         return title
       }
       if (id === titleId) idempotencyConflict()
       if (amountCents > title.balanceCents) {
         throw new ServiceError(409, 'FINANCE_AMOUNT_OVER_BALANCE', 'O valor da baixa excede o saldo pendente. Confira o saldo atualizado.')
       }
-      this.db.prepare('INSERT INTO financial_settlements (id, title_id, amount_cents, date) VALUES (?, ?, ?, ?)')
-        .run(id, titleId, amountCents, date)
+      this.db.prepare('INSERT INTO financial_settlements (id, title_id, amount_cents, date, payment_method, installments) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(id, titleId, amountCents, date, payment.method, payment.installments)
       return this.title(titleId)
     })
   }

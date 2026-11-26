@@ -357,6 +357,12 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:25,apply:createCustomerIdentitySchema},
   {version:26,apply:createFinanceSchema},
   {version:27,apply:addExperienceOperation},
+  {version:28,apply:db=>db.exec(`
+    ALTER TABLE financial_settlements ADD COLUMN payment_method TEXT
+      CHECK(payment_method IN ('pix','cash','boleto','debit','credit','transfer','other'));
+    ALTER TABLE financial_settlements ADD COLUMN installments INTEGER
+      CHECK(installments IS NULL OR (payment_method IS 'credit' AND installments BETWEEN 1 AND 12));
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {

@@ -33,7 +33,7 @@ function exact(v:unknown):string|null {
 }
 function checkDatabase(db:DatabaseSync){
  const versions=db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(r=>Number(r.version))
- if(![8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27].includes(versions.length)||versions.some((v,i)=>v!==i+1))fail('A importação exige banco existente com schema exatamente V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21, V22, V23, V24, V25, V26 ou V27; não executa migrações.')
+ if(![8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28].includes(versions.length)||versions.some((v,i)=>v!==i+1))fail('A importação exige banco existente com schema exatamente V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21, V22, V23, V24, V25, V26, V27 ou V28; não executa migrações.')
  if(db.prepare('PRAGMA integrity_check').get()?.integrity_check!=='ok' || db.prepare('PRAGMA foreign_key_check').all().length)fail('Banco com falha de integridade; importação recusada.')
 }
 function targetState(db:DatabaseSync){return {catalog:db.prepare('SELECT * FROM catalog_items ORDER BY id').all(),pricing:db.prepare('SELECT * FROM pricing_configuration ORDER BY id').all()}}
