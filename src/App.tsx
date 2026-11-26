@@ -165,7 +165,7 @@ function App() {
     const controller = new AbortController(), cached = cache.current.get(key)
     setListKey(key); setList(cached ?? null); setFailure(''); setLoading(!cached)
     const timer = window.setTimeout(() => {
-      const search = new URLSearchParams({ q: query, limit: '50', offset: '0' })
+      const search = new URLSearchParams({ q: query, funil: '1', limit: '50', offset: '0' })
       api<AtendimentoList>(`/api/atendimentos?${search}`, { signal: controller.signal }).then(result => {
         if (!controller.signal.aborted && currentKey.current === key) { cache.current.set(key, result); setList(result) }
       }).catch((cause: RequestFailure) => {
@@ -259,7 +259,7 @@ function App() {
     const controller = new AbortController(); pageRequest.current = controller
     setLoadingMore(true); setFailure('')
     try {
-      const search = new URLSearchParams({ q: query, limit: '50', offset: String(list.nextOffset) })
+      const search = new URLSearchParams({ q: query, funil: '1', limit: '50', offset: String(list.nextOffset) })
       const result = await api<AtendimentoList>(`/api/atendimentos?${search}`, { signal: controller.signal })
       if (controller.signal.aborted || currentKey.current !== key) return
       const combined = { ...result, items: [...list.items, ...result.items.filter(item => !list.items.some(old => old.id === item.id))] }

@@ -32,7 +32,7 @@ export type Experience = ExperienceParties & {
   inOperation: boolean
 }
 
-export type ExperienceInOperation = Pick<Experience, 'id' | 'customer' | 'vehicle' | 'scheduledEntry'> & {
+export type ExperienceInOperation = Pick<Experience, 'id' | 'customer' | 'vehicle' | 'scheduledEntry' | 'inOperation'> & {
   atendimentoId: string
 }
 

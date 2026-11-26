@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react'
 import type { FinancialTitle, FinancialExperienceOption } from '../shared/finance'
 import { api } from './api'
 import type { RequestFailure } from './api'
-import { money } from './money'
+import {todayInSaoPaulo, decimal, currency, inputCents} from './finance-format'
 import { Notice } from './ui'
 import './finance-page.css'
 
@@ -14,30 +14,6 @@ type Dashboard = { titles: FinancialTitle[]; experiences: FinancialExperienceOpt
 const direction: Record<Kind, string> = { receivable: 'A receber', payable: 'A pagar' }
 const settled: Record<Kind, string> = { receivable: 'Recebido', payable: 'Pago' }
 const settle: Record<Kind, string> = { receivable: 'Registrar recebimento', payable: 'Registrar pagamento' }
-
-function todayInSaoPaulo() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date())
-}
-
-function decimal(cents: number | bigint) {
-  const units = BigInt(cents)
-  return `${units / 100n}.${(units % 100n).toString().padStart(2, '0')}`
-}
-
-function currency(cents: number | bigint) {
-  return money(decimal(cents))
-}
-
-function inputCents(input: string) {
-  const clean = input.trim()
-  const valid = /^(?:\d+(?:[,.]\d{1,2})?|\d{1,3}(?:\.\d{3})+,\d{1,2})$/.test(clean)
-  if (!valid) return null
-  const [whole, fraction = ''] = (clean.includes(',') ? clean.replaceAll('.', '').replace(',', '.') : clean).split('.')
-  const cents = Number(whole + fraction.padEnd(2, '0'))
-  return Number.isSafeInteger(cents) && cents > 0 ? cents : null
-}
 
 function calendarDate(date: string) {
   return date.split('-').reverse().join('/')
@@ -186,7 +162,7 @@ export function FinancePage({ search, onAuthRequired, onBusy }: {
       return { ...item, title }
     })
   }).sort((left, right) => right.date.localeCompare(left.date))
-  const visibleTitles = titles.filter(title => (kind === 'all' || kind === title.kind) && (
+  const visibleTitles = titles.filter(title => !title.directReceipt && (kind === 'all' || kind === title.kind) && (
     status === 'all' || (status === 'pending' && title.balanceCents > 0) ||
     (status === 'overdue' && isOverdue(title, today)) || (status === 'settled' && title.balanceCents === 0)
   )).sort((left, right) => Number(left.balanceCents === 0) - Number(right.balanceCents === 0) || left.dueDate.localeCompare(right.dueDate))
