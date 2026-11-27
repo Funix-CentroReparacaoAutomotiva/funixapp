@@ -45,8 +45,8 @@ export function WorkspaceDialog({ label, className, close, children }: { label: 
 }
 
 type Navigation = { module: Workspace; path: string; navigate: (href: string) => boolean }
-export function WorkspaceSidebar({ module, collapsed, toggle, navigate, children }: Omit<Navigation, 'path'> & {
-  collapsed: boolean; toggle: () => void; children: ReactNode
+export function WorkspaceSidebar({ module, collapsed, toggle, navigate, onAccount, children }: Omit<Navigation, 'path'> & {
+  collapsed: boolean; toggle: () => void; onAccount: () => void; children: ReactNode
 }) {
   return <aside className="workspace-sidebar">
     <div className="workspace-sidebar-heading">
@@ -61,6 +61,8 @@ export function WorkspaceSidebar({ module, collapsed, toggle, navigate, children
       }}>{modules.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
     </label>}
     {children}
+    <button className="workspace-sidebar-account" type="button" aria-label="Minha conta" title="Minha conta"
+      aria-haspopup="dialog" onClick={onAccount}><WorkspaceIcon name="conta" />{!collapsed && <span>Minha conta</span>}</button>
   </aside>
 }
 
@@ -79,7 +81,7 @@ export function WorkspacePages({ module, path, navigate }: Navigation) {
   </nav>
 }
 
-export function WorkspacePicker({ module, navigate, close }: Omit<Navigation, 'path'> & { close: () => void }) {
+export function WorkspacePicker({ module, navigate, close, onAccount }: Omit<Navigation, 'path'> & { close: () => void; onAccount: () => void }) {
   return <WorkspaceDialog label="Selecionar módulo" close={close} className="workspace-picker">
     <div className="workspace-dialog-heading"><h2>Módulos</h2>
       <button className="workspace-icon" aria-label="Fechar seletor" onClick={close}><WorkspaceIcon name="close" /></button></div>
@@ -88,5 +90,7 @@ export function WorkspacePicker({ module, navigate, close }: Omit<Navigation, 'p
       onClick={() => { if (item.id === module.id || navigate(preferredPage(item))) close() }}>
       <WorkspaceIcon name={item.icon} /><span>{item.label}</span>
     </button>)}</div>
+    <button className="workspace-account-exit workspace-picker-account" type="button" aria-haspopup="dialog"
+      onClick={onAccount}><WorkspaceIcon name="conta" />Minha conta</button>
   </WorkspaceDialog>
 }

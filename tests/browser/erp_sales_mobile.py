@@ -42,6 +42,17 @@ async def run():
                     await expect(page.get_by_role("button", name="Sair", exact=True)).to_have_count(0)
                     if href == "desempenho":
                         await page.get_by_role("button", name="Aplicar", exact=True).wait_for()
+                        cards = page.locator(".erp-sales-dashboard-cards").first
+                        await expect(cards.locator("> section")).not_to_have_count(0)
+                        if width < 761:
+                            columns = await cards.evaluate("el => getComputedStyle(el).gridTemplateColumns")
+                            assert len(columns.split()) == 2, columns
+                        first = cards.locator("> section").first
+                        await expect(first.locator("> strong")).to_be_visible()
+                        await expect(first.locator("details > p")).not_to_be_visible()
+                        await first.locator("summary").click()
+                        await expect(first.locator("details > p")).to_be_visible()
+                        await first.locator("summary").click()
                     if width < 761:
                         box = await fab.bounding_box()
                         bottom = await nav.bounding_box()
@@ -59,10 +70,21 @@ async def run():
                     if evidence and width == 390:
                         Path(evidence).mkdir(parents=True, exist_ok=True)
                         await page.screenshot(path=str(Path(evidence) / (href + ".png")))
-                await page.get_by_role("button", name="Minha conta").click()
+                await expect(page.locator(".workspace-header").get_by_role("button", name="Minha conta")).to_have_count(0)
+                if width < 761:
+                    await expect(page.get_by_role("button", name="Minha conta")).to_have_count(0)
+                    await page.get_by_role("button", name="Selecionar módulo").click()
+                    menu = page.get_by_role("dialog", name="Selecionar módulo")
+                    await menu.get_by_role("button", name="Minha conta").click()
+                    await expect(menu).to_have_count(0)
+                else:
+                    await page.get_by_role("button", name="Recolher menu lateral").click()
+                    await page.locator(".workspace-sidebar").get_by_role("button", name="Minha conta").click()
                 account = page.get_by_role("dialog", name="Minha conta")
                 await expect(account.get_by_role("button", name="Sair", exact=True)).to_be_visible()
                 await account.get_by_role("button", name="Fechar conta").click()
+                if width > 760:
+                    await page.get_by_role("button", name="Expandir menu lateral").click()
                 await page.goto(ORIGIN + "/oficina/patio")
                 await expect(fab).to_have_count(0)
                 await expect(copilot).to_have_count(0)

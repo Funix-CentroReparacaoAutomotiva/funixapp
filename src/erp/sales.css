@@ -114,3 +114,33 @@
   .erp-sales-tracking-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .erp-sales-tracking-summary > div { padding: .45rem .65rem; }
 }
+
+.erp-sales-classification { grid-template-columns: minmax(0,1fr) auto; align-items: end; max-width: 30rem; }
+.erp-sales-classification > label { width: 100%; }
+.erp-sales-classification > p { grid-column: 1 / -1; margin: 0; }
+.erp-sales-card .erp-sales-classification-badge {
+  width: fit-content; border-radius: 4px; padding: .14rem .4rem;
+  background: #fff1dc; color: #80530f; font-weight: 650;
+}
+.erp-sales-classification-results {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap: .5rem;
+}
+.erp-sales-classification-notice { color: #1b6a45; background: #e9f6ef; border-radius: 8px; padding: .55rem .75rem; }
+
+.erp-sales-dashboard-cards { align-items: stretch; margin-bottom: 1rem; }
+.erp-sales-dashboard-cards > section {
+  display: flex; flex-direction: column; align-items: stretch; gap: .35rem;
+  min-width: 0; padding: .75rem;
+}
+.erp-sales-dashboard-cards > section :is(h2,h3) { font-size: .9rem; margin: 0; color: var(--sales-muted); }
+.erp-sales-dashboard-cards > section > strong {
+  font-size: clamp(1.25rem,4.7vw,1.7rem); line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.erp-sales-dashboard-cards > section > details { margin-top: auto; color: var(--sales-muted); font-size: .83rem; min-width: 0; }
+.erp-sales-dashboard-cards > section > details summary { color: var(--sales-navy); padding-top: .2rem; }
+.erp-sales-dashboard-cards details ul { padding-left: 1.25rem; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .erp-sales-dashboard-cards { grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; }
+  .erp-sales-dashboard-cards > section:has(details[open]) { grid-column: 1 / -1; }
+}

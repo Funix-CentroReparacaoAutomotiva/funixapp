@@ -228,3 +228,17 @@
 @media (max-width: 350px) {
   .workspace-sales-pages a span { font-size: .58rem; }
 }
+
+.workspace-picker-account { margin-top: .85rem; }
+.workspace-sidebar-account { display: none; }
+@media (min-width: 761px) {
+  .workspace-sidebar { display: flex; flex-direction: column; }
+  .workspace-sidebar-account {
+    display: flex; align-items: center; gap: 10px; margin: auto 6px 6px;
+    border: 0; border-top: 1px solid #314b70; background: transparent;
+    color: #e1ebf9; padding: .75rem .65rem; min-height: 44px; text-align: left;
+    font-size: .92rem; cursor: pointer; border-radius: 8px;
+  }
+  .workspace-sidebar-account:hover { color: #fff; background: #284970; }
+  .is-collapsed .workspace-sidebar-account { justify-content: center; margin-inline: 0; padding-inline: 0; }
+}

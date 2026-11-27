@@ -305,7 +305,7 @@ function App() {
     const creating = !editor?.record
     dirty.current = false; setEditor(null); cache.current.clear(); setList(null); setRecord(savedRecord)
     if (creating) {
-      window.history.pushState({ funixIndex:(historyState.current?.funixIndex??0)+1,returnTo: module.id === 'vendas' && !isDetail ? routeKey : '/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
+      window.history.pushState({ funixIndex:(historyState.current?.funixIndex??0)+1,returnTo: module.id === 'vendas' && !isDetail ? routeKey : '/vendas/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
       setRoute(readRoute())
     }
     setReload(value => value + 1); setSavedMessage('Atendimento salvo no aplicativo.')
@@ -319,7 +319,7 @@ function App() {
   return <div className={`app-shell workspace-shell ${session?.authenticated ? 'workspace-authenticated' : ''}`}>
     <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''}`} inert={Boolean(editor)}>
       {session?.authenticated && <>
-        <WorkspaceSidebar module={module} collapsed={sidebarCollapsed} toggle={() => setSidebarCollapsed(value => !value)} navigate={navigate}>
+        <WorkspaceSidebar module={module} collapsed={sidebarCollapsed} toggle={() => setSidebarCollapsed(value => !value)} navigate={navigate} onAccount={() => setAccountOpen(true)}>
           <WorkspacePages module={module} path={route.path} navigate={navigate} />
         </WorkspaceSidebar>
         <header className="workspace-header">
@@ -331,8 +331,6 @@ function App() {
                 returnTo: isDetail ? window.history.state?.returnTo || preferredPage(module) : routeKey,
               })
             }} />
-            <button className="workspace-icon" type="button" aria-haspopup="dialog"
-              aria-label="Minha conta" onClick={() => setAccountOpen(true)}><WorkspaceIcon name="conta" /></button>
             <button className="workspace-icon workspace-picker-button" type="button" aria-haspopup="dialog"
               aria-label="Selecionar módulo" onClick={() => setPickerOpen(true)}><WorkspaceIcon name="menu" /></button>
           </div>
@@ -342,7 +340,7 @@ function App() {
           <button className="workspace-account-exit" onClick={() => void logout()}><WorkspaceIcon name="sair" /> Sair</button>
           {failure && <p role="alert">{failure}</p>}
         </WorkspaceDialog>}
-        {pickerOpen && <WorkspacePicker module={module} navigate={navigate} close={() => setPickerOpen(false)} />}
+        {pickerOpen && <WorkspacePicker module={module} navigate={navigate} close={() => setPickerOpen(false)} onAccount={() => { setPickerOpen(false); setAccountOpen(true) }} />}
       </>}
       <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport}
         onClickCapture={mapClickCapture} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}}
@@ -362,7 +360,7 @@ function App() {
       <TaskRecordContext.Provider value={setTaskRecord}>
       {!isDetail ? <main className="fh-work">
         {!session?.authenticated && <header className="workspace-login-brand">FUNIX ERP</header>}
-        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : erp && erp.view !== 'configuracoes' ? <>
+        {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/vendas/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : erp && erp.view !== 'configuracoes' ? <>
           <div key={route.path} className="erp-view">
             {erp.area === 'inicio' && <h1>Início</h1>}
             {erp.area === 'oficina' && <Workshop view={erp.view} />}

@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+import os
 from pathlib import Path
 
 from playwright.async_api import async_playwright, expect
@@ -17,7 +18,9 @@ async def run():
         vite = harness.start(["node", "node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5173", "--strictPort"], "vite")
         await harness.ready(ORIGIN, vite)
         options = {"headless": True, "args": ["--no-sandbox"]}
-        if Path("/usr/bin/chromium").exists():
+        if os.environ.get("FUNIX_CHROMIUM"):
+            options["executable_path"] = os.environ["FUNIX_CHROMIUM"]
+        elif Path("/usr/bin/chromium").exists():
             options["executable_path"] = "/usr/bin/chromium"
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(**options)
@@ -32,7 +35,41 @@ async def run():
                                                  data={"name": "Vendas QA", "phone": "31999990109", "purpose": "commercial", "plate": "QAQ1A09"},
                                                  headers={"Origin": ORIGIN})
             assert record.ok, await record.text()
+            triage = await context.request.post(ORIGIN + "/api/atendimentos",
+                data={"name":"Classificação QA","phone":"31999990110","purpose":"unclassified","plate":"QAQ1A10"},
+                headers={"Origin": ORIGIN})
+            assert triage.ok, await triage.text()
+            triage_id = (await triage.json())["id"]
             await page.reload()
+            await expect(page.locator(".erp-sales-board .erp-sales-lane")).to_have_count(6)
+            assert await page.locator(".erp-sales-board .erp-sales-lane").evaluate_all(
+                "els => els.map(el => el.getAttribute('aria-label'))") == [
+                "Novo contato", "Aguardando dados", "Em negociação", "Morno", "Frio", "Orçamento rejeitado"]
+            await expect(page.get_by_role("link", name="Triagem", exact=True)).to_have_count(0)
+            await expect(page.get_by_role("button", name="Tabela", exact=True)).to_have_count(0)
+            await expect(page.get_by_role("button", name="Quadro", exact=True)).to_have_count(0)
+            await expect(page.get_by_text("Retornos prioritários", exact=False)).to_have_count(0)
+            first_lane = page.get_by_role("region", name="Novo contato", exact=True)
+            candidate = first_lane.get_by_role("button", name="Classificação QA", exact=False)
+            await expect(candidate).to_contain_text("A classificar")
+            await candidate.click()
+            await page.get_by_label("Classificação", exact=True).select_option("non_commercial")
+            await page.get_by_role("button", name="Salvar classificação").click()
+            await expect(page.get_by_text("Classificação QA · Classificação salva: Não comercial", exact=True)).to_be_visible()
+            await expect(candidate).to_have_count(0)
+            await page.get_by_label("Etapa", exact=True).select_option("non-commercial")
+            await page.get_by_role("button", name="Filtrar", exact=True).click()
+            await page.get_by_role("button", name="Classificação QA", exact=False).click()
+            await page.get_by_label("Classificação", exact=True).select_option("commercial")
+            await page.get_by_role("button", name="Salvar classificação").click()
+            await expect(page.get_by_text("Classificação QA · Classificação salva: Comercial", exact=True)).to_be_visible()
+            await expect(page.get_by_role("button", name="Classificação QA", exact=False)).to_have_count(0)
+            record_after = await context.request.get(ORIGIN + "/api/atendimentos/" + triage_id)
+            assert record_after.ok and (await record_after.json())["purpose"] == "commercial"
+            await page.get_by_label("Etapa", exact=True).select_option("")
+            await page.get_by_role("button", name="Filtrar", exact=True).click()
+            await expect(first_lane.get_by_role("button", name="Classificação QA", exact=False)).to_be_visible()
+            await expect(first_lane.get_by_role("button", name="Classificação QA", exact=False)).not_to_contain_text("A classificar")
             await page.get_by_role("button", name="Vendas QA", exact=False).click()
             await page.get_by_label("Etapa comercial", exact=True).select_option("em-negociacao")
             await page.get_by_role("button", name="Alterar etapa").click()
@@ -47,8 +84,7 @@ async def run():
             await page.get_by_role("button", name="Salvar acompanhamento").click()
             await expect(page.get_by_text(re.compile(r"Retorno vencido · 20/01/2025,? 14:45"))).to_be_visible()
             await page.get_by_role("button", name="Fechar detalhes").click()
-            await page.get_by_role("button", name="Tabela", exact=True).click()
-            await expect(page.get_by_role("table")).to_contain_text("Vendas QA")
+            await expect(page.get_by_role("region", name="Em negociação", exact=True)).to_contain_text("Vendas QA")
             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
             await page.goto(ORIGIN + "/vendas/desempenho")
             await expect(page.get_by_role("heading", name="Prioridades do dia")).to_be_visible()
@@ -56,7 +92,7 @@ async def run():
             await expect(page.get_by_role("heading", name="Valor recebido")).to_be_visible()
             assert not harness.external and not harness.page_errors, (harness.external, harness.page_errors)
             await browser.close()
-            harness.mark("Vendas mobile: atualização de etapa, comentário, retorno vencido, tabela e Desempenho")
+            harness.mark("Vendas mobile: atualização de etapa, comentário, retorno vencido, classificação no Kanban de seis etapas e Desempenho")
     finally:
         harness.cleanup()
 

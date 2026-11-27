@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { salesChannels } from '../../shared/sales'
 import type { FunnelCard, SalesActivity, SalesContext, SalesMetric, SalesStage, TrackingCard } from '../../shared/sales'
-import type { Atendimento } from '../../shared/contracts'
+import { ATENDIMENTO_PURPOSES } from '../../shared/contracts'
+import type { Atendimento, AtendimentoPurpose } from '../../shared/contracts'
 import { workshopPhases } from '../../shared/erp'
 import { api } from '../api'
 import { currency } from '../finance-format'
@@ -20,7 +21,7 @@ const money=(value:string|null|undefined)=>value==null?'—':formatMoney(value)
 const recordLink=(id:string,suffix='')=>'/atendimentos/'+encodeURIComponent(id)+suffix
 const formData=(event:FormEvent<HTMLFormElement>)=>new FormData(event.currentTarget)
 const field=(form:FormData,name:string)=>String(form.get(name)??'')
-const post=<T,>(path:string,body:unknown)=>api<T>(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+const writeJson=<T,>(path:string,body:unknown,method:'POST'|'PATCH')=>api<T>(path,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
 const message=(error:unknown)=>error instanceof Error?error.message:'O FUNIX não concluiu a operação.'
 
 function useRead<T>(path:string|null,refresh=0) {
@@ -40,9 +41,9 @@ function useRead<T>(path:string|null,refresh=0) {
 }
 function useWrite(onSave:()=>void) {
   const [busy,setBusy]=useState(false),[status,setStatus]=useState(''),[failure,setFailure]=useState('')
-  const save=async(path:string,body:unknown)=>{
+  const save=async(path:string,body:unknown,method:'POST'|'PATCH'='POST')=>{
     setBusy(true);setStatus('');setFailure('')
-    try {await post(path,body);setStatus('Alteração salva.');onSave()}
+    try {await writeJson(path,body,method);setStatus('Alteração salva.');onSave()}
     catch(error){setFailure(message(error))}
     finally{setBusy(false)}
   }
@@ -116,7 +117,7 @@ function RecordActions({id}:{id:string}) {
 }
 function StageEditor({record,stages,onSave}:{record:Atendimento;stages:SalesStage[];onSave:()=>void}) {
   const [stage,setStage]=useState(record.stage),write=useWrite(onSave)
-  if(record.purpose==='non_commercial'||record.purpose==='unclassified')return <p>Classifique o atendimento na ficha para alterar a etapa comercial.</p>
+  if(record.purpose==='non_commercial'||record.purpose==='unclassified')return null
   return <form className="erp-sales-form" onSubmit={event=>{
     event.preventDefault()
     void write.save(endpoint+'/records/'+record.id+'/stage',{stage,reason:field(formData(event),'reason'),revision:record.revision})
@@ -126,10 +127,30 @@ function StageEditor({record,stages,onSave}:{record:Atendimento;stages:SalesStag
     <button disabled={write.busy||stage===record.stage}>Alterar etapa</button><WriteStatus write={write}/>
   </form>
 }
-function FunnelDetail({card,stages,refresh,onSave}:{card:FunnelCard;stages:SalesStage[];refresh:number;onSave:()=>void}) {
+function PurposeEditor({record,onClassified}:{record:Atendimento;onClassified:(purpose:AtendimentoPurpose)=>void}) {
+  const current=record.purpose??'commercial'
+  const [purpose,setPurpose]=useState<AtendimentoPurpose>(current)
+  const write=useWrite(()=>onClassified(purpose))
+  return <form className="erp-sales-form erp-sales-classification" onSubmit={event=>{
+    event.preventDefault()
+    if(write.busy||purpose===current)return
+    void write.save('/api/atendimentos/'+encodeURIComponent(record.id),{
+      purpose,revision:record.revision,
+      ...(purpose!=='commercial'?{stage:'novo-lead',explicitRefusal:false,rejectionReason:''}:{})
+    },'PATCH')
+  }}>
+    <label>Classificação<select aria-label="Classificação" value={purpose} disabled={write.busy} onChange={event=>setPurpose(event.target.value as AtendimentoPurpose)}>
+      {Object.entries(ATENDIMENTO_PURPOSES).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+    </select></label>
+    {purpose!==current&&purpose!=='commercial'&&record.stage!=='novo-lead'&&<p>A etapa comercial voltará ao início.</p>}
+    <button className="erp-sales-filter-button" disabled={write.busy||purpose===current}>{write.busy?'Salvando…':'Salvar classificação'}</button><WriteStatus write={write}/>
+  </form>
+}
+function FunnelDetail({card,stages,refresh,onSave,onClassified}:{card:FunnelCard;stages:SalesStage[];refresh:number;onSave:()=>void;onClassified:(purpose:AtendimentoPurpose)=>void}) {
   const {record,context}=card
   return <section className="erp-sales-detail">
     <h2>{humanName(record)}</h2><p>{recordVehicle(record)}</p>
+    <PurposeEditor key={record.revision} record={record} onClassified={onClassified}/>
     <RecordActions id={record.id}/>
     <StageEditor key={record.revision} record={record} stages={stages} onSave={onSave}/>
     <ContextEditor key={context.revision} id={record.id} context={context} onSave={onSave}/>
@@ -140,6 +161,7 @@ function FunnelPreview({card,onClick}:{card:FunnelCard;onClick:()=>void}) {
   const {record,context}=card,amount=record.commercialValue
   return <button className={'erp-sales-card'+(card.overdue?' erp-sales-overdue':'')} onClick={onClick}>
     <strong>{humanName(record)}</strong><span>{recordVehicle(record)}</span>
+    {card.lane==='triage'&&<span className="erp-sales-classification-badge">A classificar</span>}
     {amount&&<span>{amount.min===amount.max?money(amount.min):money(amount.min)+' a '+money(amount.max)}</span>}
     <span>Última atividade · {dateLabel(card.lastActivityAt)}</span>
     <span>{card.overdue?'Retorno vencido':'Próximo contato'} · {dateLabel(card.nextContactAt)}</span>
@@ -148,44 +170,45 @@ function FunnelPreview({card,onClick}:{card:FunnelCard;onClick:()=>void}) {
 }
 function Funnel() {
   const [query,setQuery]=useState(()=>new URLSearchParams(window.location.search))
-  const [mode,setMode]=useState('board'),[selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0)
+  const [selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0)
+  const [classificationNotice,setClassificationNotice]=useState('')
   const invalidate=()=>setRefresh(count=>count+1)
-  const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+query,refresh)
-  const lanes=[{id:'triage',label:'A classificar'},{id:'non-commercial',label:'Não comercial'},...(read.data?.stages??[])]
-  const active=read.data?.cards.find(c=>c.record.id===selected)
+  const apiQuery=new URLSearchParams(query)
+  apiQuery.delete('stage')
+  const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+apiQuery,refresh)
+  const lanes=read.data?.stages??[]
+  const stageFilter=query.get('stage')??''
+  const auxiliary=stageFilter==='triage'||stageFilter==='non-commercial'
+  const cards=(read.data?.cards??[]).filter(card=>auxiliary?card.lane===stageFilter:
+    card.lane!=='non-commercial'&&(!stageFilter||(card.lane==='triage'?'novo-lead':card.lane)===stageFilter))
+  const active=cards.find(c=>c.record.id===selected)
   useTaskRecord(active?.record.id)
   return <>
-    <div className="erp-sales-heading"><h1>Funil de vendas</h1><a className="erp-sales-link" href="/funil">Triagem</a></div>
-    <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
+    <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
+    <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setSelected(null);setClassificationNotice('');setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
       <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''}/></label>
       <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
       <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
       <label>Origem<select name="origin" defaultValue={query.get('origin')??''}><option value="">Todas</option>{read.data?.origins.map(origin=><option key={origin}>{origin}</option>)}</select></label>
-      <label>Etapa<select name="stage" key={lanes.length} defaultValue={query.get('stage')??''}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}</select></label>
+      <label>Etapa<select aria-label="Etapa" name="stage" key={lanes.length} defaultValue={query.get('stage')??''}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}<option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>
       <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
     </form>
     <ReadStatus read={read}/>
     {read.data&&<>
-      <div className="erp-sales-actions erp-sales-view-toggle">
-        <button type="button" aria-pressed={mode==='board'} onClick={()=>setMode('board')}><WorkspaceIcon name="board" />Quadro</button>
-        <button type="button" aria-pressed={mode==='table'} onClick={()=>setMode('table')}><WorkspaceIcon name="table" />Tabela</button>
-      </div>
-      <details className="erp-sales-priorities"><summary>Retornos prioritários ({read.data.cards.filter(card=>card.overdue).length})</summary>
-        {read.data.cards.filter(card=>card.overdue).map(card=><button type="button" key={card.record.id} onClick={()=>setSelected(card.record.id)}>{humanName(card.record)} · {dateLabel(card.nextContactAt)}</button>)}
-      </details>
-      {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><FunnelDetail key={active.record.id} card={active} stages={read.data.stages} refresh={refresh} onSave={invalidate}/></>}
-      {mode==='board'?<div className="erp-sales-board">{lanes.filter(lane=>!query.get('stage')||query.get('stage')===lane.id).map(lane=>{
-        const cards=read.data!.cards.filter(card=>card.lane===lane.id)
-        return <section className="erp-sales-lane" key={lane.id}><h2>{lane.label} <small>{cards.length}</small></h2>
-          {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
+      {classificationNotice&&<p role="status" className="erp-sales-classification-notice">{classificationNotice}</p>}
+      {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><FunnelDetail key={active.record.id} card={active} stages={read.data.stages} refresh={refresh} onSave={invalidate} onClassified={purpose=>{
+        setClassificationNotice(humanName(active.record)+' · Classificação salva: '+ATENDIMENTO_PURPOSES[purpose])
+        invalidate()
+      }}/></>}
+      {auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
+        {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
+      </div>:<div className="erp-sales-board">{lanes.filter(lane=>!stageFilter||stageFilter===lane.id).map(lane=>{
+        const laneCards=cards.filter(card=>(card.lane==='triage'?'novo-lead':card.lane)===lane.id)
+        return <section className="erp-sales-lane" key={lane.id} aria-label={lane.label}><h2>{lane.label} <small>{laneCards.length}</small></h2>
+          {laneCards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
         </section>
-      })}</div>:<div className="erp-sales-table"><table><thead><tr><th>Cliente</th><th>Veículo</th><th>Etapa</th><th>Próximo contato</th><th>Responsável</th></tr></thead>
-        <tbody>{read.data.cards.map(card=><tr key={card.record.id}>
-          <td><button type="button" onClick={()=>setSelected(card.record.id)}>{humanName(card.record)}</button></td>
-          <td>{recordVehicle(card.record)}</td><td>{lanes.find(lane=>lane.id===card.lane)?.label}</td>
-          <td>{dateLabel(card.nextContactAt)}{card.overdue?' · Vencido':''}</td><td>{card.context.owner||'—'}</td>
-        </tr>)}</tbody>
-      </table>{read.data.cards.length===0&&<p>Nenhum atendimento corresponde aos filtros.</p>}</div>}
+      })}</div>}
+      {!cards.length&&<p>Nenhum atendimento corresponde aos filtros.</p>}
     </>}
   </>
 }
@@ -266,11 +289,13 @@ function Tracking() {
   </>
 }
 
-function RelatedRecords({ids}:{ids:string[]}) {
+function RelatedRecords({ids,definition,href,summaryLabel}:{ids:string[];definition?:string;href?:string;summaryLabel?:string}) {
   const [expanded,setExpanded]=useState(false),[offset,setOffset]=useState(0)
   const batch=ids.slice(offset,offset+50)
   const read=useRead<{records:Atendimento[]}>(expanded&&batch.length?endpoint+'/records?ids='+batch.join(','):null)
-  return <details onToggle={event=>setExpanded(event.currentTarget.open)}><summary>{ids.length} registros</summary>
+  return <details onToggle={event=>setExpanded(event.currentTarget.open)}><summary>{summaryLabel??(ids.length===1?'1 registro':ids.length+' registros')}</summary>
+    {definition&&<p>{definition}</p>}
+    {href&&<a href={href}>Abrir Funil</a>}
     <ReadStatus read={read}/>
     <ul>{read.data?.records.map(record=><li key={record.id}><a href={recordLink(record.id)}>{humanName(record)} · {recordVehicle(record)}</a></li>)}</ul>
     {ids.length>50&&<div className="erp-sales-actions"><button disabled={offset===0} onClick={()=>setOffset(value=>value-50)}>Anteriores</button>
@@ -305,11 +330,11 @@ function Dashboard() {
           <button disabled={write.busy}>Salvar meta</button><WriteStatus write={write}/>
         </form>
       </details>
-      <div className="erp-sales-metrics">{data.metrics.map(metric=><section key={metric.label}><h2>{metric.label}</h2><strong>{metric.value}</strong><p>{metric.definition}</p>
-        {metric.href&&<a href={metric.href}>Abrir Funil</a>}<RelatedRecords key={query} ids={metric.records}/>
+      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.metrics.map(metric=><section key={metric.label}><h2>{metric.label}</h2><strong>{metric.value}</strong>
+        <RelatedRecords key={query} ids={metric.records} definition={metric.definition} href={metric.href}/>
       </section>)}</div>
       <h2>Prioridades do dia</h2>
-      <div className="erp-sales-metrics">{data.priorities.map(priority=><section key={priority.label}><h3>{priority.label}</h3><RelatedRecords key={query} ids={priority.records}/></section>)}</div>
+      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.priorities.map(priority=><section key={priority.label}><h3>{priority.label}</h3><strong>{priority.records.length}</strong><RelatedRecords key={query} ids={priority.records} summaryLabel="Ver registros"/></section>)}</div>
     </>}
   </>
 }
