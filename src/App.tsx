@@ -337,6 +337,7 @@ function App() {
           if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
           const link = event.target instanceof Element ? event.target.closest('a') : null
           if (!link || link.target || link.hasAttribute('download') || link.origin !== window.location.origin) return
+          if (link.hash && link.pathname === route.path && link.search === route.search) return
           if (!link.pathname.startsWith('/atendimentos/') && !workspaceFor(link.pathname) && !erpRoute(link.pathname)) return
           event.preventDefault()
           navigate(link.pathname + link.search + link.hash, false, {
