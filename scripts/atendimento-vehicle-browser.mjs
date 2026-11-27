@@ -83,8 +83,11 @@ try{
    const phoneLine=page.locator('.detail-header .detail-contact-lines .detail-phone')
    await phoneLine.waitFor()
    assert.equal((await phoneLine.innerText()).trim(),'31999990000')
-   for(const tab of ['Orçamentos','Mapa','WhatsApp']){
+   assert.match(await page.locator('.detail-number').innerText(),/^AT\d{6}$/)
+   for(const tab of ['Diagnóstico','Confirmação','WhatsApp']){
     await page.getByRole('button',{name:tab,exact:true}).click()
+    assert.equal(await page.locator('.approved-finance .summary').isVisible(),true)
+    assert.equal(await page.getByRole('button',{name:'Abrir Copiloto FUNIX',exact:true}).isVisible(),true)
     assert.equal(await phoneLine.isVisible(),true,`${width}px: telefone oculto na aba ${tab}`)
     assert.equal((await phoneLine.innerText()).trim(),'31999990000')
    }
@@ -134,14 +137,20 @@ try{
    await page.getByRole('button',{name:'Dados',exact:true}).click()
    const edit=page.getByRole('form',{name:'Editar Atendimento'});await edit.waitFor()
    assert.equal(await page.evaluate(()=>Boolean(document.activeViewTransition)),false,'Dados abre sem sobreposição da tela anterior')
-   assert.deepEqual(await page.locator('.workspace-record-pages button span').allTextContents(),['Dados','WhatsApp','Orçamentos','Agendamento'])
+   assert.deepEqual(await page.locator('.workspace-record-pages button span').allTextContents(),['Dados','WhatsApp','Diagnóstico','Confirmação'])
    assert.equal(await page.locator('.workspace-header,.workspace-sidebar,.workspace-pages').count(),0)
    assert.equal(await page.getByRole('button',{name:'Editar Atendimento',exact:true}).count(),0)
    assert.equal(await page.getByRole('button',{name:'Diário',exact:true}).count(),0)
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true)
    await page.screenshot({path:artifacts+'/dados-'+width+'.png'})
    const personBlock=edit.getByRole('region',{name:'Pessoas'})
-   assert.equal(await personBlock.getByText('Pessoa e telefone').isVisible(),true)
+   assert.equal(await personBlock.getByText('Cliente',{exact:true}).isVisible(),true)
+   const payer=edit.getByRole('region',{name:'Pagadores'})
+   assert.equal(await payer.getByRole('textbox',{name:'Pagador',exact:true}).isDisabled(),true)
+   await payer.getByLabel('Tipo de pagante 1').selectOption('Particular')
+   await payer.getByRole('textbox',{name:'Pagador',exact:true}).fill('Pagante sintético')
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
+   assert.equal(fixture.atendimentos.get(record.id,true).references.payer[0].payerType,'Particular')
    const numberBefore=fixture.atendimentos.get(record.id,true).references.contact[0].id
    assert.ok(numberBefore)
    assert.equal(await personBlock.getByText('31999990000').count()>0,true,'telefone principal não deve ficar oculto')
@@ -152,7 +161,7 @@ try{
    await personDialog.getByRole('textbox',{name:'Nome da Entidade'}).fill('Contato Sintético Atualizado')
    await personDialog.getByRole('button',{name:'Salvar pessoa e telefones'}).click()
    await personDialog.waitFor({state:'hidden'})
-   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
    assert.equal(fixture.atendimentos.get(record.id,true).references.contact[0].id,numberBefore,
      'editar nome não pode perder a referência telefônica')
    assert.equal(fixture.atendimentos.get(record.id,true).references.contact.length,1,
@@ -167,7 +176,7 @@ try{
    const notesField=edit.getByRole('textbox',{name:'Observações'})
    await notesField.fill('Relato sintético de teste')
    await notesField.focus()
-   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
    assert.equal(await notesField.evaluate(el=>document.activeElement===el),true,`${width}px: campo Observações perdeu foco no autosave`)
    // Editar texto já salvo no meio sem reposicionamento nem Backspace inesperado.
    await notesField.evaluate(el=>el.setSelectionRange(7,7))
@@ -179,12 +188,12 @@ try{
    await notesField.press('End')
    await notesField.type(' e continuação')
    assert.equal(await notesField.inputValue(),'Relato sintético de teste e continuação')
-   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
    assert.equal(fixture.atendimentos.get(record.id).notes,'Relato sintético de teste e continuação')
    // Issue #164: autosave após pausa, sem clique manual.
-   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
    await edit.getByLabel('Próximo contato',{exact:true}).fill('2026-11-27T14:45')
-   await edit.getByText('Salvo automaticamente').waitFor({timeout:10000})
+   await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
    assert.equal(db.prepare('SELECT next_contact_at FROM erp_sales_context WHERE atendimento_id=?').get(record.id).next_contact_at,'2026-11-27T17:45:00.000Z')
    await page.getByLabel('Comentário',{exact:true}).fill('Comentário sintético de teste')
    await page.getByRole('button',{name:'Registrar comentário',exact:true}).click()
@@ -211,7 +220,7 @@ try{
    assert.equal(await editAgain.getByRole('textbox',{name:'Ano do modelo'}).inputValue(),'20')
    await page.getByRole('button',{name:'WhatsApp',exact:true}).click()
    // Issue #121: commercial draft is saved per scenario, confirmed by API and restored on reload.
-   await page.getByRole('button',{name:'Orçamentos',exact:true}).click()
+   await page.getByRole('button',{name:'Diagnóstico',exact:true}).click()
    const finance=page.getByRole('region',{name:'Painel financeiro'})
    await finance.locator('.summary').click()
    await finance.getByRole('button',{name:/Negociação comercial/}).click()

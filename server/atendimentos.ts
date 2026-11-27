@@ -76,6 +76,7 @@ function map(row: Record<string, SQLOutputValue>): Atendimento {
   return {
     ...(row.purpose==null?{}:{purpose:row.purpose as Atendimento['purpose']}),
     ...(row.closed_at==null?{}:{closedAt:String(row.closed_at)}),
+    ...(row.display_number==null?{}:{displayNumber:'AT'+String(row.display_number).padStart(6,'0')}),
     id: String(row.id), phone: String(row.phone), phoneNormalized: row.phone_normalized === null ? null : String(row.phone_normalized),
     name: String(row.name), vehicle: String(row.vehicle), brand: String(row.brand), model: String(row.model),
     fabricationYear: row.fabrication_year == null ? null : String(row.fabrication_year),
@@ -112,13 +113,15 @@ export class AtendimentoRepository {
     const where = (funnel ? 'NOT EXISTS (SELECT 1 FROM production_experiences WHERE atendimento_id=atendimentos.id) AND ' : '') + `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
     const values = [search, digits, `%${digits}%`]
     const total = Number(this.db.prepare(`SELECT count(*) AS total FROM atendimentos WHERE ${where}`).get(...values)!.total)
-    const items = this.db.prepare(`SELECT * FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
+    const items = this.db.prepare(`SELECT ${this.selectColumns()} FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
     return { items, total, nextOffset: offset + items.length < total ? offset + items.length : null, stages: ATENDIMENTO_STAGES }
   }
 
+  private selectColumns() {return this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='atendimento_numbers'").get()?"atendimentos.*, (SELECT number FROM atendimento_numbers WHERE atendimento_id=atendimentos.id) AS display_number":'atendimentos.*'}
+
   get(id: string, includeReferences = false): Atendimento {
     if (!uuid.test(id)) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
-    const row = this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(id)
+    const row = this.db.prepare(`SELECT ${this.selectColumns()} FROM atendimentos WHERE id=?`).get(id)
     if (!row) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
     const record=map(row)
     const customers=new CustomerRepository(this.db)

@@ -1,5 +1,8 @@
 export type ReferenceKind = 'person' | 'contact' | 'vehicle' | 'payer'
+export const payerTypes = ['Particular','Terceiro','Associação','Seguradora'] as const
+export type PayerType = typeof payerTypes[number]
 export type CustomerReference = {
+  payerType?: PayerType
   id: string | null
   text: string
   entityId?: string|null

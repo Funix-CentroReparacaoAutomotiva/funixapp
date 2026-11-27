@@ -121,7 +121,7 @@ db.close()
         await expect(order_row.locator(".budget-action-or")).to_have_class(re.compile("budget-action-issued"))
         original_url = page.url
         assert count_orders() == 0
-        await history.get_by_role("button", name="Agendamento e experiência").click()
+        await history.get_by_role("button", name="Agendar", exact=True).click()
         production = page.get_by_role("region", name="Experiência do Atendimento")
         await production.get_by_role("button", name="Agendar Atendimento").click()
         schedule = production.get_by_role("form", name="Agendamento")
@@ -218,7 +218,7 @@ db.close()
         assert order["scope"]["lines"][0]["stages"][0]["name"] == "Etapa sintética"
         mark("escopo imutável coincide com snapshot emitido, exclui serviços desmarcados e dados financeiros")
 
-        await history.get_by_role("button", name="Agendamento e experiência").click()
+        await history.get_by_role("button", name="Agendar", exact=True).click()
         in_operation = production.get_by_role("checkbox", name="Em operação", exact=True)
         await expect(in_operation).not_to_be_checked()
         async with page.expect_response(lambda r: r.url.endswith("/experiencia/operacao")) as switched_on:
@@ -388,7 +388,7 @@ db.close()
         async def change_delivery_in_schedule(value):
             current = await get(at_url)
             await page.goto(ORIGIN + browse)
-            await history.get_by_role("button", name="Agendamento e experiência").click()
+            await history.get_by_role("button", name="Agendar", exact=True).click()
             await production.get_by_role("button", name="Reagendar ou incluir orçamentos").click()
             date_input = schedule.get_by_label("Entrega combinada (opcional)")
             await expect(date_input).to_have_value(current.get("deliveryDate") or "")

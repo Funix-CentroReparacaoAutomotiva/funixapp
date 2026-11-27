@@ -8,7 +8,7 @@ import {operationalScope, WorkOrderRepository} from '../../work-orders.ts'
 // This helper only operates on synthetic, empty ERP fixture tables.
 export function removeV30FixtureSchema(db: DatabaseSync) {
   if (!db.prepare('SELECT 1 FROM schema_migrations WHERE version=30').get()) return
-  db.exec('DROP TRIGGER erp_sales_stage_activity')
+  db.exec('DROP TRIGGER IF EXISTS atendimento_assign_number; DROP TABLE IF EXISTS atendimento_numbers; DELETE FROM schema_migrations WHERE version=32; DROP TRIGGER erp_sales_stage_activity')
   const tables = db.prepare(`SELECT name FROM sqlite_schema
     WHERE type='table' AND name GLOB 'erp_*' ORDER BY rowid DESC`).all()
   for (const {name} of tables) {

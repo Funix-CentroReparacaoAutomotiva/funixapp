@@ -40,3 +40,13 @@
 .at-form .at-customer-context .at-field:last-child {margin-bottom:0;}
 .legacy-vehicle-reference {display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;}
 @media(max-width:380px){.at-form .vehicle-model-fields{grid-template-columns:minmax(0,1fr);}.at-form .customer-lines section,.at-form .at-customer-context{padding:9px;}}
+
+.payer-reference {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:end;gap:8px;margin:8px 0}
+.payer-reference>label{display:grid;gap:4px;min-width:0}
+.payer-reference>div{min-width:0}
+.payer-reference select,.payer-reference input{max-width:100%;min-width:0;width:100%;font:inherit;font-size:13px;border:1px solid #cbd7e5;border-radius:7px;padding:8px}
+.payer-reference input:disabled{background:#f1f4f8;color:#718198}
+.payer-reference .smart-row{min-width:0}
+.payer-reference .smart-fields{min-width:0}
+.payer-reference .smart-main{min-width:0}
+.mixed-payers{font-size:11px;color:#2456a2;background:#edf3fc;border-radius:4px;padding:2px 6px}

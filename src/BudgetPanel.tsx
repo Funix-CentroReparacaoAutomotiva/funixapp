@@ -107,7 +107,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
  const formatDate=(date:string)=>new Date(date).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
  const selectedMeta=versions.find(v=>v.id===versionId)
  return <section aria-label="Orçamentos emitidos">{error&&!deliveryPrompt&&<p role="alert" className="form-error">{error}</p>}
- <button type="button" className="fh-filter" disabled={busy} onClick={onOpenProduction}>Agendamento e experiência</button>
+ <button type="button" className="fh-filter" disabled={busy} onClick={onOpenProduction}>Agendar</button>
  {deliveryPrompt&&<dialog ref={dialogRef} className="os-delivery-dialog" aria-labelledby="os-delivery-title" onCancel={event=>{event.preventDefault();if(!busy)setDeliveryPrompt(null)}}>
   <h2 id="os-delivery-title">Emitir nova revisão da OS</h2>
   <p>Confirme a autorização de execução. Informe a data prevista de entrega, caso já esteja definida.</p>

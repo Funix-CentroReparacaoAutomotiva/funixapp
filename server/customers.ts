@@ -44,10 +44,11 @@ export class CustomerRepository {
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
-    const r=inputObject(raw,['id','text','brand','model','plate','fabricationYear','modelYear','entityId','participantKey'])
+    const r=inputObject(raw,['id','text','brand','model','plate','fabricationYear','modelYear','entityId','participantKey','payerType'])
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
+    if(r.payerType!==undefined){if(kind!=='payer'||!['Particular','Terceiro','Associação','Seguradora'].includes(String(r.payerType)))return invalid();result.payerType=r.payerType as CustomerReference['payerType']}
     if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))return invalid();result.participantKey=r.participantKey}
     if(kind==='vehicle'){
       for(const key of ['brand','model'] as const){
@@ -308,7 +309,7 @@ export class CustomerRepository {
     const row=this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(at)!
     const refs:CustomerReferences={person:[{id:null,text:String(row.name)}],contact:[{id:null,text:String(row.phone)}],vehicle:[{id:null,text:String(row.vehicle),plate:String(row.plate),fabricationYear:row.fabrication_year as string|null,modelYear:row.model_year as string|null}],payer:[]}
     const stored=this.db.prepare('SELECT * FROM atendimento_references WHERE atendimento_id=? ORDER BY position').all(at)
-    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{brand:found.brand,model:found.model,plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
+    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='payer'&&data.payerType?{payerType:data.payerType}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{brand:found.brand,model:found.model,plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
     return refs
   }
   present(items:Atendimento[]):Atendimento[] {

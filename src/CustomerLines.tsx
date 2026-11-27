@@ -1,6 +1,6 @@
 import {EntityEditor} from './EntityEditor'
 import type {EntityRecord,EntityContact} from '../shared/customer'
-import {groupedCustomerReferences,participantGroups} from '../shared/customer'
+import {groupedCustomerReferences,participantGroups,payerTypes} from '../shared/customer'
 import {useEffect,useId,useRef,useState} from 'react'
 import type {CustomerRecord,CustomerReference,CustomerReferences,ReferenceKind} from '../shared/customer'
 import {api} from './api'
@@ -91,12 +91,12 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
  }
  const line=(kind:ReferenceKind,row:CustomerReference,index:number,key?:string) =>
   <SmartLine key={index} version={version} kind={kind} row={row} disabled={disabled}
-    onChange={next=>update(kind,index,next,key)} onEdit={setEditing}
+    onChange={next=>update(kind,index,{...next,...(kind==='payer'&&row.payerType?{payerType:row.payerType}:{})},key)} onEdit={setEditing}
     onMessage={onMessage?cid=>onMessage(cid,index):undefined}
     onRemove={()=>remove(kind,index,key)}/>
  return <div className="customer-lines">
  <section aria-label="Pessoas">
-  <header><strong>Pessoa e telefone</strong><button type="button" disabled={disabled} onClick={addPerson}>+ Adicionar pessoa</button></header>
+  <header><strong>Cliente</strong><button type="button" disabled={disabled} onClick={addPerson}>+ Adicionar entidade</button></header>
   {(groups.length?groups:[{person:{id:null,text:''} as CustomerReference,index:0,key:'legacy:0',contacts:[]}]).map(g=>
     <div className="customer-primary participant-block" key={g.key} role="group" aria-label={'Pessoa '+(g.index+1)}>
       <div><label className="customer-field-label">Nome</label>{line('person',g.person,g.index,g.key)}</div>
@@ -145,8 +145,15 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
     {value.vehicle.slice(1).map((row,index)=><div className="legacy-vehicle-reference" key={index}><span>{[row.text,row.plate].filter(Boolean).join(' · ')||'Veículo não identificado'}</span><button type="button" disabled={disabled} onClick={()=>remove('vehicle',index+1)}>Retirar vínculo</button></div>)}
   </details>}
  </section>
- <section aria-label={titles.payer}><header><strong>{titles.payer}</strong><button type="button" disabled={disabled} onClick={()=>add('payer')}>+ Adicionar</button></header>
- {value.payer.map((row,index)=>line('payer',row,index))}
+ <section aria-label={titles.payer}><header><strong>Pagamento</strong>{value.payer.filter(row=>row.id||row.text.trim()).length>1&&<span className="mixed-payers">Misto</span>}</header>
+ {(value.payer.length?value.payer:[{id:null,text:''} as CustomerReference]).map((row,index)=><div className="payer-reference" key={index}>
+   <label>Quem irá pagar?<select aria-label={'Tipo de pagante '+(index+1)} value={row.payerType??''} disabled={disabled} onChange={e=>{
+     const type=e.target.value as CustomerReference['payerType'];const next={...row};if(type)next.payerType=type;else delete next.payerType
+     update('payer',index,next)
+   }}><option value="">Não informado</option>{payerTypes.map(type=><option key={type}>{type}</option>)}</select></label>
+   <div><label className="customer-field-label">Nome / Pagante</label>{(!row.payerType&&!row.id&&!row.text.trim())?<input aria-label="Pagador" disabled placeholder="Selecionar entidade"/>:line('payer',row,index)}</div>
+ </div>)}
+ <button type="button" disabled={disabled||!value.payer.some(r=>r.payerType||r.id||r.text.trim())} onClick={()=>add('payer')}>+ Adicionar pagante</button>
  </section>
  {editing&&<dialog className="customer-record-dialog" onKeyDown={e=>e.stopPropagation()} ref={dialog} aria-label="Editar cadastro selecionado" onClose={()=>setEditing(null)}>{editing.kind==='entity'?<EntityEditor key={editing.id} record={editing} onClose={()=>setEditing(null)} onSaved={record=>{
   const next=groupedCustomerReferences(latest.current)
@@ -178,7 +185,7 @@ function SmartLine({kind,row,version,disabled,onChange,onEdit,onRemove,onMessage
      maxLength={7} autoCapitalize="characters" onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)} onChange={e=>onChange({...row,id:null,plate:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'')})}/></label>
    <div className="vehicle-model-fields"><VehicleIdentityFields row={row} onChange={next=>onChange({...next,id:null})} disabled={disabled} locked={!!row.id} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)}/></div>
    <div className="smart-years">{(['fabricationYear','modelYear']as const).map(key=><VehicleYear key={key} label={key==='fabricationYear'?'Ano de fabricação':'Ano do modelo'} year={row[key]} disabled={disabled} readOnly={!!row.id&&!!row[key]} onChange={year=>onChange({...row,id:null,[key]:year})}/>)}</div>
- </div>:row.id?<span className="smart-locked">{(record?.text??row.text)||(kind==='contact'?observed||'Telefone não informado':'')}{kind==='contact'&&observed&&!record?.text&&<small> · observado pelo WhatsApp</small>}</span>:<div className="smart-free"><input aria-label={kind==='contact'?'Telefone':kind==='payer'?'Pagador':'Pessoa de referência'} inputMode={kind==='contact'?'tel':'text'} placeholder={kind==='contact'?'Telefone':'Nome informado'} value={row.text} maxLength={250} disabled={disabled} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)} onChange={e=>onChange({...row,text:e.target.value})}/></div>}
+ </div>:row.id?<span className="smart-locked">{(record?.text??row.text)||(kind==='contact'?observed||'Telefone não informado':'')}{kind==='contact'&&observed&&!record?.text&&<small> · observado pelo WhatsApp</small>}</span>:<div className="smart-free"><input aria-label={kind==='contact'?'Telefone':kind==='payer'?'Pagador':'Pessoa de referência'} inputMode={kind==='contact'?'tel':'text'} placeholder={kind==='contact'?'Telefone':kind==='payer'?'Selecionar entidade':'Nome informado'} value={row.text} maxLength={250} disabled={disabled} onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)} onChange={e=>onChange({...row,text:e.target.value})}/></div>}
 
  {kind==='contact'&&<button type="button" disabled={disabled||!onMessage||(!record?.conversationId&&!/^\+[1-9]\d{7,14}$/.test(row.text.replace(/[\s().-]/g,'')))} aria-label="Escrever mensagem opcional" title={record?.conversationId?'Abrir Chat; envio exige confirmação':'Abrir conversa para o telefone salvo com + e DDI; nenhum envio automático'} onClick={()=>onMessage?.(record?.conversationId??null)}>✉</button>}
  {row.id&&kind==='contact'?<button type="button" aria-label="Retirar telefone deste Atendimento" disabled={disabled} onClick={onRemove}>×</button>:row.id?<button type="button" aria-label="Editar cadastro selecionado" disabled={disabled||!record} onClick={()=>record&&onEdit(record)}>✎</button>:kind!=='vehicle'?<button type="button" aria-label="Remover linha" disabled={disabled} onClick={onRemove}>×</button>:null}

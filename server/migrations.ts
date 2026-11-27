@@ -380,6 +380,17 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
     ALTER TABLE erp_tasks ADD COLUMN atendimento_id TEXT REFERENCES atendimentos(id) ON DELETE SET NULL;
     CREATE INDEX erp_tasks_atendimento ON erp_tasks(atendimento_id);
   `)},
+  {version:32,apply:db=>db.exec(`
+    CREATE TABLE atendimento_numbers (
+      number INTEGER PRIMARY KEY AUTOINCREMENT,
+      atendimento_id TEXT NOT NULL UNIQUE REFERENCES atendimentos(id) ON DELETE CASCADE
+    );
+    INSERT INTO atendimento_numbers(atendimento_id)
+      SELECT id FROM atendimentos ORDER BY created_at,id;
+    CREATE TRIGGER atendimento_assign_number AFTER INSERT ON atendimentos BEGIN
+      INSERT INTO atendimento_numbers(atendimento_id) VALUES(NEW.id);
+    END;
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {

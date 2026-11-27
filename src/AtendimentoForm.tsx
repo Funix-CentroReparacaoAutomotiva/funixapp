@@ -53,7 +53,6 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
   const [conflict, setConflict] = useState(false)
   const [duplicates,setDuplicates] = useState<{items:DuplicateAtendimento[];confirmationToken:string}|null>(null)
   const [baseline,setBaseline] = useState(initial)
-  const [lastSaved,setLastSaved] = useState(false)
   const revisionRef=useRef(record?.revision??0)
   const salesRevisionRef=useRef(inline?.context.revision??0)
   const fieldsRef=useRef(fields)
@@ -72,7 +71,7 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
 
 
   function setDraft(updater:(previous:Draft)=>Draft) {
-    setLastSaved(false);setFailure('');setDuplicates(null)
+    setFailure('');setDuplicates(null)
     // Marca edição imediatamente para proteger navegação no mesmo evento de input.
     onDirty(true)
     if(!conflict)setFailure('')
@@ -116,7 +115,6 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
       fieldsRef.current=next
       setFields(next)
       onDirty(pending)
-      setLastSaved(!pending)
       onAutoSaved?.(saved,contactSelectionKey(saved.references?.contact)!==contactSelectionKey(baseline.references?.contact))
     } catch(cause) {
       const error=cause as RequestFailure
@@ -160,7 +158,7 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
     if(record){await persistEdit();return}
     await createAtendimento()
   }
-  return <>{reauth&&<section className="commercial-reauth"><p>Entre novamente. Suas alterações foram preservadas.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>{setReauth(false);setFailure('')}}/></section>}<form className={'at-form'+(inline?' at-form-inline':'')} onSubmit={save} inert={reauth} aria-label={record ? 'Editar Atendimento' : 'Novo Atendimento'}>
+  return <>{reauth&&<section className="commercial-reauth"><p>Entre novamente. Suas alterações foram preservadas.</p><Login session={{authenticated:false,configured:true}} error="" refresh={()=>{}} onSession={()=>{setReauth(false);setFailure('')}}/></section>}<form className={'at-form'+(inline?' at-form-inline':'')} onSubmit={save} inert={reauth} data-save-state={failure||conflict?'error':busy?'saving':dirty?'pending':'saved'} aria-label={record ? 'Editar Atendimento' : 'Novo Atendimento'}>
     <div className="at-form-scroll">{!inline&&<p className="at-form-hint">Comece com as informações disponíveis. Nenhum cadastro completo é obrigatório.</p>}
       <CustomerLines value={fields.references!} disabled={busy&&!record} onMessage={record?async(cid,index)=>{if(dirty||busy){setFailure('Aguarde o salvamento antes de abrir a conversa.');return}void cid;try{const result=await api<{conversationId:string}>(`/api/atendimentos/${record.id}/prepare-conversation`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contactIndex:index,revision:revisionRef.current})});onMessage?.(result.conversationId)}catch(e){setFailure((e as Error).message)}}:undefined} onChange={(references:CustomerReferences)=>setDraft(previous=>({...previous,references,name:references.person[0]?.text??'',phone:participantGroups(references).groups[0]?.contacts[0]?.contact.text??'',vehicle:references.vehicle[0]?.text??'',brand:references.vehicle[0]?.brand??'',model:references.vehicle[0]?.model??'',plate:references.vehicle[0]?.plate??'',fabricationYear:references.vehicle[0]?.fabricationYear??'',modelYear:references.vehicle[0]?.modelYear??''}))}/>
       <section className="at-customer-context" aria-label="Dados comerciais">
@@ -198,6 +196,6 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
         <button type="button" className="at-duplicate-confirm" disabled={busy} onClick={()=>void createAtendimento(duplicates.confirmationToken)}>{busy?'Criando…':'Criar novo mesmo assim'}</button>
       </div>
     </section>}
-    <footer className="at-form-footer"><span aria-live="polite">{conflict?'Conflito de edição':failure?'Falha ao salvar':busy?'Salvando…':record?(dirty?'Alterações pendentes':lastSaved?'Salvo automaticamente':'Dados carregados'):'Preenchimento progressivo'}</span>{(!inline||!!failure)&&<button type="submit" className="primary-btn" disabled={busy || conflict || (Boolean(record) && !dirty)}>{busy?'Salvando…':record?'Salvar agora':'Criar Atendimento'}</button>}</footer>
+    <footer className="at-form-footer"><span aria-live="polite">{conflict?'Conflito de edição':failure?'Falha ao salvar':busy?'Salvando…':record?(dirty?'Alterações pendentes':''):'Preenchimento progressivo'}</span>{(!inline||!!failure)&&<button type="submit" className="primary-btn" disabled={busy || conflict || (Boolean(record) && !dirty)}>{busy?'Salvando…':record?'Salvar agora':'Criar Atendimento'}</button>}</footer>
   </form></>
 }

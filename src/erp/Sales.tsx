@@ -264,18 +264,18 @@ function LinkExistingAtendimento({record,onSave}:{record:Atendimento;onSave:()=>
     </form>:read.data?<p>Nenhuma experiência anterior localizada para a placa deste veículo.</p>:null}
   </details>
 }
-export function SalesRecord({id,onDirty,onBusy,onOpen,onAutoSaved,onMessage,onAuthRequired}:{id:string;onOpen:(id:string)=>void;onAutoSaved:(record:Atendimento,contactsChanged:boolean)=>void;onMessage:(conversationId:string)=>void;onAuthRequired:()=>void}&RecordEditCallbacks) {
+export function SalesRecord({id,scrollNotes,onDirty,onBusy,onOpen,onAutoSaved,onMessage,onAuthRequired}:{id:string;scrollNotes?:boolean;onOpen:(id:string)=>void;onAutoSaved:(record:Atendimento,contactsChanged:boolean)=>void;onMessage:(conversationId:string)=>void;onAuthRequired:()=>void}&RecordEditCallbacks) {
   const [refresh,setRefresh]=useState(0)
   const [editing,setEditing]=useState(false),[saving,setSaving]=useState(false)
   const read=useRead<{record:Atendimento;context:SalesContext;stages:SalesStage[];experienceId:string|null;tracking:TrackingCard|null}>(endpoint+'/records/'+id+'/summary',refresh)
   const data=read.data, invalidate=()=>setRefresh(count=>count+1)
+  useEffect(()=>{if(scrollNotes&&data)document.querySelector('.sales-comments')?.scrollIntoView({block:'start'})},[scrollNotes,Boolean(data)])
   useTaskRecord(id)
   const editDirty=useCallback((value:boolean)=>{setEditing(value);onDirty(value)},[onDirty])
   const editBusy=useCallback((value:boolean)=>{setSaving(value);onBusy(value)},[onBusy])
   return <main className="erp-sales sales-record"><ReadStatus read={{...read,loading:read.loading&&!data}}/>{data&&<>
     <div className="sales-record-heading">
       <div><h1>Dados do Atendimento</h1>{data.record.origin==='rework'&&<span className="erp-sales-alert">Retrabalho</span>}{data.record.origin==='recurrence'&&<span className="sales-origin-tag">Recorrência</span>}</div>
-      {data.record.commercialValue&&<strong>{money(data.record.commercialValue.min)}{data.record.commercialValue.min!==data.record.commercialValue.max?' a '+money(data.record.commercialValue.max):''}</strong>}
     </div>
     <AtendimentoForm key={id} record={data.record} inline={{context:data.context,stages:data.stages,scheduled:!!data.experienceId}} onSaved={record=>{onAutoSaved(record,false);invalidate()}}
       onAutoSaved={(record,contactsChanged)=>{onAutoSaved(record,contactsChanged);invalidate()}}

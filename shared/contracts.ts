@@ -57,6 +57,8 @@ export const ATENDIMENTO_PURPOSES = {
 export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
 
 export interface Atendimento {
+  /** Identificação pública sequencial, independente do UUID técnico. */
+  displayNumber?: string
   purpose?: AtendimentoPurpose
   channel?: string
   origin?: 'initial' | 'recurrence' | 'rework'

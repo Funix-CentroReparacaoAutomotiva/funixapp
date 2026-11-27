@@ -86,7 +86,7 @@ try {
       await registration.getByRole('textbox',{name:'Nome da Entidade'}).fill('Pessoa com nome atualizado')
       await registration.getByRole('button',{name:'Salvar pessoa e telefones'}).click()
       await editor.getByText('Pessoa com nome atualizado',{exact:true}).waitFor()
-      await editor.getByText('Salvo automaticamente',{exact:true}).waitFor()
+      await page.locator('form[aria-label="Editar Atendimento"][data-save-state="saved"]').waitFor({timeout:10000})
 
       await page.goto(origin+'/conversas')
       await page.getByRole('button',{name:'Abrir conversa: Pessoa com nome atualizado'}).waitFor()

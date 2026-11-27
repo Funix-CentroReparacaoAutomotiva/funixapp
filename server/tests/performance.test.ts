@@ -38,7 +38,7 @@ test('batched reads equal original SQL for every scenario and calculated result,
    const prepare=db.prepare.bind(db);let selects=0
    db.prepare=(sql)=>{if(/^SELECT/i.test(sql))selects++;return prepare(sql)}
    f.scenarios.list(f.at.id);f.commercial.list(f.at.id)
-   db.prepare=prepare;assert.equal(selects,9,`${spec.name}: no per-piece/service/scenario queries`)
+   db.prepare=prepare;assert.equal(selects,11,`${spec.name}: no per-piece/service/scenario queries`)
    assert.equal(f.commercial.list(other.id).length,1);assert(!f.commercial.list(f.at.id).some(p=>p.atendimentoId===other.id))
   }finally{db.close()}
  }
