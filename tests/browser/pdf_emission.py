@@ -1,5 +1,5 @@
 """PDF UX: local API + authenticated fake jsreport HTTP + disposable SQLite. No production data."""
-import asyncio,base64,hashlib,json,sqlite3,subprocess,traceback
+import asyncio,base64,hashlib,json,shutil,sqlite3,subprocess,traceback
 from playwright.async_api import async_playwright,expect
 from m1_atendimentos import Harness,ROOT,ORIGIN
 ARTIFACTS=ROOT/'docs/evidencias/orcamento-experiencia'
@@ -189,9 +189,9 @@ async def device_case(browser,device,viewport):
   await page.reload();await expect(page.locator('.scenario-trigger')).to_be_enabled();await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 3',exact=True).click();await expect(finance.locator('.summary .deadline span')).to_have_text('—');await shot('prazo-indisponivel')
   h.mark(device+': an automatic deadline with missing capacity displays an em dash, never zero or a stale promise')
   with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:
-   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==27;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
+   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==30;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
   assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not h.external and not h.page_errors,(h.external,h.page_errors)
-  h.mark(device+': V19 integrity preserved, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
+  h.mark(device+': V30 integrity, foreign keys, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
  except Exception as error:
   if page:
    try:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')),timeout=3000)
@@ -204,7 +204,9 @@ async def device_case(browser,device,viewport):
 async def run():
  ARTIFACTS.mkdir(parents=True,exist_ok=True)
  async with async_playwright()as p:
-  browser=await p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+  system_chromium=shutil.which('chromium')
+  chromium_options={'executable_path':system_chromium} if system_chromium else {'channel':'chromium'}
+  browser=await p.chromium.launch(**chromium_options,headless=True,args=['--no-sandbox'])
   try:
    for device,v in [('desktop',{'width':1440,'height':1000}),('mobile390',{'width':390,'height':844}),('mobile320',{'width':320,'height':844})]:await device_case(browser,device,v)
   finally:await browser.close()

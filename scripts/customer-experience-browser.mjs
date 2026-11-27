@@ -86,6 +86,7 @@ try{
    // Legacy third-party Contact is not shown as Pedro's phone. Reconcile its
    // true owner first, then select a different participant instead of moving
    // the number between owners.
+   await editor.getByText('Revisar titular de telefones antigos',{exact:true}).click()
    await editor.getByRole('button',{name:'Adicionar titular deste telefone'}).click()
    await page.waitForFunction(()=>document.querySelector('.at-form-footer span')?.textContent?.includes('Salvo'))
    const mariaGroup=editor.getByRole('group',{name:'Pessoa 2',exact:true})

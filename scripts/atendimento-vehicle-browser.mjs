@@ -30,8 +30,9 @@ try{
    const dialog=page.getByRole('dialog',{name:'Novo Atendimento'});await dialog.waitFor()
    assert.equal(await dialog.getByText('Veículo informado').count(),0)
    assert.equal(await dialog.getByText('Marca', {exact:true}).count(),0)
-   const brand=dialog.getByRole('textbox',{name:'Montadora',exact:true})
-   const vehicle=dialog.getByRole('textbox',{name:'Modelo',exact:true})
+   // Inputs with a datalist can be exposed as comboboxes by Chromium.
+   const brand=dialog.getByLabel('Montadora',{exact:true})
+   const vehicle=dialog.getByLabel('Modelo',{exact:true})
    const fabrication=dialog.getByRole('textbox',{name:'Ano de fabricação'})
    const modelYear=dialog.getByRole('textbox',{name:'Ano do modelo'})
    await brand.fill('Fiat')
@@ -141,10 +142,10 @@ try{
      'editar nome não pode perder a referência telefônica')
    assert.equal(fixture.atendimentos.get(record.id,true).references.contact.length,1,
      'editar nome não deve duplicar contatos')
-   assert.equal(await edit.getByRole('textbox',{name:'Modelo',exact:true}).inputValue(),'Punto')
+   assert.equal(await edit.getByLabel('Modelo',{exact:true}).inputValue(),'Punto')
    assert.equal(await edit.getByRole('textbox',{name:'Ano de fabricação'}).inputValue(),'2019')
    assert.equal(await edit.getByRole('textbox',{name:'Ano do modelo'}).inputValue(),'2020')
-   await edit.getByRole('textbox',{name:'Modelo',exact:true}).fill('Modelo Livre QA')
+   await edit.getByLabel('Modelo',{exact:true}).fill('Modelo Livre QA')
    await edit.getByRole('textbox',{name:'Ano de fabricação'}).fill('2018')
    await edit.getByRole('textbox',{name:'Ano do modelo'}).fill('2020')
    // Issue #234: o textarea ativo não pode perder foco durante o PATCH de autosave.
