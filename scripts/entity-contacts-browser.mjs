@@ -78,21 +78,35 @@ try{
    assert.equal(f.at.get(interaction.id).purpose,'non_commercial')
    assert.ok(f.at.get(interaction.id).closedAt)
    assert.equal(f.at.get(interaction.id).explicitRefusal,false)
-   // Selecting multiple entities presents their phones, without separate contact references or channel links.
+   // Selecting an entity alone neither pulls in its phones nor links channels.
+   // Explicit contact references maintain each phone under the selected owner.
    const second=f.customers.save({kind:'entity',text:'Pessoa Sintética Beta',contacts:[{text:'+5531999990404'}]});await f.channels.verifyEntity(second.id)
-   const at=f.at.create({references:{person:[{id:entity.id,text:entity.text},{id:second.id,text:second.text}],contact:[],vehicle:[],payer:[]}})
+   const references={person:[{id:entity.id,text:entity.text},{id:second.id,text:second.text}],contact:[],vehicle:[],payer:[]}
+   const unbound=f.at.create({references})
+   assert.ok(f.at.get(unbound.id,true).references.contact.every(contact=>!contact.id&&!contact.text))
+   const referenceContacts=[...contacts,...f.channels.entity(second.id).contacts].map(({id,text,entityId})=>({id,text,entityId}))
+   const at=f.at.create({references:{...references,contact:referenceContacts}})
    await page.goto(origin+'/atendimentos/'+at.id+'?aba=diagnosticos')
    await page.getByRole('button',{name:'Editar Atendimento',exact:true}).click()
    const form=page.getByRole('form',{name:'Editar Atendimento'})
-   await form.getByRole('button',{name:'Abrir WhatsApp +5531999990404',exact:true}).waitFor()
-   assert.equal(await form.getByRole('button',{name:/Abrir WhatsApp/}).count(),3)
+   const alpha=form.getByRole('group',{name:'Pessoa 1',exact:true}),beta=form.getByRole('group',{name:'Pessoa 2',exact:true})
+   const message={name:'Escrever mensagem opcional',exact:true}
+   await beta.getByText('+5531999990404',{exact:true}).waitFor()
+   assert.equal(await alpha.getByRole('button',message).count(),3)
+   assert.equal(await beta.getByRole('button',message).count(),1)
+   assert.ok(await beta.getByRole('button',message).isEnabled())
    assert.match(await form.innerText(),/Pessoa Sintética Alfa/);assert.match(await form.innerText(),/Pessoa Sintética Beta/)
    await page.screenshot({path:out+'/responsibles-'+width+'.png',fullPage:true})
-   assert.equal(f.db.prepare('SELECT count(*) n FROM v20_associations').get().n,1)
+   const linkCount=f.db.prepare('SELECT count(*) n FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL')
+   assert.equal(linkCount.get(interaction.id).n,1)
+   assert.equal(linkCount.get(unbound.id).n,0)
+   const explicitLinks=f.db.prepare('SELECT link_reason FROM v20_associations WHERE atendimento_id=? AND unlinked_at IS NULL').all(at.id)
+   assert.equal(explicitLinks.length,3)
+   assert.ok(explicitLinks.every(link=>link.link_reason==='explicit_contact_reference'))
    assert.equal(f.db.prepare('SELECT count(*) n FROM chat_messages').get().n,0)
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
    assert.deepEqual(errors,[]);assert.deepEqual(external,[])
-   results.push({width,realBackend:true,realFrontend:true,provider:'synthetic-only',phones:3,verified:2,noWhatsapp:1,independentHistories:true,draftsPreserved:true,cancelledSendCalls:0,confirmedSyntheticTextCalls:1,confirmedSyntheticMediaCalls:1,realSends:0,multipleResponsibles:true,implicitLinks:0,confirmedInteractionLinks:1,nonCommercialClosure:true,overflow:false,consoleErrors:0})
+   results.push({width,realBackend:true,realFrontend:true,provider:'synthetic-only',phones:3,verified:2,noWhatsapp:1,independentHistories:true,draftsPreserved:true,cancelledSendCalls:0,confirmedSyntheticTextCalls:1,confirmedSyntheticMediaCalls:1,realSends:0,multipleResponsibles:true,implicitLinks:0,explicitReferenceLinks:3,confirmedInteractionLinks:1,nonCommercialClosure:true,overflow:false,consoleErrors:0})
   }finally{await ctx.close();await new Promise(r=>app.close(r));f.db.close()}
  }
  writeFileSync(out+'/results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results))
