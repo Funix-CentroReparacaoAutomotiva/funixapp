@@ -428,7 +428,7 @@ function App() {
     </div>
     {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
       title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}
-    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen&&!commercialSummary?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && !screen && !commercialSummary)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
+    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&quoteWorkspace?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && quoteWorkspace)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {

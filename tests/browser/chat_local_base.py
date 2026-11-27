@@ -124,10 +124,7 @@ createServer(async(req,res)=>{{
                     await harness.goto_record(page, records[key])
                     expected = records['last'] if key == 'a' else records['privateB']
                     await expect(page.get_by_text(expected, exact=True)).to_be_visible()
-                    await expect(page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True)).to_have_count(1)
-                    await page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True).click()
-                    await expect(page.get_by_role('region', name='Copiloto FUNIX', exact=True)).to_be_visible()
-                    await page.get_by_role('button', name='Fechar Copiloto', exact=True).click()
+                    await expect(page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True)).to_have_count(0)
                     history = await page.locator('.chat-history').inner_text()
                     assert (records['privateB'] if key == 'a' else records['last']) not in history
                     assert 'PENDENTE PRIVADO' not in history
@@ -135,6 +132,10 @@ createServer(async(req,res)=>{{
                     for tab in ['Orçamentos', 'Mapa', 'WhatsApp']:
                         await page.get_by_role('button', name=tab, exact=True).click()
                         await expect(page.get_by_role('button', name=tab, exact=True)).to_have_attribute('aria-current', 'page')
+                        if tab == 'Orçamentos':
+                            await page.get_by_role('button', name='Abrir Copiloto FUNIX', exact=True).click()
+                            await expect(page.get_by_role('region', name='Copiloto FUNIX', exact=True)).to_be_visible()
+                            await page.get_by_role('button', name='Fechar Copiloto', exact=True).click()
                     await expect(page.get_by_text(expected, exact=True)).to_be_visible()
                 await expect(page.locator('.chat-message')).to_have_count(50)
                 assert records['first'] not in await page.locator('.chat-history').inner_text()
