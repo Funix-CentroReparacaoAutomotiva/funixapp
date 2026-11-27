@@ -376,6 +376,10 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       CHECK(invoice_number IS NULL OR length(invoice_number) BETWEEN 1 AND 60);
   `)},
   {version:30,apply:migrateOperationalErp},
+  {version:31,apply:db=>db.exec(`
+    ALTER TABLE erp_tasks ADD COLUMN atendimento_id TEXT REFERENCES atendimentos(id) ON DELETE SET NULL;
+    CREATE INDEX erp_tasks_atendimento ON erp_tasks(atendimento_id);
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {

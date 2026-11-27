@@ -288,8 +288,8 @@ db.close()
         assert by_kind["receivable"]["experienceId"] == experience_id
         assert by_kind["receivable"]["balanceCents"] == 2549
         assert by_kind["payable"]["experienceId"] is None and by_kind["payable"]["balanceCents"] == 0
-        tabs = page.get_by_role("navigation", name="Áreas da FUNIX")
-        assert await tabs.get_by_role("button").evaluate_all(
+        tabs = page.get_by_role("navigation", name="Páginas de Financeiro")
+        assert await tabs.get_by_role("link").evaluate_all(
             "buttons => buttons.every(button => button.scrollWidth <= button.clientWidth + 1)"
         )
         assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")

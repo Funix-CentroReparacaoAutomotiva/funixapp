@@ -27,7 +27,7 @@ test('V14-to-V15 upgrades a disposable SQLite file, preserves records, and permi
   await backupDatabase(db,backup)
   db.close()
   db=openDatabase(file)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,30)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,31)
   assert.equal(db.prepare('PRAGMA integrity_check').get()!.integrity_check,'ok')
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
   assert.equal(new AtendimentoRepository(db).get(at.id).name,'Cliente sintético')

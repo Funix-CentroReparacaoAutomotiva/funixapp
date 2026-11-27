@@ -1,3 +1,4 @@
+import { useTaskRecord } from './task-record'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api'
@@ -140,6 +141,7 @@ function OriginEditor({atendimentoId}:{atendimentoId:string}) {
 }
 
 function ExperienceDetail({item}:{item:Item}) {
+  useTaskRecord(item.atendimentoId)
   const {data,error,loading,refresh} = useRead<Detail>('/detalhe?'+new URLSearchParams({id:item.id}))
   const [openDiary,setOpenDiary] = useState(false)
   const [orderDiary,setOrderDiary] = useState('')
@@ -263,6 +265,7 @@ function Sac() {
   const [selected,setSelected] = useState(new URLSearchParams(window.location.search).get('experienceId') ?? '')
   const [search,setSearch] = useState('')
   const candidates = useRead<Results>('/historico?'+new URLSearchParams({q:search}))
+  useTaskRecord(candidates.data?.items.find(item => item.id === selected)?.atendimentoId)
   const {data,error,loading,refresh} = useRead<{items:Complaint[]}>('/sac?'+new URLSearchParams({experienceId:selected}))
   const [failure,setFailure] = useState('')
   const [saved,setSaved] = useState('')

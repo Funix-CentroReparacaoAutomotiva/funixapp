@@ -30,4 +30,4 @@ export type TaskFields = {
   dueDate: string
   description: string
 }
-export type Task = TaskFields & { id: string; revision: number; rice: string | null }
+export type Task = TaskFields & { id: string; revision: number; rice: string | null; atendimentoId?: string | null }

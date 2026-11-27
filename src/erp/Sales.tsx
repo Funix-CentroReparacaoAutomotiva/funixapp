@@ -1,3 +1,4 @@
+import { useTaskRecord } from './task-record'
 import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { salesChannels } from '../../shared/sales'
@@ -151,6 +152,7 @@ function Funnel() {
   const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+query,refresh)
   const lanes=[{id:'triage',label:'A classificar'},{id:'non-commercial',label:'Não comercial'},...(read.data?.stages??[])]
   const active=read.data?.cards.find(c=>c.record.id===selected)
+  useTaskRecord(active?.record.id)
   return <>
     <div className="erp-sales-heading"><h1>Funil de vendas</h1><a className="erp-sales-link" href="/funil">Novo Atendimento e triagem</a></div>
     <form className="erp-sales-fields" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
@@ -188,6 +190,7 @@ function Funnel() {
 }
 
 function TrackingDetail({card,refresh,onSave}:{card:TrackingCard;refresh:number;onSave:()=>void}) {
+  useTaskRecord(card.vehicle.atendimentoId)
   const write=useWrite(onSave)
   const [closureRequestId]=useState(()=>crypto.randomUUID())
   const {vehicle,context,receivables}=card

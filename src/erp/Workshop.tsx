@@ -1,3 +1,4 @@
+import { useTaskRecord } from './task-record'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { workshopPhases, type WorkshopPhase } from '../../shared/erp'
 import { displayDay, phaseDetails, workshopApi, type PhasePresentation, type YardVehicle } from './workshop-client'
@@ -93,6 +94,7 @@ function WorkshopYard() {
   const reload = () => setVersion(current => current + 1)
   const open = (vehicle:YardVehicle) => {setSelected(vehicle.experienceId);setPhase(vehicle.phase)}
   const vehicle = data?.vehicles.find(item => item.experienceId === selected)
+  useTaskRecord(vehicle?.atendimentoId)
   const vehicles = data?.vehicles ?? []
   return <section className="workshop workshop-yard">
     <header className="workshop-header"><h1>Pátio</h1>

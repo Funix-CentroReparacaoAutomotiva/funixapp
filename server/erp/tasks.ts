@@ -93,7 +93,7 @@ function project(row: Record<string, SQLOutputValue>): Task {
   const score = riceScore(task)
   // Rounding is for display only. Sorting compares the underlying fractions.
   const rice = score ? new Q(score.mul(new Q(10000n)).add(new Q(1n, 2n)).floor(), 10000n).toString() : null
-  return { ...task, rice }
+  return { ...task, rice, atendimentoId: typeof row.atendimento_id === 'string' ? row.atendimento_id : null }
 }
 
 function list(db: DatabaseSync, sort: string) {
@@ -116,6 +116,12 @@ function save({ db, body, now }: ErpRequest): Task {
   if (typeof id !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) invalid('Identificador de tarefa inválido.')
   if (!Number.isSafeInteger(revision) || Number(revision) < 0) invalid('Revisão de tarefa inválida.')
   const fields = parseFields(input)
+  const reference = input.atendimentoId
+  if (reference !== undefined && reference !== null &&
+    (typeof reference !== 'string' || !db.prepare('SELECT 1 FROM atendimentos WHERE id=?').get(reference))) {
+    invalid('Atendimento vinculado não encontrado.')
+  }
+  const atendimentoId = typeof reference === 'string' ? reference : null
   const values = [
     fields.title, fields.owner, fields.sector, fields.work, fields.addedValue,
     fields.investment, fields.reach, fields.impact, fields.confidence, fields.effort,
@@ -125,19 +131,19 @@ function save({ db, body, now }: ErpRequest): Task {
   let changed: Record<string, SQLOutputValue> | undefined
   if (revision === 0) {
     changed = db.prepare(`INSERT INTO erp_tasks(id, revision, title, owner, sector, work, added_value, investment,
-      reach, impact, confidence, effort, status, priority, position, due_date, description, created_at, updated_at)
-      VALUES(?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING RETURNING *`).get(id, ...values, time, time)
+      reach, impact, confidence, effort, status, priority, position, due_date, description, created_at, updated_at, atendimento_id)
+      VALUES(?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING RETURNING *`).get(id, ...values, time, time, atendimentoId)
   } else {
     changed = db.prepare(`UPDATE erp_tasks SET title=?, owner=?, sector=?, work=?, added_value=?, investment=?,
       reach=?, impact=?, confidence=?, effort=?, status=?, priority=?, position=?, due_date=?, description=?,
-      updated_at=?, revision=revision+1 WHERE id=? AND revision=? RETURNING *`).get(...values, time, id, Number(revision))
+      updated_at=?, atendimento_id=CASE WHEN ? THEN atendimento_id ELSE ? END, revision=revision+1 WHERE id=? AND revision=? RETURNING *`).get(...values, time, Number(reference === undefined), atendimentoId, id, Number(revision))
   }
   if (changed) return project(changed)
   const row = db.prepare('SELECT * FROM erp_tasks WHERE id=?').get(id)
   if (!row) throw new ServiceError(404, 'TASK_NOT_FOUND', 'Tarefa não encontrada.')
   const saved = project(row)
   const matches = Object.entries(fields).every(([key, value]) => saved[key as keyof TaskFields] === value)
-  if (matches && saved.revision === Number(revision) + 1) return saved
+  if (matches && (reference === undefined || saved.atendimentoId === atendimentoId) && saved.revision === Number(revision) + 1) return saved
   throw new ServiceError(409, 'TASK_REVISION_CONFLICT', 'Outra atualização alterou esta tarefa. Atualize o catálogo antes de editar novamente.')
 }
 

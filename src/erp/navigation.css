@@ -1,52 +1,163 @@
-.erp-navigation {
+.workspace-layout {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+.workspace-layout > .app-viewport { grid-row: 2; height: auto; min-width: 0; min-height: 0; }
+.workspace-layout .fh-work { padding: 12px clamp(10px, 2vw, 26px) 88px; }
+.workspace-header {
+  grid-row: 1;
+  height: 55px;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: .35rem;
-  margin-block: .4rem .75rem;
-  color: #203554;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 clamp(12px, 2vw, 24px);
+  background: #0a1f44;
+  color: #fff;
 }
-.erp-navigation details { position: relative; }
-.erp-navigation summary, .erp-navigation > a {
-  display: block;
-  padding: .5rem .7rem;
-  border: 1px solid #d4dfec;
-  border-radius: .5rem;
-  background: #fff;
+.workspace-title, .workspace-header-actions, .workspace-sidebar-heading, .workspace-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.workspace-title strong { font-size: 1.1rem; }
+.workspace-title svg { color: #b5cbe7; }
+.workspace-header-actions { gap: 3px; }
+.workspace-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   color: inherit;
-  cursor: pointer;
-  text-decoration: none;
-  font-weight: 650;
 }
-.erp-navigation details > div {
+.workspace-icon:hover { background: #a3b8d125; }
+.workspace-icon:focus-visible, .workspace-pages a:focus-visible { outline: 2px solid #5088df; outline-offset: 2px; }
+.workspace-task-count {
   position: absolute;
-  top: calc(100% + .25rem);
-  inset-inline-start: 0;
-  width: max-content;
-  max-width: 15rem;
-  padding: .3rem;
-  z-index: 10;
+  inset: 1px 0 auto auto;
+  min-width: 1.1rem;
+  padding: .1rem .28rem;
+  border-radius: 1rem;
+  color: #0a1f44;
+  background: #fdc477;
+  font-size: .7rem;
+  line-height: 1rem;
+  font-weight: 800;
+}
+.workspace-sidebar { min-width: 0; }
+.workspace-pages a { color: inherit; text-decoration: none; }
+.workspace-login-brand { color: #12347c; padding: .65rem 0; font-size: 1.2rem; font-weight: 800; }
+.workspace-picker, .workspace-task-dialog {
+  border: 1px solid #cbd8e8;
+  border-radius: 14px;
+  padding: 1rem;
+  background: #f6f8fc;
+  color: #182c4c;
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+.workspace-picker::backdrop, .workspace-task-dialog::backdrop { background: #11274694; }
+.workspace-picker { width: min(420px, calc(100vw - 24px)); }
+.workspace-dialog-heading { justify-content: space-between; margin-bottom: .65rem; }
+.workspace-dialog-heading h2 { margin: 0; font-size: 1.2rem; }
+.workspace-mosaic { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.workspace-mosaic button {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .45rem;
+  min-height: 76px;
+  padding: .6rem;
+  border: 1px solid #c8d7e9;
+  border-radius: 8px;
+  color: #203c61;
   background: #fff;
-  border: 1px solid #d4dfec;
-  border-radius: .5rem;
-  box-shadow: 0 .5rem 1.5rem #20355422;
+  font-weight: 700;
 }
-.erp-navigation details a { display: block; padding: .5rem .65rem; color: inherit; }
-.erp-navigation [aria-current="page"], .erp-navigation [data-current="true"] {
-  background: #e3edff;
+.workspace-mosaic button[aria-pressed="true"], .workspace-task-links [aria-pressed="true"] {
+  border-color: #6e99de;
   color: #12347c;
+  background: #e1ecff;
 }
-.erp-navigation a:focus-visible, .erp-navigation summary:focus-visible { outline: 2px solid #12347c; }
+.workspace-task-dialog { width: min(900px, calc(100vw - 20px)); }
+.workspace-task-dialog:has(.workspace-task-list) { width: min(560px, calc(100vw - 20px)); }
+.workspace-task-links { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .85rem; }
+.workspace-task-links button, .workspace-task-list button {
+  border: 1px solid #c8d7e9;
+  border-radius: 7px;
+  padding: .45rem .64rem;
+  color: #203c61;
+  background: #fff;
+}
+.workspace-task-list { list-style: none; padding: 0; margin: .75rem 0 0; display: grid; gap: .45rem; }
+.workspace-task-list li { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .55rem; background: #fff; border: 1px solid #d8e1ee; border-radius: 8px; }
+.workspace-task-list li > div { display: grid; gap: .2rem; min-width: 0; overflow-wrap: anywhere; }
+.workspace-task-list small { color: #4a5e77; }
+.workspace-task-list .workspace-task-record { padding: 0; text-align: left; border: 0; text-decoration: underline; font-size: .8rem; }
+.tasks-editor .tasks-reference { display: flex; align-items: center; gap: .45rem; }
+.tasks-editor .tasks-reference input { width: auto; }
+
+@media (min-width: 761px) {
+  #root .workspace-shell.workspace-authenticated { max-width: 1680px; height: 100dvh; }
+  .workspace-authenticated .workspace-layout { grid-template-columns: 205px minmax(0, 1fr); }
+  .workspace-authenticated .workspace-layout.is-collapsed { grid-template-columns: 54px minmax(0, 1fr); }
+  .workspace-authenticated .workspace-header, .workspace-authenticated .app-viewport { grid-column: 2; }
+  .workspace-sidebar { grid-column: 1; grid-row: 1 / 3; background: #0a1f44; color: #e1ebf9; padding: 6px; overflow-y: auto; }
+  .workspace-sidebar-heading { justify-content: space-between; padding-inline-start: 8px; height: 44px; }
+  .workspace-sidebar-heading strong { color: #fff; letter-spacing: .07em; }
+  .is-collapsed .workspace-sidebar-heading { justify-content: center; padding: 0; }
+  .workspace-select { display: grid; gap: .3rem; margin: 12px 7px 14px; color: #b8cbe4; font-size: .78rem; }
+  .workspace-select select { width: 100%; padding: 8px; border: 1px solid #5a7294; border-radius: 8px; color: #fff; background: #19355b; font: inherit; font-size: .96rem; }
+  .workspace-pages { display: grid; gap: 4px; padding-inline: 6px; }
+  .workspace-pages a { padding: .7rem .65rem; border-radius: 8px; font-size: .92rem; }
+  .workspace-pages a:hover, .workspace-pages a[aria-current="page"] { color: #fff; background: #284970; }
+  .is-collapsed .workspace-pages, .workspace-picker-button { display: none; }
+  .workspace-layout > .detail-viewport { width: min(100%, 980px); justify-self: center; }
+}
+@media (max-width: 760px) {
+  .workspace-layout { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .workspace-layout .fh-work { padding-bottom: 86px; }
+  .workspace-sidebar { display: contents; }
+  .workspace-sidebar-heading, .workspace-select { display: none; }
+  .workspace-pages {
+    grid-row: 3;
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid #d4dfed;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: #fff;
+    color: #385171;
+  }
+  .workspace-pages a {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    min-height: 53px;
+    padding: 4px 2px;
+    border-top: 2px solid transparent;
+    font-size: clamp(.63rem, 2.6vw, .8rem);
+    overflow-wrap: anywhere;
+  }
+  .workspace-pages a[aria-current="page"] { border-top-color: #ff8c30; color: #12347c; background: #eef4ff; font-weight: 800; }
+  #root .workspace-shell.workspace-authenticated { --copilot-bottom: calc(54px + env(safe-area-inset-bottom, 0px)); }
+  #root .workspace-shell.workspace-authenticated .copilot-fixed { bottom: var(--copilot-bottom); }
+}
 .erp-phase-neutral { --erp-phase: #cbd5e1; }
 .erp-phase-blue { --erp-phase: #60a5fa; }
 .erp-phase-yellow { --erp-phase: #eab308; }
 .erp-phase-orange { --erp-phase: #f97316; }
 .erp-phase-green { --erp-phase: #22c55e; }
 .erp-phase-purple { --erp-phase: #a855f7; }
-@media (max-width: 550px) {
-  .erp-navigation summary, .erp-navigation > a { padding: .45rem .55rem; font-size: .85rem; }
-  .erp-navigation details > div { position: fixed; inset: 6.5rem 1rem auto; max-width: none; width: auto; }
-}
 .erp-diary-trigger { align-self: end; margin: .35rem 1rem; }
 .erp-diary-dialog {
   width: min(50rem, 94vw);

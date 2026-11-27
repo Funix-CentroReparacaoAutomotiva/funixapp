@@ -21,7 +21,7 @@ export function removeV30FixtureSchema(db: DatabaseSync) {
     ALTER TABLE financial_titles DROP COLUMN expected_payment_method;
     ALTER TABLE financial_titles DROP COLUMN managerial_category;
     ALTER TABLE financial_titles DROP COLUMN competence_date;
-    DELETE FROM schema_migrations WHERE version=30;`)
+    DELETE FROM schema_migrations WHERE version IN (30,31);`)
 }
 
 export function removeV27FixtureSchema(db: DatabaseSync) {

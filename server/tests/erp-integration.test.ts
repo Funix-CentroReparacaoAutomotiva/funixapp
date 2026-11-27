@@ -30,7 +30,7 @@ test('V29 to V30 preserves the original dataset and rolls back a partial migrati
 
     migrate(db)
     migrate(db)
-    assert.equal(version(db), 30)
+    assert.equal(version(db), 31)
     assert.equal(repo.get(record.id).name, record.name)
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [])
     assert.equal(db.prepare('PRAGMA integrity_check').get()?.integrity_check, 'ok')

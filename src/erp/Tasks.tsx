@@ -27,10 +27,19 @@ const catalogColumns: { key: keyof Task; label: string; render?: (task: Task) =>
   { key: 'status', label: 'Situação', render: task => taskStatuses[task.status] },
   { key: 'priority', label: 'Prioridade' },
   { key: 'position', label: 'Ordem' },
+  { key: 'atendimentoId', label: 'Atendimento', render: task => task.atendimentoId ? 'Vinculado' : '—' },
   { key: 'dueDate', label: 'Prazo', render: task => task.dueDate ? task.dueDate.split('-').reverse().join('/') : '—' },
 ]
 
-function newTask(): Task {
+export async function saveTask(task: Task) {
+  const saved = await api<Task>('/api/erp/tasks/items', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task),
+  })
+  window.dispatchEvent(new Event('funix:task-saved'))
+  return saved
+}
+
+export function newTask(): Task {
   return {
     id: crypto.randomUUID(), revision: 0, rice: null, title: '', owner: '', sector: '', work: '',
     addedValue: '', investment: '', reach: '', impact: '', confidence: '', effort: '', status: 'not-started',
@@ -51,7 +60,9 @@ const editorFields: { key: keyof TaskFields; label: string; max?: number; inputM
   { key: 'dueDate', label: 'Prazo', type: 'date' },
 ]
 
-function TaskEditor({ initial, onClose, onSaved }: { initial: Task; onClose: () => void; onSaved: (task: Task) => void }) {
+export function TaskEditor({ initial, onClose, onSaved, quick = false, recordId }: {
+  initial: Task; onClose: () => void; onSaved: (task: Task) => void; quick?: boolean; recordId?: string
+}) {
   const [draft, setDraft] = useState(initial)
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
@@ -74,10 +85,7 @@ function TaskEditor({ initial, onClose, onSaved }: { initial: Task; onClose: () 
     setFailure('')
     setBusy(true)
     try {
-      const saved = await api<Task>('/api/erp/tasks/items', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
-      })
-      onSaved(saved)
+      onSaved(await saveTask(draft))
     } catch (cause) {
       setFailure((cause as Error).message)
     } finally {
@@ -93,10 +101,10 @@ function TaskEditor({ initial, onClose, onSaved }: { initial: Task; onClose: () 
     <form onSubmit={save}>
       <h2 id="task-editor-heading">{initial.revision ? 'Editar tarefa' : 'Cadastrar tarefa'}</h2>
       <fieldset className="tasks-editor-fields" disabled={busy}>
-        {editorFields.map(({ key, label, max, inputMode, type }) =>
+        {editorFields.filter(field => !quick || ['title','owner','priority','dueDate'].includes(field.key)).map(({ key, label, max, inputMode, type }) =>
           <label key={key}>{label}<input required={key === 'title'} type={type} inputMode={inputMode}
             maxLength={max} value={draft[key]} onChange={event => update(key, event.target.value)} /></label>)}
-        <label>Situação<select value={draft.status} onChange={event => update('status', event.target.value)}>
+        {!quick && <><label>Situação<select value={draft.status} onChange={event => update('status', event.target.value)}>
           {statuses.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select></label>
         {(['reach', 'impact', 'confidence'] as const).map((key, index) =>
@@ -107,7 +115,12 @@ function TaskEditor({ initial, onClose, onSaved }: { initial: Task; onClose: () 
                 {value === '100' ? 'Obrigatório (100)' : (key === 'confidence' ? percent : number).format(Number(value))}
               </option>)}
             </select>
-          </label>)}
+          </label>)}</>}
+        {recordId && !initial.revision && <label className="tasks-description tasks-reference">
+          <input type="checkbox" checked={draft.atendimentoId === recordId}
+            onChange={event => setDraft(previous => ({ ...previous, atendimentoId: event.target.checked ? recordId : null }))} />
+          Vincular ao Atendimento consultado
+        </label>}
         <label className="tasks-description">Descrição<textarea maxLength={4000} rows={3} value={draft.description} onChange={event => update('description', event.target.value)} /></label>
       </fieldset>
       {failure && <p role="alert" className="form-error">{failure}</p>}
@@ -117,7 +130,7 @@ function TaskEditor({ initial, onClose, onSaved }: { initial: Task; onClose: () 
   </dialog>
 }
 
-export default function Tasks({ view }: { view: string }) {
+export default function Tasks({ view, recordId }: { view: string; recordId?: string }) {
   const board = view === 'painel'
   const [sort, setSort] = useState('position')
   const [query, setQuery] = useState('')
@@ -128,6 +141,11 @@ export default function Tasks({ view }: { view: string }) {
   const [editing, setEditing] = useState<Task | null>(null)
   const [result, setResult] = useState<{ key: string; items: Task[]; failure: string } | null>(null)
   const [reload, setReload] = useState(0)
+  useEffect(() => {
+    const refresh = () => setReload(value => value + 1)
+    window.addEventListener('funix:task-saved', refresh)
+    return () => window.removeEventListener('funix:task-saved', refresh)
+  }, [])
   const [confirmation, setConfirmation] = useState('')
   const activeSort = board ? 'position' : sort
   const requestKey = activeSort + ':' + reload
@@ -154,7 +172,6 @@ export default function Tasks({ view }: { view: string }) {
   function onSaved(saved: Task) {
     setEditing(null)
     setConfirmation('Tarefa salva: ' + saved.title)
-    setReload(previous => previous + 1)
   }
 
   return <section className="tasks-workspace">
@@ -192,6 +209,7 @@ export default function Tasks({ view }: { view: string }) {
             {lane.map(task => <button type="button" className="tasks-card" key={task.id} onClick={() => setEditing(task)}>
               <strong>{task.title}</strong>
               <small>{task.owner || 'Sem responsável'}{task.priority && ' · ' + task.priority}</small>
+              {task.atendimentoId && <span>Atendimento vinculado</span>}
               {task.work && <span>Trabalho: {task.work}</span>}
               {task.addedValue && <span>Valor agregado: {task.addedValue}</span>}
             </button>)}
@@ -205,6 +223,6 @@ export default function Tasks({ view }: { view: string }) {
             ? <th key={key} scope="row"><button type="button" onClick={() => setEditing(task)}>{task.title}</button></th>
             : <td key={key}>{render ? render(task) : task[key] || '—'}</td>)}</tr>)}</tbody></table>
       </div> : <Notice title={tasks.length ? 'Nenhuma tarefa para estes filtros' : 'Nenhuma tarefa cadastrada'} />}
-    {editing && <TaskEditor key={editing.id} initial={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
+    {editing && <TaskEditor key={editing.id} initial={editing} recordId={recordId} onClose={() => setEditing(null)} onSaved={onSaved} />}
   </section>
 }

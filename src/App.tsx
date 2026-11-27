@@ -3,8 +3,10 @@ import Sales, { SalesSettings } from './erp/Sales'
 import Stock from './erp/Stock'
 import Tasks from './erp/Tasks'
 import Experiences from './erp/Experiences'
-import { ErpNavigation } from './erp/Navigation'
-import { erpRoute } from './erp/navigation'
+import { WorkspaceIcon, WorkspacePages, WorkspacePicker, WorkspaceSidebar } from './erp/Navigation'
+import { TaskCenter } from './erp/TaskCenter'
+import { TaskRecordContext } from './erp/task-record'
+import { erpRoute, modules, preferredPage, rememberPage, workspaceFor } from './erp/navigation'
 import {ConversationContext} from './chat/ConversationContext'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {flushSync}from'react-dom'
@@ -29,23 +31,27 @@ import './App.css'
 import './footer-copilot.css'
 
 type Area = 'conversas' | 'funil' | 'atualizacoes' | 'configuracoes' | 'financeiro' | 'operacao'
-const mainAreas: Area[] = ['funil', 'conversas', 'operacao', 'financeiro']
 type Route = { path: string; search: string }
 type Editor = { record?: Atendimento }
 const readRoute = (): Route => ({ path: window.location.pathname, search: window.location.search })
-const labels: Record<Area, string> = { conversas: 'Conversas', funil: 'Funil', atualizacoes: 'Atualizações', configuracoes: 'Configurações', financeiro: 'Financeiro', operacao: 'Operação' }
-const symbols: Record<Area, string> = { conversas: '▤', funil: '▥', atualizacoes: '▣', configuracoes: '⚙', financeiro: 'R$', operacao: '▦' }
 function vehicleLabel(record: Atendimento) { return record.vehicle || [record.brand, record.model].filter(Boolean).join(' ') }
 function dateLabel(value: string) { return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(value)) }
 
 function App() {
   const [route, setRoute] = useState(() => {
-    window.history.replaceState({...window.history.state,funixIndex:window.history.state?.funixIndex??0},'',window.location.href)
+    const destination = window.location.pathname === '/' ? preferredPage() + window.location.search : window.location.href
+    window.history.replaceState({...window.history.state,funixIndex:window.history.state?.funixIndex??0},'',destination)
     return readRoute()
   })
   const routeRef = useRef(route), historyState = useRef(window.history.state), restoringHistory = useRef(false)
   const params = new URLSearchParams(route.search)
   const erp = erpRoute(route.path)
+  const module = workspaceFor(route.path) ?? workspaceFor(String(window.history.state?.returnTo ?? '').split('?')[0] ?? '') ??
+    workspaceFor(preferredPage()) ?? modules[0]
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [taskRecord, setTaskRecord] = useState('')
+  useEffect(() => { rememberPage(route.path) }, [route.path])
   const diaryDialog = useRef<HTMLDialogElement>(null)
   const [diaryOpen, setDiaryOpen] = useState(false)
   const isFinance = route.path === '/financeiro', isOperation = route.path === '/operacao'
@@ -139,7 +145,7 @@ function App() {
     }
     if (!canLeaveEditor()) return
     if (window.history.state?.returnTo && historyState.current?.funixIndex>0) window.history.back()
-    else navigate('/funil', true)
+    else navigate(preferredPage(module), true)
   }
   const expireSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : null)
@@ -226,7 +232,7 @@ function App() {
     if(screen)document.querySelector<HTMLElement>('.detail-header h1')?.focus({preventScroll:true})
   },[screen,routeKey])
   useEffect(()=>{
-    const root=viewport.current,shell=root?.parentElement
+    const root=viewport.current,shell=root?.closest<HTMLElement>('.app-shell')
     if(!root||!shell)return
     let frame=0,observed:Element|null=null
     const measure=()=>{
@@ -304,23 +310,46 @@ function App() {
     setReload(value => value + 1); setSavedMessage('Atendimento salvo no aplicativo.')
   }
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
-  return <div className="app-shell">
-    <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport} inert={Boolean(editor)} onClickCapture={mapClickCapture} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}} onScroll={event => {
-      if (!isDetail) positions.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
-    }}>
+  return <div className={`app-shell workspace-shell ${session?.authenticated ? 'workspace-authenticated' : ''}`}>
+    <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''}`} inert={Boolean(editor)}>
+      {session?.authenticated && <>
+        <WorkspaceSidebar module={module} collapsed={sidebarCollapsed} toggle={() => setSidebarCollapsed(value => !value)} navigate={navigate}>
+          <WorkspacePages module={module} path={route.path} navigate={navigate} />
+        </WorkspaceSidebar>
+        <header className="workspace-header">
+          <div className="workspace-title"><WorkspaceIcon name={module.icon} /><strong>{module.label}</strong></div>
+          <div className="workspace-header-actions">
+            <TaskCenter recordId={isDetail ? record?.id : taskRecord || undefined} openRecord={id => {
+              if (id === detailId) return true
+              return navigate('/atendimentos/' + encodeURIComponent(id), false, {
+                returnTo: isDetail ? window.history.state?.returnTo || preferredPage(module) : routeKey,
+              })
+            }} />
+            <button className="workspace-icon workspace-picker-button" type="button" aria-haspopup="dialog"
+              aria-label="Selecionar módulo" onClick={() => setPickerOpen(true)}><WorkspaceIcon name="menu" /></button>
+          </div>
+        </header>
+        {pickerOpen && <WorkspacePicker module={module} navigate={navigate} close={() => setPickerOpen(false)} />}
+      </>}
+      <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport}
+        onClickCapture={mapClickCapture} onTouchStart={touchStart} onTouchEnd={touchEnd} onTouchCancel={()=>{touch.current=null}}
+        onClick={event => {
+          if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          const link = event.target instanceof Element ? event.target.closest('a') : null
+          if (!link || link.target || link.hasAttribute('download') || link.origin !== window.location.origin) return
+          if (!link.pathname.startsWith('/atendimentos/') && !workspaceFor(link.pathname) && !erpRoute(link.pathname)) return
+          event.preventDefault()
+          navigate(link.pathname + link.search + link.hash, false, {
+            returnTo: isDetail ? window.history.state?.returnTo || preferredPage(module) : routeKey,
+          })
+        }} onScroll={event => {
+          if (!isDetail) positions.set(routeKey, { top: event.currentTarget.scrollTop, left: board.current?.scrollLeft || 0 })
+        }}>
+      <TaskRecordContext.Provider value={setTaskRecord}>
       {!isDetail ? <main className="fh-work">
-        <nav className="fh-tabs" aria-label="Áreas da FUNIX"><strong className="navigation-brand">FUNIX</strong>{mainAreas.map(item => <button key={item} className={area === item && !removedRoute ? 'selected' : ''} onClick={() => navigate('/' + item)} aria-current={area === item && !removedRoute ? 'page' : undefined}><span aria-hidden="true">{symbols[item]}</span> {labels[item]}</button>)}</nav>
-        <header className="commercial-brand"><strong>FUNIX</strong><small>{erp || isFinance || isOperation ? 'ERP' : 'COMERCIAL'}</small></header>
-        {session?.authenticated && <ErpNavigation path={route.path} navigate={href => navigate(href)} />}
+        {!session?.authenticated && <header className="workspace-login-brand">FUNIX ERP</header>}
         {!session?.authenticated ? login : removedRoute ? <div className="fh-surface"><Notice title="Área fora do aplicativo Comercial" retry={() => navigate('/funil', true)} actionLabel="Abrir Funil">Os Atendimentos são gerenciados no Funil.</Notice></div> : erp && erp.view !== 'configuracoes' ? <>
-          <div key={route.path} className="erp-view" onClick={event => {
-            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-            const link = event.target instanceof Element ? event.target.closest('a') : null
-            if (!link || link.target || link.hasAttribute('download') || link.origin !== window.location.origin) return
-            if (!link.pathname.startsWith('/atendimentos/') && !erpRoute(link.pathname)) return
-            event.preventDefault()
-            navigate(link.pathname + link.search + link.hash, false, { returnTo: routeKey })
-          }}>
+          <div key={route.path} className="erp-view">
             {erp.area === 'inicio' && <h1>Início</h1>}
             {erp.area === 'oficina' && <Workshop view={erp.view} />}
             {erp.area === 'vendas' && <Sales view={erp.view} />}
@@ -355,7 +384,7 @@ function App() {
               <p className="read-only-note">Atendimentos salvos no aplicativo. Fases alteradas manualmente; os prazos não geram movimentação automática.</p>
             </>}
           </>}
-          <div className="secondary-nav"><button onClick={()=>navigate('/configuracoes')}>Configurações</button><button onClick={()=>navigate('/atualizacoes')}>Atualizações</button></div><button className="session-exit" onClick={logout}>Sair</button>
+          <button className="session-exit" onClick={logout}>Sair</button>
         </>}
       </main> : <>
         <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? detailName.slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? detailName : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{detailPhone}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
@@ -377,6 +406,8 @@ function App() {
           </ChatPanel></>} />}
         </>}
       </>}
+      </TaskRecordContext.Provider>
+      </div>
     </div>
     <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen && !isFinance && !isOperation} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {

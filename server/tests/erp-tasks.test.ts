@@ -1,19 +1,21 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { DatabaseSync } from 'node:sqlite'
+import { migrate } from '../migrations.ts'
+import { openDatabase } from '../database.ts'
+import { AtendimentoRepository } from '../atendimentos.ts'
 import test from 'node:test'
 import type { TestContext } from 'node:test'
 import { ServiceError } from '../errors.ts'
-import { handleTasks, migrateTasks } from '../erp/tasks.ts'
+import { handleTasks } from '../erp/tasks.ts'
 import type { Task } from '../../shared/erp-tasks.ts'
 
 const now = () => Date.parse('2026-11-26T12:00:00Z')
 
 function fixture(t: TestContext) {
-  const db = new DatabaseSync(':memory:')
+  const db = openDatabase(':memory:')
   t.after(() => db.close())
-  migrateTasks(db)
   return {
+    db,
     save: (body: unknown) => handleTasks({ db, body, method: 'POST', path: '/items', query: new URLSearchParams(), now }) as Task,
     list: (sort = '') => (handleTasks({ db, body: null, method: 'GET', path: '/items', query: new URLSearchParams({ sort }), now }) as { items: Task[] }).items,
   }
@@ -72,4 +74,28 @@ test('invalid deadlines, status, identification and investment leave the task co
     assert.throws(() => save(input), (cause: unknown) => cause instanceof ServiceError && cause.status === 422)
   }
   assert.deepEqual(list(), [])
+})
+
+test('linked tasks validate the Atendimento and preserve it on older client updates', t => {
+  const { db, save, list } = fixture(t)
+  const atendimento = new AtendimentoRepository(db).create({ name: 'Atendimento sintético' })
+  assert.throws(() => save(draft({ atendimentoId: randomUUID() })), { code: 'INVALID_TASK' })
+  const input = draft({ atendimentoId: atendimento.id })
+  const task = save(input)
+  assert.deepEqual(save(input), task)
+  assert.equal(list()[0]?.atendimentoId, atendimento.id)
+  const { atendimentoId, ...legacy } = task
+  assert.equal(atendimentoId, atendimento.id)
+  const completed = save({ ...legacy, status: 'done' })
+  assert.equal(completed.atendimentoId, atendimento.id)
+  assert.equal(save({ ...completed, atendimentoId: null }).atendimentoId, null)
+})
+
+test('V31 preserves tasks created before contextual linking', t => {
+  const { db, save, list } = fixture(t)
+  const oldTask = save(draft({ status: 'blocked', priority: 'Alta' }))
+  db.exec('DROP INDEX erp_tasks_atendimento; ALTER TABLE erp_tasks DROP COLUMN atendimento_id; DELETE FROM schema_migrations WHERE version=31;')
+  migrate(db)
+  assert.deepEqual(list(), [oldTask])
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [])
 })

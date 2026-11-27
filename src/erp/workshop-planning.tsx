@@ -1,3 +1,4 @@
+import { useTaskRecord } from './task-record'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { workshopPhases } from '../../shared/erp'
 import { displayDay, phaseDetails, workshopApi, type PhasePresentation, type YardVehicle } from './workshop-client'
@@ -147,6 +148,7 @@ export default function WorkshopPlanning() {
   const [compact,setCompact] = useState(true)
   const [editor,setEditor] = useState<PlanEditor|null>(null)
   const [selectedCapacity,setSelectedCapacity] = useState<{name:string;day:CapacityDay}|null>(null)
+  useTaskRecord(schedule?.vehicles.find(vehicle => vehicle.experienceId === editor?.source.experienceId)?.atendimentoId)
   useEffect(() => {
     const controller = new AbortController()
     void workshopApi<Schedule>('/planning?' + new URLSearchParams({days:length,...(start ? {start} : {})}),undefined,controller.signal)

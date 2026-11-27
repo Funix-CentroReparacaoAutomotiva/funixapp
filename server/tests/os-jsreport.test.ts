@@ -195,7 +195,7 @@ test('OS PDF cache is immutable and returns existing PDF on repeated saves',()=>
    // Cache is created only when explicitly instantiated; the migration version stays current.
    const cache=new WorkOrderPdfCache(db)
    assert.equal(cache.get('missing-order'),null)
-   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,30)
+   assert.equal(db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version,31)
    // No synthetic production objects are needed to inspect the schema.
    const schema=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='work_order_pdf_cache'").get()
    assert(schema)
