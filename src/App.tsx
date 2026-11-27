@@ -256,6 +256,13 @@ function App() {
       if(surface!==observed){if(observed)resize.unobserve(observed);observed=surface;if(surface)resize.observe(surface)}
       const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top):0
       shell.style.setProperty('--finance-height',offset+'px')
+      // The round launcher stays anchored to the collapsed commercial footer;
+      // expanding/collapsing its details must never move the pointer target.
+      const nav=root.querySelector('.workspace-record-pages')
+      const compactHeight=(nav?.getBoundingClientRect().height??0)
+        +(surface?.querySelector('.summary')?.getBoundingClientRect().height??0)
+        +(surface?.querySelector('.budget-actions')?.getBoundingClientRect().height??0)
+      shell.style.setProperty('--copilot-anchor-height',compactHeight+'px')
     }
     const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)}
     const resize=new ResizeObserver(schedule);resize.observe(root)
