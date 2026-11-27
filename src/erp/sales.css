@@ -43,3 +43,74 @@
   .erp-sales-form .erp-sales-fields { width: 100%; }
   .erp-sales-board { grid-auto-columns: minmax(12rem,68vw); }
 }
+
+/* Shared Vendas primitives. Keep existing board semantics and phase tokens. */
+.erp-sales {
+  --sales-border: #d6e0ed;
+  --sales-muted: #536985;
+  --sales-navy: #17345f;
+  padding: .35rem .1rem 1rem;
+}
+.erp-sales h1 { font-size: clamp(1.45rem, 2vw, 1.85rem); letter-spacing: -.025em; color: #182c4c; }
+.erp-sales h2 { color: #203653; }
+.erp-sales input, .erp-sales select, .erp-sales textarea, .erp-sales button {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--sales-border);
+  border-radius: 8px;
+  background: #fff;
+  color: #253c5a;
+}
+.erp-sales label { font-size: .88rem; font-weight: 600; color: var(--sales-muted); }
+.erp-sales label :is(input,select,textarea) { width: 100%; font-size: 1rem; font-weight: 400; }
+.erp-sales-fields { gap: .55rem; }
+.erp-sales-fields > label { flex: 1 1 10rem; max-width: 100%; }
+.erp-sales-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr)); align-items: end; }
+.erp-sales .erp-sales-filter-button { display: flex; gap: .4rem; align-items: center; justify-content: center; background: #17345f; color: #fff; font-weight: 650; border-color: #17345f; }
+.erp-sales-filter-button svg, .erp-sales-view-toggle svg, .erp-sales-delivery svg { width: 15px; height: 15px; }
+.erp-sales-view-toggle { gap: 4px; background: #e9eef6; padding: 3px; border-radius: 9px; width: fit-content; }
+.erp-sales .erp-sales-view-toggle button { display: flex; align-items: center; gap: .35rem; background: transparent; border-color: transparent; min-height: 31px; font-weight: 600; }
+.erp-sales .erp-sales-view-toggle button[aria-pressed="true"] { background: #fff; color: #193a73; box-shadow: 0 1px 4px #19345f16; }
+.erp-sales-lane {
+  background: color-mix(in srgb, var(--erp-phase,#cbd5e1) 12%, #eef2f7);
+  border-radius: 9px;
+  border-top-width: 3px;
+  padding: .6rem;
+  min-height: 8rem;
+}
+.erp-sales-lane h2 { font-size: 1rem; align-items: center; margin-bottom: .5rem; }
+.erp-sales-lane h2 small { background: #ffffffb8; border-radius: 99px; min-width: 1.55rem; padding: .12rem .35rem; text-align: center; color: #415775; }
+.erp-sales .erp-sales-card { border-color: #dce4ee; border-radius: 8px; padding: .65rem; box-shadow: 0 2px 5px #1a304b08; gap: .2rem; }
+.erp-sales-card:hover { border-color: #8da6cb; }
+.erp-sales-card strong { color: #203653; font-size: 1rem; }
+.erp-sales-card span { color: var(--sales-muted); }
+.erp-sales-card .erp-sales-alert { color: #a32727; }
+.erp-sales .erp-sales-overdue { border-inline-start: 3px solid #b02727; }
+.erp-sales-detail,.erp-sales-priorities,.erp-sales-metrics section {
+  background: #fff;
+  border-color: var(--sales-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 5px #142d4f06;
+}
+.erp-sales-priorities summary { font-weight: 650; color: var(--sales-navy); }
+.erp-sales-metrics { gap: .6rem; grid-template-columns: repeat(auto-fit,minmax(min(15rem,100%),1fr)); }
+.erp-sales-metrics section { margin: 0; }
+.erp-sales-metrics p { color: var(--sales-muted); }
+.erp-sales-metrics strong { color: var(--sales-navy); font-variant-numeric: tabular-nums; }
+.erp-sales-tracking-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .45rem; margin: .75rem 0; }
+.erp-sales-tracking-summary > div { min-width: 0; background: #fff; border: 1px solid var(--sales-border); border-radius: 9px; padding: .65rem .7rem; }
+.erp-sales-tracking-summary dt { color: var(--sales-muted); font-size: .84rem; }
+.erp-sales-tracking-summary dd { color: var(--sales-navy); font-size: 1.2rem; line-height: 1.35; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.erp-sales-tracking-summary dd.erp-sales-alert { color: #a32727; }
+.erp-sales-tracking-card .erp-sales-plate { color: #203653; background: #edf2f8; width: fit-content; border-radius: 4px; padding: .15rem .4rem; font-weight: 750; letter-spacing: .055em; }
+.erp-sales-tracking-card .erp-sales-customer { font-size: .85rem; }
+.erp-sales-delivery { display: flex; align-items: center; gap: .3rem; border-top: 1px solid #edf1f7; padding-top: .35rem; margin-top: .2rem; }
+@media (max-width: 760px) {
+  .erp-sales-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .erp-sales-filters > label:has(input[type=search]) { grid-column: 1 / -1; }
+  .erp-sales-fields:not(.erp-sales-filters) > label { flex: 1 1 12rem; }
+  .erp-sales-board { grid-auto-columns: minmax(12.5rem, min(68vw,17rem)); }
+  .erp-sales-tracking-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .erp-sales-tracking-summary > div { padding: .45rem .65rem; }
+}

@@ -8,6 +8,7 @@ import { workshopPhases } from '../../shared/erp'
 import { api } from '../api'
 import { currency } from '../finance-format'
 import { money as formatMoney } from '../money'
+import { WorkspaceIcon } from './Navigation'
 import './sales.css'
 
 const endpoint='/api/erp/sales'
@@ -154,20 +155,20 @@ function Funnel() {
   const active=read.data?.cards.find(c=>c.record.id===selected)
   useTaskRecord(active?.record.id)
   return <>
-    <div className="erp-sales-heading"><h1>Funil de vendas</h1><a className="erp-sales-link" href="/funil">Novo Atendimento e triagem</a></div>
-    <form className="erp-sales-fields" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
+    <div className="erp-sales-heading"><h1>Funil de vendas</h1><a className="erp-sales-link" href="/funil">Triagem</a></div>
+    <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
       <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''}/></label>
       <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
       <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
       <label>Origem<select name="origin" defaultValue={query.get('origin')??''}><option value="">Todas</option>{read.data?.origins.map(origin=><option key={origin}>{origin}</option>)}</select></label>
       <label>Etapa<select name="stage" key={lanes.length} defaultValue={query.get('stage')??''}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}</select></label>
-      <button>Filtrar</button>
+      <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
     </form>
     <ReadStatus read={read}/>
     {read.data&&<>
-      <div className="erp-sales-actions">
-        <button type="button" aria-pressed={mode==='board'} onClick={()=>setMode('board')}>Quadro</button>
-        <button type="button" aria-pressed={mode==='table'} onClick={()=>setMode('table')}>Tabela</button>
+      <div className="erp-sales-actions erp-sales-view-toggle">
+        <button type="button" aria-pressed={mode==='board'} onClick={()=>setMode('board')}><WorkspaceIcon name="board" />Quadro</button>
+        <button type="button" aria-pressed={mode==='table'} onClick={()=>setMode('table')}><WorkspaceIcon name="table" />Tabela</button>
       </div>
       <details className="erp-sales-priorities"><summary>Retornos prioritários ({read.data.cards.filter(card=>card.overdue).length})</summary>
         {read.data.cards.filter(card=>card.overdue).map(card=><button type="button" key={card.record.id} onClick={()=>setSelected(card.record.id)}>{humanName(card.record)} · {dateLabel(card.nextContactAt)}</button>)}
@@ -197,6 +198,8 @@ function TrackingDetail({card,refresh,onSave}:{card:TrackingCard;refresh:number;
   const id=vehicle.atendimentoId
   return <section className="erp-sales-detail">
     <h2>{vehicle.model} · {vehicle.plate||'Placa a conferir'}</h2>
+    {vehicle.requiresClassification&&<p className="erp-sales-alert">Classificação a conferir</p>}
+    {vehicle.blocked&&<p className="erp-sales-alert">Impedimento registrado</p>}
     <dl className="erp-sales-info">
       <div><dt>Cliente</dt><dd>{vehicle.customer||'—'}</dd></div>
       <div><dt>Pagador</dt><dd>{vehicle.payer||'—'}</dd></div>
@@ -231,29 +234,31 @@ function Tracking() {
   const owners=read.data?.owners??[]
   return <>
     <h1>Acompanhamento de veículos</h1>
-    <form className="erp-sales-fields" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])).toString())}}>
+    <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])).toString())}}>
       <label>Pesquisar<input name="q" type="search" placeholder="Cliente, modelo ou placa"/></label>
       <label>Vendedor<select name="owner"><option value="">Todos</option>{owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
-      <button>Filtrar</button>
+      <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
     </form><ReadStatus read={read}/>
     {read.data&&<>
-      <dl className="erp-sales-info">
+      <dl className="erp-sales-info erp-sales-tracking-summary">
         <div><dt>Veículos</dt><dd>{cards.length}</dd></div>
-        <div><dt>Valor aprovado em atendimento</dt><dd>{money(read.data.summary?.approvedValue)}</dd></div>
-        <div><dt>Retornos vencidos</dt><dd>{read.data.summary?.overdue??0}</dd></div>
-        <div><dt>Recebíveis pendentes</dt><dd>{money(read.data.summary?.outstanding)}</dd></div>
+        <div><dt title="Valor aprovado em atendimento">Aprovado</dt><dd>{money(read.data.summary?.approvedValue)}</dd></div>
+        <div><dt>Retornos vencidos</dt><dd className={read.data.summary?.overdue ? "erp-sales-alert" : undefined}>{read.data.summary?.overdue??0}</dd></div>
+        <div><dt title="Recebíveis pendentes">A receber</dt><dd>{money(read.data.summary?.outstanding)}</dd></div>
       </dl>
       {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><TrackingDetail key={active.vehicle.experienceId} card={active} refresh={refresh} onSave={()=>setRefresh(count=>count+1)}/></>}
       <div className="erp-sales-board">{phases.map(([phase,tone])=>{
         const lane=cards.filter(card=>card.commercialPhase===phase)
         return <section key={phase} className={'erp-sales-lane erp-phase-'+tone}>
           <h2>{phase} <small>{lane.length}</small></h2>
-          {lane.map(card=><button className="erp-sales-card" type="button" key={card.vehicle.experienceId} onClick={()=>setSelected(card.vehicle.experienceId)}>
-            <strong>{card.vehicle.model||'Modelo a conferir'} · {card.vehicle.plate||'Placa a conferir'}</strong><span>{card.vehicle.customer}</span>
-            {card.vehicle.deliveryDate&&<span>Entrega · {calendarDay(card.vehicle.deliveryDate)}</span>}
+          {lane.map(card=><button className="erp-sales-card erp-sales-tracking-card" type="button" key={card.vehicle.experienceId} onClick={()=>setSelected(card.vehicle.experienceId)}>
+            <strong>{card.vehicle.model||'Modelo a conferir'}</strong>
+            <span className="erp-sales-plate">{card.vehicle.plate||'Placa a conferir'}</span>
+            {card.vehicle.customer&&<span className="erp-sales-customer">{card.vehicle.customer}</span>}
+            {card.vehicle.deliveryDate&&<span className="erp-sales-delivery"><WorkspaceIcon name="calendar" /><span>Entrega {calendarDay(card.vehicle.deliveryDate)}</span></span>}
             {card.vehicle.requiresClassification&&<span className="erp-sales-alert">Classificação a conferir</span>}
-            {card.vehicle.blocked&&<span className="erp-sales-alert">Impedimento registrado</span>}
-            {card.context.nextAction&&<span>{card.context.nextAction}</span>}
+            {card.vehicle.blocked&&<span className="erp-sales-alert">Impedimento</span>}
+
           </button>)}
         </section>
       })}</div>
@@ -280,7 +285,7 @@ function Dashboard() {
   return <>
     <h1>Desempenho</h1><ReadStatus read={read}/>
     {data&&<>
-      <form className="erp-sales-fields" key={data.from+'-'+data.to+'-'+owner} onSubmit={event=>{
+      <form className="erp-sales-fields erp-sales-filters" key={data.from+'-'+data.to+'-'+owner} onSubmit={event=>{
         event.preventDefault()
         const form=formData(event)
         setOwner(field(form,'owner'))
@@ -289,7 +294,7 @@ function Dashboard() {
         <label>Início<input name="from" type="date" defaultValue={data.from} required/></label>
         <label>Fim<input name="to" type="date" defaultValue={data.to} required/></label>
         <label>Vendedor<select name="owner" defaultValue={owner}><option value="">Todos</option>{data.owners.map(o=><option key={o}>{o}</option>)}</select></label>
-        <button>Aplicar</button>
+        <button className="erp-sales-filter-button">Aplicar</button>
       </form>
       <details className="erp-sales-priorities"><summary>Meta do período · {data.goal===null?'Sem meta cadastrada':money(data.goal)}</summary>
         <form className="erp-sales-form" onSubmit={event=>{

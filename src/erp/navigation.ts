@@ -1,7 +1,7 @@
 export const modules = [
   { id: 'vendas', label: 'Vendas', icon: 'vendas', links: [
-    ['/vendas/funil', 'Funil'], ['/vendas/acompanhamento', 'Acompanhamento'],
-    ['/vendas/desempenho', 'Desempenho'], ['/conversas', 'Conversas'],
+    ['/vendas/desempenho', 'Desempenho'], ['/vendas/funil', 'Funil'],
+    ['/vendas/acompanhamento', 'Acompanhamento'], ['/conversas', 'Conversas'],
   ] },
   { id: 'oficina', label: 'Oficina', icon: 'oficina', links: [
     ['/oficina/patio', 'Pátio'], ['/oficina/planejamento', 'Planejamento'],

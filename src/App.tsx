@@ -3,7 +3,7 @@ import Sales, { SalesSettings } from './erp/Sales'
 import Stock from './erp/Stock'
 import Tasks from './erp/Tasks'
 import Experiences from './erp/Experiences'
-import { WorkspaceIcon, WorkspacePages, WorkspacePicker, WorkspaceSidebar } from './erp/Navigation'
+import { WorkspaceDialog, WorkspaceIcon, WorkspacePages, WorkspacePicker, WorkspaceSidebar } from './erp/Navigation'
 import { TaskCenter } from './erp/TaskCenter'
 import { TaskRecordContext } from './erp/task-record'
 import { erpRoute, modules, preferredPage, rememberPage, workspaceFor } from './erp/navigation'
@@ -50,6 +50,7 @@ function App() {
     workspaceFor(preferredPage()) ?? modules[0]
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
   const [taskRecord, setTaskRecord] = useState('')
   useEffect(() => { rememberPage(route.path) }, [route.path])
   const diaryDialog = useRef<HTMLDialogElement>(null)
@@ -288,7 +289,7 @@ function App() {
   }
   async function logout() {
     if (!canLeaveEditor()) return
-    try { await api('/api/session', { method: 'DELETE' }); expireSession(); setCopilotOpen(false) }
+    try { await api('/api/session', { method: 'DELETE' }); setAccountOpen(false); expireSession(); setCopilotOpen(false) }
     catch (cause) { setFailure((cause as Error).message) }
   }
   function autosaved(savedRecord: Atendimento, contactsChanged: boolean) {
@@ -304,11 +305,16 @@ function App() {
     const creating = !editor?.record
     dirty.current = false; setEditor(null); cache.current.clear(); setList(null); setRecord(savedRecord)
     if (creating) {
-      window.history.pushState({ funixIndex:(historyState.current?.funixIndex??0)+1,returnTo: area === 'funil' && !isDetail ? routeKey : '/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
+      window.history.pushState({ funixIndex:(historyState.current?.funixIndex??0)+1,returnTo: module.id === 'vendas' && !isDetail ? routeKey : '/funil' }, '', `/atendimentos/${savedRecord.id}?aba=chat`)
       setRoute(readRoute())
     }
     setReload(value => value + 1); setSavedMessage('Atendimento salvo no aplicativo.')
   }
+  const newAtendimento = () => {
+    if (canLeaveEditor()) { setSavedMessage(''); setEditor({}) }
+  }
+  const showNewAtendimento = Boolean(session?.authenticated) && !isDetail && !editor && module.id === 'vendas' &&
+    (workspaceFor(route.path)?.id === 'vendas')
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
   return <div className={`app-shell workspace-shell ${session?.authenticated ? 'workspace-authenticated' : ''}`}>
     <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''}`} inert={Boolean(editor)}>
@@ -325,10 +331,17 @@ function App() {
                 returnTo: isDetail ? window.history.state?.returnTo || preferredPage(module) : routeKey,
               })
             }} />
+            <button className="workspace-icon" type="button" aria-haspopup="dialog"
+              aria-label="Minha conta" onClick={() => setAccountOpen(true)}><WorkspaceIcon name="conta" /></button>
             <button className="workspace-icon workspace-picker-button" type="button" aria-haspopup="dialog"
               aria-label="Selecionar módulo" onClick={() => setPickerOpen(true)}><WorkspaceIcon name="menu" /></button>
           </div>
         </header>
+        {accountOpen && <WorkspaceDialog label="Minha conta" className="workspace-picker" close={() => setAccountOpen(false)}>
+          <div className="workspace-dialog-heading"><h2>Minha conta</h2><button className="workspace-icon" aria-label="Fechar conta" onClick={() => setAccountOpen(false)}><WorkspaceIcon name="close" /></button></div>
+          <button className="workspace-account-exit" onClick={() => void logout()}><WorkspaceIcon name="sair" /> Sair</button>
+          {failure && <p role="alert">{failure}</p>}
+        </WorkspaceDialog>}
         {pickerOpen && <WorkspacePicker module={module} navigate={navigate} close={() => setPickerOpen(false)} />}
       </>}
       <div className={`app-viewport ${isDetail ? 'detail-viewport' : ''}`} ref={viewport}
@@ -358,10 +371,9 @@ function App() {
             {erp.area === 'tarefas' && <Tasks view={erp.view} />}
             {erp.area === 'financeiro' && <FinancePage search={route.search} view={erp.view} onAuthRequired={expireSession} onBusy={onBusy} />}
             {(erp.area === 'biblioteca' || erp.area === 'gestao') && <Experiences view={erp.view} />}
-          </div><button className="session-exit" onClick={logout}>Sair</button>
-        </> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /><button className="session-exit" onClick={logout}>Sair</button></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /><button className="session-exit" onClick={logout}>Sair</button></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/>{erp && <><SalesSettings /><WorkshopPhaseSettings /></>}<button className="session-exit" onClick={logout}>Sair</button></>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/><button className="session-exit" onClick={logout}>Sair</button></>:<>
+          </div>
+        </> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/>{erp && <><SalesSettings /><WorkshopPhaseSettings /></>}</>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/></>:<>
           <div className="fh-tools"><label className="fh-search"><span aria-hidden="true">⌕</span><input aria-label={area === 'conversas' ? 'Buscar conversas carregadas por nome ou telefone' : 'Buscar nome, telefone, placa ou Atendimento'} autoComplete="off" placeholder={area === 'conversas' ? 'Buscar conversas carregadas…' : 'Buscar nome, telefone, placa…'} value={query} onChange={event => updateParams({ q: event.target.value })} /></label><div className="fh-tools-right">
-            <button className="primary-btn at-new" onClick={() => { setSavedMessage(''); setEditor({}) }}>+ Novo Atendimento</button>
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
           </div></div>
           {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onOpenAtendimento={(id, selectedTab, conversationId, readOnly) => {
@@ -385,7 +397,6 @@ function App() {
               <p className="read-only-note">Atendimentos salvos no aplicativo. Fases alteradas manualmente; os prazos não geram movimentação automática.</p>
             </>}
           </>}
-          <button className="session-exit" onClick={logout}>Sair</button>
         </>}
       </main> : <>
         <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? detailName.slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? detailName : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{detailPhone}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
@@ -410,7 +421,9 @@ function App() {
       </TaskRecordContext.Provider>
       </div>
     </div>
-    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={!screen && !isFinance && !isOperation} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
+    {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
+      title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}
+    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && !screen)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {

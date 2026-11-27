@@ -15,6 +15,17 @@ const icons = {
   menu: 'M4 6h16M4 12h16M4 18h16',
   collapse: 'M4 4h16v16H4zm6 0v16',
   close: 'M6 6l12 12M18 6 6 18',
+  desempenho: 'M4 19h16M6 15V9m6 6V5m6 10v-4',
+  funil: 'M3 5h18l-7 8v5l-4 2v-7z',
+  acompanhamento: 'M5 17v2m14-2v2M3 12l2-6h14l2 6v5H3zm0 0h18M6 15h2m8 0h2',
+  conversas: 'M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l1.5-4A8.5 8.5 0 1 1 21 11.5zM8 11h8m-8 4h5',
+  conta: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 8a8 8 0 0 1 16 0z',
+  sair: 'M10 4H4v16h6m4-12 4 4-4 4m-6-4h10',
+  plus: 'M12 5v14M5 12h14',
+  calendar: 'M5 5h14v15H5zM8 3v5m8-5v5M5 10h14',
+  filter: 'M4 6h16M7 12h10m-7 6h4',
+  board: 'M4 5h16v14H4zm5 0v14m6-14v14',
+  table: 'M4 5h16v14H4zm0 5h16M4 15h16m-8-5v9',
 }
 
 export function WorkspaceIcon({ name }: { name: keyof typeof icons }) {
@@ -59,10 +70,12 @@ export function WorkspacePages({ module, path, navigate }: Navigation) {
     event.preventDefault()
     if (path !== href) navigate(href)
   }
-  return <nav className="workspace-pages" aria-label={`Páginas de ${module.label}`}>
+  const salesIcons = { '/vendas/desempenho': 'desempenho', '/vendas/funil': 'funil',
+    '/vendas/acompanhamento': 'acompanhamento', '/conversas': 'conversas' } as const
+  return <nav className={`workspace-pages ${module.id === 'vendas' ? 'workspace-sales-pages' : ''}`} aria-label={`Páginas de ${module.label}`}>
     {module.links.map(([href, title]) => <a key={href} href={href}
       aria-current={selectedPage(path) === href ? 'page' : undefined}
-      onClick={event => follow(event, href)}>{title}</a>)}
+      onClick={event => follow(event, href)}>{href in salesIcons && <WorkspaceIcon name={salesIcons[href as keyof typeof salesIcons]} />}<span>{title}</span></a>)}
   </nav>
 }
 

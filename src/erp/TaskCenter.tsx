@@ -47,7 +47,7 @@ export function TaskCenter({ recordId, openRecord }: { recordId?: string; openRe
     <button className="workspace-icon workspace-task-button" type="button" aria-haspopup="dialog"
       aria-label={items && !error ? `Central de tarefas · ${priority} prioritárias pendentes` : 'Central de tarefas'}
       onClick={() => { setView('rapida'); setRequest(value => value + 1); setOpen(true) }}>
-      <WorkspaceIcon name="tarefas" />{items && !error && <span className="workspace-task-count" aria-hidden="true">{priority}</span>}
+      <WorkspaceIcon name="tarefas" />{items && !error && priority > 0 && <span className="workspace-task-count" aria-hidden="true">{priority}</span>}
     </button>
     {open && <WorkspaceDialog className="workspace-task-dialog" label="Central de tarefas" close={close}>
       <div className="workspace-dialog-heading"><h2>Central de tarefas</h2>
