@@ -10,6 +10,9 @@ import {ServiceError} from './errors.ts'
 import {inputObject,transaction} from './scenarios.ts'
 const invalid=():never=>{throw new ServiceError(400,'INVALID_REFERENCE','Referência inválida.')}
 const kinds=['person','contact','vehicle','payer'] as const
+const normalizedVehiclePlate=(value:string)=>(value.trim().toUpperCase().replace(/[-\s]/g,''))
+const validPlate=(value:string)=>/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(value)
+const comparable=(value:string)=>value.trim().normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
 export function pendingShortNumber(db:DatabaseSync,conversationId:string) {
   if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='chat_confirmed_short_numbers'").get())return null
   return db.prepare(`SELECT COALESCE((SELECT a.pn FROM chat_provider_alias_evidence a WHERE a.instance=p.instance AND a.lid=p.remote_jid),p.remote_jid) AS jid,
@@ -66,6 +69,34 @@ export class CustomerRepository {
     const source=inputObject(raw,[...kinds]),result={} as CustomerReferences
     for(const kind of kinds){if(!Array.isArray(source[kind])||source[kind].length>100)invalid();result[kind]=(source[kind] as unknown[]).map(r=>this.validateReference(r,kind))}
     return result
+  }
+  /** Resolve a valid plate in the same transaction as the manual Atendimento.
+   * Never create duplicates or overwrite conflicting shared identity data. */
+  resolveManualVehicleReference(refs:CustomerReferences,previous?:CustomerReferences):CustomerReferences {
+    if(refs.vehicle.length>Math.max(1,previous?.vehicle.length??0))
+      throw new ServiceError(400,'SINGLE_VEHICLE','Cada Atendimento admite apenas um veículo.')
+    const [draft,...historical]=refs.vehicle
+    if(!draft||draft.id)return refs
+    const plate=normalizedVehiclePlate(draft.plate??'')
+    if(!validPlate(plate))return refs
+    const matches=this.db.prepare("SELECT id FROM customer_records WHERE kind='vehicle' AND upper(replace(replace(trim(coalesce(json_extract(data,'$.plate'),'')),'-',''),' ',''))=?").all(plate)
+      .map(row=>this.record(String(row.id)))
+    if(matches.length>1)throw new ServiceError(409,'VEHICLE_PLATE_CONFLICT','Há mais de um cadastro com essa placa. Selecione o cadastro correto.')
+    const found=matches[0]
+    const keys=['brand','model','fabricationYear','modelYear'] as const
+    let resolved:CustomerRecord
+    if(!found){
+      resolved=this.saveRecord({kind:'vehicle',text:draft.text,plate,...Object.fromEntries(keys.map(key=>[key,draft[key]]))})
+    }else{
+      const conflict=keys.some(key=>!!draft[key]&&!!found[key]&&comparable(String(draft[key]))!==comparable(String(found[key])))||
+        !!draft.text&&!!found.text&&!found.brand&&!found.model&&comparable(draft.text)!==comparable(found.text)
+      if(conflict)throw new ServiceError(409,'VEHICLE_PLATE_CONFLICT','Essa placa já está cadastrada com outros dados. Selecione o veículo existente e revise o cadastro.')
+      const fields=Object.fromEntries(keys.map(key=>[key,found[key]||draft[key]]))
+      const enriched=keys.some(key=>!found[key]&&draft[key])||!found.text&&!!draft.text
+      resolved=enriched?this.saveRecord({kind:'vehicle',text:found.text||draft.text,plate:found.plate,revision:found.revision,...fields},found.id):found
+    }
+    const {id,text,brand,model,fabricationYear,modelYear}=resolved
+    return {...refs,vehicle:[{id,text,brand,model,plate:resolved.plate,fabricationYear,modelYear},...historical]}
   }
   primaryFields(refs:CustomerReferences,previous?:Atendimento) {
     const value=(kind:ReferenceKind)=>{const r=refs[kind][0];return r?.id?this.record(r.id):r}
@@ -582,7 +613,7 @@ export class CustomerRepository {
     if(old?.canonicalContactId)throw new ServiceError(409,'CONTACT_ARCHIVED','O Contato foi arquivado. Atualize o cadastro para editar o Contato canônico.')
     if(!['entity','contact','vehicle'].includes(String(kind)))invalid()
     const ref=this.validateReference({id:null,text:source.text, ...(kind==='vehicle'?{brand:source.brand,model:source.model,plate:source.plate,fabricationYear:source.fabricationYear,modelYear:source.modelYear}:{})},kind==='entity'?'person':kind as ReferenceKind)
-    if(!ref.text.trim()&&!(kind==='contact'&&old?.conversationId))invalid()
+    if(!ref.text.trim()&&!(kind==='contact'&&old?.conversationId)&&!(kind==='vehicle'&&validPlate(normalizedVehiclePlate(ref.plate??''))))invalid()
     if(source.nickname!==undefined&&(kind!=='contact'||typeof source.nickname!=='string'||source.nickname.length>250))invalid()
     const entityId=source.entityId===undefined?old?.entityId??null:source.entityId
     if(entityId!==null&&(kind!=='contact'||typeof entityId!=='string'||this.record(entityId).kind!=='entity'))invalid()

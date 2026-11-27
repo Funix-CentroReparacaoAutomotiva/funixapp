@@ -157,21 +157,35 @@ function FunnelDetail({card,stages,refresh,onSave,onClassified}:{card:FunnelCard
     <Activity id={record.id} refresh={refresh} onSave={onSave}/>
   </section>
 }
-function FunnelPreview({card,onClick}:{card:FunnelCard;onClick:()=>void}) {
+const stageTones:Record<string,string>={'novo-lead':'neutral','aguardando-dados':'blue','em-negociacao':'yellow','morno':'orange','frio':'blue','rejeitados':'neutral'}
+const cardStage=(card:FunnelCard)=>card.lane==='triage'?'novo-lead':card.lane
+function FunnelPreview({card,onClick,mobile=false,stageLabel}:{card:FunnelCard;onClick:()=>void;mobile?:boolean;stageLabel?:string}) {
   const {record,context}=card,amount=record.commercialValue
-  return <button className={'erp-sales-card'+(card.overdue?' erp-sales-overdue':'')} onClick={onClick}>
-    <strong>{humanName(record)}</strong><span>{recordVehicle(record)}</span>
-    {card.lane==='triage'&&<span className="erp-sales-classification-badge">A classificar</span>}
-    {amount&&<span>{amount.min===amount.max?money(amount.min):money(amount.min)+' a '+money(amount.max)}</span>}
-    <span>Última atividade · {dateLabel(card.lastActivityAt)}</span>
-    <span>{card.overdue?'Retorno vencido':'Próximo contato'} · {dateLabel(card.nextContactAt)}</span>
-    {(context.channel||context.origin)&&<span>{[context.channel,context.origin].filter(Boolean).join(' · ')}</span>}
+  const value=amount?(amount.min===amount.max?money(amount.min):money(amount.min)+' a '+money(amount.max)):null
+  return <button className={'erp-sales-card'+(card.overdue?' erp-sales-overdue':'')+(mobile?' erp-sales-compact-card erp-phase-'+(stageTones[cardStage(card)]??'neutral'):'')} onClick={onClick}>
+    {mobile?<><div className="erp-sales-card-top"><strong>{humanName(record)}</strong>{value&&<b>{value}</b>}</div>
+      <span>{recordVehicle(record)}</span>
+      <div className="erp-sales-card-bottom">{card.lane==='triage'?<span className="erp-sales-classification-badge">A classificar</span>:stageLabel?<span className="erp-sales-stage-badge">{stageLabel}</span>:null}
+        <span className={card.overdue?'erp-sales-alert':''}>{card.nextContactAt?(card.overdue?'Retorno vencido':'Retorno')+' · '+dateLabel(card.nextContactAt):'Última atividade · '+dateLabel(card.lastActivityAt)}</span></div></>:<>
+      <strong>{humanName(record)}</strong><span>{recordVehicle(record)}</span>
+      {card.lane==='triage'&&<span className="erp-sales-classification-badge">A classificar</span>}
+      {value&&<span>{value}</span>}
+      <span>Última atividade · {dateLabel(card.lastActivityAt)}</span>
+      <span>{card.overdue?'Retorno vencido':'Próximo contato'} · {dateLabel(card.nextContactAt)}</span>
+      {(context.channel||context.origin)&&<span>{[context.channel,context.origin].filter(Boolean).join(' · ')}</span>}
+    </>}
   </button>
 }
 function Funnel() {
   const [query,setQuery]=useState(()=>new URLSearchParams(window.location.search))
   const [selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0)
   const [classificationNotice,setClassificationNotice]=useState('')
+  const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width:760px)').matches)
+  useEffect(()=>{
+    const media=window.matchMedia('(max-width:760px)')
+    const sync=()=>setMobile(media.matches)
+    media.addEventListener('change',sync);return ()=>media.removeEventListener('change',sync)
+  },[])
   const invalidate=()=>setRefresh(count=>count+1)
   const apiQuery=new URLSearchParams(query)
   apiQuery.delete('stage')
@@ -179,31 +193,50 @@ function Funnel() {
   const lanes=read.data?.stages??[]
   const stageFilter=query.get('stage')??''
   const auxiliary=stageFilter==='triage'||stageFilter==='non-commercial'
+  const regular=(read.data?.cards??[]).filter(card=>card.lane!=='non-commercial')
   const cards=(read.data?.cards??[]).filter(card=>auxiliary?card.lane===stageFilter:
-    card.lane!=='non-commercial'&&(!stageFilter||(card.lane==='triage'?'novo-lead':card.lane)===stageFilter))
+    card.lane!=='non-commercial'&&(!stageFilter||cardStage(card)===stageFilter))
   const active=cards.find(c=>c.record.id===selected)
   useTaskRecord(active?.record.id)
-  return <>
-    <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
-    <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setSelected(null);setClassificationNotice('');setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])))}}>
-      <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''}/></label>
+  const selectStage=(stage:string)=>{
+    setSelected(null);setClassificationNotice('')
+    setQuery(previous=>{const next=new URLSearchParams(previous);if(stage)next.set('stage',stage);else next.delete('stage');return next})
+  }
+  const filters=<>
       <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
       <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
       <label>Origem<select name="origin" defaultValue={query.get('origin')??''}><option value="">Todas</option>{read.data?.origins.map(origin=><option key={origin}>{origin}</option>)}</select></label>
-      <label>Etapa<select aria-label="Etapa" name="stage" key={lanes.length} defaultValue={query.get('stage')??''}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}<option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>
+      {mobile?<label>Classificação<select aria-label="Classificação do filtro" name="classification" key={stageFilter} defaultValue={auxiliary?stageFilter:''}><option value="">Todas comerciais</option><option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>:
+        <label>Etapa<select aria-label="Etapa" name="stage" key={lanes.length+stageFilter} defaultValue={stageFilter}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}<option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>}
+  </>
+  return <>
+    <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
+    <form className={'erp-sales-fields erp-sales-filters'+(mobile?' erp-sales-mobile-filters':'')} onSubmit={event=>{
+      event.preventDefault();setSelected(null);setClassificationNotice('')
+      const next=new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)]))
+      if(mobile){const classification=next.get('classification');next.delete('classification');const stage=classification||(auxiliary?'':stageFilter);if(stage)next.set('stage',stage)}
+      setQuery(next)
+    }}>
+      <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''} placeholder={mobile?'Cliente, veículo ou placa':undefined}/></label>
+      {mobile?<details className="erp-sales-more-filters"><summary><WorkspaceIcon name="filter"/> Filtros</summary><div>{filters}</div></details>:filters}
       <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
     </form>
     <ReadStatus read={read}/>
     {read.data&&<>
+      {mobile&&<div className="erp-sales-stage-selector" role="group" aria-label="Etapas comerciais">{lanes.map(lane=><button type="button" className={'erp-phase-'+(stageTones[lane.id]??'neutral')} key={lane.id} aria-pressed={stageFilter===lane.id} onClick={()=>selectStage(stageFilter===lane.id?'':lane.id)}>
+        <strong>{regular.filter(card=>cardStage(card)===lane.id).length}</strong><span>{lane.label}</span></button>)}</div>}
       {classificationNotice&&<p role="status" className="erp-sales-classification-notice">{classificationNotice}</p>}
       {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><FunnelDetail key={active.record.id} card={active} stages={read.data.stages} refresh={refresh} onSave={invalidate} onClassified={purpose=>{
         setClassificationNotice(humanName(active.record)+' · Classificação salva: '+ATENDIMENTO_PURPOSES[purpose])
         invalidate()
       }}/></>}
-      {auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
+      {mobile?<><div className="erp-sales-mobile-list-header"><h2>{auxiliary?(stageFilter==='triage'?'A classificar':'Não comercial'):lanes.find(l=>l.id===stageFilter)?.label??'Todos os atendimentos'} <small>({cards.length})</small></h2>
+        {stageFilter&&<button type="button" onClick={()=>selectStage('')}>Ver todos</button>}</div>
+        <div className="erp-sales-mobile-list" aria-label="Atendimentos">{cards.map(card=><FunnelPreview key={card.record.id} card={card} mobile stageLabel={!stageFilter?lanes.find(l=>l.id===cardStage(card))?.label:undefined} onClick={()=>setSelected(card.record.id)}/>)}</div></>:
+        auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
         {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
       </div>:<div className="erp-sales-board">{lanes.filter(lane=>!stageFilter||stageFilter===lane.id).map(lane=>{
-        const laneCards=cards.filter(card=>(card.lane==='triage'?'novo-lead':card.lane)===lane.id)
+        const laneCards=cards.filter(card=>cardStage(card)===lane.id)
         return <section className="erp-sales-lane" key={lane.id} aria-label={lane.label}><h2>{lane.label} <small>{laneCards.length}</small></h2>
           {laneCards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
         </section>

@@ -181,3 +181,30 @@ test('Issue #118 migra SQLite V15 para V16 sem alterar registros históricos', (
     db.close()
   } finally { temp.close() }
 })
+
+test('manual vehicle registry resolves valid plates transactionally, enriches missing fields, and rejects duplicate identities and multiple vehicles',()=>{
+  const db=openDatabase(':memory:'),repo=new AtendimentoRepository(db)
+  const references=(vehicle:import('../../shared/customer.ts').CustomerReference[])=>({person:[],contact:[],vehicle,payer:[]})
+  const vehicleCount=()=>Number(db.prepare("SELECT count(*) n FROM customer_records WHERE kind='vehicle'").get()!.n)
+  try {
+    const first=repo.create({references:references([{id:null,text:'',plate:'qat-1a01'}]),channel:'Balcão',notes:'QA',purpose:'commercial'},false,true)
+    const v=first.references!.vehicle[0]!
+    assert.ok(v.id);assert.equal(v.plate,'QAT1A01');assert.equal(vehicleCount(),1)
+    assert.equal(first.channel,'Balcão');assert.equal(first.origin,'initial')
+    const updated=repo.update(first.id,{revision:first.revision,references:references([{id:null,text:'Fiat Punto',plate:'QAT1A01',brand:'Fiat',model:'Punto',fabricationYear:'2019',modelYear:'2020'}])},true,true)
+    assert.equal(updated.references!.vehicle[0]!.id,v.id);assert.equal(updated.model,'Punto');assert.equal(updated.fabricationYear,'2019')
+    const again=repo.create({references:references([{id:null,text:'',plate:'QAT1A01'}]),channel:'Recorrência'},false,true)
+    assert.equal(again.references!.vehicle[0]!.id,v.id);assert.equal(again.model,'Punto');assert.equal(vehicleCount(),1)
+    assert.equal(again.channel,'Recorrência')
+    assert.throws(()=>repo.create({references:references([{id:null,text:'Duster',plate:'QAT1A01',model:'Duster'}])},false,true),{code:'VEHICLE_PLATE_CONFLICT'})
+    assert.throws(()=>repo.create({references:references([{id:null,text:'',plate:'QAT1A02'},{id:null,text:'',plate:'QAT1A03'}])},false,true),{code:'SINGLE_VEHICLE'})
+    assert.throws(()=>repo.create({references:references([{id:null,text:'',plate:'QAT1A04'}]),channel:'Inexistente'},false,true),{code:'INVALID_ATENDIMENTO'})
+    assert.equal(vehicleCount(),1);assert.equal(repo.list().total,2)
+    assert.throws(()=>repo.update(first.id,{revision:updated.revision,references:references([{id:v.id,text:'Fiat Punto'},{id:null,text:'Outro'}])},true,true),{code:'SINGLE_VEHICLE'})
+    const old=repo.create({references:references([{id:null,text:'Antigo 1'},{id:null,text:'Antigo 2'}]),reason:'Histórico',deliveryDate:'2026-12-01'})
+    const saved=repo.update(old.id,{revision:old.revision,references:repo.get(old.id,true).references,notes:'Anotação'},true,true)
+    assert.equal(saved.references!.vehicle.length,2);assert.equal(saved.reason,'Histórico');assert.equal(saved.deliveryDate,'2026-12-01')
+    const partial=repo.create({references:references([{id:null,text:'Sem placa',plate:'QA'}])},false,true)
+    assert.equal(partial.references!.vehicle[0]!.id,null);assert.equal(vehicleCount(),1)
+  }finally{db.close()}
+})

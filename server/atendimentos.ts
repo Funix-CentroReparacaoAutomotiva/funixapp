@@ -1,4 +1,5 @@
 import type {CustomerReferences} from '../shared/customer.ts'
+import { salesChannels } from '../shared/sales.ts'
 import { CustomerRepository } from './customers.ts'
 import{initializeFinancialSettings}from'./financial-initialization.ts'
 import{initializeVehicleComposition}from'./default-vehicle-composition.ts'
@@ -12,7 +13,7 @@ import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-dat
 import {normalizeCustomerPhone,normalizeCustomerInputPhone,canonicalizeCustomerInputPhone} from './phone.ts'
 
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
-const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
+const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason', 'channel'])
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
@@ -49,6 +50,8 @@ function validate(input: unknown, patch: boolean) {
     output[key] = source[key] as string
   }
   if (source.deliveryDate !== undefined) output.deliveryDate=parseDeliveryDate(source.deliveryDate)
+  if(source.channel!==undefined&&(typeof source.channel!=='string'||source.channel.length>100))invalid('Canal de aquisição inválido.')
+  const channel=source.channel as string|undefined
   const dateReason=deliveryReason(source.deliveryDateReason,'Alteração manual nas configurações do Atendimento')
   if (source.purpose !== undefined) {
     if (typeof source.purpose !== 'string' || !Object.hasOwn(ATENDIMENTO_PURPOSES,source.purpose)) invalid('Finalidade inválida.')
@@ -63,8 +66,8 @@ function validate(input: unknown, patch: boolean) {
     output.explicitRefusal = source.explicitRefusal
   }
   if(source.closed!==undefined){if(typeof source.closed!=='boolean')invalid('Encerramento inválido.')}
-  if (patch && source.closed===undefined && source.references===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
-  return { fields: output, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined, duplicateConfirmation:source.duplicateConfirmation as string|undefined }
+  if (patch && source.closed===undefined && source.references===undefined && channel===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
+  return { fields: output, channel, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined, duplicateConfirmation:source.duplicateConfirmation as string|undefined }
 }
 
 function map(row: Record<string, SQLOutputValue>): Atendimento {
@@ -118,7 +121,23 @@ export class AtendimentoRepository {
     const record=map(row)
     const customers=new CustomerRepository(this.db)
     if(includeReferences && customers.available())record.references=customers.references(id)
+    if(includeReferences&&this.hasOriginTable()){
+      const metadata=this.db.prepare('SELECT origin,channel FROM erp_experience_origin WHERE atendimento_id=?').get(id)
+      if(metadata){record.origin=metadata.origin as Atendimento['origin'];record.channel=String(metadata.channel??'')}
+    }
     return includeReferences ? customers.present([record])[0]! : record
+  }
+
+  private hasOriginTable() {return !!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_experience_origin'").get()}
+  private saveChannel(id:string,channel:string|undefined) {
+    if(channel===undefined)return
+    if(!this.hasOriginTable())invalid('Cadastro de canal indisponível nesta versão do banco.')
+    const old=this.db.prepare('SELECT channel FROM erp_experience_origin WHERE atendimento_id=?').get(id)
+    if(channel&&channel!==old?.channel&&!salesChannels.some(candidate=>candidate===channel))invalid('Selecione um canal de aquisição válido.')
+    this.db.prepare(`INSERT INTO erp_experience_origin(atendimento_id,origin,previous_experience_id,channel) VALUES(?,'initial',NULL,?)
+      ON CONFLICT(atendimento_id) DO UPDATE SET channel=excluded.channel`).run(id,channel||null)
+    if((old?.channel??'')!==channel&&this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_sales_context'").get())
+      this.db.prepare('UPDATE erp_sales_context SET revision=revision+1 WHERE atendimento_id=?').run(id)
   }
 
   private possibleDuplicates(record:{phoneNormalized:string|null;plate:string},refs:CustomerReferences|undefined):DuplicateAtendimento[] {
@@ -142,7 +161,7 @@ export class AtendimentoRepository {
   }
 
   create(input: unknown, inTransaction = false, manual = false): Atendimento {
-    const { fields, references, closed, dateReason, duplicateConfirmation } = validate(input, false)
+    const { fields, channel, references, closed, dateReason, duplicateConfirmation } = validate(input, false)
     if(duplicateConfirmation&&!manual)invalid('Confirmação de duplicidade indisponível para criação automática.')
     const customers=new CustomerRepository(this.db)
     if (!inTransaction) this.db.exec('BEGIN IMMEDIATE')
@@ -183,6 +202,7 @@ export class AtendimentoRepository {
       if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
       if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?now:null,record.id)
       if(refs)customers.saveReferences(record.id,refs)
+      this.saveChannel(record.id,channel)
       initializeVehicleComposition(this.db,record.id,now)
       const saved=this.get(record.id,manual)
       if (!inTransaction) this.db.exec('COMMIT')
@@ -202,7 +222,8 @@ export class AtendimentoRepository {
 
   private manualReferences(customers:CustomerRepository,fields:Record<string,unknown>,references:unknown,manual:boolean,previous?:CustomerReferences) {
     if(references!==undefined){
-      const refs=customers.validate(references)
+      let refs=customers.validate(references)
+      if(manual)refs=customers.resolveManualVehicleReference(refs,previous)
       return manual||refs.person.some(ref=>ref.id)?customers.resolveManualContactReferences(refs,previous):refs
     }
     if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerInputPhone(fields.phone))return undefined
@@ -221,7 +242,7 @@ export class AtendimentoRepository {
   }
 
   private updateRecord(id: string, input: unknown, manual:boolean): Atendimento {
-    const { fields, revision, references, closed, dateReason } = validate(input, true)
+    const { fields, channel, revision, references, closed, dateReason } = validate(input, true)
     const customers=new CustomerRepository(this.db)
     const old=this.get(id)
     if(old.revision!==revision)throw new ServiceError(409,'VERSION_CONFLICT','Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
@@ -245,6 +266,7 @@ export class AtendimentoRepository {
     if(fields.purpose!==undefined)this.db.prepare('UPDATE atendimentos SET purpose=? WHERE id=?').run(record.purpose!,id)
     if(fields.deliveryDate!==undefined)writeDeliveryDate(this.db,id,old.deliveryDate??null,record.deliveryDate??null,dateReason,record.updatedAt,false)
     if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?record.updatedAt:null,id)
+    this.saveChannel(id,channel)
     if(refs)customers.saveReferences(id,refs,previousContacts)
     else if(customers.available()){customers.applyLegacyFields(id,fields,manual);customers.invalidateContactContexts(id,previousContacts,customers.references(id).contact)}
     return this.get(id)

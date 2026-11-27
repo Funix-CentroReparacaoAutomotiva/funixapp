@@ -40,6 +40,17 @@ async def run():
                     await expect(fab).to_be_visible()
                     await expect(copilot).to_have_count(0)
                     await expect(page.get_by_role("button", name="Sair", exact=True)).to_have_count(0)
+                    if href == "funil":
+                        if width < 761:
+                            selector = page.get_by_role("group", name="Etapas comerciais")
+                            await expect(selector.get_by_role("button")).to_have_count(6)
+                            await selector.get_by_role("button", name="Novo contato", exact=False).click()
+                            await expect(selector.get_by_role("button", name="Novo contato", exact=False)).to_have_attribute("aria-pressed", "true")
+                            await page.get_by_role("button", name="Ver todos", exact=True).click()
+                            assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+                        else:
+                            await expect(page.locator(".erp-sales-board > section")).to_have_count(6)
+                            await expect(page.get_by_role("group", name="Etapas comerciais")).to_have_count(0)
                     if href == "desempenho":
                         await page.get_by_role("button", name="Aplicar", exact=True).wait_for()
                         cards = page.locator(".erp-sales-dashboard-cards").first
@@ -58,7 +69,7 @@ async def run():
                         bottom = await nav.bounding_box()
                         assert box["y"] + box["height"] <= bottom["y"]
                         assert box["x"] + box["width"] <= width
-                    for control in await page.locator(".erp-sales-filters input, .erp-sales-filters select").all():
+                    for control in await page.locator(".erp-sales-filters input:visible, .erp-sales-filters select:visible").all():
                         assert await control.evaluate("""el => {
                           const bounds = el.getBoundingClientRect(), parent = el.parentElement.getBoundingClientRect()
                           return bounds.right <= parent.right + 1 && bounds.left >= parent.left - 1
@@ -66,7 +77,46 @@ async def run():
                     await fab.click()
                     await expect(page.get_by_role("form", name="Novo Atendimento")).to_be_visible()
                     await expect(fab).to_have_count(0)
-                    await page.get_by_role("button", name="Fechar formulário").click()
+                    form = page.get_by_role("form", name="Novo Atendimento")
+                    for label in ["Finalidade", "Motivo / descrição do ocorrido", "Data prevista de entrega (opcional)"]:
+                        await expect(form.get_by_label(label, exact=True)).to_have_count(0)
+                    vehicle = form.get_by_role("region", name="Veículo", exact=True)
+                    await expect(vehicle.get_by_role("button", name="+ Adicionar", exact=True)).to_have_count(0)
+                    await expect(vehicle.get_by_role("button", name="Cadastrar veículo", exact=True)).to_have_count(0)
+                    if width == 390 and href == "funil":
+                        await form.get_by_label("Pessoa de referência").fill("Cliente placa QA")
+                        await form.get_by_label("Placa", exact=True).fill("QAZ1A39")
+                        await form.get_by_label("Canal de aquisição").select_option("WhatsApp")
+                        async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith("/api/atendimentos")) as response_info:
+                            await form.get_by_role("button", name="Criar Atendimento").click()
+                        created = await response_info.value
+                        assert created.ok, await created.text()
+                        original = await created.json()
+                        persisted = await context.request.get(ORIGIN + "/api/atendimentos/" + original["id"])
+                        persisted = await persisted.json()
+                        assert persisted["references"]["vehicle"][0]["id"], persisted
+                        assert persisted["channel"] == "WhatsApp"
+                        await expect(form).to_have_count(0)
+                        await page.goto(ORIGIN + "/vendas/funil")
+                        await fab.click()
+                        await form.get_by_label("Pessoa de referência").fill("Cliente segundo QA")
+                        await form.get_by_label("Placa", exact=True).fill("QAZ1A39")
+                        await form.get_by_label("Montadora", exact=True).fill("Fiat")
+                        await form.get_by_label("Modelo", exact=True).fill("Punto")
+                        await form.get_by_label("Ano de fabricação", exact=True).fill("19")
+                        await form.get_by_label("Ano do modelo", exact=True).fill("20")
+                        async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith("/api/atendimentos")) as response_info:
+                            await form.get_by_role("button", name="Criar Atendimento").click()
+                        second = await response_info.value
+                        assert second.ok, await second.text()
+                        detail = await context.request.get(ORIGIN + "/api/atendimentos/" + (await second.json())["id"])
+                        detail = await detail.json()
+                        assert detail["references"]["vehicle"][0]["id"] == persisted["references"]["vehicle"][0]["id"], detail
+                        assert detail["fabricationYear"] == "2019" and detail["modelYear"] == "2020", detail
+                        await expect(form).to_have_count(0)
+                        await page.goto(ORIGIN + "/vendas/funil")
+                    else:
+                        await page.get_by_role("button", name="Fechar formulário").click()
                     if evidence and width == 390:
                         Path(evidence).mkdir(parents=True, exist_ok=True)
                         await page.screenshot(path=str(Path(evidence) / (href + ".png")))

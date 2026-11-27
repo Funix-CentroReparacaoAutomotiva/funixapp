@@ -58,6 +58,8 @@ export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
 
 export interface Atendimento {
   purpose?: AtendimentoPurpose
+  channel?: string
+  origin?: 'initial' | 'recurrence' | 'rework'
   chatIdentity?: {name:string;phone:string;conversationId:string;observedPhone?:string}
   closedAt?: string | null
   references?: CustomerReferences
@@ -103,6 +105,6 @@ export interface AtendimentoList {
 }
 
 export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string} & Partial<Pick<Atendimento, 'phone' | 'references' |
-  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
+  'name' | 'channel' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }

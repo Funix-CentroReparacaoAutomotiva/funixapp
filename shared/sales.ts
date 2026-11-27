@@ -2,7 +2,7 @@ import type { Atendimento, AtendimentoStage } from './contracts.ts'
 import type { WorkshopVehicle } from './erp.ts'
 import type { ProductionBudget } from './production.ts'
 
-export const salesChannels = ['WhatsApp', 'Balcão', 'Seguradora'] as const
+export const salesChannels = ['WhatsApp', 'Balcão', 'Seguradora', 'Recorrência'] as const
 
 export type SalesStage = { id: AtendimentoStage; label: string; minutes: number | null }
 export type SalesContext = {

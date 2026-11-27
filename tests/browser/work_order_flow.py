@@ -382,20 +382,21 @@ db.close()
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         mark("layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo")
 
-        # Full revision workflow using the actual Atendimento settings and issuance UI.
+        # Full revision workflow using the actual scheduling and issuance UI.
         at_url = "/api/atendimentos/" + ids["at"]
 
-        async def change_delivery_in_settings(value):
+        async def change_delivery_in_schedule(value):
             current = await get(at_url)
-            await h.goto_record(page, current)
-            await h.editor(page)
-            form = page.get_by_role("form", name="Editar Atendimento")
-            date_input = form.get_by_label("Data prevista de entrega (opcional)")
+            await page.goto(ORIGIN + browse)
+            await history.get_by_role("button", name="Agendamento e experiência").click()
+            await production.get_by_role("button", name="Reagendar ou incluir orçamentos").click()
+            date_input = schedule.get_by_label("Entrega combinada (opcional)")
             await expect(date_input).to_have_value(current.get("deliveryDate") or "")
+            await date_input.fill(value)
             async with page.expect_response(
-                lambda r: r.request.method == "PATCH" and r.url.endswith(at_url)
+                lambda r: r.request.method == "POST" and r.url.endswith(at_url + "/agendamento")
             ) as saved:
-                await date_input.fill(value)
+                await schedule.get_by_role("button", name="Confirmar agendamento").click()
             response = await saved.value
             assert response.status == 200, await response.text()
             assert (await response.json()).get("deliveryDate") == (value or None)
@@ -416,7 +417,7 @@ db.close()
             assert "02/12/2026" not in pdf_text(pdf_bytes)
         assert "R01" in pdf_text(pdf_bytes)
 
-        await change_delivery_in_settings("2026-12-08")
+        await change_delivery_in_schedule("2026-12-08")
         await shot("04-reemissao-necessaria")
         async with page.expect_response(
             lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
@@ -442,7 +443,7 @@ db.close()
         assert (await get(base + "/os")) == order
         mark("alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes")
 
-        await change_delivery_in_settings("")
+        await change_delivery_in_schedule("")
         async with page.expect_response(
             lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
         ) as r3_result:
@@ -515,7 +516,7 @@ db.close()
 async def run():
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
-        browser = await p.chromium.launch(executable_path="/usr/bin/chromium",
+        browser = await p.chromium.launch(executable_path=os.environ.get("FUNIX_CHROMIUM", "/usr/bin/chromium"),
                                           headless=True, args=["--no-sandbox"])
         try:
             for label, viewport in [

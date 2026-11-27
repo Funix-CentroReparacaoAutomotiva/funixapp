@@ -144,3 +144,29 @@
   .erp-sales-dashboard-cards { grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; }
   .erp-sales-dashboard-cards > section:has(details[open]) { grid-column: 1 / -1; }
 }
+
+/* Mobile-only stage selector, with the same filtered source and order as the board. */
+@media (max-width:760px) {
+  .erp-sales-mobile-filters {grid-template-columns:minmax(0,1fr) auto auto; align-items:end; gap:.45rem;}
+  .erp-sales-mobile-filters > label:has(input[type=search]) {grid-column:auto;}
+  .erp-sales-mobile-filters > label {min-width:0;}
+  .erp-sales-more-filters {position:relative; display:contents;}
+  .erp-sales-more-filters > summary {display:flex; min-height:36px; align-items:center; gap:.3rem; border:1px solid var(--sales-border); border-radius:8px; padding:.35rem .5rem; background:#fff; font-size:.85rem; color:var(--sales-navy);}
+  .erp-sales-more-filters > summary svg {width:15px;height:15px;}
+  .erp-sales-more-filters[open] > div {grid-column:1/-1; grid-row:2; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem;}
+  .erp-sales-stage-selector {display:grid; grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem; margin:.65rem 0 .8rem;}
+  .erp-sales-stage-selector button {display:grid;align-content:center;justify-items:start;gap:.22rem;padding:.5rem .45rem; border-top:3px solid var(--erp-phase);text-align:left;min-height:68px;line-height:1.15;overflow-wrap:anywhere;}
+  .erp-sales-stage-selector button strong {font-size:1.35rem;font-variant-numeric:tabular-nums;color:var(--sales-navy);}
+  .erp-sales-stage-selector button span {font-size:.76rem;font-weight:600;}
+  .erp-sales-stage-selector button[aria-pressed="true"] {background:color-mix(in srgb,var(--erp-phase) 24%,white);border:1px solid var(--erp-phase);border-top-width:3px;box-shadow:0 0 0 1px var(--erp-phase);}
+  .erp-sales-mobile-list-header {display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.7rem 0 .25rem;}
+  .erp-sales-mobile-list-header h2 {font-size:.95rem;margin:0;}
+  .erp-sales-mobile-list-header small {font-weight:400;}
+  .erp-sales-mobile-list-header button {font-size:.8rem; min-height:34px;}
+  .erp-sales-mobile-list {display:grid;gap:.35rem; min-width:0;}
+  .erp-sales .erp-sales-compact-card {margin:0; padding:.65rem .7rem; gap:.3rem; min-width:0;}
+  .erp-sales-card-top,.erp-sales-card-bottom {display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
+  .erp-sales-card-top b {font-size:.9rem;font-variant-numeric:tabular-nums;color:var(--sales-navy);}
+  .erp-sales-card-bottom span {font-size:.76rem;}
+  .erp-sales-card .erp-sales-stage-badge {color:#263a53; background:color-mix(in srgb,var(--erp-phase) 25%,white);border-radius:4px;padding:.17rem .35rem;}
+}
