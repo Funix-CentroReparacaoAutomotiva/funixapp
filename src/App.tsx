@@ -35,7 +35,6 @@ type Route = { path: string; search: string }
 type Editor = { record?: Atendimento }
 const readRoute = (): Route => ({ path: window.location.pathname, search: window.location.search })
 function vehicleLabel(record: Atendimento) { return record.vehicle || [record.brand, record.model].filter(Boolean).join(' ') }
-function dateLabel(value: string) { return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(value)) }
 
 function App() {
   const [route, setRoute] = useState(() => {
@@ -53,8 +52,6 @@ function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [taskRecord, setTaskRecord] = useState('')
   useEffect(() => { rememberPage(route.path) }, [route.path])
-  const diaryDialog = useRef<HTMLDialogElement>(null)
-  const [diaryOpen, setDiaryOpen] = useState(false)
   const isFinance = route.path === '/financeiro', isOperation = route.path === '/operacao'
   const area: Area = isFinance ? 'financeiro' : isOperation ? 'operacao' : (route.path === '/configuracoes' || route.path === '/gestao/configuracoes') ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
   const mode = params.get('modo') === 'lista' ? 'lista' : 'quadro', query = params.get('q') || ''
@@ -62,8 +59,9 @@ function App() {
   const removedRoute = route.path.startsWith('/veiculos') || route.path.startsWith('/experiencias')
   const tab = ['chat', 'mapa', 'diagnosticos'].includes(params.get('aba') || '') ? params.get('aba')! : 'chat'
   const screen = isDetail ? detailScreen(route.search) : null
-  const commercialContext=isDetail&&params.get('comercial')==='1'
-  const commercialSummary=commercialContext&&params.get('aba')==='resumo'
+  const commercialSummary=isDetail&&params.get('aba')==='resumo'
+  const internalScreen=screen&&(screen!=='experiencia'||Boolean(window.history.state?.detailParent))
+  const quoteWorkspace=!commercialSummary&&!screen&&tab!=='chat'
   const [contextTitle,setContextTitle]=useState<{key:string;title:string}|null>(null)
   const key = query, routeKey = route.path + route.search
   const onContextTitle=useCallback((title:string)=>setContextTitle({key:routeKey,title}),[routeKey])
@@ -79,6 +77,7 @@ function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [copilotOpen, setCopilotOpen] = useState(false), [editor, setEditor] = useState<Editor | null>(null), [savedMessage, setSavedMessage] = useState('')
   const [chatContextVersion,setChatContextVersion]=useState(0)
+  const [chatDrafts]=useState(()=>new Map<string,string>())
   const [commercialVersion, setCommercialVersion] = useState(0)
   const [voiceRefreshVersion,setVoiceRefreshVersion] = useState(0)
   const[voiceContext,setVoiceContext]=useState<VoiceCaptureContext|null>(null)
@@ -105,14 +104,15 @@ function App() {
     dirty.current = false; setEditor(null); return true
   }
   function navigate(href: string, replace = false, state?: unknown) {
-    if (!canLeaveEditor(isDetail && new URL(href, window.location.origin).pathname === route.path)) return false
+    const target=new URL(href,window.location.origin)
+    if (!canLeaveEditor(isDetail && target.pathname===route.path&&target.searchParams.get('aba')!=='resumo')) return false
     const index=historyState.current?.funixIndex??0
     const nextState={...(state??window.history.state),funixIndex:replace?index:index+1}
     if (replace) window.history.replaceState(nextState, '', href)
     else window.history.pushState(nextState, '', href)
     historyState.current=nextState
     const nextRoute=readRoute(),nextTab=new URLSearchParams(nextRoute.search).get('aba')??'chat'
-    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!commercialContext&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
+    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!commercialSummary&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
     const update=()=>{if(window.location.pathname!==nextRoute.path||window.location.search!==nextRoute.search)return;setRoute(nextRoute);setSavedMessage('')}
     tabTransition.current?.skipTransition()
     if(animated&&document.startViewTransition){
@@ -145,25 +145,25 @@ function App() {
     return navigate(route.path+'?'+values,false,{...window.history.state,detailParent:routeKey})
   }
   function goBack() {
-    if(screen){
+    if(internalScreen){
       if(window.history.state?.detailParent && historyState.current?.funixIndex>0)window.history.back()
       else {const search=parentDetail(route.search);navigate(route.path+(search?'?'+search:''),true)}
       return
     }
     if (!canLeaveEditor()) return
-    if(commercialContext){navigate(window.history.state?.returnTo||'/vendas/funil',true);return}
-    if (window.history.state?.returnTo && historyState.current?.funixIndex>0) window.history.back()
-    else navigate(preferredPage(module), true)
+    navigate(window.history.state?.returnTo||preferredPage(module),true)
   }
   const expireSession = useCallback(() => {
     setSession(previous => previous ? { ...previous, authenticated: false } : null)
+    chatDrafts.clear()
     cache.current.clear(); setList(null); setRecord(null)
-  }, [])
+  }, [chatDrafts])
   useEffect(() => {
     const onPop = () => {
       if(restoringHistory.current){restoringHistory.current=false;return}
       const changedRecord=window.location.pathname!==routeRef.current.path
-      const unsaved=dirty.current||(negotiationDirty.current&&changedRecord)
+      const leavingQuote=changedRecord||new URLSearchParams(window.location.search).get('aba')==='resumo'
+      const unsaved=dirty.current||(negotiationDirty.current&&leavingQuote)
       if (saving.current || (unsaved&&!window.confirm('Há alterações não salvas. Deseja descartá-las?'))) {
         const delta=(historyState.current?.funixIndex??0)-(window.history.state?.funixIndex??0)
         if(delta){restoringHistory.current=true;window.history.go(delta)}
@@ -171,7 +171,7 @@ function App() {
         return
       }
       if(unsaved)setCommercialVersion(value=>value+1)
-      if(changedRecord)negotiationDirty.current=false
+      if(leavingQuote)negotiationDirty.current=false
       tabTransition.current?.skipTransition()
       dirty.current=false;setEditor(null);historyState.current=window.history.state;setRoute(readRoute());setSavedMessage('')
     }
@@ -201,7 +201,7 @@ function App() {
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [session?.authenticated, key, isDetail, area, removedRoute, reload, query, expireSession, route.path])
   const detailConversation=params.get('conversa')
-  const selectedChat=tab==='chat'&&!!detailConversation
+  const selectedChat=!commercialSummary&&tab==='chat'&&!!detailConversation
   const chatIdentity=record?.chatIdentity?.conversationId===detailConversation?record?.chatIdentity:undefined
   const detailName=selectedChat?(chatIdentity?.name||'Identidade do Chat pendente'):(record?.name||'Sem nome')
   const detailPhone=selectedChat?(chatIdentity?.phone||(chatIdentity?.observedPhone?chatIdentity.observedPhone+' · observado':'Telefone pendente')):(record?.phone.trim()||'Não informado')
@@ -216,9 +216,9 @@ function App() {
   },[detailId,detailConversation,expireSession])
   useEffect(() => {
     if (!session?.authenticated || !isDetail) { setRecord(null); return }
-    const controller = new AbortController(); setRecord(null); setFailure(''); setLoading(true)
+    const controller = new AbortController(); setRecord(current=>current?.id===detailId?current:null); setFailure(''); setLoading(storedRecord?.id!==detailId)
     api<Atendimento>(`/api/atendimentos/${encodeURIComponent(detailId)}${detailConversation?'?conversa='+encodeURIComponent(detailConversation):''}`, { signal: controller.signal }).then(result => {
-      if (!controller.signal.aborted) setRecord(result)
+      if (!controller.signal.aborted) setRecord(current=>current?.id===result.id&&current.revision>result.revision?current:result)
     }).catch((cause: RequestFailure) => {
       if (cause.name === 'AbortError') return
       if (cause.status === 401) expireSession()
@@ -301,9 +301,9 @@ function App() {
   }
   function autosaved(savedRecord: Atendimento, contactsChanged: boolean) {
     // Persistência de edição não encerra o modal nem recria o formulário.
-    setRecord(savedRecord);cache.current.clear();setList(null)
+    setRecord(previous=>!contactsChanged&&previous?.id===savedRecord.id?{...savedRecord,chatIdentity:previous.chatIdentity}:savedRecord);cache.current.clear();setList(null)
     if(contactsChanged){
-      setChatContextVersion(v=>v+1)
+      chatDrafts.clear();setChatContextVersion(v=>v+1)
       const next=new URL(window.location.href);next.searchParams.delete('conversa')
       window.history.replaceState(window.history.state,'',next.pathname+next.search);setRoute(readRoute())
     }
@@ -324,8 +324,8 @@ function App() {
     (workspaceFor(route.path)?.id === 'vendas')
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
   return <div className={`app-shell workspace-shell ${session?.authenticated ? 'workspace-authenticated' : ''}`}>
-    <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''} ${commercialContext?'workspace-record-context':''}`} inert={Boolean(editor)}>
-      {session?.authenticated && <>
+    <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''} ${isDetail?'workspace-record-context':''}`} inert={Boolean(editor)}>
+      {session?.authenticated && !isDetail && <>
         <WorkspaceSidebar module={module} collapsed={sidebarCollapsed} toggle={() => setSidebarCollapsed(value => !value)} navigate={navigate} onAccount={() => setAccountOpen(true)}>
           <WorkspacePages module={module} path={route.path} navigate={navigate} />
         </WorkspaceSidebar>
@@ -404,31 +404,27 @@ function App() {
           </>}
         </>}
       </main> : <>
-        <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? detailName.slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? detailName : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{detailPhone}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
-        {!screen&&!commercialSummary&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
+        <header className="detail-header">{internalScreen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<>
+          <button aria-label="Voltar à visão anterior" title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button>
+          <div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record?detailName.slice(0,2).toUpperCase():'·'}</span><span className="detail-contact-lines"><strong>{record?detailName:'Atendimento'}</strong>{session?.authenticated&&record&&<span className="detail-phone">{detailPhone}</span>}</span></div>
+          <div className="detail-identity"><strong>{record?.plate||'—'}</strong><span>{record?vehicleLabel(record)||'Veículo não informado':loading?'Carregando…':''}</span></div>
+          {session?.authenticated&&record&&<TaskCenter recordId={record.id} openRecord={id=>id===detailId||navigate('/atendimentos/'+encodeURIComponent(id)+'?aba=resumo',false,{returnTo:window.history.state?.returnTo||preferredPage(module)})}/>}
+        </>}</header>
+        {!internalScreen&&session?.authenticated&&record&&<nav className="workspace-record-pages" aria-label="Ações do Atendimento">
+          {([{label:'Dados',icon:'conta',query:'aba=resumo',active:commercialSummary},{label:'WhatsApp',icon:'conversas',query:'aba=chat',active:!commercialSummary&&tab==='chat'&&!screen},
+            {label:'Orçamentos',icon:'document',query:'aba=diagnosticos',active:quoteWorkspace},{label:'Agendamento',icon:'calendar',query:'aba=diagnosticos&tela=experiencia',active:screen==='experiencia'}] as const).map(item=>
+            <button key={item.label} type="button" aria-current={item.active?'page':undefined} onClick={()=>{if(!item.active||window.location.pathname+window.location.search!==routeKey){const next=new URLSearchParams(item.query);for(const key of ['conversa','leitura']){const value=params.get(key);if(value)next.set(key,value)}if(navigate(route.path+'?'+next,true,{returnTo:window.history.state?.returnTo||preferredPage(module)}))setCopilotOpen(false)}}}><WorkspaceIcon name={item.icon}/><span>{item.label}</span></button>)}
+        </nav>}
+        {quoteWorkspace&&session?.authenticated&&record&&<nav className="view-switch" aria-label="Ferramentas de orçamento">{(['diagnosticos','mapa'] as const).map(item=><button key={item} className={`view-tab ${tab===item?'active':''}`} onClick={()=>updateParams({aba:item})} aria-current={tab===item?'page':undefined}><Icon name={item==='diagnosticos'?'diagnostics':'map'}/>{item==='diagnosticos'?'Diagnóstico':'Mapa'}</button>)}<div className="scenario-slot" ref={setScenarioSlot}/></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
-          <button className="erp-diary-trigger" onClick={() => { diaryDialog.current?.showModal(); setDiaryOpen(true) }}>Diário</button>
-          <dialog ref={diaryDialog} className="erp-diary-dialog" onClose={() => setDiaryOpen(false)} aria-label="Diário da Experiência">
-            <form method="dialog" className="erp-diary-close"><button>Fechar Diário</button></form>
-            {diaryOpen && <Experiences key={routeKey} view="diario" atendimentoId={record.id} context={
-              screen === 'orcamentos' && params.get('versao') ? {origin: 'orcamento', recordId: params.get('versao')!} :
-              screen === 'experiencia' ? {origin: 'experiencia'} :
-              screen === 'peca' && params.get('peca') ? {origin: 'diagnostico', recordId: params.get('peca')!} :
-              {origin: 'atendimento'}
-            } />}
-          </dialog>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {commercialSummary?<SalesRecord key={record.id} id={record.id} onDirty={onDirty} onBusy={onBusy} onOpen={openCommercial}/>:<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?${commercialContext?'comercial=1&':''}aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
-            <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{(record.fabricationYear!==null||record.modelYear!==null)&&<p>Ano de fabricação: {record.fabricationYear||'—'} · Ano do modelo: {record.modelYear||'—'}</p>}{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
+          {commercialSummary?<SalesRecord key={record.id} id={record.id} onDirty={onDirty} onBusy={onBusy} onOpen={openCommercial} onAutoSaved={autosaved} onMessage={cid=>navigate(route.path+'?aba=chat&conversa='+encodeURIComponent(cid),true,{returnTo:window.history.state?.returnTo||preferredPage(module)})} onAuthRequired={expireSession}/>:<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} drafts={chatDrafts} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
+            <div className="record-summary at-record-summary"><p>Consulte e altere as informações do cliente e do veículo na aba Dados.</p><button type="button" className="fh-filter" onClick={()=>updateParams({aba:'resumo'})}>Ver dados do Atendimento</button></div>
           </ChatPanel></>} />}
         </>}
       </>}
       </TaskRecordContext.Provider>
       </div>
-      {commercialContext&&session?.authenticated&&record&&<nav className="workspace-record-pages" aria-label="Ações do Atendimento">
-        {([{label:'Dados',icon:'tarefas',query:'aba=resumo',active:commercialSummary},{label:'WhatsApp',icon:'conversas',query:'aba=chat',active:!commercialSummary&&tab==='chat'&&!screen},{label:'Orçamentos',icon:'document',query:'aba=diagnosticos&tela=orcamentos',active:!commercialSummary&&tab!=='chat'&&screen!=='experiencia'},{label:'Agendamento',icon:'calendar',query:'aba=diagnosticos&tela=experiencia',active:screen==='experiencia'}] as const).map(item=>
-          <button key={item.label} type="button" aria-current={item.active?'page':undefined} onClick={()=>navigate(route.path+'?comercial=1&'+item.query,false,{returnTo:window.history.state?.returnTo||'/vendas/funil'})}><WorkspaceIcon name={item.icon}/><span>{item.label}</span></button>)}
-      </nav>}
     </div>
     {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
       title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}

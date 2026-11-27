@@ -243,18 +243,39 @@
   .is-collapsed .workspace-sidebar-account { justify-content: center; margin-inline: 0; padding-inline: 0; }
 }
 
-/* Dark, contextual bottom navigation; module pages remain light. */
-.workspace-record-pages {grid-row:3; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:#101f40; color:#fff; padding-bottom:env(safe-area-inset-bottom,0px); border-top:1px solid #31476c; z-index:10;}
-.workspace-record-pages button {min-width:0; display:grid; justify-items:center; align-content:center; gap:2px; min-height:54px; border:0; background:transparent; color:#e5edf9; border-top:2px solid transparent; font-size:.72rem; padding:4px 2px;}
-.workspace-record-pages button[aria-current=page] {background:#27446d; color:#fff; border-top-color:#ff8c30; font-weight:700;}
-.workspace-record-pages button svg {width:19px;height:19px;}
+/* The record is a full workspace: module chrome disappears, the header
+   and primary record navigation share the same dark visual language. */
+.workspace-layout.workspace-record-context {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);}
+.workspace-layout.workspace-record-context > .detail-viewport {grid-column:1;grid-row:1;width:100%;max-width:none;min-width:0;justify-self:stretch;}
+.workspace-record-context .detail-header {background:#101f40;min-height:52px;height:52px;padding-inline:clamp(8px,2vw,22px);}
+.workspace-record-context .detail-header .back-detail {background:transparent;color:#fff;flex-basis:38px;width:38px;height:38px;}
+.workspace-record-context .detail-header .back-detail svg {width:23px;height:23px;}
+.workspace-record-context .detail-header .detail-contact-lines strong {font-size:.88rem;}
+.workspace-record-context .detail-header .detail-phone {font-size:.72rem;}
+.workspace-record-context .detail-header .detail-identity {border:0;background:transparent;min-width:0;padding:4px;text-align:right;}
+.workspace-record-context .detail-header .detail-identity strong {font-size:.87rem;}
+.workspace-record-context .detail-header .detail-identity span {font-size:.69rem;}
+.workspace-record-context .detail-header .workspace-icon {flex:0 0 42px;}
+.workspace-record-pages {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#101f40;color:#fff;border-top:1px solid #31476c;flex:none;z-index:10;}
+.workspace-record-pages button {min-width:0;display:grid;justify-items:center;align-content:center;gap:3px;min-height:48px;border:0;background:transparent;color:#e5edf9;border-bottom:2px solid transparent;font-size:.75rem;padding:4px 2px;}
+.workspace-record-pages button[aria-current=page] {background:#27446d;color:#fff;border-bottom-color:#ff8c30;font-weight:700;}
+.workspace-record-pages button svg {width:18px;height:18px;}
+.workspace-record-pages button:focus-visible {outline:2px solid #ffb66b;outline-offset:-3px;}
+.workspace-record-context .view-switch {height:42px;max-width:100%;padding:3px clamp(8px,3vw,24px);}
+#root .workspace-shell:has(.workspace-record-context) {--workspace-detail-right:0px;--copilot-bottom:env(safe-area-inset-bottom,0px);}
+#root .workspace-shell:has(.workspace-record-context) > .copilot-fixed {right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);}
+#root .workspace-shell:has(.workspace-record-context) > .copilot-panel {right:10px;}
 @media(min-width:761px){
-  .workspace-record-context {grid-template-rows:auto minmax(0,1fr) auto;}
-  .workspace-record-context .workspace-sidebar {grid-row:1/4;}
-  .workspace-record-pages {grid-column:2;}
-  #root .workspace-shell:has(.workspace-record-context) .copilot-fixed {bottom:54px;}
+  .workspace-record-pages button {display:flex;justify-content:center;gap:7px;min-height:44px;font-size:.88rem;}
+  /* The map and editors retain their tested layout, now centred on the full
+     viewport rather than next to the global sidebar. */
+  .workspace-record-context .commercial-workspace {width:min(100%,1000px);align-self:center;}
+  #root .workspace-shell:has(.workspace-record-context):has(.commercial-workspace) > .copilot-fixed {right:max(0px,calc((100% - 1000px)/2));}
+  #root .workspace-shell:has(.workspace-record-context):has(.commercial-workspace) > .copilot-panel {right:max(10px,calc((100% - 1000px)/2 + 10px));}
 }
 @media(max-width:760px){
-  .workspace-record-context .workspace-pages {display:none;}
-  .workspace-record-pages button {font-size:clamp(.59rem,2.6vw,.78rem);}
+  .workspace-record-pages button {font-size:clamp(.64rem,2.7vw,.78rem);}
+  .workspace-record-context .detail-header .detail-avatar {display:none;}
+  .workspace-record-context .detail-header .detail-identity {max-width:45%;}
+  .workspace-record-context .detail-header .detail-identity span {max-width:116px;}
 }

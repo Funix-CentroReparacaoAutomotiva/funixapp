@@ -1,8 +1,8 @@
 import { useTaskRecord } from './task-record'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { salesChannels } from '../../shared/sales'
-import type { FunnelCard, SalesActivity, SalesContext, SalesMetric, SalesStage, TrackingCard } from '../../shared/sales'
+import { AtendimentoForm } from '../AtendimentoForm'
+import type { FunnelCard, SalesContext, SalesMetric, SalesStage, TrackingCard } from '../../shared/sales'
 import type { Atendimento } from '../../shared/contracts'
 import { workshopPhases } from '../../shared/erp'
 import { api } from '../api'
@@ -13,7 +13,6 @@ import './sales.css'
 
 const endpoint='/api/erp/sales'
 const date=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
-const decimalDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
 const dateLabel=(value:string|null|undefined)=>value?date.format(new Date(value)):'—'
 const calendarDay=(value:string|null|undefined)=>value?.split('-').reverse().join('/')??'—'
 const money=(value:string|null|undefined)=>value==null?'—':formatMoney(value)
@@ -61,85 +60,29 @@ function recordVehicle(record:Atendimento) {
   return [record.vehicle||[record.brand,record.model].filter(Boolean).join(' '),record.plate].filter(Boolean).join(' · ')||'Veículo a identificar'
 }
 type RecordEditCallbacks={onDirty:(value:boolean)=>void;onBusy:(value:boolean)=>void}
-function ContextEditor({record,context,onSave,onDirty,onBusy,scheduled}:RecordEditCallbacks&{record:Atendimento;context:SalesContext;onSave:()=>void;scheduled:boolean}) {
-  const init=()=>({owner:context.owner,channel:context.channel,classification:record.purpose??'commercial',nextContactAt:context.nextContactAt?decimalDay.format(new Date(context.nextContactAt)).replace(' ','T'):'',nextAction:context.nextAction})
-  const [draft,setDraft]=useState(init),[saved,setSaved]=useState(init),[status,setStatus]=useState(''),[failure,setFailure]=useState('')
-  const [retry,setRetry]=useState(0)
-  const revisions=useRef({revision:context.revision,recordRevision:record.revision})
-  const latest=useRef(draft)
-  const inFlight=useRef(false)
-  const refresh=useRef(onSave);refresh.current=onSave
-  const dirty=JSON.stringify(draft)!==JSON.stringify(saved)
-  // Reading a new revision while nothing is pending is safe; preserve the draft otherwise.
-  useEffect(()=>{if(!dirty&&!inFlight.current){revisions.current={revision:Math.max(revisions.current.revision,context.revision),recordRevision:Math.max(revisions.current.recordRevision,record.revision)}}},[context.revision,record.revision,dirty])
-  useEffect(()=>{onDirty(dirty);return ()=>onDirty(false)},[dirty,onDirty])
-  useEffect(()=>{if(!dirty||inFlight.current||failure)return
-    const timer=setTimeout(async()=>{
-      const snapshot=latest.current
-      inFlight.current=true;onBusy(true);setStatus('Salvando…')
-      try{
-        const result=await writeJson<{context:SalesContext;record:Atendimento}>(endpoint+'/records/'+record.id+'/context',{
-          ...revisions.current,owner:snapshot.owner,channel:snapshot.channel,purpose:snapshot.classification,
-          nextContactAt:snapshot.nextContactAt?new Date(snapshot.nextContactAt+'-03:00').toISOString():null,nextAction:snapshot.nextAction,
-        },'POST')
-        revisions.current={revision:result.context.revision,recordRevision:result.record.revision}
-        setSaved(snapshot);setStatus('Salvo automaticamente');refresh.current()
-      }catch(error){setFailure(message(error));setStatus('')}
-      finally{inFlight.current=false;onBusy(false)}
-    },650)
-    return ()=>clearTimeout(timer)
-  },[draft,saved,dirty,record.id,failure,retry,onBusy])
-  const edit=(patch:Partial<typeof draft>)=>{const next={...latest.current,...patch};latest.current=next;setDraft(next);onDirty(true);setFailure('');setStatus('Alterações pendentes')}
-  const channels=[...new Set([...salesChannels.filter(c=>c!=='Recorrência'),context.channel,draft.channel])].filter(Boolean)
-  return <section className="erp-sales-form">
-    <h3>Dados comerciais e próximo contato</h3>
-    <div className="erp-sales-fields">
-      <label>Canal de aquisição<select aria-label="Canal de aquisição" value={draft.classification==='non_commercial'?'non_commercial':draft.channel} onChange={event=>{
-        const value=event.target.value
-        edit(value==='non_commercial'?{classification:'non_commercial'}:{channel:value,classification:'commercial'})
-      }}><option value="">A definir</option>{channels.map(channel=><option key={channel}>{channel}</option>)}{!scheduled&&<option value="non_commercial">Não comercial</option>}</select></label>
-      {draft.classification==='non_commercial'&&<p className="sales-classification-note">Canal de entrada preservado: {draft.channel||'não informado'}</p>}
-      {draft.classification==='unclassified'&&!scheduled&&<button type="button" onClick={()=>edit({classification:'commercial'})}>Confirmar atendimento comercial</button>}
-      {context.origin&&<p className="sales-classification-note">Origem · {context.origin}</p>}
-      <label>Responsável<input name="owner" value={draft.owner} maxLength={100} onChange={e=>edit({owner:e.target.value})}/></label>
-      <label>Retorno (horário de São Paulo)<input type="datetime-local" name="nextContactAt" value={draft.nextContactAt} onChange={e=>edit({nextContactAt:e.target.value})}/></label>
-      <label>Próxima ação<input name="nextAction" value={draft.nextAction} maxLength={500} onChange={e=>edit({nextAction:e.target.value})}/></label>
-    </div>
-    <span className="sales-save-status" role="status">{status}</span>
-    {failure&&<div role="alert">{failure} <button type="button" onClick={()=>{setFailure('');setRetry(n=>n+1)}}>Tentar novamente</button></div>}
-  </section>
-}
-function Activity({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}) {
+type CommentEntry={id:string;source:string;kind:'comment'|'note'|'event';body:string;occurredAt:string;author:string|null;attachments:{name:string;type:string;data:string}[]}
+const commentSource:Record<string,string>={commercial:'Vendas',atendimento:'Atendimento',diagnostico:'Diagnóstico',orcamento:'Orçamento',os:'OS',experiencia:'Experiência'}
+function Comments({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}) {
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID())
-  const activity=useRead<{entries:SalesActivity[]}>(endpoint+'/records/'+id+'/activity',refresh)
+  const read=useRead<{items:CommentEntry[];legacyNotes:{source:string;relatedId:string;body:string}[]}>('/api/erp/experiences/diario?atendimentoId='+encodeURIComponent(id),refresh)
   const write=useWrite(()=>{setRequestId(crypto.randomUUID());onSave()})
-  return <>
+  const entries=read.data?.items.filter(entry=>entry.kind!=='event')??[]
+  return <section className="sales-comments">
+    <h2>Comentários</h2>
     <form className="erp-sales-form" key={requestId} onSubmit={event=>{
-      event.preventDefault()
-      const form=formData(event)
+      event.preventDefault();const form=formData(event)
       void write.save(endpoint+'/records/'+id+'/comment',{requestId,comment:field(form,'comment')})
     }}>
-      <h3>Comentário comercial</h3>
-      <label>Comentário<textarea name="comment" required maxLength={8000}/></label>
+      <label className="sales-comment-field"><span className="sr-only">Comentário</span><textarea name="comment" placeholder="Adicionar comentário…" required maxLength={8000} rows={2}/></label>
       <button disabled={write.busy}>Registrar comentário</button><WriteStatus write={write}/>
     </form>
-    <h3>Atividade comercial recente</h3><ReadStatus read={activity}/>
-    {activity.data?.entries.length?<ol className="erp-sales-events">{activity.data.entries.map(event=><li key={event.id}>
-      <time dateTime={event.occurredAt}>{dateLabel(event.occurredAt)}</time>{event.author?' · '+event.author:''}<p>{event.content}</p>
-    </li>)}</ol>:!activity.loading&&<p>Sem atividade registrada.</p>}
-  </>
-}
-function StageEditor({record,stages,onSave}:{record:Atendimento;stages:SalesStage[];onSave:()=>void}) {
-  const [stage,setStage]=useState(record.stage),write=useWrite(onSave)
-  if(record.purpose==='non_commercial'||record.purpose==='unclassified')return null
-  return <form className="erp-sales-form" onSubmit={event=>{
-    event.preventDefault()
-    void write.save(endpoint+'/records/'+record.id+'/stage',{stage,reason:field(formData(event),'reason'),revision:record.revision})
-  }}>
-    <label>Etapa comercial<select aria-label="Etapa comercial" value={stage} onChange={event=>setStage(event.target.value as Atendimento['stage'])}>{stages.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
-    {stage==='rejeitados'&&<label>Motivo da recusa confirmada<input name="reason" required maxLength={2000}/></label>}
-    <button disabled={write.busy||stage===record.stage}>Alterar etapa</button><WriteStatus write={write}/>
-  </form>
+    <ReadStatus read={{...read,loading:read.loading&&!read.data}}/>
+    {entries.length?<ol className="erp-sales-events">{entries.map(entry=><li key={entry.id}>
+      <time dateTime={entry.occurredAt}>{dateLabel(entry.occurredAt)}</time><small> · {commentSource[entry.source]??entry.source}{entry.author&&entry.author!=='funix_operator'?' · '+entry.author:''}</small><p>{entry.body}</p>
+      {entry.attachments.map((file,index)=><a key={index} download={file.name} href={`data:${file.type};base64,${file.data}`}>{file.name}</a>)}
+    </li>)}</ol>:!read.loading&&<p className="sales-comments-empty">Nenhum comentário registrado.</p>}
+    {read.data?.legacyNotes.some(note=>note.source!=='atendimento')&&<details><summary>Observações dos diagnósticos</summary><ul>{read.data.legacyNotes.filter(note=>note.source!=='atendimento').map((note,index)=><li key={index}>{note.body}</li>)}</ul></details>}
+  </section>
 }
 const stageTones:Record<string,string>={'novo-lead':'neutral','aguardando-dados':'blue','em-negociacao':'yellow','morno':'orange','frio':'blue','rejeitados':'neutral'}
 const cardStage=(card:FunnelCard)=>card.lane==='triage'?'novo-lead':card.lane
@@ -321,22 +264,28 @@ function LinkExistingAtendimento({record,onSave}:{record:Atendimento;onSave:()=>
     </form>:read.data?<p>Nenhuma experiência anterior localizada para a placa deste veículo.</p>:null}
   </details>
 }
-export function SalesRecord({id,onDirty,onBusy,onOpen}:{id:string;onOpen:(id:string)=>void}&RecordEditCallbacks) {
+export function SalesRecord({id,onDirty,onBusy,onOpen,onAutoSaved,onMessage,onAuthRequired}:{id:string;onOpen:(id:string)=>void;onAutoSaved:(record:Atendimento,contactsChanged:boolean)=>void;onMessage:(conversationId:string)=>void;onAuthRequired:()=>void}&RecordEditCallbacks) {
   const [refresh,setRefresh]=useState(0)
+  const [editing,setEditing]=useState(false),[saving,setSaving]=useState(false)
   const read=useRead<{record:Atendimento;context:SalesContext;stages:SalesStage[];experienceId:string|null;tracking:TrackingCard|null}>(endpoint+'/records/'+id+'/summary',refresh)
   const data=read.data, invalidate=()=>setRefresh(count=>count+1)
   useTaskRecord(id)
-  return <main className="erp-sales sales-record"><ReadStatus read={read}/>{data&&<>
-    <div className="sales-record-title"><h1>{recordVehicle(data.record)}</h1><p>{humanName(data.record)}{data.record.origin==='rework'&&<span className="erp-sales-alert">Retrabalho</span>}</p>
+  const editDirty=useCallback((value:boolean)=>{setEditing(value);onDirty(value)},[onDirty])
+  const editBusy=useCallback((value:boolean)=>{setSaving(value);onBusy(value)},[onBusy])
+  return <main className="erp-sales sales-record"><ReadStatus read={{...read,loading:read.loading&&!data}}/>{data&&<>
+    <div className="sales-record-heading">
+      <div><h1>Dados do Atendimento</h1>{data.record.origin==='rework'&&<span className="erp-sales-alert">Retrabalho</span>}{data.record.origin==='recurrence'&&<span className="sales-origin-tag">Recorrência</span>}</div>
       {data.record.commercialValue&&<strong>{money(data.record.commercialValue.min)}{data.record.commercialValue.min!==data.record.commercialValue.max?' a '+money(data.record.commercialValue.max):''}</strong>}
-      {data.record.notes&&<p>{data.record.notes}</p>}
     </div>
-    {!data.experienceId&&!data.record.closedAt&&<StageEditor key={data.record.revision} record={data.record} stages={data.stages} onSave={invalidate}/>}
-    <ContextEditor key={id} record={data.record} context={data.context} onSave={invalidate} onDirty={onDirty} onBusy={onBusy} scheduled={!!data.experienceId}/>
-    {data.tracking&&<TrackingDetail card={data.tracking} onSave={invalidate}/>}
-    {!data.experienceId&&!data.record.closedAt&&data.record.purpose!=='non_commercial'&&data.record.origin!=='rework'&&data.record.origin!=='recurrence'&&<LinkExistingAtendimento record={data.record} onSave={invalidate}/>}
-    {data.experienceId&&<LinkedAtendimento experienceId={data.experienceId} onOpen={onOpen}/>}
-    <Activity id={id} refresh={refresh} onSave={invalidate}/>
+    <AtendimentoForm key={id} record={data.record} inline={{context:data.context,stages:data.stages,scheduled:!!data.experienceId}} onSaved={record=>{onAutoSaved(record,false);invalidate()}}
+      onAutoSaved={(record,contactsChanged)=>{onAutoSaved(record,contactsChanged);invalidate()}}
+      onDirty={editDirty} onBusy={editBusy} onMessage={onMessage} onAuthRequired={onAuthRequired}/>
+    <div className="sales-record-secondary" inert={editing||saving}>
+      {data.tracking&&<details className="erp-sales-detail"><summary>Acompanhamento · {data.tracking.commercialPhase}</summary><TrackingDetail card={data.tracking} onSave={invalidate}/></details>}
+      {!data.experienceId&&!data.record.closedAt&&data.record.purpose!=='non_commercial'&&data.record.origin!=='rework'&&data.record.origin!=='recurrence'&&<LinkExistingAtendimento record={data.record} onSave={invalidate}/>}
+      {data.experienceId&&<LinkedAtendimento experienceId={data.experienceId} onOpen={onOpen}/>}
+    </div>
+    <Comments id={id} refresh={refresh} onSave={invalidate}/>
   </>}</main>
 }
 

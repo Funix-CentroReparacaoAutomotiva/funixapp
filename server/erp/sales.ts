@@ -309,7 +309,7 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
     const repo=new AtendimentoRepository(db)
     return {records:ids.map(id=>repo.get(id,true))}
   }
-  const recordRoute=/^\/records\/([a-f0-9-]+)\/(activity|context|stage|comment|summary)$/.exec(path)
+  const recordRoute=/^\/records\/([a-f0-9-]+)\/(activity|context|stage|comment|summary|data)$/.exec(path)
   if(recordRoute) {
     const id=recordRoute[1]!, repo=new AtendimentoRepository(db), record=repo.get(id)
     const action=recordRoute[2]
@@ -323,6 +323,35 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
     if(method==='GET' && action==='activity')return {entries:activity(db,id)}
     if(method==='POST') {
       const fields=bodyFields(body)
+      // One revision-controlled transaction for the inline identity and commercial
+      // form. No owner/next-action edits are accepted here; preserve legacy data.
+      if(action==='data') {
+        const patch=bodyFields(fields.record)
+        const allowed=new Set(['revision','references','phone','name','vehicle','brand','model','plate','fabricationYear','modelYear','notes','purpose','channel','stage','rejectionReason','explicitRefusal','closed'])
+        if(Object.keys(patch).some(key=>!allowed.has(key)))return invalid('Campo fora dos dados do Atendimento.')
+        const current=getContexts(db).get(id)??blankContext
+        if(fields.contextRevision!==current.revision)throw new ServiceError(409,'VERSION_CONFLICT','Os dados comerciais mudaram. Reabra antes de salvar.')
+        if(patch.revision!==record.revision)throw new ServiceError(409,'VERSION_CONFLICT','O Atendimento mudou. Reabra antes de salvar.')
+        const nextContactAt=fields.nextContactAt===undefined?current.nextContactAt:dateTime(fields.nextContactAt)
+        const scheduled=!!db.prepare('SELECT 1 FROM production_experiences WHERE atendimento_id=?').get(id)
+        if(scheduled&&(patch.purpose==='non_commercial'||(patch.stage!==undefined&&patch.stage!==record.stage)||patch.closed!==undefined))
+          return invalid('Altere a situação de uma Experiência agendada na operação.')
+        db.exec('BEGIN IMMEDIATE')
+        try {
+          const updated=repo.update(id,patch,true,true,true)
+          // saveChannel may increment the commercial revision; the upsert only
+          // changes the next-contact value, leaving old ownership untouched.
+          if(nextContactAt!==current.nextContactAt)db.prepare(`INSERT INTO erp_sales_context VALUES(?,?,?,?,?,1)
+            ON CONFLICT(atendimento_id) DO UPDATE SET next_contact_at=excluded.next_contact_at,revision=erp_sales_context.revision+1`)
+            .run(id,current.owner,nextContactAt,current.nextAction,current.additionalService)
+          const context=getContexts(db).get(id)??blankContext
+          db.exec('COMMIT')
+          return {record:updated,context}
+        } catch(error) {
+          db.exec('ROLLBACK')
+          throw error
+        }
+      }
       if(action==='context') {
         const current=getContexts(db).get(id)??blankContext
         if(fields.revision!==current.revision)throw new ServiceError(409,'SALES_CONTEXT_CONFLICT','O registro comercial mudou. Reabra os detalhes antes de salvar.')

@@ -224,3 +224,37 @@
   .erp-sales-mobile-filters > .erp-sales-more-filters{grid-column:auto!important;}
   .sales-record {padding:.6rem; }
 }
+
+/* Inline identity, sales context and comments, without a second edit screen. */
+.sales-record {flex:1;min-height:0;overflow-y:auto;max-width:1100px;padding:clamp(.7rem,2vw,1.5rem);align-self:center;background:#f6f8fc;}
+.sales-record-heading {display:flex;align-items:center;justify-content:space-between;gap:.7rem;margin-bottom:.7rem}
+.sales-record-heading h1 {margin:0;font-size:1.15rem;}
+.sales-record-heading strong {color:#183c6e;font-size:1.2rem;white-space:nowrap;}
+.sales-origin-tag {font-size:.8rem;color:#3a587a;}
+.sales-record .at-form-inline {display:block;max-height:none;}
+.sales-record .at-form-inline .at-form-scroll {padding:0;overflow:visible;}
+.sales-record .at-form-inline .at-form-footer {padding:.4rem 0;border:0;background:transparent;min-height:26px;}
+.sales-record .at-form-inline .at-form-footer>span {font-size:.75rem;color:#476b56;}
+.sales-record .at-form-inline .at-customer-context {margin-top:10px;}
+.sales-record .at-form-inline .at-field {margin:0 0 .6rem;}
+.sales-record .at-form-inline .at-closed-control {display:flex;align-items:center;gap:.45rem;font-size:.82rem;}
+.sales-record .at-form-inline .at-closed-control input,.sales-record .at-form-inline .at-refusal input[type=checkbox] {width:17px;min-height:17px;}
+.sales-record .at-form-inline .at-context-readonly {font-size:.86rem;}
+.sales-record .at-form-inline .at-field>:is(input,select,textarea) {width:100%;font-size:.9rem;}
+.sales-record .at-form-inline .at-refusal {margin-top:.5rem;}
+.sales-record .at-form-inline .at-inline-classify {margin-bottom:.6rem;}
+.sales-record .sales-comments {background:#fff;border:1px solid #dae4ef;border-radius:10px;padding:12px;margin-top:10px;}
+.sales-comments .erp-sales-form {display:grid;grid-template-columns:minmax(0,1fr) auto;max-width:none;align-items:end;margin:.5rem 0;}
+.sales-comments .erp-sales-form>label{width:100%;}
+.sales-comments .erp-sales-form>button {background:#17345f;color:#fff;border-color:#17345f;font-weight:600;}
+.sales-comments .erp-sales-events {list-style:none;padding:0;margin:.5rem 0;}
+.sales-comments .erp-sales-events li {border-top:1px solid #e4eaf2;padding:.65rem 0;overflow-wrap:anywhere;}
+.sales-comments .erp-sales-events p {margin:.3rem 0;white-space:pre-wrap;}
+.sales-comments .erp-sales-events time,.sales-comments .erp-sales-events small,.sales-comments-empty {color:#5e708a;font-size:.8rem;}
+.sales-record-secondary>details {background:#fff;border-color:#dae4ef;}
+@media(min-width:820px){
+  .sales-record .at-form-inline .customer-lines {grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+  .sales-record .at-form-inline .at-customer-context {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;}
+  .sales-record .at-form-inline .at-customer-context h3,.sales-record .at-form-inline .at-customer-context .at-refusal,.sales-record .at-form-inline .at-customer-context .at-closed-control,.sales-record .at-form-inline .at-customer-context .at-form-hint,.sales-record .at-form-inline .at-inline-classify {grid-column:1/-1;}
+}
+@media(max-width:480px){.sales-comments .erp-sales-form {grid-template-columns:minmax(0,1fr);}.sales-comments .erp-sales-form>button{justify-self:end;}.sales-record-heading strong {font-size:1rem;}}

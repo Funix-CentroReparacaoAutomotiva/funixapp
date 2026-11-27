@@ -132,3 +132,27 @@ test('Consentimento qualifica aprovação e projeta veículo agendado sem presum
     assert.equal(finance.overview().titles.find(row=>row.id===title)?.balanceCents,1500)
   } finally {db.close()}
 })
+
+test('Edição inline preserva campos legados, valida as duas revisões e grava atomicamente',()=>{
+  const {db,repo,request}=fixture()
+  try {
+    const record=repo.create({name:'Cadastro QA',purpose:'commercial',channel:'Balcão'})
+    const route='/records/'+record.id
+    const nextContactAt='2026-11-27T14:30:29.123Z'
+    request(route+'/context',{owner:'Vendedor histórico',channel:'Balcão',nextContactAt,nextAction:'Ação histórica',additionalService:'Adicional histórico',revision:0})
+    const before=repo.get(record.id)
+    const saved=request(route+'/data',{record:{revision:before.revision,notes:'Observação atualizada',stage:'em-negociacao',channel:'WhatsApp'},contextRevision:1}) as {record:ReturnType<typeof repo.get>;context:{revision:number;nextContactAt:string;owner:string;nextAction:string;additionalService:string}}
+    assert.equal(saved.record.notes,'Observação atualizada')
+    assert.equal(saved.record.stage,'em-negociacao')
+    assert.equal(saved.context.nextContactAt,nextContactAt)
+    assert.equal(saved.context.owner,'Vendedor histórico')
+    assert.equal(saved.context.nextAction,'Ação histórica')
+    assert.equal(saved.context.additionalService,'Adicional histórico')
+    assert.throws(()=>request(route+'/data',{record:{revision:saved.record.revision,notes:'Não gravar'},contextRevision:1,nextContactAt:stamp(120)}),{code:'VERSION_CONFLICT'})
+    assert.throws(()=>request(route+'/data',{record:{revision:before.revision,notes:'Não gravar'},contextRevision:saved.context.revision,nextContactAt:stamp(120)}),{code:'VERSION_CONFLICT'})
+    assert.equal(repo.get(record.id).notes,'Observação atualizada')
+    const updated=request(route+'/data',{record:{revision:saved.record.revision,notes:'Outra observação'},contextRevision:saved.context.revision,nextContactAt:stamp(500)}) as typeof saved
+    assert.equal(updated.context.nextContactAt,stamp(500))
+    assert.equal(updated.record.notes,'Outra observação')
+  } finally {db.close()}
+})

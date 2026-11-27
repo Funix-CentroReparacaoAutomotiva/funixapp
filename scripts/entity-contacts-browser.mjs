@@ -74,7 +74,7 @@ try{
    await page.getByText('Salvo automaticamente',{exact:true}).waitFor()
    assert.equal(f.at.get(interaction.id,true).channel,'WhatsApp')
    await page.goto(origin+'/atendimentos/'+interaction.id)
-   await page.getByRole('button',{name:'Editar Atendimento',exact:true}).click()
+   await page.getByRole('button',{name:'Dados',exact:true}).click()
    const triage=page.getByRole('form',{name:'Editar Atendimento'})
    await triage.getByLabel('Atendimento encerrado',{exact:true}).check()
    await triage.getByText('Salvo automaticamente',{exact:false}).waitFor()
@@ -90,7 +90,7 @@ try{
    const referenceContacts=[...contacts,...f.channels.entity(second.id).contacts].map(({id,text,entityId})=>({id,text,entityId}))
    const at=f.at.create({references:{...references,contact:referenceContacts}})
    await page.goto(origin+'/atendimentos/'+at.id+'?aba=diagnosticos')
-   await page.getByRole('button',{name:'Editar Atendimento',exact:true}).click()
+   await page.getByRole('button',{name:'Dados',exact:true}).click()
    const form=page.getByRole('form',{name:'Editar Atendimento'})
    const alpha=form.getByRole('group',{name:'Pessoa 1',exact:true}),beta=form.getByRole('group',{name:'Pessoa 2',exact:true})
    const message={name:'Escrever mensagem opcional',exact:true}

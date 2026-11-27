@@ -121,8 +121,8 @@ function LegacyChatPanel({ atendimentoId, onUnauthorized, children }: { atendime
 }
 
 /** Canonical Coda-linked read-only projection. The server verifies BOTH IDs. */
-export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, onSendBusy, readOnly, linkedHistory, onTechnicalHistory }: {
-  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; linkedHistory?:boolean; drafts?:Map<string,string>; onSendBusy?:(busy:boolean)=>void; onTechnicalHistory?:(available:boolean)=>void
+export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnauthorized, contactId, contactLinksEnabled, drafts, draftKey, onSendBusy, readOnly, linkedHistory, onTechnicalHistory }: {
+  atendimentoId: string; conversationId: string; onUnauthorized: () => void; children: ReactNode; contactId?:string; contactLinksEnabled?:boolean; readOnly?:boolean; linkedHistory?:boolean; drafts?:Map<string,string>; draftKey?:string; onSendBusy?:(busy:boolean)=>void; onTechnicalHistory?:(available:boolean)=>void
 }) {
   const apiBase=readOnly?'/api/chat/conversations/'+encodeURIComponent(conversationId):contactId?`/api/customer-records/${encodeURIComponent(contactId)}/chat/${encodeURIComponent(conversationId)}`:`/api/atendimentos/${encodeURIComponent(atendimentoId)}/evolution-conversations/${encodeURIComponent(conversationId)}`
   const [items, setItems] = useState<ReadUiMessage[]>([])
@@ -133,8 +133,8 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   const [canMedia, setCanMedia] = useState(false)
   const [canReadMedia,setCanReadMedia]=useState(false)
   const [file, setFile] = useState<File | null>(null)
-  const [draft, setDraftState] = useState(()=>drafts?.get(contactId??'')??'')
-  function setDraft(value:string){setDraftState(value);if(contactId)drafts?.set(contactId,value)}
+  const [draft, setDraftState] = useState(()=>drafts?.get(draftKey??contactId??'')??'')
+  function setDraft(value:string){setDraftState(value);if(draftKey??contactId)drafts?.set((draftKey??contactId)!,value)}
   const [sending, setSending] = useState(false)
   const [sendNotice, setSendNotice] = useState('')
   const [sendFailure, setSendFailure] = useState('')
@@ -438,8 +438,8 @@ export function EvolutionAtendimentoChat({ atendimentoId, conversationId, onUnau
   </div>
 }
 /** Resolve the server-confirmed Coda context when opening an Atendimento directly from Funil. */
-function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
-  atendimentoId: string; onUnauthorized: () => void; children: ReactNode
+function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children,drafts }: {
+  atendimentoId: string; onUnauthorized: () => void; children: ReactNode; drafts?:Map<string,string>
 }) {
   const [resolution, setResolution] = useState<{ state: 'loading' | 'legacy' | 'linked' | 'unlinked' | 'error'; id?: string }>({state:'loading'})
   useEffect(() => {
@@ -466,13 +466,13 @@ function ResolvedAtendimentoChat({ atendimentoId, onUnauthorized, children }: {
   if (resolution.state==='error') return <Notice title="Não foi possível verificar o vínculo do Chat">Atualize o Atendimento para tentar novamente. Nenhuma conversa foi selecionada por aproximação.</Notice>
   if (resolution.state==='unlinked') return <div className="detail-page chat-page chat-readonly"><div className="chat-unlinked"><Notice title="Conversa da Evolution não vinculada a este Atendimento">Este registro ainda não tem uma conversa canônica única confirmada. Abra Conversas, selecione o contato e utilize o botão de Atendimento vinculado quando disponível. Não vinculamos históricos apenas pelo telefone.</Notice><a className="fh-filter" href="/conversas">Abrir Conversas</a></div></div>
   return resolution.state==='linked' && resolution.id
-    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${resolution.id}`} atendimentoId={atendimentoId} conversationId={resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${resolution.id}`} atendimentoId={atendimentoId} conversationId={resolution.id} drafts={drafts} draftKey={atendimentoId+':'+resolution.id} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
     : <LegacyChatPanel atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</LegacyChatPanel>
 }
-export function ChatPanel({ atendimentoId, evolutionConversationId, linkedHistory, onUnauthorized, children }: {
-  atendimentoId: string; evolutionConversationId?: string | null; linkedHistory?:boolean; onUnauthorized: () => void; children: ReactNode
+export function ChatPanel({ atendimentoId, evolutionConversationId, linkedHistory, onUnauthorized, children,drafts }: {
+  atendimentoId: string; evolutionConversationId?: string | null; linkedHistory?:boolean; onUnauthorized: () => void; children: ReactNode; drafts?:Map<string,string>
 }) {
   return evolutionConversationId
-    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${evolutionConversationId}:${linkedHistory}`} atendimentoId={atendimentoId} conversationId={evolutionConversationId} linkedHistory={linkedHistory} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
-    : <ResolvedAtendimentoChat key={atendimentoId} atendimentoId={atendimentoId} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
+    ? <EvolutionAtendimentoChat key={`${atendimentoId}:${evolutionConversationId}:${linkedHistory}`} atendimentoId={atendimentoId} conversationId={evolutionConversationId} drafts={drafts} draftKey={atendimentoId+':'+evolutionConversationId} linkedHistory={linkedHistory} onUnauthorized={onUnauthorized}>{children}</EvolutionAtendimentoChat>
+    : <ResolvedAtendimentoChat key={atendimentoId} atendimentoId={atendimentoId} drafts={drafts} onUnauthorized={onUnauthorized}>{children}</ResolvedAtendimentoChat>
 }
