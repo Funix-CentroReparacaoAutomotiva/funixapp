@@ -292,7 +292,7 @@
 .workspace-record-context .detail-header .back-detail {flex:0 0 30px;width:30px;height:34px}
 .workspace-record-context .workspace-record-pages button {border-top:3px solid transparent;border-bottom:0}
 .workspace-record-context .workspace-record-pages button[aria-current=page] {border-top-color:#ff8c30;background:#ffffff10}
-.workspace-record-context .commercial-workspace {width:100%;max-width:none}
+.workspace-record-context .commercial-workspace {width:min(100%,1000px);max-width:none;align-self:center}
 .workspace-record-context .commercial-workspace .approved-finance {margin:0;max-width:none;width:100%;border-radius:0;flex:none;background:#172d50}
 .workspace-record-context .approved-finance .summary {max-width:720px;margin:auto;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.12fr) minmax(0,.36fr) 12px;gap:5px;padding:8px 10px;min-height:44px}
 .workspace-record-context .approved-finance .summary .metric {grid-row:auto;grid-column:auto}
@@ -306,9 +306,9 @@
 .workspace-record-context .diagnostics-body {width:min(100%,1060px);align-self:center;padding-bottom:76px}
 .workspace-record-context .sales-record {padding-bottom:76px}
 .workspace-record-context .chat-with-scenarios .chat-send-text {padding-right:66px}
-#root .workspace-shell:has(.workspace-record-context) > .copilot-fixed {right:max(12px,env(safe-area-inset-right,0px));bottom:calc(var(--finance-height,48px) + 9px);width:48px;height:48px;border-radius:50%;box-shadow:0 4px 14px #10234430}
+#root .workspace-shell:has(.workspace-record-context) > .copilot-fixed {right:max(12px,calc((100% - 1000px)/2 + 12px),env(safe-area-inset-right,0px));bottom:calc(var(--finance-height,48px) + 9px);width:48px;height:48px;border-radius:50%;box-shadow:0 4px 14px #10234430}
 #root .workspace-shell:has(.workspace-record-context) > .copilot-fixed svg {width:26px;height:26px}
-#root .workspace-shell:has(.workspace-record-context) > .copilot-panel {right:12px;bottom:calc(var(--finance-height,48px) + 62px)}
+#root .workspace-shell:has(.workspace-record-context) > .copilot-panel {right:max(12px,calc((100% - 1000px)/2 + 12px));bottom:calc(var(--finance-height,48px) + 62px)}
 @media(max-width:480px){
  .workspace-record-context .detail-header {padding-inline:5px;gap:4px}
  .workspace-record-context .detail-number {font-size:10px;letter-spacing:-.25px}
