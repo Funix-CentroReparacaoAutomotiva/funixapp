@@ -112,7 +112,7 @@ function App() {
     else window.history.pushState(nextState, '', href)
     historyState.current=nextState
     const nextRoute=readRoute(),nextTab=new URLSearchParams(nextRoute.search).get('aba')??'chat'
-    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!commercialSummary&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
+    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!commercialSummary&&!screen&&tabs.includes(nextTab)&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
     const update=()=>{if(window.location.pathname!==nextRoute.path||window.location.search!==nextRoute.search)return;setRoute(nextRoute);setSavedMessage('')}
     tabTransition.current?.skipTransition()
     if(animated&&document.startViewTransition){
