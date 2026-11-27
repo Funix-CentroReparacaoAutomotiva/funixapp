@@ -215,12 +215,22 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
     const date=localDay.format(new Date(iso))
     return date>=from&&date<=to
   }
-  const approved=db.prepare(`SELECT t.atendimento_id,t.occurred_at,json_extract(b.snapshot,'$.calculation.total') AS total
+  const allApproved=db.prepare(`SELECT t.id AS transition_id,t.atendimento_id,t.occurred_at,json_extract(b.snapshot,'$.calculation.total') AS total
     FROM production_budget_transitions t JOIN budget_versions b ON b.id=t.budget_version_id
     WHERE t.state='consented' AND NOT EXISTS(SELECT 1 FROM budget_cancellations c WHERE c.budget_version_id=b.id)
     AND NOT EXISTS (SELECT 1 FROM production_budget_transitions r WHERE r.budget_version_id=b.id AND r.state='rejected')`).all()
-    .filter(row=>row.total!==null&&owned(String(row.atendimento_id))&&within(String(row.occurred_at)))
+    .filter(row=>row.total!==null&&owned(String(row.atendimento_id)))
+    .sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at))||Number(a.transition_id)-Number(b.transition_id))
+  const approved=allApproved.filter(row=>within(String(row.occurred_at)))
+  const firstPositive=new Map<string,{occurredAt:string;id:number}>()
+  for(const row of allApproved)if(Q.from(String(row.total)).cmp(ZERO)>0&&!firstPositive.has(String(row.atendimento_id)))firstPositive.set(String(row.atendimento_id),{occurredAt:String(row.occurred_at),id:Number(row.transition_id)})
+  const saleIds=[...firstPositive].filter(([,first])=>within(first.occurredAt)).map(([id])=>id)
   const approvalIds=[...new Set(approved.map(row=>String(row.atendimento_id)))]
+  const dailyTotals=new Map<string,{amount:Q;vehicles:number}>()
+  const bucket=(date:string)=>{let value=dailyTotals.get(date);if(!value){value={amount:ZERO,vehicles:0};dailyTotals.set(date,value)}return value}
+  for(const row of approved){const value=bucket(localDay.format(new Date(String(row.occurred_at))));value.amount=value.amount.add(Q.from(String(row.total)))}
+  for(const id of saleIds)bucket(localDay.format(new Date(firstPositive.get(id)!.occurredAt))).vehicles++
+  const daily=[...dailyTotals].sort(([a],[b])=>a.localeCompare(b)).map(([day,value])=>({day,amount:value.amount.toString(),vehicles:value.vehicles}))
   const approvedTotal=approved.reduce((total,row)=>total.add(Q.from(String(row.total))),ZERO)
   const unique=(items:string[])=>[...new Set(items)]
   const cards=funnel(db,query,now).cards
@@ -234,7 +244,7 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
     WHERE stage='rejeitados' GROUP BY atendimento_id`).all()
   const rejectedInPeriod=new Set(exits.filter(row=>within(String(row.occurred_at))).map(row=>String(row.atendimento_id)))
   const resolvedIds=unique([...approvalIds,...rejected.filter(r=>rejectedInPeriod.has(r.id)).map(r=>r.id)])
-  const others=[...contexts].filter(([id,c])=>owned(id)&&c.additionalService).map(([id])=>id)
+  const others=[...new Set(approved.filter(row=>{const first=firstPositive.get(String(row.atendimento_id));return Q.from(String(row.total)).cmp(ZERO)>0&&first!==undefined&&Number(row.transition_id)!==first.id}).map(row=>String(row.atendimento_id)))]
   const mean=approved.length?new Q(approvedTotal.mul(new Q(100n)).div(new Q(BigInt(approved.length))).add(new Q(1n,2n)).floor(),100n).toString():null
   const goal=db.prepare('SELECT amount FROM erp_sales_goals WHERE owner=? AND start_day=? AND end_day=?').get(owner,from,to)?.amount
   const received=db.prepare(`
@@ -245,16 +255,16 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
   `).all(from,to).filter(row=>owned(String(row.atendimento_id)))
   const receivedCents=received.reduce((total,row)=>total+BigInt(Number(row.amount_cents)-Number(row.discount_cents)-Number(row.withheld_iss_cents)),0n)
   return {
-    owners,from,to,goal:goal===undefined?null:String(goal), today,
+    owners,from,to,goal:goal===undefined?null:String(goal), today,daily,approvedTotal:approvedTotal.toString(),
     metrics:[
       {label:'Valor aprovado',value:asMoney(approvedTotal.toString()),definition:'Soma dos orçamentos consentidos no período, sem cancelamentos ou rejeições técnicas.',records:approvalIds},
       {label:'Valor recebido',value:asMoney(new Q(receivedCents,100n).toString()),definition:'Entradas líquidas de clientes vinculadas a Experiências, pela data da liquidação. Exclui estornos, descontos e ISS retido.',records:unique(received.map(row=>String(row.atendimento_id)))},
       {label:'Valor faturado',value:'—',definition:'A nota vinculada à liquidação não fornece uma data de faturamento independente.',records:[]},
-      {label:'Vendas aprovadas',value:String(approvalIds.length),definition:'Atendimentos com ao menos um orçamento consentido no período.',records:approvalIds},
+      {label:'Vendas aprovadas',value:String(saleIds.length),definition:'Primeira aprovação com valor positivo por Atendimento; orçamentos complementares não duplicam a venda.',records:saleIds},
       {label:'Conversão',value:resolvedIds.length?(approvalIds.length/resolvedIds.length).toLocaleString('pt-BR',{style:'percent',maximumFractionDigits:1}):'—',definition:'Atendimentos aprovados divididos pelos aprovados ou rejeitados com decisão registrada no período.',records:resolvedIds},
       {label:'Valor médio',value:mean===null?'—':asMoney(mean),definition:'Valor aprovado dividido pelo número de orçamentos consentidos no período.',records:approvalIds},
       {label:'Em negociação',value:negotiating.length?(range.min.cmp(range.max)===0?asMoney(range.min.toString()):asMoney(range.min.toString())+' a '+asMoney(range.max.toString())):'—',definition:'Faixa de valor dos atendimentos atualmente Em negociação. Cenários alternativos não são somados.',records:negotiating.map(c=>c.record.id),href:'/vendas/funil?stage=em-negociacao'},
-      {label:'Serviços adicionais',value:String(others.length),definition:'Atendimentos com oportunidade de serviço adicional identificada na situação atual.',records:others},
+      {label:'Serviços adicionais',value:String(others.length),definition:'Atendimentos com orçamento adicional de valor positivo aprovado após a primeira venda.',records:others},
       {label:'Experiências encerradas',value:String(closed.length),definition:'Fechamentos comerciais registrados após a saída física no período.',records:closed.map(v=>v.atendimentoId)},
     ] satisfies SalesMetric[],
     priorities:[
@@ -299,10 +309,17 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
     const repo=new AtendimentoRepository(db)
     return {records:ids.map(id=>repo.get(id,true))}
   }
-  const recordRoute=/^\/records\/([a-f0-9-]+)\/(activity|context|stage|comment)$/.exec(path)
+  const recordRoute=/^\/records\/([a-f0-9-]+)\/(activity|context|stage|comment|summary)$/.exec(path)
   if(recordRoute) {
     const id=recordRoute[1]!, repo=new AtendimentoRepository(db), record=repo.get(id)
     const action=recordRoute[2]
+    if(method==='GET' && action==='summary'){
+      const context=getContexts(db).get(id)??blankContext
+      const experience=db.prepare('SELECT id FROM production_experiences WHERE atendimento_id=?').get(id)
+      const matching=experience?tracking(db,new URLSearchParams(),clock).find(card=>card.vehicle.atendimentoId===id):null
+      const projected=funnelProjection(db,[repo.get(id,true)])[0]??repo.get(id,true)
+      return {record:projected,context,stages:config(db),experienceId:experience?String(experience.id):null,tracking:matching??null}
+    }
     if(method==='GET' && action==='activity')return {entries:activity(db,id)}
     if(method==='POST') {
       const fields=bodyFields(body)
@@ -311,7 +328,11 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
         if(fields.revision!==current.revision)throw new ServiceError(409,'SALES_CONTEXT_CONFLICT','O registro comercial mudou. Reabra os detalhes antes de salvar.')
         const owner=text(fields.owner,100), channel=text(fields.channel,100)
         if(channel&&channel!==current.channel&&!salesChannels.some(candidate=>candidate===channel))return invalid('Selecione um canal cadastrado.')
-        const nextContactAt=dateTime(fields.nextContactAt),nextAction=text(fields.nextAction,500),additionalService=text(fields.additionalService,1000)
+        const nextContactAt=dateTime(fields.nextContactAt),nextAction=text(fields.nextAction,500),additionalService=fields.additionalService===undefined?current.additionalService:text(fields.additionalService,1000)
+        const purpose=fields.purpose
+        if(purpose!==undefined&&purpose!=='commercial'&&purpose!=='non_commercial'&&purpose!=='unclassified')return invalid('Confira a classificação.')
+        if(purpose!==undefined&&purpose!==record.purpose&&fields.recordRevision!==record.revision)throw new ServiceError(409,'VERSION_CONFLICT','O Atendimento mudou. Reabra antes de classificar.')
+        if(purpose==='non_commercial'&&db.prepare('SELECT id FROM production_experiences WHERE atendimento_id=?').get(id))return invalid('Uma Experiência agendada não pode ser marcada como não comercial.')
         db.exec('BEGIN IMMEDIATE')
         try {
           db.prepare(`INSERT INTO erp_sales_context VALUES(?,?,?,?,?,1)
@@ -319,12 +340,13 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
             next_action=excluded.next_action,additional_service=excluded.additional_service,revision=erp_sales_context.revision+1`)
             .run(id,owner,nextContactAt,nextAction,additionalService)
           if(channel!==current.channel)recordOrigin(db,{atendimentoId:id,channel})
+          if(purpose!==undefined&&purpose!==record.purpose)repo.update(id,{revision:record.revision,purpose},false,false,true)
           db.exec('COMMIT')
         } catch(error) {
           db.exec('ROLLBACK')
           throw error
         }
-        return {context:getContexts(db).get(id)}
+        return {context:getContexts(db).get(id),record:repo.get(id,true)}
       }
       if(action==='stage') {
         const stage=ATENDIMENTO_STAGES.find(stage=>stage.id===fields.stage)?.id
@@ -335,7 +357,7 @@ export function handleSales({db,method,path,query,body,now}:ErpRequest):unknown 
         return {record:repo.update(id,{stage,revision:record.revision,rejectionReason,explicitRefusal:stage==='rejeitados'})}
       }
       if(action==='comment') {
-        const comment=text(fields.comment,8000,true),author=text(fields.author,120,true)
+        const comment=text(fields.comment,8000,true),author=fields.author===undefined?'funix_operator':text(fields.author,120,true)
         const requestId=text(fields.requestId,120,true)
         return {entry:appendExperienceDiary(db,{atendimentoId:id,source:'commercial',sourceId:requestId,kind:'comment',body:comment,author,occurredAt:new Date(clock).toISOString()})}
       }

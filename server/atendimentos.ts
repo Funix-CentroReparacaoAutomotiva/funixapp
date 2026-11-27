@@ -33,7 +33,7 @@ function normalizedPlate(value:string) {return value.toUpperCase().replace(/[^A-
 function validate(input: unknown, patch: boolean) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Envie os campos do Atendimento em um objeto JSON.')
   const source = input as Record<string, unknown>
-  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision') && !(!patch && key === 'duplicateConfirmation')) invalid(`Campo não permitido: ${key}.`)
+  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision') && !(!patch && ['duplicateConfirmation','acquisitionSource'].includes(key))) invalid(`Campo não permitido: ${key}.`)
   if(source.duplicateConfirmation!==undefined && (patch||typeof source.duplicateConfirmation!=='string'||!/^[a-f0-9]{64}$/.test(source.duplicateConfirmation))) invalid('Confirmação de duplicidade inválida.')
   if (patch && (!Number.isSafeInteger(source.revision) || Number(source.revision) < 1)) invalid('Informe a revisão do Atendimento que está editando.')
   const output: Record<string, string | boolean | number | null> = {}
@@ -51,7 +51,9 @@ function validate(input: unknown, patch: boolean) {
   }
   if (source.deliveryDate !== undefined) output.deliveryDate=parseDeliveryDate(source.deliveryDate)
   if(source.channel!==undefined&&(typeof source.channel!=='string'||source.channel.length>100))invalid('Canal de aquisição inválido.')
-  const channel=source.channel as string|undefined
+  const channelsBySource={manual:'Balcão',whatsapp:'WhatsApp',email:'Seguradora',association:'Seguradora',insurer:'Seguradora'} as const
+  if(source.acquisitionSource!==undefined&&(typeof source.acquisitionSource!=='string'||!Object.hasOwn(channelsBySource,source.acquisitionSource)))invalid('Origem de aquisição inválida.')
+  const channel=source.channel as string|undefined ?? (source.acquisitionSource===undefined?undefined:channelsBySource[source.acquisitionSource as keyof typeof channelsBySource])
   const dateReason=deliveryReason(source.deliveryDateReason,'Alteração manual nas configurações do Atendimento')
   if (source.purpose !== undefined) {
     if (typeof source.purpose !== 'string' || !Object.hasOwn(ATENDIMENTO_PURPOSES,source.purpose)) invalid('Finalidade inválida.')
@@ -210,10 +212,10 @@ export class AtendimentoRepository {
     }catch(error){if (!inTransaction) this.db.exec('ROLLBACK');throw error}
   }
 
-  update(id: string, input: unknown, includeReferences = false, manual = false): Atendimento {
-    this.db.exec('BEGIN IMMEDIATE')
-    try {const saved=this.updateRecord(id,input,manual);const result=includeReferences?this.get(id,true):saved;this.db.exec('COMMIT');return result}
-    catch(error){this.db.exec('ROLLBACK');throw error}
+  update(id: string, input: unknown, includeReferences = false, manual = false, inTransaction = false): Atendimento {
+    if(!inTransaction)this.db.exec('BEGIN IMMEDIATE')
+    try {const saved=this.updateRecord(id,input,manual);const result=includeReferences?this.get(id,true):saved;if(!inTransaction)this.db.exec('COMMIT');return result}
+    catch(error){if(!inTransaction)this.db.exec('ROLLBACK');throw error}
   }
   private identityFields(customers:CustomerRepository,refs:CustomerReferences) {
     const {name,phone}=customers.primaryFields(refs)

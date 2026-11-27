@@ -27,7 +27,7 @@ try{
    assert.equal((await ctx.request.post(origin+'/api/session',{headers:{Origin:origin},data:{password}})).status(),200)
    const page=await ctx.newPage(),errors=[],external=[]
    page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith(origin)&&!r.url().startsWith('data:'))external.push(new URL(r.url()).origin)})
-   await page.goto(origin+'/conversas');await page.getByRole('button',{name:'Pessoas e telefones',exact:true}).click()
+   await page.goto(origin+'/conversas');assert.equal(await page.getByRole('button',{name:'Pessoas e telefones',exact:true}).count(),0);await page.goto(origin+'/biblioteca/historico');await page.getByRole('button',{name:'Pessoas e telefones',exact:true}).click()
    await page.getByRole('button',{name:'Nova pessoa ou organização'}).click()
    await page.getByRole('textbox',{name:'Nome da Entidade',exact:true}).fill('Pessoa Sintética Alfa')
    for(const [i,p] of [pn1,pn2,pn3].entries()){await page.getByRole('button',{name:'Adicionar telefone',exact:true}).click();await page.getByRole('textbox',{name:'Telefone da Entidade '+(i+1),exact:true}).fill('+'+p)}
@@ -64,15 +64,15 @@ try{
    await chat.getByRole('button',{name:'Fechar Chat do Contato'}).click()
    await page.getByRole('button',{name:'Fechar cadastro',exact:true}).click()
    await page.getByRole('button',{name:'Fechar pessoas e telefones',exact:true}).click()
-   await page.getByRole('button',{name:'Atualizar',exact:true}).click()
+   await page.goto(origin+'/conversas');await page.getByRole('button',{name:'Atualizar',exact:true}).click()
    await page.waitForFunction(()=>[...document.querySelectorAll('.conversation-names')].filter(e=>e.textContent.includes('Pessoa Sintética Alfa')).length===2)
    assert.equal(await page.locator('.entity-seal').count(),2)
    const interaction=f.at.list().items[0]
    await page.goto(origin+'/vendas/funil')
    await page.getByRole('button',{name:/Pessoa Sintética Alfa/}).click()
-   await page.getByLabel('Classificação',{exact:true}).selectOption('non_commercial')
-   await page.getByRole('button',{name:'Salvar classificação'}).click()
-   await page.getByText('Classificação salva: Não comercial',{exact:false}).waitFor()
+   await page.getByLabel('Canal de aquisição',{exact:true}).selectOption('non_commercial')
+   await page.getByText('Salvo automaticamente',{exact:true}).waitFor()
+   assert.equal(f.at.get(interaction.id,true).channel,'WhatsApp')
    await page.goto(origin+'/atendimentos/'+interaction.id)
    await page.getByRole('button',{name:'Editar Atendimento',exact:true}).click()
    const triage=page.getByRole('form',{name:'Editar Atendimento'})

@@ -94,9 +94,17 @@ test('Consentimento qualifica aprovação e projeta veículo agendado sem presum
     assert.equal(card?.vehicle.present,false)
     assert.equal(card?.receivables,null)
     assert.equal(card?.vehicle.commercialClosedAt,null)
-    const dashboard=request('/dashboard') as {metrics:SalesMetric[]}
+    const dashboard=request('/dashboard') as {metrics:SalesMetric[];daily:{day:string;amount:string;vehicles:number}[];approvedTotal:string}
     assert.deepEqual(dashboard.metrics.find(metric=>metric.label==='Vendas aprovadas')?.records,[at])
     assert.equal(dashboard.metrics.find(metric=>metric.label==='Experiências encerradas')?.value,'0')
+    assert.deepEqual(dashboard.daily,[{day:'2026-11-26',amount:dashboard.approvedTotal,vehicles:1}])
+    const complement=await repoBudget.emit(at,{...input,previewToken:repoBudget.preview(at,input).token,idempotencyKey:randomUUID()})
+    production.schedule(at,{budgetIds:[complement.id],scheduledEntry:'2026-11-27',deliveryDate:null,expectedAtendimentoRevision:repo.get(at).revision,expectedExperienceRevision:experience.revision})
+    const updated=request('/dashboard') as typeof dashboard
+    assert.equal(updated.daily[0]?.vehicles,1)
+    assert.equal(Number(updated.approvedTotal),Number(dashboard.approvedTotal)*2)
+    assert.equal(updated.metrics.find(metric=>metric.label==='Serviços adicionais')?.value,'1')
+
     const finance=new FinanceRepository(db,()=>start)
     const title=randomUUID()
     finance.create({id:title,kind:'receivable',counterparty:'Cliente teste',description:'Serviço sintético',

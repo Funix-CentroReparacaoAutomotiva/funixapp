@@ -1,10 +1,9 @@
 import { useTaskRecord } from './task-record'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { salesChannels } from '../../shared/sales'
 import type { FunnelCard, SalesActivity, SalesContext, SalesMetric, SalesStage, TrackingCard } from '../../shared/sales'
-import { ATENDIMENTO_PURPOSES } from '../../shared/contracts'
-import type { Atendimento, AtendimentoPurpose } from '../../shared/contracts'
+import type { Atendimento } from '../../shared/contracts'
 import { workshopPhases } from '../../shared/erp'
 import { api } from '../api'
 import { currency } from '../finance-format'
@@ -61,30 +60,54 @@ function humanName(record:Atendimento) {
 function recordVehicle(record:Atendimento) {
   return [record.vehicle||[record.brand,record.model].filter(Boolean).join(' '),record.plate].filter(Boolean).join(' · ')||'Veículo a identificar'
 }
-function ContextEditor({id,context,onSave}:{id:string;context:SalesContext;onSave:()=>void}) {
-  const write=useWrite(onSave)
-  const channels = [...new Set([...salesChannels, context.channel])].filter(Boolean)
-  const submit=(event:FormEvent<HTMLFormElement>)=>{
-    event.preventDefault()
-    const form=formData(event),returned=field(form,'nextContactAt')
-    void write.save(endpoint+'/records/'+id+'/context',{
-      revision:context.revision,owner:field(form,'owner'),channel:field(form,'channel'),
-      nextContactAt:returned?new Date(returned+'-03:00').toISOString():null,
-      nextAction:field(form,'nextAction'),additionalService:field(form,'additionalService'),
-    })
-  }
-  return <form className="erp-sales-form" onSubmit={submit}>
-    <h3>Responsável e próximo contato</h3>
+type RecordEditCallbacks={onDirty:(value:boolean)=>void;onBusy:(value:boolean)=>void}
+function ContextEditor({record,context,onSave,onDirty,onBusy,scheduled}:RecordEditCallbacks&{record:Atendimento;context:SalesContext;onSave:()=>void;scheduled:boolean}) {
+  const init=()=>({owner:context.owner,channel:context.channel,classification:record.purpose??'commercial',nextContactAt:context.nextContactAt?decimalDay.format(new Date(context.nextContactAt)).replace(' ','T'):'',nextAction:context.nextAction})
+  const [draft,setDraft]=useState(init),[saved,setSaved]=useState(init),[status,setStatus]=useState(''),[failure,setFailure]=useState('')
+  const [retry,setRetry]=useState(0)
+  const revisions=useRef({revision:context.revision,recordRevision:record.revision})
+  const latest=useRef(draft)
+  const inFlight=useRef(false)
+  const refresh=useRef(onSave);refresh.current=onSave
+  const dirty=JSON.stringify(draft)!==JSON.stringify(saved)
+  // Reading a new revision while nothing is pending is safe; preserve the draft otherwise.
+  useEffect(()=>{if(!dirty&&!inFlight.current){revisions.current={revision:Math.max(revisions.current.revision,context.revision),recordRevision:Math.max(revisions.current.recordRevision,record.revision)}}},[context.revision,record.revision,dirty])
+  useEffect(()=>{onDirty(dirty);return ()=>onDirty(false)},[dirty,onDirty])
+  useEffect(()=>{if(!dirty||inFlight.current||failure)return
+    const timer=setTimeout(async()=>{
+      const snapshot=latest.current
+      inFlight.current=true;onBusy(true);setStatus('Salvando…')
+      try{
+        const result=await writeJson<{context:SalesContext;record:Atendimento}>(endpoint+'/records/'+record.id+'/context',{
+          ...revisions.current,owner:snapshot.owner,channel:snapshot.channel,purpose:snapshot.classification,
+          nextContactAt:snapshot.nextContactAt?new Date(snapshot.nextContactAt+'-03:00').toISOString():null,nextAction:snapshot.nextAction,
+        },'POST')
+        revisions.current={revision:result.context.revision,recordRevision:result.record.revision}
+        setSaved(snapshot);setStatus('Salvo automaticamente');refresh.current()
+      }catch(error){setFailure(message(error));setStatus('')}
+      finally{inFlight.current=false;onBusy(false)}
+    },650)
+    return ()=>clearTimeout(timer)
+  },[draft,saved,dirty,record.id,failure,retry,onBusy])
+  const edit=(patch:Partial<typeof draft>)=>{const next={...latest.current,...patch};latest.current=next;setDraft(next);onDirty(true);setFailure('');setStatus('Alterações pendentes')}
+  const channels=[...new Set([...salesChannels.filter(c=>c!=='Recorrência'),context.channel,draft.channel])].filter(Boolean)
+  return <section className="erp-sales-form">
+    <h3>Dados comerciais e próximo contato</h3>
     <div className="erp-sales-fields">
-      <label>Responsável<input name="owner" defaultValue={context.owner} maxLength={100}/></label>
-      <label>Canal de aquisição<select aria-label="Canal de aquisição" name="channel" defaultValue={context.channel}><option value="">A definir</option>{channels.map(channel=><option key={channel}>{channel}</option>)}</select></label>
-      {context.origin&&<p>Origem · {context.origin}</p>}
-      <label>Retorno (horário de São Paulo)<input type="datetime-local" name="nextContactAt" defaultValue={context.nextContactAt?decimalDay.format(new Date(context.nextContactAt)).replace(' ','T'):''}/></label>
-      <label>Próxima ação<input name="nextAction" defaultValue={context.nextAction} maxLength={500}/></label>
-      <label>Serviço adicional identificado<input name="additionalService" defaultValue={context.additionalService} maxLength={1000}/></label>
+      <label>Canal de aquisição<select aria-label="Canal de aquisição" value={draft.classification==='non_commercial'?'non_commercial':draft.channel} onChange={event=>{
+        const value=event.target.value
+        edit(value==='non_commercial'?{classification:'non_commercial'}:{channel:value,classification:'commercial'})
+      }}><option value="">A definir</option>{channels.map(channel=><option key={channel}>{channel}</option>)}{!scheduled&&<option value="non_commercial">Não comercial</option>}</select></label>
+      {draft.classification==='non_commercial'&&<p className="sales-classification-note">Canal de entrada preservado: {draft.channel||'não informado'}</p>}
+      {draft.classification==='unclassified'&&!scheduled&&<button type="button" onClick={()=>edit({classification:'commercial'})}>Confirmar atendimento comercial</button>}
+      {context.origin&&<p className="sales-classification-note">Origem · {context.origin}</p>}
+      <label>Responsável<input name="owner" value={draft.owner} maxLength={100} onChange={e=>edit({owner:e.target.value})}/></label>
+      <label>Retorno (horário de São Paulo)<input type="datetime-local" name="nextContactAt" value={draft.nextContactAt} onChange={e=>edit({nextContactAt:e.target.value})}/></label>
+      <label>Próxima ação<input name="nextAction" value={draft.nextAction} maxLength={500} onChange={e=>edit({nextAction:e.target.value})}/></label>
     </div>
-    <button disabled={write.busy}>Salvar acompanhamento</button><WriteStatus write={write}/>
-  </form>
+    <span className="sales-save-status" role="status">{status}</span>
+    {failure&&<div role="alert">{failure} <button type="button" onClick={()=>{setFailure('');setRetry(n=>n+1)}}>Tentar novamente</button></div>}
+  </section>
 }
 function Activity({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}) {
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID())
@@ -94,10 +117,9 @@ function Activity({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}
     <form className="erp-sales-form" key={requestId} onSubmit={event=>{
       event.preventDefault()
       const form=formData(event)
-      void write.save(endpoint+'/records/'+id+'/comment',{requestId,author:field(form,'author'),comment:field(form,'comment')})
+      void write.save(endpoint+'/records/'+id+'/comment',{requestId,comment:field(form,'comment')})
     }}>
       <h3>Comentário comercial</h3>
-      <label>Nome do autor<input name="author" required maxLength={120}/></label>
       <label>Comentário<textarea name="comment" required maxLength={8000}/></label>
       <button disabled={write.busy}>Registrar comentário</button><WriteStatus write={write}/>
     </form>
@@ -106,14 +128,6 @@ function Activity({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}
       <time dateTime={event.occurredAt}>{dateLabel(event.occurredAt)}</time>{event.author?' · '+event.author:''}<p>{event.content}</p>
     </li>)}</ol>:!activity.loading&&<p>Sem atividade registrada.</p>}
   </>
-}
-function RecordActions({id}:{id:string}) {
-  return <div className="erp-sales-actions">
-    <a href={recordLink(id)}>Abrir atendimento</a>
-    <a href={recordLink(id,'?aba=chat')}>Conversar pelo WhatsApp</a>
-    <a href={recordLink(id,'?aba=diagnosticos&tela=orcamentos')}>Orçamentos</a>
-    <a href={recordLink(id,'?aba=diagnosticos&tela=experiencia')}>Agendamento e OS</a>
-  </div>
 }
 function StageEditor({record,stages,onSave}:{record:Atendimento;stages:SalesStage[];onSave:()=>void}) {
   const [stage,setStage]=useState(record.stage),write=useWrite(onSave)
@@ -126,36 +140,6 @@ function StageEditor({record,stages,onSave}:{record:Atendimento;stages:SalesStag
     {stage==='rejeitados'&&<label>Motivo da recusa confirmada<input name="reason" required maxLength={2000}/></label>}
     <button disabled={write.busy||stage===record.stage}>Alterar etapa</button><WriteStatus write={write}/>
   </form>
-}
-function PurposeEditor({record,onClassified}:{record:Atendimento;onClassified:(purpose:AtendimentoPurpose)=>void}) {
-  const current=record.purpose??'commercial'
-  const [purpose,setPurpose]=useState<AtendimentoPurpose>(current)
-  const write=useWrite(()=>onClassified(purpose))
-  return <form className="erp-sales-form erp-sales-classification" onSubmit={event=>{
-    event.preventDefault()
-    if(write.busy||purpose===current)return
-    void write.save('/api/atendimentos/'+encodeURIComponent(record.id),{
-      purpose,revision:record.revision,
-      ...(purpose!=='commercial'?{stage:'novo-lead',explicitRefusal:false,rejectionReason:''}:{})
-    },'PATCH')
-  }}>
-    <label>Classificação<select aria-label="Classificação" value={purpose} disabled={write.busy} onChange={event=>setPurpose(event.target.value as AtendimentoPurpose)}>
-      {Object.entries(ATENDIMENTO_PURPOSES).map(([id,label])=><option key={id} value={id}>{label}</option>)}
-    </select></label>
-    {purpose!==current&&purpose!=='commercial'&&record.stage!=='novo-lead'&&<p>A etapa comercial voltará ao início.</p>}
-    <button className="erp-sales-filter-button" disabled={write.busy||purpose===current}>{write.busy?'Salvando…':'Salvar classificação'}</button><WriteStatus write={write}/>
-  </form>
-}
-function FunnelDetail({card,stages,refresh,onSave,onClassified}:{card:FunnelCard;stages:SalesStage[];refresh:number;onSave:()=>void;onClassified:(purpose:AtendimentoPurpose)=>void}) {
-  const {record,context}=card
-  return <section className="erp-sales-detail">
-    <h2>{humanName(record)}</h2><p>{recordVehicle(record)}</p>
-    <PurposeEditor key={record.revision} record={record} onClassified={onClassified}/>
-    <RecordActions id={record.id}/>
-    <StageEditor key={record.revision} record={record} stages={stages} onSave={onSave}/>
-    <ContextEditor key={context.revision} id={record.id} context={context} onSave={onSave}/>
-    <Activity id={record.id} refresh={refresh} onSave={onSave}/>
-  </section>
 }
 const stageTones:Record<string,string>={'novo-lead':'neutral','aguardando-dados':'blue','em-negociacao':'yellow','morno':'orange','frio':'blue','rejeitados':'neutral'}
 const cardStage=(card:FunnelCard)=>card.lane==='triage'?'novo-lead':card.lane
@@ -176,17 +160,15 @@ function FunnelPreview({card,onClick,mobile=false,stageLabel}:{card:FunnelCard;o
     </>}
   </button>
 }
-function Funnel() {
+function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
   const [query,setQuery]=useState(()=>new URLSearchParams(window.location.search))
-  const [selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0)
-  const [classificationNotice,setClassificationNotice]=useState('')
+  const [refresh]=useState(0)
   const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width:760px)').matches)
   useEffect(()=>{
     const media=window.matchMedia('(max-width:760px)')
     const sync=()=>setMobile(media.matches)
     media.addEventListener('change',sync);return ()=>media.removeEventListener('change',sync)
   },[])
-  const invalidate=()=>setRefresh(count=>count+1)
   const apiQuery=new URLSearchParams(query)
   apiQuery.delete('stage')
   const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+apiQuery,refresh)
@@ -196,12 +178,10 @@ function Funnel() {
   const regular=(read.data?.cards??[]).filter(card=>card.lane!=='non-commercial')
   const cards=(read.data?.cards??[]).filter(card=>auxiliary?card.lane===stageFilter:
     card.lane!=='non-commercial'&&(!stageFilter||cardStage(card)===stageFilter))
-  const active=cards.find(c=>c.record.id===selected)
-  useTaskRecord(active?.record.id)
   const selectStage=(stage:string)=>{
-    setSelected(null);setClassificationNotice('')
     setQuery(previous=>{const next=new URLSearchParams(previous);if(stage)next.set('stage',stage);else next.delete('stage');return next})
   }
+  useEffect(()=>{window.history.replaceState(window.history.state,'',window.location.pathname+(query.size?'?'+query:''))},[query])
   const filters=<>
       <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
       <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
@@ -212,33 +192,28 @@ function Funnel() {
   return <>
     <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
     <form className={'erp-sales-fields erp-sales-filters'+(mobile?' erp-sales-mobile-filters':'')} onSubmit={event=>{
-      event.preventDefault();setSelected(null);setClassificationNotice('')
+      event.preventDefault()
       const next=new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)]))
       if(mobile){const classification=next.get('classification');next.delete('classification');const stage=classification||(auxiliary?'':stageFilter);if(stage)next.set('stage',stage)}
       setQuery(next)
     }}>
       <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''} placeholder={mobile?'Cliente, veículo ou placa':undefined}/></label>
       {mobile?<details className="erp-sales-more-filters"><summary><WorkspaceIcon name="filter"/> Filtros</summary><div>{filters}</div></details>:filters}
-      <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
+      <button className="erp-sales-filter-button"><WorkspaceIcon name="search" />Filtrar</button>
     </form>
     <ReadStatus read={read}/>
     {read.data&&<>
       {mobile&&<div className="erp-sales-stage-selector" role="group" aria-label="Etapas comerciais">{lanes.map(lane=><button type="button" className={'erp-phase-'+(stageTones[lane.id]??'neutral')} key={lane.id} aria-pressed={stageFilter===lane.id} onClick={()=>selectStage(stageFilter===lane.id?'':lane.id)}>
         <strong>{regular.filter(card=>cardStage(card)===lane.id).length}</strong><span>{lane.label}</span></button>)}</div>}
-      {classificationNotice&&<p role="status" className="erp-sales-classification-notice">{classificationNotice}</p>}
-      {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><FunnelDetail key={active.record.id} card={active} stages={read.data.stages} refresh={refresh} onSave={invalidate} onClassified={purpose=>{
-        setClassificationNotice(humanName(active.record)+' · Classificação salva: '+ATENDIMENTO_PURPOSES[purpose])
-        invalidate()
-      }}/></>}
       {mobile?<><div className="erp-sales-mobile-list-header"><h2>{auxiliary?(stageFilter==='triage'?'A classificar':'Não comercial'):lanes.find(l=>l.id===stageFilter)?.label??'Todos os atendimentos'} <small>({cards.length})</small></h2>
         {stageFilter&&<button type="button" onClick={()=>selectStage('')}>Ver todos</button>}</div>
-        <div className="erp-sales-mobile-list" aria-label="Atendimentos">{cards.map(card=><FunnelPreview key={card.record.id} card={card} mobile stageLabel={!stageFilter?lanes.find(l=>l.id===cardStage(card))?.label:undefined} onClick={()=>setSelected(card.record.id)}/>)}</div></>:
+        <div className="erp-sales-mobile-list" aria-label="Atendimentos">{cards.map(card=><FunnelPreview key={card.record.id} card={card} mobile stageLabel={!stageFilter?lanes.find(l=>l.id===cardStage(card))?.label:undefined} onClick={()=>openRecord(card.record.id)}/>)}</div></>:
         auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
-        {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
+        {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)}
       </div>:<div className="erp-sales-board">{lanes.filter(lane=>!stageFilter||stageFilter===lane.id).map(lane=>{
         const laneCards=cards.filter(card=>cardStage(card)===lane.id)
         return <section className="erp-sales-lane" key={lane.id} aria-label={lane.label}><h2>{lane.label} <small>{laneCards.length}</small></h2>
-          {laneCards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>setSelected(card.record.id)}/>)}
+          {laneCards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)}
         </section>
       })}</div>}
       {!cards.length&&<p>Nenhum atendimento corresponde aos filtros.</p>}
@@ -246,11 +221,11 @@ function Funnel() {
   </>
 }
 
-function TrackingDetail({card,refresh,onSave}:{card:TrackingCard;refresh:number;onSave:()=>void}) {
+function TrackingDetail({card,onSave}:{card:TrackingCard;onSave:()=>void}) {
   useTaskRecord(card.vehicle.atendimentoId)
   const write=useWrite(onSave)
   const [closureRequestId]=useState(()=>crypto.randomUUID())
-  const {vehicle,context,receivables}=card
+  const {vehicle,receivables}=card
   const id=vehicle.atendimentoId
   return <section className="erp-sales-detail">
     <h2>{vehicle.model} · {vehicle.plate||'Placa a conferir'}</h2>
@@ -265,10 +240,9 @@ function TrackingDetail({card,refresh,onSave}:{card:TrackingCard;refresh:number;
       <div><dt>Quitado</dt><dd>{receivables?currency(receivables.settledCents):'Sem título registrado'}</dd></div>
       <div><dt>Pendente</dt><dd>{receivables?currency(receivables.outstandingCents):'Sem título registrado'}</dd></div>
     </dl>
-    <RecordActions id={id}/>
     <div className="erp-sales-actions"><a href="/oficina/patio">Registrar saída no Pátio</a><a href={'/financeiro/contas-a-receber?experiencia='+encodeURIComponent(vehicle.experienceId)}>Contas a receber</a></div>
     <h3>Orçamentos e autorizações</h3>
-    <ul>{card.budgets.map(b=><li key={b.id}><a href={recordLink(id,'?aba=diagnosticos&tela=orcamentos&versao='+encodeURIComponent(b.id))}>{b.documentNumber??b.label} · {money(b.total)}</a>{b.state?' · '+budgetLabels[b.state]:''}{b.workOrderNumber?' · OS '+b.workOrderNumber:''}</li>)}</ul>
+    <ul>{card.budgets.map(b=><li key={b.id}><a href={recordLink(id,'?comercial=1&aba=diagnosticos&tela=orcamentos&versao='+encodeURIComponent(b.id))}>{b.documentNumber??b.label} · {money(b.total)}</a>{b.state?' · '+budgetLabels[b.state]:''}{b.workOrderNumber?' · OS '+b.workOrderNumber:''}</li>)}</ul>
     {vehicle.departedAt&&<form className="erp-sales-form" onSubmit={event=>{
       event.preventDefault()
       void write.save('/api/erp/workshop/movement',{experienceId:vehicle.experienceId,requestId:closureRequestId,revision:vehicle.revision,action:'commercial-close',operator:field(formData(event),'operator')})
@@ -277,106 +251,161 @@ function TrackingDetail({card,refresh,onSave}:{card:TrackingCard;refresh:number;
       <label>Responsável pelo fechamento<input name="operator" required maxLength={120}/></label>
       <button disabled={write.busy}>Registrar fechamento</button><WriteStatus write={write}/>
     </form>}
-    <ContextEditor key={context.revision} id={id} context={context} onSave={onSave}/>
-    <Activity id={id} refresh={refresh} onSave={onSave}/>
   </section>
 }
 const budgetLabels={negotiating:'Negociando',consented:'Consentido',authorized:'Autorizado',rejected:'Rejeitado',executed:'OS emitida',cancelled:'Cancelado'}
-function Tracking() {
-  const [query,setQuery]=useState(''),[selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0)
-  const read=useRead<{cards:TrackingCard[];owners:string[];summary:{approvedValue:string|null;outstanding:string|null;overdue:number}}>(endpoint+'/tracking?'+query,refresh)
-  const cards=read.data?.cards??[],active=cards.find(c=>c.vehicle.experienceId===selected)
+function Tracking({openRecord}:{openRecord:(id:string)=>void}) {
+  const [query,setQuery]=useState(''),[selected,setSelected]=useState('')
+  const read=useRead<{cards:TrackingCard[];owners:string[];summary:{approvedValue:string|null;outstanding:string|null;overdue:number}}>(endpoint+'/tracking?'+query)
+  const cards=read.data?.cards??[]
   const phases=[...new Map(workshopPhases.map(phase=>[phase.commercial,phase.tone])).entries()]
   const owners=read.data?.owners??[]
+  const preview=(card:TrackingCard)=><button className="erp-sales-card erp-sales-tracking-card" type="button" key={card.vehicle.experienceId} onClick={()=>openRecord(card.vehicle.atendimentoId)}>
+    <strong>{card.vehicle.model||'Modelo a conferir'}</strong><span className="erp-sales-plate">{card.vehicle.plate||'Placa a conferir'}</span>
+    {card.vehicle.customer&&<span className="erp-sales-customer">{card.vehicle.customer}</span>}
+    {card.vehicle.deliveryDate&&<span className="erp-sales-delivery"><WorkspaceIcon name="calendar"/> Entrega {calendarDay(card.vehicle.deliveryDate)}</span>}
+    {card.vehicle.requiresClassification&&<span className="erp-sales-alert">Classificação a conferir</span>}{card.vehicle.blocked&&<span className="erp-sales-alert">Impedimento</span>}
+  </button>
   return <>
     <h1>Acompanhamento de veículos</h1>
     <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])).toString())}}>
       <label>Pesquisar<input name="q" type="search" placeholder="Cliente, modelo ou placa"/></label>
       <label>Vendedor<select name="owner"><option value="">Todos</option>{owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
-      <button className="erp-sales-filter-button"><WorkspaceIcon name="filter" />Filtrar</button>
+      <button className="erp-sales-filter-button"><WorkspaceIcon name="search"/>Filtrar</button>
     </form><ReadStatus read={read}/>
     {read.data&&<>
       <dl className="erp-sales-info erp-sales-tracking-summary">
         <div><dt>Veículos</dt><dd>{cards.length}</dd></div>
-        <div><dt title="Valor aprovado em atendimento">Aprovado</dt><dd>{money(read.data.summary?.approvedValue)}</dd></div>
-        <div><dt>Retornos vencidos</dt><dd className={read.data.summary?.overdue ? "erp-sales-alert" : undefined}>{read.data.summary?.overdue??0}</dd></div>
-        <div><dt title="Recebíveis pendentes">A receber</dt><dd>{money(read.data.summary?.outstanding)}</dd></div>
+        <div><dt>Aprovado</dt><dd>{money(read.data.summary?.approvedValue)}</dd></div>
+        <div><dt>Retornos vencidos</dt><dd className={read.data.summary?.overdue?"erp-sales-alert":undefined}>{read.data.summary?.overdue??0}</dd></div>
+        <div><dt>A receber</dt><dd>{money(read.data.summary?.outstanding)}</dd></div>
       </dl>
-      {active&&<><button type="button" onClick={()=>setSelected(null)}>Fechar detalhes</button><TrackingDetail key={active.vehicle.experienceId} card={active} refresh={refresh} onSave={()=>setRefresh(count=>count+1)}/></>}
-      <div className="erp-sales-board">{phases.map(([phase,tone])=>{
+      <div className="erp-tracking-flow" aria-label="Fluxo de acompanhamento">{phases.map(([phase,tone])=>{
         const lane=cards.filter(card=>card.commercialPhase===phase)
         return <section key={phase} className={'erp-sales-lane erp-phase-'+tone}>
-          <h2>{phase} <small>{lane.length}</small></h2>
-          {lane.map(card=><button className="erp-sales-card erp-sales-tracking-card" type="button" key={card.vehicle.experienceId} onClick={()=>setSelected(card.vehicle.experienceId)}>
-            <strong>{card.vehicle.model||'Modelo a conferir'}</strong>
-            <span className="erp-sales-plate">{card.vehicle.plate||'Placa a conferir'}</span>
-            {card.vehicle.customer&&<span className="erp-sales-customer">{card.vehicle.customer}</span>}
-            {card.vehicle.deliveryDate&&<span className="erp-sales-delivery"><WorkspaceIcon name="calendar" /><span>Entrega {calendarDay(card.vehicle.deliveryDate)}</span></span>}
-            {card.vehicle.requiresClassification&&<span className="erp-sales-alert">Classificação a conferir</span>}
-            {card.vehicle.blocked&&<span className="erp-sales-alert">Impedimento</span>}
-
-          </button>)}
+          <button type="button" className="erp-tracking-phase" aria-pressed={selected===phase} onClick={()=>setSelected(selected===phase?'':phase)}><h2>{phase}</h2><strong>{lane.length}</strong></button>
+          <div className="erp-tracking-desktop-cards">{lane.map(preview)}</div>
         </section>
       })}</div>
+      <div className="erp-tracking-mobile-cards"><div className="erp-sales-mobile-list-header"><h2>{selected||'Todos os veículos'}</h2>{selected&&<button onClick={()=>setSelected('')}>Ver todos</button>}</div>
+        {cards.filter(card=>!selected||card.commercialPhase===selected).map(preview)}
+        {!cards.filter(card=>!selected||card.commercialPhase===selected).length&&<p>Nenhum veículo nesta etapa.</p>}
+      </div>
     </>}
   </>
 }
-
-function RelatedRecords({ids,definition,href,summaryLabel}:{ids:string[];definition?:string;href?:string;summaryLabel?:string}) {
-  const [expanded,setExpanded]=useState(false),[offset,setOffset]=useState(0)
-  const batch=ids.slice(offset,offset+50)
-  const read=useRead<{records:Atendimento[]}>(expanded&&batch.length?endpoint+'/records?ids='+batch.join(','):null)
-  return <details onToggle={event=>setExpanded(event.currentTarget.open)}><summary>{summaryLabel??(ids.length===1?'1 registro':ids.length+' registros')}</summary>
-    {definition&&<p>{definition}</p>}
-    {href&&<a href={href}>Abrir Funil</a>}
-    <ReadStatus read={read}/>
-    <ul>{read.data?.records.map(record=><li key={record.id}><a href={recordLink(record.id)}>{humanName(record)} · {recordVehicle(record)}</a></li>)}</ul>
-    {ids.length>50&&<div className="erp-sales-actions"><button disabled={offset===0} onClick={()=>setOffset(value=>value-50)}>Anteriores</button>
-      <button disabled={offset+50>=ids.length} onClick={()=>setOffset(value=>value+50)}>Próximos</button></div>}
+function LinkedAtendimento({experienceId,onOpen}:{experienceId:string;onOpen:(id:string)=>void}) {
+  const [requestId]=useState(()=>crypto.randomUUID()),[origin,setOrigin]=useState(''),[busy,setBusy]=useState(false),[failure,setFailure]=useState('')
+  return <details className="erp-sales-detail"><summary>Novo atendimento vinculado</summary>
+    <form className="erp-sales-form" onSubmit={async event=>{
+      event.preventDefault();const form=formData(event);setBusy(true);setFailure('')
+      try{const result=await writeJson<{record:{atendimentoId:string}}>('/api/erp/experiences/sequencia',{experienceId,requestId,origin,channel:field(form,'channel'),reason:field(form,'reason')|| (origin==='rework'?'Retorno para retrabalho.':'Retorno para novo serviço.')},'POST');onOpen(result.record.atendimentoId)}
+      catch(error){setFailure(message(error))}finally{setBusy(false)}
+    }}>
+      <label>Origem<select value={origin} onChange={e=>setOrigin(e.target.value)} required><option value="">Selecione</option><option value="recurrence">Recorrência · novo serviço</option><option value="rework">Retrabalho · correção anterior</option></select></label>
+      <label>Canal de aquisição<select name="channel" defaultValue="Balcão">{['Balcão','WhatsApp','Seguradora'].map(c=><option key={c}>{c}</option>)}</select></label>
+      <label>Observações<textarea name="reason" maxLength={8000}/></label>
+      {origin==='rework'&&<p>Revise o escopo de garantia ao elaborar o orçamento; use serviços sem cobrança para correção coberta.</p>}
+      <button disabled={busy||!origin}>Criar atendimento vinculado</button>{failure&&<p role="alert">{failure}</p>}
+    </form></details>
+}
+function LinkExistingAtendimento({record,onSave}:{record:Atendimento;onSave:()=>void}) {
+  const [open,setOpen]=useState(false)
+  const read=useRead<{items:{id:string;customer:string;vehicle:string;createdAt:string}[]}>(open?'/api/erp/experiences/sequencia/candidatos?atendimentoId='+encodeURIComponent(record.id):null)
+  const write=useWrite(onSave)
+  return <details className="erp-sales-detail" onToggle={event=>setOpen(event.currentTarget.open)}><summary>Vincular a uma experiência anterior</summary>
+    <ReadStatus read={read}/>{read.data?.items.length?<form className="erp-sales-form" onSubmit={event=>{event.preventDefault();const form=formData(event);void write.save('/api/erp/experiences/sequencia/vincular',{atendimentoId:record.id,experienceId:field(form,'experienceId'),origin:field(form,'origin')})}}>
+      <label>Experiência anterior<select name="experienceId" required><option value="">Selecione</option>{read.data.items.map(item=><option key={item.id} value={item.id}>{item.vehicle} · {item.customer} · {dateLabel(item.createdAt)}</option>)}</select></label>
+      <label>Origem<select name="origin" required><option value="">Selecione</option><option value="recurrence">Recorrência</option><option value="rework">Retrabalho</option></select></label>
+      <button disabled={write.busy}>Vincular origem</button><WriteStatus write={write}/>
+    </form>:read.data?<p>Nenhuma experiência anterior localizada para a placa deste veículo.</p>:null}
   </details>
 }
+export function SalesRecord({id,onDirty,onBusy,onOpen}:{id:string;onOpen:(id:string)=>void}&RecordEditCallbacks) {
+  const [refresh,setRefresh]=useState(0)
+  const read=useRead<{record:Atendimento;context:SalesContext;stages:SalesStage[];experienceId:string|null;tracking:TrackingCard|null}>(endpoint+'/records/'+id+'/summary',refresh)
+  const data=read.data, invalidate=()=>setRefresh(count=>count+1)
+  useTaskRecord(id)
+  return <main className="erp-sales sales-record"><ReadStatus read={read}/>{data&&<>
+    <div className="sales-record-title"><h1>{recordVehicle(data.record)}</h1><p>{humanName(data.record)}{data.record.origin==='rework'&&<span className="erp-sales-alert">Retrabalho</span>}</p>
+      {data.record.commercialValue&&<strong>{money(data.record.commercialValue.min)}{data.record.commercialValue.min!==data.record.commercialValue.max?' a '+money(data.record.commercialValue.max):''}</strong>}
+      {data.record.notes&&<p>{data.record.notes}</p>}
+    </div>
+    {!data.experienceId&&!data.record.closedAt&&<StageEditor key={data.record.revision} record={data.record} stages={data.stages} onSave={invalidate}/>}
+    <ContextEditor key={id} record={data.record} context={data.context} onSave={invalidate} onDirty={onDirty} onBusy={onBusy} scheduled={!!data.experienceId}/>
+    {data.tracking&&<TrackingDetail card={data.tracking} onSave={invalidate}/>}
+    {!data.experienceId&&!data.record.closedAt&&data.record.purpose!=='non_commercial'&&data.record.origin!=='rework'&&data.record.origin!=='recurrence'&&<LinkExistingAtendimento record={data.record} onSave={invalidate}/>}
+    {data.experienceId&&<LinkedAtendimento experienceId={data.experienceId} onOpen={onOpen}/>}
+    <Activity id={id} refresh={refresh} onSave={invalidate}/>
+  </>}</main>
+}
+
+type DailySale={day:string;amount:string;vehicles:number}
+type DashboardData={from:string;to:string;today:string;goal:string|null;owners:string[];metrics:SalesMetric[];priorities:{label:string;records:string[]}[];daily:DailySale[];approvedTotal:string}
+function SalesChart({daily,from,to}:{daily:DailySale[];from:string;to:string}) {
+  const values=new Map(daily.map(item=>[item.day,item]))
+  const count=Math.floor((Date.parse(to)-Date.parse(from))/86400000)+1
+  const days=count<=93?Array.from({length:count},(_,i)=>{const day=new Date(Date.parse(from)+i*86400000).toISOString().slice(0,10);return values.get(day)??{day,amount:'0',vehicles:0}}):daily
+  const amountMax=Math.max(1,...days.map(x=>Number(x.amount))),vehicleMax=Math.max(1,...days.map(x=>x.vehicles))
+  const width=Math.max(320,days.length*25+92),left=54,right=width-33,top=17,bottom=169,step=(right-left)/Math.max(1,days.length)
+  const x=(i:number)=>left+step*(i+.5), yMoney=(value:number)=>bottom-value/amountMax*(bottom-top),yCount=(value:number)=>bottom-value/vehicleMax*(bottom-top)
+  const moneyTick=new Intl.NumberFormat('pt-BR',{notation:'compact',maximumFractionDigits:1})
+  return <section className="sales-chart"><h2>Vendas por dia</h2><div className="sales-chart-scroll">
+    <svg viewBox={'0 0 '+width+' 197'} role="img" aria-label="Gráfico de valor aprovado em reais e quantidade de novas experiências vendidas por dia" style={{minWidth:Math.min(width,2600)}}>
+      {[0,1,2,3,4].map(i=>{const y=bottom-i*(bottom-top)/4;return <g key={i}><line x1={left} x2={right} y1={y} y2={y} stroke="#dbe4ed"/><text x={left-4} y={y+3} textAnchor="end" fill="#244b79" fontSize="10">{moneyTick.format(amountMax*i/4)}</text>{i%2===0&&<text x={right+5} y={y+3} fill="#c46b17" fontSize="10">{Number((vehicleMax*i/4).toFixed(1))}</text>}</g>})}
+      {days.map((item,i)=><g key={item.day}><rect x={x(i)-Math.min(step*.68,31)/2} y={yMoney(Number(item.amount))} width={Math.min(step*.68,31)} height={bottom-yMoney(Number(item.amount))} rx="2" fill="#244b79"><title>{calendarDay(item.day)} · {money(item.amount)}</title></rect>{(i%Math.max(1,Math.ceil(days.length/12))===0||i===days.length-1)&&<text x={x(i)} y={bottom+16} fontSize="9" textAnchor="middle" fill="#536b88">{item.day.slice(8,10)}/{item.day.slice(5,7)}</text>}</g>)}
+      <polyline fill="none" stroke="#e88128" strokeWidth="2.2" points={days.map((item,i)=>x(i)+','+yCount(item.vehicles)).join(' ')}/>
+      {days.map((item,i)=><circle key={item.day} cx={x(i)} cy={yCount(item.vehicles)} r="2.8" fill="#e88128"><title>{calendarDay(item.day)} · {item.vehicles} experiências</title></circle>)}
+    </svg>
+  </div><div className="sales-chart-legend"><span><i/>Valor aprovado (R$)</span><span><i/>Experiências vendidas</span></div>
+  {count>93&&<small>Período extenso: exibindo os dias com atividade.</small>}
+  </section>
+}
 function Dashboard() {
-  const [query,setQuery]=useState(''),[owner,setOwner]=useState(''),[refresh,setRefresh]=useState(0)
-  const read=useRead<{from:string;to:string;today:string;goal:string|null;owners:string[];metrics:SalesMetric[];priorities:{label:string;records:string[]}[]}>(endpoint+'/dashboard?'+query,refresh)
-  const write=useWrite(()=>setRefresh(count=>count+1))
+  const [query,setQuery]=useState(''),[owner,setOwner]=useState('')
+  const read=useRead<DashboardData>(endpoint+'/dashboard?'+query)
   const data=read.data
+  const progress=data?.goal&&Number(data.goal)>0?100*Number(data.approvedTotal)/Number(data.goal):null
   return <>
     <h1>Desempenho</h1><ReadStatus read={read}/>
     {data&&<>
       <form className="erp-sales-fields erp-sales-filters" key={data.from+'-'+data.to+'-'+owner} onSubmit={event=>{
-        event.preventDefault()
-        const form=formData(event)
-        setOwner(field(form,'owner'))
-        setQuery(new URLSearchParams([...form].map(([key,value])=>[key,String(value)])).toString())
+        event.preventDefault();const form=formData(event);setOwner(field(form,'owner'));setQuery(new URLSearchParams([...form].map(([key,value])=>[key,String(value)])).toString())
       }}>
         <label>Início<input name="from" type="date" defaultValue={data.from} required/></label>
         <label>Fim<input name="to" type="date" defaultValue={data.to} required/></label>
         <label>Vendedor<select name="owner" defaultValue={owner}><option value="">Todos</option>{data.owners.map(o=><option key={o}>{o}</option>)}</select></label>
         <button className="erp-sales-filter-button">Aplicar</button>
       </form>
-      <details className="erp-sales-priorities"><summary>Meta do período · {data.goal===null?'Sem meta cadastrada':money(data.goal)}</summary>
-        <form className="erp-sales-form" onSubmit={event=>{
-          event.preventDefault()
-          void write.save(endpoint+'/goals',{from:data.from,to:data.to,owner,amount:field(formData(event),'amount')})
-        }}>
-          <label>Meta em reais<input name="amount" inputMode="decimal" required maxLength={16}/></label>
-          <button disabled={write.busy}>Salvar meta</button><WriteStatus write={write}/>
-        </form>
-      </details>
-      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.metrics.map(metric=><section key={metric.label}><h2>{metric.label}</h2><strong>{metric.value}</strong>
-        <RelatedRecords key={query} ids={metric.records} definition={metric.definition} href={metric.href}/>
-      </section>)}</div>
+      <section className="sales-goal"><h2>Meta do período</h2><div><strong>{money(data.approvedTotal)}</strong><span>{progress===null?'Sem meta definida':progress.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}</span></div>{progress!==null&&<><progress max="100" value={Math.min(progress,100)}/><small>Meta: {money(data.goal)}</small></>}</section>
+      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.metrics.map(metric=><section key={metric.label} title={metric.definition}><h2>{metric.label}</h2><strong>{metric.value}</strong></section>)}</div>
+      <SalesChart daily={data.daily??[]} from={data.from} to={data.to}/>
       <h2>Prioridades do dia</h2>
-      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.priorities.map(priority=><section key={priority.label}><h3>{priority.label}</h3><strong>{priority.records.length}</strong><RelatedRecords key={query} ids={priority.records} summaryLabel="Ver registros"/></section>)}</div>
+      <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.priorities.map((priority,i)=><section key={priority.label}><h3>{priority.label}</h3><strong>{priority.records.length}</strong><a href={i<2?'/vendas/funil':'/vendas/acompanhamento'}>Consultar</a></section>)}</div>
     </>}
   </>
+}
+function GoalSettings(){
+  const [query,setQuery]=useState(''),[refresh,setRefresh]=useState(0),[owner,setOwner]=useState('')
+  const read=useRead<DashboardData>(endpoint+'/dashboard?'+query,refresh),write=useWrite(()=>setRefresh(n=>n+1))
+  const data=read.data
+  return <section className="erp-sales-detail"><h2>Metas comerciais</h2><ReadStatus read={read}/>
+    {data&&<form className="erp-sales-fields" key={data.from+'-'+data.to+'-'+owner+'-'+refresh} onSubmit={event=>{
+      event.preventDefault();const form=formData(event),from=field(form,'from'),to=field(form,'to'),selected=field(form,'owner');setOwner(selected);setQuery(new URLSearchParams({from,to,owner:selected}).toString());void write.save(endpoint+'/goals',{from,to,owner:selected,amount:field(form,'amount')})
+    }}>
+      <label>Início<input name="from" type="date" defaultValue={data.from} required/></label><label>Fim<input name="to" type="date" defaultValue={data.to} required/></label>
+      <label>Vendedor<select name="owner" defaultValue={owner}><option value="">Todos</option>{data.owners.map(o=><option key={o}>{o}</option>)}</select></label>
+      <label>Meta em reais<input name="amount" inputMode="decimal" defaultValue={data.goal??''} required maxLength={16}/></label><button disabled={write.busy}>Salvar meta</button>
+      <WriteStatus write={write}/>
+    </form>}
+  </section>
 }
 export function SalesSettings() {
   const [refresh,setRefresh]=useState(0)
   const read=useRead<{stages:SalesStage[]}>(endpoint+'/stages',refresh)
   const write=useWrite(()=>setRefresh(count=>count+1))
   return <section className="erp-sales">
-    <h2>Etapas do Funil</h2>
+    <GoalSettings/><h2>Etapas do Funil</h2>
     <p>As cadências usam minutos corridos. O retorno programado prevalece.</p><ReadStatus read={read}/><WriteStatus write={write}/>
     {read.data?.stages.map(stage=><form className="erp-sales-fields" key={stage.id} onSubmit={event=>{
       event.preventDefault()
@@ -389,7 +418,7 @@ export function SalesSettings() {
     </form>)}
   </section>
 }
-export default function Sales({view}:{view:string}) {
-  const views:Record<string,ReactNode>={funil:<Funnel/>,acompanhamento:<Tracking/>,desempenho:<Dashboard/>}
+export default function Sales({view,openRecord}:{view:string;openRecord:(id:string)=>void}) {
+  const views:Record<string,ReactNode>={funil:<Funnel openRecord={openRecord}/>,acompanhamento:<Tracking openRecord={openRecord}/>,desempenho:<Dashboard/>}
   return <main className="erp-sales">{views[view]??<p>Visão de Vendas indisponível.</p>}</main>
 }

@@ -331,7 +331,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
       WHERE c.id=? AND c.kind='contact'`).get(contactId)
     const ownerName=owner?String(JSON.parse(String(owner.data)).text??''):null
-    at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified'},true).id
+    at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified',...(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_experience_origin'").get()?{channel:'WhatsApp'}:{})},true).id
     let referencesChanged=false
     if(!previous.some(link=>link.atendimento_id===at)){
       const linkId=randomUUID()

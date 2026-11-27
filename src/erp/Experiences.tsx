@@ -1,3 +1,4 @@
+import {EntityDirectory} from '../EntityEditor'
 import { useTaskRecord } from './task-record'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -233,7 +234,7 @@ function Library() {
     setExpanded('');setOffset(0);setQuery(params.toString())
   }
   return <section className="erp-experiences">
-    <h1>Histórico de experiências</h1>
+    <h1>Histórico de experiências</h1><EntityDirectory/>
     <form className="erp-experiences-search" onSubmit={search}>
       <label>Cliente, placa ou ID <input name="q" type="search" maxLength={150} /></label>
       <label>De <input name="from" type="date" /></label>

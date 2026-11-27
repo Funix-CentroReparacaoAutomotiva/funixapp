@@ -16,6 +16,11 @@ type Schedule = {
 type PlanEditor = {source:Source; segment?:Segment; targetDay?:string}
 type PlanEvent = {sequence:number; recordedAt:string; action:string; snapshot:string}
 const dateRange = (start:string,end:string) => displayDay(start) + ' a ' + displayDay(end)
+const todayInSaoPaulo = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+const monday = (day:string) => moveDay(day,-((new Date(day+'T00:00:00Z').getUTCDay()+6)%7))
+const weekday = (day:string) => new Intl.DateTimeFormat('pt-BR',{weekday:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z')).replace('.','')
+const monthDay = (day:string) => new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z')).replace(' de ',' ').replace('.','')
+const loadTone = (day:CapacityDay) => day.percent===null?'empty':day.overloaded?'over':Number(day.percent)>80?'near':'ok'
 const moveDay = (day:string, amount:number) => new Date(Date.parse(day+'T00:00:00Z') + amount*86400000).toISOString().slice(0,10)
 const span = (days: Day[], start: string, end: string) => {
   const first = days.findIndex(item => item.day >= start)
@@ -139,8 +144,8 @@ function PlanningSetup({schedule,save}:{schedule:Schedule; save:Save}) {
 
 export default function WorkshopPlanning() {
   const [schedule,setSchedule] = useState<Schedule|null>(null)
-  const [start,setStart] = useState('')
-  const [length,setLength] = useState('14')
+  const [start,setStart] = useState(()=>monday(todayInSaoPaulo()))
+  const [length,setLength] = useState('7')
   const [version,setVersion] = useState(0)
   const [error,setError] = useState('')
   const [feedback,setFeedback] = useState('')
@@ -177,85 +182,82 @@ export default function WorkshopPlanning() {
     }
     setEditor({source,segment,targetDay})
   }
-  const days = schedule?.days ?? []
+  const days = schedule?.days.filter(day=>!day.weekend) ?? []
   const grid = {'--workshop-days':days.length} as CSSProperties
   const dayClass = (day:Day) => day.holiday || day.weekend ? 'workshop-closed' : day.day === schedule?.today ? 'workshop-today' : ''
   return <section className="workshop workshop-planning">
-    <header className="workshop-header"><h1>Planejamento</h1>
-      <label>Início da janela<input type="date" value={start || days[0]?.day || ''} onChange={event => {
-        if (event.target.value) setStart(event.target.value)
-      }}/></label>
-      <label>Dias<select value={length} onChange={event => setLength(event.target.value)}>
-        {['7','14','21','28','35'].map(item => <option value={item} key={item}>{item}</option>)}</select></label>
-      <button type="button" onClick={() => setStart('')}>Hoje</button>
-      <button type="button" aria-pressed={compact} onClick={() => setCompact(!compact)}>{compact ? 'Detalhar' : 'Compactar'}</button>
+    <header className="workshop-header planning-header"><h1>Planejamento da produção</h1>
+      <div className="planning-controls">
+        <button type="button" aria-label="Janela anterior" onClick={()=>setStart(moveDay(start,-Number(length)))}>‹</button>
+        <label className="planning-range"><span>Início da janela</span><input type="date" value={start} onChange={event=>{if(event.target.value)setStart(event.target.value)}}/></label>
+        <button type="button" aria-label="Próxima janela" onClick={()=>setStart(moveDay(start,Number(length)))}>›</button>
+        <button type="button" onClick={()=>setStart(monday(todayInSaoPaulo()))}>Hoje</button>
+        <label>Dias<select value={length} onChange={event=>setLength(event.target.value)}>
+          {['7','14','21','28','35'].map(item=><option value={item} key={item}>{Number(item)/7} sem.</option>)}</select></label>
+        <button type="button" aria-pressed={!compact} onClick={()=>setCompact(!compact)}>{compact?'Detalhar':'Compactar'}</button>
+      </div>
     </header>
     {error && <p role="alert">{error}</p>}{feedback && <p role="status">{feedback}</p>}
     {!schedule ? <p role="status">Carregando Planejamento…</p> : <>
-      <div className="workshop-axis" data-compact={compact} style={grid}>
-        <div className="workshop-grid">
-          <div className="workshop-grid-title">Veículo / data</div>
-          {days.map(day => <div key={day.day} className={'workshop-grid-date '+dayClass(day)} title={day.holiday ? 'Feriado' : day.weekend ? 'Fim de semana' : day.day === schedule.today ? 'Hoje' : undefined}>
-            {day.day.slice(8,10)}/{day.day.slice(5,7)}{day.day === schedule.today && <span>Hoje</span>}
-          </div>)}
-        </div>
-        {schedule.vehicles.map(vehicle => {
-          const planned = schedule.plans.filter(item => item.experienceId === vehicle.experienceId)
-          // Stack overlapping segments within the same vehicle row.
-          const lanes: Segment[][] = []
-          for (const segment of planned) {
-            const lane = lanes.find(items => items.every(other => segment.start > other.end || segment.end < other.start))
-            if (lane) lane.push(segment)
-            else lanes.push([segment])
-          }
-          return <div className="workshop-vehicle" key={vehicle.experienceId}>
-            <div className="workshop-grid">
-              <div className="workshop-grid-title">
-                <a href={'/atendimentos/'+encodeURIComponent(vehicle.atendimentoId)+'?aba=diagnosticos&tela=experiencia'}>
-                  {vehicle.model || 'Veículo'} · {vehicle.plate || 'Placa pendente'}</a>
-                {vehicle.deliveryDate && <small>Entrega {displayDay(vehicle.deliveryDate)}</small>}
-              </div>
-              {days.map(day => <div className={'workshop-slot '+dayClass(day)} data-promise={vehicle.deliveryDate === day.day} key={day.day}
-                onDragOver={event => {if (!day.weekend && !day.holiday) event.preventDefault()}}
-                onDrop={event => {
-                  event.preventDefault()
-                  const segment = planned.find(item => item.sourceId === event.dataTransfer.getData('text/plain'))
-                  if (segment && !day.weekend && !day.holiday) open(segment,day.day)
-                }}>{vehicle.deliveryDate === day.day ? <span title="Entrega prometida">◆</span> : null}</div>)}
-            </div>
-            {lanes.map((lane,index) => <div className="workshop-grid workshop-segments" key={index}>
-              {lane.map(segment => {
-                const plannedColumn = span(days,segment.start,segment.end)
-                const actualColumn = segment.actualStart ? span(days,segment.actualStart,segment.actualEnd ?? schedule.today) : undefined
-                return <div key={segment.sourceId} style={{display:'contents'}}>
-                  {plannedColumn && <button type="button" draggable className={'workshop-segment erp-phase-'+(schedule.phases.find(phase => phase.id === segment.phase)?.tone ?? 'neutral')}
-                    style={{gridColumn:plannedColumn,gridRow:1}} onDragStart={event => event.dataTransfer.setData('text/plain',segment.sourceId)}
-                    onClick={() => open(segment)} title={`${segment.name} · ${dateRange(segment.start,segment.end)}`}>
-                    {phaseDetails(segment.phase)?.label} · {segment.name}{segment.sourceChanged && ' · Revisar'}
-                  </button>}
-                  {actualColumn && <button type="button" className="workshop-real" onClick={() => open(segment)}
-                    style={{gridColumn:actualColumn,gridRow:2}}>Realizado · {segment.name}</button>}
-                </div>
-              })}
+      <div className="workshop-axis planning-timeline" data-compact={compact} style={grid}>
+        <div className="planning-sheet">
+          <div className="planning-caption"><strong>Programação por veículo</strong><span>{days.length?monthDay(days[0].day)+' – '+monthDay(days[days.length-1].day):''}</span></div>
+          <div className="workshop-grid planning-dates">
+            <div className="workshop-grid-title">Veículo / placa</div>
+            {days.map(day=><div key={day.day} className={'workshop-grid-date '+dayClass(day)} title={day.holiday?'Feriado':day.day===schedule.today?'Hoje':undefined}>
+              <strong>{weekday(day.day)}</strong><small>{day.day.slice(8,10)}/{day.day.slice(5,7)}</small>
             </div>)}
           </div>
-        })}
-        {!schedule.vehicles.length && <p>Nenhum veículo na janela selecionada.</p>}
-        <details open className="workshop-capacity">
-          <summary>Capacidade por recurso e dia</summary>
-          {schedule.capacity.map(resource => <div className="workshop-grid" key={resource.id}>
-            <div className="workshop-grid-title">{resource.name}</div>
-            {resource.days.map(day => <button key={day.day} type="button" data-overload={day.overloaded}
-              className={'workshop-load '+dayClass(day)}
-              aria-label={`${resource.name}, ${displayDay(day.day)}, ${day.planned} de ${day.capacity}${day.overloaded ? ', sobrecarga' : ''}`}
-              onClick={() => setSelectedCapacity({name:resource.name,day})}>
-              {day.percent === null ? '—' : day.percent+'%'}{day.overloaded && ' !'}
-              {!compact && <small>{day.planned}/{day.capacity}</small>}
-            </button>)}
-          </div>)}
-          {!schedule.capacity.length && <p>Cadastre recursos para acompanhar a capacidade.</p>}
-        </details>
+          {schedule.vehicles.map(vehicle=>{
+            const planned=schedule.plans.filter(item=>item.experienceId===vehicle.experienceId)
+            const lanes:Segment[][]=[]
+            for(const segment of planned){
+              const lane=lanes.find(items=>items.every(other=>segment.start>other.end||segment.end<other.start))
+              if(lane)lane.push(segment);else lanes.push([segment])
+            }
+            if(!lanes.length)lanes.push([])
+            return <div className="workshop-vehicle workshop-grid planning-vehicle" key={vehicle.experienceId} style={{'--planning-lanes':lanes.length} as CSSProperties}>
+              <div className="workshop-grid-title planning-identity" style={{gridRow:'1 / span '+lanes.length}}>
+                <a href={'/atendimentos/'+encodeURIComponent(vehicle.atendimentoId)+'?aba=diagnosticos&tela=experiencia'} title={vehicle.model+' · '+vehicle.plate}>
+                  <strong>{vehicle.model||'Veículo'}</strong><small>{vehicle.plate||'Placa pendente'}</small></a>
+                {!compact&&vehicle.deliveryDate&&<small>Entrega {displayDay(vehicle.deliveryDate)}</small>}
+              </div>
+              {days.map((day,index)=><div className={'workshop-slot '+dayClass(day)} style={{gridColumn:index+2,gridRow:'1 / span '+lanes.length}} data-promise={vehicle.deliveryDate===day.day} key={day.day}
+                onDragOver={event=>{if(!day.holiday)event.preventDefault()}} onDrop={event=>{
+                  event.preventDefault();const segment=planned.find(item=>item.sourceId===event.dataTransfer.getData('text/plain'));if(segment&&!day.holiday)open(segment,day.day)
+                }}>{vehicle.deliveryDate===day.day?<span title="Entrega prometida">◆</span>:null}</div>)}
+              {lanes.flatMap((lane,index)=>lane.map(segment=>{
+                const plannedColumn=span(days,segment.start,segment.end)
+                const actualColumn=segment.actualStart?span(days,segment.actualStart,segment.actualEnd??schedule.today):undefined
+                return <div key={segment.sourceId} style={{display:'contents'}}>
+                  {plannedColumn&&<button type="button" draggable className={'workshop-segment erp-phase-'+(schedule.phases.find(phase=>phase.id===segment.phase)?.tone??'neutral')}
+                    style={{gridColumn:plannedColumn,gridRow:index+1}} onDragOver={event=>event.preventDefault()} onDrop={event=>{
+                      event.preventDefault();const candidate=planned.find(item=>item.sourceId===event.dataTransfer.getData('text/plain'));if(candidate){const bounds=event.currentTarget.getBoundingClientRect();const first=days.findIndex(day=>day.day>=segment.start);const last=days.findLastIndex(day=>day.day<=segment.end);const target=days[Math.min(last,Math.max(first,first+Math.floor((event.clientX-bounds.left)/bounds.width*(last-first+1))))];if(target&&!target.holiday)open(candidate,target.day)}
+                    }} onDragStart={event=>event.dataTransfer.setData('text/plain',segment.sourceId)} onClick={()=>open(segment)}
+                    aria-label={phaseDetails(segment.phase)?.label+' · '+segment.name+' · '+dateRange(segment.start,segment.end)} title={phaseDetails(segment.phase)?.label+' · '+segment.name+' · '+dateRange(segment.start,segment.end)}>
+                    {!compact&&<span>{phaseDetails(segment.phase)?.label} · {segment.name}</span>}{segment.sourceChanged&&<b title="Revisar programação">!</b>}{segment.actualStart&&<i className="planning-actual-mark" title={'Realizado: '+dateRange(segment.actualStart,segment.actualEnd??schedule.today)}/>}
+                  </button>}
+                  {!plannedColumn&&actualColumn&&<button type="button" className="workshop-real" onClick={()=>open(segment)} style={{gridColumn:actualColumn,gridRow:index+1}} title={'Realizado · '+segment.name}>✓</button>}
+                </div>
+              }))}
+            </div>
+          })}
+          {!schedule.vehicles.length&&<p className="planning-empty">Nenhum veículo na janela selecionada.</p>}
+          <details open className="workshop-capacity">
+            <summary>Capacidade programada <span>por recurso e dia</span></summary>
+            {schedule.capacity.map(resource=><div className="workshop-grid planning-capacity-row" key={resource.id}>
+              <div className="workshop-grid-title">{resource.name}</div>
+              {resource.days.filter(day=>days.some(item=>item.day===day.day)).map(day=><button key={day.day} type="button" data-overload={day.overloaded} data-load={loadTone(day)}
+                className={'workshop-load '+dayClass(day)} aria-label={resource.name+', '+displayDay(day.day)+', '+day.planned+' de '+day.capacity+(day.overloaded?', sobrecarga':'')}
+                onClick={()=>setSelectedCapacity({name:resource.name,day})}>
+                {day.percent===null?'—':day.percent+'%'}{!compact&&<small>{day.planned}/{day.capacity}</small>}
+              </button>)}
+            </div>)}
+            {!schedule.capacity.length&&<p className="planning-empty">Cadastre recursos para acompanhar a capacidade.</p>}
+          </details>
+        </div>
       </div>
+      <div className="planning-legend" aria-label="Legenda de capacidade"><span data-load="ok">Até 80%</span><span data-load="near">81–100%</span><span data-load="over">Acima de 100%</span><span>◆ Entrega</span></div>
       {selectedCapacity && <div className="workshop-detail">
         <header><h2>{selectedCapacity.name} · {displayDay(selectedCapacity.day.day)}</h2>
           <button type="button" onClick={() => setSelectedCapacity(null)}>Fechar capacidade</button></header>

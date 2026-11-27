@@ -60,10 +60,8 @@ async def run():
                             assert len(columns.split()) == 2, columns
                         first = cards.locator("> section").first
                         await expect(first.locator("> strong")).to_be_visible()
-                        await expect(first.locator("details > p")).not_to_be_visible()
-                        await first.locator("summary").click()
-                        await expect(first.locator("details > p")).to_be_visible()
-                        await first.locator("summary").click()
+                        await expect(first.locator("details")).to_have_count(0)
+                        await expect(page.locator(".sales-chart svg")).to_be_visible()
                     if width < 761:
                         box = await fab.bounding_box()
                         bottom = await nav.bounding_box()

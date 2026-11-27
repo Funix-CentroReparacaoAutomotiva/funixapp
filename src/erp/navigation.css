@@ -242,3 +242,19 @@
   .workspace-sidebar-account:hover { color: #fff; background: #284970; }
   .is-collapsed .workspace-sidebar-account { justify-content: center; margin-inline: 0; padding-inline: 0; }
 }
+
+/* Dark, contextual bottom navigation; module pages remain light. */
+.workspace-record-pages {grid-row:3; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:#101f40; color:#fff; padding-bottom:env(safe-area-inset-bottom,0px); border-top:1px solid #31476c; z-index:10;}
+.workspace-record-pages button {min-width:0; display:grid; justify-items:center; align-content:center; gap:2px; min-height:54px; border:0; background:transparent; color:#e5edf9; border-top:2px solid transparent; font-size:.72rem; padding:4px 2px;}
+.workspace-record-pages button[aria-current=page] {background:#27446d; color:#fff; border-top-color:#ff8c30; font-weight:700;}
+.workspace-record-pages button svg {width:19px;height:19px;}
+@media(min-width:761px){
+  .workspace-record-context {grid-template-rows:auto minmax(0,1fr) auto;}
+  .workspace-record-context .workspace-sidebar {grid-row:1/4;}
+  .workspace-record-pages {grid-column:2;}
+  #root .workspace-shell:has(.workspace-record-context) .copilot-fixed {bottom:54px;}
+}
+@media(max-width:760px){
+  .workspace-record-context .workspace-pages {display:none;}
+  .workspace-record-pages button {font-size:clamp(.59rem,2.6vw,.78rem);}
+}

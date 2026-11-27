@@ -149,3 +149,58 @@
 
 .workshop-phase-settings { width: 100%; display: grid; grid-template-columns: repeat(auto-fit,minmax(11rem,1fr)); gap: .55rem; }
 .workshop .workshop-phase-settings label { border-left: .25rem solid var(--erp-phase); padding: .25rem .45rem; align-content: center; }
+
+/* Compact production sheet: the planned bars and capacity use exactly the same day grid. */
+.workshop-planning { background:#f4f7fb; color:#203554; }
+.planning-header { gap:.7rem; }
+.planning-header h1 { font-size:1.2rem; }
+.planning-controls { display:flex; flex-wrap:wrap; align-items:end; gap:.35rem; }
+.planning-controls button { min-height:34px; background:#fff; border-color:#d5dfec; }
+.planning-controls label { color:#4b6484; font-size:.73rem!important; }
+.planning-timeline { --workshop-day-width:2.6rem; --planning-label:10.5rem; margin-bottom:.4rem; background:#fff; border-color:#d4dce6; box-shadow:0 2px 5px #182c4c08; }
+.planning-sheet { min-width:calc(var(--planning-label) + var(--workshop-days) * var(--workshop-day-width)); }
+.planning-timeline .workshop-grid { grid-template-columns: var(--planning-label) repeat(var(--workshop-days), minmax(var(--workshop-day-width),1fr)); }
+.planning-caption { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.55rem .75rem; border-bottom:1px solid #e3e8ef; font-size:.82rem; }
+.planning-caption span { font-size:.75rem; color:#58708d; }
+.planning-timeline .workshop-grid-title,.planning-timeline .workshop-grid-date,.planning-timeline .workshop-slot { border:0; border-right:1px solid #e1e6ed; background:transparent; padding:.3rem .4rem; min-width:0; }
+.planning-timeline .workshop-grid-title { background:#fff; z-index:3; text-align:left; }
+.planning-dates { background:#f7f9fc; }
+.planning-timeline .workshop-grid-date { text-align:center; text-transform:capitalize; font-size:.78rem; }
+.planning-dates small { display:block; font-size:.65rem; color:#647894; }
+.planning-vehicle { grid-template-rows:repeat(var(--planning-lanes),minmax(28px,auto)); align-items:stretch; }
+.planning-identity { display:flex; flex-direction:column; justify-content:center; grid-column:1; }
+.planning-identity a { display:flex; justify-content:space-between; align-items:center; gap:.35rem; text-decoration:none; color:inherit; }
+.planning-identity strong { font-size:.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.planning-identity small { font-size:.68rem; white-space:nowrap; color:#63748a; }
+.planning-timeline .workshop-slot { position:relative; min-height:28px; padding:0; }
+.planning-timeline .workshop-slot[data-promise=true] span { position:absolute; right:1px; top:0; font-size:.65rem; color:#233c64; z-index:2; pointer-events:none; }
+.planning-timeline .workshop-segment,.planning-timeline .workshop-real { align-self:center; position:relative; z-index:1; min-height:21px; height:21px; margin:3px 1px; border:0; border-radius:4px; padding:1px 5px; background:color-mix(in srgb,var(--erp-phase,#cbd5e1) 68%,#fff); }
+.planning-timeline .workshop-segment:hover { outline:2px solid #253e65; outline-offset:0; }
+.planning-timeline .workshop-segment b { color:#9b291c; float:right; }
+.planning-actual-mark { border-bottom:2px dashed #182c4c; position:absolute; bottom:1px; right:3px; left:3px; }
+.planning-timeline .workshop-real { border:1px dashed #173965; background:#eef2f8; }
+.planning-timeline .workshop-today { background:#eaf2ff!important; }
+.planning-timeline .workshop-closed { background:#e8edf3!important; }
+.planning-timeline .workshop-capacity { background:#f3f5f8; border-color:#dce4ed; padding-bottom:4px; }
+.planning-timeline .workshop-capacity summary { padding:.5rem .75rem; font-weight:700; font-size:.84rem; }
+.planning-timeline .workshop-capacity summary span { font-weight:400; color:#667b95; font-size:.72rem; }
+.planning-capacity-row { min-height:25px; }
+.planning-capacity-row .workshop-grid-title { background:#f3f5f8; font-size:.76rem; }
+.planning-timeline .workshop-load { margin:2px 1px; border:0; border-radius:4px; font-size:.72rem; font-weight:600; line-height:1.15; padding:.25rem 0; color:#263956; }
+.planning-timeline .workshop-load[data-load=ok], .planning-legend [data-load=ok] { background:#d3e9d9!important; }
+.planning-timeline .workshop-load[data-load=near], .planning-legend [data-load=near] { background:#f5dfa3!important; }
+.planning-timeline .workshop-load[data-load=over], .planning-legend [data-load=over] { background:#f4bdb7!important; color:#7c251e; }
+.planning-legend { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.8rem; font-size:.68rem; }
+.planning-legend span { padding:.18rem .4rem; border-radius:4px; background:#e6ebf3; }
+.planning-empty { padding:.5rem; font-size:.8rem; }
+@media(max-width:760px) {
+  .planning-timeline { --planning-label:6.3rem; --workshop-day-width:2.35rem; }
+  .planning-timeline .planning-identity a { flex-direction:column; align-items:flex-start; gap:0; }
+  .planning-identity strong { max-width:100%; font-size:.74rem; }
+  .planning-caption { font-size:.72rem; padding:.5rem; }
+  .planning-caption span { font-size:.65rem; }
+  .planning-controls { width:100%; }
+  .planning-controls .planning-range { flex:1; min-width:110px; }
+  .planning-controls input { width:100%; }
+  .planning-capacity-row .workshop-grid-title { font-size:.7rem; }
+}

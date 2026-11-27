@@ -24,6 +24,8 @@ const icons = {
   plus: 'M12 5v14M5 12h14',
   calendar: 'M5 5h14v15H5zM8 3v5m8-5v5M5 10h14',
   filter: 'M4 6h16M7 12h10m-7 6h4',
+  search: 'M15 15l5 5M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0',
+  document: 'M6 3h9l3 3v15H6zM10 10h4m-4 4h4m-4 4h4',
   board: 'M4 5h16v14H4zm5 0v14m6-14v14',
   table: 'M4 5h16v14H4zm0 5h16M4 15h16m-8-5v9',
 }

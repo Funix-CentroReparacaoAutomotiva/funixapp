@@ -1,5 +1,5 @@
 import Workshop, { WorkshopPhaseSettings } from './erp/Workshop'
-import Sales, { SalesSettings } from './erp/Sales'
+import Sales, { SalesSettings, SalesRecord } from './erp/Sales'
 import Stock from './erp/Stock'
 import Tasks from './erp/Tasks'
 import Experiences from './erp/Experiences'
@@ -62,6 +62,8 @@ function App() {
   const removedRoute = route.path.startsWith('/veiculos') || route.path.startsWith('/experiencias')
   const tab = ['chat', 'mapa', 'diagnosticos'].includes(params.get('aba') || '') ? params.get('aba')! : 'chat'
   const screen = isDetail ? detailScreen(route.search) : null
+  const commercialContext=isDetail&&params.get('comercial')==='1'
+  const commercialSummary=commercialContext&&params.get('aba')==='resumo'
   const [contextTitle,setContextTitle]=useState<{key:string;title:string}|null>(null)
   const key = query, routeKey = route.path + route.search
   const onContextTitle=useCallback((title:string)=>setContextTitle({key:routeKey,title}),[routeKey])
@@ -110,7 +112,7 @@ function App() {
     else window.history.pushState(nextState, '', href)
     historyState.current=nextState
     const nextRoute=readRoute(),nextTab=new URLSearchParams(nextRoute.search).get('aba')??'chat'
-    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
+    const tabs=['chat','diagnosticos','mapa'],animated=isDetail&&!commercialContext&&!screen&&nextRoute.path===route.path&&nextTab!==tab&&!new URLSearchParams(nextRoute.search).has('tela')&&!matchMedia('(prefers-reduced-motion: reduce)').matches
     const update=()=>{if(window.location.pathname!==nextRoute.path||window.location.search!==nextRoute.search)return;setRoute(nextRoute);setSavedMessage('')}
     tabTransition.current?.skipTransition()
     if(animated&&document.startViewTransition){
@@ -131,6 +133,10 @@ function App() {
     navigate(`/atendimentos/${encodeURIComponent(item.id)}?aba=chat`, false, { returnTo })
     setCopilotOpen(false)
   }
+  function openCommercial(id:string) {
+    const returnTo=isDetail?window.history.state?.returnTo||'/vendas/funil':window.location.pathname+window.location.search
+    if(navigate('/atendimentos/'+encodeURIComponent(id)+'?comercial=1&aba=resumo',false,{returnTo}))setCopilotOpen(false)
+  }
   function openView(next:DetailScreen,id?:string) {
     const values=new URLSearchParams(route.search)
     values.set('tela',next);values.delete('peca');values.delete('versao')
@@ -145,6 +151,7 @@ function App() {
       return
     }
     if (!canLeaveEditor()) return
+    if(commercialContext){navigate(window.history.state?.returnTo||'/vendas/funil',true);return}
     if (window.history.state?.returnTo && historyState.current?.funixIndex>0) window.history.back()
     else navigate(preferredPage(module), true)
   }
@@ -249,7 +256,7 @@ function App() {
   },[isDetail,tab,screen])
   function touchStart(event:React.TouchEvent<HTMLDivElement>){
     touch.current=null;mapClickUntil.current=0
-    if(!isDetail||screen||editor||event.touches.length!==1||document.querySelector('dialog[open]')||copilotOpen)return
+    if(!isDetail||commercialSummary||screen||editor||event.touches.length!==1||document.querySelector('dialog[open]')||copilotOpen)return
     const target=event.target as Element
     const onMap=Boolean(target.closest('.interactive-map'))
     if(!onMap&&target.closest('input,textarea,select,button,[role="button"],a,label,summary,details,[role="menu"],[role="dialog"],.view-switch,.detail-header,.approved-finance,.scenario-matrix,[data-row-gesture],.disc-wrap,.interactive-map,[contenteditable=true],[role=slider],[role=switch],[role=checkbox]'))return
@@ -317,7 +324,7 @@ function App() {
     (workspaceFor(route.path)?.id === 'vendas')
   const login = <Login session={session} error={sessionError} refresh={() => setSessionVersion(value => value + 1)} onSession={setSession} />
   return <div className={`app-shell workspace-shell ${session?.authenticated ? 'workspace-authenticated' : ''}`}>
-    <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''}`} inert={Boolean(editor)}>
+    <div className={`workspace-layout ${sidebarCollapsed ? 'is-collapsed' : ''} ${commercialContext?'workspace-record-context':''}`} inert={Boolean(editor)}>
       {session?.authenticated && <>
         <WorkspaceSidebar module={module} collapsed={sidebarCollapsed} toggle={() => setSidebarCollapsed(value => !value)} navigate={navigate} onAccount={() => setAccountOpen(true)}>
           <WorkspacePages module={module} path={route.path} navigate={navigate} />
@@ -364,7 +371,7 @@ function App() {
           <div key={route.path} className="erp-view">
             {erp.area === 'inicio' && <h1>Início</h1>}
             {erp.area === 'oficina' && <Workshop view={erp.view} />}
-            {erp.area === 'vendas' && <Sales view={erp.view} />}
+            {erp.area === 'vendas' && <Sales view={erp.view} openRecord={openCommercial}/>}
             {erp.area === 'estoque' && <Stock view={erp.view} />}
             {erp.area === 'tarefas' && <Tasks view={erp.view} />}
             {erp.area === 'financeiro' && <FinancePage search={route.search} view={erp.view} onAuthRequired={expireSession} onBusy={onBusy} />}
@@ -398,7 +405,7 @@ function App() {
         </>}
       </main> : <>
         <header className="detail-header">{screen?<><button aria-label={screen==='peca'?(tab==='mapa'?'Voltar ao Mapa':'Voltar aos Diagnósticos'):'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<><button aria-label="Voltar à visão anterior" className="back-detail" onClick={goBack}>←</button><div className="detail-contact"><span className="detail-avatar" aria-hidden="true">{record ? detailName.slice(0, 2).toUpperCase() : '·'}</span><span className="detail-contact-lines"><strong>{record ? detailName : 'Atendimento'}</strong>{session?.authenticated && record && <span className="detail-phone">{detailPhone}</span>}</span></div><div className="detail-identity"><strong>{record?.plate || '—'}</strong><span>{record ? vehicleLabel(record) || 'Veículo não informado' : loading ? 'Carregando…' : ''}</span></div>{session?.authenticated && record && <button className="edit-detail" aria-label="Editar Atendimento" title="Editar Atendimento" onClick={() => { if (canLeaveEditor()) { setSavedMessage(''); setEditor({ record }) } }}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 16 12-12 4 4L8 20H4zM14 6l4 4" /></svg></button>}</>}</header>
-        {!screen&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
+        {!screen&&!commercialSummary&&<nav className="view-switch" aria-label="Visões do Atendimento">{(['chat', 'diagnosticos', 'mapa'] as const).map(item => <button key={item} className={`view-tab ${tab === item ? 'active' : ''}`} onClick={() => updateParams({ aba: item })} aria-current={tab === item ? 'page' : undefined}><Icon name={item === 'diagnosticos' ? 'diagnostics' : item === 'mapa' ? 'map' : 'chat'} />{item === 'diagnosticos' ? 'Diagnóstico' : item === 'mapa' ? 'Mapa' : 'Chat'}</button>)}<div className="scenario-slot" ref={setScenarioSlot} /></nav>}
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           <button className="erp-diary-trigger" onClick={() => { diaryDialog.current?.showModal(); setDiaryOpen(true) }}>Diário</button>
           <dialog ref={diaryDialog} className="erp-diary-dialog" onClose={() => setDiaryOpen(false)} aria-label="Diário da Experiência">
@@ -411,17 +418,21 @@ function App() {
             } />}
           </dialog>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
+          {commercialSummary?<SalesRecord key={record.id} id={record.id} onDirty={onDirty} onBusy={onBusy} onOpen={openCommercial}/>:<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onDirty} onBusy={onBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?${commercialContext?'comercial=1&':''}aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
             <div className="record-summary at-record-summary"><strong>{record.name || 'Nome não informado'}</strong><p>{record.phone}</p><p>{[vehicleLabel(record), record.plate].filter(Boolean).join(' · ') || 'Veículo não informado'}</p>{(record.fabricationYear!==null||record.modelYear!==null)&&<p>Ano de fabricação: {record.fabricationYear||'—'} · Ano do modelo: {record.modelYear||'—'}</p>}{record.reason && <p><b>Motivo:</b> {record.reason}</p>}{record.notes && <p><b>Observações:</b> {record.notes}</p>}{record.stage === 'rejeitados' && <p><b>Recusa registrada:</b> {record.rejectionReason}</p>}<small>Atualizado em {dateLabel(record.updatedAt)}</small><details><summary>Identificador técnico</summary><span className="at-technical-id">{record.id}</span></details></div>
           </ChatPanel></>} />}
         </>}
       </>}
       </TaskRecordContext.Provider>
       </div>
+      {commercialContext&&session?.authenticated&&record&&<nav className="workspace-record-pages" aria-label="Ações do Atendimento">
+        {([{label:'Dados',icon:'tarefas',query:'aba=resumo',active:commercialSummary},{label:'WhatsApp',icon:'conversas',query:'aba=chat',active:!commercialSummary&&tab==='chat'&&!screen},{label:'Orçamentos',icon:'document',query:'aba=diagnosticos&tela=orcamentos',active:!commercialSummary&&tab!=='chat'&&screen!=='experiencia'},{label:'Agendamento',icon:'calendar',query:'aba=diagnosticos&tela=experiencia',active:screen==='experiencia'}] as const).map(item=>
+          <button key={item.label} type="button" aria-current={item.active?'page':undefined} onClick={()=>navigate(route.path+'?comercial=1&'+item.query,false,{returnTo:window.history.state?.returnTo||'/vendas/funil'})}><WorkspaceIcon name={item.icon}/><span>{item.label}</span></button>)}
+      </nav>}
     </div>
     {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
       title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}
-    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && !screen)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
+    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!screen&&!commercialSummary?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && !screen && !commercialSummary)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {

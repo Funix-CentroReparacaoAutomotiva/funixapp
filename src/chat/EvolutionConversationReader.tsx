@@ -1,7 +1,6 @@
 import type {EntityContact} from '../../shared/customer'
 import {EvolutionAtendimentoChat} from './ChatPanel'
 import {ConversationIdentity} from './ConversationIdentity'
-import {EntityDirectory} from '../EntityEditor'
 import {useCallback,useEffect,useRef,useState} from 'react'
 import {api,type RequestFailure} from '../api'
 import {Notice} from '../ui'
@@ -122,7 +121,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   setSelected(null)
  }
  const q=searchTerm.trim().toLocaleLowerCase('pt-BR'),matches=rows.filter(r=>[name(r),r.displayName,r.phoneNumber,r.atendimentoPhone,r.commercial?.preview].join(' ').toLocaleLowerCase('pt-BR').includes(q))
- return <section className="ev-reader"><header className="ev-header"><strong>Conversas</strong><EntityDirectory/><button className="fh-filter" disabled={busy} onClick={()=>{lastRefresh.current=Date.now();setVersion(v=>v+1)}}>Atualizar</button></header>
+ return <section className="ev-reader"><header className="ev-header"><strong>Conversas</strong><button className="fh-filter" disabled={busy} onClick={()=>{lastRefresh.current=Date.now();setVersion(v=>v+1)}}>Atualizar</button></header>
   {!available&&<Notice title="Canal ainda não habilitado">Os Atendimentos podem ser criados pelo Funil.</Notice>}
   {error&&<Notice title="Não foi possível concluir" error>{error}</Notice>}
   {busy&&<p role="status">Carregando conversas…</p>}

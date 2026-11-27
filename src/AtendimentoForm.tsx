@@ -15,7 +15,7 @@ function initialFields(record?: Atendimento): AtendimentoInput {
   return {
     closed:!!record?.closedAt,
     purpose:record ? record.purpose : 'commercial',
-    channel:record?.channel??'',
+    channel:record?.channel??(record?'':'Balcão'),
     references:record?.references??{person:[{id:null,text:record?.name??''}],contact:[{id:null,text:record?.phone??''}],vehicle:[{id:null,text:record?.vehicle??'',plate:record?.plate??'',fabricationYear:record?.fabricationYear??'',modelYear:record?.modelYear??''}],payer:[]},
     phone: record?.phone ?? '', name: record?.name ?? '', vehicle: record?.vehicle ?? '',
     brand: record?.brand ?? '', model: record?.model ?? '', plate: record?.plate ?? '',
@@ -139,7 +139,7 @@ export function AtendimentoForm({ record, conversationId, onSaved, onAutoSaved, 
       <section className="at-customer-context" aria-label="Dados comerciais">
         <h3>Dados comerciais</h3>
         <div className="at-field"><label htmlFor="at-channel">Canal de aquisição</label><select id="at-channel" value={fields.channel??''} disabled={busy&&!record} onChange={event=>update('channel',event.target.value)}>
-          <option value="">A definir</option>{[...new Set([...salesChannels,fields.channel??''])].filter(Boolean).map(channel=><option key={channel}>{channel}</option>)}
+          <option value="">A definir</option>{[...new Set([...salesChannels.filter(channel=>channel!=='Recorrência'),fields.channel??''])].filter(Boolean).map(channel=><option key={channel}>{channel}</option>)}
         </select></div>
         <div className="at-field"><label>Origem</label><div className="at-context-readonly">{record?(record.origin==='recurrence'?'Recorrência':record.origin==='rework'?'Retrabalho':record.origin==='initial'?'Atendimento inicial':'Não informada'):'Atendimento inicial'}</div></div>
         <div className="at-field"><label htmlFor="at-notes">Observações</label><textarea id="at-notes" value={fields.notes} onChange={event => update('notes', event.target.value)} maxLength={8000} rows={3} disabled={busy && !record} /></div>

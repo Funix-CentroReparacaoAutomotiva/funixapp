@@ -104,7 +104,7 @@ export interface AtendimentoList {
   stages: typeof ATENDIMENTO_STAGES
 }
 
-export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string} & Partial<Pick<Atendimento, 'phone' | 'references' |
+export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string;acquisitionSource?:'manual'|'whatsapp'|'email'|'association'|'insurer'} & Partial<Pick<Atendimento, 'phone' | 'references' |
   'name' | 'channel' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }

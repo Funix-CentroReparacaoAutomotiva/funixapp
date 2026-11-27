@@ -115,3 +115,25 @@ test('Diário reúne eventos confirmados de Vendas e Oficina sem duplicar linhas
   assert.equal(db.prepare('SELECT COUNT(*) n FROM erp_experience_diary').get()?.n,0)
   assert.equal((call('/historico?status=present') as {total:number}).total,1)
 })
+
+test('Atendimento recebido pelo WhatsApp pode ser vinculado sem duplicação e sem perder o canal',t=>{
+  const {db,repo,call}=setup(t)
+  const next=repo.create({plate:'SYN1A23',acquisitionSource:'whatsapp'})
+  db.prepare('UPDATE atendimentos SET created_at=? WHERE id=?').run('2026-11-27T12:00:00Z',next.id)
+  const candidates=call('/sequencia/candidatos?atendimentoId='+next.id) as {items:{id:string}[]}
+  assert.deepEqual(candidates.items.map(item=>item.id),['exp-synthetic'])
+  const payload={atendimentoId:next.id,experienceId:'exp-synthetic',origin:'rework'}
+  const link=call('/sequencia/vincular',payload)
+  assert.deepEqual(call('/sequencia/vincular',payload),link)
+  assert.equal(repo.get(next.id,true).channel,'WhatsApp')
+  assert.equal(repo.get(next.id,true).origin,'rework')
+  assert.throws(()=>call('/sequencia/vincular',{...payload,origin:'recurrence'}),{status:409})
+  const different=repo.create({plate:'SYN2A23',acquisitionSource:'email'})
+  assert.equal(repo.get(different.id,true).channel,'Seguradora')
+  assert.throws(()=>call('/sequencia/vincular',{...payload,atendimentoId:different.id}),{status:422})
+  assert.equal(repo.list().total,3)
+  for(const acquisitionSource of ['association','insurer','manual'] as const){
+    const newAt=repo.create({acquisitionSource})
+    assert.equal(repo.get(newAt.id,true).channel,acquisitionSource==='manual'?'Balcão':'Seguradora')
+  }
+})

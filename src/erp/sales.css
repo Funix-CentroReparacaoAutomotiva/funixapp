@@ -170,3 +170,57 @@
   .erp-sales-card-bottom span {font-size:.76rem;}
   .erp-sales-card .erp-sales-stage-badge {color:#263a53; background:color-mix(in srgb,var(--erp-phase) 25%,white);border-radius:4px;padding:.17rem .35rem;}
 }
+
+/* Point-of-work detail and compact commercial dashboard. */
+.sales-record {width:100%; max-width:720px; margin:0 auto; padding:1rem; }
+.sales-record-title {border:1px solid #d5dfec; background:#fff; border-radius:10px; padding:.85rem; margin-bottom:.7rem; }
+.sales-record-title h1 {font-size:1.2rem; margin:0 0 .3rem;}
+.sales-record-title p {margin:.25rem 0; color:#536d8c;}
+.sales-record-title strong {font-size:1.35rem; color:#163c70;}
+.sales-save-status {font-size:.75rem; color:#637998;}
+.sales-classification-note {font-size:.78rem; color:#637998; margin:0;}
+.sales-goal,.sales-chart {background:#fff; padding:.75rem; border-radius:10px; border:1px solid #d5dfec; margin:.7rem 0; }
+.sales-goal h2,.sales-chart h2 {font-size:.95rem; color:#385271; margin:0 0 .6rem;}
+.sales-goal > div {display:flex; justify-content:space-between; align-items:center; gap:.6rem;}
+.sales-goal strong {font-size:1.45rem; color:#163c70;}
+.sales-goal span {color:#486b67; font-size:.83rem; font-weight:700;}
+.sales-goal progress {width:100%; height:.55rem; accent-color:#244b79; }
+.sales-goal small {display:block; color:#637998;}
+.sales-chart-scroll {width:100%; overflow-x:auto;}
+.sales-chart svg {display:block;width:100%;max-height:268px;}
+.sales-chart-legend {display:flex; flex-wrap:wrap; gap:.75rem; justify-content:center; color:#536b88; font-size:.72rem;}
+.sales-chart-legend span {display:flex; align-items:center; gap:4px;}
+.sales-chart-legend i {background:#244b79;width:10px;height:10px; border-radius:2px;}
+.sales-chart-legend span+span i {background:#e88128; border-radius:50%;}
+.erp-sales-dashboard-cards section>a {font-size:.74rem;}
+.erp-tracking-flow {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem .85rem; margin:1rem 0;}
+.erp-tracking-flow .erp-sales-lane {position:relative; min-width:0;}
+.erp-tracking-flow .erp-sales-lane:nth-child(4){grid-column:3;grid-row:2;}
+.erp-tracking-flow .erp-sales-lane:nth-child(5){grid-column:2;grid-row:2;}
+.erp-tracking-flow .erp-sales-lane:nth-child(6){grid-column:1;grid-row:2;}
+.erp-tracking-flow .erp-sales-lane:not(:last-child)::after {content:'→';position:absolute;right:-.8rem;top:2rem;z-index:2;color:#536d8c;font-weight:700;}
+.erp-tracking-flow .erp-sales-lane:nth-child(3)::after {content:'↓';top:auto;bottom:-1.0rem;right:48%;}
+.erp-tracking-flow .erp-sales-lane:nth-child(4)::after,.erp-tracking-flow .erp-sales-lane:nth-child(5)::after {content:'←';right:auto;left:-.8rem;}
+.erp-sales .erp-tracking-phase {width:100%; display:flex; align-items:center; justify-content:space-between; gap:.25rem; background:transparent; border:0; text-align:left; padding:.3rem; color:inherit;}
+.erp-tracking-phase h2 {font-size:.85rem; margin:0;}
+.erp-tracking-phase strong {font-size:1.2rem;}
+.erp-tracking-desktop-cards {display:grid; gap:.35rem;}
+.erp-tracking-mobile-cards {display:none;}
+@media(max-width:760px){
+  .erp-tracking-flow {gap:.85rem .65rem;}
+  .erp-tracking-flow .erp-sales-lane {padding:.15rem;}
+  .erp-sales .erp-tracking-phase {min-height:63px; flex-direction:column; align-items:flex-start; justify-content:center;}
+  .erp-tracking-phase h2 {font-size:clamp(.63rem,2.7vw,.8rem);}
+  .erp-tracking-phase strong {font-size:1.4rem;}
+  .erp-tracking-phase[aria-pressed=true] {background:#e5edf8; border-radius:5px;}
+  .erp-tracking-flow .erp-sales-lane:not(:last-child)::after {right:-.65rem;top:1.55rem;}
+  .erp-tracking-flow .erp-sales-lane:nth-child(3)::after {top:auto; bottom:-.9rem; right:45%;}
+  .erp-tracking-flow .erp-sales-lane:nth-child(4)::after,.erp-tracking-flow .erp-sales-lane:nth-child(5)::after {left:-.65rem;right:auto;}
+  .erp-tracking-desktop-cards {display:none;}
+  .erp-tracking-mobile-cards {display:grid;gap:.35rem;}
+  .erp-sales-mobile-filters {grid-template-columns:minmax(0,1fr) auto auto!important; align-items:end;}
+  .erp-sales-mobile-filters > .erp-sales-filter-button {grid-column:auto!important;min-width:0; font-size:.72rem; padding:.45rem;}
+  .erp-sales-mobile-filters > label:has(input[type=search]) {grid-column:auto!important;}
+  .erp-sales-mobile-filters > .erp-sales-more-filters{grid-column:auto!important;}
+  .sales-record {padding:.6rem; }
+}

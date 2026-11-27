@@ -289,10 +289,38 @@ function createFollowup(db: DatabaseSync,experienceId: string,at: string,origin:
   const repo = new AtendimentoRepository(db)
   const record = repo.get(at,true)
   const next = repo.create({phone:record.phone,name:record.name,vehicle:record.vehicle,model:record.model,brand:record.brand,
-    plate:record.plate,reason,purpose:'commercial',...(record.references ? {references:record.references} : {})},true)
+    plate:record.plate,fabricationYear:record.fabricationYear,modelYear:record.modelYear,notes:reason,purpose:'commercial',...(record.references ? {references:record.references} : {})},true)
   db.prepare(`INSERT INTO erp_experience_origin(atendimento_id,origin,previous_experience_id,channel,request_id,request_hash)
     VALUES(?,?,?,?,?,?)`).run(next.id,origin,experienceId,channel||null,requestId??null,hash??null)
   return next.id
+}
+
+// Link an existing inbound Atendimento without creating a second lead or
+// changing its acquisition channel. Candidates are exact vehicle matches.
+function previousCandidates(db:DatabaseSync,at:string) {
+  const current=new AtendimentoRepository(db).get(at,true)
+  const normalize=(value:string)=>value.toUpperCase().replace(/[^A-Z0-9]/g,'')
+  const plate=normalize(current.plate)
+  if(!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate))return []
+  return experienceRows(db).filter(row=>String(row.atendimento_id)!==at&&normalize(String(row.vehicle_plate||row.plate||''))===plate&&String(row.created_at)<=current.createdAt)
+    .map(row=>({id:String(row.id),customer:String(row.customer||row.name||''),vehicle:String(row.vehicle_name||row.model||row.vehicle||''),createdAt:String(row.created_at)}))
+}
+function linkFollowup(db:DatabaseSync,input:Record<string,unknown>) {
+  const at=pickText(input.atendimentoId,100,'o Atendimento',true),id=pickText(input.experienceId,100,'a Experiência anterior',true)
+  const origin=input.origin
+  if(origin!=='rework'&&origin!=='recurrence')return invalid('Classifique a sequência como Recorrência ou Retrabalho.')
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const current=new AtendimentoRepository(db).get(at,true), prior=originMetadata(db,at)
+    if(prior?.previous_experience_id===id&&prior.origin===origin){db.exec('COMMIT');return prior}
+    if(prior?.previous_experience_id||current.closedAt||current.purpose==='non_commercial'||db.prepare('SELECT 1 FROM production_experiences WHERE atendimento_id=?').get(at))
+      throw new ServiceError(409,'ERP_FOLLOWUP_CONFLICT','Este Atendimento não pode receber outro vínculo de origem.')
+    if(!previousCandidates(db,at).some(candidate=>candidate.id===id))return invalid('Selecione uma Experiência anterior do mesmo veículo.')
+    db.prepare(`INSERT INTO erp_experience_origin(atendimento_id,origin,previous_experience_id,channel) VALUES(?,?,?,?)
+      ON CONFLICT(atendimento_id) DO UPDATE SET origin=excluded.origin,previous_experience_id=excluded.previous_experience_id`).run(at,origin,id,current.channel||null)
+    db.prepare('UPDATE erp_sales_context SET revision=revision+1 WHERE atendimento_id=?').run(at)
+    const saved=originMetadata(db,at);db.exec('COMMIT');return saved
+  }catch(error){db.exec('ROLLBACK');throw error}
 }
 
 function openFollowup(db: DatabaseSync,input: Record<string,unknown>) {
@@ -359,6 +387,7 @@ function resolveSac(db: DatabaseSync,input: Record<string,unknown>,occurredAt: s
 
 export function handleExperiences({db,method,path,query,body,now}: ErpRequest): unknown {
   if (method === 'GET') {
+    if (path === '/sequencia/candidatos') return {items:previousCandidates(db,pickText(query.get('atendimentoId'),100,'o Atendimento',true))}
     if (path === '/historico') return library(db,query)
     if (path === '/detalhe') return detail(db,pickText(query.get('id'),100,'a Experiência',true))
     if (path === '/sac') return {items:listSac(db,optional(query.get('experienceId'),100,'a Experiência'))}
@@ -375,6 +404,7 @@ export function handleExperiences({db,method,path,query,body,now}: ErpRequest): 
     const input = body as Record<string,unknown>
     const occurredAt = new Date(now()).toISOString()
     if (path === '/origem') return {record:recordOrigin(db,input)}
+    if (path === '/sequencia/vincular') return {record:linkFollowup(db,input)}
     if (path === '/sequencia') return {record:openFollowup(db,input)}
     if (path === '/sac') return {record:openSac(db,input,occurredAt)}
     if (path === '/sac/resolver') return {record:resolveSac(db,input,occurredAt)}
