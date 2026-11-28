@@ -43,11 +43,21 @@ try{
    assert.equal(wire.items.find(r=>r.displayName==='PN divergente').atendimentoPhone,'5531999990707')
    const detail=await(await ctx.request.get(origin+'/api/atendimentos/'+a.id)).json();assert.equal(detail.phoneNormalized,'+'+dto.atendimentoPhone)
    await page.screenshot({path:out+'/list-'+width+'.png',fullPage:true})
-   const search=page.getByRole('textbox',{name:'Buscar conversas carregadas por nome ou telefone'})
-   await search.fill('5531999990404');await page.waitForFunction(()=>document.querySelectorAll('.conversation-row').length===1)
-   assert.match(await page.locator('.conversation-row').innerText(),/Contato principal/)
-   await search.fill('5531999990707');await page.waitForFunction(()=>document.querySelectorAll('.conversation-row').length===1)
-   assert.match(await page.locator('.conversation-row').innerText(),/PN divergente/)
+   const expectedIds=names=>wire.items.filter(item=>names.includes(item.displayName)).map(item=>item.conversationId).sort()
+   for(const [phone,names] of [
+    ['5531999990404',['Contato principal','Duas fichas','Conflito']],
+    ['5531999990707',['PN divergente','Duas fichas']],
+   ]){
+    const toggle=page.getByRole('button',{name:/Abrir busca de Vendas|Editar busca:/})
+    await toggle.click()
+    await page.getByRole('searchbox',{name:'Pesquisar em Vendas'}).fill(phone)
+    const result=page.waitForResponse(r=>r.url().includes('/api/chat/conversations?')&&new URL(r.url()).searchParams.get('q')===phone)
+    await page.getByRole('button',{name:'Buscar',exact:true}).click()
+    const filtered=await(await result).json()
+    assert.equal(filtered.source,'local')
+    assert.deepEqual(filtered.items.map(item=>item.conversationId).sort(),expectedIds(names))
+    await page.waitForFunction(count=>document.querySelectorAll('.conversation-row').length===count,names.length)
+   }
    await page.goto(origin+'/atendimentos/'+a.id+'?aba=diagnosticos');await page.waitForFunction(()=>document.querySelector('.detail-phone')?.textContent==='+5531999990404')
    await page.goto(origin+'/conversas');await row('Contato principal').waitFor()
    assert.equal(await row('Contato principal').locator('.conversation-phone').innerText(),'Ficha: +5531999990404')

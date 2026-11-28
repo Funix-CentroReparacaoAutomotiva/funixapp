@@ -98,6 +98,14 @@ test('Consentimento qualifica aprovação e projeta veículo agendado sem presum
     assert.deepEqual(dashboard.metrics.find(metric=>metric.label==='Vendas aprovadas')?.records,[at])
     assert.equal(dashboard.metrics.find(metric=>metric.label==='Experiências encerradas')?.value,'0')
     assert.deepEqual(dashboard.daily,[{day:'2026-11-26',amount:dashboard.approvedTotal,vehicles:1}])
+    const displayNumber=repo.get(at).displayNumber!
+    assert.deepEqual((request('/tracking',undefined,0,'q='+displayNumber) as typeof tracking).cards.map(card=>card.vehicle.atendimentoId),[at])
+    assert.equal((request('/tracking',undefined,0,'q=inexistente') as typeof tracking).cards.length,0)
+    assert.deepEqual(request('/dashboard',undefined,0,'q='+displayNumber),dashboard)
+    const unmatched=request('/dashboard',undefined,0,'q=inexistente') as typeof dashboard
+    assert.equal(unmatched.approvedTotal,'0')
+    assert.deepEqual(unmatched.daily,[])
+    assert.ok(unmatched.metrics.every(metric=>metric.records.length===0))
     const complement=await repoBudget.emit(at,{...input,previewToken:repoBudget.preview(at,input).token,idempotencyKey:randomUUID()})
     production.schedule(at,{budgetIds:[complement.id],scheduledEntry:'2026-11-27',deliveryDate:null,expectedAtendimentoRevision:repo.get(at).revision,expectedExperienceRevision:experience.revision})
     const updated=request('/dashboard') as typeof dashboard
