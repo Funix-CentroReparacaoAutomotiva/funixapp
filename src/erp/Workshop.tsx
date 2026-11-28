@@ -1,3 +1,4 @@
+import AcquisitionComponents from './AcquisitionComponents'
 import { useTaskRecord } from './task-record'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { workshopPhases, type WorkshopPhase } from '../../shared/erp'
@@ -54,6 +55,7 @@ function YardDetails({vehicle, reload, onClose}:{vehicle:YardVehicle; reload:()=
       <dt>Entrega prevista</dt><dd>{vehicle.deliveryDate ? displayDay(vehicle.deliveryDate) : '—'}</dd>
       {vehicle.year && <><dt>Ano</dt><dd>{vehicle.year}</dd></>}</dl>
     <a href={'/atendimentos/' + encodeURIComponent(vehicle.atendimentoId) + '?aba=diagnosticos&tela=experiencia'}>Abrir ficha, orçamentos e OS</a>
+    <AcquisitionComponents key={vehicle.experienceId} experienceId={vehicle.experienceId} readOnly/>
     {vehicle.requiresClassification && <p role="status">Cadastro ou vínculo de OS pendente. Confira a ficha antes de registrar a movimentação.</p>}
     {enabled.length > 0 && <form onSubmit={submit} onChange={() => setKey(crypto.randomUUID())}>
       <label>Ação<select value={action} onChange={event => setAction(event.target.value as Action | '')} required>

@@ -1,3 +1,4 @@
+import {migrateAcquisition} from './erp/acquisition.ts'
 import { migrateOperationalErp } from './erp/index.ts'
 import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
 import {addExperienceOperation,createProductionSchema} from './production-schema.ts'
@@ -391,6 +392,7 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
       INSERT INTO atendimento_numbers(atendimento_id) VALUES(NEW.id);
     END;
   `)},
+  {version:33,apply:migrateAcquisition},
 ]
 
 export function migrate(db: DatabaseSync) {
