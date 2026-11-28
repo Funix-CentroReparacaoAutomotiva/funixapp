@@ -125,11 +125,15 @@ async def device_case(browser,device,viewport):
   h.mark(device+': post-commit download failure retains issued PDF; explicit retry never repeats emission')
   await begin();rates_cfg=await get('/api/parcelamento');r=await ctx.request.patch(ORIGIN+'/api/parcelamento',headers={'Origin':ORIGIN},data={'revision':rates_cfg['revision'],'rates':{**rates_cfg['rates'],'tres':'8'}});assert r.ok;count=await calls();await confirm.click();await expect(review.get_by_role('alert')).to_be_visible();assert await calls()==count and len(await get(base+'/orcamentos'))==4;await review.get_by_role('button',name='Voltar',exact=True).click()
   h.mark(device+': changed installment revision blocks stale preview before reserving another number')
-  # Interleave scenario emissions; historical presentation letters must restart per frozen ID.
+  # The same Confirmation screen must refresh immediately after its own successful emissions.
+  history=page.get_by_role('region',name='Orçamentos emitidos',exact=True)
+  await expect(history.locator('.budget-history-row')).to_have_count(4)
+  # Interleave external API emissions; reenter Confirmation to refresh its history.
   for scene in [ids['two'],ids['one'],ids['two']]:
    body={'scenarioId':scene,'negotiation':{'mode':'none'}};p=await(await ctx.request.post(ORIGIN+base+'/orcamentos/previa',headers={'Origin':ORIGIN},data=body)).json();r=await ctx.request.post(ORIGIN+base+'/orcamentos',headers={'Origin':ORIGIN},data={**body,'previewToken':p['token'],'idempotencyKey':'history-'+__import__('uuid').uuid4().hex});assert r.ok,await r.text()
   total_count=7
-  await page.get_by_role('button',name='Confirmação',exact=True).click();history=page.get_by_role('region',name='Orçamentos emitidos',exact=True);await expect(history.locator('.budget-history-row')).to_have_count(total_count)
+  await page.get_by_role('button',name='Diagnóstico',exact=True).click();await expect(page.locator('.diagnostics-body')).to_be_visible()
+  await page.get_by_role('button',name='Confirmação',exact=True).click();await expect(history.locator('.budget-history-row')).to_have_count(total_count)
   assert await history.locator('.budget-history-group h2').all_text_contents()==['Cenário 1','Cenário 2']
   assert await history.locator('.budget-history-group').nth(0).locator('.budget-history-letter').all_text_contents()==['A','B','C','D','E']
   assert await history.locator('.budget-history-group').nth(1).locator('.budget-history-letter').all_text_contents()==['A','B']

@@ -124,7 +124,7 @@ export function BudgetPanel({at,refresh,emitSlotRef,onScheduleSaved,onBusy,onAut
   const state:BudgetLifecycleState|null=v.cancelledAt?'cancelled':status?.budgets.find(b=>b.id===v.id)?.state??null
   const steps=[['negotiating','Emitido'],['consented','Consentido'],['authorized','Autorizado'],['executed','Executado']] as const
   const index=steps.findIndex(([id])=>id===state)
-  return <div className="budget-lifecycle"><ol aria-label="Etapas do orçamento">{steps.map(([id,label],i)=><li key={id} className={i===0||i<=index?'complete':''} aria-current={i===index?'step':undefined}><span aria-hidden="true"/>{label}</li>)}</ol>{(state==='cancelled'||state==='rejected')&&<strong className="budget-lifecycle-stopped">{budgetLifecycleLabels[state]}</strong>}{!state&&<small>Demais etapas não registradas</small>}</div>
+  return <div className="budget-lifecycle"><ol aria-label="Etapas do orçamento">{steps.map(([id,label],i)=><li key={id} className={i===0||i<=index?'complete':''} aria-current={i===index?'step':undefined}><span aria-hidden="true"/>{label}</li>)}</ol>{(state==='cancelled'||state==='rejected')&&<span className="budget-lifecycle-stopped">{budgetLifecycleLabels[state]}</span>}{!state&&<small>Demais etapas não registradas</small>}</div>
  }
  const formatDate=(date:string)=>new Date(date).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
  const selectedMeta=versions.find(v=>v.id===versionId)

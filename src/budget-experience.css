@@ -96,7 +96,7 @@
 .budget-lifecycle li.complete{color:#326f55;font-weight:650}
 .budget-lifecycle li.complete>span,.budget-lifecycle li.complete::before{background:#73a88a}
 .budget-lifecycle li[aria-current=step]>span{box-shadow:0 0 0 3px #d3eada}
-.budget-lifecycle-stopped{display:block;text-align:center;color:#9c4242;font-size:12px;margin:6px}
+.budget-lifecycle-stopped{display:block;text-align:center;color:#9c4242;font-size:12px;font-weight:650;margin:6px}
 .budget-lifecycle small{display:block;text-align:center;color:#52687e;margin-top:4px}
 .confirmation-close{margin:20px 0;border-top:1px solid #dce3eb;padding-top:12px}
 .confirmation-close-button{background:transparent;border:1px solid #d5a7a7;border-radius:8px;color:#a04444;padding:9px 12px}
