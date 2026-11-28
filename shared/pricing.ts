@@ -43,7 +43,7 @@ export interface Calculation {
  discount: string; total: string | null; energy: string | null; days: string | null
  negotiation: Negotiation; residual: string; target: string | null
 }
-export type Negotiation = {mode:'none'} | {mode:'discount'|'adjust'; value:string; acknowledgeResidual:boolean}
+export type Negotiation = {mode:'none'} | {mode:'discount'|'discount_percent'|'adjust'; value:string; acknowledgeResidual:boolean}
 // Optional input scope translates a requested whole-budget total into the existing service adjustment.
 export type NegotiationInput = Negotiation | {mode:'adjust'; value:string; acknowledgeResidual:boolean; valueIncludesComponents:true}
 export interface BudgetSnapshot {

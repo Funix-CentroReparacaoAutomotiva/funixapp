@@ -101,7 +101,13 @@ try{
    assert.equal(f.commercial.catalogs().items.find(p=>p.id===front.id).name,'PARA-CHOQUE DIANTEIRO');assert.equal(guide.name,'GUIA DIANTEIRO ESQUERDO');assert.equal(guide.pieceId,frontItem.id);assert.equal(guide.quantity,'2');assert.equal(guide.manualPrice,'35.9')
    assert.equal(workspace.calculations.find(c=>c.scenarioId===f.scenario.id).componentSubtotal,'143.6')
    assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===other.id).componentFlags[guide.id],false)
-   await page.locator('.approved-finance .summary').click();assert.match(await money.inputValue(),/123,45/);await page.locator('.approved-finance .summary').click()
+   const launcher=page.getByRole('button',{name:'Abrir Copiloto FUNIX',exact:true})
+   const launcherBefore=await launcher.boundingBox()
+   await page.locator('.approved-finance .summary').click();assert.match(await money.inputValue(),/123,45/);
+   await page.waitForTimeout(100)
+   const launcherExpanded=await launcher.boundingBox()
+   assert(launcherBefore&&launcherExpanded&&launcherExpanded.y<launcherBefore.y-10,'the voice launcher must follow the expanded finance panel')
+   await page.locator('.approved-finance .summary').click()
    mode='zero';await recordVoice(page,audio);assert.equal(await panel.locator('.voice-entry-label').first().innerText(),'Parafuso fixador')
    await toggleComponent(panel.locator('.voice-component-values').first(),false);await compactRow(panel.locator('.voice-component-values').first());await panel.screenshot({path:artifacts+'/off-'+width+'.png'});await apply();const zero=components.list(f.at.id)[1];assert.equal(zero.manualPrice,'0');assert.equal(zero.name,'PARAFUSO FIXADOR');assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===f.scenario.id).componentFlags[zero.id],false)
    for(const label of ['Motorista','Passageiro']){

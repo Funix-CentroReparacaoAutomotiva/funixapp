@@ -7,6 +7,7 @@ Never contacts production, Coda, WhatsApp or an external service.
 import asyncio
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import subprocess
@@ -18,7 +19,7 @@ from playwright.async_api import async_playwright, expect
 from m1_atendimentos import Harness, ROOT, ORIGIN
 from document_button_colors import color_case
 
-ARTIFACTS = ROOT / "docs/evidencias/os-browser"
+ARTIFACTS = Path(os.environ.get("FUNIX_OS_BROWSER_ARTIFACTS", ROOT / "docs/evidencias/os-browser"))
 
 
 async def case(browser, label: str, viewport: dict):
@@ -120,13 +121,15 @@ db.close()
         await expect(order_row.locator(".budget-action-or")).to_have_class(re.compile("budget-action-issued"))
         original_url = page.url
         assert count_orders() == 0
-        await history.get_by_role("button", name="Agendamento e experiência").click()
+        await history.get_by_role("button", name="Agendar", exact=True).click()
         production = page.get_by_role("region", name="Experiência do Atendimento")
         await production.get_by_role("button", name="Agendar Atendimento").click()
         schedule = production.get_by_role("form", name="Agendamento")
         for field in ["Cliente", "Veículo", "Pagador"]:
-            await schedule.get_by_label(field, exact=True).select_option(index=1)
-        await schedule.get_by_label("Entrada agendada", exact=False).fill("2026-11-20T10:30")
+            await expect(schedule.get_by_role("combobox", name=field, exact=True)).to_have_count(0)
+        await schedule.get_by_label("Data da entrada", exact=True).fill("2026-11-20")
+        if label != "mobile390":
+            await schedule.get_by_label("Horário da entrada", exact=False).fill("10:30")
         if label != "mobile390":
             await schedule.get_by_label("Entrega combinada", exact=False).fill("2026-12-02")
         await expect(schedule.get_by_role("button", name="Confirmar agendamento")).to_be_disabled()
@@ -138,12 +141,16 @@ db.close()
         await schedule.get_by_role("button", name="Confirmar agendamento").click()
         await expect(production.get_by_text("Agendamento confirmado.")).to_be_visible()
         overview_path = "/api/atendimentos/" + ids["at"] + "/experiencia"
-        experience_id = (await get(overview_path))["experience"]["id"]
+        experience = (await get(overview_path))["experience"]
+        experience_id = experience["id"]
+        expected_entry = "2026-11-20" if label == "mobile390" else "2026-11-20T10:30"
+        assert experience["scheduledEntry"] == expected_entry
         assert count_orders() == 0
         mark("agendamento cadastra uma Experiência e consente duas versões sem emitir OS")
 
         await production.get_by_role("button", name="Reagendar ou incluir orçamentos").click()
-        await schedule.get_by_label("Entrada agendada", exact=False).fill("2026-11-21T11:30")
+        await schedule.get_by_label("Data da entrada", exact=True).fill("2026-11-21")
+        await schedule.get_by_label("Horário da entrada", exact=False).fill("11:30")
         await schedule.get_by_role("button", name="Confirmar agendamento").click()
         await expect(production.get_by_text("21/11/2026 às 11:30")).to_be_visible()
         assert (await get(overview_path))["experience"]["id"] == experience_id
@@ -211,6 +218,97 @@ db.close()
         assert order["scope"]["lines"][0]["stages"][0]["name"] == "Etapa sintética"
         mark("escopo imutável coincide com snapshot emitido, exclui serviços desmarcados e dados financeiros")
 
+        await history.get_by_role("button", name="Agendar", exact=True).click()
+        in_operation = production.get_by_role("checkbox", name="Em operação", exact=True)
+        await expect(in_operation).not_to_be_checked()
+        async with page.expect_response(lambda r: r.url.endswith("/experiencia/operacao")) as switched_on:
+            await in_operation.click()
+        assert (await switched_on.value).status == 200
+        await expect(in_operation).to_be_checked()
+        await page.goto(ORIGIN + "/operacao")
+        await expect(page.get_by_role("heading", name="Em operação", exact=True)).to_be_visible()
+        operation_link = page.get_by_role("link", name=re.compile("Veículo sintético"))
+        await expect(operation_link).to_be_visible()
+        assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        await operation_link.click()
+        await expect(in_operation).to_be_checked()
+        await expect(production.get_by_role("button", name="Gerar título do restante")).to_be_visible()
+        await page.goto(ORIGIN + "/financeiro?nova=receber&experiencia=" + experience_id)
+        await expect(page.get_by_label("Experiência (opcional)")).to_have_value(experience_id)
+        await expect(page.get_by_label("Contraparte")).to_have_value("Pagador sintético")
+        await page.get_by_label("Descrição", exact=True).fill("Reparo sintético")
+        await page.get_by_label("Valor (R$)", exact=True).fill("175,49")
+        await page.get_by_label("Vencimento", exact=True).fill("2020-01-01")
+        await page.get_by_role("button", name="Lançar título").click()
+        receivable = page.locator(".fin-title").filter(has=page.get_by_role("heading", name="Reparo sintético"))
+        await expect(receivable.get_by_text("Vencido", exact=True)).to_be_visible()
+        await receivable.get_by_role("button", name="Registrar recebimento").click()
+        await expect(receivable.get_by_label("Valor da baixa (R$)")).to_have_value("175,49")
+        today = await page.evaluate("new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date())")
+        await expect(receivable.get_by_label("Data da baixa")).to_have_value(today)
+        await receivable.get_by_label("Valor da baixa (R$)").fill("25,49")
+        await receivable.get_by_label("Forma de pagamento").select_option("pix")
+        await receivable.get_by_role("button", name="Confirmar baixa").click()
+        await expect(receivable.locator(".fin-value strong")).to_have_text("R$ 150,00 pendente")
+        await receivable.get_by_role("button", name="Registrar recebimento").click()
+        await expect(receivable.get_by_label("Valor da baixa (R$)")).to_have_value("150,00")
+        await receivable.get_by_label("Forma de pagamento").select_option("pix")
+        await receivable.get_by_role("button", name="Confirmar baixa").click()
+        await expect(receivable.get_by_text("Quitado", exact=True)).to_be_visible()
+        await receivable.get_by_text("Histórico de baixas (2)", exact=True).click()
+        partial = receivable.locator(".fin-history-item").filter(has_text="25,49")
+        await partial.get_by_role("button", name="Desfazer baixa").click()
+        await expect(partial.get_by_text(re.compile("Desfeita"))).to_be_visible()
+
+        await page.goto(ORIGIN + "/financeiro")
+        await page.get_by_role("button", name="+ Novo título").click()
+        expense_form = page.locator(".fin-form").filter(has=page.get_by_role("heading", name="Novo título"))
+        await expense_form.get_by_label("Tipo").select_option("payable")
+        await expect(expense_form.get_by_label("Experiência (opcional)")).to_have_value("")
+        await expense_form.get_by_label("Contraparte").fill("Fornecedor sintético")
+        await expense_form.get_by_label("Descrição").fill("Despesa sintética avulsa")
+        await expense_form.get_by_label("Valor (R$)").fill("77,33")
+        await expense_form.get_by_role("button", name="Lançar título").click()
+        payable = page.locator(".fin-title").filter(has=page.get_by_role("heading", name="Despesa sintética avulsa"))
+        await payable.get_by_role("button", name="Registrar pagamento").click()
+        await expect(payable.get_by_label("Valor da baixa (R$)")).to_have_value("77,33")
+        await payable.get_by_label("Forma de pagamento").select_option("pix")
+        await payable.get_by_role("button", name="Confirmar baixa").click()
+        await expect(payable.get_by_text("Quitado", exact=True)).to_be_visible()
+        await page.goto(ORIGIN + "/financeiro")
+        await expect(receivable.locator(".fin-value strong")).to_have_text("R$ 25,49 pendente")
+        await expect(payable.get_by_text("Quitado", exact=True)).to_be_visible()
+        open_totals = page.get_by_role("region", name="Valores em aberto")
+        await expect(open_totals.get_by_text("R$ 25,49", exact=True)).to_be_visible()
+        movements = page.get_by_role("region", name="Movimentações registradas")
+        await expect(movements.locator(".fin-metric").filter(has_text="Recebimentos")).to_contain_text("R$ 150,00")
+        await expect(movements.locator(".fin-metric").filter(has_text="Pagamentos")).to_contain_text("R$ 77,33")
+        recorded = await get("/api/financeiro")
+        by_kind = {title["kind"]: title for title in recorded["titles"]}
+        assert by_kind["receivable"]["experienceId"] == experience_id
+        assert by_kind["receivable"]["balanceCents"] == 2549
+        assert by_kind["payable"]["experienceId"] is None and by_kind["payable"]["balanceCents"] == 0
+        tabs = page.get_by_role("navigation", name="Páginas de Financeiro")
+        assert await tabs.get_by_role("link").evaluate_all(
+            "buttons => buttons.every(button => button.scrollWidth <= button.clientWidth + 1)"
+        )
+        assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        await shot("01c-financeiro")
+        mark("XP abre recebível preenchido, baixas parciais e estorno persistem, despesa avulsa pode ser quitada")
+
+        await page.goto(ORIGIN + "/operacao")
+        await operation_link.click()
+        await expect(in_operation).to_be_checked()
+        async with page.expect_response(lambda r: r.url.endswith("/experiencia/operacao")) as switched_off:
+            await in_operation.click()
+        assert (await switched_off.value).status == 200
+        await page.goto(ORIGIN + "/operacao")
+        await expect(page.get_by_role("heading", name="Agendados", exact=True)).to_be_visible()
+        await expect(page.get_by_role("heading", name="Em operação", exact=True)).to_have_count(0)
+        await expect(operation_link).to_be_visible()
+        await page.goto(original_url)
+        mark("operação aparece na lista global, persiste ao reabrir e pode ser desmarcada")
+
         pdf = await ctx.request.get(ORIGIN + base + "/os/pdf")
         assert pdf.status == 200
         assert "application/pdf" in pdf.headers["content-type"]
@@ -270,7 +368,7 @@ db.close()
             row.locator(".budget-history-open"),
             row.locator(".budget-action-or"),
             row.locator(".budget-action-os"),
-            row.locator(".budget-action-cancel")
+            row.locator(".budget-action-more")
         ]
         bounds = [await item.bounding_box() for item in controls]
         assert all(b and b["width"] > 0 and b["height"] > 0 for b in bounds), bounds
@@ -284,20 +382,21 @@ db.close()
         assert not h.external and not h.page_errors, (h.external, h.page_errors)
         mark("layout sem rolagem horizontal nem colisão dos controles; sem erros JS ou tráfego externo")
 
-        # Full revision workflow using the actual Atendimento settings and issuance UI.
+        # Full revision workflow using the actual scheduling and issuance UI.
         at_url = "/api/atendimentos/" + ids["at"]
 
-        async def change_delivery_in_settings(value):
+        async def change_delivery_in_schedule(value):
             current = await get(at_url)
-            await h.goto_record(page, current)
-            await h.editor(page)
-            form = page.get_by_role("form", name="Editar Atendimento")
-            date_input = form.get_by_label("Data prevista de entrega (opcional)")
+            await page.goto(ORIGIN + browse)
+            await history.get_by_role("button", name="Agendar", exact=True).click()
+            await production.get_by_role("button", name="Reagendar ou incluir orçamentos").click()
+            date_input = schedule.get_by_label("Entrega combinada (opcional)")
             await expect(date_input).to_have_value(current.get("deliveryDate") or "")
+            await date_input.fill(value)
             async with page.expect_response(
-                lambda r: r.request.method == "PATCH" and r.url.endswith(at_url)
+                lambda r: r.request.method == "POST" and r.url.endswith(at_url + "/agendamento")
             ) as saved:
-                await date_input.fill(value)
+                await schedule.get_by_role("button", name="Confirmar agendamento").click()
             response = await saved.value
             assert response.status == 200, await response.text()
             assert (await response.json()).get("deliveryDate") == (value or None)
@@ -318,7 +417,7 @@ db.close()
             assert "02/12/2026" not in pdf_text(pdf_bytes)
         assert "R01" in pdf_text(pdf_bytes)
 
-        await change_delivery_in_settings("2026-12-08")
+        await change_delivery_in_schedule("2026-12-08")
         await shot("04-reemissao-necessaria")
         async with page.expect_response(
             lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
@@ -344,7 +443,7 @@ db.close()
         assert (await get(base + "/os")) == order
         mark("alterar previsão pela interface exige reemissão; R02 congela nova data e R01 mantém mesmos bytes")
 
-        await change_delivery_in_settings("")
+        await change_delivery_in_schedule("")
         async with page.expect_response(
             lambda r: r.request.method == "POST" and r.url.endswith(base + "/os/revisoes")
         ) as r3_result:
@@ -382,6 +481,7 @@ db.close()
 
         # Cancel after all immutable-document checks; do not depend on external jsreport.
         async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith(base + "/cancelamento")) as cancelled_response:
+            await order_row.locator(".budget-action-more").click()
             await order_row.get_by_role("button", name="Cancelar orçamento e OS").click()
         assert (await cancelled_response.value).status == 200
         await expect(order_row).to_have_class(re.compile("is-cancelled"))
@@ -417,7 +517,7 @@ db.close()
 async def run():
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
-        browser = await p.chromium.launch(executable_path="/usr/bin/chromium",
+        browser = await p.chromium.launch(executable_path=os.environ.get("FUNIX_CHROMIUM", "/usr/bin/chromium"),
                                           headless=True, args=["--no-sandbox"])
         try:
             for label, viewport in [
@@ -426,7 +526,7 @@ async def run():
                 ("mobile320", {"width": 320, "height": 844})
             ]:
                 await case(browser, label, viewport)
-                await color_case(browser, label, viewport)
+                await color_case(browser, label, viewport, ARTIFACTS)
         finally:
             await browser.close()
 

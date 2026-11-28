@@ -112,7 +112,7 @@ test('failure after additive M1.2 upgrades rolls back every new table/column wit
   assert(!db.prepare('PRAGMA table_info(diagnosis_services)').all().some(c=>c.name==='notes'))
   assert.equal(db.prepare('SELECT marker FROM pricing_configuration').get()!.marker,'sentinel')
   db.exec('DROP TABLE pricing_configuration');db.close();db=openDatabase(file)
-  assert.deepEqual(new AtendimentoRepository(db).get(original.id),original)
+  assert.deepEqual(new AtendimentoRepository(db).get(original.id),{...original,displayNumber:'AT000001'})
   assert.equal(new ScenarioRepository(db).list(original.id).length,1)
   db.close()
  }finally{rmSync(directory,{recursive:true,force:true})}

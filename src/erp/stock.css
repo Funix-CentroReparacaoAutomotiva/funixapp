@@ -1,0 +1,117 @@
+.stock {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.stock-heading,
+.stock-filters,
+.stock-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+.stock-heading {
+  justify-content: space-between;
+}
+.stock :is(h1, h2, p) {
+  margin: 0;
+}
+.stock input:not([type=checkbox]),
+.stock select,
+.stock textarea,
+.stock button {
+  font: inherit;
+  padding: .48rem .6rem;
+  color: inherit;
+  background: Canvas;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: .4rem;
+}
+.stock button[aria-pressed=true] {
+  color: HighlightText;
+  background: Highlight;
+}
+.stock button:disabled {
+  opacity: .55;
+}
+.stock-field {
+  display: grid;
+  gap: .25rem;
+  min-width: 0;
+}
+.stock-check {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.stock-filters {
+  align-items: end;
+}
+.stock-filters .stock-check {
+  min-height: 2.2rem;
+}
+.stock-form {
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: .5rem;
+  padding: 1rem;
+}
+.stock-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: .8rem;
+  border: 0;
+  margin: .75rem 0 0;
+  padding: 0;
+}
+.stock-form .stock-actions {
+  grid-column: 1 / -1;
+}
+.stock-table-scroll {
+  overflow-x: auto;
+}
+.stock-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.stock-table-scroll :is(td, th) {
+  padding: .58rem .65rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  text-align: left;
+}
+.stock-table-scroll thead th {
+  white-space: nowrap;
+}
+.stock-warning {
+  display: block;
+  font-weight: 700;
+}
+.stock-id {
+  font-size: .78em;
+  overflow-wrap: anywhere;
+}
+.stock section li button {
+  margin-inline-start: .5rem;
+}
+
+p.stock-scroll-hint {
+  display: none;
+}
+@media (max-width: 520px) {
+  .stock-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stock-filters :is(button, .stock-check) {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .stock-filters :is(input, select) {
+    width: 100%;
+    min-width: 0;
+  }
+  p.stock-scroll-hint {
+    display: block;
+    font-size: .85rem;
+  }
+}

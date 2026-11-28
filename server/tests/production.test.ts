@@ -9,12 +9,13 @@ import {AtendimentoRepository} from '../atendimentos.ts'
 import {BudgetCancellationRepository} from '../budget-cancellations.ts'
 import {openDatabase} from '../database.ts'
 import {ServiceError} from '../errors.ts'
+import {FinanceRepository} from '../finance.ts'
 import {migrate} from '../migrations.ts'
 import {ProductionRepository} from '../production.ts'
 import {WorkOrderRepository} from '../work-orders.ts'
 import {commercialFixture} from './fixtures/commercial.ts'
 import {BudgetRepository} from './fixtures/budget-renderer.ts'
-import {identifyForProduction,legacyOrder,removeV24FixtureSchema,scheduleInput} from './fixtures/production.ts'
+import {identifyForProduction,legacyOrder,removeV24FixtureSchema,removeV26FixtureSchema,removeV27FixtureSchema,scheduleInput} from './fixtures/production.ts'
 
 const code=(name:string)=>(error:unknown)=>error instanceof ServiceError && error.code===name
 const instant=Date.parse('2026-11-18T11:45:00Z')
@@ -31,6 +32,157 @@ async function issued(db:Db, count:number) {
   for(let index=0;index<count;index++)versions.push(await emit(budgets,f.at.id,f.scenario.id))
   return {at:f.at.id, budgets, versions}
 }
+
+test('V25 e V26 migram com Experiência preservada, operação desligada e baixas existentes intactas',async()=>{
+  for(const version of [25,26]){
+    const db=openDatabase(':memory:')
+    try{
+      const {at,versions}=await issued(db,1)
+      const production=new ProductionRepository(db,()=>instant)
+      const record=new AtendimentoRepository(db).get(at,true)
+      assert.ok(record.references?.person.length)
+      assert.ok(record.references?.vehicle.length)
+      assert.deepEqual(record.references.payer,[])
+      const budget=versions[0]!
+      const scheduled=production.schedule(at,{
+        budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+        expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+      }).experience!
+      assert.equal(scheduled.scheduledEntry,'2026-11-20')
+      assert.deepEqual(scheduled.payer,scheduled.customer)
+      const order=production.authorize(at,budget.id,{confirmed:true})
+      const finance=new FinanceRepository(db)
+      if(version===26){
+        const id=randomUUID()
+        finance.create({id,kind:'receivable',counterparty:'Cliente teste',description:'Serviço',
+          amountCents:2000,dueDate:'2026-11-22',experienceId:scheduled.id})
+        finance.settle(id,{id:randomUUID(),amountCents:500,date:'2026-11-21'})
+      }
+      const financialBefore=finance.overview()
+      if(version===25)removeV26FixtureSchema(db)
+      else removeV27FixtureSchema(db)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,version)
+      migrate(db)
+      assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,32)
+      assert.deepEqual(production.get(at).experience,scheduled)
+      assert.deepEqual(production.listInOperation(),[])
+      assert.equal(production.setInOperation(at,{inOperation:true}).experience?.inOperation,true)
+      assert.equal(production.listInOperation()[0]?.id,scheduled.id)
+      assert.equal(production.setInOperation(at,{inOperation:false}).experience?.inOperation,false)
+      assert.deepEqual(production.listInOperation(),[])
+      assert.deepEqual(finance.overview(),financialBefore)
+      assert.deepEqual(new WorkOrderRepository(db).get(at,budget.id),order)
+      assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+    }finally{db.close()}
+  }
+})
+
+test('Cliente com contato agrupado agenda sem pagador separado e gera OS', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const fixture = commercialFixture(db)
+    const repository = new AtendimentoRepository(db)
+    const at = fixture.at.id
+    const current = repository.get(at, true)
+    const record = repository.update(at, {
+      revision: current.revision,
+      references: {
+        person: [{id: null, text: 'Cliente sintético', participantKey: 'cliente'}],
+        contact: [{id: null, text: '31999990199', participantKey: 'cliente'}],
+        vehicle: [{id: null, text: 'Veículo sintético', plate: 'ABC1D23'}],
+        payer: [],
+      },
+    }, true, true)
+    const [customer] = record.references!.person
+    assert.ok(customer?.id)
+    assert.equal(record.references!.contact[0]?.entityId, customer.id)
+    const budget = await emit(new BudgetRepository(db), at, fixture.scenario.id)
+    const production = new ProductionRepository(db, () => instant)
+    const {experience} = production.schedule(at, {
+      budgetIds: [budget.id], scheduledEntry: '2026-11-20', deliveryDate: null,
+      expectedAtendimentoRevision: record.revision, expectedExperienceRevision: null,
+    })
+    assert.equal(experience?.customer.id, customer.id)
+    assert.equal(experience?.payer.id, customer.id)
+    assert.equal(production.authorize(at, budget.id, {confirmed: true}).experienceId, experience?.id)
+  } finally {
+    db.close()
+  }
+})
+
+test('Experiência recebe entrada, gera título só do restante e sai da lista do Funil', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const {at,versions} = await issued(db,1)
+    const production = new ProductionRepository(db,()=>instant)
+    const finance = new FinanceRepository(db,()=>instant)
+    const record = new AtendimentoRepository(db).get(at,true)
+    const budget = versions[0]!
+    production.schedule(at,{
+      budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+      expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+    })
+    assert.equal(finance.experience(at).totalCents,0)
+    assert.equal(new AtendimentoRepository(db).list({funnel:true}).total,0)
+    assert.equal(new AtendimentoRepository(db).list().total,1)
+    assert.equal(production.listInOperation().length,0)
+    assert.equal(production.listInOperation(true)[0]?.atendimentoId,at)
+    production.authorize(at,budget.id,{confirmed:true})
+    assert.equal(finance.experience(at).totalCents,30015)
+    const receipt = {id:randomUUID(),action:'receive',amountCents:10000,date:'2026-11-20',paymentMethod:'credit',installments:3}
+    const received = finance.experienceEntry(at,receipt)
+    assert.equal(received.paidCents,10000)
+    assert.equal(received.receipts[0]?.paymentMethod,'credit')
+    assert.equal(received.receipts[0]?.installments,3)
+    assert.throws(()=>finance.experienceEntry(at,{...receipt,installments:2}),code('FINANCE_REQUEST_CONFLICT'))
+    assert.throws(()=>finance.experienceEntry(at,{...receipt,id:randomUUID(),paymentMethod:'pix'}),code('FINANCE_INVALID_INPUT'))
+    assert.equal(received.balanceCents,20015)
+    assert.deepEqual(finance.experienceEntry(at,receipt),received)
+    const title = randomUUID()
+    const closing = finance.experienceEntry(at,{id:title,action:'title',amountCents:20015,date:'2026-11-30'})
+    assert.equal(closing.titledCents,20015)
+    assert.equal(closing.untitledCents,0)
+    const settlement = finance.settle(title,{id:randomUUID(),amountCents:5000,date:'2026-11-21',paymentMethod:'pix'})
+    assert.equal(settlement.settlements[0]?.paymentMethod,'pix')
+    finance.reverse(title,settlement.settlements[0]!.id)
+    finance.reverse(receipt.id,receipt.id)
+    assert.equal(finance.experience(at).paidCents,0)
+    assert.equal(finance.experience(at).untitledCents,10000)
+    assert.equal(finance.overview().titles.find(item=>item.id===receipt.id)?.balanceCents,0)
+  } finally {
+    db.close()
+  }
+})
+
+test('Pagamento, desconto e ISS retido liquidam juntos e preservam o valor efetivamente pago', async () => {
+  const db = openDatabase(':memory:')
+  try {
+    const {at,versions} = await issued(db,1)
+    const budget = versions[0]!
+    const record = new AtendimentoRepository(db).get(at,true)
+    const production = new ProductionRepository(db)
+    const finance = new FinanceRepository(db)
+    production.schedule(at,{
+      budgetIds:[budget.id],scheduledEntry:'2026-11-20',deliveryDate:null,
+      expectedAtendimentoRevision:record.revision,expectedExperienceRevision:null,
+    })
+    production.authorize(at,budget.id,{confirmed:true})
+    const input={id:randomUUID(),action:'receive',date:'2026-11-20',amountCents:25000,
+      discountCents:3015,discountReason:'service_issue',withheldIssCents:2000,paymentMethod:'pix',invoiceNumber:'000123'}
+    assert.throws(()=>finance.experienceEntry(at,{...input,amountCents:25001}),code('FINANCE_EXPERIENCE_BALANCE'))
+    const summary=finance.experienceEntry(at,input)
+    assert.equal(summary.balanceCents,0)
+    assert.equal(summary.paidCents,25000)
+    assert.equal(summary.discountCents,3015)
+    assert.equal(summary.withheldIssCents,2000)
+    assert.equal(summary.receipts[0]?.discountReason,'service_issue')
+    assert.equal(summary.receipts[0]?.invoiceNumber,'000123')
+    assert.deepEqual(finance.experienceEntry(at,input),summary)
+    assert.throws(()=>finance.experienceEntry(at,{...input,discountReason:'commercial'}),code('FINANCE_REQUEST_CONFLICT'))
+    finance.reverse(input.id,input.id)
+    assert.equal(finance.experience(at).balanceCents,30015)
+  } finally { db.close() }
+})
 
 test('Agendamento múltiplo e complementos compartilham a Experiência, com rastreio e documentos preservados',async()=>{
   const db=openDatabase(':memory:')

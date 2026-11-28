@@ -127,3 +127,20 @@ test('Issue #158: adding an external service suffices; old confirmation is not a
  f.scenario.pieceFlags.p=false
  assert.equal(f.run().lines[0]!.included,false)
 })
+
+test('percentage discount rounds to cents and only affects eligible services',()=>{
+ const f=calculationFixture()
+ f.components.push({id:'c',atendimentoId:'at',pieceId:'p',name:'Componente',quantity:'1',manualPrice:'10',notes:'',revision:1})
+ f.scenario.componentFlags.c=true
+ const run=(value:string)=>calculate(f.items,f.components,f.catalog,f.scenario,f.config,f.settings,negotiation({mode:'discount_percent',value}))
+ assert.equal(run('10').discount,'30.02')
+ assert.equal(run('10').componentSubtotal,'12')
+ assert.equal(run('10').total,'282.13')
+ assert.equal(run('100').discount,'300.15')
+ assert.equal(run('100').total,'12')
+ assert.throws(()=>run('100.000001'),/100%/)
+ assert.throws(()=>run('-1'))
+ f.config.services[0]!.discountable=false
+ assert.equal(run('10').discount,'0')
+ assert.equal(run('10').total,'312.15')
+})

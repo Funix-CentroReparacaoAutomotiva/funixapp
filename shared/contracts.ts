@@ -57,8 +57,12 @@ export const ATENDIMENTO_PURPOSES = {
 export type AtendimentoPurpose = keyof typeof ATENDIMENTO_PURPOSES
 
 export interface Atendimento {
+  /** Identificação pública sequencial, independente do UUID técnico. */
+  displayNumber?: string
   purpose?: AtendimentoPurpose
-  chatIdentity?: {name:string;phone:string;conversationId:string}
+  channel?: string
+  origin?: 'initial' | 'recurrence' | 'rework'
+  chatIdentity?: {name:string;phone:string;conversationId:string;observedPhone?:string}
   closedAt?: string | null
   references?: CustomerReferences
   lastContactAt?: string | null
@@ -85,6 +89,16 @@ export interface Atendimento {
   revision: number
 }
 
+/** Open manual-creation candidate; a match requests review, never a forced merge. */
+export interface DuplicateAtendimento {
+  id:string
+  name:string
+  vehicle:string
+  plate:string
+  stage:string
+  revision:number
+}
+
 export interface AtendimentoList {
   items: Atendimento[]
   total: number
@@ -92,7 +106,7 @@ export interface AtendimentoList {
   stages: typeof ATENDIMENTO_STAGES
 }
 
-export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string} & Partial<Pick<Atendimento, 'phone' | 'references' |
-  'name' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
+export type AtendimentoInput = {closed?:boolean;deliveryDateReason?:string;acquisitionSource?:'manual'|'whatsapp'|'email'|'association'|'insurer'} & Partial<Pick<Atendimento, 'phone' | 'references' |
+  'name' | 'channel' | 'vehicle' | 'brand' | 'model' | 'fabricationYear' | 'modelYear' | 'deliveryDate' | 'plate' | 'reason' | 'notes' | 'purpose' | 'stage' | 'rejectionReason' | 'explicitRefusal'>>
 
 export type AtendimentoPatch = Partial<AtendimentoInput> & { revision: number }

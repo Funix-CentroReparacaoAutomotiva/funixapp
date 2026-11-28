@@ -12,13 +12,14 @@ test('Etapa B internal routes preserve the main tab and return one level from bu
  assert.equal(parentDetail('?aba=mapa&tela=orcamentos'),'aba=mapa')
 })
 
-test('Etapa B swipe follows the three main tabs, ignores vertical, short and long gestures, and stops at bounds',()=>{
+test('Swipe follows the four visible Atendimento tabs, ignores vertical, short and long gestures, and stops at bounds',()=>{
  assert.equal(swipeTab('chat',-100,4,150),'diagnosticos')
- assert.equal(swipeTab('diagnosticos',-100,4,150),'mapa')
- assert.equal(swipeTab('mapa',100,-4,150),'diagnosticos')
+ assert.equal(swipeTab('diagnosticos',-100,4,150),'confirmacao')
+ assert.equal(swipeTab('confirmacao',100,-4,150),'diagnosticos')
  assert.equal(swipeTab('diagnosticos',100,-4,150),'chat')
- assert.equal(swipeTab('chat',100,0,150),null)
- assert.equal(swipeTab('mapa',-100,0,150),null)
+ assert.equal(swipeTab('chat',100,0,150),'resumo')
+ assert.equal(swipeTab('confirmacao',-100,0,150),null)
+ assert.equal(swipeTab('mapa',100,0,150),null)
  assert.equal(swipeTab('chat',-60,0,150),null)
  assert.equal(swipeTab('chat',-100,150,150),null)
  assert.equal(swipeTab('chat',-100,4,1000),null)

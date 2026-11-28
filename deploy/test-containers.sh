@@ -35,11 +35,14 @@ docker exec "$api" node --input-type=module -e '
 import assert from "node:assert/strict";
 const base="http://127.0.0.1:8787";
 assert.equal((await fetch(base+"/api/atendimentos")).status,401);
+assert.equal((await fetch(base+"/api/erp/workshop/yard")).status,401);
 assert.equal((await fetch(base+"/api/session",{method:"POST",headers:{Origin:"https://other.invalid","Content-Type":"application/json"},body:JSON.stringify({password:process.env.FUNIX_OPERATOR_PASSWORD})})).status,403);
 const login=await fetch(base+"/api/session",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json"},body:JSON.stringify({password:process.env.FUNIX_OPERATOR_PASSWORD})});
 assert.equal(login.status,200); assert.match(login.headers.get("set-cookie"),/; Secure/);
 const cookie=login.headers.get("set-cookie").split(";")[0];
 assert.equal((await (await fetch(base+"/api/health")).json()).capabilities.messages,false);
+const yard=await fetch(base+"/api/erp/workshop/yard",{headers:{Cookie:cookie}});
+assert.equal(yard.status,200); assert.deepEqual((await yard.json()).vehicles,[]);
 for(const method of ["GET","POST","OPTIONS"]){
  const disabled=await fetch(base+"/api/integrations/whatsapp/events",{method,headers:{Cookie:cookie}});
  assert.equal(disabled.status,404); assert.equal(disabled.headers.get("cache-control"),"no-store");
@@ -60,10 +63,12 @@ assert.equal((await fetch(base+"/api/experiencias/i-ci",{method:"POST",headers:{
 const oversized=await fetch(base+"/api/atendimentos",{method:"POST",headers:{Origin:"https://app.funix.com.br","Content-Type":"application/json",Cookie:cookie},body:JSON.stringify({phone:"1",notes:"x".repeat(70000)})});
 assert.equal(oversized.status,413);
 assert.equal((await oversized.json()).error.code,"BODY_TOO_LARGE");
-console.log("API de produção: sessão HTTPS, SQLite próprio, criação/consulta e ERP indisponível conferidos.");'
+console.log("API de produção: sessão HTTPS, SQLite próprio, criação/consulta e Pátio autenticado conferidos.");'
 docker exec "$web" sh -ec '
   wget -Y off -q -O /tmp/spa http://127.0.0.1:8080/atendimentos/i-ci
   grep -q "<div id=\"root\"" /tmp/spa
+  wget -Y off -q -O /tmp/erp-spa http://127.0.0.1:8080/oficina/patio
+  grep -q "<div id=\"root\"" /tmp/erp-spa
   if wget -Y off -q -O /dev/null http://127.0.0.1:8080/api/session; then exit 1; fi
   if wget -Y off -q -O /dev/null http://127.0.0.1:8080/assets/missing.js; then exit 1; fi
   wget -Y off -q -O /dev/null http://127.0.0.1:8080/release.json

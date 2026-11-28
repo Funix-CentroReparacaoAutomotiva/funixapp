@@ -48,6 +48,7 @@ WORKDIR /app
 COPY --chown=node:node package.json ./
 COPY --chown=node:node server/*.ts ./server/
 COPY --chown=node:node server/chat/*.ts ./server/chat/
+COPY --chown=node:node server/erp/*.ts ./server/erp/
 # Opt-in Evolution read adapter is imported by the backend bootstrap, even when disabled.
 COPY --chown=node:node server/experimental/evolution-read/*.ts ./server/experimental/evolution-read/
 COPY --chown=node:node server/data ./server/data

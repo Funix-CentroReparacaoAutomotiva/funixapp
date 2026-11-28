@@ -1,5 +1,5 @@
 """PDF UX: local API + authenticated fake jsreport HTTP + disposable SQLite. No production data."""
-import asyncio,base64,hashlib,json,sqlite3,subprocess,traceback
+import asyncio,base64,hashlib,json,shutil,sqlite3,subprocess,traceback
 from playwright.async_api import async_playwright,expect
 from m1_atendimentos import Harness,ROOT,ORIGIN
 ARTIFACTS=ROOT/'docs/evidencias/orcamento-experiencia'
@@ -15,7 +15,7 @@ async def device_case(browser,device,viewport):
    r=await ctx.request.get(ORIGIN+path);assert r.ok,await r.text();return await r.json()
   async def ws():return await get(base+'/cenarios?scenarioId='+ids['one'])
   async def idle():
-   await expect(page.locator('.scenario-trigger')).to_be_enabled();await expect(page.locator('.form-error')).to_have_count(0);await expect(page.locator('.approved-finance .emit')).to_be_enabled();await expect(page.locator('.execution-deadline')).to_have_attribute('aria-busy','false')
+   await expect(page.locator('.scenario-trigger')).to_be_enabled();await expect(page.locator('.form-error')).to_have_count(0);await expect(page.locator('.execution-deadline')).to_have_attribute('aria-busy','false')
   async def shot(name):
    if name=='previa-pdf':await asyncio.sleep(1)
    await page.screenshot(path=str(ARTIFACTS/(device+'-'+name+'.png')),animations='disabled')
@@ -34,13 +34,13 @@ async def device_case(browser,device,viewport):
   original_pdf=await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['old']+'/pdf');old_hash=hashlib.sha256(await original_pdf.body()).hexdigest()
   await page.goto(ORIGIN+'/configuracoes');await page.get_by_role('button',name='Parcelamento',exact=True).click();rates=page.get_by_role('region',name='Parcelamento global');await expect(rates.get_by_label('Acréscimo 3x (%)')).to_have_value('6');await rates.get_by_label('Acréscimo 3x (%)').fill('7,25');await rates.get_by_role('button',name='Salvar parcelamento',exact=True).click();await expect(rates.get_by_role('button',name='Salvar parcelamento',exact=True)).to_be_disabled();assert(await get('/api/parcelamento'))['rates']['tres']=='7.25';await shot('parcelamento-global');await page.reload();await page.get_by_role('button',name='Parcelamento',exact=True).click();await expect(rates.get_by_label('Acréscimo 3x (%)')).to_have_value('7.25')
   h.mark(device+': only global Settings exposes rates, approved defaults edit/reload with exact decimal value; no per-Attendimento rate controls')
-  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos');await idle();await expect(page.get_by_label('Acréscimo 3x (%)')).to_have_count(0);finance=page.get_by_role('region',name='Painel financeiro');await finance.locator('.summary').click();deadline_ui=page.get_by_role('region',name='Prazo de execução',exact=True);auto=deadline_ui.get_by_role('button',name='Cálculo automático',exact=True);manual=deadline_ui.get_by_label('Prazo manual em dias úteis',exact=True)
+  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=confirmacao');await idle();await expect(page.get_by_label('Acréscimo 3x (%)')).to_have_count(0);finance=page.get_by_role('region',name='Painel financeiro');await finance.locator('.summary').click();deadline_ui=page.get_by_role('region',name='Prazo de execução',exact=True);auto=deadline_ui.get_by_role('button',name='Cálculo automático',exact=True);manual=deadline_ui.get_by_label('Prazo manual em dias úteis',exact=True)
   await expect(auto).to_have_attribute('aria-pressed','true');await expect(deadline_ui).to_contain_text('4 dias úteis');await auto.click();await poll(lambda:deadline(ids['one'],'manual',4));await manual.fill('2');await poll(lambda:deadline(ids['one'],'manual',2));await idle();await shot('prazo-manual');await expect(page.get_by_role('button',name='Salvar',exact=True)).to_have_count(0)
   conf=await get('/api/precificacao');r=await ctx.request.patch(ORIGIN+'/api/precificacao',headers={'Origin':ORIGIN},data={'revision':conf['revision'],'config':{**conf['config'],'capacity':'1'}});assert r.ok;await page.reload();await idle();await finance.locator('.summary').click();await expect(manual).to_have_value('2');assert(await ws())['calculations'][0]['days']=='15'
   await switch(2);await expect(auto).to_have_attribute('aria-pressed','true');await expect(deadline_ui).to_contain_text('15 dias úteis');await auto.click();await poll(lambda:deadline(ids['two'],'manual',15));await manual.fill('7');await poll(lambda:deadline(ids['two'],'manual',7));await switch(1);await expect(manual).to_have_value('2')
   await page.locator('.scenario-trigger').click();await page.get_by_role('menuitem',name='+ Nova variação',exact=True).click();await idle();await expect(auto).to_have_attribute('aria-pressed','true');w=await ws();assert w['scenarios'][-1]['deadline']=={'mode':'automatic','manualDays':None};await switch(1)
   h.mark(device+': manual days seed from technical suggestion, stay fixed after capacity change/reload and differ by scenario; duplicates reset to automatic')
-  await auto.click();await poll(lambda:deadline(ids['one'],'automatic',None));await expect(deadline_ui).to_contain_text('15 dias úteis');await auto.click();await poll(lambda:deadline(ids['one'],'manual',15));await manual.fill('0');await expect(deadline_ui).to_contain_text('inteiros positivos');await expect(finance.locator('.summary .deadline span')).to_have_text('—');await expect(finance.get_by_role('button',name='Emitir',exact=True)).to_be_disabled();assert await deadline(ids['one'],'manual',15);await manual.fill('2');await poll(lambda:deadline(ids['one'],'manual',2));await idle()
+  await auto.click();await poll(lambda:deadline(ids['one'],'automatic',None));await expect(deadline_ui).to_contain_text('15 dias úteis');await auto.click();await poll(lambda:deadline(ids['one'],'manual',15));await manual.fill('0');await expect(deadline_ui).to_contain_text('inteiros positivos');await expect(finance.locator('.summary .deadline span')).to_have_text('—');await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_disabled();assert await deadline(ids['one'],'manual',15);await manual.fill('2');await poll(lambda:deadline(ids['one'],'manual',2));await idle()
   h.mark(device+': returning to automatic clears override; zero is never silently saved/promised and invalid draft blocks emission until corrected')
   # Lost scenario acknowledgement recovers by read before any new write.
   lost=[]
@@ -62,7 +62,7 @@ async def device_case(browser,device,viewport):
   confirmations=[];page.on('request',lambda r:confirmations.append(r.post_data_json)if r.method=='POST'and r.url==ORIGIN+base+'/orcamentos'else None)
   await page.evaluate("()=>{window.revoked=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revoked.push(url);revoke(url)}}")
   async def begin():
-   await finance.get_by_role('button',name='Emitir',exact=True).click()
+   await page.get_by_role('button',name='Emitir',exact=True).click()
    await expect(review).to_be_visible()
    if device=='desktop':await expect(review.locator('iframe')).to_be_visible()
    else:
@@ -94,10 +94,10 @@ async def device_case(browser,device,viewport):
   h.mark(device+': mobile tab or desktop modal PDF preview does not issue a document; Back retains draft')
   # Lost temporary-PDF response never creates a commercial reservation.
   async def lose_preview(route):await route.abort('failed')
-  await page.route('**/previa-pdf',lose_preview);await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('Tente Emitir novamente');await page.unroute('**/previa-pdf',lose_preview);assert len(await get(base+'/orcamentos'))==1 and await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1 and not downloads
+  await page.route('**/previa-pdf',lose_preview);await page.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('Tente Emitir novamente');await page.unroute('**/previa-pdf',lose_preview);assert len(await get(base+'/orcamentos'))==1 and await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1 and not downloads
   h.mark(device+': preview network failure is explicit and retryable, with no number, download or document')
   # Failed preview has no number or durable history.
-  await control('fail');await finance.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('recusou');assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1;await shot('falha-previa');await control('normal')
+  await control('fail');await page.get_by_role('button',name='Emitir',exact=True).click();await expect(finance.get_by_role('alert')).to_contain_text('recusou');assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==1;await shot('falha-previa');await control('normal')
   await begin();await control('fail');await confirm.click();await expect(review.get_by_role('alert')).to_contain_text('O orçamento não foi emitido.');await expect(review.get_by_role('alert')).to_contain_text('recusou');await expect(review.get_by_role('button',name='Voltar',exact=True)).to_be_enabled();await expect(confirm).to_be_enabled();assert len(await get(base+'/orcamentos'))==1 and not downloads;assert await sql("SELECT COUNT(*)FROM budget_emission_attempts WHERE state='failed'")==1;await shot('falha-renderizador')
   first_confirmation=confirmations[-1]
   await control('truncate');await confirm.click();await expect(review.get_by_role('alert')).to_contain_text('O orçamento não foi emitido.');await expect(review.get_by_role('alert')).to_contain_text('inválido');await expect(review.get_by_role('button',name='Voltar',exact=True)).to_be_enabled();assert confirmations[-1]==first_confirmation;assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==2 and len(await get(base+'/orcamentos'))==1 and not downloads;await control('normal',200)
@@ -125,11 +125,19 @@ async def device_case(browser,device,viewport):
   h.mark(device+': post-commit download failure retains issued PDF; explicit retry never repeats emission')
   await begin();rates_cfg=await get('/api/parcelamento');r=await ctx.request.patch(ORIGIN+'/api/parcelamento',headers={'Origin':ORIGIN},data={'revision':rates_cfg['revision'],'rates':{**rates_cfg['rates'],'tres':'8'}});assert r.ok;count=await calls();await confirm.click();await expect(review.get_by_role('alert')).to_be_visible();assert await calls()==count and len(await get(base+'/orcamentos'))==4;await review.get_by_role('button',name='Voltar',exact=True).click()
   h.mark(device+': changed installment revision blocks stale preview before reserving another number')
-  # Interleave scenario emissions; historical presentation letters must restart per frozen ID.
+  # The same Confirmation screen must refresh immediately after its own successful emissions.
+  history=page.get_by_role('region',name='Orçamentos emitidos',exact=True)
+  await expect(history.locator('.budget-history-row')).to_have_count(4)
+  # Interleave external API emissions; reenter Confirmation to refresh its history.
   for scene in [ids['two'],ids['one'],ids['two']]:
    body={'scenarioId':scene,'negotiation':{'mode':'none'}};p=await(await ctx.request.post(ORIGIN+base+'/orcamentos/previa',headers={'Origin':ORIGIN},data=body)).json();r=await ctx.request.post(ORIGIN+base+'/orcamentos',headers={'Origin':ORIGIN},data={**body,'previewToken':p['token'],'idempotencyKey':'history-'+__import__('uuid').uuid4().hex});assert r.ok,await r.text()
   total_count=7
-  await finance.get_by_role('button',name='Orçamentos emitidos',exact=True).click();history=page.get_by_role('region',name='Orçamentos emitidos',exact=True);await expect(history.locator('.budget-history-row')).to_have_count(total_count)
+  await page.get_by_role('button',name='Diagnóstico',exact=True).click();await expect(page.locator('.diagnostics-body')).to_be_visible()
+  await page.get_by_role('button',name='Confirmação',exact=True).click();await expect(history.locator('.budget-history-row')).to_have_count(total_count)
+  await expect(history.locator('.confirmation-heading button')).to_have_count(0)
+  await expect(history.locator('.confirmation-actions').get_by_role('button',name='Agendar',exact=True)).to_be_visible()
+  await expect(history.locator('.confirmation-actions').get_by_role('button',name='Encerrar atendimento',exact=True)).to_be_visible()
+  assert await history.locator('.confirmation-actions').evaluate("(el)=>!!(el.previousElementSibling||el.closest('.confirmation-close').previousElementSibling)")
   assert await history.locator('.budget-history-group h2').all_text_contents()==['Cenário 1','Cenário 2']
   assert await history.locator('.budget-history-group').nth(0).locator('.budget-history-letter').all_text_contents()==['A','B','C','D','E']
   assert await history.locator('.budget-history-group').nth(1).locator('.budget-history-letter').all_text_contents()==['A','B']
@@ -158,40 +166,43 @@ async def device_case(browser,device,viewport):
   assert(await get(base+'/orcamentos/'+ids['old']))['snapshot']==ids['snapshot'];assert(await get(base+'/orcamentos/'+issued['id']))['snapshot']==issued['snapshot']
   h.mark(device+': compact scenario groups ordered 1/2, A–E/A–B independent of global sequence, totals before download icons; original hashes/snapshots unchanged')
   await h.restart_api();await page.reload();await h.login(page);await expect(history.locator('.budget-history-row')).to_have_count(total_count);assert await deadline(ids['one'],'manual',2);assert await deadline(ids['two'],'manual',7);assert(await get('/api/parcelamento'))['rates']['tres']=='8'
-  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos&tela=orcamentos&versao='+ids['old']);await expect(page.locator('.detail-header h1')).to_have_text('Orçamento OR-000001');await expect(page.get_by_role('link',name='Visualizar orçamento')).to_be_visible();deep_pdf=await(await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['old']+'/pdf')).body();assert hashlib.sha256(deep_pdf).hexdigest()==old_hash;await page.get_by_role('button',name='Voltar à tela anterior',exact=True).click();await expect(page.locator('.detail-header h1')).to_have_text('Orçamentos emitidos')
+  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos&tela=orcamentos&versao='+ids['old']);await expect(page.locator('.detail-header h1')).to_have_text('Orçamento OR-000001');await expect(page.get_by_role('link',name='Visualizar orçamento')).to_be_visible();deep_pdf=await(await ctx.request.get(ORIGIN+base+'/orcamentos/'+ids['old']+'/pdf')).body();assert hashlib.sha256(deep_pdf).hexdigest()==old_hash;await page.get_by_role('button',name='Voltar à tela anterior',exact=True).click();await expect(history).to_be_visible()
   h.mark(device+': restart retains SQLite documents and deep links with original stored PDF; reopening never downloads automatically')
   await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=diagnosticos');await idle();summary=finance.locator('.summary');await expect(summary.locator('.deadline span')).to_have_text('2');await switch(2);await expect(summary.locator('.deadline span')).to_have_text('7');await shot('prazo-barra');await switch(1)
   boxes=[await metric.bounding_box()for metric in await summary.locator('.metric').all()];assert len(boxes)==5;assert all(boxes[i]['x']+boxes[i]['width']<=boxes[i+1]['x']+.5 for i in range(4));assert max(b['y']for b in boxes)-min(b['y']for b in boxes)<2
   h.mark(device+': all five summary metrics stay in one row, deadline after total, with no collisions')
   # Tabs retain actual horizontal spatial order and reduced-motion disables native transitions.
-  await page.get_by_role('button',name='Mapa',exact=True).click();await expect(page.locator('.interactive-map')).to_be_visible();await asyncio.sleep(.35);await shot('mapa')
+  await page.goto(ORIGIN+'/atendimentos/'+ids['at']+'?aba=mapa');await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');await expect(page.locator('.interactive-map')).to_have_count(0)
+  await idle()
+  await page.get_by_role('button',name='Confirmação',exact=True).click();await expect(history).to_be_visible();await asyncio.sleep(.35);await shot('confirmacao')
   async def gesture(locator,dx,dy=0):
    await locator.evaluate("(el,p)=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,t=new Touch({identifier:1,target:el,clientX:x,clientY:y});el.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[t],changedTouches:[t]}));const end=new Touch({identifier:1,target:el,clientX:x+p.dx,clientY:y+p.dy});el.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],changedTouches:[end]}))}",{'dx':dx,'dy':dy});await asyncio.sleep(.35)
-  map_region=page.locator('.interactive-map [data-region]').first
-  await gesture(map_region,90);await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');assert not await page.locator('.piece-dialog[open]').count();assert await page.locator('html').get_attribute('data-tab-direction')=='back'
-  await gesture(page.locator('.diagnostics-body'),90);await expect(page.get_by_role('button',name='Chat',exact=True)).to_have_attribute('aria-current','page')
-  await gesture(page.locator('.chat-channel-state'),90);await expect(page.get_by_role('button',name='Chat',exact=True)).to_have_attribute('aria-current','page')
+  await gesture(history,90);await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');assert await page.locator('html').get_attribute('data-tab-direction')=='back'
+  await gesture(page.locator('.diagnostics-body'),90);await expect(page.get_by_role('button',name='WhatsApp',exact=True)).to_have_attribute('aria-current','page')
+  await gesture(page.locator('.chat-channel-state'),90);await expect(page.get_by_role('button',name='Dados',exact=True)).to_have_attribute('aria-current','page');await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled()
+  await gesture(page.locator('.sales-record-heading'),90);await expect(page.get_by_role('button',name='Dados',exact=True)).to_have_attribute('aria-current','page')
+  await page.get_by_role('button',name='WhatsApp',exact=True).click()
   await gesture(page.locator('.chat-channel-state'),-90);await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');assert await page.locator('html').get_attribute('data-tab-direction')=='forward'
-  await gesture(page.locator('.diagnostics-body'),-90);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page')
-  await gesture(map_region,0,100);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page');await gesture(map_region,-90);await expect(page.get_by_role('button',name='Mapa',exact=True)).to_have_attribute('aria-current','page')
-  await map_region.click(force=True);await expect(page.locator('.disc-wrap')).to_be_visible();await page.keyboard.press('Escape');await expect(page.locator('.disc-wrap')).not_to_be_visible()
+  await gesture(page.locator('.diagnostics-body'),-90);await expect(page.get_by_role('button',name='Confirmação',exact=True)).to_have_attribute('aria-current','page')
+  await gesture(history,0,100);await expect(page.get_by_role('button',name='Confirmação',exact=True)).to_have_attribute('aria-current','page');await gesture(history,-90);await expect(page.get_by_role('button',name='Confirmação',exact=True)).to_have_attribute('aria-current','page')
   await page.emulate_media(reduced_motion='reduce');await page.evaluate("()=>{window.transitionCalls=0;const transition=document.startViewTransition.bind(document);document.startViewTransition=(...args)=>{window.transitionCalls++;return transition(...args)}}")
-  await page.get_by_role('button',name='Diagnóstico',exact=True).click();assert await page.evaluate('window.transitionCalls')==0;await page.emulate_media(reduced_motion='no-preference');await page.get_by_role('button',name='Chat',exact=True).click();await asyncio.sleep(.35);assert await page.evaluate('window.transitionCalls')==1;await shot('chat');await page.get_by_role('button',name='Diagnóstico',exact=True).click();await asyncio.sleep(.35);await shot('diagnosticos')
-  h.mark(device+': swipe all directions including map SVG controls, no wrap or vertical false positive; map tap and native forward/back transitions preserved, reduced motion has zero transitions')
-  await page.get_by_role('button',name='Chat',exact=True).click();await page.evaluate('async()=>{await document.activeViewTransition?.finished}')
-  await page.evaluate("()=>{const tabs=document.querySelectorAll('.view-tab');tabs[1].click();tabs[0].click()}");await page.evaluate('async()=>{await document.activeViewTransition?.finished}');await expect(page.get_by_role('button',name='Chat',exact=True)).to_have_attribute('aria-current','page');assert 'aba=chat'in page.url
+  await page.get_by_role('button',name='Diagnóstico',exact=True).click();assert await page.evaluate('window.transitionCalls')==0;await page.emulate_media(reduced_motion='no-preference');await page.get_by_role('button',name='WhatsApp',exact=True).click();await asyncio.sleep(.35);assert await page.evaluate('window.transitionCalls')==1;await shot('chat');await page.get_by_role('button',name='Diagnóstico',exact=True).click();await asyncio.sleep(.35);await shot('diagnosticos')
+  h.mark(device+': swipe all four primary tabs, no wrap or vertical false positive; legacy map route opens diagnostics, native forward/back transitions preserved, reduced motion has zero transitions')
+  await page.get_by_role('button',name='WhatsApp',exact=True).click();await page.evaluate('async()=>{await document.activeViewTransition?.finished}')
+  await page.evaluate("()=>{const tabs=document.querySelectorAll('.workspace-record-pages button');tabs[2].click();tabs[1].click()}");await page.evaluate('async()=>{await document.activeViewTransition?.finished}');await expect(page.get_by_role('button',name='WhatsApp',exact=True)).to_have_attribute('aria-current','page');assert 'aba=chat'in page.url
   h.mark(device+': rapid competing tab requests keep the last route, never applying an old transition callback')
   # Known failure can be abandoned safely, while its failed reservation is never reused.
-  await begin();await control('fail');count_before=len(downloads);await confirm.click();await expect(review.get_by_role('alert')).to_contain_text('O orçamento não foi emitido.');await expect(review.get_by_role('button',name='Voltar',exact=True)).to_be_enabled();await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();await control('normal');await expect(finance.get_by_role('button',name='Emitir',exact=True)).to_be_enabled();await expect(finance.get_by_role('button',name='Orçamentos emitidos',exact=True)).to_be_enabled();assert len(await get(base+'/orcamentos'))==total_count and len(downloads)==count_before;assert await sql("SELECT COUNT(*)FROM budget_emission_attempts WHERE state='failed'")==1;assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==8
+  await expect(finance).to_be_visible();await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled();await idle();assert 'aba=chat' in page.url
+  await begin();await control('fail');count_before=len(downloads);await confirm.click();await expect(review.get_by_role('alert')).to_contain_text('O orçamento não foi emitido.');await expect(review.get_by_role('button',name='Voltar',exact=True)).to_be_enabled();await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();await control('normal');await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled();await expect(page.get_by_role('button',name='Confirmação',exact=True)).to_be_enabled();assert len(await get(base+'/orcamentos'))==total_count and len(downloads)==count_before;assert await sql("SELECT COUNT(*)FROM budget_emission_attempts WHERE state='failed'")==1;assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==8
   await page.get_by_role('button',name='Diagnóstico',exact=True).click();await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');await expect(page.locator('.diagnosis-open').first).to_be_enabled();await shot('voltar-apos-falha-conhecida')
   h.mark(device+': Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits')
   conf=await get('/api/precificacao');r=await ctx.request.patch(ORIGIN+'/api/precificacao',headers={'Origin':ORIGIN},data={'revision':conf['revision'],'config':{**conf['config'],'capacity':None}});assert r.ok
   await page.reload();await expect(page.locator('.scenario-trigger')).to_be_enabled();await page.locator('.scenario-trigger').click();await page.get_by_role('menuitemradio',name='Cenário 3',exact=True).click();await expect(finance.locator('.summary .deadline span')).to_have_text('—');await shot('prazo-indisponivel')
   h.mark(device+': an automatic deadline with missing capacity displays an em dash, never zero or a stale promise')
   with sqlite3.connect(h.folder/'atendimentos.sqlite')as db:
-   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==25;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
+   assert db.execute('SELECT MAX(version)FROM schema_migrations').fetchone()[0]==32;assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert not db.execute('PRAGMA foreign_key_check').fetchall();assert db.execute('SELECT COUNT(*)FROM budget_versions').fetchone()[0]==total_count
   assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not h.external and not h.page_errors,(h.external,h.page_errors)
-  h.mark(device+': V19 integrity preserved, integrity/FKs, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
+  h.mark(device+': V32 integrity, foreign keys, no external network/JS errors or horizontal overflow, all synthetic at '+str(viewport['width'])+'px')
  except Exception as error:
   if page:
    try:await page.screenshot(path=str(ARTIFACTS/(device+'-failure.png')),timeout=3000)
@@ -204,7 +215,9 @@ async def device_case(browser,device,viewport):
 async def run():
  ARTIFACTS.mkdir(parents=True,exist_ok=True)
  async with async_playwright()as p:
-  browser=await p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+  system_chromium=shutil.which('chromium')
+  chromium_options={'executable_path':system_chromium} if system_chromium else {'channel':'chromium'}
+  browser=await p.chromium.launch(**chromium_options,headless=True,args=['--no-sandbox'])
   try:
    for device,v in [('desktop',{'width':1440,'height':1000}),('mobile390',{'width':390,'height':844}),('mobile320',{'width':320,'height':844})]:await device_case(browser,device,v)
   finally:await browser.close()

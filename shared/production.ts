@@ -1,4 +1,10 @@
 import type {CustomerReference, CustomerReferences} from './customer.ts'
+import {deliveryDateLabel} from './delivery-date.ts'
+
+export function scheduledEntryLabel(entry: string): string {
+  const [date, time] = entry.split('T')
+  return deliveryDateLabel(date) + (time ? ' às ' + time : ' · horário a combinar')
+}
 
 export type BudgetLifecycleState = 'negotiating' | 'consented' | 'authorized' | 'rejected' | 'executed' | 'cancelled'
 
@@ -23,6 +29,11 @@ export type Experience = ExperienceParties & {
   revision: number
   scheduledEntry: string
   deliveryDate: string | null
+  inOperation: boolean
+}
+
+export type ExperienceInOperation = Pick<Experience, 'id' | 'customer' | 'vehicle' | 'scheduledEntry' | 'inOperation'> & {
+  atendimentoId: string
 }
 
 export type ProductionBudget = {

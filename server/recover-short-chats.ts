@@ -21,7 +21,7 @@ try{
   if(!applying)db.exec('PRAGMA query_only=ON;')
   db.exec('BEGIN')
   const version=db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v
-  if(version!==25)throw Error('A recuperação exige um banco V25.')
+  if(version!==25&&version!==26&&version!==27&&version!==28&&version!==29&&version!==30&&version!==31&&version!==32)throw Error('A recuperação exige um banco V25 a V32.')
   const {digest,counts}=planShortNumberRecovery(db,cutoff)
   db.exec('COMMIT')
   if(!applying){

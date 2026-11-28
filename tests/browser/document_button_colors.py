@@ -15,8 +15,8 @@ COLORS = {
 ARTIFACTS = ROOT / "docs/evidencias/os-browser"
 
 
-async def color_case(browser, label, viewport):
-    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+async def color_case(browser, label, viewport, artifacts=ARTIFACTS):
+    artifacts.mkdir(parents=True, exist_ok=True)
     h = Harness()
     ctx = None
     results = []
@@ -68,6 +68,7 @@ db.close()
         last = row(ids["versions"][3])
         dialog_types = []
         page.on("dialog", lambda d: dialog_types.append(d.type))
+        await last.locator(".budget-action-more").click()
         async with page.expect_response(lambda response: response.request.method == "POST" and response.url.endswith("/cancelamento")) as event:
             await last.locator(".budget-action-cancel").click()
         assert (await event.value).status == 200
@@ -119,7 +120,7 @@ db.close()
             assert await scope.locator('.budget-action-cancel').is_disabled() == cancelled
             assert await scope.locator('a.budget-action-or').count() == 1
             assert await scope.locator('a.budget-action-os').count() == (states[1] in ["issued", "cancelled"])
-            controls = await scope.locator('.budget-history-open,.budget-action').evaluate_all("""els=>els.map(el=>{
+            controls = await scope.locator('.budget-history-open:visible,.budget-action:visible,.budget-action-more:visible').evaluate_all("""els=>els.map(el=>{
                 const r=el.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}})""")
             for i,a in enumerate(controls):
                 assert a['x'] >= 0 and a['x'] + a['w'] <= viewport['width'] + 1, controls
@@ -143,8 +144,8 @@ db.close()
                     assert await r.locator('.budget-history-letter').evaluate("el=>getComputedStyle(el,'::after').transform") != 'none'
                 if reload:
                     results.append({"scenario": "ABCD"[i], "number": v["number"], "buttons": values})
-                    await r.screenshot(path=str(ARTIFACTS / f'{label}-scenario-{ "ABCD"[i] }.png'))
-            await page.screenshot(path=str(ARTIFACTS / f'{label}-four-colors.png'))
+                    await r.screenshot(path=str(artifacts / f'{label}-scenario-{ "ABCD"[i] }.png'))
+            await page.screenshot(path=str(artifacts / f'{label}-four-colors.png'))
         # Detail route must use the same real DocumentButton colors as history.
         for v, states in zip(ids['versions'], expected):
             await page.goto(browse + '&versao=' + v['id'])
@@ -159,7 +160,7 @@ db.close()
         h.mark(label + ': A/B/C/D computed colors, predominant pixels, markers, history/detail, reload + API restart, immutable originals and OS block passed')
     finally:
         try:
-            (ARTIFACTS / f'{label}-computed-colors.json').write_text(json.dumps({'viewport':viewport,'results':results,'checks':h.results},ensure_ascii=False,indent=2)+'\n')
+            (artifacts / f'{label}-computed-colors.json').write_text(json.dumps({'viewport':viewport,'results':results,'checks':h.results},ensure_ascii=False,indent=2)+'\n')
         finally:
             try:
                 if ctx:

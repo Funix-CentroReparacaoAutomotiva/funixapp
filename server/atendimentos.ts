@@ -1,26 +1,40 @@
 import type {CustomerReferences} from '../shared/customer.ts'
+import { salesChannels } from '../shared/sales.ts'
 import { CustomerRepository } from './customers.ts'
 import{initializeFinancialSettings}from'./financial-initialization.ts'
 import{initializeVehicleComposition}from'./default-vehicle-composition.ts'
-import { randomUUID } from 'node:crypto'
+import {createHash,randomUUID} from 'node:crypto'
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import { ATENDIMENTO_PURPOSES, ATENDIMENTO_STAGES } from '../shared/contracts.ts'
-import type { Atendimento, AtendimentoList, AtendimentoStage } from '../shared/contracts.ts'
+import type { Atendimento, AtendimentoList, AtendimentoStage, DuplicateAtendimento } from '../shared/contracts.ts'
 import { ServiceError } from './errors.ts'
 import {parseDeliveryDate,deliveryReason,writeDeliveryDate} from './delivery-date.ts'
 
-import {normalizeCustomerPhone} from './phone.ts'
+import {normalizeCustomerPhone,normalizeCustomerInputPhone,canonicalizeCustomerInputPhone} from './phone.ts'
 
 const textLimits = { phone: 100, name: 250, vehicle: 250, brand: 150, model: 250, plate: 100, reason: 8000, notes: 8000, rejectionReason: 2000 } as const
-const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason'])
+const writable = new Set([...Object.keys(textLimits), 'fabricationYear', 'modelYear', 'stage', 'purpose', 'explicitRefusal', 'references', 'closed', 'deliveryDate', 'deliveryDateReason', 'channel'])
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function invalid(message: string): never { throw new ServiceError(400, 'INVALID_ATENDIMENTO', message) }
 
+export class PossibleDuplicateAtendimentoError extends ServiceError {
+  readonly candidates:DuplicateAtendimento[]
+  readonly confirmationToken:string
+  constructor(candidates: DuplicateAtendimento[],confirmationToken:string) {
+    super(409,'ATENDIMENTO_DUPLICATE_REVIEW','Já existe Atendimento em aberto para este contato e veículo. Confira antes de criar outro.')
+    this.candidates=candidates
+    this.confirmationToken=confirmationToken
+  }
+}
+
+function normalizedPlate(value:string) {return value.toUpperCase().replace(/[^A-Z0-9]/g,'')}
+
 function validate(input: unknown, patch: boolean) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('Envie os campos do Atendimento em um objeto JSON.')
   const source = input as Record<string, unknown>
-  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision')) invalid(`Campo não permitido: ${key}.`)
+  for (const key of Object.keys(source)) if (!writable.has(key) && !(patch && key === 'revision') && !(!patch && ['duplicateConfirmation','acquisitionSource'].includes(key))) invalid(`Campo não permitido: ${key}.`)
+  if(source.duplicateConfirmation!==undefined && (patch||typeof source.duplicateConfirmation!=='string'||!/^[a-f0-9]{64}$/.test(source.duplicateConfirmation))) invalid('Confirmação de duplicidade inválida.')
   if (patch && (!Number.isSafeInteger(source.revision) || Number(source.revision) < 1)) invalid('Informe a revisão do Atendimento que está editando.')
   const output: Record<string, string | boolean | number | null> = {}
   for (const [key, limit] of Object.entries(textLimits)) {
@@ -36,6 +50,10 @@ function validate(input: unknown, patch: boolean) {
     output[key] = source[key] as string
   }
   if (source.deliveryDate !== undefined) output.deliveryDate=parseDeliveryDate(source.deliveryDate)
+  if(source.channel!==undefined&&(typeof source.channel!=='string'||source.channel.length>100))invalid('Canal de aquisição inválido.')
+  const channelsBySource={manual:'Balcão',whatsapp:'WhatsApp',email:'Seguradora',association:'Seguradora',insurer:'Seguradora'} as const
+  if(source.acquisitionSource!==undefined&&(typeof source.acquisitionSource!=='string'||!Object.hasOwn(channelsBySource,source.acquisitionSource)))invalid('Origem de aquisição inválida.')
+  const channel=source.channel as string|undefined ?? (source.acquisitionSource===undefined?undefined:channelsBySource[source.acquisitionSource as keyof typeof channelsBySource])
   const dateReason=deliveryReason(source.deliveryDateReason,'Alteração manual nas configurações do Atendimento')
   if (source.purpose !== undefined) {
     if (typeof source.purpose !== 'string' || !Object.hasOwn(ATENDIMENTO_PURPOSES,source.purpose)) invalid('Finalidade inválida.')
@@ -50,14 +68,15 @@ function validate(input: unknown, patch: boolean) {
     output.explicitRefusal = source.explicitRefusal
   }
   if(source.closed!==undefined){if(typeof source.closed!=='boolean')invalid('Encerramento inválido.')}
-  if (patch && source.closed===undefined && source.references===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
-  return { fields: output, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined }
+  if (patch && source.closed===undefined && source.references===undefined && channel===undefined && !Object.keys(output).length) invalid('Informe ao menos um campo para atualizar.')
+  return { fields: output, channel, dateReason, revision: Number(source.revision), references: source.references, closed: source.closed as boolean|undefined, duplicateConfirmation:source.duplicateConfirmation as string|undefined }
 }
 
 function map(row: Record<string, SQLOutputValue>): Atendimento {
   return {
     ...(row.purpose==null?{}:{purpose:row.purpose as Atendimento['purpose']}),
     ...(row.closed_at==null?{}:{closedAt:String(row.closed_at)}),
+    ...(row.display_number==null?{}:{displayNumber:'AT'+String(row.display_number).padStart(6,'0')}),
     id: String(row.id), phone: String(row.phone), phoneNormalized: row.phone_normalized === null ? null : String(row.phone_normalized),
     name: String(row.name), vehicle: String(row.vehicle), brand: String(row.brand), model: String(row.model),
     fabricationYear: row.fabrication_year == null ? null : String(row.fabrication_year),
@@ -86,33 +105,90 @@ export class AtendimentoRepository {
 
   ready() { this.db.prepare('SELECT 1 FROM atendimentos LIMIT 1').get() }
 
-  list({ q = '', limit = 50, offset = 0 }: { q?: string; limit?: number; offset?: number } = {}): AtendimentoList {
+  list({ q = '', limit = 50, offset = 0, funnel = false }: { q?: string; limit?: number; offset?: number; funnel?: boolean } = {}): AtendimentoList {
     if (q.length > 150 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) invalid('Parâmetros de busca inválidos.')
     const escaped = fold(q.trim()).replace(/[\\%_]/g, '\\$&')
     const search = `%${escaped}%`
     const digits = /^[+\d\s().-]+$/.test(q) ? q.replace(/[^\d+]/g, '') : ''
-    const where = `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
+    const where = (funnel ? 'NOT EXISTS (SELECT 1 FROM production_experiences WHERE atendimento_id=atendimentos.id) AND ' : '') + `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
     const values = [search, digits, `%${digits}%`]
     const total = Number(this.db.prepare(`SELECT count(*) AS total FROM atendimentos WHERE ${where}`).get(...values)!.total)
-    const items = this.db.prepare(`SELECT * FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
+    const items = this.db.prepare(`SELECT ${this.selectColumns()} FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
     return { items, total, nextOffset: offset + items.length < total ? offset + items.length : null, stages: ATENDIMENTO_STAGES }
   }
 
+  private selectColumns() {return this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='atendimento_numbers'").get()?"atendimentos.*, (SELECT number FROM atendimento_numbers WHERE atendimento_id=atendimentos.id) AS display_number":'atendimentos.*'}
+
   get(id: string, includeReferences = false): Atendimento {
     if (!uuid.test(id)) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
-    const row = this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(id)
+    const row = this.db.prepare(`SELECT ${this.selectColumns()} FROM atendimentos WHERE id=?`).get(id)
     if (!row) throw new ServiceError(404, 'NOT_FOUND', 'Atendimento não encontrado.')
     const record=map(row)
     const customers=new CustomerRepository(this.db)
     if(includeReferences && customers.available())record.references=customers.references(id)
+    if(includeReferences&&this.hasOriginTable()){
+      const metadata=this.db.prepare('SELECT origin,channel FROM erp_experience_origin WHERE atendimento_id=?').get(id)
+      if(metadata){record.origin=metadata.origin as Atendimento['origin'];record.channel=String(metadata.channel??'')}
+    }
     return includeReferences ? customers.present([record])[0]! : record
   }
 
+  private hasOriginTable() {return !!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_experience_origin'").get()}
+  private saveChannel(id:string,channel:string|undefined) {
+    if(channel===undefined)return
+    if(!this.hasOriginTable())invalid('Cadastro de canal indisponível nesta versão do banco.')
+    const old=this.db.prepare('SELECT channel FROM erp_experience_origin WHERE atendimento_id=?').get(id)
+    if(channel&&channel!==old?.channel&&!salesChannels.some(candidate=>candidate===channel))invalid('Selecione um canal de aquisição válido.')
+    this.db.prepare(`INSERT INTO erp_experience_origin(atendimento_id,origin,previous_experience_id,channel) VALUES(?,'initial',NULL,?)
+      ON CONFLICT(atendimento_id) DO UPDATE SET channel=excluded.channel`).run(id,channel||null)
+    if((old?.channel??'')!==channel&&this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_sales_context'").get())
+      this.db.prepare('UPDATE erp_sales_context SET revision=revision+1 WHERE atendimento_id=?').run(id)
+  }
+
+  private possibleDuplicates(record:{phoneNormalized:string|null;plate:string},refs:CustomerReferences|undefined):DuplicateAtendimento[] {
+    const phone=record.phoneNormalized,contactIds=[...new Set((refs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))]
+    if(!phone&&!contactIds.length)return []
+    const refIdMatch=contactIds.length?`r.record_id IN (${contactIds.map(()=>'?').join(',')})`:'0'
+    const refPhoneMatch=phone?`(r.record_id IS NULL AND funix_customer_phone(json_extract(r.data,'$.text'))=?
+      OR EXISTS(SELECT 1 FROM customer_records c WHERE c.id=r.record_id
+        AND c.kind='contact' AND c.phone_normalized=?))`:'0'
+    const conditions=[...(phone?['a.phone_normalized=?']:[]),
+      `EXISTS (SELECT 1 FROM atendimento_references r WHERE r.atendimento_id=a.id AND r.kind='contact'
+        AND (${refIdMatch} OR (${refPhoneMatch})))`]
+    const args=[...(phone?[phone]:[]),...contactIds,...(phone?[phone,phone]:[])]
+    const rows=this.db.prepare(`SELECT a.id,a.name,a.vehicle,a.plate,a.stage,a.revision
+      FROM atendimentos a WHERE a.closed_at IS NULL AND a.stage<>'rejeitados'
+      AND (${conditions.join(' OR ')}) ORDER BY a.created_at DESC,a.id ASC`).all(...args)
+    const plate=normalizedPlate(record.plate)
+    return rows.filter(row=>!plate||!normalizedPlate(String(row.plate))||normalizedPlate(String(row.plate))===plate)
+      .map(row=>({id:String(row.id),name:String(row.name),vehicle:String(row.vehicle),
+        plate:String(row.plate),stage:String(row.stage),revision:Number(row.revision)}))
+  }
+
   create(input: unknown, inTransaction = false, manual = false): Atendimento {
-    const { fields, references, closed, dateReason } = validate(input, false)
+    const { fields, channel, references, closed, dateReason, duplicateConfirmation } = validate(input, false)
+    if(duplicateConfirmation&&!manual)invalid('Confirmação de duplicidade indisponível para criação automática.')
     const customers=new CustomerRepository(this.db)
     if (!inTransaction) this.db.exec('BEGIN IMMEDIATE')
     try {
+      // Check before mutating shared customer references: a manual lead using an existing
+      // number must see the open case warning before the ownership gate for new records.
+      if(manual){
+        const draftRefs=references===undefined?undefined:customers.validate(references)
+        const draftIdentity=draftRefs?customers.primaryFields(draftRefs):fields
+        const candidatePhone=typeof draftIdentity.phone==='string'?normalizeCustomerInputPhone(draftIdentity.phone):null
+        const candidatePlate=typeof draftIdentity.plate==='string'?draftIdentity.plate:''
+        const candidates=this.possibleDuplicates({phoneNormalized:candidatePhone,plate:candidatePlate},draftRefs)
+        if(candidates.length){
+          const confirmationToken=createHash('sha256').update(JSON.stringify([
+            candidatePhone,normalizedPlate(candidatePlate),
+            [...new Set((draftRefs?.contact??[]).flatMap(ref=>ref.id?[ref.id]:[]))].sort(),
+            candidates.map(({id,revision})=>[id,revision]),
+          ])).digest('hex')
+          if(confirmationToken!==duplicateConfirmation)
+            throw new PossibleDuplicateAtendimentoError(candidates,confirmationToken)
+        }
+      }
       const refs=this.manualReferences(customers,fields,references,manual)
       if(refs)Object.assign(fields,references===undefined?this.identityFields(customers,refs):customers.primaryFields(refs))
       const now = new Date().toISOString()
@@ -131,6 +207,7 @@ export class AtendimentoRepository {
       if(this.db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='pricing_configuration'").get())initializeFinancialSettings(this.db,record.id,true)
       if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?now:null,record.id)
       if(refs)customers.saveReferences(record.id,refs)
+      this.saveChannel(record.id,channel)
       initializeVehicleComposition(this.db,record.id,now)
       const saved=this.get(record.id,manual)
       if (!inTransaction) this.db.exec('COMMIT')
@@ -138,10 +215,10 @@ export class AtendimentoRepository {
     }catch(error){if (!inTransaction) this.db.exec('ROLLBACK');throw error}
   }
 
-  update(id: string, input: unknown, includeReferences = false, manual = false): Atendimento {
-    this.db.exec('BEGIN IMMEDIATE')
-    try {const saved=this.updateRecord(id,input,manual);const result=includeReferences?this.get(id,true):saved;this.db.exec('COMMIT');return result}
-    catch(error){this.db.exec('ROLLBACK');throw error}
+  update(id: string, input: unknown, includeReferences = false, manual = false, inTransaction = false): Atendimento {
+    if(!inTransaction)this.db.exec('BEGIN IMMEDIATE')
+    try {const saved=this.updateRecord(id,input,manual);const result=includeReferences?this.get(id,true):saved;if(!inTransaction)this.db.exec('COMMIT');return result}
+    catch(error){if(!inTransaction)this.db.exec('ROLLBACK');throw error}
   }
   private identityFields(customers:CustomerRepository,refs:CustomerReferences) {
     const {name,phone}=customers.primaryFields(refs)
@@ -150,10 +227,13 @@ export class AtendimentoRepository {
 
   private manualReferences(customers:CustomerRepository,fields:Record<string,unknown>,references:unknown,manual:boolean,previous?:CustomerReferences) {
     if(references!==undefined){
-      const refs=customers.validate(references)
+      let refs=customers.validate(references)
+      if(manual)refs=customers.resolveManualVehicleReference(refs,previous)
       return manual||refs.person.some(ref=>ref.id)?customers.resolveManualContactReferences(refs,previous):refs
     }
-    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerPhone(fields.phone))return undefined
+    if(!manual||!customers.available()||typeof fields.phone!=='string'||!normalizeCustomerInputPhone(fields.phone))return undefined
+    const inputPhone=canonicalizeCustomerInputPhone(fields.phone)
+    fields.phone=inputPhone
     const person=previous?.person??[]
     if(person[0]?.id&&typeof fields.name==='string'&&fields.name!==person[0].text)
       throw new ServiceError(409,'SHARED_CUSTOMER_REFERENCE','Edite o titular no cadastro compartilhado.')
@@ -161,13 +241,13 @@ export class AtendimentoRepository {
     const primary=contact[0]
     return customers.resolveManualContactReferences({
       person:typeof fields.name==='string'&&!person[0]?.id?[{id:null,text:fields.name},...person.slice(1)]:person,
-      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(fields.phone)?primary:{id:null,text:fields.phone},...contact.slice(1)],
+      contact:[primary?.id&&normalizeCustomerPhone(primary.text)===normalizeCustomerPhone(inputPhone)?primary:{id:null,text:inputPhone},...contact.slice(1)],
       vehicle:previous?.vehicle??[],payer:previous?.payer??[],
     },previous)
   }
 
   private updateRecord(id: string, input: unknown, manual:boolean): Atendimento {
-    const { fields, revision, references, closed, dateReason } = validate(input, true)
+    const { fields, channel, revision, references, closed, dateReason } = validate(input, true)
     const customers=new CustomerRepository(this.db)
     const old=this.get(id)
     if(old.revision!==revision)throw new ServiceError(409,'VERSION_CONFLICT','Este Atendimento mudou em outra edição. Reabra o registro antes de salvar novamente; seus campos não foram gravados.')
@@ -191,6 +271,7 @@ export class AtendimentoRepository {
     if(fields.purpose!==undefined)this.db.prepare('UPDATE atendimentos SET purpose=? WHERE id=?').run(record.purpose!,id)
     if(fields.deliveryDate!==undefined)writeDeliveryDate(this.db,id,old.deliveryDate??null,record.deliveryDate??null,dateReason,record.updatedAt,false)
     if(closed!==undefined)this.db.prepare('UPDATE atendimentos SET closed_at=? WHERE id=?').run(closed?record.updatedAt:null,id)
+    this.saveChannel(id,channel)
     if(refs)customers.saveReferences(id,refs,previousContacts)
     else if(customers.available()){customers.applyLegacyFields(id,fields,manual);customers.invalidateContactContexts(id,previousContacts,customers.references(id).contact)}
     return this.get(id)

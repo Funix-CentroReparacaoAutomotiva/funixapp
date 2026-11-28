@@ -12,6 +12,6 @@ export function parentDetail(search: string) {
 export function isTabSwipe(dx:number,dy:number,elapsed:number){return elapsed<=800&&Math.abs(dx)>=70&&Math.abs(dx)>=Math.abs(dy)*1.8}
 export function swipeTab(tab: string, dx: number, dy: number, elapsed: number) {
   if (!isTabSwipe(dx,dy,elapsed)) return null
-  const tabs = ['chat', 'diagnosticos', 'mapa'], index = tabs.indexOf(tab) + (dx < 0 ? 1 : -1)
+  const tabs = ['resumo','chat', 'diagnosticos', 'confirmacao'];if(!tabs.includes(tab))return null;const index = tabs.indexOf(tab) + (dx < 0 ? 1 : -1)
   return index >= 0 && index < tabs.length ? tabs[index] : null
 }

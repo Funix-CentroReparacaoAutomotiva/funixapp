@@ -1,3 +1,4 @@
+import { recordConfirmedSalesContact } from '../erp/sales-events.ts'
 import {atendimentoDisplayPhone} from './conversation-phones.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
@@ -260,7 +261,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const pn=members.find(member=>member.endsWith('@s.whatsapp.net'))
     const phone=pn?normalizeCustomerPhone('+'+pn.split('@')[0]):null
     if(!phone)return undefined
-    const [contact]=new CustomerRepository(this.db).phoneMatches(phone)
+    const customers=new CustomerRepository(this.db)
+    if(customers.hasUnindexedDialingContact(phone))
+      return {candidates:[],conflict:true,canCreateTriage:false}
+    const [contact]=customers.phoneMatches(phone)
     const pair=pn?reviewNumberPair(pn):null
     if(!contact&&pair&&new CustomerRepository(this.db).phoneMatches(pair.registeredPhone).length)
       return {candidates:[],conflict:false,canCreateTriage:false}
@@ -327,7 +331,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       JOIN customer_records e ON e.id=c.entity_id AND e.kind='entity'
       WHERE c.id=? AND c.kind='contact'`).get(contactId)
     const ownerName=owner?String(JSON.parse(String(owner.data)).text??''):null
-    at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified'},true).id
+    at??=new AtendimentoRepository(this.db).create({phone,name:ownerName??name,purpose:'unclassified',...(this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='erp_experience_origin'").get()?{channel:'WhatsApp'}:{})},true).id
     let referencesChanged=false
     if(!previous.some(link=>link.atendimento_id===at)){
       const linkId=randomUUID()
@@ -369,6 +373,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       referencesChanged=true
     }
+    if(customers.groupCanonicalParticipant(at,contactId,created&&this.unifiedCustomers))referencesChanged=true
     if(!created&&referencesChanged)this.db.prepare('UPDATE atendimentos SET revision=revision+1 WHERE id=?').run(at)
     return at
   }
@@ -380,7 +385,10 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     const plan=this.interaction(jid), id=this.rememberProviderConversation(jid)
     const timestamp=new Date(e.message.timestamp!*1000).toISOString()
     if(e.message.fromMe!==false&&(!allowOutgoingStart||plan.at)){
-      if(plan.at&&this.canonicalChannelSendAllowed(jid))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
+      if(plan.at&&this.canonicalChannelSendAllowed(jid)){
+        this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(plan.at,id,e.message.messageId,timestamp)
+        if(e.message.fromMe===true)recordConfirmedSalesContact(this.db,plan.at,e.message.messageId,timestamp)
+      }
       return
     }
     const handles=this.handles(jid),scope=handles.map(()=>'?').join(',')
@@ -390,7 +398,8 @@ export class LocalConversationAssociations extends ConversationIdentities implem
     let channels=this.db.prepare(`SELECT id FROM customer_records WHERE kind='contact' AND conversation_id IN (${scope})`).all(...handles)
     const customers=new CustomerRepository(this.db)
     const matches=initial.phone?customers.phoneMatches(initial.phone):[]
-    if(!plan.blocked&&initial.phone&&e.message.remoteJidAlt&&channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id){
+    const historicalDialingConflict=!!initial.phone&&customers.hasUnindexedDialingContact(initial.phone)
+    if(!historicalDialingConflict&&!plan.blocked&&initial.phone&&e.message.remoteJidAlt&&channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id){
       const alias=customers.record(String(channels[0]!.id))
       const origin=alias.conversationId?this.providerJid(alias.conversationId):null
       if(origin?.endsWith('@lid')&&customers.reconcileChannelAlias(alias,matches[0]!,initial.phone,handles))
@@ -441,7 +450,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
         return
       }
     }
-    const contactConflict=possibleReview||!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
+    const contactConflict=historicalDialingConflict||possibleReview||!!initial.phone&&normalizeCustomerPhone(initial.phone)!==initial.phone||channels.length>1||matches.length>1||
       (channels.length===1&&matches.length===1&&channels[0]!.id!==matches[0]!.id)||
       incompatible
     // Keep the received message, but require explicit review before associating
@@ -478,6 +487,7 @@ export class LocalConversationAssociations extends ConversationIdentities implem
       }
       at=this.ensureInteraction(jid,target,contactId,initial.phone,initial.name,e.message.fromMe?'authenticated_outbound':'authenticated_inbound')
       this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,id,e.message.messageId,timestamp)
+      if(e.message.fromMe===true)recordConfirmedSalesContact(this.db,at,e.message.messageId,timestamp)
     }
     if(!prior)this.db.prepare('INSERT INTO conversation_initialization VALUES(?,?,?,?,?,?)')
       .run(id,at,e.eventId,this.now(),JSON.stringify(initial),at?(target?'reused':'created'):historical?'closed':'ambiguous')
@@ -521,7 +531,11 @@ export class LocalConversationAssociations extends ConversationIdentities implem
   }
   projection(jid:string) {return this.projections([jid]).get(jid)!}
   recordAccepted(at:string,jid:string,messageId:string) {
-    if(this.members(jid)&&this.links(jid).some(l=>l.atendimento_id===at))this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,this.rememberProviderConversation(jid),messageId,this.now())
+    if(this.members(jid)&&this.links(jid).some(l=>l.atendimento_id===at)){
+      const occurredAt=this.now()
+      this.db.prepare('INSERT OR IGNORE INTO atendimento_contact_events VALUES(?,?,?,?)').run(at,this.rememberProviderConversation(jid),messageId,occurredAt)
+      recordConfirmedSalesContact(this.db,at,messageId,occurredAt)
+    }
   }
   markRead(jid:string, messages:string[]) {
     const id=this.rememberProviderConversation(jid)

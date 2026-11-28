@@ -84,3 +84,37 @@
 .budget-history-row.is-cancelled .budget-history-open,
 .budget-history-row.is-cancelled .budget-history-identity time{color:#8793a2}
 .budget-history-row.is-cancelled .budget-history-letter.is-cancelled::after{background:#8793a2}
+.confirmation-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 12px}
+.confirmation-heading h2{font-size:17px;margin:0}
+.budget-history-row{flex-wrap:wrap}
+.budget-lifecycle{flex-basis:100%;width:100%;padding:4px 6px 9px}
+.budget-lifecycle ol{padding:0;margin:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.budget-lifecycle li{position:relative;text-align:center;color:#8391a3;font-size:10px;display:grid;justify-items:center;gap:5px}
+.budget-lifecycle li::before{content:"";position:absolute;left:-50%;top:4px;width:100%;height:2px;background:#dce3eb}
+.budget-lifecycle li:first-child::before{display:none}
+.budget-lifecycle li>span{position:relative;width:10px;height:10px;border-radius:50%;background:#dce3eb}
+.budget-lifecycle li.complete{color:#326f55;font-weight:650}
+.budget-lifecycle li.complete>span,.budget-lifecycle li.complete::before{background:#73a88a}
+.budget-lifecycle li[aria-current=step]>span{box-shadow:0 0 0 3px #d3eada}
+.budget-lifecycle-stopped{display:block;text-align:center;color:#9c4242;font-size:12px;font-weight:650;margin:6px}
+.budget-lifecycle small{display:block;text-align:center;color:#52687e;margin-top:4px}
+.confirmation-close{margin:20px 0;border-top:1px solid #dce3eb;padding-top:12px}
+.confirmation-close-button{background:transparent;border:1px solid #d5a7a7;border-radius:8px;color:#a04444;padding:9px 12px}
+.confirmation-close-form{background:#fff;border:1px solid #dce3eb;border-radius:8px;padding:12px;display:grid;gap:12px;margin-top:8px}
+.confirmation-close-form textarea{display:block;width:100%;margin-top:4px}
+.confirmation-close-form>div{display:flex;gap:10px}
+
+/* Atendimento-wide decisions follow the list; individual cancellations belong to each budget. */
+.confirmation-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+.confirmation-actions>button:only-child{grid-column:1/-1}
+.confirmation-actions>button{min-height:44px;font:600 13px/1.3 system-ui,sans-serif;white-space:normal;border-radius:8px}
+.confirmation-schedule-button{border:1px solid #173456;background:#173456;color:#fff;padding:9px 12px}
+.confirmation-schedule-button:disabled,.confirmation-close-button:disabled{opacity:.55}
+.confirmation-close-form{margin-top:12px}
+.budget-action-menu{position:relative;flex:none}
+.budget-action-more{display:grid;place-items:center;min-height:43px;width:34px;padding:5px;background:transparent;border:1px solid #dce3eb;border-radius:8px;color:#42617d;cursor:pointer;list-style:none}
+.budget-action-more::-webkit-details-marker{display:none}
+.budget-action-more svg{width:22px;height:22px}
+.budget-action-more:focus-visible{outline:2px solid #2067cc;outline-offset:2px}
+.budget-more-popover{position:absolute;right:0;top:calc(100% + 4px);padding:4px;border:1px solid #dce3eb;border-radius:8px;background:white;z-index:5;box-shadow:0 5px 18px #14244225;width:max-content;max-width:220px}
+.budget-more-popover .budget-action{height:auto;min-height:43px;line-height:1.3;font-size:12px;white-space:normal;padding:9px}

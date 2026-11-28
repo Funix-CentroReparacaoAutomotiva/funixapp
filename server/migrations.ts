@@ -1,5 +1,7 @@
+import { migrateOperationalErp } from './erp/index.ts'
 import {createCustomerIdentitySchema,createShortNumberReviewSchema,registerCustomerPhoneFunction} from './customer-identity-schema.ts'
-import {createProductionSchema} from './production-schema.ts'
+import {addExperienceOperation,createProductionSchema} from './production-schema.ts'
+import {createFinanceSchema} from './finance-schema.ts'
 import {createContactChannelSchema} from './contact-channel-schema.ts'
 import { createCustomerSchema } from './customer-schema.ts'
 import type { DatabaseSync } from 'node:sqlite'
@@ -353,7 +355,42 @@ const migrations: { version: number; apply: (db: DatabaseSync) => void }[] = [
   {version:23,apply:db=>db.exec(`ALTER TABLE atendimentos ADD COLUMN purpose TEXT
     CHECK(purpose IN ('commercial','non_commercial','unclassified'))`)},
   {version:24,apply:createProductionSchema},
-  {version:25,apply:createCustomerIdentitySchema}
+  {version:25,apply:createCustomerIdentitySchema},
+  {version:26,apply:createFinanceSchema},
+  {version:27,apply:addExperienceOperation},
+  {version:28,apply:db=>db.exec(`
+    ALTER TABLE financial_settlements ADD COLUMN payment_method TEXT
+      CHECK(payment_method IN ('pix','cash','boleto','debit','credit','transfer','other'));
+    ALTER TABLE financial_settlements ADD COLUMN installments INTEGER
+      CHECK(installments IS NULL OR (payment_method IS 'credit' AND installments BETWEEN 1 AND 12));
+  `)},
+  {version:29,apply:db=>db.exec(`
+    ALTER TABLE financial_settlements ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0
+      CHECK(discount_cents BETWEEN 0 AND amount_cents);
+    ALTER TABLE financial_settlements ADD COLUMN withheld_iss_cents INTEGER NOT NULL DEFAULT 0
+      CHECK(withheld_iss_cents BETWEEN 0 AND amount_cents-discount_cents);
+    ALTER TABLE financial_settlements ADD COLUMN discount_reason TEXT
+      CHECK((discount_cents=0 AND discount_reason IS NULL) OR
+        (discount_cents>0 AND discount_reason IS NOT NULL AND discount_reason IN ('commercial','service_issue','other')));
+    ALTER TABLE financial_settlements ADD COLUMN invoice_number TEXT
+      CHECK(invoice_number IS NULL OR length(invoice_number) BETWEEN 1 AND 60);
+  `)},
+  {version:30,apply:migrateOperationalErp},
+  {version:31,apply:db=>db.exec(`
+    ALTER TABLE erp_tasks ADD COLUMN atendimento_id TEXT REFERENCES atendimentos(id) ON DELETE SET NULL;
+    CREATE INDEX erp_tasks_atendimento ON erp_tasks(atendimento_id);
+  `)},
+  {version:32,apply:db=>db.exec(`
+    CREATE TABLE atendimento_numbers (
+      number INTEGER PRIMARY KEY AUTOINCREMENT,
+      atendimento_id TEXT NOT NULL UNIQUE REFERENCES atendimentos(id) ON DELETE CASCADE
+    );
+    INSERT INTO atendimento_numbers(atendimento_id)
+      SELECT id FROM atendimentos ORDER BY created_at,id;
+    CREATE TRIGGER atendimento_assign_number AFTER INSERT ON atendimentos BEGIN
+      INSERT INTO atendimento_numbers(atendimento_id) VALUES(NEW.id);
+    END;
+  `)},
 ]
 
 export function migrate(db: DatabaseSync) {
