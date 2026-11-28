@@ -28,7 +28,7 @@ test('V18 work order survives the additive V19 customer/chat migration byte-for-
   assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,18)
   assert.deepEqual(db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id),storedBefore)
   migrate(db)
-  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,32)
+  assert.equal(db.prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v,33)
   assert.deepEqual(db.prepare('SELECT * FROM work_orders WHERE id=?').get(order.id),{...storedBefore,experience_id:null,__proto__:null})
   assert.deepEqual(db.prepare('SELECT snapshot,pdf FROM budget_versions WHERE id=?').get(issued.id),snapshotBefore)
   assert.equal(new WorkOrderRepository(db).get(f.at.id,issued.id).number,order.number)

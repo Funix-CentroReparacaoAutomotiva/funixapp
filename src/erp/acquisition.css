@@ -1,0 +1,28 @@
+.acquisition {display:grid;gap:.8rem;min-width:0;max-width:100%;color:inherit}
+.acquisition-header {display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.acquisition-header h1,.acquisition-header h2,.acquisition p {margin:0}
+.acquisition-list {list-style:none;padding:0;margin:0;display:grid;gap:0}
+.acquisition-list>li {padding:.85rem 0;border-top:1px solid color-mix(in srgb,currentColor 16%,transparent);min-width:0}
+.acquisition-row {display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.55rem;align-items:start;min-width:0}
+.acquisition-code {background:color-mix(in srgb,currentColor 8%,transparent);border-radius:.45rem;padding:.45rem .5rem;font-weight:700;font-size:.9rem;color:inherit}
+.acquisition-desc,.acquisition-state {display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.acquisition-desc {overflow-wrap:anywhere}
+.acquisition-state {align-items:flex-end;text-align:right}
+.acquisition small {opacity:.76;font-size:.75rem}
+.acquisition-status,.acquisition-custody {border-radius:.35rem;padding:.28rem .4rem;font-size:.76rem;font-weight:650;white-space:nowrap;color:#17212c}
+.acquisition-status.status-identified {background:#e2e8f0}
+.acquisition-status.status-requested {background:#fef3c7;color:#92400e}
+.acquisition-status.status-approved {background:#dbeafe;color:#1e40af}
+.acquisition-status.status-received {background:#dcfce7;color:#166534}
+.acquisition-custody.custody-stored {background:#dbeafe;color:#1e40af}
+.acquisition-custody.custody-out {background:#e2e8f0}
+.acquisition button,.acquisition input,.acquisition select {font:inherit;min-height:40px;min-width:0;max-width:100%;border:1px solid color-mix(in srgb,currentColor 28%,transparent);border-radius:.45rem;background:Canvas;color:CanvasText;padding:.38rem .65rem}
+.acquisition button {cursor:pointer;font-size:.82rem}
+.acquisition button:disabled {opacity:.55;cursor:default}
+.acquisition-actions {display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end;margin-top:.65rem}
+.acquisition-edit,.acquisition-filters {display:grid;gap:.65rem}
+.acquisition-edit {margin-top:.65rem;padding:.7rem;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:.5rem}
+.acquisition label {display:grid;gap:.2rem;min-width:0;font-size:.84rem}
+.acquisition-error {color:#b91c1c}
+@media(min-width:650px){.acquisition-filters {grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}.acquisition-edit {grid-template-columns:1fr 1fr auto;align-items:end}.acquisition-edit .acquisition-actions {margin:0}}
+@media(max-width:360px){.acquisition-row {gap:.35rem}.acquisition-code {font-size:.8rem;padding:.35rem}.acquisition-status,.acquisition-custody {font-size:.7rem}.acquisition-desc strong{font-size:.86rem}}

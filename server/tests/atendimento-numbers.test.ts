@@ -7,7 +7,7 @@ import {CustomerRepository} from '../customers.ts'
 test('V32 backfills public numbers without modifying old UUIDs or records; new inserts never reuse a number',()=>{
  const db=openDatabase(':memory:')
  try{
-  db.exec('DROP TRIGGER atendimento_assign_number; DROP TABLE atendimento_numbers; DELETE FROM schema_migrations WHERE version=32')
+  db.exec('DROP TRIGGER atendimento_assign_number; DROP TABLE atendimento_numbers; DROP TABLE erp_component_events; DELETE FROM schema_migrations WHERE version IN (32,33)')
   const repo=new AtendimentoRepository(db), first=repo.create({name:'Sintético A'}),second=repo.create({name:'Sintético B'})
   const original=db.prepare('SELECT * FROM atendimentos ORDER BY id').all()
   migrate(db);const a=repo.get(first.id),b=repo.get(second.id)
