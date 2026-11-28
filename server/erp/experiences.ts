@@ -192,7 +192,8 @@ function legacyNotes(db: DatabaseSync,at: string,source: string,related: string)
   return db.prepare(`SELECT 'atendimento' AS source,id AS relatedId,notes AS body FROM atendimentos WHERE id=?
     UNION ALL SELECT 'diagnostico',d.id,d.notes FROM diagnosis_items d WHERE d.atendimento_id=?
     UNION ALL SELECT 'diagnostico',d.id,s.notes FROM diagnosis_services s JOIN diagnosis_items d ON d.id=s.diagnosis_item_id
-    WHERE d.atendimento_id=?`).all(at,at,at).filter(row => String(row.body ?? '').trim() &&
+    WHERE d.atendimento_id=?
+    UNION ALL SELECT 'diagnostico',c.piece_id,c.notes FROM component_items c WHERE c.atendimento_id=?`).all(at,at,at,at).filter(row => String(row.body ?? '').trim() &&
     (!source || row.source === source) && (!related || row.relatedId === related))
 }
 

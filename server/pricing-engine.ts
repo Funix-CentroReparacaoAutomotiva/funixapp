@@ -10,9 +10,11 @@ import { decimal } from './pricing-config.ts'
 export function negotiation(input:unknown):Negotiation {
  const n=inputObject(input,['mode','value','acknowledgeResidual'])
  if(n.mode==='none') {if(n.value!==undefined || n.acknowledgeResidual!==undefined)invalid('Não combine modalidades de negociação.');return {mode:'none'}}
- if(n.mode!=='discount' && n.mode!=='adjust')invalid('Modalidade de negociação inválida.')
+ if(n.mode!=='discount' && n.mode!=='discount_percent' && n.mode!=='adjust')invalid('Modalidade de negociação inválida.')
  if(n.acknowledgeResidual!==undefined && typeof n.acknowledgeResidual!=='boolean')invalid('Ciência do resíduo inválida.')
- return {mode:n.mode,value:decimal(n.value),acknowledgeResidual:n.acknowledgeResidual===true}
+ const value=decimal(n.value)
+ if(n.mode==='discount_percent' && Q.from(value).cmp(Q.from('100'))>0)invalid('Informe um desconto entre 0% e 100%.')
+ return {mode:n.mode,value,acknowledgeResidual:n.acknowledgeResidual===true}
 }
 function required(value:string|null|undefined,label:string):Q {if(value===null || value===undefined)throw new Error(label+' não configurado.');return Q.from(value)}
 
@@ -100,6 +102,14 @@ export function calculate(items:DiagnosisItem[],components:ComponentItem[],catal
   const value=exact(deal.value)
   if(deal.mode==='discount'){
    if(discountEligibleSubtotal===null || value.cmp(discountEligibleSubtotal)>0)errors.push('Desconto supera o subtotal dos serviços descontáveis.');else discount=value
+  }else if(deal.mode==='discount_percent'){
+   if(value.cmp(Q.from('100'))>0 || value.cmp(ZERO)<0)errors.push('Informe um desconto entre 0% e 100%.')
+   else if(discountEligibleSubtotal===null)errors.push('Subtotal dos serviços descontáveis pendente.')
+   else {
+    // Monetary discounts are rounded to cents, without ever exceeding eligible services.
+    const rounded=new Q(discountEligibleSubtotal.mul(value).add(Q.from('0.5')).floor(),100n)
+    discount=rounded.cmp(discountEligibleSubtotal)>0?discountEligibleSubtotal:rounded
+   }
   }else {
    target=value
    if(value.cmp(serviceGross)<=0)discount=serviceGross.sub(value)

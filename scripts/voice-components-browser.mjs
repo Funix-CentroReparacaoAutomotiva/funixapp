@@ -106,7 +106,7 @@ try{
    await page.locator('.approved-finance .summary').click();assert.match(await money.inputValue(),/123,45/);
    await page.waitForTimeout(100)
    const launcherExpanded=await launcher.boundingBox()
-   assert(launcherBefore&&launcherExpanded&&Math.abs(launcherBefore.y-launcherExpanded.y)<2,'expanding the financial details must not move the voice launcher')
+   assert(launcherBefore&&launcherExpanded&&launcherExpanded.y<launcherBefore.y-10,'the voice launcher must follow the expanded finance panel')
    await page.locator('.approved-finance .summary').click()
    mode='zero';await recordVoice(page,audio);assert.equal(await panel.locator('.voice-entry-label').first().innerText(),'Parafuso fixador')
    await toggleComponent(panel.locator('.voice-component-values').first(),false);await compactRow(panel.locator('.voice-component-values').first());await panel.screenshot({path:artifacts+'/off-'+width+'.png'});await apply();const zero=components.list(f.at.id)[1];assert.equal(zero.manualPrice,'0');assert.equal(zero.name,'PARAFUSO FIXADOR');assert.equal(f.scenarios.list(f.at.id).find(s=>s.id===f.scenario.id).componentFlags[zero.id],false)

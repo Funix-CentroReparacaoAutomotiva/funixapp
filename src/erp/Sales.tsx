@@ -68,20 +68,19 @@ function Comments({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}
   const write=useWrite(()=>{setRequestId(crypto.randomUUID());onSave()})
   const entries=read.data?.items.filter(entry=>entry.kind!=='event')??[]
   return <section className="sales-comments">
-    <h2>Comentários</h2>
+    <h2>Anotações</h2>
     <form className="erp-sales-form" key={requestId} onSubmit={event=>{
       event.preventDefault();const form=formData(event)
       void write.save(endpoint+'/records/'+id+'/comment',{requestId,comment:field(form,'comment')})
     }}>
-      <label className="sales-comment-field"><span className="sr-only">Comentário</span><textarea name="comment" placeholder="Adicionar comentário…" required maxLength={8000} rows={2}/></label>
-      <button disabled={write.busy}>Registrar comentário</button><WriteStatus write={write}/>
+      <label className="sales-comment-field"><span className="sr-only">Anotação</span><textarea name="comment" placeholder="Adicionar anotação…" required maxLength={8000} rows={2}/></label>
+      <button disabled={write.busy}>Registrar anotação</button><WriteStatus write={write}/>
     </form>
     <ReadStatus read={{...read,loading:read.loading&&!read.data}}/>
-    {entries.length?<ol className="erp-sales-events">{entries.map(entry=><li key={entry.id}>
+    {entries.length||read.data?.legacyNotes.length?<ol className="erp-sales-events">{entries.map(entry=><li key={entry.id}>
       <time dateTime={entry.occurredAt}>{dateLabel(entry.occurredAt)}</time><small> · {commentSource[entry.source]??entry.source}{entry.author&&entry.author!=='funix_operator'?' · '+entry.author:''}</small><p>{entry.body}</p>
       {entry.attachments.map((file,index)=><a key={index} download={file.name} href={`data:${file.type};base64,${file.data}`}>{file.name}</a>)}
-    </li>)}</ol>:!read.loading&&<p className="sales-comments-empty">Nenhum comentário registrado.</p>}
-    {read.data?.legacyNotes.some(note=>note.source!=='atendimento')&&<details><summary>Observações dos diagnósticos</summary><ul>{read.data.legacyNotes.filter(note=>note.source!=='atendimento').map((note,index)=><li key={index}>{note.body}</li>)}</ul></details>}
+    </li>)}{read.data?.legacyNotes.map((note,index)=><li key={note.relatedId+":"+index}><small>{note.source==='atendimento'?'Anotação anterior':commentSource[note.source]??note.source}</small><p>{note.body}</p></li>)}</ol>:!read.loading&&<p className="sales-comments-empty">Nenhuma anotação registrada.</p>}
   </section>
 }
 const stageTones:Record<string,string>={'novo-lead':'neutral','aguardando-dados':'blue','em-negociacao':'yellow','morno':'orange','frio':'blue','rejeitados':'neutral'}
@@ -253,10 +252,10 @@ function LinkedAtendimento({experienceId,onOpen}:{experienceId:string;onOpen:(id
     </form></details>
 }
 function LinkExistingAtendimento({record,onSave}:{record:Atendimento;onSave:()=>void}) {
-  const [open,setOpen]=useState(false)
-  const read=useRead<{items:{id:string;customer:string;vehicle:string;createdAt:string}[]}>(open?'/api/erp/experiences/sequencia/candidatos?atendimentoId='+encodeURIComponent(record.id):null)
+  const read=useRead<{items:{id:string;customer:string;vehicle:string;createdAt:string}[]}>('/api/erp/experiences/sequencia/candidatos?atendimentoId='+encodeURIComponent(record.id),record.revision)
   const write=useWrite(onSave)
-  return <details className="erp-sales-detail" onToggle={event=>setOpen(event.currentTarget.open)}><summary>Vincular a uma experiência anterior</summary>
+  if(!read.data?.items.length)return null
+  return <details className="erp-sales-detail"><summary>Vincular a uma experiência anterior</summary>
     <ReadStatus read={read}/>{read.data?.items.length?<form className="erp-sales-form" onSubmit={event=>{event.preventDefault();const form=formData(event);void write.save('/api/erp/experiences/sequencia/vincular',{atendimentoId:record.id,experienceId:field(form,'experienceId'),origin:field(form,'origin')})}}>
       <label>Experiência anterior<select name="experienceId" required><option value="">Selecione</option>{read.data.items.map(item=><option key={item.id} value={item.id}>{item.vehicle} · {item.customer} · {dateLabel(item.createdAt)}</option>)}</select></label>
       <label>Origem<select name="origin" required><option value="">Selecione</option><option value="recurrence">Recorrência</option><option value="rework">Retrabalho</option></select></label>

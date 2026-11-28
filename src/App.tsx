@@ -1,3 +1,4 @@
+import {ApprovedIcon} from './ApprovedIcon'
 import Workshop, { WorkshopPhaseSettings } from './erp/Workshop'
 import Sales, { SalesSettings, SalesRecord } from './erp/Sales'
 import Stock from './erp/Stock'
@@ -91,6 +92,7 @@ function App() {
   const [scenarioContext] = useState(() => new Map<string,string>())
   const dirty = useRef(false), negotiationDirty = useRef(false), saving = useRef(false), commercialDirty=useRef(false), commercialBusy=useRef(false)
   const [diagnosisNoteSlot,setDiagnosisNoteSlot]=useState<HTMLElement|null>(null)
+  const [pieceHeaderSlot,setPieceHeaderSlot]=useState<HTMLDivElement|null>(null)
   const [scenarioSlot, setScenarioSlot] = useState<HTMLDivElement | null>(null)
   const viewport = useRef<HTMLDivElement>(null), board = useRef<HTMLDivElement>(null), modal = useRef<HTMLDivElement>(null)
   const [positions] = useState(() => new Map<string, { top: number; left: number }>())
@@ -256,16 +258,11 @@ function App() {
       if(surface!==observed){if(observed)resize.unobserve(observed);observed=surface;if(surface)resize.observe(surface)}
       const offset=surface?Math.max(0,shell.getBoundingClientRect().bottom-surface.getBoundingClientRect().top):0
       shell.style.setProperty('--finance-height',offset+'px')
-      // The round launcher stays anchored to the collapsed commercial footer;
-      // expanding/collapsing its details must never move the pointer target.
       const nav=root.querySelector('.workspace-record-pages')
-      const compactHeight=(nav?.getBoundingClientRect().height??0)
-        +(surface?.querySelector('.summary')?.getBoundingClientRect().height??0)
-        +(surface?.querySelector('.budget-actions')?.getBoundingClientRect().height??0)
-      shell.style.setProperty('--copilot-anchor-height',compactHeight+'px')
+      shell.style.setProperty('--copilot-anchor-height',Math.max(offset,nav?.getBoundingClientRect().height??0)+'px')
     }
     const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure)}
-    const resize=new ResizeObserver(schedule);resize.observe(root)
+    const resize=new ResizeObserver(measure);resize.observe(root)
     const mutations=new MutationObserver(schedule);mutations.observe(root,{childList:true,subtree:true})
     measure();return()=>{resize.disconnect();mutations.disconnect();cancelAnimationFrame(frame)}
   },[isDetail,tab,screen])
@@ -419,24 +416,24 @@ function App() {
           </>}
         </>}
       </main> : <>
-        <header className="detail-header">{internalScreen?<><button aria-label={screen==='peca'?'Voltar aos Diagnósticos':'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button><h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='peca'?'Peça':screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<>
+        <header className="detail-header">{internalScreen?<><button aria-label={screen==='peca'?'Voltar aos Diagnósticos':'Voltar à tela anterior'} title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button>{screen==='peca'?<div className="piece-header-slot" ref={setPieceHeaderSlot}/>:<h1 tabIndex={-1}>{(contextTitle?.key===routeKey?contextTitle.title:'')||(screen==='comparacao'?'Comparação de cenários':screen==='experiencia'?'Agendamento e experiência':'Orçamentos emitidos')}</h1>}{screen==='peca'&&<span className="diagnosis-note-slot" ref={setDiagnosisNoteSlot}/>}</>:<>
           <button aria-label="Voltar à visão anterior" title="Voltar" className="back-detail" onClick={goBack}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 5-7 7 7 7M4 12h16"/></svg></button>
           {record?.displayNumber&&<span className="detail-number">{record.displayNumber}</span>}<div className="detail-contact"><span className="detail-contact-lines"><strong>{record?detailName:'Atendimento'}</strong>{session?.authenticated&&record&&<span className="detail-phone">{detailPhone}</span>}</span></div>
           <div className="detail-identity"><strong>{record?.plate||'—'}</strong><span>{record?vehicleLabel(record)||'Veículo não informado':loading?'Carregando…':''}</span></div>
-          {quoteWorkspace&&session?.authenticated&&record&&<div className="scenario-slot" ref={setScenarioSlot}/>}
-          {session?.authenticated&&record&&<button type="button" className="workspace-icon record-notes-button" aria-label="Anotações" onClick={()=>{if(commercialSummary){document.querySelector('.sales-comments')?.scrollIntoView({block:'start'});return}navigate(route.path+'?aba=resumo&notas=1',true,{returnTo:window.history.state?.returnTo||preferredPage(module)})}}><WorkspaceIcon name="document"/></button>}
+          {session?.authenticated&&record&&<div className="scenario-slot" ref={setScenarioSlot}/>}
+          {session?.authenticated&&record&&<button type="button" className="workspace-icon record-notes-button" aria-label="Anotações" onClick={()=>{if(commercialSummary){document.querySelector('.sales-comments')?.scrollIntoView({block:'start'});return}navigate(route.path+'?aba=resumo&notas=1',true,{returnTo:window.history.state?.returnTo||preferredPage(module)})}}><ApprovedIcon name="note"/></button>}
           {session?.authenticated&&record&&<TaskCenter recordId={record.id} openRecord={id=>id===detailId||navigate('/atendimentos/'+encodeURIComponent(id)+'?aba=resumo',false,{returnTo:window.history.state?.returnTo||preferredPage(module)})}/>}
         </>}</header>
         {!session?.authenticated ? <div className="detail-content">{login}</div> : loading ? <Notice title="Carregando Atendimento…" /> : failure ? <Notice title="Não foi possível abrir o Atendimento" error retry={() => setReload(value => value + 1)}>{failure}</Notice> : record && <>
           {savedMessage && <p className="at-save-success" role="status">{savedMessage}</p>}
-          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onCommercialDirty} onBusy={onCommercialBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} data={<SalesRecord key={record.id} scrollNotes={params.get('notas')==='1'} id={record.id} onDirty={onDirty} onBusy={onBusy} onOpen={openCommercial} onAutoSaved={autosaved} onMessage={cid=>navigate(route.path+'?aba=chat&conversa='+encodeURIComponent(cid),true,{returnTo:window.history.state?.returnTo||preferredPage(module)})} onAuthRequired={expireSession}/>} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} drafts={chatDrafts} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
+          {<CommercialPanel key={`${record.id}:${commercialVersion}`} atendimentoId={record.id} onScheduleSaved={reloadScheduledRecord} refreshVersion={voiceRefreshVersion} onVoiceContext={setVoiceContext} voiceReviewActive={voiceReviewActive} tab={tab} scenarioContext={scenarioContext} onDirty={onCommercialDirty} onBusy={onCommercialBusy} onNegotiationDirty={onNegotiationDirty} scenarioSlot={scenarioSlot} pieceHeaderSlot={pieceHeaderSlot} diagnosisNoteSlot={diagnosisNoteSlot} screen={screen} pieceId={params.get('peca')} versionId={params.get('versao')} onView={openView} onBack={goBack} onTitle={onContextTitle} scrollPositions={positions} data={<SalesRecord key={record.id} scrollNotes={params.get('notas')==='1'} id={record.id} onDirty={onDirty} onBusy={onBusy} onOpen={openCommercial} onAutoSaved={autosaved} onMessage={cid=>navigate(route.path+'?aba=chat&conversa='+encodeURIComponent(cid),true,{returnTo:window.history.state?.returnTo||preferredPage(module)})} onAuthRequired={expireSession}/>} chat={<><ConversationContext key={record.id + ':' + chatContextVersion} atendimentoId={record.id} conversationId={params.get('conversa')} linkedHistory={params.get('leitura')==='1'} onSelect={(id,cid,linkedHistory,automatic)=>{if(automatic&&editor)return;navigate(`/atendimentos/${id}?aba=chat&conversa=${cid}${linkedHistory?'&leitura=1':''}`,automatic)}}/><ChatPanel key={record.id + ':' + (params.get('conversa') ?? '') + ':' + chatContextVersion} atendimentoId={record.id} evolutionConversationId={params.get('conversa')} drafts={chatDrafts} linkedHistory={params.get('leitura')==='1'} onUnauthorized={expireSession}>
             <div className="record-summary at-record-summary"><p>Consulte as informações do cliente e do veículo na aba Dados.</p></div>
           </ChatPanel></>} />}
         </>}
-        {!internalScreen&&session?.authenticated&&record&&<nav className="workspace-record-pages" aria-label="Ações do Atendimento">
+        {(!internalScreen||screen==='peca')&&session?.authenticated&&record&&<nav className="workspace-record-pages" aria-label="Ações do Atendimento">
           {([{label:'Dados',icon:'conta',query:'aba=resumo',active:commercialSummary},{label:'WhatsApp',icon:'conversas',query:'aba=chat',active:!commercialSummary&&tab==='chat'&&!screen},
-            {label:'Diagnóstico',icon:'document',query:'aba=diagnosticos',active:quoteWorkspace},{label:'Confirmação',icon:'calendar',query:'aba=confirmacao',active:confirmation}] as const).map(item=>
-            <button key={item.label} type="button" aria-current={item.active?'page':undefined} onClick={()=>{if(!item.active||window.location.pathname+window.location.search!==routeKey){const next=new URLSearchParams(item.query);for(const key of ['conversa','leitura']){const value=params.get(key);if(value)next.set(key,value)}if(navigate(route.path+'?'+next,true,{returnTo:window.history.state?.returnTo||preferredPage(module)}))setCopilotOpen(false)}}}><WorkspaceIcon name={item.icon}/><span>{item.label}</span></button>)}
+            {label:'Diagnóstico',icon:'document',query:'aba=diagnosticos',active:quoteWorkspace||screen==='peca'},{label:'Confirmação',icon:'calendar',query:'aba=confirmacao',active:confirmation}] as const).map(item=>
+            <button key={item.label} type="button" aria-current={item.active?'page':undefined} onClick={()=>{if(screen==='peca'||!item.active||window.location.pathname+window.location.search!==routeKey){const next=new URLSearchParams(item.query);for(const key of ['conversa','leitura']){const value=params.get(key);if(value)next.set(key,value)}if(navigate(route.path+'?'+next,true,{returnTo:window.history.state?.returnTo||preferredPage(module)}))setCopilotOpen(false)}}}><WorkspaceIcon name={item.icon}/><span>{item.label}</span></button>)}
         </nav>}
       </>}
       </TaskRecordContext.Provider>
@@ -444,7 +441,7 @@ function App() {
     </div>
     {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
       title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}
-    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&!internalScreen?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && !internalScreen)} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
+    <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&(!internalScreen||screen==='peca')?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && (!internalScreen||screen==='peca'))} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }
       if (event.key === 'Tab') {

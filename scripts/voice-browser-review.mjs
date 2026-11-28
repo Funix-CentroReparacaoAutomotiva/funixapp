@@ -155,6 +155,7 @@ try{
    assert(await originalPanel.evaluate(el=>el.isConnected),'voice refresh must preserve CommercialPanel')
    assert.match(await money.inputValue(),/123,45/,'R$ 123,45 draft must survive voice refresh')
    assert.equal(await page.getByRole('button',{name:'Negociação',exact:true}).getAttribute('aria-pressed'),'true')
+   await page.getByRole('button',{name:'Confirmação',exact:true}).click()
    const previewResponse=page.waitForResponse(r=>r.url().endsWith('/orcamentos/previa')&&r.request().method()==='POST')
    await page.getByRole('button',{name:'Emitir',exact:true}).click()
    const preview=await previewResponse
@@ -163,7 +164,7 @@ try{
    const previewBody=await preview.json()
    assert.equal(previewBody.snapshot.compositionRevision,f.pricing.settings(f.at.id).revision,'preview must use refreshed revisions')
    // No real renderer is configured: the PDF request may fail, but this must not reset the draft.
-   await page.waitForFunction(()=>!document.querySelector('.approved-finance button.emit')?.disabled)
+   await page.waitForFunction(()=>!document.querySelector('.confirmation-emit')?.disabled)
    assert.match(await money.inputValue(),/123,45/)
    await page.screenshot({path:screenshotDir+'/negotiation-preserved-390.png'})
    console.log('PASS R$ 123,45 draft before interpretation and changed after planning preserved; fresh preview uses adjust 123.45')

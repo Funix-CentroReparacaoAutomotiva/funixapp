@@ -325,3 +325,16 @@
  .workspace-record-context .approved-finance .summary .metric span {font-size:10px;letter-spacing:-.2px}
 }
 @media(max-width:350px){.workspace-record-context .approved-finance .summary .metric span{font-size:9px}.workspace-record-context .detail-header .detail-phone{font-size:9px}}
+/* Commercial record polish — preserve established pricing and lifecycle actions. */
+.workspace-record-context .piece-header-slot{flex:1;min-width:0}
+.piece-header-content{display:flex;gap:8px;align-items:center;min-width:0}
+.piece-header-content .piece-search-picker{flex:1;min-width:0;position:relative}
+.piece-header-content>strong{font-size:clamp(11px,3vw,15px);white-space:nowrap}
+.piece-header-content .piece-search-trigger{min-height:34px;font-weight:650}
+.workspace-record-context .diagnosis-note-slot .plain-action{display:grid;place-items:center;background:none;border:0;color:inherit;padding:5px}
+.confirmation-emit-slot{flex:none}
+.confirmation-emit{padding:7px 10px;border:0;border-radius:7px;color:#172b45;background:#ffae5e;font-weight:700;font-size:12px;white-space:nowrap}
+.confirmation-emit:disabled{opacity:.45}
+.workspace-record-context .diagnosis-category-summary{display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;gap:8px}
+.workspace-record-context .diagnosis-category-summary>span:not(.sr-only){white-space:nowrap;align-items:center}
+@media(max-width:390px){.workspace-record-context .diagnosis-category-summary{font-size:9px;gap:4px}.workspace-record-context .diagnosis-category-summary svg{width:11px;height:11px}.confirmation-emit{font-size:10px;padding:6px}}

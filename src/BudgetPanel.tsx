@@ -3,6 +3,9 @@ import type {BudgetPreview,BudgetVersion} from '../shared/pricing'
 import type {WorkOrder} from '../shared/work-order'
 import {correctOpticalWorkOrderScope} from '../shared/optical-work-order'
 import type {Atendimento} from '../shared/contracts'
+import type {SalesContext} from '../shared/sales'
+import type {ProductionOverview, BudgetLifecycleState} from '../shared/production'
+import {budgetLifecycleLabels} from '../shared/production'
 import {deliveryDateLabel,validDeliveryDate} from '../shared/delivery-date'
 import {api} from './api'
 import type {RequestFailure} from './api'
@@ -23,12 +26,15 @@ export async function downloadIssuedPdf(at:string,version:Pick<BudgetVersion,'id
  }finally{setTimeout(()=>URL.revokeObjectURL(url),5000)}
 }
 
-export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onOpenProduction}:{at:string;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenProduction:()=>void;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
+export function BudgetPanel({at,refresh,emitSlotRef,onScheduleSaved,onBusy,onAuthRequired,externalBusy,versionId,onTitle,onOpenVersion,onOpenProduction}:{at:string;refresh:number;emitSlotRef:(element:HTMLSpanElement|null)=>void;onScheduleSaved:()=>void;onBusy:(v:boolean)=>void;onAuthRequired:()=>void;externalBusy:boolean;versionId:string|null;onOpenProduction:()=>void;onOpenVersion:(id:string)=>void;onTitle:(title:string)=>void}){
+ const [status,setStatus]=useState<ProductionOverview|null>(null)
+ const [recordSummary,setRecordSummary]=useState<{record:Atendimento;context:SalesContext;experienceId:string|null}|null>(null)
+ const [closing,setClosing]=useState(false),[closeReason,setCloseReason]=useState(''),[refused,setRefused]=useState(false)
  const [versions,setVersions]=useState<VersionMeta[]>([]),[version,setVersion]=useState<BudgetVersion|null>(null),[order,setOrder]=useState<WorkOrder|null>(null),[checkingOrder,setCheckingOrder]=useState(false),[error,setError]=useState(''),[ownBusy,setBusy]=useState(false)
  const [orderHistory,setOrderHistory]=useState<WorkOrder[]>([]),[deliveryPrompt,setDeliveryPrompt]=useState<{id:string;atRevision:number;revision:number}|null>(null),[deliveryDraft,setDeliveryDraft]=useState('')
  const dialogRef=useRef<HTMLDialogElement>(null)
  useEffect(()=>{if(deliveryPrompt&&dialogRef.current&&!dialogRef.current.open)dialogRef.current.showModal()},[deliveryPrompt])
- const load=useCallback(async()=>{const entries=await api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`);setVersions(entries);return entries},[at])
+ const load=useCallback(async()=>{const [entries,overview,summary]=await Promise.all([api<VersionMeta[]>(`/api/atendimentos/${encodeURIComponent(at)}/orcamentos`),api<ProductionOverview>(`/api/atendimentos/${encodeURIComponent(at)}/experiencia`),api<{record:Atendimento;context:SalesContext;experienceId:string|null}>(`/api/erp/sales/records/${encodeURIComponent(at)}/summary`)]);setVersions(entries);setStatus(overview);setRecordSummary(summary);return entries},[at])
  const requireAuth=useEffectEvent(onAuthRequired)
  const selected=version?.id===versionId?version:null
  const busy=ownBusy||externalBusy
@@ -50,7 +56,7 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
     .finally(()=>{if(!controller.signal.aborted)setCheckingOrder(false)})
   return()=>controller.abort()
  },[at,versionId,load])
- useEffect(()=>{if(versionId)return;let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load,versionId])
+ useEffect(()=>{if(versionId)return;let active=true;Promise.resolve().then(load).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[load,versionId,refresh])
  const budgetUrl=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/pdf?view=1`
  const osPath=(id:string)=>`/api/atendimentos/${encodeURIComponent(at)}/orcamentos/${encodeURIComponent(id)}/os`
  const orderUrl=(id:string,revision=1)=>osPath(id)+(revision>1?'/revisoes/'+revision:'/')+(revision>1?'/pdf':'pdf')
@@ -104,10 +110,26 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
    await load()
   })
  }
+ async function closeRecord(){
+  if(!recordSummary||recordSummary.experienceId)return
+  const {record,context}=recordSummary
+  if(!record.closedAt&&!closeReason.trim())return
+  await operation(async()=>{
+   const patch=record.closedAt?{revision:record.revision,closed:false,...(record.stage==='rejeitados'?{stage:'novo-lead',explicitRefusal:false,rejectionReason:''}:{})}:{revision:record.revision,closed:true,rejectionReason:closeReason.trim(),...(refused&&record.purpose!=='non_commercial'?{stage:'rejeitados',explicitRefusal:true}:{})}
+   await api(`/api/erp/sales/records/${encodeURIComponent(at)}/data`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({record:patch,contextRevision:context.revision})})
+   setClosing(false);setCloseReason('');setRefused(false);await load();onScheduleSaved()
+  })
+ }
+ const lifecycle=(v:VersionMeta)=>{
+  const state:BudgetLifecycleState|null=v.cancelledAt?'cancelled':status?.budgets.find(b=>b.id===v.id)?.state??null
+  const steps=[['negotiating','Emitido'],['consented','Consentido'],['authorized','Autorizado'],['executed','Executado']] as const
+  const index=steps.findIndex(([id])=>id===state)
+  return <div className="budget-lifecycle"><ol aria-label="Etapas do orçamento">{steps.map(([id,label],i)=><li key={id} className={i===0||i<=index?'complete':''} aria-current={i===index?'step':undefined}><span aria-hidden="true"/>{label}</li>)}</ol>{(state==='cancelled'||state==='rejected')&&<strong className="budget-lifecycle-stopped">{budgetLifecycleLabels[state]}</strong>}{!state&&<small>Demais etapas não registradas</small>}</div>
+ }
  const formatDate=(date:string)=>new Date(date).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})
  const selectedMeta=versions.find(v=>v.id===versionId)
  return <section aria-label="Orçamentos emitidos">{error&&!deliveryPrompt&&<p role="alert" className="form-error">{error}</p>}
- <button type="button" className="fh-filter" disabled={busy} onClick={onOpenProduction}>Agendar</button>
+ <div className="confirmation-heading"><h2>{versionId?"Orçamento":"Confirmação"}</h2><div className="confirmation-header-actions">{!versionId&&<span className="confirmation-emit-slot" ref={emitSlotRef}/>}<button type="button" className="fh-filter" disabled={busy} onClick={onOpenProduction}>Agendar</button></div></div>
  {deliveryPrompt&&<dialog ref={dialogRef} className="os-delivery-dialog" aria-labelledby="os-delivery-title" onCancel={event=>{event.preventDefault();if(!busy)setDeliveryPrompt(null)}}>
   <h2 id="os-delivery-title">Emitir nova revisão da OS</h2>
   <p>Confirme a autorização de execução. Informe a data prevista de entrega, caso já esteja definida.</p>
@@ -151,9 +173,10 @@ export function BudgetPanel({at,onBusy,onAuthRequired,externalBusy,versionId,onT
    <DocumentButton kind="or" href={budgetUrl(v.id)} state="view" cancelled={!!v.cancelledAt} title={`Visualizar orçamento ${v.documentNumber??v.label}`}/>
    <DocumentButton kind="os" href={v.workOrderNumber&&!v.workOrderNeedsReissue?orderUrl(v.id,v.workOrderRevision??1):undefined} onClick={v.workOrderNeedsReissue?()=>onOpenVersion(v.id):undefined} state={v.workOrderNumber?'view':'unavailable'} cancelled={!!v.cancelledAt&&!!v.workOrderNumber} disabled={busy||!v.workOrderNumber} title={v.workOrderNeedsReissue?'Consultar OS desatualizada':v.workOrderNumber?'Visualizar '+v.workOrderNumber:'OS ainda não emitida'}/>
    <DocumentButton kind="cancel" onClick={()=>cancelBudget(v.id)} disabled={busy||!!v.cancelledAt} title={v.cancelledAt?'Orçamento cancelado':'Cancelar orçamento e OS'}/>
-  </div>
+  </div>{lifecycle(v)}
  </div>)}
  </section>)}{!versions.length&&<p className="at-form-hint">Nenhuma versão emitida.</p>}
+ {recordSummary&&!recordSummary.experienceId&&<section className="confirmation-close"><button type="button" className="confirmation-close-button" disabled={busy} onClick={()=>setClosing(v=>!v)}>{recordSummary.record.closedAt?'Reabrir atendimento':'Encerrar atendimento'}</button>{recordSummary.record.closedAt&&recordSummary.record.rejectionReason&&<p>{recordSummary.record.rejectionReason}</p>}{closing&&<div className="confirmation-close-form"><p>{recordSummary.record.closedAt?'Deseja reabrir o Atendimento?':'Registre o motivo do encerramento.'}</p>{!recordSummary.record.closedAt&&<><label>Motivo<textarea aria-label="Motivo do encerramento" rows={2} maxLength={2000} value={closeReason} onChange={e=>setCloseReason(e.target.value)}/></label>{recordSummary.record.purpose!=='non_commercial'&&<label><input type="checkbox" checked={refused} onChange={e=>setRefused(e.target.checked)}/> Houve recusa explícita do cliente (venda perdida)</label>}</>}<div><button type="button" onClick={()=>setClosing(false)} disabled={busy}>Cancelar</button><button type="button" className="primary-btn" disabled={busy||(!recordSummary.record.closedAt&&!closeReason.trim())} onClick={()=>void closeRecord()}>{recordSummary.record.closedAt?'Confirmar reabertura':'Confirmar encerramento'}</button></div></div>}</section>}
  </>}
  </section>
 }

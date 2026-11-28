@@ -258,3 +258,4 @@
   .sales-record .at-form-inline .at-customer-context h3,.sales-record .at-form-inline .at-customer-context .at-refusal,.sales-record .at-form-inline .at-customer-context .at-closed-control,.sales-record .at-form-inline .at-customer-context .at-form-hint,.sales-record .at-form-inline .at-inline-classify {grid-column:1/-1;}
 }
 @media(max-width:480px){.sales-comments .erp-sales-form {grid-template-columns:minmax(0,1fr);}.sales-comments .erp-sales-form>button{justify-self:end;}.sales-record-heading strong {font-size:1rem;}}
+.sales-record .sales-comments{background:transparent;border:0;border-top:1px solid #dbe4ed;border-radius:0;padding:12px 0;margin-top:12px}

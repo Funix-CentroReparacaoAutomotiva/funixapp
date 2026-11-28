@@ -110,3 +110,10 @@
 .approved-finance .select-wrap .mr-percent{appearance:none;display:block;width:100%;min-width:0;box-sizing:border-box;background:var(--field);border:1px solid #607b9e;border-radius:999px;color:white;font-size:13px;font-weight:650;text-align:center;padding:0 22px 0 6px;height:37px;outline-offset:2px;color-scheme:dark}
 .approved-finance .mr-suffix{position:absolute;right:9px;top:10px;font-size:13px;pointer-events:none}
 @media(max-width:400px){.approved-finance .select-wrap .mr-percent{font-size:12px;padding-right:16px;padding-left:3px}.approved-finance .mr-suffix{right:5px}}
+.approved-finance .finance-group-title{margin:0;color:#d2e4f9;font-size:11px;text-transform:uppercase;letter-spacing:.065em;font-weight:650}
+.approved-finance .finance-percent-hint{grid-column:1/-1;color:#d1e0f2;font-size:11px}
+.approved-finance .neg-fields{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.approved-finance .neg-fields .segments{flex:1 1 220px;min-width:0}
+.approved-finance .neg-fields .money{flex:1 1 100px;min-width:0}
+.approved-editor .line-annotation{display:grid;place-items:center;min-width:24px;background:transparent;border:0;color:#52718b;padding:3px}
+.approved-editor .line-annotation svg{width:17px;height:17px}
