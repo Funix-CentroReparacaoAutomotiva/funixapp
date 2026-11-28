@@ -60,7 +60,7 @@ export default function AcquisitionComponents({experienceId,readOnly=false,stock
       <label>Aquisição<select value={filter} onChange={event=>setFilter(event.target.value)}>
         <option value="">Todos</option>{acquisitionStatuses.map(status=><option key={status} value={status}>{acquisitionLabels[status]}</option>)}
       </select></label>
-      <label>Situação física<select value={custodyFilter} onChange={event=>setCustodyFilter(event.target.value)}>
+      <label>Situação física<select aria-label="Situação física" value={custodyFilter} onChange={event=>setCustodyFilter(event.target.value)}>
         <option value="">Todas</option><option value="stored">Armazenado</option><option value="out">Saiu</option>
       </select></label>
     </div>}
@@ -98,9 +98,9 @@ export default function AcquisitionComponents({experienceId,readOnly=false,stock
           }}>{item.custody==='stored'?'Registrar saída':'Registrar retorno'}</button>}
         </div>}
         {!readOnly&&edit===keyFor(item)&&<form className="acquisition-edit" key={keyFor(item)+':'+item.revision} onSubmit={event=>submit(event,item)}>
-          <label>Origem<select name="origin" defaultValue={item.origin} required><option value="">A definir</option>
+          <label>Origem<select aria-label="Origem" name="origin" defaultValue={item.origin} required><option value="">A definir</option>
             {acquisitionOrigins.map(origin=><option value={origin} key={origin}>{origin}</option>)}</select></label>
-          <label>Status<select name="status" defaultValue={item.status}>
+          <label>Status<select aria-label="Status" name="status" defaultValue={item.status}>
             {acquisitionStatuses.slice(acquisitionStatuses.indexOf(item.status)).map(status=><option value={status} key={status}>{acquisitionLabels[status]}</option>)}</select></label>
           <div className="acquisition-actions"><button type="submit" disabled={busy||loading}>Confirmar</button><button type="button" disabled={busy} onClick={()=>setEdit('')}>Cancelar</button></div>
         </form>}
