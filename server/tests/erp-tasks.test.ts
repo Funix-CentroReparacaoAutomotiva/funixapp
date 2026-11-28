@@ -94,7 +94,7 @@ test('linked tasks validate the Atendimento and preserve it on older client upda
 test('V31 preserves tasks created before contextual linking', t => {
   const { db, save, list } = fixture(t)
   const oldTask = save(draft({ status: 'blocked', priority: 'Alta' }))
-  db.exec('DROP TRIGGER IF EXISTS atendimento_assign_number; DROP TABLE IF EXISTS atendimento_numbers; DELETE FROM schema_migrations WHERE version=32; DROP INDEX erp_tasks_atendimento; ALTER TABLE erp_tasks DROP COLUMN atendimento_id; DELETE FROM schema_migrations WHERE version=31;')
+  db.exec('DROP TRIGGER IF EXISTS atendimento_assign_number; DROP TABLE IF EXISTS atendimento_numbers; DROP TABLE erp_component_events; DELETE FROM schema_migrations WHERE version IN (32,33); DROP INDEX erp_tasks_atendimento; ALTER TABLE erp_tasks DROP COLUMN atendimento_id; DELETE FROM schema_migrations WHERE version=31;')
   migrate(db)
   assert.deepEqual(list(), [oldTask])
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [])

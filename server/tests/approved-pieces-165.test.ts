@@ -40,7 +40,7 @@ test('#165: atualização explícita inclui todas as molduras e peças sem lado,
   assert.equal(selected.find(p=>p.pieceId===items.find(x=>x.code==='moldura_porta_dianteira')!.id)!.pieceId,items.find(p=>p.code==='moldura_porta_dianteira')!.id)
   assert.deepEqual(selected.find(p=>p.pieceId===items.find(x=>x.code==='moldura_porta_dianteira')!.id)!.services,[])
   assert.deepEqual(repo.add(at.id,{pieceCodes:['moldura_porta_dianteira']}),selected)
-  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,32)
+  assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,33)
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0)
  }finally{db.close()}
 })

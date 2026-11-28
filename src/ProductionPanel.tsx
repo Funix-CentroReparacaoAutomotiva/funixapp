@@ -1,3 +1,4 @@
+import AcquisitionComponents from './erp/AcquisitionComponents'
 import {discountReasons, paymentCents} from '../shared/finance'
 import {PaymentMethodFields, paymentMethodLabel, readPaymentMethod} from './PaymentMethodFields'
 import {useEffect, useEffectEvent, useRef, useState} from 'react'
@@ -202,6 +203,7 @@ export function ProductionPanel({at,onBusy,onAuthRequired,onOpenBudget,onSchedul
       </label>
 
     </div>}
+    {experience&&<div className="diagnosis-card production-form"><AcquisitionComponents key={experience.id+':'+(data?.budgets.map(b=>b.state).join(',')??'')} experienceId={experience.id}/></div>}
     {experience&&finance&&<section className="diagnosis-card production-form" aria-label="Financeiro da Experiência">
       <h2>Financeiro da Experiência</h2>
       <dl className="production-details">

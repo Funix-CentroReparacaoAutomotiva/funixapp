@@ -1,3 +1,4 @@
+import {handleAcquisition} from './acquisition.ts'
 import type { DatabaseSync } from 'node:sqlite'
 import { handleExperiences, migrateExperiences } from './experiences.ts'
 import { handleFinance, migrateFinance } from './finance.ts'
@@ -12,6 +13,7 @@ export const erpHandlers = new Map<string, (request: ErpRequest) => unknown>([
   ['sales', handleSales],
   ['finance', handleFinance],
   ['stock', handleStock],
+  ['acquisition',handleAcquisition],
   ['tasks', handleTasks],
   ['experiences', handleExperiences],
 ])

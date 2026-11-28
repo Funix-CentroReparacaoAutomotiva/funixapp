@@ -7,7 +7,7 @@ export const modules = [
     ['/oficina/patio', 'Pátio'], ['/oficina/planejamento', 'Planejamento'],
   ] },
   { id: 'estoque', label: 'Estoque', icon: 'estoque', links: [
-    ['/estoque/insumos', 'Insumos'], ['/estoque/tintas', 'Tintas'], ['/estoque/movimentacoes', 'Movimentações'],
+    ['/estoque/insumos', 'Insumos'], ['/estoque/tintas', 'Tintas'], ['/estoque/movimentacoes', 'Movimentações'], ['/estoque/componentes', 'Componentes'],
   ] },
   { id: 'financeiro', label: 'Financeiro', icon: 'financeiro', links: [
     ['/financeiro/contas-a-receber', 'A receber'], ['/financeiro/contas-a-pagar', 'A pagar'], ['/financeiro/fluxo-de-caixa', 'Fluxo de caixa'],
