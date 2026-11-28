@@ -134,6 +134,10 @@ async def device_case(browser,device,viewport):
   total_count=7
   await page.get_by_role('button',name='Diagnóstico',exact=True).click();await expect(page.locator('.diagnostics-body')).to_be_visible()
   await page.get_by_role('button',name='Confirmação',exact=True).click();await expect(history.locator('.budget-history-row')).to_have_count(total_count)
+  await expect(history.locator('.confirmation-heading button')).to_have_count(0)
+  await expect(history.locator('.confirmation-actions').get_by_role('button',name='Agendar',exact=True)).to_be_visible()
+  await expect(history.locator('.confirmation-actions').get_by_role('button',name='Encerrar atendimento',exact=True)).to_be_visible()
+  assert await history.locator('.confirmation-actions').evaluate("(el)=>!!(el.previousElementSibling||el.closest('.confirmation-close').previousElementSibling)")
   assert await history.locator('.budget-history-group h2').all_text_contents()==['Cenário 1','Cenário 2']
   assert await history.locator('.budget-history-group').nth(0).locator('.budget-history-letter').all_text_contents()==['A','B','C','D','E']
   assert await history.locator('.budget-history-group').nth(1).locator('.budget-history-letter').all_text_contents()==['A','B']
@@ -175,7 +179,7 @@ async def device_case(browser,device,viewport):
    await locator.evaluate("(el,p)=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,t=new Touch({identifier:1,target:el,clientX:x,clientY:y});el.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[t],changedTouches:[t]}));const end=new Touch({identifier:1,target:el,clientX:x+p.dx,clientY:y+p.dy});el.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],changedTouches:[end]}))}",{'dx':dx,'dy':dy});await asyncio.sleep(.35)
   await gesture(history,90);await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');assert await page.locator('html').get_attribute('data-tab-direction')=='back'
   await gesture(page.locator('.diagnostics-body'),90);await expect(page.get_by_role('button',name='WhatsApp',exact=True)).to_have_attribute('aria-current','page')
-  await gesture(page.locator('.chat-channel-state'),90);await expect(page.get_by_role('button',name='Dados',exact=True)).to_have_attribute('aria-current','page')
+  await gesture(page.locator('.chat-channel-state'),90);await expect(page.get_by_role('button',name='Dados',exact=True)).to_have_attribute('aria-current','page');await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled()
   await gesture(page.locator('.sales-record-heading'),90);await expect(page.get_by_role('button',name='Dados',exact=True)).to_have_attribute('aria-current','page')
   await page.get_by_role('button',name='WhatsApp',exact=True).click()
   await gesture(page.locator('.chat-channel-state'),-90);await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');assert await page.locator('html').get_attribute('data-tab-direction')=='forward'
@@ -188,7 +192,7 @@ async def device_case(browser,device,viewport):
   await page.evaluate("()=>{const tabs=document.querySelectorAll('.workspace-record-pages button');tabs[2].click();tabs[1].click()}");await page.evaluate('async()=>{await document.activeViewTransition?.finished}');await expect(page.get_by_role('button',name='WhatsApp',exact=True)).to_have_attribute('aria-current','page');assert 'aba=chat'in page.url
   h.mark(device+': rapid competing tab requests keep the last route, never applying an old transition callback')
   # Known failure can be abandoned safely, while its failed reservation is never reused.
-  await expect(finance).to_be_visible();await expect(page.get_by_role('button',name='Emitir',exact=True)).to_have_count(0);await page.get_by_role('button',name='Confirmação',exact=True).click();await idle()
+  await expect(finance).to_be_visible();await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled();await idle();assert 'aba=chat' in page.url
   await begin();await control('fail');count_before=len(downloads);await confirm.click();await expect(review.get_by_role('alert')).to_contain_text('O orçamento não foi emitido.');await expect(review.get_by_role('button',name='Voltar',exact=True)).to_be_enabled();await review.get_by_role('button',name='Voltar',exact=True).click();await expect(review).not_to_be_visible();await control('normal');await expect(page.get_by_role('button',name='Emitir',exact=True)).to_be_enabled();await expect(page.get_by_role('button',name='Confirmação',exact=True)).to_be_enabled();assert len(await get(base+'/orcamentos'))==total_count and len(downloads)==count_before;assert await sql("SELECT COUNT(*)FROM budget_emission_attempts WHERE state='failed'")==1;assert await sql('SELECT MAX(serial)FROM budget_emission_attempts')==8
   await page.get_by_role('button',name='Diagnóstico',exact=True).click();await expect(page.get_by_role('button',name='Diagnóstico',exact=True)).to_have_attribute('aria-current','page');await expect(page.locator('.diagnosis-open').first).to_be_enabled();await shot('voltar-apos-falha-conhecida')
   h.mark(device+': Back after known error closes cleanly, unlocks editing/navigation/emission, preserves failed reservation and never downloads or emits')

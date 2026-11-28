@@ -368,7 +368,7 @@ db.close()
             row.locator(".budget-history-open"),
             row.locator(".budget-action-or"),
             row.locator(".budget-action-os"),
-            row.locator(".budget-action-cancel")
+            row.locator(".budget-action-more")
         ]
         bounds = [await item.bounding_box() for item in controls]
         assert all(b and b["width"] > 0 and b["height"] > 0 for b in bounds), bounds
@@ -481,6 +481,7 @@ db.close()
 
         # Cancel after all immutable-document checks; do not depend on external jsreport.
         async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith(base + "/cancelamento")) as cancelled_response:
+            await order_row.locator(".budget-action-more").click()
             await order_row.get_by_role("button", name="Cancelar orçamento e OS").click()
         assert (await cancelled_response.value).status == 200
         await expect(order_row).to_have_class(re.compile("is-cancelled"))

@@ -332,9 +332,34 @@
 .piece-header-content>strong{font-size:clamp(11px,3vw,15px);white-space:nowrap}
 .piece-header-content .piece-search-trigger{min-height:34px;font-weight:650}
 .workspace-record-context .diagnosis-note-slot .plain-action{display:grid;place-items:center;background:none;border:0;color:inherit;padding:5px}
-.confirmation-emit-slot{flex:none}
-.confirmation-emit{padding:7px 10px;border:0;border-radius:7px;color:#172b45;background:#ffae5e;font-weight:700;font-size:12px;white-space:nowrap}
-.confirmation-emit:disabled{opacity:.45}
 .workspace-record-context .diagnosis-category-summary{display:flex;flex-direction:row;align-items:center;flex-wrap:nowrap;gap:8px}
 .workspace-record-context .diagnosis-category-summary>span:not(.sr-only){white-space:nowrap;align-items:center}
-@media(max-width:390px){.workspace-record-context .diagnosis-category-summary{font-size:9px;gap:4px}.workspace-record-context .diagnosis-category-summary svg{width:11px;height:11px}.confirmation-emit{font-size:10px;padding:6px}}
+@media(max-width:390px){.workspace-record-context .diagnosis-category-summary{font-size:9px;gap:4px}.workspace-record-context .diagnosis-category-summary svg{width:11px;height:11px}}
+
+/* Refined record chrome: groups have breathing room, without a second header row. */
+.workspace-record-context .detail-header{height:66px;min-height:66px;gap:10px;padding-inline:clamp(10px,2vw,24px)}
+.workspace-record-context .detail-header .detail-contact-lines{gap:4px}
+.workspace-record-context .detail-header .detail-identity{padding:0;line-height:1.25}
+.workspace-record-context .detail-header .detail-identity span{margin-top:3px}
+.workspace-record-context .detail-header .detail-phone{line-height:1.2}
+.workspace-record-context .detail-header .scenario-trigger{min-height:38px}
+.workspace-record-context .workspace-record-pages{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,.85fr)}
+.workspace-record-pages .record-emit-slot{display:flex;align-items:center;padding:4px 6px 4px 3px;min-width:0}
+.workspace-record-context .workspace-record-pages .record-emit-slot>button{display:grid;align-content:center;justify-items:center;min-height:44px;width:100%;padding:3px 2px;gap:2px;border:0;border-radius:8px;background:#ff913b;color:#142442;font-weight:750;line-height:1.15}
+.workspace-record-pages .record-emit-slot>button:disabled{background:#b18565;color:#142442;opacity:.75;cursor:not-allowed}
+.workspace-record-pages .record-emit-slot>button[aria-busy=true] svg{opacity:.65}
+.workspace-record-pages .record-emit-slot:has(.record-emit-button)>.record-emit-placeholder{display:none}
+@media(min-width:761px){.workspace-record-context .workspace-record-pages .record-emit-slot>button{display:flex;gap:7px;justify-content:center;max-width:185px;margin:auto}}
+@media(max-width:480px){
+ .workspace-record-context .detail-header{height:64px;min-height:64px;gap:7px;padding-inline:8px}
+ .workspace-record-context .detail-header .back-detail{flex-basis:24px;width:24px}
+ .workspace-record-context .detail-header .detail-number{font-size:10px;letter-spacing:-.15px}
+ .workspace-record-context .detail-header .detail-contact-lines strong,.workspace-record-context .detail-header .detail-identity strong{font-size:11px}
+ .workspace-record-context .detail-header .detail-phone{font-size:10px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+ .workspace-record-context .workspace-record-pages button{font-size:clamp(.59rem,2.6vw,.75rem)}
+}
+@media(max-width:350px){
+ .workspace-record-context .detail-header{gap:5px;padding-inline:6px}
+ .workspace-record-context .detail-header .detail-number{font-size:9.5px}
+ .workspace-record-context .detail-header .detail-phone{font-size:9px}
+}

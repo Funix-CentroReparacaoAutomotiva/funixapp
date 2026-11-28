@@ -68,6 +68,7 @@ db.close()
         last = row(ids["versions"][3])
         dialog_types = []
         page.on("dialog", lambda d: dialog_types.append(d.type))
+        await last.locator(".budget-action-more").click()
         async with page.expect_response(lambda response: response.request.method == "POST" and response.url.endswith("/cancelamento")) as event:
             await last.locator(".budget-action-cancel").click()
         assert (await event.value).status == 200
@@ -119,7 +120,7 @@ db.close()
             assert await scope.locator('.budget-action-cancel').is_disabled() == cancelled
             assert await scope.locator('a.budget-action-or').count() == 1
             assert await scope.locator('a.budget-action-os').count() == (states[1] in ["issued", "cancelled"])
-            controls = await scope.locator('.budget-history-open,.budget-action').evaluate_all("""els=>els.map(el=>{
+            controls = await scope.locator('.budget-history-open:visible,.budget-action:visible,.budget-action-more:visible').evaluate_all("""els=>els.map(el=>{
                 const r=el.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}})""")
             for i,a in enumerate(controls):
                 assert a['x'] >= 0 and a['x'] + a['w'] <= viewport['width'] + 1, controls

@@ -103,5 +103,18 @@
 .confirmation-close-form{background:#fff;border:1px solid #dce3eb;border-radius:8px;padding:12px;display:grid;gap:12px;margin-top:8px}
 .confirmation-close-form textarea{display:block;width:100%;margin-top:4px}
 .confirmation-close-form>div{display:flex;gap:10px}
-.confirmation-header-actions{display:flex;align-items:center;gap:8px}
-.confirmation-header-actions .confirmation-emit{background:#17345f;color:#fff;padding:8px 14px;font-size:13px;border-radius:8px}
+
+/* Atendimento-wide decisions follow the list; individual cancellations belong to each budget. */
+.confirmation-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+.confirmation-actions>button:only-child{grid-column:1/-1}
+.confirmation-actions>button{min-height:44px;font:600 13px/1.3 system-ui,sans-serif;white-space:normal;border-radius:8px}
+.confirmation-schedule-button{border:1px solid #173456;background:#173456;color:#fff;padding:9px 12px}
+.confirmation-schedule-button:disabled,.confirmation-close-button:disabled{opacity:.55}
+.confirmation-close-form{margin-top:12px}
+.budget-action-menu{position:relative;flex:none}
+.budget-action-more{display:grid;place-items:center;min-height:43px;width:34px;padding:5px;background:transparent;border:1px solid #dce3eb;border-radius:8px;color:#42617d;cursor:pointer;list-style:none}
+.budget-action-more::-webkit-details-marker{display:none}
+.budget-action-more svg{width:22px;height:22px}
+.budget-action-more:focus-visible{outline:2px solid #2067cc;outline-offset:2px}
+.budget-more-popover{position:absolute;right:0;top:calc(100% + 4px);padding:4px;border:1px solid #dce3eb;border-radius:8px;background:white;z-index:5;box-shadow:0 5px 18px #14244225;width:max-content;max-width:220px}
+.budget-more-popover .budget-action{height:auto;min-height:43px;line-height:1.3;font-size:12px;white-space:normal;padding:9px}
