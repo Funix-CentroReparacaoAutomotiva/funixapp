@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs'
 import type {WorkOrder} from '../shared/work-order.ts'
+import {orderPieces} from '../shared/acquisition.ts'
 import {deliveryDateLabel} from '../shared/delivery-date.ts'
 import {type StageCluster} from '../shared/stage-clusters.ts'
 // Ordem de apresentação da OS: não altera IDs ou categorias do cadastro comercial.
@@ -40,26 +41,10 @@ for(const svg of footer.match(/<svg\b[\s\S]*?<\/svg>/g)??[]){
 const commentIcon='<svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-6 4v-4a3 3 0 0 1-1-3V6a3 3 0 0 1 3-3Z"/></svg>'
 const esc=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const html=(value:string)=>esc(value||'')
-function letter(index:number):string{
- let text=''
- for(let n=index+1;n>0;n=Math.floor((n-1)/26))text=String.fromCharCode(65+(n-1)%26)+text
- return text
-}
 function rows(order:WorkOrder):string{
- const {diagnostics,lines}=order.scope
- // Preserve the original first-seen order and first diagnosis per piece.
- const pieces=new Map<string,{diag?:typeof diagnostics[number];items:typeof lines}>()
- for(const diag of diagnostics){
-  if(!pieces.has(diag.pieceId))pieces.set(diag.pieceId,{diag,items:[]})
- }
- for(const line of lines){
-  let piece=pieces.get(line.pieceId)
-  if(!piece){piece={items:[]};pieces.set(line.pieceId,piece)}
-  piece.items.push(line)
- }
- return [...pieces.values()].map(({diag,items},index)=>{
+ return orderPieces(order.scope).map(({diag,items,symbol})=>{
   const name=diag?.pieceName||items[0]?.pieceName||'Peça não identificada'
-  const symbol=letter(index),components=items.filter(l=>l.kind==='component')
+  const components=items.filter(l=>l.kind==='component')
   const grouped=new Map<StageCluster,string[]>(PRINT_CLUSTERS.map(c=>[c,[]]))
   // A OS é um plano de execução: diagnóstico não é uma observação operacional.
   const notes=diag?.notes?[diag.notes]:[]

@@ -106,15 +106,41 @@ export class AtendimentoRepository {
   ready() { this.db.prepare('SELECT 1 FROM atendimentos LIMIT 1').get() }
 
   list({ q = '', limit = 50, offset = 0, funnel = false }: { q?: string; limit?: number; offset?: number; funnel?: boolean } = {}): AtendimentoList {
-    if (q.length > 150 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) invalid('Parâmetros de busca inválidos.')
-    const escaped = fold(q.trim()).replace(/[\\%_]/g, '\\$&')
-    const search = `%${escaped}%`
-    const digits = /^[+\d\s().-]+$/.test(q) ? q.replace(/[^\d+]/g, '') : ''
-    const where = (funnel ? 'NOT EXISTS (SELECT 1 FROM production_experiences WHERE atendimento_id=atendimentos.id) AND ' : '') + `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?))`
-    const values = [search, digits, `%${digits}%`]
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) invalid('Parâmetros de busca inválidos.')
+    const matched=this.searchCondition(q)
+    const where=(funnel ? 'NOT EXISTS (SELECT 1 FROM production_experiences WHERE atendimento_id=atendimentos.id) AND ' : '')+matched.where
+    const values=matched.values
     const total = Number(this.db.prepare(`SELECT count(*) AS total FROM atendimentos WHERE ${where}`).get(...values)!.total)
     const items = this.db.prepare(`SELECT ${this.selectColumns()} FROM atendimentos WHERE ${where} ORDER BY updated_at DESC,id ASC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(map)
     return { items, total, nextOffset: offset + items.length < total ? offset + items.length : null, stages: ATENDIMENTO_STAGES }
+  }
+
+  matchingIds(q: string) {
+    const {where,values}=this.searchCondition(q)
+    return this.db.prepare(`SELECT id FROM atendimentos WHERE ${where}`).all(...values).map(row=>String(row.id))
+  }
+
+  private searchCondition(q: string) {
+    if (q.length > 150) invalid('Parâmetros de busca inválidos.')
+    const term=q.trim()
+    const escaped = fold(term).replace(/[\\%_]/g, '\\$&')
+    const search = `%${escaped}%`
+    const digits = /^[+\d\s().-]+$/.test(term) ? term.replace(/[^\d+]/g, '') : ''
+    let where = `(search_text LIKE ? ESCAPE '\\' OR (? != '' AND replace(replace(replace(replace(phone,' ',''),'(',''),')',''),'-','') LIKE ?)`
+    const values: (string|number)[] = [search, digits, `%${digits}%`]
+    if (digits&&this.db.prepare("SELECT count(*) AS total FROM sqlite_schema WHERE name IN ('atendimento_references','customer_records')").get()?.total===2) {
+      where+=` OR EXISTS (
+        SELECT 1 FROM atendimento_references r JOIN customer_records c ON c.id=r.record_id
+        WHERE r.atendimento_id=atendimentos.id AND r.kind='contact' AND c.phone_normalized LIKE ?
+      )`
+      values.push(`%${digits}%`)
+    }
+    const displayNumber=/^AT\s*0*(\d{1,12})$/i.exec(term)
+    if (displayNumber&&this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='atendimento_numbers'").get()) {
+      values.push(Number(displayNumber[1]))
+      return {where:where+' OR id=(SELECT atendimento_id FROM atendimento_numbers WHERE number=?))',values}
+    }
+    return {where:where+')',values}
   }
 
   private selectColumns() {return this.db.prepare("SELECT 1 FROM sqlite_schema WHERE name='atendimento_numbers'").get()?"atendimentos.*, (SELECT number FROM atendimento_numbers WHERE atendimento_id=atendimentos.id) AS display_number":'atendimentos.*'}

@@ -10,7 +10,7 @@ import type { CodaEventSyncRepository } from './coda-sync.ts'
 import type { LocalConversationAssociations } from './local-associations.ts'
 import type { CommercialConversation } from '../../shared/customer.ts'
 export type ChatIdentityAuthority = Pick<CodaEventSyncRepository, 'resolveIdentityActive'|'identityJids'|'rememberProviderConversation'|'rememberProviderAliases'|'providerJid'|'resolveIdentityJid'|'identityState'|'contextToken'|'resolveActive'> & Partial<Pick<LocalConversationAssociations,'projection'|'projections'|'markRead'|'recordAccepted'|'linkedAtendimentoPhone'|'canonicalChannelSendAllowed'>>
-import type { EvolutionReadPoc } from '../experimental/evolution-read/client.ts'
+import type { EvolutionReadPoc, ReadChat } from '../experimental/evolution-read/client.ts'
 import type { EvolutionTextSender } from './evolution-send.ts'
 import type { MediaGateway, MediaInput } from './evolution-media.ts'
 
@@ -89,7 +89,7 @@ export function createEvolutionChatBridge(
       const value=await profilePhoto(pn.split('@')[0]!)
       return jid&&sendTarget(jid)===pn?value:null
     },
-    async list(skip: number): Promise<{
+    async list(skip: number, linkedJids?: string[]): Promise<{
       items: Array<{
         conversationId: string
         displayName: string | null
@@ -106,39 +106,48 @@ export function createEvolutionChatBridge(
     }> {
       purge()
       const take = 50
-      let rows,
-        sourceCount,
-        source: 'evolution' | 'local' = 'evolution',
-        providerUnavailable = false
-      try {
-        const result = await provider.findChatsPage({ take, skip })
-        rows = result.items
-        sourceCount = result.sourceCount
-      } catch (error) {
-        if (!local?.read) throw error
-        rows = local.store.list(skip)
-        sourceCount = rows.length
-        source = 'local'
-        providerUnavailable = true
-        if (!rows.length && skip === 0) throw error
-      }
-
-      if (source === 'evolution') {
-        local?.store.observeChats(rows)
-        for(const row of rows){
-          observed.delete(row.remoteJid)
-          observed.set(row.remoteJid,now())
+      let rows: ReadChat[], sourceCount: number
+      let source: 'evolution' | 'local' = 'evolution', providerUnavailable = false
+      if (linkedJids) {
+        // Search follows saved commercial links without retrieving provider pages.
+        const jids=[...new Set(linkedJids.map(jid=>codaSync?.identityJids(jid)?.[0]??jid))]
+        const page=jids.slice(skip,skip+take+1)
+        rows=page.slice(0,take).map(remoteJid=>({
+          remoteJid,displayName:null,phoneNumber:null,updatedAt:null,unreadCount:null,
+        }))
+        sourceCount=page.length>take?take:0
+        source='local'
+      } else {
+        try {
+          const result = await provider.findChatsPage({ take, skip })
+          rows = result.items
+          sourceCount = result.sourceCount
+        } catch (error) {
+          if (!local?.read) throw error
+          rows = local.store.list(skip)
+          sourceCount = rows.length
+          source = 'local'
+          providerUnavailable = true
+          if (!rows.length && skip === 0) throw error
         }
-        while(observed.size>maxEntries)observed.delete(observed.keys().next().value!)
-      }
-      // Scan the entire provider page before resolving any links to detect collisions.
-      if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
-      else if(associations)associations.observePhoneAliases(rows)
-      else contacts?.identities.rememberProviderAliases(rows, false, 'findChats')
-      if (local?.read) {
-        rows = local.store.list(skip)
-        sourceCount = rows.length
-        source = 'local'
+
+        if (source === 'evolution') {
+          local?.store.observeChats(rows)
+          for(const row of rows){
+            observed.delete(row.remoteJid)
+            observed.set(row.remoteJid,now())
+          }
+          while(observed.size>maxEntries)observed.delete(observed.keys().next().value!)
+        }
+        // Scan the entire provider page before resolving any links to detect collisions.
+        if(codaSync)codaSync.rememberProviderAliases(rows, false, 'findChats')
+        else if(associations)associations.observePhoneAliases(rows)
+        else contacts?.identities.rememberProviderAliases(rows, false, 'findChats')
+        if (local?.read) {
+          rows = local.store.list(skip)
+          sourceCount = rows.length
+          source = 'local'
+        }
       }
       const projections=codaSync?.projections?.(rows.map(r=>r.remoteJid))
       return {
@@ -151,7 +160,12 @@ export function createEvolutionChatBridge(
               const conversationId = register(members?.[0] ?? row.remoteJid)
               const contactName=contacts?.presentation(conversationId)
               const linkedCount=contacts&&!projection?new Set(contacts.identities.links(row.remoteJid).map(link=>link.atendimento_id)).size:0
-              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??linkedCount,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection??(linkedCount?{names:[],atendimentoCount:linkedCount,preview:null,profilePhoto:null}:undefined)
+              const linkedRecords=linkedJids&&!codaSync&&associations?associations.listActive(conversationId).items:undefined
+              const linkedPresentation=linkedRecords?{
+                names:[...new Set(linkedRecords.map(item=>item.name).filter(Boolean))].map(name=>({name,entityId:null})),
+                atendimentoCount:new Set(linkedRecords.map(item=>item.atendimentoId)).size,preview:null,profilePhoto:null,
+              }:undefined
+              const commercial=contactName?{names:contactName.names,contactId:contactName.contactId,atendimentoCount:projection?.atendimentoCount??linkedCount,preview:projection?.preview??null,profilePhoto:projection?.profilePhoto??null}:projection??linkedPresentation??(linkedCount?{names:[],atendimentoCount:linkedCount,preview:null,profilePhoto:null}:undefined)
               const activeAt=canonicalFor(row.remoteJid)
               const displayPhones=associations?.phoneProjection(row.remoteJid,activeAt,codaSync?members:undefined)
               const phoneNumber=displayPhones?displayPhones.phoneNumber:codaSync&&members===null?null:row.phoneNumber??confirmedPn

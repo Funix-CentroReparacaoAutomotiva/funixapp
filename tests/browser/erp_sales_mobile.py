@@ -41,16 +41,13 @@ async def run():
                     await expect(copilot).to_have_count(0)
                     await expect(page.get_by_role("button", name="Sair", exact=True)).to_have_count(0)
                     if href == "funil":
-                        if width < 761:
-                            selector = page.get_by_role("group", name="Etapas comerciais")
-                            await expect(selector.get_by_role("button")).to_have_count(6)
-                            await selector.get_by_role("button", name="Novo contato", exact=False).click()
-                            await expect(selector.get_by_role("button", name="Novo contato", exact=False)).to_have_attribute("aria-pressed", "true")
-                            await page.get_by_role("button", name="Ver todos", exact=True).click()
-                            assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
-                        else:
-                            await expect(page.locator(".erp-funnel-board > li")).to_have_count(6)
-                            await expect(page.get_by_role("group", name="Etapas comerciais")).to_have_count(0)
+                        selector = page.get_by_role("group", name="Filtrar por etapa")
+                        await expect(selector.get_by_role("button")).to_have_count(6)
+                        await expect(page.locator(".erp-funnel-board > li")).to_have_count(6)
+                        await selector.get_by_role("button", name="Novo contato", exact=True).click()
+                        await expect(selector.get_by_role("button", name="Novo contato", exact=True)).to_have_attribute("aria-pressed", "true")
+                        await selector.get_by_role("button", name="Todas", exact=True).click()
+                        assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
                     if href == "desempenho":
                         await page.get_by_role("button", name="Aplicar", exact=True).wait_for()
                         cards = page.locator(".erp-sales-dashboard-cards").first

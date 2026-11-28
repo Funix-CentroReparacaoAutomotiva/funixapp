@@ -180,11 +180,17 @@
 
 /* Compact, contextual actions: the primary sales action never competes with
    the voice assistant inside an Atendimento. */
-.workspace-new-atendimento {
+.workspace-sales-actions {
   position: absolute;
   z-index: 60;
   right: calc(18px + env(safe-area-inset-right, 0px));
   bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+.workspace-layout:has(+ .workspace-sales-actions) .fh-work { padding-bottom: 134px; }
+.workspace-new-atendimento {
   width: 54px;
   height: 54px;
   display: grid;
@@ -197,6 +203,30 @@
 }
 .workspace-new-atendimento:hover { background: #ff934a; }
 .workspace-new-atendimento svg { width: 29px; height: 29px; stroke-width: 2.4; }
+.workspace-sales-search-trigger, .workspace-search-pill {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid #d0ddec;
+  border-radius: 999px;
+  background: #fff;
+  color: #203c61;
+  box-shadow: 0 4px 14px #182c4c22;
+}
+.workspace-sales-search-trigger button, .workspace-search-pill button {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+}
+.workspace-search-term { padding-inline: 12px 2px; }
+.workspace-search-term span { max-width: min(12rem, 53vw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workspace-search-pill { width: min(24rem, calc(100vw - 40px)); padding: 3px; gap: 4px; }
+.workspace-search-pill input { flex: 1; width: 0; min-width: 0; border: 0; border-radius: 999px; padding: 7px 0; }
+.workspace-search-pill button[type=submit] { background: #19395f; color: #fff; }
 .workspace-account-exit {
   display: flex;
   align-items: center;
@@ -223,7 +253,7 @@
     line-height: 1.2;
   }
   .workspace-sales-pages a span { white-space: nowrap; font-size: clamp(.57rem, 2.45vw, .76rem); }
-  .workspace-new-atendimento { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  .workspace-sales-actions { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 350px) {
   .workspace-sales-pages a span { font-size: .58rem; }

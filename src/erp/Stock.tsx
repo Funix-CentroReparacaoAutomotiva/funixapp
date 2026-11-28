@@ -1,3 +1,4 @@
+import AcquisitionComponents from './AcquisitionComponents'
 import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import type { StockKind, StockMaterial, StockMovement, StockMovementType } from '../../shared/erp-stock'
@@ -114,7 +115,7 @@ function MovementsTable({ rows }: { rows: StockMovement[] }) {
 }
 
 export default function Stock({ view }: { view: string }) {
-  return <StockView key={view} view={view}/>
+  return view==='componentes' ? <AcquisitionComponents stock/> : <StockView key={view} view={view}/>
 }
 
 function StockView({ view }: { view: string }) {

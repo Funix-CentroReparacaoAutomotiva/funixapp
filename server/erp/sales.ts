@@ -26,7 +26,6 @@ const defaultStages: SalesStage[] = [
 const blankContext: SalesContext = {owner:'', channel:'', origin:'', nextContactAt:null, nextAction:'', additionalService:'', revision:0}
 const approvedStates = new Set(['consented','authorized','executed'])
 const localDay = new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'})
-const fold=(text:string)=>text.normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR')
 
 export function migrateSales(db: DatabaseSync) {
   db.exec(`
@@ -150,10 +149,9 @@ export function deadline(base:string,minutes:number|null,scheduled:string|null,n
 function datesInOrder(a:string|null,b:string|null) {
   return (a??'9999').localeCompare(b??'9999')
 }
-function funnel(db:DatabaseSync,query:URLSearchParams,now:number) {
+function funnel(db:DatabaseSync,query:URLSearchParams,now:number,source=listRecords(db,query.get('q')??'')) {
   const stages=config(db), contexts=getContexts(db), clocks=activityClock(db)
   const scheduled=new Set(db.prepare('SELECT atendimento_id FROM production_experiences').all().map(row=>String(row.atendimento_id)))
-  const source=listRecords(db,query.get('q')??'')
   const lane=(record:Atendimento)=>record.purpose==='unclassified'?'triage':record.purpose==='non_commercial'?'non-commercial':record.stage
   const available=source.filter(r=>(!r.closedAt||r.stage==='rejeitados')&&(!scheduled.has(r.id)||r.stage==='rejeitados'))
   const availableContexts=available.map(r=>contexts.get(r.id)??blankContext)
@@ -168,15 +166,16 @@ function funnel(db:DatabaseSync,query:URLSearchParams,now:number) {
   }).sort((a,b)=>datesInOrder(a.nextContactAt,b.nextContactAt)||a.record.createdAt.localeCompare(b.record.createdAt)||a.record.id.localeCompare(b.record.id))
   return {stages,cards,owners:[...new Set(availableContexts.map(c=>c.owner).filter(Boolean))].sort(),channels:[...new Set(availableContexts.map(c=>c.channel).filter(Boolean))].sort(),origins:[...new Set(availableContexts.map(c=>c.origin).filter(Boolean))].sort()}
 }
-function tracking(db:DatabaseSync,query:URLSearchParams,now:number):TrackingCard[] {
+function tracking(db:DatabaseSync,query:URLSearchParams,now:number,matching?:Set<string>):TrackingCard[] {
+  const term=query.get('q')?.trim()
+  const matches=matching??(term?new Set(new AtendimentoRepository(db).matchingIds(term)):undefined)
   const contexts=getContexts(db)
   const contacts=new Map(db.prepare('SELECT atendimento_id,MAX(occurred_at) AS last FROM erp_sales_contacts GROUP BY atendimento_id')
     .all().map(row=>[String(row.atendimento_id),String(row.last)]))
   const production=new ProductionRepository(db,()=>now)
-  const search=fold(query.get('q')??'')
   const workshopPhases = new Map(listWorkshopPhases(db).map(phase => [phase.id,phase]))
   return listWorkshopVehicles(db)
-    .filter(v=>!v.commercialClosedAt&&fold([v.model,v.plate,v.customer,v.payer].join(' ')).includes(search))
+    .filter(v=>!v.commercialClosedAt&&(!matches||matches.has(v.atendimentoId)))
     .flatMap(vehicle=>{
       const context=contexts.get(vehicle.atendimentoId)??blankContext
       if(!criteria(context,query))return []
@@ -210,7 +209,10 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
   const owner=query.get('owner')??''
   const contexts=getContexts(db)
   const owners=[...new Set([...contexts.values()].map(c=>c.owner).filter(Boolean))].sort()
-  const owned=(id:string)=>!owner||contexts.get(id)?.owner===owner
+  const term=query.get('q')?.trim()??''
+  const source=listRecords(db,term)
+  const matching=term?new Set(source.map(record=>record.id)):undefined
+  const included=(id:string)=>(!matching||matching.has(id))&&(!owner||contexts.get(id)?.owner===owner)
   const within=(iso:string)=>{
     const date=localDay.format(new Date(iso))
     return date>=from&&date<=to
@@ -219,7 +221,7 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
     FROM production_budget_transitions t JOIN budget_versions b ON b.id=t.budget_version_id
     WHERE t.state='consented' AND NOT EXISTS(SELECT 1 FROM budget_cancellations c WHERE c.budget_version_id=b.id)
     AND NOT EXISTS (SELECT 1 FROM production_budget_transitions r WHERE r.budget_version_id=b.id AND r.state='rejected')`).all()
-    .filter(row=>row.total!==null&&owned(String(row.atendimento_id)))
+    .filter(row=>row.total!==null&&included(String(row.atendimento_id)))
     .sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at))||Number(a.transition_id)-Number(b.transition_id))
   const approved=allApproved.filter(row=>within(String(row.occurred_at)))
   const firstPositive=new Map<string,{occurredAt:string;id:number}>()
@@ -233,13 +235,13 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
   const daily=[...dailyTotals].sort(([a],[b])=>a.localeCompare(b)).map(([day,value])=>({day,amount:value.amount.toString(),vehicles:value.vehicles}))
   const approvedTotal=approved.reduce((total,row)=>total.add(Q.from(String(row.total))),ZERO)
   const unique=(items:string[])=>[...new Set(items)]
-  const cards=funnel(db,query,now).cards
+  const cards=funnel(db,query,now,source).cards
   const negotiating=cards.filter(c=>c.lane==='em-negociacao'&&c.record.commercialValue)
   const range=negotiating.reduce((total,c)=>({
     min:total.min.add(Q.from(c.record.commercialValue!.min)),max:total.max.add(Q.from(c.record.commercialValue!.max)),
   }),{min:ZERO,max:ZERO})
-  const closed=listWorkshopVehicles(db).filter(v=>owned(v.atendimentoId)&&v.commercialClosedAt&&within(v.commercialClosedAt))
-  const rejected=listRecords(db,'').filter(r=>r.stage==='rejeitados'&&owned(r.id))
+  const closed=listWorkshopVehicles(db).filter(v=>included(v.atendimentoId)&&v.commercialClosedAt&&within(v.commercialClosedAt))
+  const rejected=source.filter(r=>r.stage==='rejeitados'&&included(r.id))
   const exits=db.prepare(`SELECT atendimento_id,MAX(occurred_at) AS occurred_at FROM erp_sales_stage_events
     WHERE stage='rejeitados' GROUP BY atendimento_id`).all()
   const rejectedInPeriod=new Set(exits.filter(row=>within(String(row.occurred_at))).map(row=>String(row.atendimento_id)))
@@ -252,7 +254,7 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
     FROM financial_settlements s JOIN financial_titles t ON t.id=s.title_id
     JOIN production_experiences e ON e.id=t.experience_id
     WHERE t.kind='receivable' AND s.reversed_at IS NULL AND s.date BETWEEN ? AND ?
-  `).all(from,to).filter(row=>owned(String(row.atendimento_id)))
+  `).all(from,to).filter(row=>included(String(row.atendimento_id)))
   const receivedCents=received.reduce((total,row)=>total+BigInt(Number(row.amount_cents)-Number(row.discount_cents)-Number(row.withheld_iss_cents)),0n)
   return {
     owners,from,to,goal:goal===undefined?null:String(goal), today,daily,approvedTotal:approvedTotal.toString(),
@@ -270,8 +272,8 @@ function dashboard(db:DatabaseSync,query:URLSearchParams,now:number) {
     priorities:[
       {label:'Novos contatos',records:cards.filter(c=>c.lane==='novo-lead'||c.lane==='triage').map(c=>c.record.id)},
       {label:'Retornos vencidos',records:cards.filter(c=>c.overdue).map(c=>c.record.id)},
-      {label:'Clientes a atualizar',records:tracking(db,query,now).filter(c=>c.context.nextContactAt&&Date.parse(c.context.nextContactAt)<=now).map(c=>c.vehicle.atendimentoId)},
-      {label:'Entregas previstas hoje',records:listWorkshopVehicles(db).filter(v=>v.deliveryDate===today&&!v.departedAt&&owned(v.atendimentoId)).map(v=>v.atendimentoId)},
+      {label:'Clientes a atualizar',records:tracking(db,query,now,matching).filter(c=>c.context.nextContactAt&&Date.parse(c.context.nextContactAt)<=now).map(c=>c.vehicle.atendimentoId)},
+      {label:'Entregas previstas hoje',records:listWorkshopVehicles(db).filter(v=>v.deliveryDate===today&&!v.departedAt&&included(v.atendimentoId)).map(v=>v.atendimentoId)},
     ],
   }
 }

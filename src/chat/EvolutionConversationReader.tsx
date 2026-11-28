@@ -25,6 +25,7 @@ function phoneLine(row:ConversationRow){
 type Links={sendAtendimentoId?:string|null;readIdentityBlocked?:boolean;suggestedAtendimentos?:{id:string}[];atendimentoConflict?:boolean;canCreateTriage?:boolean;numberReviewAvailable?:boolean;historyOnly?:boolean;items:{linkId:string;atendimentoId:string;name:string;vehicle:string;plate:string}[]}
 export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpenAtendimento}:{searchTerm?:string;onUnauthorized:()=>void;onOpenAtendimento?:(id:string,tab:'chat'|'diagnosticos'|'mapa',conversationId?:string,readOnly?:boolean)=>void}) {
  const [rows,setRows]=useState<ConversationRow[]>([]),[next,setNext]=useState<number|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[available,setAvailable]=useState(true),[linksEnabled,setLinksEnabled]=useState(false)
+ const [loadedTerm,setLoadedTerm]=useState<string|null>(null)
  const [selected,setSelected]=useState<ConversationRow|null>(null),[links,setLinks]=useState<Links|null>(null),[version,setVersion]=useState(0)
  const [management,setManagement]=useState(false),[opening,setOpening]=useState(false)
  const openingRequest=useRef<AbortController|null>(null)
@@ -39,10 +40,12 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
  const fail=useCallback((e:unknown)=>{if((e as RequestFailure).status===401)onUnauthorized();else {const failure=e as RequestFailure;setError([failure.message||'Não foi possível carregar as conversas.',failure.requestId?'Referência: '+failure.requestId:''].filter(Boolean).join(' '))}},[onUnauthorized])
  const load=useCallback(async(skip:number,signal:AbortSignal)=>{
   setBusy(true);setError('')
-  try{const result=parseConversationList(await api('/api/chat/conversations?skip='+skip,{signal}));if(signal.aborted)return;setRows(p=>skip?[...p,...result.items.filter(r=>!p.some(x=>x.conversationId===r.conversationId))]:result.items);setNext(result.nextSkip);setSource(result.source);extraPagesLoaded.current=skip>0;setAvailable(true);setLinksEnabled(result.linksEnabled===true)}
+  const query=new URLSearchParams({skip:String(skip)})
+  if(searchTerm.trim())query.set('q',searchTerm.trim())
+  try{const result=parseConversationList(await api('/api/chat/conversations?'+query,{signal}));if(signal.aborted)return;setRows(p=>skip?[...p,...result.items.filter(r=>!p.some(x=>x.conversationId===r.conversationId))]:result.items);setNext(result.nextSkip);setSource(result.source);extraPagesLoaded.current=skip>0;setAvailable(true);setLinksEnabled(result.linksEnabled===true);setLoadedTerm(searchTerm)}
   catch(e){if(!signal.aborted){if((e as RequestFailure).status===404)setAvailable(false);else fail(e)}}finally{if(!signal.aborted)setBusy(false)}
- },[fail])
- useEffect(()=>{const c=new AbortController();request.current=c;void load(0,c.signal);return()=>c.abort()},[load,version])
+ },[fail,searchTerm])
+ useEffect(()=>{const c=new AbortController();request.current=c;void load(0,c.signal);return()=>{request.current?.abort();c.abort()}},[load,version])
  useEffect(()=>{if(selected&&!dialog.current?.open)dialog.current?.showModal()},[selected])
  useEffect(()=>()=>{request.current?.abort();openingRequest.current?.abort()},[])
  // Bounded refresh of the first page only. Never poll in hidden tabs, dialogs, or
@@ -120,13 +123,14 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
   if(contact&&drafts.get(contact.id)?.trim()&&!window.confirm('Fechar a conversa? O rascunho será mantido nesta sessão.'))return
   setSelected(null)
  }
- const q=searchTerm.trim().toLocaleLowerCase('pt-BR'),matches=rows.filter(r=>[name(r),r.displayName,r.phoneNumber,r.atendimentoPhone,r.commercial?.preview].join(' ').toLocaleLowerCase('pt-BR').includes(q))
- return <section className="ev-reader"><header className="ev-header"><strong>Conversas</strong><button className="fh-filter" disabled={busy} onClick={()=>{lastRefresh.current=Date.now();setVersion(v=>v+1)}}>Atualizar</button></header>
+ const current=loadedTerm===searchTerm
+ const visibleRows=current?rows:[]
+ return <section className="ev-reader"><header className="ev-header"><h1 className="sr-only">Conversas</h1><button className="fh-filter" disabled={busy} onClick={()=>{lastRefresh.current=Date.now();setVersion(v=>v+1)}}>Atualizar</button></header>
   {!available&&<Notice title="Canal ainda não habilitado">Os Atendimentos podem ser criados pelo Funil.</Notice>}
   {error&&<Notice title="Não foi possível concluir" error>{error}</Notice>}
-  {busy&&<p role="status">Carregando conversas…</p>}
-  {available&&!busy&&!matches.length&&<Notice title="Nenhuma conversa encontrada"/>}
-  <div className="ev-list" aria-label="Lista de Conversas">{matches.map(row=>{
+  {(busy||!current&&available&&!error)&&<p role="status">Carregando conversas…</p>}
+  {available&&current&&!busy&&!visibleRows.length&&<Notice title="Nenhuma conversa encontrada"/>}
+  <div className="ev-list" aria-label="Lista de Conversas">{visibleRows.map(row=>{
    const {parts,label,providerHint}=visibleIdentity(row),count=row.commercial?.atendimentoCount??(row.atendimentoId?1:0),initials=label==='Sem nome'?'':label.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('pt-BR')
    return <article className="conversation-row" key={row.conversationId}>
     <button className="conversation-hit" aria-label={'Abrir conversa: '+label} disabled={opening} onClick={()=>void open(row)}/>
@@ -135,7 +139,7 @@ export function EvolutionConversationReader({searchTerm='',onUnauthorized,onOpen
     <div className="conversation-right"><button className={'conversation-count '+(count===0?'warning':'')} aria-label={'Detalhes: '+count+' Atendimentos'} disabled={opening} onClick={()=>details(row,true)}>{count===0?'⚠':count>1?count+' atend.':<span aria-hidden="true">⋯</span>}</button><time dateTime={row.updatedAt??undefined}>{row.updatedAt?messageTime(row.updatedAt):'—'}</time>{!!row.unreadCount&&<span className="conversation-unread" aria-label={row.unreadCount+' mensagens não lidas'}>{row.unreadCount}</span>}</div>
    </article>
   })}</div>
-  {next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
+  {current&&next!==null&&<button className="fh-filter ev-more" disabled={busy} onClick={()=>{request.current?.abort();const c=new AbortController();request.current=c;void load(next,c.signal)}}>Carregar mais conversas</button>}
   {selected&&<dialog className="ev-choice-dialog conversation-workspace" ref={dialog} onClose={()=>setSelected(null)} onCancel={event=>{event.preventDefault();close()}} aria-label="Detalhes da conversa">
    <header><div><strong>{confirmedName||name(selected)}</strong><div>{phoneLine(selected).text}</div></div><button disabled={sending||creatingTriage} aria-label="Fechar detalhes" onClick={close}>×</button></header>
    {linksEnabled&&!links?.numberReviewAvailable&&!links?.historyOnly&&<ConversationIdentity key={selected.conversationId} conversationId={selected.conversationId} onSaved={identified=>{

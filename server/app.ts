@@ -805,13 +805,17 @@ export function createRequestHandler(options: AppOptions) {
         if (!listRoute && !messagesRoute) return fail(404, 'NOT_FOUND', 'Conversa não encontrada.')
         const keys = [...url.searchParams.keys()]
         if (listRoute) {
-          if (keys.some(k => k !== 'skip') || url.searchParams.getAll('skip').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          if (keys.some(k => k!=='skip'&&k!=='q') || url.searchParams.getAll('skip').length > 1 || url.searchParams.getAll('q').length > 1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
           const skip = url.searchParams.get('skip') ?? '0'
           if (!/^(0|[1-9][0-9]{0,5})$/.test(skip) || Number(skip) > 500000) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')
+          const term=url.searchParams.get('q')?.trim()??''
+          if(term.length>150)return fail(400,'CHAT_INVALID_QUERY','Parâmetros inválidos.')
+          const linksEnabled=Boolean(options.v20Associations&&(!options.conversationRuntime||options.conversationRuntime.authority))
           try {
-            const result = await options.evolutionChat.list(Number(skip))
+            const jids=term?(linksEnabled?options.v20Associations!.linkedProviderJids(options.atendimentos.matchingIds(term)):[]):undefined
+            const result = await options.evolutionChat.list(Number(skip),jids)
             if ((sessions.get(cookie) ?? 0) <= now()) return fail(401, 'AUTH_REQUIRED', 'Sessão encerrada durante a consulta.')
-            return send(200, options.v20Associations && (!options.conversationRuntime || options.conversationRuntime.authority) ? { ...result, linksEnabled: true } : result)
+            return send(200, linksEnabled ? { ...result, linksEnabled: true } : result)
           } catch (cause) { return providerFailure(cause, 'list') }
         }
         if (keys.some(k => !['page','cursor','scope'].includes(k)) || url.searchParams.getAll('page').length > 1 || url.searchParams.getAll('cursor').length>1) return fail(400, 'CHAT_INVALID_QUERY', 'Parâmetros inválidos.')

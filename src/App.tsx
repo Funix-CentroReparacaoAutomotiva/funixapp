@@ -1,6 +1,7 @@
 import {ApprovedIcon} from './ApprovedIcon'
 import Workshop, { WorkshopPhaseSettings } from './erp/Workshop'
 import Sales, { SalesSettings, SalesRecord } from './erp/Sales'
+import { SalesActions } from './erp/SalesActions'
 import Stock from './erp/Stock'
 import Tasks from './erp/Tasks'
 import Experiences from './erp/Experiences'
@@ -52,6 +53,7 @@ function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [taskRecord, setTaskRecord] = useState('')
+  const [dashboardQuery,setDashboardQuery]=useState('')
   useEffect(() => { rememberPage(route.path) }, [route.path])
   const isFinance = route.path === '/financeiro', isOperation = route.path === '/operacao'
   const area: Area = isFinance ? 'financeiro' : isOperation ? 'operacao' : (route.path === '/configuracoes' || route.path === '/gestao/configuracoes') ? 'configuracoes' : route.path === '/conversas' ? 'conversas' : route.path === '/atualizacoes' ? 'atualizacoes' : 'funil'
@@ -116,6 +118,11 @@ function App() {
   }
   function navigate(href: string, replace = false, state?: unknown) {
     const target=new URL(href,window.location.origin)
+    if (query && target.pathname !== route.path && workspaceFor(route.path)?.id === 'vendas' &&
+        workspaceFor(target.pathname)?.id === 'vendas' && !target.searchParams.has('q')) {
+      target.searchParams.set('q',query)
+      href=target.pathname+target.search+target.hash
+    }
     if (!canLeaveEditor(isDetail && target.pathname===route.path)) return false
     const index=historyState.current?.funixIndex??0
     const nextState={...(state??window.history.state),funixIndex:replace?index:index+1}
@@ -385,16 +392,17 @@ function App() {
           <div key={route.path} className="erp-view">
             {erp.area === 'inicio' && <h1>Início</h1>}
             {erp.area === 'oficina' && <Workshop view={erp.view} />}
-            {erp.area === 'vendas' && <Sales view={erp.view} openRecord={openCommercial}/>}
+            {erp.area === 'vendas' && <Sales view={erp.view} openRecord={openCommercial} search={route.search} updateFilters={updateParams}
+              dashboardQuery={dashboardQuery} setDashboardQuery={setDashboardQuery}/>}
             {erp.area === 'estoque' && <Stock view={erp.view} />}
             {erp.area === 'tarefas' && <Tasks view={erp.view} />}
             {erp.area === 'financeiro' && <FinancePage search={route.search} view={erp.view} onAuthRequired={expireSession} onBusy={onBusy} />}
             {(erp.area === 'biblioteca' || erp.area === 'gestao') && <Experiences view={erp.view} />}
           </div>
         </> : isFinance ? <><FinancePage key={routeKey} search={route.search} onAuthRequired={expireSession} onBusy={onBusy} /></> : isOperation ? <><OperationPanel onAuthRequired={expireSession} /></> : area==='configuracoes'?<><SettingsPage key={commercialVersion} onDirty={onDirty} onBusy={onBusy}/>{erp && <><SalesSettings /><WorkshopPhaseSettings /></>}</>:area==='atualizacoes'?<><UpdatesPage onUnauthorized={expireSession}/></>:<>
-          <div className="fh-tools"><label className="fh-search"><span aria-hidden="true">⌕</span><input aria-label={area === 'conversas' ? 'Buscar conversas carregadas por nome ou telefone' : 'Buscar nome, telefone, placa ou Atendimento'} autoComplete="off" placeholder={area === 'conversas' ? 'Buscar conversas carregadas…' : 'Buscar nome, telefone, placa…'} value={query} onChange={event => updateParams({ q: event.target.value })} /></label><div className="fh-tools-right">
+          {area !== 'conversas' && <div className="fh-tools"><label className="fh-search"><span aria-hidden="true">⌕</span><input aria-label="Buscar nome, telefone, placa ou Atendimento" autoComplete="off" placeholder="Buscar nome, telefone, placa…" value={query} onChange={event => updateParams({ q: event.target.value })} /></label><div className="fh-tools-right">
             {area === 'funil' && <div className="fh-listtoggle" aria-label="Visualização"><button className={mode === 'quadro' ? 'active' : ''} onClick={() => updateParams({ modo: 'quadro' })} aria-pressed={mode === 'quadro'}>▥ Quadro</button><button className={mode === 'lista' ? 'active' : ''} onClick={() => updateParams({ modo: 'lista' })} aria-pressed={mode === 'lista'}>☷ Lista</button></div>}
-          </div></div>
+          </div></div>}
           {area === 'conversas' ? <EvolutionConversationReader searchTerm={query} onUnauthorized={expireSession} onOpenAtendimento={(id, selectedTab, conversationId, readOnly) => {
               const query = new URLSearchParams({ aba: selectedTab })
               if (selectedTab === 'chat' && conversationId) query.set('conversa', conversationId)
@@ -442,8 +450,8 @@ function App() {
       </TaskRecordContext.Provider>
       </div>
     </div>
-    {showNewAtendimento && <button className="workspace-new-atendimento" type="button" aria-label="+ Novo Atendimento"
-      title="Novo Atendimento" onClick={newAtendimento}><WorkspaceIcon name="plus" /></button>}
+    {showNewAtendimento && <SalesActions key={route.path} term={query} searchEnabled={route.path!=='/funil'}
+      onSearch={value=>updateParams({q:value,visao:''})} onAdd={newAtendimento}/>}
     <VoiceCopilot captureBlocked={voiceCaptureBlocked} onReviewActive={setVoiceReviewActive} onClose={()=>setCopilotOpen(false)} navigationKey={routeKey} context={session?.authenticated&&record&&voiceContext?.atendimentoId===record.id&&(!internalScreen||screen==='peca')?voiceContext:null} open={copilotOpen} onToggle={()=>setCopilotOpen(value=>!value)} onOpen={()=>setCopilotOpen(true)} visible={Boolean(session?.authenticated && isDetail && record && (!internalScreen||screen==='peca'))} disabled={Boolean(editor)} onApplied={()=>{setVoiceRefreshVersion(v=>v+1)}}/>
     {editor && <div className="at-editor-shade" onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); canLeaveEditor() }

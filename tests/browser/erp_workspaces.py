@@ -79,16 +79,17 @@ async def exercise():
                     await page.screenshot(path=str(evidence / f"oficina-{width}.png"))
 
                 await select("Vendas", "Oficina")
-                search = page.get_by_role("searchbox", name="Pesquisar")
+                await page.get_by_role("button", name="Abrir busca de Vendas").click()
+                search = page.get_by_role("searchbox", name="Pesquisar em Vendas")
                 await search.fill("Filtro preservado")
-                await page.get_by_role("button", name="Pesquisar", exact=True).click()
+                await page.get_by_role("button", name="Buscar", exact=True).click()
                 button = page.get_by_role("button", name=re.compile("^Central de tarefas"))
                 await button.click()
                 central = page.get_by_role("dialog", name="Central de tarefas")
                 await central.get_by_role("button", name="Catálogo", exact=True).click()
                 await expect(central.get_by_role("heading", name="Catálogo de tarefas")).to_be_visible()
                 await central.get_by_role("button", name="Fechar central").click()
-                await expect(search).to_have_value("Filtro preservado")
+                await expect(page.get_by_role("button", name="Editar busca: Filtro preservado")).to_be_visible()
                 await expect(page).to_have_url(ORIGIN + "/vendas/funil?q=Filtro+preservado")
 
                 created = await context.request.post(ORIGIN + "/api/atendimentos",
