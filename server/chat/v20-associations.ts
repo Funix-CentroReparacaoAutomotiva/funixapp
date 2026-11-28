@@ -97,6 +97,17 @@ export class V20AssociationRepository {
     this.now = now
   }
 
+  linkedProviderJids(atendimentoIds: string[]) {
+    if (!atendimentoIds.length) return []
+    return this.db.prepare(`
+      SELECT DISTINCT c.remote_jid
+      FROM v20_associations a JOIN v20_conversations c ON c.id=a.conversation_id
+      WHERE a.unlinked_at IS NULL AND c.instance='funix_comercial'
+        AND a.atendimento_id IN (SELECT value FROM json_each(?))
+      ORDER BY c.remote_jid
+    `).all(JSON.stringify(atendimentoIds)).map(row=>String(row.remote_jid))
+  }
+
   private transaction<T>(run: () => T): T {
     this.db.exec('BEGIN IMMEDIATE')
     try {

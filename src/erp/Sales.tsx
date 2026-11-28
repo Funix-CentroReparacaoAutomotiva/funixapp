@@ -85,106 +85,89 @@ function Comments({id,refresh,onSave}:{id:string;refresh:number;onSave:()=>void}
 }
 const stageTones:Record<string,string>={'novo-lead':'neutral','aguardando-dados':'blue','em-negociacao':'yellow','morno':'orange','frio':'blue','rejeitados':'neutral'}
 const cardStage=(card:FunnelCard)=>card.lane==='triage'?'novo-lead':card.lane
-function FunnelPreview({card,onClick,mobile=false,stageLabel}:{card:FunnelCard;onClick:()=>void;mobile?:boolean;stageLabel?:string}) {
+function FunnelPreview({card,onClick}:{card:FunnelCard;onClick:()=>void}) {
   const {record,context}=card,amount=record.commercialValue
   const value=amount?(amount.min===amount.max?money(amount.min):money(amount.min)+' a '+money(amount.max)):null
-  return <button className={'erp-sales-card'+(card.overdue?' erp-sales-overdue':'')+(mobile?' erp-sales-compact-card erp-phase-'+(stageTones[cardStage(card)]??'neutral'):'')} onClick={onClick}>
-    {mobile?<><div className="erp-sales-card-top"><strong>{humanName(record)}</strong>{value&&<b>{value}</b>}</div>
-      <span>{recordVehicle(record)}</span>
-      <div className="erp-sales-card-bottom">{card.lane==='triage'?<span className="erp-sales-classification-badge">A classificar</span>:stageLabel?<span className="erp-sales-stage-badge">{stageLabel}</span>:null}
-        <span className={card.overdue?'erp-sales-alert':''}>{card.nextContactAt?(card.overdue?'Retorno vencido':'Retorno')+' · '+dateLabel(card.nextContactAt):'Última atividade · '+dateLabel(card.lastActivityAt)}</span></div></>:<>
-      <strong>{humanName(record)}</strong><span>{recordVehicle(record)}</span>
-      {card.lane==='triage'&&<span className="erp-sales-classification-badge">A classificar</span>}
-      {value&&<span>{value}</span>}
-      <span>Última atividade · {dateLabel(card.lastActivityAt)}</span>
-      <span>{card.overdue?'Retorno vencido':'Próximo contato'} · {dateLabel(card.nextContactAt)}</span>
-      {(context.channel||context.origin)&&<span>{[context.channel,context.origin].filter(Boolean).join(' · ')}</span>}
-    </>}
+  return <button type="button" className={'erp-sales-card'+(card.overdue?' erp-sales-overdue':'')} onClick={onClick}>
+    <div className="erp-sales-card-top"><strong>{humanName(record)}</strong>{value&&<b>{value}</b>}</div>
+    <span>{recordVehicle(record)}</span>
+    {card.lane==='triage'&&<span className="erp-sales-classification-badge">A classificar</span>}
+    <span>Última atividade · {dateLabel(card.lastActivityAt)}</span>
+    <span className={card.overdue?'erp-sales-alert':''}>{card.overdue?'Retorno vencido':'Próximo contato'} · {dateLabel(card.nextContactAt)}</span>
+    {(context.channel||context.origin)&&<span>{[context.channel,context.origin].filter(Boolean).join(' · ')}</span>}
   </button>
 }
-function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
-  const [query,setQuery]=useState(()=>new URLSearchParams(window.location.search))
-  const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width:760px)').matches)
-  useEffect(()=>{
-    const media=window.matchMedia('(max-width:760px)')
-    const sync=()=>setMobile(media.matches)
-    media.addEventListener('change',sync);return ()=>media.removeEventListener('change',sync)
-  },[])
-  const apiQuery=new URLSearchParams(query)
-  apiQuery.delete('stage')
-  apiQuery.delete('visao')
+
+const extraLanes=[{id:'triage',label:'A classificar'},{id:'non-commercial',label:'Não comercial'}]
+function filteredSearch(filters:string,term:string) {
+  const query=new URLSearchParams(filters)
+  if(term)query.set('q',term)
+  return query
+}
+
+function Funnel({openRecord,search,updateFilters}:{openRecord:(id:string)=>void;search:string;updateFilters:(values:Record<string,string>)=>void}) {
+  const [showFilters,setShowFilters]=useState(false)
+  const query=new URLSearchParams(search)
+  const stage=query.get('stage')??''
+  const apiQuery=new URLSearchParams([...query].filter(([key,value])=>['q','owner','channel','origin'].includes(key)&&value))
+  apiQuery.sort()
   const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+apiQuery)
-  const lanes=read.data?.stages??[]
-  const stageFilter=query.get('stage')??''
-  const auxiliary=stageFilter==='triage'||stageFilter==='non-commercial'
-  const regular=(read.data?.cards??[]).filter(card=>card.lane!=='non-commercial')
-  const cards=(read.data?.cards??[]).filter(card=>auxiliary?card.lane===stageFilter:
-    card.lane!=='non-commercial'&&(!stageFilter||cardStage(card)===stageFilter))
-  const selectStage=(stage:string)=>{
-    setQuery(previous=>{const next=new URLSearchParams(previous);if(stage)next.set('stage',stage);else next.delete('stage');return next})
-  }
-  useEffect(()=>{window.history.replaceState(window.history.state,'',window.location.pathname+(query.size?'?'+query:''))},[query])
-  const visibleLanes=lanes.filter(lane=>!stageFilter||stageFilter===lane.id)
-  const board=query.get('visao')==='quadro'
-  const list=mobile&&!board
-  const selectView=(showBoard:boolean)=>{
-    setQuery(previous=>{
-      const next=new URLSearchParams(previous)
-      if(showBoard&&!next.has('visao')){next.set('visao','quadro');next.delete('stage')}
-      if(!showBoard)next.delete('visao')
-      return next
-    })
-  }
-  const filters=<>
-      <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
-      <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
-      <label>Origem<select name="origin" defaultValue={query.get('origin')??''}><option value="">Todas</option>{read.data?.origins.map(origin=><option key={origin}>{origin}</option>)}</select></label>
-      {mobile?<label>Classificação<select aria-label="Classificação do filtro" name="classification" key={stageFilter} defaultValue={auxiliary?stageFilter:''}><option value="">Todas comerciais</option><option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>:
-        <label>Etapa<select aria-label="Etapa" name="stage" key={lanes.length+stageFilter} defaultValue={stageFilter}><option value="">Todas</option>{lanes.map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}<option value="triage">A classificar</option><option value="non-commercial">Não comercial</option></select></label>}
-  </>
+  const stages=read.data?.stages??[]
+  const extra=extraLanes.find(lane=>lane.id===stage)
+  const filtered=Boolean(apiQuery.size||stage)
+  const lanes=(extra?[extra]:stages.filter(lane=>!stage||lane.id===stage)).map(lane=>({
+    ...lane,cards:(read.data?.cards??[]).filter(card=>extra?card.lane===extra.id:cardStage(card)===lane.id),
+  })).filter(lane=>!filtered||lane.cards.length)
+  const quickStages=[{id:'',label:'Todas'},...stages.filter(lane=>lane.id!=='rejeitados')]
+  const filterFields=[
+    {key:'owner',label:'Vendedor',options:read.data?.owners},
+    {key:'channel',label:'Canal',options:read.data?.channels},
+    {key:'origin',label:'Origem',options:read.data?.origins},
+  ]
+  const appliedFilters=filterFields.filter(({key})=>query.get(key)).length+Number(Boolean(extra||stage==='rejeitados'))
   return <>
-    <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
-    <form className="erp-sales-fields erp-funnel-search" onSubmit={event=>{
+    <h1 className="sr-only">Funil de vendas</h1>
+    <div className="erp-funnel-controls">
+      <div className="erp-funnel-stages" role="group" aria-label="Filtrar por etapa">{quickStages.map(lane=>
+        <button type="button" key={lane.id} aria-pressed={stage===lane.id} onClick={()=>updateFilters({stage:lane.id})}>{lane.label}</button>
+      )}</div>
+      <button type="button" className="erp-funnel-more" aria-expanded={showFilters} aria-controls="funnel-filters"
+        onClick={()=>setShowFilters(!showFilters)}><WorkspaceIcon name="filter"/>Filtros{appliedFilters?(` (${appliedFilters})`):''}</button>
+    </div>
+    {showFilters&&<form id="funnel-filters" className="erp-sales-fields erp-sales-filters" onSubmit={event=>{
       event.preventDefault()
-      const next=new URLSearchParams([...formData(event)].filter(([,value])=>String(value).trim()).map(([key,value])=>[key,String(value)]))
-      if(board)next.set('visao','quadro')
-      if(mobile){const classification=next.get('classification');next.delete('classification');const stage=classification||(auxiliary?'':stageFilter);if(stage)next.set('stage',stage)}
-      setQuery(next)
+      const values=Object.fromEntries([...formData(event)].map(([key,value])=>[key,String(value)]))
+      updateFilters(values)
+      setShowFilters(false)
     }}>
-      <div className="erp-funnel-search-row">
-        <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''} placeholder="Cliente, veículo ou placa"/></label>
-        <button type="submit" className="erp-sales-filter-button"><WorkspaceIcon name="search"/>Pesquisar</button>
-      </div>
-      <details className="erp-sales-more-filters"><summary><WorkspaceIcon name="filter"/> Filtros</summary><div>{filters}</div></details>
-    </form>
+      {filterFields.map(({key,label,options})=>{
+        const selected=query.get(key)??''
+        const choices=[...new Set([...(options??[]),selected].filter(Boolean))]
+        return <label key={key}>{label}<select aria-label={label} name={key} key={selected} defaultValue={selected}><option value="">Todos</option>
+          {choices.map(option=><option key={option}>{option}</option>)}</select></label>
+      })}
+      <label>Etapa<select aria-label="Etapa" name="stage" key={stage} defaultValue={stage}><option value="">Todas</option>
+        {[...stages,...extraLanes].map(lane=><option key={lane.id} value={lane.id}>{lane.label}</option>)}</select></label>
+      <button type="submit">Aplicar filtros</button>
+      <button type="button" onClick={()=>{updateFilters({stage:'',owner:'',channel:'',origin:''});setShowFilters(false)}}>Limpar filtros</button>
+    </form>}
     <ReadStatus read={read}/>
-    {read.data&&<>
-      {mobile&&<div className="erp-funnel-view" role="group" aria-label="Visualização do Funil">
-        <button type="button" aria-pressed={list} onClick={()=>selectView(false)}>Lista</button>
-        <button type="button" aria-pressed={!list} onClick={()=>selectView(true)}>Quadro completo</button>
-      </div>}
-      {list&&<div className="erp-sales-stage-selector" role="group" aria-label="Etapas comerciais">{lanes.map(lane=><button type="button" className={'erp-phase-'+(stageTones[lane.id]??'neutral')} key={lane.id} aria-pressed={stageFilter===lane.id} onClick={()=>selectStage(stageFilter===lane.id?'':lane.id)}>
-        <strong>{regular.filter(card=>cardStage(card)===lane.id).length}</strong><span>{lane.label}</span></button>)}</div>}
-      {list?<><div className="erp-sales-mobile-list-header"><h2>{auxiliary?(stageFilter==='triage'?'A classificar':'Não comercial'):lanes.find(l=>l.id===stageFilter)?.label??'Todos os atendimentos'} <small>({cards.length})</small></h2>
-        {stageFilter&&<button type="button" onClick={()=>selectStage('')}>Ver todos</button>}</div>
-        <div className="erp-sales-mobile-list" aria-label="Atendimentos">{cards.map(card=><FunnelPreview key={card.record.id} card={card} mobile stageLabel={!stageFilter?lanes.find(l=>l.id===cardStage(card))?.label:undefined} onClick={()=>openRecord(card.record.id)}/>)}</div></>:
-        auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
-        {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)}
-      </div>:<ol className="erp-funnel-board" role="list" aria-label="Fluxo comercial">{visibleLanes.map((lane,index)=>{
-        const laneCards=cards.filter(card=>cardStage(card)===lane.id)
-        return <li key={lane.id} className={'erp-funnel-step erp-phase-'+(stageTones[lane.id]??'neutral')}>
-          <section className="erp-sales-lane" aria-label={lane.label}>
-            <h2>{lane.label} <small>{laneCards.length}</small></h2>
-            <div className="erp-funnel-cards">{laneCards.map(({record})=>{
-              const label=record.plate||record.name||record.references?.person[0]?.text||record.displayNumber||record.id
-              return <button type="button" key={record.id} className="erp-funnel-chip" aria-label={record.plate?label+' · '+humanName(record):label} onClick={()=>openRecord(record.id)}>{label}</button>
-            })}</div>
-          </section>
-          {index<visibleLanes.length-1&&<span className="erp-funnel-arrow" aria-hidden="true">↓</span>}
-        </li>
-      })}</ol>}
-      {!cards.length&&<p>Nenhum atendimento corresponde aos filtros.</p>}
-    </>}
+    {read.data&&<>{lanes.length>0&&<ol className="erp-funnel-board" role="list" aria-label="Fluxo comercial">{lanes.map((lane,index)=>
+      <li key={lane.id} className={'erp-funnel-step erp-phase-'+(stageTones[lane.id]??'neutral')}>
+        <section className="erp-sales-lane" aria-label={lane.label}>
+          <h2>{lane.label} <small>{lane.cards.length}</small></h2>
+          {lanes.length===1?lane.cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)
+            :<div className="erp-funnel-cards">{lane.cards.map(({record})=>{
+              const label=record.plate||record.displayNumber||record.id
+              const model=[record.brand,record.model].filter(Boolean).join(' ')||record.vehicle
+              return <button type="button" key={record.id} className="erp-funnel-chip" aria-label={label+' · '+humanName(record)} onClick={()=>openRecord(record.id)}>
+                <strong>{label}</strong>{model&&<span>{model}</span>}
+              </button>
+            })}</div>}
+        </section>
+        {index<lanes.length-1&&<span className="erp-funnel-arrow" aria-hidden="true">↓</span>}
+      </li>
+    )}</ol>}{!lanes.some(lane=>lane.cards.length)&&<p>Nenhum atendimento corresponde aos filtros.</p>}</>}
   </>
 }
 
@@ -221,9 +204,9 @@ function TrackingDetail({card,onSave}:{card:TrackingCard;onSave:()=>void}) {
   </section>
 }
 const budgetLabels={negotiating:'Negociando',consented:'Consentido',authorized:'Autorizado',rejected:'Rejeitado',executed:'OS emitida',cancelled:'Cancelado'}
-function Tracking({openRecord}:{openRecord:(id:string)=>void}) {
+function Tracking({openRecord,term}:{openRecord:(id:string)=>void;term:string}) {
   const [query,setQuery]=useState(''),[selected,setSelected]=useState('')
-  const read=useRead<{cards:TrackingCard[];owners:string[];summary:{approvedValue:string|null;outstanding:string|null;overdue:number}}>(endpoint+'/tracking?'+query)
+  const read=useRead<{cards:TrackingCard[];owners:string[];summary:{approvedValue:string|null;outstanding:string|null;overdue:number}}>(endpoint+'/tracking?'+filteredSearch(query,term))
   const cards=read.data?.cards??[]
   const phases=[...new Map(workshopPhases.map(phase=>[phase.commercial,phase.tone])).entries()]
   const owners=read.data?.owners??[]
@@ -234,11 +217,10 @@ function Tracking({openRecord}:{openRecord:(id:string)=>void}) {
     {card.vehicle.requiresClassification&&<span className="erp-sales-alert">Classificação a conferir</span>}{card.vehicle.blocked&&<span className="erp-sales-alert">Impedimento</span>}
   </button>
   return <>
-    <h1>Acompanhamento de veículos</h1>
+    <h1 className="sr-only">Acompanhamento de veículos</h1>
     <form className="erp-sales-fields erp-sales-filters" onSubmit={event=>{event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])).toString())}}>
-      <label>Pesquisar<input name="q" type="search" placeholder="Cliente, modelo ou placa"/></label>
       <label>Vendedor<select name="owner"><option value="">Todos</option>{owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
-      <button className="erp-sales-filter-button"><WorkspaceIcon name="search"/>Filtrar</button>
+      <button className="erp-sales-filter-button"><WorkspaceIcon name="filter"/>Filtrar</button>
     </form><ReadStatus read={read}/>
     {read.data&&<>
       <dl className="erp-sales-info erp-sales-tracking-summary">
@@ -334,23 +316,23 @@ function SalesChart({daily,from,to}:{daily:DailySale[];from:string;to:string}) {
   {count>93&&<small>Período extenso: exibindo os dias com atividade.</small>}
   </section>
 }
-function Dashboard() {
-  const [query,setQuery]=useState(''),[owner,setOwner]=useState('')
-  const read=useRead<DashboardData>(endpoint+'/dashboard?'+query)
+function Dashboard({term,query,setQuery}:{term:string;query:string;setQuery:(query:string)=>void}) {
+  const owner=new URLSearchParams(query).get('owner')??''
+  const read=useRead<DashboardData>(endpoint+'/dashboard?'+filteredSearch(query,term))
   const data=read.data
   const progress=data?.goal&&Number(data.goal)>0?100*Number(data.approvedTotal)/Number(data.goal):null
   return <>
-    <h1>Desempenho</h1><ReadStatus read={read}/>
+    <h1 className="sr-only">Desempenho</h1>{term&&<p className="sales-filtered-summary">Desempenho filtrado · {term}</p>}<ReadStatus read={read}/>
     {data&&<>
       <form className="erp-sales-fields erp-sales-filters" key={data.from+'-'+data.to+'-'+owner} onSubmit={event=>{
-        event.preventDefault();const form=formData(event);setOwner(field(form,'owner'));setQuery(new URLSearchParams([...form].map(([key,value])=>[key,String(value)])).toString())
+        event.preventDefault();setQuery(new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)])).toString())
       }}>
         <label>Início<input name="from" type="date" defaultValue={data.from} required/></label>
         <label>Fim<input name="to" type="date" defaultValue={data.to} required/></label>
         <label>Vendedor<select name="owner" defaultValue={owner}><option value="">Todos</option>{data.owners.map(o=><option key={o}>{o}</option>)}</select></label>
         <button className="erp-sales-filter-button">Aplicar</button>
       </form>
-      <section className="sales-goal"><h2>Meta do período</h2><div><strong>{money(data.approvedTotal)}</strong><span>{progress===null?'Sem meta definida':progress.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}</span></div>{progress!==null&&<><progress max="100" value={Math.min(progress,100)}/><small>Meta: {money(data.goal)}</small></>}</section>
+      {!term&&<section className="sales-goal"><h2>Meta do período</h2><div><strong>{money(data.approvedTotal)}</strong><span>{progress===null?'Sem meta definida':progress.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}</span></div>{progress!==null&&<><progress max="100" value={Math.min(progress,100)}/><small>Meta: {money(data.goal)}</small></>}</section>}
       <div className="erp-sales-metrics erp-sales-dashboard-cards">{data.metrics.map(metric=><section key={metric.label} title={metric.definition}><h2>{metric.label}</h2><strong>{metric.value}</strong></section>)}</div>
       <SalesChart daily={data.daily??[]} from={data.from} to={data.to}/>
       <h2>Prioridades do dia</h2>
@@ -391,7 +373,11 @@ export function SalesSettings() {
     </form>)}
   </section>
 }
-export default function Sales({view,openRecord}:{view:string;openRecord:(id:string)=>void}) {
-  const views:Record<string,ReactNode>={funil:<Funnel openRecord={openRecord}/>,acompanhamento:<Tracking openRecord={openRecord}/>,desempenho:<Dashboard/>}
+export default function Sales({view,openRecord,search,updateFilters,dashboardQuery,setDashboardQuery}:{
+  view:string;openRecord:(id:string)=>void;search:string;updateFilters:(values:Record<string,string>)=>void
+  dashboardQuery:string;setDashboardQuery:(query:string)=>void
+}) {
+  const term=new URLSearchParams(search).get('q')?.trim()??''
+  const views:Record<string,ReactNode>={funil:<Funnel openRecord={openRecord} search={search} updateFilters={updateFilters}/>,acompanhamento:<Tracking openRecord={openRecord} term={term}/>,desempenho:<Dashboard term={term} query={dashboardQuery} setQuery={setDashboardQuery}/>}
   return <main className="erp-sales">{views[view]??<p>Visão de Vendas indisponível.</p>}</main>
 }

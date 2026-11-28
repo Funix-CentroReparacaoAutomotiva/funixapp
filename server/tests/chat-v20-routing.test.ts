@@ -18,8 +18,9 @@ function harness(enabled = true) {
   const two = atendimentos.create({ phone: '2', name: 'Sintético B' })
   if (enabled) createV20AssociationSchema(db)
   const associations = enabled ? new V20AssociationRepository(db) : undefined
+  let providerPages=0
   const provider = {
-    async findChatsPage() { return { items: [{ remoteJid: jid, displayName: 'Cliente fictício', phoneNumber: '5531999990001', updatedAt: null, unreadCount: 0 }], sourceCount: 1 } },
+    async findChatsPage() { providerPages++;return { items: [{ remoteJid: jid, displayName: 'Cliente fictício', phoneNumber: '5531999990001', updatedAt: null, unreadCount: 0 }], sourceCount: 1 } },
     async findMessages(remoteJid: string, { page }: { page?: number } = {}) {
       assert.equal(remoteJid, jid)
       return { items: [], currentPage: page ?? 1, reportedTotal: 0, reportedPages: 0, nextPage: null, consistency: 'offset-not-snapshot' as const }
@@ -47,7 +48,7 @@ function harness(enabled = true) {
     assert.equal(response.status, 200)
     return response.headers.get('set-cookie')!.split(';')[0]!
   }
-  return { db, one, two, request, login, bridge }
+  return { db, one, two, request, login, bridge, providerPages:()=>providerPages }
 }
 
 test('V20 routes disabled by default; read-only Evolution pilot unchanged', async () => {
@@ -75,8 +76,16 @@ test('Gated manual N:N routes require auth/Origin, reject arbitrary UUID, preser
     assert.equal((await f.request(base + '/atendimentos', 'POST', {}, cookie, 'https://other.invalid')).status, 403)
     const historyBefore = await (await f.request(base + '/messages', 'GET', undefined, cookie)).json()
     const first = { atendimentoId: f.one.id, expectedRevision: 0, requestId: randomUUID(), reason: 'test manual' }
+    const search=async(term:string)=>(await f.request('/api/chat/conversations?'+new URLSearchParams({q:term}),'GET',undefined,cookie)).json()
+    assert.deepEqual((await search('Sintético A')).items,[])
     const added = await f.request(base + '/atendimentos', 'POST', first, cookie)
     assert.equal(added.status, 201)
+    const filtered=await search('Sintético A')
+    assert.equal(filtered.source,'local')
+    assert.deepEqual(filtered.items.map((item:{conversationId:string})=>item.conversationId),[id])
+    assert.equal(filtered.items[0].commercial.names[0].name,'Sintético A')
+    assert.deepEqual((await search('Cliente fictício')).items,[])
+    assert.equal(f.providerPages(),1)
     const result = await added.json()
     assert.equal((await f.request(base + '/atendimentos', 'POST', first, cookie)).status, 201)
     assert.equal((await f.request(base + '/atendimentos', 'POST', { ...first, atendimentoId: f.two.id }, cookie)).status, 409)
@@ -97,6 +106,8 @@ test('Gated manual N:N routes require auth/Origin, reject arbitrary UUID, preser
     assert.deepEqual(historyBefore, historyAfter)
     const removed = await f.request(base + '/atendimentos/' + result.linkId, 'DELETE', { expectedRevision: 2, requestId: randomUUID(), reason: 'close' }, cookie)
     assert.equal(removed.status, 200)
+    assert.deepEqual((await search('Sintético A')).items,[])
+    assert.equal(f.providerPages(),1)
     linked = await (await f.request(base + '/atendimentos', 'GET', undefined, cookie)).json()
     assert.equal(linked.activeAtendimentoId, null)
     assert.deepEqual(linked.items.map((x: { atendimentoId: string }) => x.atendimentoId), [f.two.id])
