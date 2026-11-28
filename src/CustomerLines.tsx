@@ -40,9 +40,35 @@ function VehicleYear({label,year,onChange,disabled,readOnly}:{label:string;year?
 }
 function validModelYear(fabrication?:string|null,model?:string|null){return !!fabrication&&/^\d{4}$/.test(fabrication)&&(model===fabrication||model===String(Number(fabrication)+1))}
 function ModelYearChoice({fabrication,year,onChange,disabled,readOnly}:{fabrication?:string|null;year?:string|null;onChange:(v:string)=>void;disabled?:boolean;readOnly?:boolean}){
- const known=!!fabrication&&/^\d{4}$/.test(fabrication)
- return <label className="vehicle-year-label">Ano do modelo<select aria-label="Ano do modelo" value={year??''} disabled={disabled||readOnly||(!known&&!year)} onChange={e=>onChange(e.target.value)}><option value="">Não informado</option>{year&&!validModelYear(fabrication,year)&&<option value={year}>{year} (cadastro anterior)</option>}{known&&<><option value={fabrication!}>{fabrication}</option><option value={String(Number(fabrication)+1)}>{Number(fabrication)+1}</option></>}</select></label>
+ const group=useId()
+ const known=!!fabrication&&/^(19|20)\d{2}$/.test(fabrication)
+ const options=[
+  {slot:'empty',value:'',label:'Não informado',enabled:true},
+  {slot:'same',value:fabrication??'',label:known?fabrication!:'Mesmo ano',enabled:known},
+  {slot:'next',value:known?String(Number(fabrication)+1):'',label:known?String(Number(fabrication)+1):'Ano seguinte',enabled:known&&Number(fabrication)<2099},
+ ]
+ if(year&&!validModelYear(fabrication,year))options.push({slot:'legacy',value:year,label:year,enabled:true})
+ return <fieldset className="visible-model-year" disabled={disabled||readOnly}>
+   <legend>Ano do modelo</legend>
+   <div className="model-year-options">{options.map(({slot,value,label,enabled})=><label key={slot}>
+     <input type="radio" name={group} value={value} disabled={!enabled} checked={enabled&&(year??'')===value}
+       onChange={()=>onChange(value)}/><span>{label}</span>
+   </label>)}</div>
+ </fieldset>
 }
+function ContactEmail({row,onChange,disabled}: {
+ row:CustomerReference; onChange:(row:CustomerReference)=>void; disabled:boolean
+}) {
+ const [editing,setEditing]=useState(false)
+ if(!row.id&&!row.text.trim())return null
+ if(!editing&&!row.email)return <button type="button" className="contact-email-action" disabled={disabled}
+   onClick={()=>setEditing(true)}>Adicionar e-mail</button>
+ return <label className="contact-email">E-mail
+   <input type="email" autoComplete="email" maxLength={254} disabled={disabled} value={row.email??''}
+     onChange={event=>onChange({...row,email:event.target.value})}/>
+ </label>
+}
+
 const titles:Record<ReferenceKind,string>={person:'Pessoas',contact:'Contatos',vehicle:'Veículo',payer:'Pagadores'}
 const registryKind=(kind:ReferenceKind)=>kind==='person'||kind==='payer'?'entity':kind
 export function CustomerLines({value,onChange,disabled,onMessage}:{value:CustomerReferences;onChange:(v:CustomerReferences)=>void;disabled:boolean;onMessage?:(conversationId:string|null,contactIndex?:number)=>void}){
@@ -105,14 +131,14 @@ export function CustomerLines({value,onChange,disabled,onMessage}:{value:Custome
   {(groups.length?groups:[{person:{id:null,text:''} as CustomerReference,index:0,key:'legacy:0',contacts:[]}]).map(g=>
     <div className="customer-primary participant-block" key={g.key} role="group" aria-label={'Pessoa '+(g.index+1)}>
       <div><label className="customer-field-label">Nome</label>{line('person',g.person,g.index,g.key)}</div>
-      <div role="region" aria-label="Contatos"><label className="customer-field-label">Telefone desta pessoa</label>
+      <div className="participant-contacts" role="region" aria-label="Contatos"><label className="customer-field-label">Contato</label>
         {g.contacts.length?g.contacts.map(({contact,index})=>line('contact',contact,index,g.key)):
-          <input aria-label="Telefone" placeholder="Telefone" inputMode="tel" value="" disabled={disabled} onChange={e=>{
+          <input className="first-contact-input" aria-label="Telefone" placeholder="Telefone" inputMode="tel" value="" disabled={disabled} onChange={e=>{
             const grouped=groupedCustomerReferences(value)
             const person=grouped.person.length?grouped.person:[{id:null,text:'',participantKey:g.key}]
             change({...grouped,person,contact:[...grouped.contact,{id:null,text:e.target.value,participantKey:g.key}]})
           }}/>}
-        <button type="button" disabled={disabled||!value.person.length} aria-label="+ Outro telefone desta pessoa" className="customer-inline-add" onClick={()=>addPhone(g.key)}>+ Telefone</button>
+        <button type="button" disabled={disabled||!value.person.length} className="customer-inline-add add-participant-contact" onClick={()=>addPhone(g.key)}><span aria-hidden="true">+ </span>Contato</button>
       </div>
       {groups.length>1&&<button type="button" disabled={disabled} onClick={()=>remove('person',g.index,g.key)}>Remover pessoa do Atendimento</button>}
     </div>)}
@@ -194,6 +220,6 @@ function SmartLine({kind,row,version,disabled,onChange,onEdit,onRemove,onMessage
 
  {kind==='contact'&&<button type="button" disabled={disabled||!onMessage||(!record?.conversationId&&!/^\+[1-9]\d{7,14}$/.test(row.text.replace(/[\s().-]/g,'')))} aria-label="Escrever mensagem opcional" title={record?.conversationId?'Abrir Chat; envio exige confirmação':'Abrir conversa para o telefone salvo com + e DDI; nenhum envio automático'} onClick={()=>onMessage?.(record?.conversationId??null)}>✉</button>}
  {row.id&&kind==='contact'?<button type="button" aria-label="Retirar telefone deste Atendimento" disabled={disabled} onClick={onRemove}>×</button>:row.id?<button type="button" aria-label="Editar cadastro selecionado" disabled={disabled||!record} onClick={()=>record&&onEdit(record)}>✎</button>:kind!=='vehicle'?<button type="button" aria-label="Remover linha" disabled={disabled} onClick={onRemove}>×</button>:null}
- </div>{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='contact'?{entityId:r.entityId}:{}),...(kind==='vehicle'?{brand:r.brand,model:r.model,plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{error&&<p role="alert">{error}</p>}</div>
+ </div>{kind==='contact'&&<ContactEmail row={row} onChange={onChange} disabled={disabled}/>}{!row.id&&focused&&suggestions.length>0&&<div className="smart-suggestions">{suggestions.map(r=><button key={r.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange({id:r.id,text:r.text,...(kind==='contact'?{entityId:r.entityId,...(row.email!==undefined?{email:row.email}:{})}:{}),...(kind==='vehicle'?{brand:r.brand,model:r.model,plate:r.plate,fabricationYear:r.fabricationYear,modelYear:r.modelYear}:{})});setSuggestions([])}}>{r.text}{r.plate?' · '+r.plate:''}{r.ownerName&&<span aria-hidden="true"> · {r.ownerName}</span>}</button>)}</div>}{error&&<p role="alert">{error}</p>}</div>
  </div>
 }

@@ -81,7 +81,7 @@ async def exercise():
                 await select("Vendas", "Oficina")
                 search = page.get_by_role("searchbox", name="Pesquisar")
                 await search.fill("Filtro preservado")
-                await page.get_by_role("button", name="Filtrar").click()
+                await page.get_by_role("button", name="Pesquisar", exact=True).click()
                 button = page.get_by_role("button", name=re.compile("^Central de tarefas"))
                 await button.click()
                 central = page.get_by_role("dialog", name="Central de tarefas")
@@ -89,7 +89,7 @@ async def exercise():
                 await expect(central.get_by_role("heading", name="Catálogo de tarefas")).to_be_visible()
                 await central.get_by_role("button", name="Fechar central").click()
                 await expect(search).to_have_value("Filtro preservado")
-                await expect(page).to_have_url(ORIGIN + "/vendas/funil")
+                await expect(page).to_have_url(ORIGIN + "/vendas/funil?q=Filtro+preservado")
 
                 created = await context.request.post(ORIGIN + "/api/atendimentos",
                     data={"name": f"Cliente sintético {width}"}, headers={"Origin": ORIGIN})

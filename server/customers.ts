@@ -44,12 +44,19 @@ export class CustomerRepository {
     return this.db.prepare("SELECT id FROM customer_records WHERE kind=? AND json_extract(data,'$.canonicalContactId') IS NULL AND data LIKE ? ESCAPE '\\' ORDER BY id LIMIT 20").all(kind,'%'+q.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.record(String(r.id)))
   }
   validateReference(raw:unknown,kind:ReferenceKind):CustomerReference {
-    const r=inputObject(raw,['id','text','brand','model','plate','fabricationYear','modelYear','entityId','participantKey','payerType'])
+    const r=inputObject(raw,['id','text','brand','model','plate','fabricationYear','modelYear','entityId','participantKey','payerType','email'])
     if(r.id!==null&&(typeof r.id!=='string'||r.id.length>100))invalid()
     if(typeof r.text!=='string'||r.text.length>250)invalid()
     const result:CustomerReference={id:r.id as string|null,text:String(r.text).trim()}
     if(r.payerType!==undefined){if(kind!=='payer'||!['Particular','Terceiro','Associação','Seguradora'].includes(String(r.payerType)))return invalid();result.payerType=r.payerType as CustomerReference['payerType']}
     if(r.participantKey!==undefined){if((kind!=='person'&&kind!=='contact')||typeof r.participantKey!=='string'||!/^[a-zA-Z0-9:_-]{1,120}$/.test(r.participantKey))return invalid();result.participantKey=r.participantKey}
+    if(r.email!==undefined){
+      if(kind!=='contact'||typeof r.email!=='string')return invalid()
+      const email=r.email.trim()
+      if(email&&(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||(!result.id&&!result.text)))
+        throw new ServiceError(400,'INVALID_CONTACT_EMAIL','Informe um e-mail válido para este contato.')
+      result.email=email
+    }
     if(kind==='vehicle'){
       for(const key of ['brand','model'] as const){
         const value=r[key]
@@ -259,7 +266,7 @@ export class CustomerRepository {
         person[0]={id:owner.id,text:owner.text}
       }
       const saved=existing?.entityId?existing:this.saveRecord({kind:'contact',text:existing?.text??ref.text,entityId:ownerId,revision:existing?.revision},existing?.id)
-      return {id:saved.id,text:saved.text}
+      return {id:saved.id,text:saved.text,...(ref.email!==undefined?{email:ref.email}:{})}
     })
     return {...refs,person,contact}
   }
@@ -268,7 +275,9 @@ export class CustomerRepository {
     this.invalidateContactContexts(at,previous,refs.contact)
     this.db.prepare('DELETE FROM atendimento_references WHERE atendimento_id=?').run(at)
     for(const kind of kinds)refs[kind].forEach((r,i)=>{
-      this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(r))
+      const prior=kind==='contact'?previous.find(item=>r.id?item.id===r.id:!item.id&&item.text===r.text&&item.participantKey===r.participantKey):undefined
+      const data=r.email===undefined&&prior?.email?{...r,email:prior.email}:r
+      this.db.prepare('INSERT INTO atendimento_references VALUES(?,?,?,?,?)').run(at,kind,i,r.id,JSON.stringify(data))
       // Selecting a known channel Contact is explicit; a textual phone match never reaches here.
       const cid=kind==='contact'&&r.id?this.record(r.id).conversationId:null
       if(cid&&!this.hasConversationReference(cid,at)&&!this.wasConversationRevoked(cid,at)){
@@ -309,7 +318,7 @@ export class CustomerRepository {
     const row=this.db.prepare('SELECT * FROM atendimentos WHERE id=?').get(at)!
     const refs:CustomerReferences={person:[{id:null,text:String(row.name)}],contact:[{id:null,text:String(row.phone)}],vehicle:[{id:null,text:String(row.vehicle),plate:String(row.plate),fabricationYear:row.fabrication_year as string|null,modelYear:row.model_year as string|null}],payer:[]}
     const stored=this.db.prepare('SELECT * FROM atendimento_references WHERE atendimento_id=? ORDER BY position').all(at)
-    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='payer'&&data.payerType?{payerType:data.payerType}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='vehicle'?{brand:found.brand,model:found.model,plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
+    for(const kind of kinds){const rows=stored.filter(r=>r.kind===kind);if(rows.length)refs[kind]=rows.map(r=>{const data=JSON.parse(String(r.data));if(!r.record_id)return data;const found=this.record(String(r.record_id));return {id:found.id,text:found.text,...(data.participantKey?{participantKey:data.participantKey}:{}),...(kind==='payer'&&data.payerType?{payerType:data.payerType}:{}),...(kind==='contact'&&found.entityId?{entityId:found.entityId}:{}),...(kind==='contact'&&data.email?{email:data.email}:{}),...(kind==='vehicle'?{brand:found.brand,model:found.model,plate:found.plate,fabricationYear:found.fabricationYear,modelYear:found.modelYear}:{})}})}
     return refs
   }
   present(items:Atendimento[]):Atendimento[] {

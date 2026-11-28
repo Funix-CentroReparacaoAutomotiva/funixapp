@@ -104,7 +104,6 @@ function FunnelPreview({card,onClick,mobile=false,stageLabel}:{card:FunnelCard;o
 }
 function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
   const [query,setQuery]=useState(()=>new URLSearchParams(window.location.search))
-  const [refresh]=useState(0)
   const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width:760px)').matches)
   useEffect(()=>{
     const media=window.matchMedia('(max-width:760px)')
@@ -113,7 +112,8 @@ function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
   },[])
   const apiQuery=new URLSearchParams(query)
   apiQuery.delete('stage')
-  const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+apiQuery,refresh)
+  apiQuery.delete('visao')
+  const read=useRead<{cards:FunnelCard[];stages:SalesStage[];owners:string[];channels:string[];origins:string[]}>(endpoint+'/funnel?'+apiQuery)
   const lanes=read.data?.stages??[]
   const stageFilter=query.get('stage')??''
   const auxiliary=stageFilter==='triage'||stageFilter==='non-commercial'
@@ -124,6 +124,17 @@ function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
     setQuery(previous=>{const next=new URLSearchParams(previous);if(stage)next.set('stage',stage);else next.delete('stage');return next})
   }
   useEffect(()=>{window.history.replaceState(window.history.state,'',window.location.pathname+(query.size?'?'+query:''))},[query])
+  const visibleLanes=lanes.filter(lane=>!stageFilter||stageFilter===lane.id)
+  const board=query.get('visao')==='quadro'
+  const list=mobile&&!board
+  const selectView=(showBoard:boolean)=>{
+    setQuery(previous=>{
+      const next=new URLSearchParams(previous)
+      if(showBoard&&!next.has('visao')){next.set('visao','quadro');next.delete('stage')}
+      if(!showBoard)next.delete('visao')
+      return next
+    })
+  }
   const filters=<>
       <label>Vendedor<select name="owner" defaultValue={query.get('owner')??''}><option value="">Todos</option>{read.data?.owners.map(owner=><option key={owner}>{owner}</option>)}</select></label>
       <label>Canal<select name="channel" defaultValue={query.get('channel')??''}><option value="">Todos</option>{read.data?.channels?.map(channel=><option key={channel}>{channel}</option>)}</select></label>
@@ -133,31 +144,45 @@ function Funnel({openRecord}:{openRecord:(id:string)=>void}) {
   </>
   return <>
     <div className="erp-sales-heading"><h1>Funil de vendas</h1></div>
-    <form className={'erp-sales-fields erp-sales-filters'+(mobile?' erp-sales-mobile-filters':'')} onSubmit={event=>{
+    <form className="erp-sales-fields erp-funnel-search" onSubmit={event=>{
       event.preventDefault()
-      const next=new URLSearchParams([...formData(event)].map(([key,value])=>[key,String(value)]))
+      const next=new URLSearchParams([...formData(event)].filter(([,value])=>String(value).trim()).map(([key,value])=>[key,String(value)]))
+      if(board)next.set('visao','quadro')
       if(mobile){const classification=next.get('classification');next.delete('classification');const stage=classification||(auxiliary?'':stageFilter);if(stage)next.set('stage',stage)}
       setQuery(next)
     }}>
-      <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''} placeholder={mobile?'Cliente, veículo ou placa':undefined}/></label>
-      {mobile?<details className="erp-sales-more-filters"><summary><WorkspaceIcon name="filter"/> Filtros</summary><div>{filters}</div></details>:filters}
-      <button className="erp-sales-filter-button"><WorkspaceIcon name="search" />Filtrar</button>
+      <div className="erp-funnel-search-row">
+        <label>Pesquisar<input name="q" type="search" maxLength={150} defaultValue={query.get('q')??''} placeholder="Cliente, veículo ou placa"/></label>
+        <button type="submit" className="erp-sales-filter-button"><WorkspaceIcon name="search"/>Pesquisar</button>
+      </div>
+      <details className="erp-sales-more-filters"><summary><WorkspaceIcon name="filter"/> Filtros</summary><div>{filters}</div></details>
     </form>
     <ReadStatus read={read}/>
     {read.data&&<>
-      {mobile&&<div className="erp-sales-stage-selector" role="group" aria-label="Etapas comerciais">{lanes.map(lane=><button type="button" className={'erp-phase-'+(stageTones[lane.id]??'neutral')} key={lane.id} aria-pressed={stageFilter===lane.id} onClick={()=>selectStage(stageFilter===lane.id?'':lane.id)}>
+      {mobile&&<div className="erp-funnel-view" role="group" aria-label="Visualização do Funil">
+        <button type="button" aria-pressed={list} onClick={()=>selectView(false)}>Lista</button>
+        <button type="button" aria-pressed={!list} onClick={()=>selectView(true)}>Quadro completo</button>
+      </div>}
+      {list&&<div className="erp-sales-stage-selector" role="group" aria-label="Etapas comerciais">{lanes.map(lane=><button type="button" className={'erp-phase-'+(stageTones[lane.id]??'neutral')} key={lane.id} aria-pressed={stageFilter===lane.id} onClick={()=>selectStage(stageFilter===lane.id?'':lane.id)}>
         <strong>{regular.filter(card=>cardStage(card)===lane.id).length}</strong><span>{lane.label}</span></button>)}</div>}
-      {mobile?<><div className="erp-sales-mobile-list-header"><h2>{auxiliary?(stageFilter==='triage'?'A classificar':'Não comercial'):lanes.find(l=>l.id===stageFilter)?.label??'Todos os atendimentos'} <small>({cards.length})</small></h2>
+      {list?<><div className="erp-sales-mobile-list-header"><h2>{auxiliary?(stageFilter==='triage'?'A classificar':'Não comercial'):lanes.find(l=>l.id===stageFilter)?.label??'Todos os atendimentos'} <small>({cards.length})</small></h2>
         {stageFilter&&<button type="button" onClick={()=>selectStage('')}>Ver todos</button>}</div>
         <div className="erp-sales-mobile-list" aria-label="Atendimentos">{cards.map(card=><FunnelPreview key={card.record.id} card={card} mobile stageLabel={!stageFilter?lanes.find(l=>l.id===cardStage(card))?.label:undefined} onClick={()=>openRecord(card.record.id)}/>)}</div></>:
         auxiliary?<div className="erp-sales-classification-results" aria-label={stageFilter==='triage'?'Atendimentos a classificar':'Atendimentos não comerciais'}>
         {cards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)}
-      </div>:<div className="erp-sales-board">{lanes.filter(lane=>!stageFilter||stageFilter===lane.id).map(lane=>{
+      </div>:<ol className="erp-funnel-board" role="list" aria-label="Fluxo comercial">{visibleLanes.map((lane,index)=>{
         const laneCards=cards.filter(card=>cardStage(card)===lane.id)
-        return <section className="erp-sales-lane" key={lane.id} aria-label={lane.label}><h2>{lane.label} <small>{laneCards.length}</small></h2>
-          {laneCards.map(card=><FunnelPreview key={card.record.id} card={card} onClick={()=>openRecord(card.record.id)}/>)}
-        </section>
-      })}</div>}
+        return <li key={lane.id} className={'erp-funnel-step erp-phase-'+(stageTones[lane.id]??'neutral')}>
+          <section className="erp-sales-lane" aria-label={lane.label}>
+            <h2>{lane.label} <small>{laneCards.length}</small></h2>
+            <div className="erp-funnel-cards">{laneCards.map(({record})=>{
+              const label=record.plate||record.name||record.references?.person[0]?.text||record.displayNumber||record.id
+              return <button type="button" key={record.id} className="erp-funnel-chip" aria-label={record.plate?label+' · '+humanName(record):label} onClick={()=>openRecord(record.id)}>{label}</button>
+            })}</div>
+          </section>
+          {index<visibleLanes.length-1&&<span className="erp-funnel-arrow" aria-hidden="true">↓</span>}
+        </li>
+      })}</ol>}
       {!cards.length&&<p>Nenhum atendimento corresponde aos filtros.</p>}
     </>}
   </>

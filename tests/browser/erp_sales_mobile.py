@@ -49,7 +49,7 @@ async def run():
                             await page.get_by_role("button", name="Ver todos", exact=True).click()
                             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
                         else:
-                            await expect(page.locator(".erp-sales-board > section")).to_have_count(6)
+                            await expect(page.locator(".erp-funnel-board > li")).to_have_count(6)
                             await expect(page.get_by_role("group", name="Etapas comerciais")).to_have_count(0)
                     if href == "desempenho":
                         await page.get_by_role("button", name="Aplicar", exact=True).wait_for()
@@ -67,7 +67,7 @@ async def run():
                         bottom = await nav.bounding_box()
                         assert box["y"] + box["height"] <= bottom["y"]
                         assert box["x"] + box["width"] <= width
-                    for control in await page.locator(".erp-sales-filters input:visible, .erp-sales-filters select:visible").all():
+                    for control in await page.locator(".erp-sales-fields input:visible, .erp-sales-fields select:visible").all():
                         assert await control.evaluate("""el => {
                           const bounds = el.getBoundingClientRect(), parent = el.parentElement.getBoundingClientRect()
                           return bounds.right <= parent.right + 1 && bounds.left >= parent.left - 1
@@ -102,7 +102,7 @@ async def run():
                         await form.get_by_label("Montadora", exact=True).fill("Fiat")
                         await form.get_by_label("Modelo", exact=True).fill("Punto")
                         await form.get_by_label("Ano de fabricação", exact=True).fill("19")
-                        await form.get_by_label("Ano do modelo", exact=True).fill("20")
+                        await form.get_by_role("group", name="Ano do modelo").get_by_role("radio", name="2020", exact=True).check()
                         async with page.expect_response(lambda r: r.request.method == "POST" and r.url.endswith("/api/atendimentos")) as response_info:
                             await form.get_by_role("button", name="Criar Atendimento").click()
                         second = await response_info.value

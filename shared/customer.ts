@@ -6,6 +6,7 @@ export type CustomerReference = {
   id: string | null
   text: string
   entityId?: string|null
+  email?: string
   /** Stable grouping key for a participant draft; never an ownership credential. */
   participantKey?: string
   brand?: string

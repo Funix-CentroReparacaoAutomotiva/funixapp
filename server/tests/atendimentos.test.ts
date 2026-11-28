@@ -208,3 +208,28 @@ test('manual vehicle registry resolves valid plates transactionally, enriches mi
     assert.equal(partial.references!.vehicle[0]!.id,null);assert.equal(vehicleCount(),1)
   }finally{db.close()}
 })
+
+test('Contact email belongs to the selected contact on the Atendimento', () => {
+  const db = openDatabase(':memory:')
+  try {
+    const repo = new AtendimentoRepository(db)
+    const created = repo.create({ references: {
+      person: [{ id: null, text: 'Pessoa sintética', participantKey: 'qa' }],
+      contact: [{ id: null, text: '+5511999990000', participantKey: 'qa', email: 'qa@example.com' }],
+      vehicle: [], payer: [],
+    } }, false, true)
+    const refs = repo.get(created.id, true).references!
+    assert.ok(refs.contact[0]?.id)
+    assert.equal(refs.contact[0]?.email, 'qa@example.com')
+    const previousClient = { ...refs.contact[0]! }
+    delete previousClient.email
+    const updated = repo.update(created.id, { revision: created.revision, references: { ...refs, contact: [previousClient] } })
+    assert.equal(repo.get(created.id, true).references?.contact[0]?.email, 'qa@example.com')
+    const setEmail = (email: string) => repo.update(created.id, { revision: updated.revision, references: {
+      ...refs, contact: [{ ...previousClient, email }],
+    } })
+    assert.throws(() => setEmail('inválido'), { code: 'INVALID_CONTACT_EMAIL' })
+    setEmail('')
+    assert.equal(repo.get(created.id, true).references?.contact[0]?.email, undefined)
+  } finally { db.close() }
+})
